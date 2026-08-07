@@ -1,0 +1,89 @@
+{
+ "frozen_at": "2026-08-06",
+ "rule": "FROZEN. Authoring agents may not invent values outside these registries. A needed value that is absent must be returned as a contract_gap, never improvised.",
+ "warning": "These formulas are the heart of the deliverable. Authors must quote the worked examples verbatim and must NOT recompute or restate them in their own numbers.",
+ "client_invariant": {
+  "source": "Atha Group CWIP & CAPEX Budget Control PDF, sections 6, 7, 8, 12",
+  "formulas": {
+   "exposure": "Exposure = Open PO Commitment + Actual CWIP",
+   "available_budget": "Available Budget = Current Approved Budget - Exposure",
+   "utilisation_pct": "Utilisation % = Exposure / Current Approved Budget",
+   "current_approved_budget": "Current Approved Budget = Original Budget + Approved Supplements - Approved Returns +/- Approved Transfers"
+  },
+  "verification": "Verified against all 13 numeric rows in the client document. No row fails. No arithmetic error exists anywhere in the source.",
+  "frozen_worked_examples": [
+   {
+    "context": "Budget head - Civil",
+    "budget": "25,00,000",
+    "commitment": "5,00,000",
+    "actual": "12,00,000",
+    "available": "8,00,000"
+   },
+   {
+    "context": "Budget head - Plant & Machinery",
+    "budget": "80,00,000",
+    "commitment": "30,00,000",
+    "actual": "35,00,000",
+    "available": "15,00,000"
+   },
+   {
+    "context": "PDF section 7 over-budget example",
+    "text": "80L Budget - 35L Actual CWIP - 30L Open PO Commitment = 15L Available. A new PO of 20L exceeds available budget by 5L and must route to exception approval or budget revision."
+   },
+   {
+    "context": "Commitment-to-actual, part billed",
+    "po": "20L",
+    "actual_bill": "12L",
+    "open_commitment": "8L",
+    "budget_exposure": "20L"
+   },
+   {
+    "context": "Dashboard - Production Line",
+    "budget": "1.50 Cr",
+    "commitment": "30L",
+    "actual": "85L",
+    "available": "35L",
+    "utilisation": "76.7%"
+   },
+   {
+    "context": "Dashboard - Warehouse Expansion",
+    "budget": "80L",
+    "commitment": "15L",
+    "actual": "48L",
+    "available": "17L",
+    "utilisation": "78.8%"
+   }
+  ]
+ },
+ "sap_assigned_value": {
+  "status": "DESIGN DECISION REQUIRED - two non-equivalent SAP definitions exist",
+  "compact_definition": "Total of commitment and actual postings. (SAP Budget Value Display page)",
+  "authoritative_definition": "A nine-component aggregate that additionally includes statistical actual costs, settlement debits, settlement credits to budget-controlled objects, statistical actual costs of subordinate WBS elements that do not carry budget, and the MAXIMUM of plan versus actual+commitment for assigned networks/orders. (SAP Assigned Values for Projects page)",
+  "consequence": "The client formula resembles the COMPACT definition. Building availability control on it would systematically UNDERSTATE consumption and permit overspend relative to SAP behaviour.",
+  "ruling_for_this_blueprint": "Implement the client formula as the primary control, but expose the additional components as an explicit, separately-reported 'other assigned value' line so the understatement is visible rather than silent. Record as an open question for the client to ratify.",
+  "verifier": "V03"
+ },
+ "commitment_reduction_gates": {
+  "status": "TWO GATES, NOT ONE - carried as a flagged design assumption",
+  "gate_1": "The goods receipt indicator on the PO item determines whether commitment reduces at goods receipt or at invoice receipt. (Tier-1)",
+  "gate_2": "The goods-receipt-non-valuated flag independently overrides this: when set, invoice information is used to reduce commitment. (Tier-2 evidence only)",
+  "dangerous_case": "GR indicator SET but GR NON-VALUATED. Commitment is relieved at receipt while actual cost arrives only at invoice, so the item is counted in NEITHER actual NOR commitment, understating assigned value.",
+  "ruling_for_this_blueprint": "Our commitment ledger must relieve commitment ONLY on the event that also creates actual cost, and must carry an explicit 'received not billed' exposure bucket so nothing falls between the two. This is the anti-under-count control and is the mirror of the anti-double-count control.",
+  "verifier": "V04"
+ },
+ "cwip_settlement_qualifier": {
+  "correct_statement": "With no capitalisation key, the system settles all debits NOT ASSIGNED TO CO RECEIVERS to the asset under construction during periodic settlement.",
+  "error_caught": "A research lane dropped the qualifier and asserted that 100 percent of debits go to the AuC. That would model CWIP as a total-cost sink and erase the non-capitalisable / pre-operative-expense write-off path to cost centres.",
+  "ruling_for_this_blueprint": "The settlement design must model BOTH paths: capitalisable debits to the AuC, and debits routed to CO receivers by a prior settlement rule which never reach the AuC.",
+  "verifier": "V05"
+ },
+ "anti_double_count_rules": [
+  "A PO line contributes to commitment only for its UNBILLED balance.",
+  "A bill line converts commitment to actual for its own value; it never adds to both.",
+  "Budget exposure for a PO is unchanged by billing progress - only its split between commitment and actual moves.",
+  "PO cancellation before billing releases the whole commitment and reduces exposure to zero.",
+  "PO closure with residual releases only the unbilled residual.",
+  "Credit notes and bill reversals reduce actual and restore available budget.",
+  "Vendor advances are NOT actual CWIP unless the accounting policy and a source transaction support it."
+ ]
+}

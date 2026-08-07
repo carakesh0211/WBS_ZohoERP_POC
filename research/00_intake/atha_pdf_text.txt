@@ -1,0 +1,806 @@
+
+========== PAGE 1 ==========
+
+CWIP & CAPEX Budget Control | Zoho
+
+ 
+
+ERP
+
+Atha Group | CWIP & CAPEX Budget Control - Proposed Zoho ERP Workflow
+
+Implementation Partner
+
+Technology Platform
+
+Prepared for
+
+CWIP & CAPEX BUDGET CONTROL
+
+Proposed Workflow for Zoho ERP
+
+Prepared for
+
+ATHA GROUP
+
+Budget Monitoring from CAPEX Approval to Purchase Order Commitment, CWIP Accounting and Asset
+
+ 
+
+Capitalization
+
+Proposed solution approach using Zoho ERP with controlled customization
+
+========== PAGE 2 ==========
+
+CWIP & CAPEX Budget Control | Zoho
+
+ 
+
+ERP
+
+Atha Group | CWIP & CAPEX Budget Control - Proposed Zoho ERP Workflow
+
+1. Executive Summary
+
+The objective is to establish project-wise Capital Expenditure (CAPEX) and Capital Work in Progress (CWIP) 
+
+control within the Zoho ERP environment. The proposed design ensures that approved budgets are monitored 
+
+not only against vendor bills (actual cost), but also against Purchase Orders (committed cost), thereby providing 
+
+management with a true view of available CAPEX budget before further procurement is approved.
+
+Core Control Principle:  Available Budget = Current Approved Budget - Actual CWIP - Open PO
+
+ 
+
+Commitments
+
+2. Business Objectives
+
+• 
+
+Create a unique CAPEX / CWIP Project Code for every approved capital project.
+
+• 
+
+Maintain project-level and budget-head-level approved budgets.
+
+• 
+
+Validate budget availability before Purchase Order approval.
+
+• 
+
+Treat approved/open Purchase Orders as committed expenditure.
+
+• 
+
+Convert commitments into actual CWIP as vendor bills are booked without double counting.
+
+• 
+
+Provide controlled budget revision and exceptional approval for overruns.
+
+• 
+
+Maintain an audit trail from budget approval through procurement, accounting and final capitalization.
+
+• 
+
+Provide management dashboards for Budget vs Commitment vs Actual vs Available Budget.
+
+3. End-to-End Workflow
+
+Step
+
+Stage
+
+Control / Outcome
+
+1
+
+CAPEX Project Creation
+
+Create project/CWIP code, owner, 
+
+location, department, asset category 
+
+and timeline.
+
+2
+
+Budget Approval
+
+Define original budget by budget head 
+
+and capture approving authority.
+
+3
+
+Purchase Request (PR)
+
+User raises PR against CAPEX Code + 
+
+Budget Head.
+
+4
+
+Budget Availability Check
+
+System evaluates current budget, 
+
+actual CWIP and open commitments.
+
+5
+
+PR / Exception Approval
+
+Within-budget PR follows normal 
+
+approval; excess requires 
+
+exception/revision approval.
+
+6
+
+Purchase Order
+
+Approved PO is created in Zoho ERP 
+
+and reserves/commits the budget.
+
+7
+
+Purchase Receive / GRN
+
+Receipt is recorded against the PO; 
+
+commitment remains for the unbilled 
+
+PO balance.
+
+8
+
+Vendor Bill / CWIP
+
+Bill is posted to the relevant CWIP GL 
+
+========== PAGE 3 ==========
+
+CWIP & CAPEX Budget Control | Zoho
+
+ 
+
+ERP
+
+Atha Group | CWIP & CAPEX Budget Control - Proposed Zoho ERP Workflow
+
+and becomes actual project 
+
+expenditure.
+
+9
+
+Project Completion
+
+Project is reviewed for closure; open 
+
+commitments and pending bills are 
+
+resolved.
+
+10
+
+Asset Capitalization
+
+Eligible CWIP is transferred to the 
+
+appropriate fixed asset category and 
+
+project is closed.
+
+4. Workflow Diagram
+
+CAPEX / CWIP Project
+
+Creation
+
+↓
+
+Approved Budget
+
+& Budget Heads
+
+↓
+
+Purchase Request
+
+(PR)
+
+↓
+
+Budget
+
+Availability Check
+
+↓
+
+Approval / Exception
+
+Approval
+
+↓
+
+Purchase Order
+
+= Commitment
+
+↓
+
+Purchase Receive
+
+/ GRN
+
+↓
+
+Vendor Bill
+
+= Actual CWIP
+
+↓
+
+Project Completion
+
+Review
+
+↓
+
+Fixed Asset
+
+========== PAGE 4 ==========
+
+CWIP & CAPEX Budget Control | Zoho
+
+ 
+
+ERP
+
+Atha Group | CWIP & CAPEX Budget Control - Proposed Zoho ERP Workflow
+
+Capitalization
+
+========== PAGE 5 ==========
+
+CWIP & CAPEX Budget Control | Zoho
+
+ 
+
+ERP
+
+Atha Group | CWIP & CAPEX Budget Control - Proposed Zoho ERP Workflow
+
+5. CAPEX Project & Budget Structure
+
+Each capital project should have a unique code that follows all related procurement and accounting 
+
+transactions.
+
+Field
+
+Illustrative Value
+
+CAPEX / CWIP Code
+
+CAPEX-2026-001
+
+Project Name
+
+New Production Line
+
+Company / Unit
+
+Atha Group Entity / Unit
+
+Plant / Location
+
+Applicable Plant
+
+Department
+
+Manufacturing
+
+Project Owner
+
+Designated Project Owner
+
+Original Budget
+
+₹1,50,00,000
+
+Current Approved Budget
+
+₹1,50,00,000
+
+CWIP GL
+
+CWIP - Plant & Machinery
+
+Status
+
+Active / Completed / Capitalized / Closed
+
+6. Budget Head Control
+
+Budget Head
+
+Approved Budget
+
+PO Commitment
+
+Actual CWIP
+
+Available
+
+Civil
+
+₹25,00,000
+
+₹5,00,000
+
+₹12,00,000
+
+₹8,00,000
+
+Plant & Machinery
+
+₹80,00,000
+
+₹30,00,000
+
+₹35,00,000
+
+₹15,00,000
+
+Electrical
+
+₹20,00,000
+
+₹6,00,000
+
+₹8,00,000
+
+₹6,00,000
+
+Installation
+
+₹15,00,000
+
+₹4,00,000
+
+₹5,00,000
+
+₹6,00,000
+
+Consultancy & Other
+
+₹10,00,000
+
+₹2,00,000
+
+₹3,00,000
+
+₹5,00,000
+
+TOTAL
+
+₹1,50,00,000
+
+₹47,00,000
+
+₹63,00,000
+
+₹40,00,000
+
+7. Purchase Order Budget Validation Logic
+
+At PR/PO approval, the system should read the CAPEX Code and Budget Head and calculate the remaining 
+
+budget. Open PO commitments must be considered even where the corresponding vendor bill has not yet been 
+
+received.
+
+Example: ₹80L Budget - ₹35L Actual CWIP - ₹30L Open PO Commitment = ₹15L Available
+
+If a new PO of ₹20L is proposed, the transaction exceeds available budget by ₹5L. The system should route the 
+
+transaction to an exceptional approval / budget revision process rather than treating it as a normal within-
+
+budget PO.
+
+========== PAGE 6 ==========
+
+CWIP & CAPEX Budget Control | Zoho
+
+ 
+
+ERP
+
+Atha Group | CWIP & CAPEX Budget Control - Proposed Zoho ERP Workflow
+
+8. Commitment-to-Actual Treatment
+
+The solution must avoid double counting a Purchase Order and its subsequent vendor bill.
+
+Transaction Position
+
+PO Value
+
+Actual Bill
+
+Open Commitment
+
+Budget Exposure
+
+PO approved
+
+₹20L
+
+₹0
+
+₹20L
+
+₹20L
+
+Part billed
+
+₹20L
+
+₹12L
+
+₹8L
+
+₹20L
+
+Fully billed
+
+₹20L
+
+₹20L
+
+₹0
+
+₹20L
+
+PO cancelled before 
+
+billing
+
+₹20L
+
+₹0
+
+₹0
+
+₹0
+
+9. Budget Revision & Overrun Workflow
+
+Stage
+
+Process
+
+Budget Exception Raised
+
+PO/PR exceeds available project or budget-head limit.
+
+Revision Request
+
+User submits additional budget requirement with 
+
+justification.
+
+Approval
+
+Appropriate authority approves/rejects additional CAPEX.
+
+Budget Version Update
+
+Original budget remains unchanged; approved revision is 
+
+separately recorded.
+
+Current Budget
+
+Original Budget + Approved Revisions = Current Approved 
+
+Budget.
+
+PO Revalidation
+
+Transaction is rechecked against the revised available 
+
+budget.
+
+========== PAGE 7 ==========
+
+CWIP & CAPEX Budget Control | Zoho
+
+ 
+
+ERP
+
+Atha Group | CWIP & CAPEX Budget Control - Proposed Zoho ERP Workflow
+
+10. Proposed Zoho Solution Mapping
+
+Requirement
+
+Proposed Solution
+
+Classification
+
+Purchase Request
+
+Zoho ERP Purchase Request
+
+Standard
+
+PR / PO Approval
+
+Zoho ERP approval workflow
+
+Standard / Configuration
+
+Purchase Order
+
+Zoho ERP Purchase Order
+
+Standard
+
+Purchase Receive / GRN
+
+Zoho ERP Purchase Receive
+
+Standard
+
+Vendor Bill & Accounting
+
+Zoho ERP Finance
+
+Standard
+
+CAPEX / CWIP identification
+
+Project code / custom fields / 
+
+dimensions
+
+Configuration
+
+CWIP GL Accounting
+
+Dedicated CWIP ledgers
+
+Configuration
+
+CAPEX Budget Master
+
+Project and budget-head register
+
+Customization
+
+PO Commitment Register
+
+Open PO commitment calculation
+
+Customization
+
+Budget Availability Validation
+
+Budget check before approval
+
+Customization
+
+Budget Revision Control
+
+Versioned revision + approval
+
+Customization
+
+Exception / Overrun Approval
+
+Conditional approval route
+
+Customization
+
+Management Dashboard
+
+Zoho Analytics
+
+Configuration / Custom
+
+11. Recommended System Architecture
+
+ZOHO ERP
+
+PR  Approval  PO  Purchase Receive / GRN  Vendor Bill  CWIP Accounting→→→→→
+
+  API / Workflow / Custom Function↕
+
+CAPEX BUDGET CONTROL LAYER
+
+Project Master  Budget Heads  Commitment Register  Budget Validation  Revision /→→→→
+
+ 
+
+Exception Approval
+
+↓
+
+ZOHO ANALYTICS
+
+Budget vs Commitment vs Actual vs Available  Project / Plant / Department / Budget Head Drill-→
+
+down
+
+12. Management Dashboard
+
+Project
+
+Current Budget
+
+Open 
+
+Commitment
+
+Actual CWIP
+
+Available
+
+Utilisation / 
+
+Exposure
+
+Production Line
+
+₹1.50 Cr
+
+₹30L
+
+₹85L
+
+₹35L
+
+76.7%
+
+Warehouse 
+
+Expansion
+
+₹80L
+
+₹15L
+
+₹48L
+
+₹17L
+
+78.8%
+
+Solar Project
+
+₹50L
+
+₹10L
+
+₹25L
+
+₹15L
+
+70.0%
+
+========== PAGE 8 ==========
+
+CWIP & CAPEX Budget Control | Zoho
+
+ 
+
+ERP
+
+Atha Group | CWIP & CAPEX Budget Control - Proposed Zoho ERP Workflow
+
+Recommended alerts: 80% budget exposure, 90% budget exposure, budget exceeded, open PO ageing, pending 
+
+GRN/billing, overdue CWIP projects, and projects awaiting capitalization.
+
+13. Key Controls & Audit Trail
+
+• 
+
+Mandatory CAPEX Code and Budget Head on applicable capital procurement.
+
+• 
+
+No silent overwrite of original approved budget.
+
+• 
+
+Every revision to retain requestor, approver, date, reason and approval reference.
+
+• 
+
+PO amendments to trigger revalidation for incremental value.
+
+• 
+
+PO cancellation/closure to release unused commitment.
+
+• 
+
+Bill posting to reduce open commitment and increase actual CWIP.
+
+• 
+
+Closed/capitalized projects to prevent further procurement unless reopened through approval.
+
+• 
+
+Dashboard drill-down from project to PR, PO, receipt/GRN and vendor bill.
+
+14. Implementation Approach
+
+Phase
+
+Activities
+
+1. Discovery & Design
+
+Confirm Atha Group CAPEX approval matrix, project 
+
+structure, budget heads, entities/plants and accounting 
+
+policy.
+
+2. ERP Configuration
+
+Configure procurement flow, custom fields/dimensions, 
+
+CWIP ledgers and approvals.
+
+3. Budget Control Build
+
+Develop CAPEX master, budget register, commitment logic, 
+
+validation and revision workflow.
+
+4. Integration & Automation
+
+Connect PO/GRN/Bill events with the budget-control layer 
+
+and ensure commitment reconciliation.
+
+5. Analytics
+
+Build management dashboard and exception/ageing 
+
+reports.
+
+6. UAT & Go-Live
+
+Scenario testing, user training, opening CAPEX/budget 
+
+upload and production deployment.
+
+15. Expected Outcome for Atha Group
+
+The proposed solution will provide Atha Group with a controlled and auditable CAPEX lifecycle in which 
+
+management can see not only what has already been spent, but also what has been committed through Purchase
+
+ 
+
+Orders. This enables proactive prevention of budget overruns, improved project-wise CWIP visibility, stronger 
+
+approval governance and a structured transition from project expenditure to final fixed-asset capitalization.

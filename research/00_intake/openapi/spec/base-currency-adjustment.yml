@@ -1,0 +1,601 @@
+openapi: 3.0.0
+info:
+  title: Base Currency Adjustment
+  description: In Zoho ERP you can have an insight on the profit or loss incurred due to the change in exchange rates and also can apply the changes to open transactions.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: base-currency-adjustment
+    description: Base-Currency-Adjustment Module
+paths:
+  /basecurrencyadjustment:
+    x-mcp-group:
+      - Base Currency Adjustment
+      - Currency
+    post:
+      tags:
+        - base-currency-adjustment
+      operationId: create_base_currency_adjustment
+      summary: Create a base currency adjustment
+      description: Creates a base currency adjustment for the given information.
+      parameters:
+        - name: account_ids
+          in: query
+          description: ID of the accounts for which base currency adjustments need to be posted.
+          required: true
+          schema:
+            type: string
+          example: 460000000000364
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-base-currency-adjustment-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-base-currency-adjustment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    get:
+      tags:
+        - base-currency-adjustment
+      operationId: list_base_currency_adjustments
+      summary: List base currency adjustment
+      description: Lists base currency adjustment.
+      parameters:
+        - name: filter_by
+          in: query
+          description: 'Filter base currency adjustment list. Allowed Values: <code>Date.All</code>, <code>Date.Today</code>, <code>Date.ThisWeek</code>, <code>Date.ThisMonth</code>, <code>Date.ThisQuarter</code> and <code>Date.ThisYear</code>.'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: sort_column
+          in: query
+          description: 'Sort base currency adjustment list. Allowed Values: <code>adjustment_date</code>, <code>exchange_rate</code>, <code>currency_code</code>, <code>debit_or_credit</code> and <code>gain_or_loss</code>.'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: last_modified_time
+          in: query
+          description: Search using the Last Modified Time of the Base Currency Adjustment
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page.
+          required: false
+          schema:
+            type: integer
+            default: 10
+          example: 10
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-base-currency-adjustment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /basecurrencyadjustment/{base_currency_adjustment_id}:
+    x-mcp-group:
+      - Base Currency Adjustment
+      - Currency
+    get:
+      tags:
+        - base-currency-adjustment
+      operationId: get_base_currency_adjustment
+      summary: Get a base currency adjustment
+      description: Get the base currency adjustment details.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-base-currency-adjustment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    delete:
+      tags:
+        - base-currency-adjustment
+      operationId: delete_base_currency_adjustment
+      summary: Delete a base currency adjustment
+      description: Deletes the base currency adjustment.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-base-currency-adjustment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.DELETE
+    parameters:
+      - name: base_currency_adjustment_id
+        in: path
+        required: true
+        description: Unique identifier of the base currency adjustment.
+        schema:
+          type: string
+        example: '460000000039001'
+      - $ref: '#/components/parameters/organization_id'
+  /basecurrencyadjustment/bulkdelete:
+    x-mcp-group:
+      - Base Currency Adjustment
+      - Currency
+    delete:
+      tags:
+        - base-currency-adjustment
+      operationId: bulk_delete_base_currency_adjustments
+      summary: Bulk delete base currency adjustments
+      description: Deletes multiple base currency adjustments.
+      parameters:
+        - name: base_currency_adjustment_ids
+          in: query
+          description: Comma separated base currency adjustment IDs which are to be deleted.
+          required: true
+          schema:
+            type: string
+          example: 460000000039001,460000000039002
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-base-currency-adjustment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.DELETE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /basecurrencyadjustment/{base_currency_adjustment_id}/reevaluate:
+    x-mcp-group:
+      - Base Currency Adjustment
+      - Currency
+    post:
+      tags:
+        - base-currency-adjustment
+      operationId: reevaluate_base_currency_adjustment
+      summary: Reevaluate a base currency adjustment
+      description: Reevaluates a base currency adjustment.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/reevaluate-base-currency-adjustment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    parameters:
+      - name: base_currency_adjustment_id
+        in: path
+        required: true
+        description: Unique identifier of the base currency adjustment.
+        schema:
+          type: string
+        example: '460000000039001'
+      - $ref: '#/components/parameters/organization_id'
+  /basecurrencyadjustment/accounts:
+    x-mcp-group:
+      - Base Currency Adjustment
+      - Currency
+    get:
+      tags:
+        - base-currency-adjustment
+      operationId: list_base_currency_adjustment_accounts
+      summary: List account details for base currency adjustment
+      description: List of accounts having transaction with effect to the given exchange rate.
+      parameters:
+        - name: currency_id
+          in: query
+          description: ID of currency for which we need to post adjustment.
+          required: true
+          schema:
+            type: string
+          example: '460000000000109'
+        - name: adjustment_date
+          in: query
+          description: Date of adjustment.
+          required: true
+          schema:
+            type: string
+          example: '2013-09-05'
+        - name: exchange_rate
+          in: query
+          description: Exchange rate of the currency.
+          required: true
+          schema:
+            type: number
+            format: double
+          example: 1
+        - name: notes
+          in: query
+          description: Notes for base currency adjustment.
+          required: true
+          schema:
+            type: string
+          example: Base Currency Adjustment against EUR
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-account-details-for-base-currency-adjustment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /basecurrencyadjustment/contacts:
+    x-mcp-group:
+      - Base Currency Adjustment
+      - Currency
+    get:
+      tags:
+        - base-currency-adjustment
+      operationId: list_base_currency_adjustment_contacts
+      summary: List contact details for base currency adjustment
+      description: List contacts having transactions with effect to the given exchange rate for a specific account.
+      parameters:
+        - name: currency_id
+          in: query
+          description: ID of currency for which we need to post adjustment.
+          required: true
+          schema:
+            type: string
+          example: '460000000000109'
+        - name: account_id
+          in: query
+          description: ID of the account.
+          required: true
+          schema:
+            type: string
+          example: '460000000000364'
+        - name: adjustment_date
+          in: query
+          description: Date of adjustment.
+          required: true
+          schema:
+            type: string
+          example: '2013-09-05'
+        - name: exchange_rate
+          in: query
+          description: Exchange rate of the currency.
+          required: true
+          schema:
+            type: number
+            format: double
+          example: 1
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-base-currency-adjustment-contacts-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/data'
+    currency_id:
+      description: ID of currency for which we need to post adjustment.
+      type: string
+      example: '460000000000109'
+    adjustment_date:
+      description: Date of adjustment.
+      type: string
+      example: '2013-09-05'
+    exchange_rate:
+      description: Exchange rate of the currency.
+      type: number
+      format: double
+      example: 1
+    notes:
+      description: Notes for base currency adjustment.
+      type: string
+      example: Base Currency Adjustment against EUR
+    currency_code:
+      description: Currency Code involved in the Adjustment
+      type: string
+      example: EUR
+    account_ids:
+      description: ID of the accounts for which base currency adjustments need to be posted.
+      type: string
+      example: 460000000000364
+    base_currency_adjustment_id:
+      description: ID of the Base Currency Adjustment
+      type: string
+      example: '460000000039001'
+    account_id:
+      description: ID of the Account in Base Currency Adjustment
+      type: string
+      example: '460000000000364'
+    account_name:
+      description: Name of the Account in Base Currency Adjustment
+      type: string
+      example: Accounts Receivable
+    bcy_balance:
+      description: Balance in Base Currency of the Organisation
+      type: number
+      format: double
+      example: 171.47
+    fcy_balance:
+      description: Balance in Foreign Currency
+      type: number
+      format: double
+      example: 139.41
+    adjusted_balance:
+      description: Adjusted Balance
+      type: number
+      format: double
+      example: 209.12
+    gain_or_loss:
+      description: Amount in Total Gain/Loss
+      type: number
+      format: double
+      example: 37.65
+    gl_specific_type:
+      description: GL Specific Type of the Account Involved
+      type: integer
+      example: 5
+    filter_by:
+      description: 'Filter base currency adjustment list. Allowed Values: <code>Date.All</code>, <code>Date.Today</code>, <code>Date.ThisWeek</code>, <code>Date.ThisMonth</code>, <code>Date.ThisQuarter</code> and <code>Date.ThisYear</code>.'
+      type: string
+    sort_column:
+      description: 'Sort base currency adjustment list. Allowed Values: <code>adjustment_date</code>, <code>exchange_rate</code>, <code>currency_code</code>, <code>debit_or_credit</code> and <code>gain_or_loss</code>.'
+      type: string
+    accounts:
+      type: array
+      items:
+        type: object
+        properties:
+          account_id:
+            $ref: '#/components/schemas/account_id'
+          account_name:
+            $ref: '#/components/schemas/account_name'
+          bcy_balance:
+            $ref: '#/components/schemas/bcy_balance'
+          fcy_balance:
+            $ref: '#/components/schemas/fcy_balance'
+          adjusted_balance:
+            $ref: '#/components/schemas/adjusted_balance'
+          gain_or_loss:
+            $ref: '#/components/schemas/gain_or_loss'
+          gl_specific_type:
+            $ref: '#/components/schemas/gl_specific_type'
+    data:
+      type: object
+      properties:
+        base_currency_adjustment_id:
+          $ref: '#/components/schemas/base_currency_adjustment_id'
+        adjustment_date:
+          $ref: '#/components/schemas/adjustment_date'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        accounts:
+          $ref: '#/components/schemas/accounts'
+        notes:
+          $ref: '#/components/schemas/notes'
+        currency_code:
+          $ref: '#/components/schemas/currency_code'
+    last_modified_time:
+      description: Search using the Last Modified Time of the Base Currency Adjustment
+      type: string
+    create-a-base-currency-adjustment-request:
+      required:
+        - currency_id
+        - adjustment_date
+        - exchange_rate
+        - notes
+      type: object
+      properties:
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        adjustment_date:
+          $ref: '#/components/schemas/adjustment_date'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        notes:
+          $ref: '#/components/schemas/notes'
+    create-a-base-currency-adjustment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The adjustment has been made. The account balances will now reflect the adjustment.
+          readOnly: true
+        data:
+          $ref: '#/components/schemas/data'
+    list-base-currency-adjustment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        base_currency_adjustments:
+          type: array
+          items:
+            type: object
+            properties:
+              base_currency_adjustment_id:
+                $ref: '#/components/schemas/base_currency_adjustment_id'
+              adjustment_date:
+                $ref: '#/components/schemas/adjustment_date'
+              exchange_rate:
+                $ref: '#/components/schemas/exchange_rate'
+              currency_id:
+                $ref: '#/components/schemas/currency_id'
+              currency_code:
+                $ref: '#/components/schemas/currency_code'
+              notes:
+                $ref: '#/components/schemas/notes'
+              gain_or_loss:
+                $ref: '#/components/schemas/gain_or_loss'
+    get-a-base-currency-adjustment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        data:
+          $ref: '#/components/schemas/data'
+    delete-a-base-currency-adjustment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The selected base currency adjustment has been deleted.
+          readOnly: true
+    list-account-details-for-base-currency-adjustment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        data:
+          type: object
+          properties:
+            adjustment_date:
+              $ref: '#/components/schemas/adjustment_date'
+            exchange_rate:
+              $ref: '#/components/schemas/exchange_rate'
+            currency_id:
+              $ref: '#/components/schemas/currency_id'
+            accounts:
+              $ref: '#/components/schemas/accounts'
+            notes:
+              $ref: '#/components/schemas/notes'
+            currency_code:
+              $ref: '#/components/schemas/currency_code'
+    reevaluate-base-currency-adjustment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The base currency adjustment has been reevaluated.
+          readOnly: true
+        data:
+          $ref: '#/components/schemas/data'
+    list-base-currency-adjustment-contacts-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        contacts:
+          type: array
+          items:
+            type: object
+            properties:
+              contact_id:
+                description: ID of the contact.
+                type: string
+                example: '460000000044001'
+              contact_name:
+                description: Name of the contact.
+                type: string
+                example: Bowman & Co
+              fcy_balance:
+                $ref: '#/components/schemas/fcy_balance'
+              bcy_balance:
+                $ref: '#/components/schemas/bcy_balance'
+              adjusted_balance:
+                $ref: '#/components/schemas/adjusted_balance'
+              gain_or_loss:
+                $ref: '#/components/schemas/gain_or_loss'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.accountants.CREATE: Create Accountants
+            ERP.accountants.READ: Read Accountants
+            ERP.accountants.DELETE: Delete Accountants

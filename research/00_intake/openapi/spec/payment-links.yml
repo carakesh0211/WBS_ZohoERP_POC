@@ -1,0 +1,414 @@
+openapi: 3.0.0
+info:
+  title: Payment Links
+  description: A payment link is a unique URL that allows the end customer to make a payment directly through that link.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: payment-links
+    description: Payment Links Module
+paths:
+  /paymentlinks:
+    x-mcp-group:
+      - Payment Links
+    get:
+      operationId: list_paymentlinks
+      tags:
+        - payment-links
+      summary: List payment links
+      description: Get a list of payment links.
+      parameters:
+        - name: filter_by
+          in: query
+          description: Payment links of particular status can be filtered by passing a param <code>filter_by</code>. Allowed values are Status.(<code>All</code>, <code>Generated</code>, <code>Read</code>, <code>Paid</code>, <code>Cancelled</code>, <code>Expired</code>).
+          required: false
+          schema:
+            type: string
+          example: Status.All
+        - name: customer_id
+          in: query
+          description: Retrieves payment links of the given customer.
+          required: false
+          schema:
+            type: string
+        - name: search_text
+          in: query
+          description: Search payments by reference number or customer name or payment description.
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page.
+          required: false
+          schema:
+            type: integer
+          example: 10
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-all-paymentlinks-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customerpayments.READ
+    post:
+      tags:
+        - payment-links
+      operationId: create_paymentlink
+      summary: Create a payment link
+      description: Create a payment link for your customer.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-an-payment-link'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/paymentlink-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customerpayments.CREATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /paymentlinks/{payment_id}:
+    x-mcp-group:
+      - Payment Links
+    get:
+      tags:
+        - payment-links
+      operationId: get_paymentlinks
+      summary: Retrieve a Payment  link
+      description: Details of a payment link.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/paymentlink-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customerpayments.READ
+    put:
+      tags:
+        - payment-links
+      operationId: update_paymentlinks
+      summary: Update a Payment Link
+      description: Update an existing payment link.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-an-payment-link'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/paymentlink-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customerpayments.UPDATE
+    delete:
+      tags:
+        - payment-links
+      operationId: delete_paymentlinks
+      summary: Delete a Payment Link
+      description: Delete an existing payment link.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-an-payment-link-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customerpayments.DELETE
+    parameters:
+      - name: payment_id
+        in: path
+        required: true
+        description: Unique identifier of the payment link.
+        schema:
+          type: string
+        example: '903000000079426'
+      - $ref: '#/components/parameters/organization_id'
+  /paymentlinks/{payment_id}/cancel:
+    x-mcp-group:
+      - Payment Links
+    post:
+      tags:
+        - payment-links
+      operationId: cancel_payment_link
+      summary: Cancel a payment link
+      description: Cancel a existing payment link.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/cancel-an-payment-link-response'
+      security:
+        - Zoho_Auth:
+            - ERP.customerpayments.UPDATE
+    parameters:
+      - name: payment_id
+        in: path
+        required: true
+        description: Unique identifier of the payment link.
+        schema:
+          type: string
+        example: '903000000079426'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/paymentlink-response'
+    paymentlink-list-response:
+      type: object
+      properties:
+        payment_link_id:
+          $ref: '#/components/schemas/payment_link_id'
+        expiry_time:
+          $ref: '#/components/schemas/expiry_time'
+        payment_amount:
+          $ref: '#/components/schemas/payment_amount'
+        description:
+          $ref: '#/components/schemas/description'
+        url:
+          $ref: '#/components/schemas/url'
+        customer_name:
+          $ref: '#/components/schemas/customer_name'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        company_name:
+          $ref: '#/components/schemas/company_name'
+        status:
+          $ref: '#/components/schemas/status'
+        payment_link_number:
+          $ref: '#/components/schemas/payment_link_number'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        is_viewed_by_client:
+          $ref: '#/components/schemas/is_viewed_by_client'
+    paymentlink-response:
+      type: object
+      properties:
+        payment_link_id:
+          $ref: '#/components/schemas/payment_link_id'
+        expiry_time:
+          $ref: '#/components/schemas/expiry_time'
+        payment_amount:
+          $ref: '#/components/schemas/payment_amount'
+        description:
+          $ref: '#/components/schemas/description'
+        url:
+          $ref: '#/components/schemas/url'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        customer_name:
+          $ref: '#/components/schemas/customer_name'
+        customer_email:
+          $ref: '#/components/schemas/customer_email'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        company_name:
+          $ref: '#/components/schemas/company_name'
+        status:
+          $ref: '#/components/schemas/status'
+        payment_link_number:
+          $ref: '#/components/schemas/payment_link_number'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        created_by:
+          $ref: '#/components/schemas/created_by'
+        is_viewed_by_client:
+          $ref: '#/components/schemas/is_viewed_by_client'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+    payment_link_id:
+      description: Unique ID of the payment link.
+      type: string
+      example: '9030000079467'
+    expiry_time:
+      description: Expiry time of the payment link.
+      type: string
+      example: '2025-11-26'
+    payment_amount:
+      description: Amount to be paid.
+      type: string
+      example: 10
+    description:
+      description: Description of the payment link.
+      type: string
+      example: This payment link is for last week due.
+    url:
+      description: Generated link through which customer will be making the payment.
+      type: string
+      example: https://www.zohoapis.in/erp/v1
+    exchange_rate:
+      description: Exchange rate of the currency.
+      type: number
+      format: double
+      example: 1
+    customer_name:
+      description: Name of the customer.
+      type: string
+      example: zylker
+    customer_email:
+      description: Email address of the customer.
+      type: string
+      example: abc@gmail.com
+    customer_id:
+      description: Unique identifier for the customer.
+      type: string
+      example: '982000000567001'
+    company_name:
+      description: Registered name of the company the customer represents.
+      type: string
+      example: Zylker Inc
+    status:
+      description: status of the payment link.
+      type: string
+      example: Generated
+    payment_link_number:
+      description: Unique number for the payment link.
+      type: string
+      example: PL-00002
+    created_time:
+      description: Created Time of the payment link.
+      type: string
+      example: '2025-11-28'
+    created_by:
+      description: User who created the payment link.
+      type: string
+      example: Zylker
+    is_viewed_by_client:
+      description: Specifies whether payment link is viewed by customer.
+      type: boolean
+      example: true
+    custom_fields:
+      description: Additional fields for the Payment links.
+      type: array
+      items:
+        type: object
+        properties:
+          label:
+            $ref: '#/components/schemas/label'
+          value:
+            $ref: '#/components/schemas/value'
+    label:
+      description: Label of the Custom Field.
+      type: string
+    value:
+      description: Value of the Custom Field.
+      type: string
+    list-all-paymentlinks-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        payment_links:
+          type: array
+          items:
+            type: object
+            $ref: '#/components/schemas/paymentlink-list-response'
+    update-an-payment-link:
+      type: object
+      properties:
+        expiry_time:
+          $ref: '#/components/schemas/expiry_time'
+        description:
+          $ref: '#/components/schemas/description'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+    create-an-payment-link:
+      type: object
+      required:
+        - customer_id
+        - payment_amount
+        - description
+      properties:
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        payment_amount:
+          $ref: '#/components/schemas/payment_amount'
+        description:
+          $ref: '#/components/schemas/description'
+        expiry_time:
+          $ref: '#/components/schemas/expiry_time'
+          description: Expiry time of the payment link. If not given, the default will be 15 days.
+    cancel-an-payment-link-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The payment link has been canceled.
+          readOnly: true
+    delete-an-payment-link-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The payment link has been deleted.
+          readOnly: true
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.customerpayments.CREATE: Create Customerpayments
+            ERP.customerpayments.READ: Read Customerpayments
+            ERP.customerpayments.UPDATE: Update Customerpayments
+            ERP.customerpayments.DELETE: Delete Customerpayments

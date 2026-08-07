@@ -1,0 +1,1002 @@
+openapi: 3.0.0
+info:
+  title: Salary Revisions
+  description: The Salary Revisions module in Zoho ERP allows you to add and manage salary revisions of employees.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v1
+    description: API Endpoint
+tags:
+  - name: salary-revisions
+    description: Salary Revisions Module
+paths:
+  /salaryrevisions:
+    x-mcp-group:
+      - Salary Revisions
+    get:
+      tags:
+        - salary_revisions
+      operationId: list_salary_revisions
+      summary: List Salary Revisions
+      description: List all salary revisions with pagination.
+      parameters:
+        - name: filter_by
+          in: query
+          description: 'Filter salary revisions by status. Allowed Values: <code>Status.All</code>, <code>Status.Pending</code>, <code>Status.Approved</code> and <code>Status.Rejected</code>'
+          required: false
+          schema:
+            type: string
+          example: Status.All
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-salary-revision-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salary.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /salaryrevisions/{revision_id}:
+    x-mcp-group:
+      - Employees
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/revision_id'
+    get:
+      tags:
+        - employees
+      operationId: get_salary_revision
+      summary: Get Salary Revision
+      description: Retrieve a specific salary revision.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-salary-revision-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salary.READ
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: Unique identifier for the organization.
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+    employee_id:
+      name: employee_id
+      in: path
+      description: Unique identifier for the employee.
+      schema:
+        $ref: '#/components/schemas/employee_id'
+      required: true
+    revision_id:
+      name: revision_id
+      in: path
+      description: Unique identifier of the revision.
+      required: true
+      schema:
+        type: string
+        example: '3000000004513'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/salary_revisions-response'
+    salary_revisions-response:
+      type: object
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/employee_id'
+        revision_id:
+          $ref: '#/components/schemas/revision_id'
+        employee_name:
+          $ref: '#/components/schemas/employee_name'
+        employee_number:
+          $ref: '#/components/schemas/employee_number'
+        ctc:
+          $ref: '#/components/schemas/ctc'
+        previous_ctc:
+          $ref: '#/components/schemas/previous_ctc'
+        effective_from:
+          $ref: '#/components/schemas/effective_from'
+        payment_month:
+          $ref: '#/components/schemas/payment_month'
+        revision_status:
+          $ref: '#/components/schemas/revision_status'
+        change_in_percent:
+          $ref: '#/components/schemas/change_in_percent'
+    code:
+      type: integer
+      example: 0
+      readOnly: true
+    message:
+      type: string
+      example: success
+      readOnly: true
+    employee_name:
+      type: string
+      example: Anand Maya
+      description: The full name of the employee.
+    employee_id:
+      description: Unique identifier for the employee.
+      type: string
+      example: '36000000012849'
+    first_name:
+      description: First Name of the Employee.
+      type: string
+      example: Anand
+    middle_name:
+      description: Middle Name of the Employee.
+      type: string
+      example: ''
+    last_name:
+      description: Last Name of the Employee.
+      type: string
+      example: Maya
+    full_name:
+      description: Full name of the employee.
+      type: string
+      example: Anand Maya
+    employee_status:
+      description: Status of the employee.<br/> Allowed values are <code>active</code>, <code>terminated</code>
+      type: string
+      example: active
+    monthly_salary:
+      type: number
+      example: 50000
+      description: The monthly salary amount for the employee, excluding one-time earnings.
+    is_eligible_for_pf:
+      type: boolean
+      example: true
+    is_eligible_for_esi:
+      type: boolean
+      example: false
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    pf_account_number:
+      description: Enter PF account number, if the employee is eligible for EPF.
+      type: string
+      example: AA/AAA/4567890/OIU/4454545
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    esi_number:
+      description: Enter ESI number, if the employee is eligible for ESI.
+      type: string
+      example: '1234567890'
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    ctc:
+      description: Yearly ctc of the employee.
+      type: number
+      example: 650000
+    id:
+      type: string
+      example: '49774000000236001'
+    amount:
+      type: number
+      example: 10000
+      description: A fixed numerical value.
+    is_enabled:
+      type: boolean
+      example: true
+    is_amount_in_percentage:
+      type: boolean
+      example: false
+      description: Indicates whether the provided amount is a percentage of basic amount.
+    amount_in_percentage:
+      type: number
+      description: The amount provided as percentage.
+    type:
+      type: string
+      example: basic
+    name:
+      type: string
+      example: Basic
+    is_included_in_pf:
+      type: boolean
+      example: true
+      description: Indicates whether the component is considered for EPF.
+    is_included_in_esi:
+      type: boolean
+      example: true
+      description: Indicates whether the component is considered for ESI.
+    is_employee_restricted_basic_enabled:
+      type: boolean
+      example: false
+      description: When the employee is eligible for EPF, indicates whether the employee contribution towards EPF is restricted to the amount based on the organization's configuration. (Applicable only for EPF).
+    is_employer_restricted_basic_enabled:
+      type: boolean
+      example: true
+      description: When the employee is eligible for EPF, indicates whether the employer contribution towards EPF is restricted to the amount based on the organization's configuration. (Applicable only for EPF).
+    employee_restricted_basic_amount:
+      type: number
+      example: ''
+      description: When <code>is_employee_restricted_basic_enabled</code> is true, the employee''s contribution is restricted to ₹15,0000 of Basic Pay by default, defining the maximum wage for EPF calculation. Users can provide alternative values if organizational override is permitted. (Applicable only for EPF).
+    can_override_restricted_basic_amount:
+      type: boolean
+      example: false
+    employer_restricted_basic_amount:
+      type: number
+      example: 15000
+      description: When <code>is_employer_restricted_basic_enabled</code> is true, the employer''s contribution is restricted to ₹15,0000 of Basic Pay by default, defining the maximum wage for EPF calculation. Users can provide alternative values if organizational override is permitted. (Applicable only for EPF).
+    max_limit:
+      type: number
+      example: 12000
+    carry_forward_option:
+      type: string
+      example: monthly
+      description: When it is not required to carry forward the claim amount, specify the value as <code>disabled</code>. For Reimbursements, when the claim amount can be carried forward monthly within the financial year, specify the value as <code>monthly</code>. For LTA, when the claim amount can be carried forward monthly and to the next financial year, specify the value as <code>monthly_and_yearly</code>
+    is_opt_in:
+      type: boolean
+      example: false
+      description: Set to <code>true</code> to prevent overriding the Flexible Benefit Plan amount.
+    revision_id:
+      type: string
+      example: '49774000000241001'
+      description: Unique identifier for the salary revision.
+    pay_date:
+      type: string
+      example: '2022-06-30'
+    revision_status:
+      type: string
+      example: pending
+      description: The status of the salary revision.
+    template_name:
+      type: string
+      example: Salary Template(Sample)
+      description: The name of the salary template.
+    deduction_id:
+      type: string
+      example: '49774000000257078'
+    deduction_name:
+      type: string
+      example: Cab Deduction
+    is_pro_rata:
+      type: boolean
+      example: true
+    is_value_in_percent:
+      type: boolean
+      description: Set to true if the deduction is calculated as a percentage of the sum of basic salary and Dearness Allowance (if present).
+      example: true
+    recurrence_termination_type:
+      type: string
+      description: Allowed values are <code>by_month</code>, <code>by_amount</code> and <code>infinite</code>.<br/> If the deduction is intended to end after a specific month, specify the value as <code>by_month</code>.<br/> If the deduction is intended to end after a specific amount has deducted, specify the value as <code>by_amount</code>.<br/> If the deduction is never intended to end specify the value as <code>infinite</code>
+      example: infinite
+    recurrence_termination_month:
+      type: string
+      description: Enter the termination month in the format <code>YYYY-MM</code> if the termination type is <code>by_month</code>.
+      example: 2019-01
+    recurrence_termination_amount:
+      type: number
+      description: Enter the termination amount if the termination type is <code>by_amount</code>.
+      example: 4000
+    total_amount_deducted:
+      type: number
+      example: 100
+    amount_to_be_deducted:
+      type: number
+      example: 500
+    benefit_id:
+      type: string
+      example: '49774000000095189'
+    benefit_name:
+      type: string
+      example: Public Provident Fund
+    benefit_plan:
+      type: string
+      example: other_non_taxable_benefit
+    employee_contribution_value:
+      type: number
+      example: 0
+      description: Provide the amount contributed by the employer towards the benefit.
+    is_employee_contribution_in_percent:
+      type: boolean
+      description: Set it true, if the employee contribution value is in percentage.
+      example: false
+    employee_recurrence_termination_type:
+      type: string
+      description: Allowed values are <code>by_amount_and_reset_every_year</code>, <code>by_amount</code> and <code>infinite</code>.<br/> If the benefit is intended to end after a specific amount has been deducted and reset every year, specify the value as <code>by_amount_and_reset_every_year</code>.<br/> If the benefit is intended to end after a specific amount has deducted, specify the value as <code>by_amount</code>.<br/> If the benefit is never intended to end specify the value as <code>infinite</code>.
+      example: infinite
+    employer_contribution_value:
+      type: number
+      example: 2000
+      description: Provide the amount contributed by the employer towards the benefit.
+    is_employer_contribution_in_percent:
+      type: boolean
+      description: Set it true, if the employer contribution value is in percentage.
+      example: false
+    employer_recurrence_termination_type:
+      type: string
+      description: Allowed values are <code>by_amount_and_reset_every_year</code>, <code>by_amount</code> and <code>infinite</code>.<br/> If the benefit is intended to end after a specific amount has been deducted and reset every year, specify the value as <code>by_amount_and_reset_every_year</code>.<br/> If the benefit is intended to end after a specific amount has deducted, specify the value as <code>by_amount</code>.<br/> If the benefit is never intended to end specify the value as <code>infinite</code>.
+      example: by_amount_and_reset_every_year
+    is_included_in_ctc:
+      type: boolean
+      example: true
+      description: Set to <code>true</code> if the employer's contribution is a part of the salary structure (CTC)
+    can_allow_employee_contribution:
+      type: boolean
+      example: true
+    can_allow_employer_contribution:
+      type: boolean
+      example: true
+    employee_contribution_max_limit:
+      type: number
+      description: Set maximum limit, if the employee recurrence type is <code>by_amount</code> or <code>by_amount_and_reset_every_year</code>
+      example: ''
+    employer_contribution_max_limit:
+      type: number
+      description: Set maximum limit, if the employer recurrence type is <code>by_amount</code> or <code>by_amount_and_reset_every_year</code>
+      example: 6000
+    from_date:
+      type: string
+      example: '2024-04-01'
+    to_date:
+      type: string
+      example: '2021-03-31'
+    month:
+      type: string
+      example: April-2024
+    change_in_percent:
+      type: number
+      example: 20
+      description: The updated percentage in salary structure (CTC) of an employee.
+    effective_from:
+      type: string
+      example: 2024-03
+      description: The month from which the salary revision is effective. The arrear payment after salary revision, if any will also be calculated from the effective month. Allowed format <code>YYYY-MM</code>
+    payment_month:
+      type: string
+      example: 2024-04
+      description: The month from which the revised salary is being paid. The arrear payment, if any will be paid out during this month. Allowed Format <code>YYYY-MM</code>
+    reimbursement_type:
+      type: string
+      example: telephone
+    reimbursement_id:
+      type: string
+      example: '40992000000092150'
+    reimbursement_name:
+      type: string
+      example: Telephone Reimbursement
+    eligible_amount:
+      type: number
+      example: 500
+    total_amount:
+      type: number
+      example: 1000
+    excess_claim:
+      type: number
+      example: 0
+    balance_amount:
+      type: number
+      example: 5500
+    approved_amount:
+      type: number
+      example: 0
+    carryforward_type:
+      type: string
+      example: disabled
+    is_ctc_update_in_percentage:
+      type: boolean
+      description: Indicates if the change in CTC is represented as a percentage.
+    template_id:
+      type: string
+      example: '179695000000174001'
+      description: Unique identifier for the salary template.
+    employee_number:
+      type: number
+      example: ''
+    is_scheduled_earning:
+      type: boolean
+      example: true
+    is_eligible_for_eps:
+      type: boolean
+      example: true
+      description: Indicates whether the component is considered for EPS.
+    value:
+      description: Value of the Custom Field.
+      type: string
+      example: Developer
+    is_active:
+      type: boolean
+      example: true
+    period_start:
+      type: string
+      example: Jan 2023
+    period_end:
+      type: string
+      example: Apr 2023
+    previous_ctc:
+      type: number
+      example: 600000
+      description: The employee's CTC before the salary revision.
+    can_allow_edit:
+      type: boolean
+      example: 'no'
+      description: Indicates if the salary revision can be edited.
+    is_revision_involved_in_draft_payrun:
+      type: boolean
+      example: 'no'
+      description: Indicates if the salary revision is involved in a draft payrun.
+    employer_amount_in_percentage:
+      type: number
+    employer_amount:
+      type: number
+      example: 1200
+    get-emp-revisions-list-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        employee_salary_revisions:
+          type: object
+          properties:
+            employee_name:
+              $ref: '#/components/schemas/employee_name'
+            employee_id:
+              $ref: '#/components/schemas/employee_id'
+            employee_number:
+              $ref: '#/components/schemas/employee_number'
+            salary_revisions:
+              type: array
+              items:
+                type: object
+                properties:
+                  previous_ctc:
+                    $ref: '#/components/schemas/previous_ctc'
+                    example: 1500000
+                  previous_revision_id:
+                    $ref: '#/components/schemas/revision_id'
+                    example: '49774000000097759'
+                  revised_revision_id:
+                    $ref: '#/components/schemas/revision_id'
+                  is_ctc_change_in_percent:
+                    $ref: '#/components/schemas/is_ctc_update_in_percentage'
+                  difference_amount:
+                    $ref: '#/components/schemas/amount'
+                    example: 300000
+                  difference_amount_in_percent:
+                    $ref: '#/components/schemas/change_in_percent'
+                  change_in_percent:
+                    $ref: '#/components/schemas/change_in_percent'
+                    description: The updated percentage in salary structure (CTC) of an employee. Enter the change in percentage only if <code>is_ctc_update_in_percentage</code> is true.
+                  effective_from:
+                    $ref: '#/components/schemas/effective_from'
+                  revision_approved_by:
+                    type: string
+                    example: Kowsalya
+    update-employee-salary-revision-request:
+      type: object
+      properties:
+        ctc:
+          $ref: '#/components/schemas/ctc'
+        template_id:
+          $ref: '#/components/schemas/template_id'
+        employee_id:
+          $ref: '#/components/schemas/employee_id'
+        is_ctc_update_in_percentage:
+          $ref: '#/components/schemas/is_ctc_update_in_percentage'
+          description: Set to <code>true</code> if the change in CTC is represented as a percentage, else <code>false</code> if it is a numerical value.
+        change_in_percent:
+          $ref: '#/components/schemas/change_in_percent'
+          description: The updated percentage in salary structure (CTC) of an employee. Enter the change in percentage only if <code>is_ctc_update_in_percentage</code> is true.
+        effective_from:
+          $ref: '#/components/schemas/effective_from'
+        payment_month:
+          $ref: '#/components/schemas/payment_month'
+        earnings:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                $ref: '#/components/schemas/id'
+                example: '49774000000236001'
+              is_enabled:
+                $ref: '#/components/schemas/is_enabled'
+              amount:
+                $ref: '#/components/schemas/amount'
+                description: If the amount is calculated as a fixed value, provide the fixed numerical value.
+              amount_in_percentage:
+                $ref: '#/components/schemas/amount_in_percentage'
+                description: If the amount is calculated as percentage of basic salary, provide the percentage.
+        benefits:
+          type: array
+          description: Benefits excluding statutory components. Statutory components amount will be calculated, based on employee level association.
+          items:
+            type: object
+            properties:
+              id:
+                $ref: '#/components/schemas/id'
+                example: '49774000000118005'
+              is_enabled:
+                $ref: '#/components/schemas/is_enabled'
+              amount_in_percentage:
+                $ref: '#/components/schemas/amount_in_percentage'
+                description: If the amount is calculated as percentage of basic salary, provide the percentage.
+                example: 12
+              amount:
+                $ref: '#/components/schemas/amount'
+                description: If the amount is calculated as a fixed value, provide the fixed numerical value.
+                example: ''
+        reimbursements:
+          type: array
+          x-node_available_in:
+            - in
+          x-node_unavailable_in: []
+          items:
+            type: object
+            properties:
+              id:
+                $ref: '#/components/schemas/id'
+                example: '49774000000095172'
+              is_enabled:
+                $ref: '#/components/schemas/is_enabled'
+              amount:
+                $ref: '#/components/schemas/amount'
+                example: 10000
+              carry_forward_option:
+                $ref: '#/components/schemas/carry_forward_option'
+        fbp_components:
+          type: array
+          x-node_available_in:
+            - in
+          x-node_unavailable_in: []
+          items:
+            type: object
+            properties:
+              id:
+                $ref: '#/components/schemas/id'
+                example: '49774000000095174'
+              is_enabled:
+                $ref: '#/components/schemas/is_enabled'
+              amount:
+                $ref: '#/components/schemas/amount'
+                example: 1000
+              max_limit:
+                description: Maximum limit set for this fbp component.
+                $ref: '#/components/schemas/max_limit'
+                example: 12000
+              carry_forward_option:
+                $ref: '#/components/schemas/carry_forward_option'
+        variable_earnings:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                $ref: '#/components/schemas/id'
+                example: '49774000000095515'
+              is_enabled:
+                $ref: '#/components/schemas/is_enabled'
+              amount:
+                $ref: '#/components/schemas/amount'
+                example: 50000
+    update-employee-salary-revision-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Anand Maya's salary revision has been saved successfully.
+        employee:
+          $ref: '#/components/schemas/salary_revision_details'
+    salary-revision-create-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Anand Maya's salary revifbsion has been created successfully.
+        employee:
+          $ref: '#/components/schemas/salary_revision_details'
+    earnings_details:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            $ref: '#/components/schemas/id'
+            example: '49774000000236001'
+          is_enabled:
+            $ref: '#/components/schemas/is_enabled'
+          amount:
+            $ref: '#/components/schemas/amount'
+            example: 25000
+          is_amount_in_percentage:
+            $ref: '#/components/schemas/is_amount_in_percentage'
+          amount_in_percentage:
+            $ref: '#/components/schemas/amount_in_percentage'
+          type:
+            $ref: '#/components/schemas/type'
+          name:
+            $ref: '#/components/schemas/name'
+          is_included_in_pf:
+            $ref: '#/components/schemas/is_included_in_pf'
+          is_included_in_esi:
+            $ref: '#/components/schemas/is_included_in_esi'
+    benefits_details:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            $ref: '#/components/schemas/id'
+            example: '49774000000118005'
+          is_enabled:
+            $ref: '#/components/schemas/is_enabled'
+          is_amount_in_percentage:
+            $ref: '#/components/schemas/is_amount_in_percentage'
+            example: true
+          employer_amount_in_percentage:
+            $ref: '#/components/schemas/employer_amount_in_percentage'
+            example: 12
+          employer_amount:
+            $ref: '#/components/schemas/employer_amount'
+            example: ''
+          type:
+            $ref: '#/components/schemas/type'
+            example: epf_contribution
+          name:
+            $ref: '#/components/schemas/name'
+            example: EPF - Employer Contribution
+          is_eligible_for_eps:
+            $ref: '#/components/schemas/is_eligible_for_eps'
+          is_employee_restricted_basic_enabled:
+            $ref: '#/components/schemas/is_employee_restricted_basic_enabled'
+          is_employer_restricted_basic_enabled:
+            $ref: '#/components/schemas/is_employer_restricted_basic_enabled'
+          employee_restricted_basic_amount:
+            $ref: '#/components/schemas/employee_restricted_basic_amount'
+          employer_restricted_basic_amount:
+            $ref: '#/components/schemas/employer_restricted_basic_amount'
+    reimbursements_details:
+      type: array
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+      items:
+        type: object
+        properties:
+          id:
+            $ref: '#/components/schemas/id'
+            example: '49774000000095172'
+          is_enabled:
+            $ref: '#/components/schemas/is_enabled'
+          amount:
+            $ref: '#/components/schemas/amount'
+            example: 1000
+          max_limit:
+            $ref: '#/components/schemas/max_limit'
+            description: Maximum limit set for this component.
+          carry_forward_option:
+            $ref: '#/components/schemas/carry_forward_option'
+          type:
+            $ref: '#/components/schemas/type'
+            example: fuel
+          name:
+            $ref: '#/components/schemas/name'
+            example: Fuel Reimbursement
+    eligible_amount_splitup:
+      type: object
+      properties:
+        period_start:
+          $ref: '#/components/schemas/period_start'
+        period_end:
+          $ref: '#/components/schemas/period_end'
+        eligible_amount:
+          $ref: '#/components/schemas/eligible_amount'
+        total_amount:
+          $ref: '#/components/schemas/total_amount'
+    fbp_details:
+      type: array
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+      items:
+        type: object
+        properties:
+          id:
+            $ref: '#/components/schemas/id'
+            example: '49774000000095174'
+          is_enabled:
+            $ref: '#/components/schemas/is_enabled'
+          max_limit:
+            $ref: '#/components/schemas/max_limit'
+            description: Maximum limit set for this fbp component.
+          amount:
+            $ref: '#/components/schemas/amount'
+            example: 1200
+          carry_forward_option:
+            $ref: '#/components/schemas/carry_forward_option'
+          is_opt_in:
+            $ref: '#/components/schemas/is_opt_in'
+          type:
+            $ref: '#/components/schemas/type'
+            example: telephone
+          name:
+            $ref: '#/components/schemas/name'
+            example: Telephone Reimbursement
+    variable_earnings_details:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            $ref: '#/components/schemas/id'
+            example: '49774000000095515'
+          is_enabled:
+            $ref: '#/components/schemas/is_enabled'
+          amount:
+            $ref: '#/components/schemas/amount'
+            example: 5000
+          type:
+            $ref: '#/components/schemas/type'
+            example: bonus
+          name:
+            $ref: '#/components/schemas/name'
+            example: bonus
+          is_included_in_esi:
+            $ref: '#/components/schemas/is_included_in_esi'
+    salary_details:
+      description: Salary details of the employee.
+      type: object
+      properties:
+        ctc:
+          $ref: '#/components/schemas/ctc'
+        first_name:
+          $ref: '#/components/schemas/first_name'
+        employee_name:
+          $ref: '#/components/schemas/employee_name'
+        monthly_salary:
+          $ref: '#/components/schemas/monthly_salary'
+        employee_status:
+          $ref: '#/components/schemas/employee_status'
+        earnings:
+          $ref: '#/components/schemas/earnings_details'
+        benefits:
+          $ref: '#/components/schemas/benefits_details'
+        reimbursements:
+          $ref: '#/components/schemas/reimbursements_details'
+        fbp_components:
+          $ref: '#/components/schemas/fbp_details'
+        variable_earnings:
+          $ref: '#/components/schemas/variable_earnings_details'
+    update-employee-salary-details-request:
+      type: object
+      properties:
+        ctc:
+          $ref: '#/components/schemas/ctc'
+        template_id:
+          $ref: '#/components/schemas/template_id'
+        earnings:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                $ref: '#/components/schemas/id'
+                example: '49774000000236001'
+              is_enabled:
+                $ref: '#/components/schemas/is_enabled'
+              amount:
+                $ref: '#/components/schemas/amount'
+              amount_in_percentage:
+                $ref: '#/components/schemas/amount_in_percentage'
+        deductions:
+          type: array
+          description: Deductions excluding statutory components. Statutory components amount will be calculated, based on employee level association.
+          items:
+            type: object
+            properties:
+              id:
+                $ref: '#/components/schemas/id'
+                example: '49774000000118005'
+              is_enabled:
+                $ref: '#/components/schemas/is_enabled'
+              amount_in_percentage:
+                $ref: '#/components/schemas/amount_in_percentage'
+                example: 12
+              amount:
+                $ref: '#/components/schemas/amount'
+                example: ''
+        reimbursements:
+          type: array
+          x-node_available_in:
+            - in
+          x-node_unavailable_in: []
+          items:
+            type: object
+            properties:
+              id:
+                $ref: '#/components/schemas/id'
+                example: '49774000000095172'
+              is_enabled:
+                $ref: '#/components/schemas/is_enabled'
+              amount:
+                $ref: '#/components/schemas/amount'
+                example: 1000
+              carry_forward_option:
+                $ref: '#/components/schemas/carry_forward_option'
+        fbp_components:
+          type: array
+          x-node_available_in:
+            - in
+          x-node_unavailable_in: []
+          items:
+            type: object
+            properties:
+              id:
+                $ref: '#/components/schemas/id'
+                example: '49774000000095174'
+              is_enabled:
+                $ref: '#/components/schemas/is_enabled'
+              amount:
+                $ref: '#/components/schemas/amount'
+                example: 1200
+              max_limit:
+                $ref: '#/components/schemas/max_limit'
+                description: Maximum limit set for this fbp component.
+              carry_forward_option:
+                $ref: '#/components/schemas/carry_forward_option'
+        variable_earnings:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                $ref: '#/components/schemas/id'
+                example: '49774000000095515'
+              is_enabled:
+                $ref: '#/components/schemas/is_enabled'
+              amount:
+                $ref: '#/components/schemas/amount'
+                example: 5000
+              amount_in_percentage:
+                $ref: '#/components/schemas/amount_in_percentage'
+                example: ''
+    salary_revision_details:
+      description: Salary revision details of the employee.
+      type: object
+      properties:
+        revision_id:
+          $ref: '#/components/schemas/revision_id'
+        employee_id:
+          $ref: '#/components/schemas/employee_id'
+        ctc:
+          $ref: '#/components/schemas/ctc'
+        previous_ctc:
+          $ref: '#/components/schemas/previous_ctc'
+          example: 600000
+        first_name:
+          $ref: '#/components/schemas/first_name'
+        employee_name:
+          $ref: '#/components/schemas/employee_name'
+        monthly_salary:
+          $ref: '#/components/schemas/monthly_salary'
+        effective_from:
+          $ref: '#/components/schemas/effective_from'
+        payment_month:
+          $ref: '#/components/schemas/payment_month'
+        change_in_percent:
+          $ref: '#/components/schemas/change_in_percent'
+          description: The updated percentage in salary structure (CTC) of an employee.
+        revision_status:
+          $ref: '#/components/schemas/revision_status'
+        template_id:
+          $ref: '#/components/schemas/template_id'
+        template_name:
+          $ref: '#/components/schemas/template_name'
+        earnings:
+          $ref: '#/components/schemas/earnings_details'
+        benefits:
+          $ref: '#/components/schemas/benefits_details'
+        reimbursements:
+          $ref: '#/components/schemas/reimbursements_details'
+        fbp_components:
+          $ref: '#/components/schemas/fbp_details'
+        variable_earnings:
+          $ref: '#/components/schemas/variable_earnings_details'
+    employee-salary-details-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        employee:
+          $ref: '#/components/schemas/salary_details'
+    update-employee-salary-details-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Anand Maya salary details have been saved successfully.
+        employee:
+          $ref: '#/components/schemas/salary_details'
+    delete-salary-revision-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Salary revision has been deleted successfully.
+    list-salary-revision-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        salary_revisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/salary_revisions-response'
+    get-salary-revision-response:
+      type: object
+      properties:
+        salary_revision:
+          type: object
+          properties:
+            effective_from:
+              $ref: '#/components/schemas/effective_from'
+            previous_ctc:
+              $ref: '#/components/schemas/previous_ctc'
+            ctc:
+              $ref: '#/components/schemas/ctc'
+            revision_status:
+              $ref: '#/components/schemas/revision_status'
+            monthly_salary:
+              $ref: '#/components/schemas/monthly_salary'
+            change_in_percent:
+              $ref: '#/components/schemas/change_in_percent'
+            employee_id:
+              $ref: '#/components/schemas/employee_id'
+            first_name:
+              $ref: '#/components/schemas/first_name'
+            employee_name:
+              $ref: '#/components/schemas/employee_name'
+            revision_id:
+              $ref: '#/components/schemas/revision_id'
+            payment_month:
+              $ref: '#/components/schemas/payment_month'
+            earnings:
+              $ref: '#/components/schemas/earnings_details'
+            benefits:
+              $ref: '#/components/schemas/benefits_details'
+            reimbursements:
+              $ref: '#/components/schemas/reimbursements_details'
+            fbp_components:
+              $ref: '#/components/schemas/fbp_details'
+            variable_earnings:
+              $ref: '#/components/schemas/variable_earnings_details'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.salary.CREATE: Create Salary
+            ERP.salary.UPDATE: Update Salary
+            ERP.salary.READ: Read Salary
+            ERP.salary.DELETE: Delete Salary

@@ -1,0 +1,295 @@
+{
+  "probe_run_date": "2026-08-05",
+  "probe_purpose": "Source reachability probe to size the next research run. Establishes what is fetchable and how rich it is. No content research performed.",
+  "tooling": "WebSearch + WebFetch (WebFetch converts to markdown and does NOT execute JavaScript; a JS-gated page therefore returns an empty shell)",
+  "results": [
+    {
+      "url": "WebSearch query: \"Zoho ERP API documentation erp/v3\"",
+      "purpose": "Establish whether a public Zoho ERP /erp/v3 API doc site exists at all",
+      "fetch_status": "OK",
+      "usable_for_citation": false,
+      "observation": "Returned six results, five on www.zoho.com/erp/api/v3/: introduction/, oauth/, integration/, departments/, projects/. Confirms a public, indexed /erp/v3 documentation tree exists. Search snippet named the API root as https://www.zohoapis.in/erp/v3."
+    },
+    {
+      "url": "https://www.zoho.com/erp/api/v3/introduction/",
+      "purpose": "Zoho ERP API doc root: is it server-rendered, does it expose an endpoint index?",
+      "fetch_status": "OK",
+      "usable_for_citation": true,
+      "observation": "Server-rendered prose returned verbatim: \"The Zoho ERP API allows you to perform all the operations that you do with our web client. Zoho ERP API is built using REST principles, which ensures predictable URIs and makes writing applications easy.\" API root given as https://www.zohoapis.in/erp/v3. Full left-hand nav enumerated 84 modules including Contacts, Items, Locations, Inventory Adjustments, Transfer Orders, Purchase Receives, Purchase Order, Bills, Recurring Bills, Vendor Credits, Vendor Payments, Expenses, Sales Order, Bill of Materials, Manufacturing Orders, Job Cards, Projects, Tasks, Time Entries, Chart Of Accounts, Journals, Bank Accounts, Fixed Assets, Transaction Locking, Reporting Tags, Custom Modules, ZOHO CRM Integration. NOTE: the nav contains NO 'Purchase Requests' entry and NO 'Request for Quotes' entry."
+    },
+    {
+      "url": "https://www.zoho.com/erp/api/v3/oauth/",
+      "purpose": "Zoho ERP OAuth: scope grammar, token lifetimes, data-centre domains",
+      "fetch_status": "OK",
+      "usable_for_citation": true,
+      "observation": "Verbatim: \"Scope determines which protected resource of an end-user a client has requested access to.\" Scope grammar documented as service_name.scope_name.operation_type with operation types CREATE, READ, UPDATE, DELETE, ALL. Access token lifetime 1 hour (3600s); refresh token unlimited until revoked, max 20 per user. Only the IN data centre is shown on this page (https://accounts.zoho.in, https://www.zohoapis.in). Scope names listed cover contacts, settings, manufacturing, estimates, invoices, customer payments, credit notes, projects, expenses, sales orders, purchase orders, bills, debit notes, vendor payments, banking, accounting."
+    },
+    {
+      "url": "https://www.zoho.com/erp/api/v3/purchase-order/",
+      "purpose": "Does an individual Zoho ERP endpoint page exist and render with methods/paths/fields?",
+      "fetch_status": "OK",
+      "usable_for_citation": true,
+      "observation": "Verbatim: \"A purchase order is an official document that a buyer issues to a seller, indicating relevant information about what they want to buy, the quantity, the price agreed for that particular product or service.\" 27 method+path rows returned, including POST /purchaseorders, GET /purchaseorders/{purchaseorder_id}, POST /purchaseorders/{purchaseorder_id}/submit, /approve, /reject, /status/open, /status/billed, /status/cancelled. Full request-body field list returned (purchaseorder_number, vendor_id, line_items, location_id, project_id, hsn_or_sac, etc.). Scope names were not rendered inline on this page even though the search snippet quoted ERP.purchaseorders.CREATE."
+    },
+    {
+      "url": "https://www.zoho.com/erp/api/v3/purchasereceives/",
+      "purpose": "Probe #5 - purchasereceives endpoint page (correct slug found on second attempt)",
+      "fetch_status": "OK",
+      "usable_for_citation": true,
+      "observation": "Page exists and renders. Verbatim fragment: \"a new purchase receive can be created\", requiring URL parameter purchaseorder_id. Methods: POST /purchasereceives, PUT|GET|DELETE /purchasereceives/{purchasereceive_id}. Page states OAuth scopes are required per operation (CREATE/UPDATE/READ/DELETE)."
+    },
+    {
+      "url": "https://www.zoho.com/erp/api/v3/purchase-receives/",
+      "purpose": "Slug-guess variant for purchase receives",
+      "fetch_status": "404",
+      "usable_for_citation": false,
+      "observation": "HTTP 404 Not Found. Slug guessing is unreliable on this doc site: the nav label 'Purchase Receives' maps to /purchasereceives/ (no hyphen) while the nav label 'Purchase Order' maps to /purchase-order/ (hyphen). Both conventions coexist."
+    },
+    {
+      "url": "https://www.zoho.com/erp/api/v3/purchase-receive/",
+      "purpose": "Second slug-guess variant for purchase receives",
+      "fetch_status": "404",
+      "usable_for_citation": false,
+      "observation": "HTTP 404 Not Found."
+    },
+    {
+      "url": "https://www.zoho.com/erp/api/v3/bills/",
+      "purpose": "Probe #5 - bills endpoint page",
+      "fetch_status": "OK",
+      "usable_for_citation": true,
+      "observation": "Renders. Described as recording vendors' invoices and tracking them until payment. 24 method+path rows returned including POST /bills, POST /bills/{bill_id}/submit, POST /bills/{bill_id}/approve, POST /bills/{bill_id}/status/void, GET /bills/editpage/frompurchaseorders (PO-to-bill conversion). No OAuth scope names rendered inline on this page."
+    },
+    {
+      "url": "https://www.zoho.com/erp/api/v3/fixed-assets/",
+      "purpose": "Probe #5 - fixedassets endpoint page",
+      "fetch_status": "OK",
+      "usable_for_citation": true,
+      "observation": "Renders with scopes. 18 method+path rows: POST/GET /fixedassets, PUT|GET|DELETE /fixedassets/{fixed_asset_id}, GET /fixedassets/{fixed_asset_id}/history and /forecast, POST .../writeoff, .../sell, .../status/active|cancel|draft, plus /fixedassettypes CRUD. OAuth scopes rendered inline: ERP.fixedasset.CREATE, ERP.fixedasset.READ, ERP.fixedasset.UPDATE."
+    },
+    {
+      "url": "https://www.zoho.com/erp/api/v3/journals/",
+      "purpose": "Probe #5 - journals endpoint page",
+      "fetch_status": "OK",
+      "usable_for_citation": true,
+      "observation": "Renders. Richest page probed: 31 method+path rows including POST /journals, POST /journals/{journal_id}/status/publish, /reverse, /submit, /approve, /reject, credits-application endpoints (/journals/{journal_id}/credits/{journal_line_id}/invoices|bills), bulk operations (/journals/submit, /journals/approve, /journals/bulkdelete), full /recurringjournals CRUD, and GET /transactions/{transaction_id}/journals. OAuth scope rendered: ERP.accountants.CREATE."
+    },
+    {
+      "url": "https://www.zoho.com/erp/api/v3/projects/",
+      "purpose": "Assess Zoho ERP Projects/Tasks as the native hierarchy carrier for a WBS mapping",
+      "fetch_status": "OK",
+      "usable_for_citation": true,
+      "observation": "Renders. 25 method+path rows including POST /projects, POST /projects/{project_id}/clone, /users, /users/invite, /comments, /invoices, and nested tasks (POST|GET /projects/{project_id}/tasks, PUT|GET|DELETE /projects/{project_id}/tasks/{task_id}). Scopes ERP.projects.CREATE and ERP.projects.UPDATE rendered. Hierarchy is exactly TWO levels (project -> task); no self-referencing parent WBS-element field was surfaced. This is a material constraint for any n-level WBS mapping and must be re-verified in depth in the main run."
+    },
+    {
+      "url": "https://www.zoho.com/erp/api/v3/custom-modules/",
+      "purpose": "Assess the fallback path (custom module) in case native objects are missing",
+      "fetch_status": "OK",
+      "usable_for_citation": true,
+      "observation": "Renders. Verbatim: \"Create a custom module to record other data when predefined modules are insufficient\". Endpoints POST|GET /settings/modules, PUT|GET|DELETE /settings/modules/{module_api_name}, and generic record CRUD at /{module_name} and /{module_name}/{module_id}. Scopes ERP.settings.CREATE / READ / UPDATE / DELETE. This is the documented, citable fallback carrier for any object with no native endpoint."
+    },
+    {
+      "url": "WebSearch query: \"purchase request\" Zoho ERP site:zoho.com",
+      "purpose": "Probe #4 - locate ANY Zoho ERP purchase-request API surface",
+      "fetch_status": "OK",
+      "usable_for_citation": false,
+      "observation": "Ten results returned. ALL purchase-request hits were HELP/KB pages under /en-in/erp/help/purchases/purchase-requests/ and /erp/kb/purchases/purchase-requests/ (understanding-pr.html, pr-overview.html, convert-pr-to-po.html, pr-approvals.html). The ONLY /erp/api/v3/ result was purchase-order/. No API-documentation page for purchase requests appeared in search."
+    },
+    {
+      "url": "https://www.zoho.com/erp/api/v3/purchase-request/",
+      "purpose": "Probe #4 - direct URL guess, hyphenated slug convention",
+      "fetch_status": "404",
+      "usable_for_citation": false,
+      "observation": "HTTP 404 Not Found."
+    },
+    {
+      "url": "https://www.zoho.com/erp/api/v3/purchaserequests/",
+      "purpose": "Probe #4 - direct URL guess, unhyphenated plural slug convention",
+      "fetch_status": "404",
+      "usable_for_citation": false,
+      "observation": "HTTP 404 Not Found. Both slug conventions used elsewhere on the site were tried and both 404."
+    },
+    {
+      "url": "https://www.zoho.com/en-in/erp/help/purchases/purchase-requests/understanding-pr.html",
+      "purpose": "Probe #4 - confirm Purchase Request exists as a PRODUCT feature even if not as an API",
+      "fetch_status": "OK",
+      "usable_for_citation": true,
+      "observation": "Renders. Verbatim: \"A Purchase Request is an internal document raised by employees or departments to request approval for purchasing goods or services.\" Page describes the flow created -> submitted -> approved -> converted to PO or RFQ. Explicitly confirmed: the page makes NO mention of API access, API endpoints, or developer documentation for purchase requests, and lists no lifecycle status codes."
+    },
+    {
+      "url": "https://www.zoho.com/erp/api/v3/apicollection/",
+      "purpose": "Probe #2 - downloadable ERP API/Postman collection, by analogy with the Zoho Books path /books/api/v3/apicollection/",
+      "fetch_status": "404",
+      "usable_for_citation": false,
+      "observation": "HTTP 404 Not Found. The equivalent Zoho Books URL (/books/api/v3/apicollection/) does exist per search results, so the analogous ERP path was a fair test and it is genuinely absent."
+    },
+    {
+      "url": "WebSearch query: Zoho ERP API OpenAPI specification swagger Postman collection download",
+      "purpose": "Probe #2 - any public ERP OpenAPI/Postman artifact",
+      "fetch_status": "OK",
+      "usable_for_citation": false,
+      "observation": "Returned OAS/collection artifacts for Zoho CRM (github.com/zoho/crm-oas), Analytics (github.com/zoho/analytics-oas), Creator, Books, and Sign. No Zoho ERP artifact in any result. Search summary stated the results \"don't specifically mention a Zoho ERP product\"."
+    },
+    {
+      "url": "WebSearch query: github zoho erp openapi oas specification \"erp/v3\"",
+      "purpose": "Probe #2 - second-pass search restricted to GitHub OAS repos",
+      "fetch_status": "OK",
+      "usable_for_citation": false,
+      "observation": "Returned zoho/zohoassist-oas, zoho/zohodesk-oas, zoho/analytics-oas, zoho/crm-oas. No zoho/erp-oas or equivalent. Clean negative."
+    },
+    {
+      "url": "https://github.com/zoho/crm-oas",
+      "purpose": "Probe #2 - confirm the one first-party Zoho OAS repo does not also carry ERP",
+      "fetch_status": "OK",
+      "usable_for_citation": true,
+      "observation": "Renders. Verbatim: \"Welcome to the **Zoho CRM OpenAPI Specification (OAS) v8.0** repository. This repository provides the OpenAPI Specification files for Zoho CRM APIs.\" Covers Zoho CRM only; single top-level folder v8.0/. Contains no ERP spec."
+    },
+    {
+      "url": "https://www.zoho.com/accounts/protocol/oauth.html",
+      "purpose": "Probe #3 - generic Zoho OAuth protocol doc",
+      "fetch_status": "THIN",
+      "usable_for_citation": true,
+      "observation": "Renders but is introductory only. Verbatim: \"OAuth 2.0 is an industry standard protocol which allows you to grant a third-party website or an application delegated access to the protected resources of Zoho.\" Access token 1 hour; refresh token validity not quantified. NO data-centre domain list and NO scope grammar on this page - both are deferred to other pages."
+    },
+    {
+      "url": "https://www.zoho.com/crm/developer/docs/api/v8/multi-dc.html",
+      "purpose": "Probe #3 - authoritative data-centre domain list (ERP OAuth page only showed IN)",
+      "fetch_status": "OK",
+      "usable_for_citation": true,
+      "observation": "Renders a full DC table: US accounts.zoho.com / www.zohoapis.com; EU accounts.zoho.eu / www.zohoapis.eu; AU accounts.zoho.com.au / www.zohoapis.com.au; IN accounts.zoho.in / www.zohoapis.in; CN accounts.zoho.com.cn / www.zohoapis.com.cn; JP accounts.zoho.jp / www.zohoapis.jp; CA accounts.zohocloud.ca / www.zohoapis.ca. CAVEAT: this is the CRM doc, not the ERP doc; only the EU and CN API domains were literally printed on the page and the rest follow the stated pattern. Cite as CRM-sourced, and flag SA/CN applicability separately."
+    },
+    {
+      "url": "https://help.sap.com/docs/SAP_S4HANA_CLOUD/f369b2eff700401494ba6e7c9a573288/9a0de7da641f4b0885a1a686efb21a6f.html",
+      "purpose": "Probe #6 - modern SAP Help Portal, Work Breakdown Structure Maintenance",
+      "fetch_status": "JS-GATED",
+      "usable_for_citation": false,
+      "observation": "Returned only the document title \"SAP Help Portal | SAP Online Help\" with zero body prose. The modern help.sap.com/docs/ viewer is a client-side single-page app; WebFetch cannot see the content."
+    },
+    {
+      "url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/1573bb53707db44ce10000000a174cb4.html",
+      "purpose": "Probe #6 - second modern SAP Help Portal page, Displaying and Viewing WBS Elements",
+      "fetch_status": "JS-GATED",
+      "usable_for_citation": false,
+      "observation": "Same failure mode: only \"SAP Help Portal | SAP Online Help\" returned, no prose. Confirms the gating is systematic across help.sap.com/docs/, not a one-off."
+    },
+    {
+      "url": "https://help.sap.com/doc/saphelp_erp60_sp/6.0/en-US/77/b8fc53f2f52d4ee10000000a174cb4/content.htm?no_cache=true",
+      "purpose": "Probe #6 - legacy ECC 6.0 static content.htm path",
+      "fetch_status": "JS-GATED",
+      "usable_for_citation": false,
+      "observation": "Returned only \"SAP Help Portal | SAP Online Help\", no prose. This particular legacy GUID did not resolve to static content."
+    },
+    {
+      "url": "https://help.sap.com/doc/saphelp_nw75/7.5.5/en-US/32/c38853630b3d58e10000000a174cb4/content.htm?no_cache=true",
+      "purpose": "Probe #6 - legacy NetWeaver 7.5 static content.htm path, WBS Element",
+      "fetch_status": "OK",
+      "usable_for_citation": true,
+      "observation": "USABLE PROSE RETURNED. Verbatim: \"Work Breakdown Structure Element (WBS Element) - Technical name: 0WBS_ELEMT_ATTR. Available from OLTP Release: 2.1C.\" Includes field mapping sourced from the PRPS table (creation/modification dates, cost centers, project types, plant). This proves the legacy /doc/saphelp_*/.../content.htm route is server-rendered and citable, unlike /docs/."
+    },
+    {
+      "url": "https://help.sap.com/doc/saphelp_ewm900/9.0/en-US/31/ec2f43900511db2b24000f20dac9ef/content.htm?no_cache=true",
+      "purpose": "Probe #6 - confirm the legacy static route reproduces on a second, PS-relevant page",
+      "fetch_status": "OK",
+      "usable_for_citation": true,
+      "observation": "USABLE PROSE RETURNED. Verbatim: \"To create a work breakdown structure (WBS) element in a project.\" Followed by a Technical Data block (Entity Type, Service Operation, Software Component Version ESA ECC-SE 605). Confirms the legacy static route is reliably fetchable."
+    },
+    {
+      "url": "https://learning.sap.com/learning-journeys/exploring-logistics-projects-in-sap-s-4hana/creating-a-work-breakdown-structure-wbs--2",
+      "purpose": "Probe #7 - learning.sap.com WBS lesson via the /learning-journeys/ path returned by search",
+      "fetch_status": "404",
+      "usable_for_citation": false,
+      "observation": "HTTP 404 Not Found. The /learning-journeys/ prefix for lesson pages is stale; the live prefix is /courses/. Search results still surface the dead form, so the main run must rewrite these URLs."
+    },
+    {
+      "url": "https://learning.sap.com/learning-journeys/exploring-logistics-projects-in-sap-s-4hana",
+      "purpose": "Probe #7 - course landing page",
+      "fetch_status": "THIN",
+      "usable_for_citation": false,
+      "observation": "Renders but is navigation only. Verbatim: \"Exploring logistics projects in SAP S/4HANA ... / Browse / Courses / Exploring logistics projects in SAP S/4HANA ... Course ... 12hr 25min\". No substantive doctrine prose at the course-index level; the value is in the individual lesson pages."
+    },
+    {
+      "url": "https://learning.sap.com/courses/exploring-logistics-projects-in-sap-s-4hana/creating-a-work-breakdown-structure-wbs--2",
+      "purpose": "Probe #7 - same WBS lesson via the corrected /courses/ path",
+      "fetch_status": "OK",
+      "usable_for_citation": true,
+      "observation": "USABLE PROSE RETURNED. Verbatim: \"There are various ways to create and edit a WBS. The Project Builder is a tool in the SAP Project System (SAP PS) that is very user-friendly and allows projects to be edited quickly and efficiently. You can use the Project Builder to maintain any object in the SAP PS, except for the assignment of Production Resources/Tools (PRT).\" CAVEAT: the fetch also reported that the FULL course material is behind authentication, so treat lesson bodies as partially exposed - cite only what is literally returned."
+    },
+    {
+      "url": "https://learning.sap.com/courses/ui-development-with-sap-fiori/working-with-sap-fiori-design-guidelines_ab11c169-54de-4f51-87b9-f61c8a5198be",
+      "purpose": "Probe #7/#8 - first-party SAP Fiori design-guideline prose via learning.sap.com, as a substitute for the blocked design-system site",
+      "fetch_status": "OK",
+      "usable_for_citation": true,
+      "observation": "USABLE PROSE RETURNED, no login wall. Verbatim: \"Do you recall the golden rule of SAPUI5 development that says \\\"SAP Fiori apps must have an approved UX design.\\\"? After understanding the user and business needs, it comes to the design of the application. The first decision that designers and developers have to make is what overall layout should be used.\" This is the single best FIRST-PARTY substitute for the inaccessible Fiori design-guidelines site."
+    },
+    {
+      "url": "https://experience.sap.com/fiori-design-web/list-report-floorplan-sap-fiori-element/",
+      "purpose": "Probe #8 - canonical Fiori list report floorplan guideline at the legacy host",
+      "fetch_status": "BLOCKED",
+      "usable_for_citation": false,
+      "observation": "HTTP 301 Moved Permanently, cross-host redirect to https://www.sap.com/design-system/fiori-design-web/page-types/floorplans/list-report-floorplan-sap-fiori-element/. IMPORTANT: experience.sap.com no longer hosts the guidelines; every experience.sap.com URL in prior research or in the master prompt is now a redirect stub."
+    },
+    {
+      "url": "https://experience.sap.com/fiori-design-web/tree-table/",
+      "purpose": "Probe #8 - canonical Fiori tree table guideline at the legacy host",
+      "fetch_status": "BLOCKED",
+      "usable_for_citation": false,
+      "observation": "HTTP 301 Moved Permanently to https://www.sap.com/design-system/fiori-design-web/ui-elements/tree-table/. Same migration."
+    },
+    {
+      "url": "https://www.sap.com/design-system/fiori-design-web/page-types/floorplans/list-report-floorplan-sap-fiori-element/",
+      "purpose": "Probe #8 - the new canonical home of the list report floorplan guideline",
+      "fetch_status": "BLOCKED",
+      "usable_for_citation": false,
+      "observation": "HTTP 403 Forbidden. The response body was not retrieved at all - this is an edge/bot block, not a JS shell."
+    },
+    {
+      "url": "https://www.sap.com/design-system/fiori-design-web/ui-elements/tree-table/",
+      "purpose": "Probe #8 - the new canonical home of the tree table guideline",
+      "fetch_status": "BLOCKED",
+      "usable_for_citation": false,
+      "observation": "HTTP 403 Forbidden."
+    },
+    {
+      "url": "https://www.sap.com/design-system/fiori-design-web/v1-136/page-types/floorplans/object-page/usage",
+      "purpose": "Probe #8 - object page guideline via a VERSIONED path, testing whether versioned URLs bypass the block",
+      "fetch_status": "BLOCKED",
+      "usable_for_citation": false,
+      "observation": "HTTP 403 Forbidden. Versioned paths do not bypass the block."
+    },
+    {
+      "url": "https://www.sap.com/design-system/fiori-design-web/v1-38/page-types/floorplan-overview",
+      "purpose": "Probe #8 - floorplan overview via an older versioned path, second bypass attempt",
+      "fetch_status": "BLOCKED",
+      "usable_for_citation": false,
+      "observation": "HTTP 403 Forbidden. Four distinct www.sap.com/design-system/ URLs across two path shapes all returned 403. The block is host-wide and systematic."
+    },
+    {
+      "url": "WebSearch query: SAP Fiori design guidelines object page floorplan sap.com design-system",
+      "purpose": "Probe #8 - determine whether guideline CONTENT is at least recoverable via search snippets",
+      "fetch_status": "OK",
+      "usable_for_citation": false,
+      "observation": "Search DOES surface substantive guideline text even though direct fetch is 403: e.g. the object page floorplan \"comes with a flexible header, a choice of anchor or tab navigation, and a flexible, responsive layout\", and responsive sizes XL=4 columns, L=3, M=2, S=1. Useful as a lead-generation channel, but a search-engine summary is NOT a verified primary citation."
+    },
+    {
+      "url": "https://sapui5.hana.ondemand.com/sdk/#/topic/08b4d5e1bb414bc6a4a9e21e0e2f3ba0",
+      "purpose": "Probe #8 - SAPUI5 SDK as an alternative first-party route to control/floorplan documentation",
+      "fetch_status": "BLOCKED",
+      "usable_for_citation": false,
+      "observation": "HTTP 301 cross-host redirect to https://ui5.sap.com/sdk/. Note the target is a hash-routed SPA (#/topic/...), so even after following the redirect the deep-linked topic is very unlikely to be fetchable without a JS-executing browser."
+    },
+    {
+      "url": "https://1dsag.github.io/UI5-Best-Practice/design-guidelines/",
+      "purpose": "Probe #8 - third-party (DSAG) mirror of Fiori design doctrine as a last-resort fallback",
+      "fetch_status": "OK",
+      "usable_for_citation": true,
+      "observation": "USABLE PROSE RETURNED from a static Jekyll site. Verbatim: \"Most classical SAP GUI business transactions aren't considered to be very user friendly. In contrast to that, users are getting more and more accustomed to intuitive and simple user interfaces in their daily life.\" Covers seven floorplans including List Report and Object Page plus the five design principles. CAVEAT: DSAG is a user group, NOT SAP. Cite only as a secondary/corroborating source, never as the normative guideline."
+    }
+  ],
+  "verdict": {
+    "zoho_erp_docs": "RICH",
+    "sap_help": "PARTIAL",
+    "sap_fiori": "PARTIAL",
+    "openapi_spec": "NOT-FOUND",
+    "recommended_lane_adjustment": "Zoho ERP docs came back RICH, not thin - so do NOT execute the fallback-architecture re-allocation. Every /erp/v3 page probed rendered server-side with complete method+path tables, request-body field names, and (on most pages) inline OAuth scope names; the introduction page yields a full 84-module index that can seed the endpoint inventory directly. Concrete sizing: (1) R11/R12/R13 keep their full endpoint-verification budget and should each cite a real /erp/v3/<module>/ page per row; expect roughly 85-90 percent of endpoint rows to land VERIFIED. (2) Reserve the UNVERIFIED budget - expect 10-15 percent of rows - for exactly three known gaps, not spread thinly: (a) PURCHASE REQUEST, which is a confirmed clean negative - it exists as a product feature in the help docs but has NO API page under any slug tried and does not appear in the 84-module nav, so every PR row must be marked UNVERIFIED and routed to the documented Custom Modules fallback (/settings/modules + /{module_name}), which IS citable; Request for Quotes is absent from the nav too and should be assumed the same until checked; (b) OAuth scope names, which render inline on some pages (fixedassets, journals, projects, custom modules) but NOT on others (purchaseorders, bills) - budget a dedicated scope-reconciliation pass against /erp/v3/oauth/ rather than assuming the service_name.scope_name.operation_type pattern holds, since the observed strings are inconsistent (ERP.fixedasset singular vs ERP.purchaseorders plural vs ERP.accountants); (c) the ERP Projects hierarchy, which surfaced only TWO levels (project -> task) with no self-referencing parent field - an n-level WBS will need an explicit design decision and that analysis deserves the effort freed up by not needing a full fallback architecture. (3) Add a small fixed cost for slug discovery: the doc site mixes hyphenated and unhyphenated slugs (/purchase-order/ vs /purchasereceives/), so drive URLs from the introduction-page nav or from search, never from guessing - three of the probe 404s here were pure slug guesses. (4) No OpenAPI/Postman artifact exists for ERP (no /erp/api/v3/apicollection/, no zoho/erp-oas repo, and zoho/crm-oas is CRM-only), so budget for MANUAL transcription of endpoint tables from HTML; there is no bulk-import shortcut. (5) Shift effort AWAY from SAP fetching, which is where the real loss is: help.sap.com/docs/ is entirely JS-gated (0 of 3 modern pages returned prose) and www.sap.com/design-system/ returns 403 on all 4 URLs tried across two path shapes, with every legacy experience.sap.com URL now a dead 301. Re-point the SAP lane at the two routes that actually work - legacy static help.sap.com/doc/saphelp_*/.../content.htm pages (2 of 3 returned real prose) and learning.sap.com/courses/... lesson pages (2 of 2 returned real prose, though full course bodies are partly auth-gated) - and treat DSAG's 1dsag.github.io mirror as secondary corroboration only. Assume roughly half the SAP citations originally planned against help.sap.com/docs and experience.sap.com will need URL substitution, and budget that rewrite time explicitly."
+  },
+  "notes": "38 probes recorded: 33 direct WebFetch attempts and 5 WebSearch queries. Nothing here is inferred - every OK row carries a verbatim snippet returned by the fetch, and every 404/403 row is a real HTTP status. Key asymmetry: the Zoho risk that motivated this probe did not materialise (docs are rich and server-rendered), while the SAP sources that were assumed safe are the ones that failed. Two source migrations discovered that will silently break pre-written URLs: experience.sap.com -> www.sap.com/design-system (then 403), and learning.sap.com/learning-journeys/ -> learning.sap.com/courses/ (the old form 404s while search engines still return it). One caveat carried forward: the data-centre domain table is sourced from the Zoho CRM v8 multi-dc page, not from ERP documentation, and the ERP OAuth page itself shows only the IN data centre - do not present the seven-DC table as ERP-documented. Not probed and still open: Request for Quotes API existence, whether Zoho ERP has SA/CN data-centre parity, and whether ui5.sap.com/sdk exposes any non-hash server-rendered route."
+}

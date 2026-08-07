@@ -1,0 +1,23 @@
+# Development / test dependencies for the CAPEX & WBS Control Hub.
+# Remediates AUD-H-010 (no automated product test suite) and contributes to
+# AUD-M-006 (dependency and build reproducibility).
+#
+#   python -m pip install -r requirements-dev.txt
+#   python -m pytest
+#
+# The runtime dependencies are pulled in so the suite runs against the same
+# FastAPI/pydantic stack the application is served with.
+-r requirements.txt
+
+# --- test runner -------------------------------------------------------------
+pytest>=8.0,<10          # ini options `pythonpath` and `--strict-markers` need >=7
+
+# --- HTTP transport used by fastapi.testclient / starlette.testclient ---------
+# starlette's TestClient drives the ASGI app over an in-process httpx transport;
+# it is not installed by FastAPI itself.
+httpx>=0.27,<1.0
+
+# Verified against (Python 3.12, Windows 11):
+#   pytest 9.1.1, httpx 0.28.1, fastapi 0.141.1, starlette 1.4.1, pydantic 2.13.4
+# No other helper libraries are used: the property-style tests drive a seeded
+# random.Random so the suite stays deterministic without an extra dependency.

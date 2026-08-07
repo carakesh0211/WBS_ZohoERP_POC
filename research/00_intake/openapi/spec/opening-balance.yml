@@ -1,0 +1,516 @@
+openapi: 3.0.0
+info:
+  title: Opening Balance
+  description: While migrating from existing accounting software to Zoho ERP, you need to ensure that the transition is flawless, that all prevailing data such as journal entries, records, expense and income statements etc, has been recorded and continuity in financial statements is maintained. To ensure this, an opening balance needs to be calculated.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: opening-balance
+    description: Opening-Balance Module
+paths:
+  /settings/openingbalances:
+    x-mcp-group:
+      - Opening Balance
+    post:
+      tags:
+        - opening-balance
+      operationId: create_opening_balance
+      summary: Create opening balance
+      description: Creates opening balance with the given information.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-opening-balance-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-opening-balance-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.CREATE
+    put:
+      tags:
+        - opening-balance
+      operationId: update_opening_balance
+      summary: Update opening balance
+      description: Updates the existing opening balance information.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-opening-balance-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-opening-balance-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.UPDATE
+    get:
+      tags:
+        - opening-balance
+      operationId: get_opening_balance
+      summary: Get opening balance
+      description: Get opening balance.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-opening-balance-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.READ
+    delete:
+      tags:
+        - opening-balance
+      operationId: delete_opening_balance
+      summary: Delete opening balance
+      description: Delete the entered opening balance.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-opening-balance-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.DELETE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /settings/openingbalancedetails:
+    x-mcp-group:
+      - Opening Balance
+    get:
+      tags:
+        - opening-balance
+      operationId: list_opening_balance_details
+      summary: List opening balance account details
+      description: Lists the opening balance details for a specific account.
+      parameters:
+        - name: account_id
+          in: query
+          description: ID of the account.
+          required: true
+          schema:
+            type: string
+          example: '460000000000358'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-opening-balance-details-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /openingbalances/transactions:
+    x-mcp-group:
+      - Opening Balance
+    get:
+      tags:
+        - opening-balance
+      operationId: list_opening_balance_transactions
+      summary: List opening balance transactions
+      description: Lists the opening balance transactions for a specific account.
+      parameters:
+        - name: account_id
+          in: query
+          description: ID of the account.
+          required: true
+          schema:
+            type: string
+          example: '460000000000358'
+        - name: opening_balance_date
+          in: query
+          description: Date of the opening balance.
+          required: false
+          schema:
+            type: string
+          example: '2013-10-01'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-opening-balance-transactions-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /openingbalances/{opening_balance_id}/writeoff:
+    x-mcp-group:
+      - Opening Balance
+    post:
+      tags:
+        - opening-balance
+      operationId: writeoff_opening_balance
+      summary: Write off an opening balance
+      description: Writes off an opening balance entry.
+      parameters:
+        - name: writeoff_date
+          in: query
+          description: Date of the write-off.
+          required: false
+          schema:
+            type: string
+          example: '2013-10-01'
+        - name: reason
+          in: query
+          description: Reason for writing off. Max-length [300].
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/writeoff-opening-balance-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.UPDATE
+    parameters:
+      - name: opening_balance_id
+        in: path
+        required: true
+        description: Unique identifier of the opening balance.
+        schema:
+          type: string
+        example: '460000000050041'
+      - $ref: '#/components/parameters/organization_id'
+  /openingbalances/{opening_balance_id}/writeoff/cancel:
+    x-mcp-group:
+      - Opening Balance
+    post:
+      tags:
+        - opening-balance
+      operationId: cancel_writeoff_opening_balance
+      summary: Cancel a write-off
+      description: Cancels a previously written-off opening balance.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/cancel-writeoff-opening-balance-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.UPDATE
+    parameters:
+      - name: opening_balance_id
+        in: path
+        required: true
+        description: Unique identifier of the opening balance.
+        schema:
+          type: string
+        example: '460000000050041'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/opening_balance'
+    opening_balance_id:
+      description: ID of opening balance.
+      type: string
+      example: '460000000050041'
+    date:
+      description: Date on which the opening balance needs to be recorded. [yyyy-MM-dd]
+      type: string
+      example: '2013-10-01'
+    price_precision:
+      description: Price Precision of the Values
+      type: integer
+      example: 2
+    total:
+      description: Total Amount from the Opening Balance
+      type: integer
+      example: 10000
+    account_split_id:
+      description: ID of split account that you want to update.
+      type: string
+      example: '460000000050045'
+    account_id:
+      description: ID of account for which you need to record opening balance.
+      type: string
+      example: '460000000000358'
+    account_name:
+      description: Name of the account.
+      type: string
+      example: Undeposited Funds
+    debit_or_credit:
+      description: 'Debit or Credit for which the amount needs to be recorded. Allowed Values: <code>debit</code> and <code>credit</code>.'
+      type: string
+      example: debit
+    exchange_rate:
+      description: Exchange rate for the foreign currencies if involved.
+      type: number
+      format: double
+      example: 1
+    currency_id:
+      description: ID of account currency.
+      type: string
+      example: '460000000000097'
+    currency_code:
+      description: Currency code of the account.
+      type: string
+      example: USD
+    bcy_amount:
+      description: Amount in Base Currency of the Organisation
+      type: number
+      format: double
+      example: 2000
+    amount:
+      description: Amount of the opening balance.
+      type: number
+      format: double
+      example: 2000
+    location_id:
+      description: Location ID
+      type: string
+      example: '460000000038080'
+    location_name:
+      description: Name of the location.
+      type: string
+    accounts:
+      description: List of accounts with their opening balance details.
+      type: array
+      items:
+        type: object
+        properties:
+          account_split_id:
+            $ref: '#/components/schemas/account_split_id'
+          account_id:
+            $ref: '#/components/schemas/account_id'
+          account_name:
+            $ref: '#/components/schemas/account_name'
+          debit_or_credit:
+            $ref: '#/components/schemas/debit_or_credit'
+          exchange_rate:
+            $ref: '#/components/schemas/exchange_rate'
+          currency_id:
+            $ref: '#/components/schemas/currency_id'
+          currency_code:
+            $ref: '#/components/schemas/currency_code'
+          bcy_amount:
+            $ref: '#/components/schemas/bcy_amount'
+          amount:
+            $ref: '#/components/schemas/amount'
+          location_id:
+            $ref: '#/components/schemas/location_id'
+          location_name:
+            $ref: '#/components/schemas/location_name'
+    opening_balance:
+      type: object
+      properties:
+        opening_balance_id:
+          $ref: '#/components/schemas/opening_balance_id'
+        date:
+          $ref: '#/components/schemas/date'
+        price_precision:
+          $ref: '#/components/schemas/price_precision'
+        accounts:
+          $ref: '#/components/schemas/accounts'
+        total:
+          $ref: '#/components/schemas/total'
+    create-opening-balance-request:
+      required:
+        - date
+      type: object
+      properties:
+        date:
+          $ref: '#/components/schemas/date'
+        accounts:
+          type: array
+          description: List of accounts with their opening balance details.
+          items:
+            type: object
+            required:
+              - debit_or_credit
+            properties:
+              account_id:
+                $ref: '#/components/schemas/account_id'
+              debit_or_credit:
+                $ref: '#/components/schemas/debit_or_credit'
+              exchange_rate:
+                $ref: '#/components/schemas/exchange_rate'
+              currency_id:
+                $ref: '#/components/schemas/currency_id'
+              amount:
+                $ref: '#/components/schemas/amount'
+              location_id:
+                $ref: '#/components/schemas/location_id'
+    create-opening-balance-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The opening balances are saved!
+          readOnly: true
+        opening_balance:
+          $ref: '#/components/schemas/opening_balance'
+    update-opening-balance-request:
+      required:
+        - opening_balance_id
+      type: object
+      properties:
+        date:
+          $ref: '#/components/schemas/date'
+        accounts:
+          $ref: '#/components/schemas/accounts'
+        opening_balance_id:
+          $ref: '#/components/schemas/opening_balance_id'
+    update-opening-balance-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The opening balances are saved!
+          readOnly: true
+        opening_balance:
+          $ref: '#/components/schemas/opening_balance'
+    get-opening-balance-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        opening_balance:
+          $ref: '#/components/schemas/opening_balance'
+    delete-opening-balance-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The entered opening balance has been deleted.
+          readOnly: true
+    list-opening-balance-details-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        opening_balance:
+          $ref: '#/components/schemas/opening_balance'
+    list-opening-balance-transactions-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        transactions:
+          type: array
+          items:
+            type: object
+            properties:
+              transaction_id:
+                description: ID of the transaction.
+                type: string
+                example: '460000000050163'
+              transaction_date:
+                description: Date of the transaction.
+                type: string
+                example: '2013-10-01'
+              transaction_type:
+                description: Type of the transaction.
+                type: string
+              amount:
+                $ref: '#/components/schemas/amount'
+              debit_or_credit:
+                $ref: '#/components/schemas/debit_or_credit'
+    writeoff-opening-balance-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The opening balance has been written off.
+          readOnly: true
+    cancel-writeoff-opening-balance-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The write-off has been cancelled.
+          readOnly: true
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.settings.CREATE: Create Settings
+            ERP.settings.UPDATE: Update Settings
+            ERP.settings.READ: Read Settings
+            ERP.settings.DELETE: Delete Settings

@@ -1,0 +1,596 @@
+openapi: 3.0.0
+info:
+  title: Expense Categories
+  description: An expense category entity allows you to maintain details of an expense category.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v1
+    description: API Endpoint
+tags:
+  - name: expense-categories
+    description: Expense-Categories Module
+paths:
+  /expensecategories:
+    x-mcp-group:
+      - Expense Categories
+    post:
+      tags:
+        - expense-categories
+      operationId: create_expense_category
+      summary: Create an expense category
+      description: Create a new expense category.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-an-expense-category-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-an-expense-category-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expensecategory.CREATE
+    get:
+      tags:
+        - expense-categories
+      operationId: list_expense_categories
+      summary: List of expense categories
+      description: List of all active expense categories.
+      parameters:
+        - name: filter_by
+          in: query
+          description: For filtering Expense Categories based on Status.
+          required: false
+          schema:
+            type: object
+            properties:
+              Status.Inactive:
+                $ref: '#/components/schemas/Status.Inactive'
+              Status.All:
+                $ref: '#/components/schemas/Status.All'
+          example: ''
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-of-expense-categories-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expensecategory.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /expensecategories/{expense_category_id}:
+    x-mcp-group:
+      - Expense Categories
+    get:
+      tags:
+        - expense-categories
+      operationId: get_expense_category
+      summary: Retrieve details of an expense category
+      description: Details of an existing expense category.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/retrieve-details-of-an-expense-category-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expensecategory.READ
+    put:
+      tags:
+        - expense-categories
+      operationId: update_expense_category
+      summary: Update an expense category
+      description: Update the details of an existing expense category.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-an-expense-category-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-an-expense-category-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expensecategory.UPDATE
+    delete:
+      tags:
+        - expense-categories
+      operationId: delete_expense_category
+      summary: Delete an expense category
+      description: Delete an existing expense category.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-an-expense-category-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expensecategory.DELETE
+    parameters:
+      - name: expense_category_id
+        in: path
+        required: true
+        description: Unique identifier of the expense category.
+        schema:
+          type: string
+        example: '16367000000000418'
+      - $ref: '#/components/parameters/organization_id'
+  /expensecategories/{expense_category_id}/show:
+    x-mcp-group:
+      - Expense Categories
+    post:
+      tags:
+        - expense-categories
+      operationId: enable_expense_category
+      summary: Enable an expense category
+      description: Enable an expense category.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/enable-an-expense-category-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expensecategory.CREATE
+    parameters:
+      - name: expense_category_id
+        in: path
+        required: true
+        description: Unique identifier of the expense category.
+        schema:
+          type: string
+        example: '16367000000000418'
+      - $ref: '#/components/parameters/organization_id'
+  /expensecategories/{expense_category_id}/hide:
+    x-mcp-group:
+      - Expense Categories
+    post:
+      tags:
+        - expense-categories
+      operationId: disable_expense_category
+      summary: Disable an expense category
+      description: Disable an expense category.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/disable-an-expense-category-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expensecategory.CREATE
+    parameters:
+      - name: expense_category_id
+        in: path
+        required: true
+        description: Unique identifier of the expense category.
+        schema:
+          type: string
+        example: '16367000000000418'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: X-com-zoho-expense-organizationid
+      description: ID of the organization
+      in: header
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/expense_category'
+    category_id:
+      description: Unique ID for expense category generated by the server. This is used as an identifier.
+      type: string
+      example: '16367000000000418'
+    category_name:
+      description: Name of the expense category.
+      type: string
+      example: Air Travel Expense
+    gl_code:
+      description: Unique account code for the expense category.
+      type: string
+      example: air01
+    description:
+      description: Description of the expense category.
+      type: string
+      example: Expenses on business travels like hotel booking charges, flight charges, etc. are recorded as travel expenses.
+    status:
+      description: Whether the expense category is active. It can either be <code>true</code> or <code>false</code>.
+      type: string
+      example: active
+    attachment_file_name:
+      description: Name of the attachment file.
+      type: string
+      example: ''
+    flat_amount:
+      description: Amount for the expense category.
+      type: number
+      format: double
+      example: 500
+    is_maximum_amount_required:
+      description: Whether there is any maximum amount limit for expense. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    maximum_allowed_amount:
+      description: Expense amount limit.
+      type: number
+      format: double
+      example: 1000
+    is_description_required:
+      description: Whether description is mandatory. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    is_receipt_required:
+      description: Whether receipt is required. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    is_mileage:
+      description: Whether this is a mileage category. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    is_perdiem_account:
+      description: Whether the category is a Per Diem one. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    receipt_required_amount:
+      description: Amount limit above which receipt is mandatory.
+      type: number
+      format: double
+      example: 500
+    can_override_settings:
+      description: Whether this expense category can override the default polices. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    is_custom:
+      description: Whether the expense category is custom. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    is_super_parent:
+      description: Whether the category is a super parent. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    is_enabled:
+      description: Whether the category is currently enabled. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: true
+    category_icon:
+      description: Icon for the category.
+      type: string
+      example: travel
+    can_delete:
+      description: Whether we can delete this expense category. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: true
+    category_type:
+      description: Type of the Category.
+      type: string
+      example: expense
+    parent_account_id:
+      description: Account ID of parent category.
+      type: string
+      example: '16367000000106279'
+    parent_account_name:
+      description: Account name of the parent.
+      type: string
+      example: expense
+    depth:
+      description: Depth of the category.
+      type: integer
+      example: 0
+    is_child_present:
+      description: Whether the category contains any child category. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    child_count:
+      description: Number of child categories the category contains.
+      type: string
+      example: ''
+    created_time:
+      description: Time at which this expense category was created.
+      type: string
+      example: 2011-10-19T23:19:28+0530
+    has_transaction:
+      description: Whether this expense category has transactions associated with it. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    last_modified_time:
+      description: Last modified time.
+      type: string
+      example: 2017-02-28T17:01:02+0530
+    Status.Inactive:
+      description: List of all Inactive Expense Categories.
+      type: string
+      example: ''
+    Status.All:
+      description: List of all Expense Categories.
+      type: string
+      example: ''
+    filter_by:
+      description: For filtering Expense Categories based on Status.
+      type: object
+      properties:
+        Status.Inactive:
+          $ref: '#/components/schemas/Status.Inactive'
+        Status.All:
+          $ref: '#/components/schemas/Status.All'
+    expense_category:
+      type: object
+      properties:
+        category_id:
+          $ref: '#/components/schemas/category_id'
+        category_name:
+          $ref: '#/components/schemas/category_name'
+        gl_code:
+          $ref: '#/components/schemas/gl_code'
+        description:
+          $ref: '#/components/schemas/description'
+        status:
+          $ref: '#/components/schemas/status'
+        attachment_file_name:
+          $ref: '#/components/schemas/attachment_file_name'
+        flat_amount:
+          $ref: '#/components/schemas/flat_amount'
+        is_description_required:
+          $ref: '#/components/schemas/is_description_required'
+        is_receipt_required:
+          $ref: '#/components/schemas/is_receipt_required'
+        is_maximum_amount_required:
+          $ref: '#/components/schemas/is_maximum_amount_required'
+        receipt_required_amount:
+          $ref: '#/components/schemas/receipt_required_amount'
+        maximum_allowed_amount:
+          $ref: '#/components/schemas/maximum_allowed_amount'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        is_custom:
+          $ref: '#/components/schemas/is_custom'
+        is_mileage:
+          $ref: '#/components/schemas/is_mileage'
+        has_transaction:
+          $ref: '#/components/schemas/has_transaction'
+        category_icon:
+          $ref: '#/components/schemas/category_icon'
+        last_modified_time:
+          $ref: '#/components/schemas/last_modified_time'
+        can_override_settings:
+          $ref: '#/components/schemas/can_override_settings'
+        can_delete:
+          $ref: '#/components/schemas/can_delete'
+        category_type:
+          $ref: '#/components/schemas/category_type'
+        is_enabled:
+          $ref: '#/components/schemas/is_enabled'
+        parent_account_id:
+          $ref: '#/components/schemas/parent_account_id'
+        parent_account_name:
+          $ref: '#/components/schemas/parent_account_name'
+    create-an-expense-category-request:
+      required:
+        - category_name
+      type: object
+      properties:
+        category_name:
+          $ref: '#/components/schemas/category_name'
+        gl_code:
+          $ref: '#/components/schemas/gl_code'
+        description:
+          $ref: '#/components/schemas/description'
+        maximum_allowed_amount:
+          $ref: '#/components/schemas/maximum_allowed_amount'
+        receipt_required_amount:
+          $ref: '#/components/schemas/receipt_required_amount'
+        flat_amount:
+          $ref: '#/components/schemas/flat_amount'
+        parent_account_id:
+          $ref: '#/components/schemas/parent_account_id'
+    create-an-expense-category-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The expense category has been created.
+          readOnly: true
+        expense_category:
+          $ref: '#/components/schemas/expense_category'
+    list-of-expense-categories-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        expense_categories:
+          type: array
+          items:
+            type: object
+            properties:
+              category_id:
+                $ref: '#/components/schemas/category_id'
+              category_name:
+                $ref: '#/components/schemas/category_name'
+              gl_code:
+                $ref: '#/components/schemas/gl_code'
+              description:
+                $ref: '#/components/schemas/description'
+              status:
+                $ref: '#/components/schemas/status'
+              attachment_file_name:
+                $ref: '#/components/schemas/attachment_file_name'
+              flat_amount:
+                $ref: '#/components/schemas/flat_amount'
+              is_maximum_amount_required:
+                $ref: '#/components/schemas/is_maximum_amount_required'
+              maximum_allowed_amount:
+                $ref: '#/components/schemas/maximum_allowed_amount'
+              is_description_required:
+                $ref: '#/components/schemas/is_description_required'
+              is_receipt_required:
+                $ref: '#/components/schemas/is_receipt_required'
+              is_mileage:
+                $ref: '#/components/schemas/is_mileage'
+              is_perdiem_account:
+                $ref: '#/components/schemas/is_perdiem_account'
+              receipt_required_amount:
+                $ref: '#/components/schemas/receipt_required_amount'
+              can_override_settings:
+                $ref: '#/components/schemas/can_override_settings'
+              is_custom:
+                $ref: '#/components/schemas/is_custom'
+              is_super_parent:
+                $ref: '#/components/schemas/is_super_parent'
+              is_enabled:
+                $ref: '#/components/schemas/is_enabled'
+              category_icon:
+                $ref: '#/components/schemas/category_icon'
+              can_delete:
+                $ref: '#/components/schemas/can_delete'
+              category_type:
+                $ref: '#/components/schemas/category_type'
+              parent_account_id:
+                $ref: '#/components/schemas/parent_account_id'
+              parent_account_name:
+                $ref: '#/components/schemas/parent_account_name'
+              depth:
+                $ref: '#/components/schemas/depth'
+              is_child_present:
+                $ref: '#/components/schemas/is_child_present'
+              child_count:
+                $ref: '#/components/schemas/child_count'
+    retrieve-details-of-an-expense-category-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        expense_category:
+          $ref: '#/components/schemas/expense_category'
+    update-an-expense-category-request:
+      type: object
+      properties:
+        category_name:
+          $ref: '#/components/schemas/category_name'
+        gl_code:
+          $ref: '#/components/schemas/gl_code'
+        description:
+          $ref: '#/components/schemas/description'
+        maximum_allowed_amount:
+          $ref: '#/components/schemas/maximum_allowed_amount'
+        receipt_required_amount:
+          $ref: '#/components/schemas/receipt_required_amount'
+        flat_amount:
+          $ref: '#/components/schemas/flat_amount'
+    update-an-expense-category-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The details of the expense category has been updated.
+          readOnly: true
+        expense_category:
+          $ref: '#/components/schemas/expense_category'
+    delete-an-expense-category-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The expense category has been deleted.
+          readOnly: true
+    enable-an-expense-category-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The expense category has been marked as active.
+          readOnly: true
+    disable-an-expense-category-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The expense category has been marked as inactive.
+          readOnly: true
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.expensecategory.CREATE: Create Expense Category
+            ERP.expensecategory.READ: Read Expense Category
+            ERP.expensecategory.UPDATE: Update Expense Category
+            ERP.expensecategory.DELETE: Delete Expense Category

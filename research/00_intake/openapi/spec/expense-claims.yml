@@ -1,0 +1,1120 @@
+openapi: 3.0.0
+info:
+  title: Expense Claims
+  description: An expense object allows you to maintain details of an expense.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v1
+    description: API Endpoint
+tags:
+  - name: expense-claims
+    description: Expense Claims Module
+paths:
+  /reports/expensedetails:
+    x-mcp-group:
+      - Reports
+    get:
+      tags:
+        - expense-claims
+      operationId: list_expenses_report
+      summary: List all expenses
+      description: List of all existing expenses.
+      parameters:
+        - name: status
+          in: query
+          description: Status of the expense report with which the expense is associated.
+          required: false
+          schema:
+            type: string
+          example: submitted
+        - name: date_start
+          in: query
+          description: Starting Date.
+          required: false
+          schema:
+            type: string
+          example: '2015-12-31'
+        - name: date_end
+          in: query
+          description: Ending Date.
+          required: false
+          schema:
+            type: string
+          example: '2016-01-31'
+        - name: user_id
+          in: query
+          description: Unique ID for user.
+          required: false
+          schema:
+            type: string
+          example: '27927000001331015'
+        - name: category_id
+          in: query
+          description: Unique ID for expense category.
+          required: false
+          schema:
+            type: string
+          example: '16367000000000400'
+        - name: merchant_id
+          in: query
+          description: Unique ID for merchant.
+          required: false
+          schema:
+            type: string
+          example: '16367000000074027'
+        - name: customer_id
+          in: query
+          description: Unique ID for the customer.
+          required: false
+          schema:
+            type: string
+          example: '27927000000075081'
+        - name: project_id
+          in: query
+          description: Unique ID for the project.
+          required: false
+          schema:
+            type: string
+          example: '27927000001243001'
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-all-expenses-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expense.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /expenses/{expense_id}/merge:
+    x-mcp-group:
+      - Expenses
+    post:
+      tags:
+        - expense-claims
+      operationId: merge_expenses
+      summary: Merge expenses
+      description: Merge multiple expenses.
+      parameters:
+        - name: duplicate_expense_id
+          description: Unique ID of the expense to be merged.
+          in: query
+          required: true
+          schema:
+            type: string
+          example: '16367000000083070'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/merge-expenses-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expense.CREATE
+    parameters:
+      - name: expense_id
+        in: path
+        required: true
+        description: Unique identifier of the expense.
+        schema:
+          type: string
+        example: '16367000000083065'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/expenses-response'
+    expenses-response:
+      type: object
+      properties:
+        expense_id:
+          $ref: '#/components/schemas/expense_id'
+        total:
+          $ref: '#/components/schemas/total'
+        bcy_total:
+          $ref: '#/components/schemas/bcy_total'
+        is_billable:
+          $ref: '#/components/schemas/is_billable'
+        is_reimbursable:
+          $ref: '#/components/schemas/is_reimbursable'
+        date:
+          $ref: '#/components/schemas/date'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        currency_code:
+          $ref: '#/components/schemas/currency_code'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        customer_name:
+          $ref: '#/components/schemas/customer_name'
+        project_id:
+          $ref: '#/components/schemas/project_id'
+        project_name:
+          $ref: '#/components/schemas/project_name'
+        paid_through_account_id:
+          $ref: '#/components/schemas/paid_through_account_id'
+        paid_through_account_name:
+          $ref: '#/components/schemas/paid_through_account_name'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        last_modified_time:
+          $ref: '#/components/schemas/last_modified_time'
+        status:
+          $ref: '#/components/schemas/status'
+        merchant_id:
+          $ref: '#/components/schemas/merchant_id'
+        merchant_name:
+          $ref: '#/components/schemas/merchant_name'
+        report_id:
+          $ref: '#/components/schemas/report_id'
+        report_name:
+          $ref: '#/components/schemas/report_name'
+        mileage_type:
+          $ref: '#/components/schemas/mileage_type'
+        due_days:
+          $ref: '#/components/schemas/due_days'
+        is_expired:
+          $ref: '#/components/schemas/is_expired'
+        gl_code:
+          $ref: '#/components/schemas/gl_code'
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        attendees:
+          $ref: '#/components/schemas/attendees'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        line_items:
+          $ref: '#/components/schemas/line_items'
+    expense_id:
+      description: Unique ID for expense. This is used as an identifier.
+      type: string
+      example: '16367000000083065'
+    date:
+      description: Date of the expense.
+      type: string
+      example: '2017-02-21'
+    category_name:
+      description: Name of the expense category.
+      type: string
+      example: Office Supplies
+    category_id:
+      description: Unique ID for expense category.
+      type: string
+      example: '16367000000000400'
+    description:
+      description: Description about the line item.
+      type: string
+      example: Necessary Purchase
+    created_by:
+      description: Unique ID of the person who created the expense.
+      type: string
+      example: '16367000000074021'
+    created_by_name:
+      description: Name of the person who created the expense.
+      type: string
+      example: PATRICIA
+    employee_number:
+      description: Employee Number.
+      type: string
+      example: E001
+    currency_id:
+      description: Unique ID for currency.
+      type: string
+      example: '16367000000000097'
+    currency_code:
+      description: Currency code.
+      type: string
+      example: USD
+    paid_through_account_id:
+      description: Unique ID for the paid through account.
+      type: string
+      example: '16367000000036003'
+    paid_through_account_name:
+      description: Name of the paid through account.
+      type: string
+      example: Employee Reimbursements
+    bcy_total:
+      description: Total in base currency.
+      type: number
+      format: double
+      example: 13900.79
+    bcy_subtotal:
+      description: Sub total in base currency.
+      type: number
+      format: double
+      example: 13900.79
+    total:
+      description: Total.
+      type: number
+      format: double
+      example: 207.65
+    total_without_tax:
+      description: Total excluding tax.
+      type: number
+      format: double
+      example: 207.65
+    is_billable:
+      description: Whether the expense is billable. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: true
+    is_reimbursable:
+      description: Whether the expense is reimbursable. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    reference_number:
+      description: Reference number of the expense.
+      type: string
+      example: DD145
+    due_days:
+      description: Number of days till the due date.
+      type: string
+      example: Due in 15 days
+    merchant_id:
+      description: Unique ID for merchant.
+      type: string
+      example: '16367000000074027'
+    merchant_name:
+      description: Name of the merchant.
+      type: string
+      example: ABS Solutions
+    status:
+      description: Status of the expense report with which the expense is associated.
+      type: string
+      example: submitted
+    created_time:
+      description: Time when the expense was created.
+      type: string
+      example: 2017-02-21T18:33:12+0530
+    last_modified_time:
+      description: Time when the expense was last modified.
+      type: string
+      example: 2017-02-21T18:42:46+0530
+    receipt_name:
+      description: Receipt name.
+      type: string
+      example: receipt1.jpg
+    report_id:
+      description: Unique ID for report.
+      type: string
+      example: '16367000000083075'
+    mileage_type:
+      description: Mileage type. Possible values can be <code>non_mileage</code> or <code>manual</code> or <code>odometer</code> or <code>gps</code> or <code>imaps</code> or <code>gmaps</code> or <code>wmaps</code>.
+      type: string
+      example: non_mileage
+    report_name:
+      description: Name of the expense report.
+      type: string
+      example: Purchase
+    is_receipt_only:
+      description: Whether the expense is a receipt only expense.
+      type: string
+      example: false
+    distance:
+      description: Distance travelled.
+      type: number
+      format: double
+      example: 0
+    per_diem_rate:
+      description: Allowance per day.
+      type: number
+      format: double
+      example: 0
+    per_diem_days:
+      description: No of days for which per diem is applied.
+      type: number
+      format: double
+      example: 0
+    per_diem_id:
+      description: Unique id for per diem.
+      type: string
+      example: ''
+    per_diem_name:
+      description: Name of the per diem.
+      type: string
+      example: ''
+    expense_type:
+      description: Type of expense. Possible values can be <code>non_mileage</code> or <code>manual</code> or <code>per_diem</code>.
+      type: string
+      example: non_mileage
+    location:
+      description: Location.
+      type: string
+      example: Washington
+    receipt_type:
+      description: Receipt type. Possible values can be <code>jpg</code> or <code>png</code>.
+      type: string
+      example: jpg
+    policy_violated:
+      description: Whether expense policies are violated. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    comments_count:
+      description: Number of comments.
+      type: integer
+      example: 0
+    report_status:
+      description: Status of the expense report.
+      type: string
+      example: submitted
+    price_precision:
+      description: Precise amount upto n decimal points.
+      type: integer
+      example: 2
+    mileage_rate:
+      description: Mileage rate.
+      type: number
+      format: double
+      example: 0
+    mileage_unit:
+      description: Mileage unit.
+      type: string
+      example: km
+    receipt_status:
+      description: Status of the receipt.
+      type: string
+      example: processed
+    is_uncategorized:
+      description: Whether the expense is uncategorized. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    is_expired:
+      description: Whether the expense is expired. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    gl_code:
+      description: A unique reference code for the category.
+      type: string
+      example: LG001
+    exchange_rate:
+      description: Exchange rate.
+      type: number
+      format: double
+      example: 66.943366
+    start_reading:
+      description: Start reading of the odometer.
+      type: string
+      example: ''
+    end_reading:
+      description: End reading of the odometer.
+      type: string
+      example: ''
+    payment_mode:
+      description: Payment mode.
+      type: string
+      example: Check
+    customer_id:
+      description: Unique ID for the customer.
+      type: string
+      example: '27927000000075081'
+    customer_name:
+      description: Name of the customer.
+      type: string
+      example: ACME Corp.
+    customfield_id:
+      description: Unique Id for the Custom Field.
+      type: string
+      example: '16367000000277001'
+    label:
+      description: Label of the Custom Field.
+      type: string
+      example: Other Name
+    value:
+      description: Value of the Custom Field.
+      type: string
+      example: Trip
+    custom_fields:
+      description: Custom Fields.
+      type: array
+      items:
+        type: object
+        properties:
+          customfield_id:
+            $ref: '#/components/schemas/customfield_id'
+          label:
+            $ref: '#/components/schemas/label'
+          value:
+            $ref: '#/components/schemas/value'
+    project_id:
+      description: Unique ID for the project.
+      type: string
+      example: '27927000001243001'
+    project_name:
+      description: Name of the project.
+      type: string
+      example: Coffee Research
+    transaction_description:
+      description: Description about the transaction.
+      type: string
+      example: ''
+    tax_id:
+      description: Unique ID for tax.
+      type: string
+      example: '16367000000086001'
+    tax_name:
+      description: Name of the tax.
+      type: string
+      example: GST
+    tax_percentage:
+      description: Tax percentage.
+      type: number
+      format: double
+      example: 2
+    amount:
+      description: Amount.
+      type: number
+      format: double
+      example: 207.65
+    is_inclusive_tax:
+      description: Whether the expense amount is inclusive of tax. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    is_personal:
+      description: Whether the expense personal. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    policy_id:
+      description: Unique id for the policy.
+      type: string
+      example: '16367000000092011'
+    policy_name:
+      description: Name of the policy.
+      type: string
+      example: LIC
+    file_name:
+      description: Name of the receipt file.
+      type: string
+      example: receipt1.jpg
+    file_size_formatted:
+      description: Formatted file size of receipt.
+      type: string
+      example: 71.8 KB
+    attachment_order:
+      description: Order of the attached receipt.
+      type: integer
+      example: 1
+    document_id:
+      description: Unique id for the receipt.
+      type: string
+      example: '16367000000083071'
+    reimbursement_reference:
+      description: Reference id for Reimbursement.
+      type: string
+      example: ''
+    reimbursement_date:
+      description: Date for Reimbursement.
+      type: string
+      example: ''
+    reimbursement_paid_through_account_id:
+      description: Account id of the Reimbursement Payment.
+      type: string
+      example: ''
+    reimbursement_paid_through_account_name:
+      description: Account Name of the Reimbursement.
+      type: string
+      example: ''
+    reimbursement_currency_id:
+      description: Unique ID for Reimbursement currency.
+      type: string
+      example: ''
+    reimbursement_currency_code:
+      description: Currency code for Reimbursement.
+      type: string
+      example: ''
+    date_start:
+      description: Starting Date.
+      type: string
+      example: '2015-12-31'
+    date_end:
+      description: Ending Date.
+      type: string
+      example: '2016-01-31'
+    user_id:
+      description: Unique ID for user.
+      type: string
+      example: '27927000001331015'
+    documents:
+      description: Documents attached with expense.
+      type: array
+      items:
+        type: object
+        properties:
+          file_name:
+            $ref: '#/components/schemas/file_name'
+          file_size_formatted:
+            $ref: '#/components/schemas/file_size_formatted'
+          attachment_order:
+            $ref: '#/components/schemas/attachment_order'
+          document_id:
+            $ref: '#/components/schemas/document_id'
+    line_item_id:
+      description: Unique ID for the line item.
+      type: string
+      example: '16367000000354007'
+    item_order:
+      description: Order of the line item.
+      type: integer
+      example: 0
+    item_total:
+      description: Total amount for the line item.
+      type: number
+      format: double
+      example: 207.65
+    attendee_id:
+      description: Unique ID for the attendee.
+      type: string
+      example: '16367000000104051'
+    department_id:
+      description: Unique ID of the department.
+      type: string
+      example: '16367000000093001'
+    department_name:
+      description: Name of the department.
+      type: string
+      example: Finance
+    name:
+      description: Name of the User.
+      type: string
+      example: Will Smith
+    email:
+      description: Email Id of the User.
+      type: string
+      example: will.smith@gmail.com
+    attendees:
+      description: Attendees for the expense.
+      type: array
+      items:
+        type: object
+        properties:
+          attendee_id:
+            $ref: '#/components/schemas/attendee_id'
+          user_id:
+            $ref: '#/components/schemas/user_id'
+          department_id:
+            $ref: '#/components/schemas/department_id'
+          department_name:
+            $ref: '#/components/schemas/department_name'
+          name:
+            $ref: '#/components/schemas/name'
+          employee_number:
+            $ref: '#/components/schemas/employee_number'
+          customer_id:
+            $ref: '#/components/schemas/customer_id'
+          email:
+            $ref: '#/components/schemas/email'
+    tag_option_id:
+      description: Unique ID for Tag option generated by the server.
+      type: string
+      example: '16367000000225001'
+    tag_name:
+      description: Name of the Tag.
+      type: string
+      example: Tag 1
+    tag_id:
+      description: Unique ID for Tag generated by the server.
+      type: string
+      example: '16367000000000301'
+    tag_option_name:
+      description: Name of the Tag Option.
+      type: string
+      example: Option 1
+    tags:
+      description: Tags associated with the Line Item.
+      type: array
+      items:
+        type: object
+        required:
+          - tag_id
+          - tag_option_id
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_name:
+            $ref: '#/components/schemas/tag_name'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+          tag_option_name:
+            $ref: '#/components/schemas/tag_option_name'
+    line_items:
+      description: Line Items of the expense.
+      type: array
+      items:
+        type: object
+        properties:
+          line_item_id:
+            $ref: '#/components/schemas/line_item_id'
+          category_id:
+            $ref: '#/components/schemas/category_id'
+          category_name:
+            $ref: '#/components/schemas/category_name'
+          description:
+            $ref: '#/components/schemas/description'
+          tax_id:
+            $ref: '#/components/schemas/tax_id'
+          tax_name:
+            $ref: '#/components/schemas/tax_name'
+          tax_percentage:
+            $ref: '#/components/schemas/tax_percentage'
+          item_total:
+            $ref: '#/components/schemas/item_total'
+          amount:
+            $ref: '#/components/schemas/amount'
+          item_order:
+            $ref: '#/components/schemas/item_order'
+          tags:
+            $ref: '#/components/schemas/tags'
+    duplicate_expense_id:
+      description: Unique ID of the expense to be merged.
+      type: string
+      example: '16367000000083070'
+    receipt:
+      description: File Path of the Receipt to be uploaded.
+      type: string
+      example: '@/receipt.jpg'
+    create-an-expense-request:
+      type: object
+      required:
+        - currency_id
+        - line_items
+      properties:
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        date:
+          $ref: '#/components/schemas/date'
+        is_reimbursable:
+          $ref: '#/components/schemas/is_reimbursable'
+        paid_through_account_id:
+          $ref: '#/components/schemas/paid_through_account_id'
+        distance:
+          $ref: '#/components/schemas/distance'
+        merchant_id:
+          $ref: '#/components/schemas/merchant_id'
+        report_id:
+          $ref: '#/components/schemas/report_id'
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        project_id:
+          $ref: '#/components/schemas/project_id'
+        is_billable:
+          $ref: '#/components/schemas/is_billable'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        attendees:
+          description: Attendees for the expense.
+          type: array
+          items:
+            type: object
+            properties:
+              user_id:
+                $ref: '#/components/schemas/user_id'
+        custom_fields:
+          description: Custom Fields.
+          type: array
+          items:
+            type: object
+            required:
+              - customfield_id
+              - value
+            properties:
+              customfield_id:
+                $ref: '#/components/schemas/customfield_id'
+              value:
+                $ref: '#/components/schemas/value'
+        line_items:
+          description: Line Items of the expense.
+          type: array
+          items:
+            type: object
+            required:
+              - category_id
+              - amount
+            properties:
+              category_id:
+                $ref: '#/components/schemas/category_id'
+              amount:
+                $ref: '#/components/schemas/amount'
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              description:
+                $ref: '#/components/schemas/description'
+              tags:
+                $ref: '#/components/schemas/tags'
+    create-an-expense-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The expense has been recorded.
+          readOnly: true
+        expenses:
+          type: array
+          items:
+            $ref: '#/components/schemas/expenses-response'
+    list-all-expenses-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        expenses:
+          type: array
+          items:
+            type: object
+            properties:
+              expense_id:
+                $ref: '#/components/schemas/expense_id'
+              date:
+                $ref: '#/components/schemas/date'
+              description:
+                $ref: '#/components/schemas/description'
+              created_by:
+                $ref: '#/components/schemas/created_by'
+              created_by_name:
+                $ref: '#/components/schemas/created_by_name'
+              employee_number:
+                $ref: '#/components/schemas/employee_number'
+              currency_id:
+                $ref: '#/components/schemas/currency_id'
+              currency_code:
+                $ref: '#/components/schemas/currency_code'
+              paid_through_account_id:
+                $ref: '#/components/schemas/paid_through_account_id'
+              paid_through_account_name:
+                $ref: '#/components/schemas/paid_through_account_name'
+              bcy_total:
+                $ref: '#/components/schemas/bcy_total'
+              bcy_subtotal:
+                $ref: '#/components/schemas/bcy_subtotal'
+              total:
+                $ref: '#/components/schemas/total'
+              total_without_tax:
+                $ref: '#/components/schemas/total_without_tax'
+              is_billable:
+                $ref: '#/components/schemas/is_billable'
+              is_reimbursable:
+                $ref: '#/components/schemas/is_reimbursable'
+              reference_number:
+                $ref: '#/components/schemas/reference_number'
+              due_days:
+                $ref: '#/components/schemas/due_days'
+              merchant_id:
+                $ref: '#/components/schemas/merchant_id'
+              merchant_name:
+                $ref: '#/components/schemas/merchant_name'
+              status:
+                $ref: '#/components/schemas/status'
+              created_time:
+                $ref: '#/components/schemas/created_time'
+              last_modified_time:
+                $ref: '#/components/schemas/last_modified_time'
+              receipt_name:
+                $ref: '#/components/schemas/receipt_name'
+              report_id:
+                $ref: '#/components/schemas/report_id'
+              mileage_type:
+                $ref: '#/components/schemas/mileage_type'
+              report_name:
+                $ref: '#/components/schemas/report_name'
+              is_receipt_only:
+                $ref: '#/components/schemas/is_receipt_only'
+              distance:
+                $ref: '#/components/schemas/distance'
+              per_diem_rate:
+                $ref: '#/components/schemas/per_diem_rate'
+              per_diem_days:
+                $ref: '#/components/schemas/per_diem_days'
+              per_diem_id:
+                $ref: '#/components/schemas/per_diem_id'
+              per_diem_name:
+                $ref: '#/components/schemas/per_diem_name'
+              expense_type:
+                $ref: '#/components/schemas/expense_type'
+              location:
+                $ref: '#/components/schemas/location'
+              receipt_type:
+                $ref: '#/components/schemas/receipt_type'
+              policy_violated:
+                $ref: '#/components/schemas/policy_violated'
+              comments_count:
+                $ref: '#/components/schemas/comments_count'
+              report_status:
+                $ref: '#/components/schemas/report_status'
+              price_precision:
+                $ref: '#/components/schemas/price_precision'
+              mileage_rate:
+                $ref: '#/components/schemas/mileage_rate'
+              mileage_unit:
+                $ref: '#/components/schemas/mileage_unit'
+              receipt_status:
+                $ref: '#/components/schemas/receipt_status'
+              is_uncategorized:
+                $ref: '#/components/schemas/is_uncategorized'
+              is_expired:
+                $ref: '#/components/schemas/is_expired'
+              gl_code:
+                $ref: '#/components/schemas/gl_code'
+              exchange_rate:
+                $ref: '#/components/schemas/exchange_rate'
+              start_reading:
+                $ref: '#/components/schemas/start_reading'
+              end_reading:
+                $ref: '#/components/schemas/end_reading'
+              payment_mode:
+                $ref: '#/components/schemas/payment_mode'
+              customer_id:
+                $ref: '#/components/schemas/customer_id'
+              customer_name:
+                $ref: '#/components/schemas/customer_name'
+              custom_fields:
+                $ref: '#/components/schemas/custom_fields'
+              project_id:
+                $ref: '#/components/schemas/project_id'
+              project_name:
+                $ref: '#/components/schemas/project_name'
+              transaction_description:
+                $ref: '#/components/schemas/transaction_description'
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              tax_name:
+                $ref: '#/components/schemas/tax_name'
+              tax_percentage:
+                $ref: '#/components/schemas/tax_percentage'
+              amount:
+                $ref: '#/components/schemas/amount'
+              is_inclusive_tax:
+                $ref: '#/components/schemas/is_inclusive_tax'
+              is_personal:
+                $ref: '#/components/schemas/is_personal'
+              policy_id:
+                $ref: '#/components/schemas/policy_id'
+              policy_name:
+                $ref: '#/components/schemas/policy_name'
+              documents:
+                $ref: '#/components/schemas/documents'
+              reimbursement_reference:
+                $ref: '#/components/schemas/reimbursement_reference'
+              reimbursement_date:
+                $ref: '#/components/schemas/reimbursement_date'
+              reimbursement_paid_through_account_id:
+                $ref: '#/components/schemas/reimbursement_paid_through_account_id'
+              reimbursement_paid_through_account_name:
+                $ref: '#/components/schemas/reimbursement_paid_through_account_name'
+              reimbursement_currency_id:
+                $ref: '#/components/schemas/reimbursement_currency_id'
+              reimbursement_currency_code:
+                $ref: '#/components/schemas/reimbursement_currency_code'
+    update-an-expense-request:
+      type: object
+      required:
+        - line_items
+      properties:
+        paid_through_account_id:
+          $ref: '#/components/schemas/paid_through_account_id'
+        date:
+          $ref: '#/components/schemas/date'
+        is_reimbursable:
+          $ref: '#/components/schemas/is_reimbursable'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        merchant_id:
+          $ref: '#/components/schemas/merchant_id'
+        report_id:
+          $ref: '#/components/schemas/report_id'
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        project_id:
+          $ref: '#/components/schemas/project_id'
+        is_billable:
+          $ref: '#/components/schemas/is_billable'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        attendees:
+          description: Attendees for the expense.
+          type: array
+          items:
+            type: object
+            properties:
+              attendee_id:
+                $ref: '#/components/schemas/attendee_id'
+              user_id:
+                $ref: '#/components/schemas/user_id'
+        custom_fields:
+          description: Custom Fields.
+          type: array
+          items:
+            type: object
+            required:
+              - customfield_id
+              - value
+            properties:
+              customfield_id:
+                $ref: '#/components/schemas/customfield_id'
+              value:
+                $ref: '#/components/schemas/value'
+        line_items:
+          description: Line Items of the expense.
+          type: array
+          items:
+            type: object
+            properties:
+              line_item_id:
+                $ref: '#/components/schemas/line_item_id'
+              category_id:
+                $ref: '#/components/schemas/category_id'
+              description:
+                $ref: '#/components/schemas/description'
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              amount:
+                $ref: '#/components/schemas/amount'
+              item_order:
+                $ref: '#/components/schemas/item_order'
+              tags:
+                $ref: '#/components/schemas/tags'
+    update-an-expense-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Expense information has been updated.
+          readOnly: true
+        expense:
+          type: object
+          properties:
+            expense_id:
+              $ref: '#/components/schemas/expense_id'
+            total:
+              $ref: '#/components/schemas/total'
+            bcy_total:
+              $ref: '#/components/schemas/bcy_total'
+            is_billable:
+              $ref: '#/components/schemas/is_billable'
+            is_reimbursable:
+              $ref: '#/components/schemas/is_reimbursable'
+            date:
+              $ref: '#/components/schemas/date'
+            currency_id:
+              $ref: '#/components/schemas/currency_id'
+            currency_code:
+              $ref: '#/components/schemas/currency_code'
+            exchange_rate:
+              $ref: '#/components/schemas/exchange_rate'
+            is_inclusive_tax:
+              $ref: '#/components/schemas/is_inclusive_tax'
+            customer_id:
+              $ref: '#/components/schemas/customer_id'
+            customer_name:
+              $ref: '#/components/schemas/customer_name'
+            project_id:
+              $ref: '#/components/schemas/project_id'
+            project_name:
+              $ref: '#/components/schemas/project_name'
+            paid_through_account_id:
+              $ref: '#/components/schemas/paid_through_account_id'
+            paid_through_account_name:
+              $ref: '#/components/schemas/paid_through_account_name'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            last_modified_time:
+              $ref: '#/components/schemas/last_modified_time'
+            status:
+              $ref: '#/components/schemas/status'
+            merchant_id:
+              $ref: '#/components/schemas/merchant_id'
+            merchant_name:
+              $ref: '#/components/schemas/merchant_name'
+            report_id:
+              $ref: '#/components/schemas/report_id'
+            report_name:
+              $ref: '#/components/schemas/report_name'
+            mileage_type:
+              $ref: '#/components/schemas/mileage_type'
+            due_days:
+              $ref: '#/components/schemas/due_days'
+            is_expired:
+              $ref: '#/components/schemas/is_expired'
+            gl_code:
+              $ref: '#/components/schemas/gl_code'
+            payment_mode:
+              $ref: '#/components/schemas/payment_mode'
+            attendees:
+              $ref: '#/components/schemas/attendees'
+            policy_name:
+              $ref: '#/components/schemas/policy_name'
+            custom_fields:
+              $ref: '#/components/schemas/custom_fields'
+            line_items:
+              $ref: '#/components/schemas/line_items'
+    merge-expenses-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Expenses merged successfully.
+          readOnly: true
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.expense.CREATE: Create expense
+            ERP.expense.READ: Read expense
+            ERP.expense.UPDATE: Update expense

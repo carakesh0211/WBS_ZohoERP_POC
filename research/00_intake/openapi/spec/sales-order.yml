@@ -1,0 +1,3348 @@
+openapi: 3.0.0
+info:
+  title: Sales Order
+  description: A sales order is a financial document that confirms an impending sale. It is raised when an initial estimate is approved and the transaction is underway, and details the exact quantity, price and delivery details of the products or services being sold.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: sales-order
+    description: Sales-Order Module
+paths:
+  /salesorders:
+    x-mcp-group:
+      - Sales Order
+    post:
+      tags:
+        - sales-order
+      operationId: create_sales_order
+      summary: Create a sales order
+      description: Create a sales order for your customer.
+      parameters:
+        - name: ignore_auto_number_generation
+          in: query
+          description: Ignore auto sales order number generation for this sales order. This mandates the sales order number.
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: can_send_in_mail
+          in: query
+          description: Can the file be sent in mail.
+          required: false
+          schema:
+            type: boolean
+          example: true
+        - name: totalFiles
+          in: query
+          description: Total number of files.
+          required: false
+          schema:
+            type: integer
+          example: 0
+        - name: doc
+          in: query
+          description: Document that is to be attached.
+          required: false
+          schema:
+            type: string
+            format: binary
+          example: ''
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-sales-order-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-sales-order-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.CREATE
+    get:
+      tags:
+        - sales-order
+      operationId: list_sales_orders
+      summary: List sales orders
+      description: List all sales orders.
+      parameters:
+        - name: sort_column
+          in: query
+          description: Specify the column field for sorting sales order results. Available options include <code>customer_name</code>, <code>salesorder_number</code>, <code>shipment_date</code>, <code>last_modified_time</code>, <code>reference_number</code>, <code>total</code>, <code>date</code>, and <code>created_time</code>.
+          required: false
+          schema:
+            type: string
+          example: created_time
+        - name: search_text
+          in: query
+          description: General search parameter for cross-field text matching across sales order number, reference number, and customer name fields. Enables unified search functionality for quick order identification and customer order lookup operations.
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: filter_by
+          in: query
+          description: 'Filter sales order by status. Allowed Values: <code>Status.All</code>, <code>Status.Open</code>, <code>Status.Draft</code>, <code>Status.OverDue</code>, <code>Status.PartiallyInvoiced</code>, <code>Status.Invoiced</code>, <code>Status.Void</code> and <code>Status.Closed</code>'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: salesorder_number
+          in: query
+          description: 'Filter sales orders by sales order number using various matching operators. Available variants include <code>salesorder_number_startswith</code>, <code>salesorder_number_not_in</code>, <code>salesorder_number_in</code>, and <code>salesorder_number_contains</code>. Maximum search length: 100 characters.'
+          required: false
+          schema:
+            type: string
+          example: SO-001
+        - name: item_name
+          in: query
+          description: 'Filter sales orders by line item name using various matching operators. Available variants include <code>item_name_startswith</code>, <code>item_name_not_in</code>, <code>item_name_in</code>, and <code>item_name_contains</code>. Maximum search length: 100 characters.'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: item_id
+          in: query
+          description: 'Filter sales orders by specific line item identifier. Retrieves all sales orders containing a particular product or service item based on its unique identifier for inventory tracking and item-based reporting purposes. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: '460000000017088'
+        - name: item_description
+          in: query
+          description: 'Filter sales orders by line item description text using various matching operators. Available variants include <code>item_description_startswith</code>, <code>item_description_not_in</code>, <code>item_description_in</code>, and <code>item_description_contains</code>. Maximum search length: 100 characters.'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: reference_number
+          in: query
+          description: Filter sales orders by external reference number using various matching operators. Available variants include <code>reference_number_startswith</code>, <code>reference_number_not_in</code>, <code>reference_number_in</code>, and <code>reference_number_contains</code>.
+          required: false
+          schema:
+            type: string
+          example: REF-001
+        - name: customer_name
+          in: query
+          description: 'Filter sales orders by customer name using various matching operators. Available variants include <code>customer_name_startswith</code>, <code>customer_name_not_in</code>, <code>customer_name_in</code>, and <code>customer_name_contains</code>. Maximum search length: 100 characters.'
+          required: false
+          schema:
+            type: string
+          example: SAF Instruments Inc
+        - name: total
+          in: query
+          description: Filter sales orders by total amount using various range operators. Available variants include <code>total_start</code>, <code>total_end</code>, <code>total_less_than</code>, <code>total_less_equals</code>, <code>total_greater_than</code>, and <code>total_greater_equals</code>.
+          required: false
+          schema:
+            type: number
+            format: double
+          example: 12400
+        - name: date
+          in: query
+          description: 'Filter sales orders by creation date using various date range operators. Available variants include <code>date_start</code>, <code>date_end</code>, <code>date_before</code>, and <code>date_after</code>. Default date format: <code>yyyy-mm-dd</code>.'
+          required: false
+          schema:
+            type: string
+          example: '2014-07-28'
+        - name: shipment_date
+          in: query
+          description: 'Search sales order by sales order shipment date. Variants: <code>shipment_date_start</code>, <code>shipment_date_end</code>, <code>shipment_date_before</code> and <code>shipment_date_after</code>. Default date format : <code>yyyy-mm-dd</code>'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: status
+          in: query
+          description: 'Search sales order by sales order status. Allowed Values: <code>draft</code>, <code>open</code>, <code>invoiced</code>, <code>partially_invoiced</code>, <code>void</code> and <code>overdue</code>.'
+          required: false
+          schema:
+            type: string
+          example: open
+        - name: customer_id
+          in: query
+          description: 'Filter sales orders by specific customer identifier. Retrieves all sales orders associated with a particular customer account for customer relationship management, order history tracking, and customer-specific reporting and analysis purposes. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: '460000000017138'
+        - name: salesperson_id
+          in: query
+          description: 'Filter sales orders by specific sales representative identifier. Retrieves all sales orders assigned to a particular salesperson for performance tracking, commission calculations, sales territory management, and individual sales reporting purposes. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: '460000000000097'
+        - name: salesorder_ids
+          in: query
+          description: 'ID''s of the salesorder [Comma separated values] . <code>Maximum Length : 200</code>. Note: This value is a set of numeric characters separated by comma.'
+          required: false
+          schema:
+            type: string
+          example: 460108000000072000
+        - name: zcrm_potential_id
+          in: query
+          required: false
+          description: 'Unique identifier of the potential in CRM. Note: This value is a set of numeric characters.'
+          schema:
+            type: string
+          example: '460000000033001'
+        - name: last_modified_time
+          in: query
+          description: Last Modified time of the Sales Order.
+          required: false
+          schema:
+            type: string
+          example: 2014-08-25T11:23:26+0530
+        - name: accept
+          in: query
+          description: 'Get the details of a particular sales order in formats such as json/ pdf/ html. Default format is json. Allowed Values: <code>json</code>, <code>csv</code> , <code>xml</code>, <code>xls</code>, <code>xlsx</code>, <code>pdf</code>, <code>jhtml</code> and <code>html</code>.'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: print
+          in: query
+          description: Print the exported pdf. <code> It will be used when accept = pdf and atleast one value in salesorder_ids  </code>
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: customview_id
+          in: query
+          description: 'ID of the customview. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: '460000004000597'
+        - name: page
+          in: query
+          description: Specify the page number for paginated results retrieval. Controls which subset of sales order records to return, enabling efficient data handling for large result sets. Default value is 1 for the first page.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-sales-orders-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.READ
+    put:
+      tags:
+        - sales-order
+      operationId: update_sales_order_using_custom_field
+      summary: Update a sales order using a custom field's unique value
+      description: A custom field will have unique values if it's configured to not accept duplicate values. Now, you can use that custom field's value to update a sales order by providing its API name in the X-Unique-Identifier-Key header and its value in the X-Unique-Identifier-Value header. Based on this value, the corresponding sales order will be retrieved and updated. Additionally, there is an optional X-Upsert header. If the X-Upsert header is true and the custom field's unique value is not found in any of the existing sales orders, a new sales order will be created if the necessary payload details are available.
+      parameters:
+        - name: X-Unique-Identifier-Key
+          in: header
+          description: Unique CustomField Api Name.
+          required: true
+          schema:
+            type: string
+            example: cf_unique_cf
+        - name: X-Unique-Identifier-Value
+          in: header
+          description: Unique CustomField Value.
+          required: true
+          schema:
+            type: string
+            example: unique Value
+        - name: X-Upsert
+          in: header
+          description: If there is no record is found unique custom field value , will create new invoice.
+          required: false
+          schema:
+            type: boolean
+            example: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-sales-order-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-sales-order-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.UPDATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /salesorders/{salesorder_id}:
+    x-mcp-group:
+      - Sales Order
+    put:
+      tags:
+        - sales-order
+      operationId: update_sales_order
+      summary: Update a sales order
+      description: Update an existing sales order. To delete a line item just remove it from the line_items list.
+      parameters:
+        - name: ignore_auto_number_generation
+          in: query
+          description: Ignore auto sales order number generation for this sales order. This mandates the sales order number.
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: can_send_in_mail
+          in: query
+          description: Can the file be sent in mail.
+          required: false
+          schema:
+            type: boolean
+          example: true
+        - name: totalFiles
+          in: query
+          description: Total number of files.
+          required: false
+          schema:
+            type: integer
+          example: 0
+        - name: doc
+          in: query
+          description: Document that is to be attached.
+          required: false
+          schema:
+            type: string
+            format: binary
+          example: ''
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-sales-order-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-sales-order-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.UPDATE
+    get:
+      tags:
+        - sales-order
+      operationId: get_sales_order
+      summary: Get a sales order
+      description: Get the details of a sales order.
+      parameters:
+        - name: print
+          in: query
+          description: Print the exported pdf.
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: accept
+          in: query
+          description: 'Get the details of a particular sales order in formats such as json/ pdf/ html. Default format is json. Allowed Values: <code>json</code>, <code>csv</code> , <code>xml</code>, <code>xls</code>, <code>xlsx</code>, <code>pdf</code>, <code>jhtml</code> and <code>html</code>.'
+          required: false
+          schema:
+            type: string
+          example: ''
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-sales-order-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.READ
+    delete:
+      tags:
+        - sales-order
+      operationId: delete_sales_order
+      summary: Delete a sales order
+      description: Delete an existing sales order. Invoiced sales order cannot be deleted.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-sales-order-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.DELETE
+    parameters:
+      - name: salesorder_id
+        in: path
+        required: true
+        description: 'Unique identifier of the sales order. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '460000000039129'
+      - $ref: '#/components/parameters/organization_id'
+  /salesorder/{salesorder_id}/customfields:
+    x-mcp-group:
+      - Sales Order
+    put:
+      tags:
+        - sales-order
+      operationId: update_salesorder_customfields
+      summary: Update custom field in existing salesorders
+      description: Update the value of the custom field in existing salesorders.
+      parameters:
+        - name: salesorder_id
+          in: path
+          required: true
+          description: 'Unique identifier of the sales order. Note: This value is a set of numeric characters.'
+          schema:
+            type: string
+          example: '460000000039129'
+        - $ref: '#/components/parameters/organization_id'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/custom_fields'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-an-salesorder-customfield-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.UPDATE
+  /salesorders/{salesorder_id}/status/open:
+    x-mcp-group:
+      - Sales Order
+    post:
+      tags:
+        - sales-order
+      operationId: mark_sales_order_as_open
+      summary: Mark a sales order as open
+      description: Mark a draft sales order as open.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-a-sales-order-as-open-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.CREATE
+    parameters:
+      - name: salesorder_id
+        in: path
+        required: true
+        description: 'Unique identifier of the sales order. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '460000000039129'
+      - $ref: '#/components/parameters/organization_id'
+  /salesorders/{salesorder_id}/status/void:
+    x-mcp-group:
+      - Sales Order
+    post:
+      tags:
+        - sales-order
+      operationId: mark_sales_order_as_void
+      summary: Mark a sales order as void
+      description: Mark a sales order as void.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mark-a-sales-order-as-void-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-a-sales-order-as-void-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.CREATE
+    parameters:
+      - name: salesorder_id
+        in: path
+        required: true
+        description: 'Unique identifier of the sales order. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '460000000039129'
+      - $ref: '#/components/parameters/organization_id'
+  /salesorders/{salesorder_id}/substatus/{status_code}:
+    x-mcp-group:
+      - Sales Order
+    post:
+      tags:
+        - sales-order
+      operationId: update_sales_order_sub_status
+      summary: Update a sales order sub status
+      description: Update a sales order sub status.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 0
+                    readOnly: true
+                  message:
+                    type: string
+                    example: Sales Order status updated successfully.
+                    readOnly: true
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.CREATE
+    parameters:
+      - name: salesorder_id
+        in: path
+        required: true
+        description: 'Unique identifier of the sales order. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '460000000039129'
+      - name: status_code
+        in: path
+        required: true
+        description: Unique code of the status of a sales order.
+        schema:
+          type: string
+        example: cs_openshi
+      - $ref: '#/components/parameters/organization_id'
+  /salesorders/{salesorder_id}/email:
+    x-mcp-group:
+      - Sales Order
+    post:
+      tags:
+        - sales-order
+      operationId: email_sales_order
+      summary: Email a sales order
+      description: Email a sales order to the customer. Input json string is not mandatory. If input json string is empty, mail will be send with default mail content.
+      parameters:
+        - name: salesorder_id
+          in: query
+          description: 'ID of the Sales Order. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: '460000000039129'
+        - name: attachments
+          in: query
+          description: Attachments of the Sales Order.
+          required: false
+          schema:
+            type: string
+            format: binary
+          example: ''
+        - name: send_attachment
+          in: query
+          description: Send the sales order attachment a with the email.
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: file_name
+          in: query
+          description: Name of the file.
+          required: false
+          schema:
+            type: string
+          example: ''
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/email-a-sales-order-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/email-a-sales-order-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.CREATE
+    get:
+      tags:
+        - sales-order
+      operationId: get_sales_order_email
+      summary: Get sales order email content
+      description: Get the email content of a sales order.
+      parameters:
+        - name: email_template_id
+          in: query
+          description: 'Get the email content based on a specific email template. If this param is not inputted, then the content will be based on the email template associated with the customer. If no template is associated with the customer, then default template will be used. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: 460000000001287
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-sales-order-email-content-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.READ
+    parameters:
+      - name: salesorder_id
+        in: path
+        required: true
+        description: 'Unique identifier of the sales order. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '460000000039129'
+      - $ref: '#/components/parameters/organization_id'
+  /salesorders/{salesorder_id}/submit:
+    x-mcp-group:
+      - Sales Order
+    post:
+      tags:
+        - sales-order
+      operationId: submit_sales_order
+      summary: Submit a sales order for approval
+      description: Submit a sales order for approval.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/submit-a-sales-order-for-approval-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.CREATE
+    parameters:
+      - name: salesorder_id
+        in: path
+        required: true
+        description: 'Unique identifier of the sales order. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '460000000039129'
+      - $ref: '#/components/parameters/organization_id'
+  /salesorders/{salesorder_id}/approve:
+    x-mcp-group:
+      - Sales Order
+    post:
+      tags:
+        - sales-order
+      operationId: approve_sales_order
+      summary: Approve a sales order.
+      description: Approve a sales order.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/approve-a-sales-order-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.CREATE
+    parameters:
+      - name: salesorder_id
+        in: path
+        required: true
+        description: 'Unique identifier of the sales order. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '460000000039129'
+      - $ref: '#/components/parameters/organization_id'
+  /salesorders/pdf:
+    x-mcp-group:
+      - Sales Order
+    get:
+      tags:
+        - sales-order
+      operationId: bulk_export_sales_orders_as_pdf
+      summary: Bulk export sales orders
+      description: Maximum of 25 sales orders can be exported in a single pdf.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/bulk-export-sales-orders-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /salesorders/print:
+    x-mcp-group:
+      - Sales Order
+    get:
+      tags:
+        - sales-order
+      operationId: bulk_print_sales_orders
+      summary: Bulk print sales orders
+      description: Export sales orders as pdf and print them. Maximum of 25 sales orders can be printed.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/bulk-print-sales-orders-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /salesorders/{salesorder_id}/address/billing:
+    x-mcp-group:
+      - Sales Order
+    put:
+      tags:
+        - sales-order
+      operationId: update_sales_order_billing_address
+      summary: Update billing address
+      description: Updates the billing address for this sales order alone.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-billing-address-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-billing-address-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.UPDATE
+    parameters:
+      - name: salesorder_id
+        in: path
+        required: true
+        description: 'Unique identifier of the sales order. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '460000000039129'
+      - $ref: '#/components/parameters/organization_id'
+  /salesorders/{salesorder_id}/address/shipping:
+    x-mcp-group:
+      - Sales Order
+    put:
+      tags:
+        - sales-order
+      operationId: update_sales_order_shipping_address
+      summary: Update shipping address
+      description: Updates the shipping address for this sales order alone.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-shipping-address-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-shipping-address-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.UPDATE
+    parameters:
+      - name: salesorder_id
+        in: path
+        required: true
+        description: 'Unique identifier of the sales order. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '460000000039129'
+      - $ref: '#/components/parameters/organization_id'
+  /salesorders/templates:
+    x-mcp-group:
+      - Sales Order
+    get:
+      tags:
+        - sales-order
+      operationId: list_sales_order_templates
+      summary: List sales order templates
+      description: Get all sales order pdf templates.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-sales-order-templates-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /salesorders/{salesorder_id}/templates/{template_id}:
+    x-mcp-group:
+      - Sales Order
+    put:
+      tags:
+        - sales-order
+      operationId: update_sales_order_template
+      summary: Update sales order template
+      description: Update the pdf template associated with the sales order.
+      parameters:
+        - name: template_id
+          in: path
+          required: true
+          description: 'Unique identifier of the sales order template. Note: This value is a set of numeric characters.'
+          schema:
+            type: string
+          example: '460000000021001'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-sales-order-template-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.UPDATE
+    parameters:
+      - name: salesorder_id
+        in: path
+        required: true
+        description: 'Unique identifier of the sales order. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '460000000039129'
+      - $ref: '#/components/parameters/organization_id'
+  /salesorders/{salesorder_id}/attachment:
+    x-mcp-group:
+      - Sales Order
+    get:
+      tags:
+        - sales-order
+      operationId: get_sales_order_attachment
+      summary: Get a sales order attachment
+      description: Returns the file attached to the sales order.
+      parameters:
+        - name: preview
+          in: query
+          description: Indicates if preview of the Sales Order is required.
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: inline
+          in: query
+          description: Indicates if inline response is required.
+          required: false
+          schema:
+            type: boolean
+          example: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-sales-order-attachment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.READ
+    post:
+      tags:
+        - sales-order
+      operationId: add_sales_order_attachment
+      summary: Add attachment to a sales order
+      description: Attach a file to a sales order.
+      parameters:
+        - name: attachment
+          in: query
+          description: The file that is to be added as an Attachment in the Sales Order.
+          required: false
+          schema:
+            type: string
+            format: binary
+          example: ''
+        - name: can_send_in_mail
+          in: query
+          description: Can the file be sent in mail.
+          required: false
+          schema:
+            type: boolean
+          example: true
+        - name: doc
+          in: query
+          description: Document that is to be attached.
+          required: false
+          schema:
+            type: string
+            format: binary
+          example: ''
+        - name: totalFiles
+          in: query
+          description: Total number of files.
+          required: false
+          schema:
+            type: integer
+          example: 0
+        - name: document_ids
+          in: query
+          description: 'ID''s of the document. Note: This value is a set of numeric characters separated by comma.'
+          required: false
+          schema:
+            type: string
+          example: ''
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/add-attachment-to-a-sales-order-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.CREATE
+    put:
+      tags:
+        - sales-order
+      operationId: update_sales_order_attachment_preference
+      summary: Update attachment preference
+      description: Set whether you want to send the attached file while emailing the sales order.
+      parameters:
+        - name: can_send_in_mail
+          in: query
+          description: Can the file be sent in mail.
+          required: true
+          schema:
+            type: boolean
+          example: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-attachment-preference-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.UPDATE
+    delete:
+      tags:
+        - sales-order
+      operationId: delete_sales_order_attachment
+      summary: Delete an attachment
+      description: Delete the file attached to the sales order.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-an-attachment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.DELETE
+    parameters:
+      - name: salesorder_id
+        in: path
+        required: true
+        description: 'Unique identifier of the sales order. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '460000000039129'
+      - $ref: '#/components/parameters/organization_id'
+  /salesorders/{salesorder_id}/comments:
+    x-mcp-group:
+      - Sales Order
+    get:
+      tags:
+        - sales-order
+      operationId: list_sales_order_comments
+      summary: List sales order comments & history
+      description: Get the complete history and comments of sales order.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-sales-order-comments-and-history-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.READ
+    post:
+      tags:
+        - sales-order
+      operationId: add_sales_order_comment
+      summary: Add comment
+      description: Add a comment for a sales order.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/add-comment-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/add-comment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.CREATE
+    parameters:
+      - name: salesorder_id
+        in: path
+        required: true
+        description: 'Unique identifier of the sales order. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '460000000039129'
+      - $ref: '#/components/parameters/organization_id'
+  /salesorders/{salesorder_id}/comments/{comment_id}:
+    x-mcp-group:
+      - Sales Order
+    put:
+      tags:
+        - sales-order
+      operationId: update_sales_order_comment
+      summary: Update comment
+      description: Update existing comment of a sales order.
+      parameters:
+        - name: comment_id
+          in: path
+          required: true
+          description: 'Unique identifier of the comment. Note: This value is a set of numeric characters.'
+          schema:
+            type: string
+          example: '460000000048023'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-comment-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-comment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.UPDATE
+    delete:
+      tags:
+        - sales-order
+      operationId: delete_sales_order_comment
+      summary: Delete a comment
+      description: Delete a sales order comment.
+      parameters:
+        - name: comment_id
+          in: path
+          required: true
+          description: 'Unique identifier of the comment. Note: This value is a set of numeric characters.'
+          schema:
+            type: string
+          example: '460000000048023'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-comment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.salesorders.DELETE
+    parameters:
+      - name: salesorder_id
+        in: path
+        required: true
+        description: 'Unique identifier of the sales order. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '460000000039129'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: 'ID of the organization. Note: This value is a set of numeric characters.'
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/salesorder-response'
+    salesorder-response:
+      type: object
+      properties:
+        salesorder_id:
+          $ref: '#/components/schemas/salesorder_id'
+        documents:
+          $ref: '#/components/schemas/documents'
+        is_pre_gst:
+          $ref: '#/components/schemas/is_pre_gst'
+        gst_no:
+          $ref: '#/components/schemas/gst_no'
+        shipping_gst_no:
+          $ref: '#/components/schemas/shipping_gst_no'
+        shipping_trader_name:
+          $ref: '#/components/schemas/shipping_trader_name'
+        shipping_legal_name:
+          $ref: '#/components/schemas/shipping_legal_name'
+        gst_treatment:
+          $ref: '#/components/schemas/gst_treatment'
+        place_of_supply:
+          $ref: '#/components/schemas/place_of_supply'
+        zcrm_potential_id:
+          $ref: '#/components/schemas/zcrm_potential_id'
+        zcrm_potential_name:
+          $ref: '#/components/schemas/zcrm_potential_name'
+        salesorder_number:
+          $ref: '#/components/schemas/salesorder_number'
+        date:
+          $ref: '#/components/schemas/date'
+        status:
+          $ref: '#/components/schemas/status'
+        shipment_date:
+          $ref: '#/components/schemas/shipment_date'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        customer_name:
+          $ref: '#/components/schemas/customer_name'
+        contact_persons_associated:
+          $ref: '#/components/schemas/contact_persons_associated'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        currency_code:
+          $ref: '#/components/schemas/currency_code'
+        currency_symbol:
+          $ref: '#/components/schemas/currency_symbol'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        discount_amount:
+          $ref: '#/components/schemas/discount_amount'
+        discount:
+          $ref: '#/components/schemas/discount'
+        discount_applied_on_amount:
+          $ref: '#/components/schemas/discount_applied_on_amount'
+        is_discount_before_tax:
+          $ref: '#/components/schemas/is_discount_before_tax'
+        discount_type:
+          $ref: '#/components/schemas/discount_type'
+        estimate_id:
+          $ref: '#/components/schemas/estimate_id'
+        delivery_method:
+          $ref: '#/components/schemas/delivery_method'
+        delivery_method_id:
+          $ref: '#/components/schemas/delivery_method_id'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        location_name:
+          $ref: '#/components/schemas/location_name'
+        line_items:
+          $ref: '#/components/schemas/line_items'
+        shipping_charge:
+          $ref: '#/components/schemas/shipping_charge'
+        adjustment:
+          $ref: '#/components/schemas/adjustment'
+        adjustment_description:
+          $ref: '#/components/schemas/adjustment_description'
+        sub_total:
+          $ref: '#/components/schemas/sub_total'
+        tax_total:
+          $ref: '#/components/schemas/tax_total'
+        total:
+          $ref: '#/components/schemas/total'
+        taxes:
+          $ref: '#/components/schemas/taxes'
+        price_precision:
+          $ref: '#/components/schemas/price_precision'
+        is_emailed:
+          $ref: '#/components/schemas/is_emailed'
+        billing_address:
+          $ref: '#/components/schemas/billing_address'
+        shipping_address:
+          $ref: '#/components/schemas/shipping_address'
+        notes:
+          $ref: '#/components/schemas/notes'
+        terms:
+          $ref: '#/components/schemas/terms'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        tags:
+          $ref: '#/components/schemas/tags_response'
+        template_id:
+          $ref: '#/components/schemas/template_id'
+        template_name:
+          $ref: '#/components/schemas/template_name'
+        page_width:
+          $ref: '#/components/schemas/page_width'
+        page_height:
+          $ref: '#/components/schemas/page_height'
+        orientation:
+          $ref: '#/components/schemas/orientation'
+        template_type:
+          $ref: '#/components/schemas/template_type'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        last_modified_time:
+          $ref: '#/components/schemas/last_modified_time'
+        created_by_id:
+          $ref: '#/components/schemas/created_by_id'
+        attachment_name:
+          $ref: '#/components/schemas/attachment_name'
+        can_send_in_mail:
+          $ref: '#/components/schemas/can_send_in_mail'
+        salesperson_id:
+          $ref: '#/components/schemas/salesperson_id'
+        salesperson_name:
+          $ref: '#/components/schemas/salesperson_name'
+        merchant_id:
+          $ref: '#/components/schemas/merchant_id'
+        merchant_name:
+          $ref: '#/components/schemas/merchant_name'
+    ignore_auto_number_generation:
+      description: Ignore auto sales order number generation for this sales order. This mandates the sales order number.
+      type: boolean
+      example: false
+    customer_id:
+      description: 'Unique identifier for the customer receiving the sales order. This ID links the order to a specific customer account and determines billing information, payment terms, pricing rules, and tax calculations based on customer settings. Can be fetched from the Get Contacts API or retrieved from existing customer records in your organization. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000017138'
+    place_of_supply:
+      description: 'Place of supply for GST (Indian state/UT code where the supply is treated as made). If omitted, the contact''s place of contact may apply. Example: <code>TN</code> (Tamil Nadu).'
+      type: string
+      example: TN
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    shipping_gst_no:
+      description: GSTIN of the shipping party, when it differs from the billed customer. Used for e-Way Bill and e-Invoice compliance. Max-length [15].
+      type: string
+      example: 22AAAAA0000A1Z5
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    shipping_trader_name:
+      description: Trade name of the shipping party, when it differs from the billed customer. Used for e-Way Bill and e-Invoice compliance. Max-length [100].
+      type: string
+      example: ABC Traders
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    shipping_legal_name:
+      description: Legal name of the shipping party, when it differs from the billed customer. Used for e-Invoice compliance. Max-length [100].
+      type: string
+      example: ABC Traders Pvt Ltd
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    gst_no:
+      description: 15 digit GST identification number of the customer.
+      type: string
+      example: 22AAAAA0000A1Z5
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    gst_treatment:
+      description: Choose whether the contact is GST registered/unregistered/consumer/overseas. Allowed values are <code> business_gst </code> , <code> business_none </code> , <code> overseas </code> , <code> consumer </code>.
+      type: string
+      example: business_gst
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    product_type:
+      description: 'Type of line item for GST. Allowed values: <code>goods</code> or <code>services</code>.'
+      type: string
+      example: goods
+    hsn_or_sac:
+      description: Add HSN/SAC code for your goods/services.
+      type: string
+      example: 80540
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    location_id:
+      description: 'Unique identifier for the business location entity. Specifies the organizational location where the sales order transaction is processed, affecting tax jurisdiction calculations, inventory allocation, reporting segmentation, and location-specific business rules enforcement. Can be retrieved from the Locations API. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000038080'
+    location_name:
+      description: Name of the location.
+      type: string
+    is_pre_gst:
+      description: Applicable for transactions that fall before july 1, 2017.
+      type: boolean
+      example: false
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    salesorder_number:
+      description: Unique alphanumeric identifier for the sales order entity. Required when automatic numbering is disabled in organization settings. Must be unique within the organization and follows the configured numbering sequence pattern for sales order identification and tracking.
+      type: string
+      example: SO-00001
+    template_id:
+      description: 'Unique identifier for the PDF document template used for sales order presentation. Determines document layout, branding elements, formatting specifications, and visual presentation standards for customer-facing documents and printed materials. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000021001'
+    template_name:
+      description: Name of the template.
+      type: string
+      example: Standard Template
+    template_type:
+      description: Type of the template.
+      type: string
+      example: standard
+    date:
+      description: Date when the sales order was created in YYYY-MM-DD format. This date affects order processing timelines, delivery schedules, payment terms calculation, and appears on customer-facing documents and internal reports.
+      type: string
+      example: '2014-07-28'
+    is_update_customer:
+      description: Boolean flag indicating whether customer billing address information should be synchronized with the sales order data. When enabled, updates the customer master record with address modifications, ensuring data consistency across customer relationship management systems.
+      type: boolean
+      example: false
+    shipment_date:
+      description: Expected or actual date when goods will be shipped to the customer in YYYY-MM-DD format. Used for delivery planning, customer communication, inventory management, and tracking order fulfillment timelines.
+      type: string
+    discount:
+      description: Discount applied to the sales order, which can be either a percentage or a flat amount. For percentage discounts, the value should include the % symbol (e.g., 10%). For example, on Rs.1000, a 10% discount results in Rs.900, while a flat Rs.200 discount results in Rs.800.
+      type: string
+    is_discount_before_tax:
+      description: Boolean flag determining the sequence of discount application in tax calculations. When true, discount is applied before tax computation; when false, discount is applied after tax calculation. Affects final pricing accuracy and tax compliance reporting.
+      type: boolean
+      example: true
+    discount_type:
+      description: Classification of discount application scope within the sales order. <code>entity_level</code> applies discount to the entire order total, while <code>item_level</code> applies discount to individual line items. Determines discount calculation methodology and affects pricing structure.
+      type: string
+      example: entity_level
+    exchange_rate:
+      description: Currency conversion rate from the transaction currency to the organization base currency. Required for multi-currency transactions to ensure accurate financial reporting, profit calculations, and tax computations in the base currency denomination.
+      type: number
+      format: double
+      example: 1.233
+    is_inclusive_tax:
+      description: Used to specify whether the line item rates are inclusive or exclusive of tax.
+      type: boolean
+      example: false
+    salesperson_name:
+      description: Full name of the sales representative assigned to this sales order. Automatically populated when salesperson_id is specified.
+      type: string
+      example: John Roberts
+    index:
+      type: integer
+      description: Position index of the custom field in the sales order.
+      example: 1
+    value:
+      description: Value of the Custom Field.
+      type: string
+      example: Normal
+    label:
+      type: string
+      description: Display label of the custom field.
+      example: Priority
+    custom_fields:
+      description: Custom fields for a sales order.
+      type: array
+      items:
+        type: object
+        properties:
+          customfield_id:
+            $ref: '#/components/schemas/customfield_id'
+          index:
+            $ref: '#/components/schemas/index'
+          value:
+            $ref: '#/components/schemas/value'
+          label:
+            $ref: '#/components/schemas/label'
+    update-an-salesorder-customfield-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Custom Fields Updated Successfully
+          readOnly: true
+    item_id:
+      description: 'ID of the item. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000017088'
+    line_item_id:
+      description: 'ID of the line item. Mandatory if the existing line item has to be updated. If empty, a new line item will be created. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000039131'
+    name:
+      description: Name of the line item.
+      type: string
+      example: Hard Drive
+    description:
+      description: Description of the line item.
+      type: string
+      example: 500GB, USB 2.0 interface 1400 rpm, protective hard case.
+    line_item_category:
+      description: Category of the line item. Allowed values are <code>line_item</code>, <code>header</code> and <code>subtotal</code>. Use <code>line_item</code> for regular line items, <code>header</code> for header titles and <code>subtotal</code> for intermediate subtotal rows. For regular line items, you can send line_item or omit this field
+      type: string
+      example: line_item
+    rate:
+      description: Rate of the line item.
+      type: number
+      format: double
+      example: 120
+    unit:
+      description: Unit of the line item e.g. kgs, Nos.
+      type: string
+      example: Nos
+    quantity:
+      description: Quantity of the line item.
+      type: number
+      format: double
+      example: 40
+    tax_id:
+      description: 'ID of the tax or tax group applied. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000017094'
+    tds_tax_id:
+      description: 'ID of the TDS tax or TDS tax group applied. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000017098'
+    tax_exemption_id:
+      description: 'ID of the tax exemption applied. Note: This value is a set of numeric characters.'
+      type: string
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    estimate_id:
+      description: 'Unique identifier linking this sales order to its originating estimate document. Establishes audit trail continuity, enables estimate-to-order conversion tracking, and maintains historical reference for customer approval workflows and business process documentation. Note: This value is a set of numeric characters.'
+      type: string
+    item_order:
+      type: integer
+      description: Order of the line item in the sales order.
+      example: 0
+    tax_exemption_code:
+      description: Code of Tax Exemption that is applied.
+      type: string
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    notes:
+      description: Free-form text field containing additional information, instructions, or comments related to the sales order. This field supports internal documentation, customer-specific requirements, special handling instructions, and inter-departmental communication for order processing workflows.
+      type: string
+    notes_default:
+      description: Default Notes for the Sales Order.
+      type: string
+    terms:
+      description: Contractual terms and conditions governing the sales order transaction. Defines payment obligations, delivery specifications, warranty provisions, liability limitations, and other legal stipulations that establish the binding agreement between the organization and customer for this specific transaction.
+      type: string
+    terms_default:
+      description: Default Terms of the Sales Order.
+      type: string
+    shipping_charge:
+      description: Additional cost associated with product delivery and logistics services. Applied to the sales order total and affects final pricing calculations, profit margins, and customer billing. Supports decimal precision for accurate cost allocation.
+      type: number
+      format: double
+      example: 2
+    adjustment:
+      description: Manual modification amount applied to the sales order total for rounding corrections, special pricing arrangements, or other business-specific adjustments. Supports positive and negative values for additions or deductions from the order total.
+      type: number
+      format: double
+      example: 0.2
+    adjustment_description:
+      description: Textual explanation for the adjustment amount applied to the sales order. Provides audit trail documentation, justification for pricing modifications, and contextual information for financial reporting and compliance verification purposes.
+      type: string
+      example: Adjustment
+    delivery_method:
+      description: Specification of the transportation and delivery mechanism for order fulfillment. Determines shipping costs, delivery timelines, carrier selection, and customer communication regarding order status and tracking information.
+      type: string
+      example: Air
+    pricebook_id:
+      description: 'Unique identifier for the pricing structure applied to the sales order. Determines item rates, discount rules, and pricing policies based on customer segments, volume tiers, or promotional campaigns. Can be retrieved from the Pricebooks API. Note: This value is a set of numeric characters.'
+      type: string
+    pricebook_name:
+      type: string
+    reference_number:
+      description: External reference identifier for cross-referencing with customer purchase orders, internal tracking systems, or third-party applications. Used for order reconciliation, customer communication, and integration with external business systems and workflows.
+      type: string
+      example: REF-001
+    bcy_rate:
+      description: Rate of the line item in Base Currency.
+      type: number
+      format: double
+      example: 120
+    tax_name:
+      type: string
+    tax_type:
+      description: Type of the tax that is applied.
+      type: string
+    tax_percentage:
+      description: Tax Percentage of the tax that is applied.
+      type: number
+      format: double
+    item_total:
+      description: Total of the Line Item.
+      type: number
+      format: double
+      example: 4800
+    is_invoiced:
+      description: Indicates if it is Invoiced.
+      type: boolean
+      example: false
+    sku:
+      description: SKU of the product.
+      type: string
+    stock_on_hand:
+      description: Stock on hand for the Item.
+      type: string
+    project_id:
+      description: 'ID of the project. Note: This value is a set of numeric characters.'
+      type: string
+      example: 90300000087378
+    project_name:
+      description: Name of the project.
+      type: string
+      example: Sample Project
+    customfield_id:
+      description: 'ID of the Custom Field. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000639129'
+    item_custom_fields:
+      description: Custom fields for a sales order items.
+      type: array
+      items:
+        type: object
+        properties:
+          customfield_id:
+            $ref: '#/components/schemas/customfield_id'
+          index:
+            $ref: '#/components/schemas/index'
+          value:
+            $ref: '#/components/schemas/value'
+          label:
+            $ref: '#/components/schemas/label'
+    line_items:
+      description: Line items of a sales order.
+      type: array
+      items:
+        type: object
+        properties:
+          item_order:
+            $ref: '#/components/schemas/item_order'
+          item_id:
+            $ref: '#/components/schemas/item_id'
+          rate:
+            $ref: '#/components/schemas/rate'
+          name:
+            $ref: '#/components/schemas/name'
+          description:
+            $ref: '#/components/schemas/description'
+          quantity:
+            $ref: '#/components/schemas/quantity'
+          product_type:
+            $ref: '#/components/schemas/product_type'
+          hsn_or_sac:
+            $ref: '#/components/schemas/hsn_or_sac'
+          location_id:
+            $ref: '#/components/schemas/location_id'
+          location_name:
+            $ref: '#/components/schemas/location_name'
+          discount:
+            $ref: '#/components/schemas/discount'
+          tax_id:
+            $ref: '#/components/schemas/tax_id'
+          tds_tax_id:
+            $ref: '#/components/schemas/tds_tax_id'
+          tags:
+            $ref: '#/components/schemas/tags'
+          line_item_category:
+            $ref: '#/components/schemas/line_item_category'
+          unit:
+            $ref: '#/components/schemas/unit'
+          item_custom_fields:
+            $ref: '#/components/schemas/item_custom_fields'
+          tax_exemption_id:
+            $ref: '#/components/schemas/tax_exemption_id'
+          tax_exemption_code:
+            $ref: '#/components/schemas/tax_exemption_code'
+          project_id:
+            $ref: '#/components/schemas/project_id'
+    salesorder_id:
+      description: 'ID of the Sales Order. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000039129'
+    status:
+      description: Status of the Sales Order.
+      type: string
+      example: open
+    customer_name:
+      description: Name of the customer associated with the Sales Order.
+      type: string
+      example: SAF Instruments Inc
+    currency_id:
+      description: 'Unique identifier for the currency used in the sales order transaction. Determines pricing display, exchange rate calculations, and affects financial reporting. If not specified, the organization default currency will be used automatically. Can be fetched from the Get Currencies API or retrieved from your organization currency settings. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000000097'
+    currency_code:
+      description: Code of the Currency involved in the Sales Order.
+      type: string
+      example: USD
+    currency_symbol:
+      type: string
+      example: $
+    discount_amount:
+      type: number
+      format: double
+      example: 0
+    delivery_method_id:
+      type: string
+      description: 'Unique identifier for the delivery method. Note: This value is a set of numeric characters.'
+    sub_total:
+      description: Sub Total of the Sales Order.
+      type: number
+      format: double
+      example: 11800
+    tax_total:
+      type: number
+      format: double
+      example: 600
+    total:
+      description: Total of the Sales Order.
+      type: number
+      format: double
+      example: 12400
+    tax_amount:
+      type: number
+      format: double
+      example: 600
+    taxes:
+      type: array
+      items:
+        type: object
+        properties:
+          tax_id:
+            $ref: '#/components/schemas/tax_id'
+          tax_name:
+            $ref: '#/components/schemas/tax_name'
+          tax_amount:
+            $ref: '#/components/schemas/tax_amount'
+    sub_statuses:
+      type: array
+      items:
+        type: object
+        properties:
+          status_id:
+            type: string
+            description: 'Unique identifier for the sales order status. Note: This value is a set of numeric characters.'
+            example: '460000000000097'
+          status_code:
+            type: string
+            example: cs_openshi
+          parent_status:
+            $ref: '#/components/schemas/status'
+          description:
+            type: string
+            example: Packed is shipped.
+          display_name:
+            type: string
+            example: Open Shipped
+          label_name:
+            type: string
+            example: cs_openshi
+          color_code:
+            type: string
+            example: 208eff
+    price_precision:
+      type: integer
+      example: 2
+    is_emailed:
+      description: Indicates if the Sales Order is emailed to the customer.
+      type: boolean
+      example: false
+    address:
+      description: Address.
+      type: string
+      example: |-
+        B-1104, 11F, 
+        Horizon International Tower, 
+        No. 6, ZhiChun Road, HaiDian District
+    city:
+      description: City of the address.
+      type: string
+      example: Beijing
+    state:
+      description: State of the Address.
+      type: string
+      example: Beijing
+    zip:
+      description: ZIP Code of the Address.
+      type: string
+      example: '1000881'
+    country:
+      description: Country of the Address.
+      type: string
+      example: China
+    fax:
+      description: Fax Number.
+      type: string
+      example: +86-10-82637827
+    attention:
+      type: string
+      description: Attention name or department for the shipping address.
+    is_one_off_address:
+      type: boolean
+      description: Indicates whether the address is a one-time address not saved to the customer record.
+      example: true
+    street2:
+      type: string
+      example: McMillan Avenue
+    billing_address:
+      type: object
+      properties:
+        address:
+          $ref: '#/components/schemas/address'
+        street2:
+          $ref: '#/components/schemas/street2'
+        city:
+          $ref: '#/components/schemas/city'
+        state:
+          $ref: '#/components/schemas/state'
+        zip:
+          $ref: '#/components/schemas/zip'
+        country:
+          $ref: '#/components/schemas/country'
+        fax:
+          $ref: '#/components/schemas/fax'
+        attention:
+          $ref: '#/components/schemas/attention'
+    shipping_address:
+      type: object
+      properties:
+        address:
+          $ref: '#/components/schemas/address'
+        street2:
+          $ref: '#/components/schemas/street2'
+        city:
+          $ref: '#/components/schemas/city'
+        state:
+          $ref: '#/components/schemas/state'
+        zip:
+          $ref: '#/components/schemas/zip'
+        country:
+          $ref: '#/components/schemas/country'
+        fax:
+          $ref: '#/components/schemas/fax'
+        attention:
+          $ref: '#/components/schemas/attention'
+    created_time:
+      description: Creation Time of the Sales Order.
+      type: string
+      example: 2014-07-28T08:29:07+0530
+    last_modified_time:
+      description: Last Modified time of the Sales Order.
+      type: string
+      example: 2014-08-25T11:23:26+0530
+    attachment_name:
+      type: string
+    can_send_in_mail:
+      description: Can the file be sent in mail.
+      type: boolean
+      example: true
+    salesperson_id:
+      description: 'Unique identifier for the salesperson responsible for this sales order. Links the order to a specific sales representative customer relationship management, and sales reporting purposes. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000000097'
+    sort_column:
+      description: Specify the column field for sorting sales order results. Available options include <code>customer_name</code>, <code>salesorder_number</code>, <code>shipment_date</code>, <code>last_modified_time</code>, <code>reference_number</code>, <code>total</code>, <code>date</code>, and <code>created_time</code>.
+      type: string
+      example: created_time
+    search_text:
+      description: General search parameter for cross-field text matching across sales order number, reference number, and customer name fields. Enables unified search functionality for quick order identification and customer order lookup operations.
+      type: string
+    filter_by:
+      description: Filter sales orders by predefined status constants. Available values include <code>Status.All</code>, <code>Status.Open</code>, <code>Status.Draft</code>, <code>Status.OverDue</code>, <code>Status.PartiallyInvoiced</code>, <code>Status.Invoiced</code>, <code>Status.Void</code>, and <code>Status.Closed</code>.
+      type: string
+    item_name:
+      description: 'Filter sales orders by line item name using various matching operators. Available variants include <code>item_name_startswith</code>, <code>item_name_not_in</code>, <code>item_name_in</code>, and <code>item_name_contains</code>. Maximum search length: 100 characters.'
+      type: string
+    item_description:
+      description: 'Filter sales orders by line item description text using various matching operators. Available variants include <code>item_description_startswith</code>, <code>item_description_not_in</code>, <code>item_description_in</code>, and <code>item_description_contains</code>. Maximum search length: 100 characters.'
+      type: string
+    page:
+      type: integer
+      example: 1
+    per_page:
+      type: integer
+      example: 10
+    has_more_page:
+      type: boolean
+      example: false
+    report_name:
+      type: string
+      example: Sales Orders
+    applied_filter:
+      type: string
+      example: Status.All
+    sort_order:
+      type: string
+      example: D
+    page_context:
+      type: object
+      properties:
+        page:
+          $ref: '#/components/schemas/page'
+        per_page:
+          $ref: '#/components/schemas/per_page'
+        has_more_page:
+          $ref: '#/components/schemas/has_more_page'
+        report_name:
+          $ref: '#/components/schemas/report_name'
+        applied_filter:
+          $ref: '#/components/schemas/applied_filter'
+        sort_column:
+          $ref: '#/components/schemas/sort_column'
+        sort_order:
+          $ref: '#/components/schemas/sort_order'
+    print:
+      description: Print the exported pdf.
+      type: boolean
+      example: false
+    accept:
+      description: 'Get the details of a particular sales order in formats such as json/ pdf/ html. Default format is json. Allowed Values: <code>json</code>, <code>csv</code> , <code>xml</code>, <code>xls</code>, <code>xlsx</code>, <code>pdf</code>, <code>jhtml</code> and <code>html</code>.'
+      type: string
+    send_attachment:
+      description: Send the sales order attachment a with the email.
+      type: boolean
+      example: false
+    file_name:
+      description: Name of the file.
+      type: string
+    send_from_org_email_id:
+      description: Indicates whether to trigger the email from the organization's email address.
+      type: boolean
+      example: true
+    to_mail_ids:
+      description: Array of email address of the recipients.
+      type: array
+      items:
+        type: string
+      example:
+        - john@safInstruments.com
+    cc_mail_ids:
+      description: Array of email address of the recipients to be CC ed.
+      type: array
+      items:
+        type: string
+      example:
+        - smith@safInstruments.com
+    bcc_mail_ids:
+      description: Array of email address of the recipients to be BCC ed.
+      type: array
+      items:
+        type: string
+      example:
+        - mark@safInstruments.com
+    subject:
+      description: Subject of the mail.
+      type: string
+      example: 'Sales Order from Zylker Inc (Sales Order #: SO-00001)'
+    body:
+      description: Body of the mail.
+      type: string
+      example: '<br/>Dear SAF Instruments Inc,&nbsp;<br/><br/>Thanks for your interest in our services. Please find our sales order attached with this mail.<br/><br/> An overview of the sales order is available below for your reference: &nbsp;<br/><br/> ----------------------------------------------------------------------------------------<br/> <h2>Sales Order&nbsp;# :&nbsp;SO-00001</h2><br/> ----------------------------------------------------------------------------------------<br/> <b>&nbsp;Order Date &nbsp; &nbsp;&nbsp;&nbsp;: &nbsp;28 Jul 2014</b><br/><b>&nbsp;Amount &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; : &nbsp;&nbsp;₹1,24,000.00 (INR)</b><br/>----------------------------------------------------------------------------------------<br/><br/><span>Assuring you of our best services at all times.</span><br/><br/><br/>Regards,<br/><br/>John<br/>Zylker Inc<br/><br/><br/>'
+    email_template_id:
+      description: 'Get the email content based on a specific email template. If this param is not inputted, then the content will be based on the email template associated with the customer. If no template is associated with the customer, then default template will be used. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000001287
+    salesorder_ids:
+      description: 'Comma separated sales order ids which are to be export as pdf. Note: This value is a set of numeric characters separated by comma.'
+      type: string
+      example: 460108000000072000
+    templates:
+      type: array
+      items:
+        type: object
+        properties:
+          template_name:
+            $ref: '#/components/schemas/template_name'
+          template_id:
+            $ref: '#/components/schemas/template_id'
+          template_type:
+            $ref: '#/components/schemas/template_type'
+    preview:
+      description: Indicates if preview of the Sales Order is required.
+      type: boolean
+      example: false
+    comment_id:
+      type: string
+      description: 'Unique identifier for the comment associated with the sales order. Note: This value is a set of numeric characters.'
+      example: '460000000048023'
+    commented_by_id:
+      description: 'The ID of customer who caused the commented. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000017003'
+    commented_by:
+      description: The name of User who caused the comment.
+      type: string
+      example: John
+    comment_type:
+      description: Type of the Comment.
+      type: string
+      example: system
+    date_description:
+      description: Description of the Date.
+      type: string
+      example: 6 minutes ago
+    time:
+      description: Time of the Comment.
+      type: string
+      example: 2:12 PM
+    operation_type:
+      description: Type of Operation that caused the comment.
+      type: string
+      example: Added
+    transaction_id:
+      description: 'ID of the transaction that caused the comment. Note: This value is a set of numeric characters.'
+      type: string
+    transaction_type:
+      description: Type of Transaction that caused the comment.
+      type: string
+      example: salesorder
+    documents:
+      type: array
+      description: Documents attached to the sales order.
+      items:
+        type: string
+      example:
+        - document_id
+        - file_name
+    zcrm_potential_id:
+      description: 'Unique identifier linking the sales order to a Zoho CRM potential record. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000033001'
+    zcrm_potential_name:
+      description: Descriptive name of the Zoho CRM potential record associated with this sales order.
+      type: string
+    discount_applied_on_amount:
+      type: integer
+      example: 0
+    page_width:
+      type: string
+      example: 8.27in
+    page_height:
+      type: string
+      example: 11.69in
+    orientation:
+      type: string
+      example: portrait
+    created_by_id:
+      type: string
+      description: 'Unique identifier for the user who created the sales order. Note: This value is a set of numeric characters.'
+      example: '460000000053001'
+    bcc_mails:
+      type: array
+      items:
+        type: string
+    error_list:
+      type: array
+      items:
+        type: string
+    bcc_mails_str:
+      type: string
+    entity_id:
+      type: string
+      description: 'Unique identifier for the entity associated with the sales order. Note: This value is a set of numeric characters.'
+      example: '460000000058039'
+    cc_mails_list:
+      type: array
+      items:
+        type: string
+      example: []
+    organization_contact_id:
+      type: string
+      description: 'Unique identifier for the organization contact associated with the sales order. Note: This value is a set of numeric characters.'
+      example: '460000000053003'
+    user_name:
+      type: string
+    selected:
+      type: boolean
+      example: true
+    email:
+      type: string
+    is_org_email_id:
+      type: boolean
+      example: true
+    file_name_without_extension:
+      type: string
+      example: SO-00001
+    to_mails_str:
+      type: string
+    cc_mails_str:
+      type: string
+    from_email:
+      type: string
+    from_address:
+      type: string
+    from_emails:
+      type: array
+      items:
+        type: object
+        properties:
+          organization_contact_id:
+            $ref: '#/components/schemas/organization_contact_id'
+          user_name:
+            $ref: '#/components/schemas/user_name'
+          selected:
+            $ref: '#/components/schemas/selected'
+          email:
+            $ref: '#/components/schemas/email'
+          is_org_email_id:
+            $ref: '#/components/schemas/is_org_email_id'
+    emailtemplates:
+      type: array
+      items:
+        type: object
+        properties:
+          selected:
+            $ref: '#/components/schemas/selected'
+          name:
+            $ref: '#/components/schemas/name'
+          email_template_id:
+            $ref: '#/components/schemas/email_template_id'
+    emailtemplate_documents:
+      type: array
+      items:
+        type: string
+    contact_person_name:
+      description: Name of the Contact Person.
+      type: string
+      example: David
+    first_name:
+      description: First Name of the Contact Person.
+      type: string
+      example: David
+    contact_person_email:
+      description: Email ID of the Contact Person.
+      type: string
+      example: willsmith@zylker.org
+    phone:
+      description: Phone Number of the Contact Person.
+      type: string
+      example: +91-44-4567-8900
+    last_name:
+      description: Last name of the Contact Person.
+      type: string
+      example: John
+    salutation:
+      description: Salutation of the Contact Person.
+      type: string
+      example: Mr
+    contact_person_id:
+      description: 'Unique ID of the Contact Person. Note: This value is a set of numeric characters.'
+      type: string
+      example: 982000000567003
+    mobile:
+      description: Mobile Number of the Contact Person.
+      type: string
+      example: +91-9876543210
+    is_email_enabled:
+      description: Used to check if Email communication preference is enabled for the contact person at transaction level.
+      type: boolean
+      example: true
+    is_sms_enabled:
+      description: Used to check if SMS communication preference is enabled for the contact person at transaction level.
+      type: boolean
+      example: true
+    is_whatsapp_enabled:
+      description: Used to check if WhatsApp communication preference is enabled for the contact person at transaction level.
+      type: boolean
+      example: true
+    communication_preference:
+      description: Preferred modes of communication for the contact person at transaction level.
+      type: object
+      properties:
+        is_email_enabled:
+          $ref: '#/components/schemas/is_email_enabled'
+        is_whatsapp_enabled:
+          $ref: '#/components/schemas/is_whatsapp_enabled'
+    contact_persons_associated:
+      description: Contact Persons associated with the transaction.
+      type: array
+      items:
+        type: object
+        properties:
+          contact_person_id:
+            $ref: '#/components/schemas/contact_person_id'
+          contact_person_name:
+            $ref: '#/components/schemas/contact_person_name'
+          first_name:
+            $ref: '#/components/schemas/first_name'
+          last_name:
+            $ref: '#/components/schemas/last_name'
+          contact_person_email:
+            $ref: '#/components/schemas/contact_person_email'
+          phone:
+            $ref: '#/components/schemas/phone'
+          mobile:
+            $ref: '#/components/schemas/mobile'
+          communication_preference:
+            $ref: '#/components/schemas/communication_preference'
+    contact_persons_associated_payload:
+      description: Contact Persons associated with the transaction.
+      type: array
+      items:
+        type: object
+        properties:
+          contact_person_id:
+            $ref: '#/components/schemas/contact_person_id'
+          communication_preference:
+            $ref: '#/components/schemas/communication_preference'
+    entity_level:
+      example: null
+    to_contacts:
+      type: array
+      items:
+        type: object
+        properties:
+          first_name:
+            $ref: '#/components/schemas/first_name'
+          selected:
+            $ref: '#/components/schemas/selected'
+          phone:
+            $ref: '#/components/schemas/phone'
+          email:
+            $ref: '#/components/schemas/email'
+          last_name:
+            $ref: '#/components/schemas/last_name'
+          salutation:
+            $ref: '#/components/schemas/salutation'
+          contact_person_id:
+            $ref: '#/components/schemas/contact_person_id'
+          mobile:
+            $ref: '#/components/schemas/mobile'
+    data:
+      type: array
+      items:
+        type: object
+        properties:
+          bcc_mails:
+            $ref: '#/components/schemas/bcc_mails'
+          body:
+            $ref: '#/components/schemas/body'
+          error_list:
+            $ref: '#/components/schemas/error_list'
+          bcc_mails_str:
+            $ref: '#/components/schemas/bcc_mails_str'
+          documents:
+            $ref: '#/components/schemas/documents'
+          subject:
+            $ref: '#/components/schemas/subject'
+          customer_name:
+            $ref: '#/components/schemas/customer_name'
+          entity_id:
+            $ref: '#/components/schemas/entity_id'
+          cc_mails_list:
+            $ref: '#/components/schemas/cc_mails_list'
+          file_name:
+            $ref: '#/components/schemas/file_name'
+          from_emails:
+            $ref: '#/components/schemas/from_emails'
+          file_name_without_extension:
+            $ref: '#/components/schemas/file_name_without_extension'
+          to_mails_str:
+            $ref: '#/components/schemas/to_mails_str'
+          cc_mails_str:
+            $ref: '#/components/schemas/cc_mails_str'
+          from_email:
+            $ref: '#/components/schemas/from_email'
+          from_address:
+            $ref: '#/components/schemas/from_address'
+          emailtemplates:
+            $ref: '#/components/schemas/emailtemplates'
+          to_contacts:
+            $ref: '#/components/schemas/to_contacts'
+          attachment_name:
+            $ref: '#/components/schemas/attachment_name'
+          emailtemplate_documents:
+            $ref: '#/components/schemas/emailtemplate_documents'
+          customer_id:
+            $ref: '#/components/schemas/customer_id'
+    salesorder:
+      type: array
+      items:
+        $ref: '#/components/schemas/salesorder-response'
+    salesorders:
+      type: array
+      items:
+        type: object
+        properties:
+          salesorder:
+            $ref: '#/components/schemas/salesorder'
+    comment:
+      type: array
+      items:
+        type: object
+        properties:
+          salesorder_id:
+            $ref: '#/components/schemas/salesorder_id'
+          comment_id:
+            $ref: '#/components/schemas/comment_id'
+          description:
+            $ref: '#/components/schemas/description'
+          commented_by_id:
+            $ref: '#/components/schemas/commented_by_id'
+          commented_by:
+            $ref: '#/components/schemas/commented_by'
+          comment_type:
+            $ref: '#/components/schemas/comment_type'
+          date:
+            $ref: '#/components/schemas/date'
+          date_description:
+            $ref: '#/components/schemas/date_description'
+          time:
+            $ref: '#/components/schemas/time'
+          operation_type:
+            $ref: '#/components/schemas/operation_type'
+          transaction_id:
+            $ref: '#/components/schemas/transaction_id'
+          transaction_type:
+            $ref: '#/components/schemas/transaction_type'
+    comments:
+      type: array
+      items:
+        type: object
+        properties:
+          comment:
+            $ref: '#/components/schemas/comment'
+    totalFiles:
+      description: Total number of files.
+      type: integer
+      example: 0
+    doc:
+      description: Document that is to be attached.
+      type: string
+      format: binary
+    billing_address_id:
+      description: 'Unique identifier referencing the customer billing address entity. Determines the address used for invoice generation, payment processing, tax jurisdiction calculations, and financial record-keeping. Must correspond to a valid address record associated with the specified customer account. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000032174
+    shipping_address_id:
+      description: 'Unique identifier referencing the customer shipping address entity. Specifies the delivery destination for goods fulfillment, logistics planning, shipping cost calculations, and delivery confirmation processes. Must correspond to a valid address record within the customer address registry. Note: This value is a set of numeric characters.'
+      type: string
+    crm_owner_id:
+      type: string
+      description: 'Unique identifier for the CRM owner associated with the sales order. Note: This value is a set of numeric characters.'
+    crm_custom_reference_id:
+      type: string
+      description: 'Custom reference identifier for CRM integration purposes. Note: This value is a set of numeric characters.'
+    shipment_days:
+      description: Days of Shipment for the Order.
+      type: integer
+      example: 2
+    bcy_total:
+      description: Total of Sales Order in Base Currency.
+      type: number
+      format: double
+      example: 400
+    has_attachment:
+      description: Indicates if the Sales Order has attachment.
+      type: boolean
+      example: false
+    is_taxable:
+      description: Indicates if the Sales Order is taxable.
+      type: boolean
+      example: false
+    tax_source:
+      description: Source of the Tax applied.
+      type: string
+    product_exemption_id:
+      description: 'ID of the Exemption of the line item in the Sales Order. Note: This value is a set of numeric characters.'
+      type: string
+    product_exemption_code:
+      description: Code of the Exemption of the line item in the Sales Order.
+      type: string
+    item_total_inclusive_of_tax:
+      description: Total of the Line Item, inclusive of tax.
+      type: number
+      format: double
+      example: 48
+    image_id:
+      description: 'ID of the Image of the Item. Note: This value is a set of numeric characters.'
+      type: string
+    image_name:
+      description: Name of the Image of the Item.
+      type: string
+    image_type:
+      description: Type of the image of the item.
+      type: string
+    attachments:
+      description: Attachments for the E-Mail.
+    from_address_id:
+      description: From Address of the Email Address.
+      type: string
+      example: johnRoberts@safInstrument.com
+    invoice_id:
+      description: 'ID of the invoice. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000028192
+    toprint:
+      description: Indicates if Sales Order is to be printed.
+      type: boolean
+      example: true
+    inline:
+      description: Indicates if inline response is required.
+      type: boolean
+      example: false
+    document_ids:
+      description: 'ID''s of the document. Note: This value is a set of numeric characters separated by comma.'
+      type: string
+    merchant_id:
+      description: 'ID of the merchant. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000000597'
+    merchant_name:
+      description: Name of the merchant.
+      type: string
+      example: John Louis
+    reason:
+      description: 'Reason to convert sales order as void . <code>Maximum Length: 500 </code>'
+      type: string
+      example: ' '
+    customview_id:
+      description: 'ID of the customview. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000004000597'
+    attachment:
+      description: The file that is to be added as an Attachment in the Sales Order.
+      type: string
+      format: binary
+    create-a-sales-order-request:
+      required:
+        - customer_id
+      type: object
+      properties:
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        contact_persons_associated:
+          $ref: '#/components/schemas/contact_persons_associated_payload'
+        date:
+          $ref: '#/components/schemas/date'
+        shipment_date:
+          $ref: '#/components/schemas/shipment_date'
+        custom_fields:
+          description: Custom fields for a sales order.
+          type: array
+          items:
+            type: object
+            properties:
+              customfield_id:
+                $ref: '#/components/schemas/customfield_id'
+              value:
+                $ref: '#/components/schemas/value'
+        tags:
+          $ref: '#/components/schemas/tags'
+        place_of_supply:
+          $ref: '#/components/schemas/place_of_supply'
+        salesperson_id:
+          $ref: '#/components/schemas/salesperson_id'
+        merchant_id:
+          $ref: '#/components/schemas/merchant_id'
+        gst_treatment:
+          $ref: '#/components/schemas/gst_treatment'
+        gst_no:
+          $ref: '#/components/schemas/gst_no'
+        shipping_gst_no:
+          $ref: '#/components/schemas/shipping_gst_no'
+        shipping_trader_name:
+          $ref: '#/components/schemas/shipping_trader_name'
+        shipping_legal_name:
+          $ref: '#/components/schemas/shipping_legal_name'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        line_items:
+          description: Line items of a sales order.
+          type: array
+          items:
+            type: object
+            properties:
+              item_order:
+                $ref: '#/components/schemas/item_order'
+              item_id:
+                $ref: '#/components/schemas/item_id'
+              rate:
+                $ref: '#/components/schemas/rate'
+              name:
+                $ref: '#/components/schemas/name'
+              description:
+                $ref: '#/components/schemas/description'
+              quantity:
+                $ref: '#/components/schemas/quantity'
+              product_type:
+                $ref: '#/components/schemas/product_type'
+              hsn_or_sac:
+                $ref: '#/components/schemas/hsn_or_sac'
+              location_id:
+                $ref: '#/components/schemas/location_id'
+              discount:
+                $ref: '#/components/schemas/discount'
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              tds_tax_id:
+                $ref: '#/components/schemas/tds_tax_id'
+              tags:
+                $ref: '#/components/schemas/tags'
+              line_item_category:
+                $ref: '#/components/schemas/line_item_category'
+              unit:
+                $ref: '#/components/schemas/unit'
+              item_custom_fields:
+                description: Custom fields for a sales order items.
+                type: array
+                items:
+                  type: object
+                  properties:
+                    customfield_id:
+                      $ref: '#/components/schemas/customfield_id'
+                    value:
+                      $ref: '#/components/schemas/value'
+              tax_exemption_id:
+                $ref: '#/components/schemas/tax_exemption_id'
+              tax_exemption_code:
+                $ref: '#/components/schemas/tax_exemption_code'
+              project_id:
+                $ref: '#/components/schemas/project_id'
+        notes:
+          $ref: '#/components/schemas/notes'
+        terms:
+          $ref: '#/components/schemas/terms'
+        billing_address_id:
+          $ref: '#/components/schemas/billing_address_id'
+        shipping_address_id:
+          $ref: '#/components/schemas/shipping_address_id'
+        crm_owner_id:
+          $ref: '#/components/schemas/crm_owner_id'
+        crm_custom_reference_id:
+          $ref: '#/components/schemas/crm_custom_reference_id'
+        salesorder_number:
+          $ref: '#/components/schemas/salesorder_number'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        is_update_customer:
+          $ref: '#/components/schemas/is_update_customer'
+        discount:
+          $ref: '#/components/schemas/discount'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        salesperson_name:
+          $ref: '#/components/schemas/salesperson_name'
+        notes_default:
+          $ref: '#/components/schemas/notes_default'
+        terms_default:
+          $ref: '#/components/schemas/terms_default'
+        tax_id:
+          description: 'Tax ID for the Sales Order. Note: This value is a set of numeric characters.'
+          type: string
+          example: '460000000017094'
+        tax_exemption_id:
+          $ref: '#/components/schemas/tax_exemption_id'
+        tax_exemption_code:
+          $ref: '#/components/schemas/tax_exemption_code'
+        shipping_charge:
+          $ref: '#/components/schemas/shipping_charge'
+        adjustment:
+          $ref: '#/components/schemas/adjustment'
+        delivery_method:
+          $ref: '#/components/schemas/delivery_method'
+        estimate_id:
+          description: 'ID of the estimate associated with the Sales Order. Note: This value is a set of numeric characters.'
+          type: string
+        is_discount_before_tax:
+          $ref: '#/components/schemas/is_discount_before_tax'
+        discount_type:
+          $ref: '#/components/schemas/discount_type'
+        adjustment_description:
+          $ref: '#/components/schemas/adjustment_description'
+        pricebook_id:
+          $ref: '#/components/schemas/pricebook_id'
+        template_id:
+          $ref: '#/components/schemas/template_id'
+        documents:
+          $ref: '#/components/schemas/documents'
+        zcrm_potential_id:
+          $ref: '#/components/schemas/zcrm_potential_id'
+        zcrm_potential_name:
+          $ref: '#/components/schemas/zcrm_potential_name'
+    create-a-sales-order-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Sales Order Created Successfully.
+          readOnly: true
+        salesorder:
+          $ref: '#/components/schemas/salesorder'
+    list-sales-orders-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        salesorders:
+          type: array
+          items:
+            type: object
+            properties:
+              salesorder_id:
+                $ref: '#/components/schemas/salesorder_id'
+              zcrm_potential_id:
+                $ref: '#/components/schemas/zcrm_potential_id'
+              zcrm_potential_name:
+                $ref: '#/components/schemas/zcrm_potential_name'
+              customer_name:
+                $ref: '#/components/schemas/customer_name'
+              customer_id:
+                $ref: '#/components/schemas/customer_id'
+              status:
+                $ref: '#/components/schemas/status'
+              salesorder_number:
+                $ref: '#/components/schemas/salesorder_number'
+              reference_number:
+                $ref: '#/components/schemas/reference_number'
+              date:
+                $ref: '#/components/schemas/date'
+              shipment_date:
+                $ref: '#/components/schemas/shipment_date'
+              shipment_days:
+                $ref: '#/components/schemas/shipment_days'
+              currency_id:
+                $ref: '#/components/schemas/currency_id'
+              currency_code:
+                $ref: '#/components/schemas/currency_code'
+              total:
+                $ref: '#/components/schemas/total'
+              sub_total:
+                $ref: '#/components/schemas/sub_total'
+              bcy_total:
+                $ref: '#/components/schemas/bcy_total'
+              created_time:
+                $ref: '#/components/schemas/created_time'
+              last_modified_time:
+                $ref: '#/components/schemas/last_modified_time'
+              is_emailed:
+                $ref: '#/components/schemas/is_emailed'
+              has_attachment:
+                $ref: '#/components/schemas/has_attachment'
+              custom_fields:
+                $ref: '#/components/schemas/custom_fields'
+    update-a-sales-order-request:
+      required:
+        - customer_id
+      type: object
+      properties:
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        contact_persons_associated:
+          $ref: '#/components/schemas/contact_persons_associated_payload'
+        date:
+          $ref: '#/components/schemas/date'
+        shipment_date:
+          $ref: '#/components/schemas/shipment_date'
+        custom_fields:
+          description: Custom fields for a sales order.
+          type: array
+          items:
+            type: object
+            properties:
+              customfield_id:
+                $ref: '#/components/schemas/customfield_id'
+              value:
+                $ref: '#/components/schemas/value'
+        place_of_supply:
+          $ref: '#/components/schemas/place_of_supply'
+        salesperson_id:
+          $ref: '#/components/schemas/salesperson_id'
+        merchant_id:
+          $ref: '#/components/schemas/merchant_id'
+        gst_treatment:
+          $ref: '#/components/schemas/gst_treatment'
+        gst_no:
+          $ref: '#/components/schemas/gst_no'
+        shipping_gst_no:
+          $ref: '#/components/schemas/shipping_gst_no'
+        shipping_trader_name:
+          $ref: '#/components/schemas/shipping_trader_name'
+        shipping_legal_name:
+          $ref: '#/components/schemas/shipping_legal_name'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        line_items:
+          description: Line items of a sales order.
+          type: array
+          items:
+            type: object
+            properties:
+              item_order:
+                $ref: '#/components/schemas/item_order'
+              line_item_id:
+                $ref: '#/components/schemas/line_item_id'
+              item_id:
+                $ref: '#/components/schemas/item_id'
+              rate:
+                $ref: '#/components/schemas/rate'
+              name:
+                $ref: '#/components/schemas/name'
+              description:
+                $ref: '#/components/schemas/description'
+              quantity:
+                $ref: '#/components/schemas/quantity'
+              discount:
+                $ref: '#/components/schemas/discount'
+              tax_id:
+                description: 'Tax ID for the Sales Order. Note: This value is a set of numeric characters.'
+                type: string
+                example: '460000000017094'
+              tds_tax_id:
+                $ref: '#/components/schemas/tds_tax_id'
+              tags:
+                $ref: '#/components/schemas/tags'
+              line_item_category:
+                $ref: '#/components/schemas/line_item_category'
+              unit:
+                $ref: '#/components/schemas/unit'
+              item_custom_fields:
+                description: Custom fields for a sales order items.
+                type: array
+                items:
+                  type: object
+                  properties:
+                    customfield_id:
+                      $ref: '#/components/schemas/customfield_id'
+                    value:
+                      $ref: '#/components/schemas/value'
+              tax_exemption_id:
+                $ref: '#/components/schemas/tax_exemption_id'
+              tax_exemption_code:
+                $ref: '#/components/schemas/tax_exemption_code'
+              project_id:
+                $ref: '#/components/schemas/project_id'
+              location_id:
+                $ref: '#/components/schemas/location_id'
+        notes:
+          $ref: '#/components/schemas/notes'
+        terms:
+          $ref: '#/components/schemas/terms'
+        billing_address_id:
+          $ref: '#/components/schemas/billing_address_id'
+        shipping_address_id:
+          $ref: '#/components/schemas/shipping_address_id'
+        crm_owner_id:
+          $ref: '#/components/schemas/crm_owner_id'
+        crm_custom_reference_id:
+          $ref: '#/components/schemas/crm_custom_reference_id'
+        salesorder_number:
+          $ref: '#/components/schemas/salesorder_number'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        is_update_customer:
+          $ref: '#/components/schemas/is_update_customer'
+        discount:
+          $ref: '#/components/schemas/discount'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        salesperson_name:
+          $ref: '#/components/schemas/salesperson_name'
+        notes_default:
+          $ref: '#/components/schemas/notes_default'
+        terms_default:
+          $ref: '#/components/schemas/terms_default'
+        tax_id:
+          description: 'Tax ID for the Sales Order. Note: This value is a set of numeric characters.'
+          type: string
+          example: '460000000017094'
+        tax_exemption_id:
+          $ref: '#/components/schemas/tax_exemption_id'
+        tax_exemption_code:
+          $ref: '#/components/schemas/tax_exemption_code'
+        shipping_charge:
+          $ref: '#/components/schemas/shipping_charge'
+        adjustment:
+          $ref: '#/components/schemas/adjustment'
+        delivery_method:
+          $ref: '#/components/schemas/delivery_method'
+        is_discount_before_tax:
+          $ref: '#/components/schemas/is_discount_before_tax'
+        discount_type:
+          $ref: '#/components/schemas/discount_type'
+        adjustment_description:
+          $ref: '#/components/schemas/adjustment_description'
+        pricebook_id:
+          $ref: '#/components/schemas/pricebook_id'
+        template_id:
+          $ref: '#/components/schemas/template_id'
+        documents:
+          $ref: '#/components/schemas/documents'
+        zcrm_potential_id:
+          $ref: '#/components/schemas/zcrm_potential_id'
+        zcrm_potential_name:
+          $ref: '#/components/schemas/zcrm_potential_name'
+        tags:
+          $ref: '#/components/schemas/tags'
+    update-a-sales-order-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Sales Order Updated Successfully.
+          readOnly: true
+        salesorder:
+          $ref: '#/components/schemas/salesorder'
+    get-a-sales-order-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        salesorder:
+          type: array
+          items:
+            type: object
+            properties:
+              customer_id:
+                $ref: '#/components/schemas/customer_id'
+              billing_address_id:
+                $ref: '#/components/schemas/billing_address_id'
+              shipping_address_id:
+                $ref: '#/components/schemas/shipping_address_id'
+              is_pre_gst:
+                $ref: '#/components/schemas/is_pre_gst'
+              gst_no:
+                $ref: '#/components/schemas/gst_no'
+              shipping_gst_no:
+                $ref: '#/components/schemas/shipping_gst_no'
+              shipping_trader_name:
+                $ref: '#/components/schemas/shipping_trader_name'
+              shipping_legal_name:
+                $ref: '#/components/schemas/shipping_legal_name'
+              gst_treatment:
+                $ref: '#/components/schemas/gst_treatment'
+              place_of_supply:
+                $ref: '#/components/schemas/place_of_supply'
+              crm_owner_id:
+                $ref: '#/components/schemas/crm_owner_id'
+              crm_custom_reference_id:
+                $ref: '#/components/schemas/crm_custom_reference_id'
+              zcrm_potential_id:
+                $ref: '#/components/schemas/zcrm_potential_id'
+              is_update_customer:
+                $ref: '#/components/schemas/is_update_customer'
+              contact_persons_associated:
+                $ref: '#/components/schemas/contact_persons_associated'
+              salesorder_number:
+                $ref: '#/components/schemas/salesorder_number'
+              reference_number:
+                $ref: '#/components/schemas/reference_number'
+              template_id:
+                $ref: '#/components/schemas/template_id'
+              date:
+                description: Date of the comment.
+                type: string
+              documents:
+                $ref: '#/components/schemas/documents'
+              shipment_date:
+                $ref: '#/components/schemas/shipment_date'
+              exchange_rate:
+                $ref: '#/components/schemas/exchange_rate'
+              discount:
+                $ref: '#/components/schemas/discount'
+              is_discount_before_tax:
+                $ref: '#/components/schemas/is_discount_before_tax'
+              discount_type:
+                $ref: '#/components/schemas/discount_type'
+              salesperson_id:
+                $ref: '#/components/schemas/salesperson_id'
+              salesperson_name:
+                $ref: '#/components/schemas/salesperson_name'
+              merchant_id:
+                $ref: '#/components/schemas/merchant_id'
+              merchant_name:
+                $ref: '#/components/schemas/merchant_name'
+              estimate_id:
+                $ref: '#/components/schemas/estimate_id'
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              tax_exemption_id:
+                $ref: '#/components/schemas/tax_exemption_id'
+              tax_exemption_code:
+                $ref: '#/components/schemas/tax_exemption_code'
+              is_inclusive_tax:
+                $ref: '#/components/schemas/is_inclusive_tax'
+              sub_statuses:
+                $ref: '#/components/schemas/sub_statuses'
+              custom_fields:
+                $ref: '#/components/schemas/custom_fields'
+              location_id:
+                $ref: '#/components/schemas/location_id'
+              location_name:
+                $ref: '#/components/schemas/location_name'
+              line_items:
+                description: Details of the line items in the Sales Order.
+                type: array
+                items:
+                  type: object
+                  properties:
+                    line_item_id:
+                      description: 'ID of the line item. Note: This value is a set of numeric characters.'
+                      type: string
+                      example: '460000000039131'
+                    sku:
+                      $ref: '#/components/schemas/sku'
+                    bcy_rate:
+                      $ref: '#/components/schemas/bcy_rate'
+                    tax_name:
+                      $ref: '#/components/schemas/tax_name'
+                    tax_type:
+                      $ref: '#/components/schemas/tax_type'
+                    tax_percentage:
+                      $ref: '#/components/schemas/tax_percentage'
+                    tax_id:
+                      $ref: '#/components/schemas/tax_id'
+                    tds_tax_id:
+                      $ref: '#/components/schemas/tds_tax_id'
+                    is_taxable:
+                      description: Indicates if the Sales Order is taxable.
+                      type: boolean
+                      example: false
+                    product_exemption_id:
+                      $ref: '#/components/schemas/product_exemption_id'
+                    product_exemption_code:
+                      $ref: '#/components/schemas/product_exemption_code'
+                    item_total_inclusive_of_tax:
+                      $ref: '#/components/schemas/item_total_inclusive_of_tax'
+                    product_type:
+                      $ref: '#/components/schemas/product_type'
+                    hsn_or_sac:
+                      $ref: '#/components/schemas/hsn_or_sac'
+                    is_invoiced:
+                      $ref: '#/components/schemas/is_invoiced'
+                    stock_on_hand:
+                      $ref: '#/components/schemas/stock_on_hand'
+                    image_id:
+                      $ref: '#/components/schemas/image_id'
+                    image_name:
+                      $ref: '#/components/schemas/image_name'
+                    image_type:
+                      $ref: '#/components/schemas/image_type'
+                    project_id:
+                      $ref: '#/components/schemas/project_id'
+                    project_name:
+                      $ref: '#/components/schemas/project_name'
+                    location_id:
+                      $ref: '#/components/schemas/location_id'
+                    location_name:
+                      $ref: '#/components/schemas/location_name'
+                    tags:
+                      $ref: '#/components/schemas/tags_response'
+                    line_item_category:
+                      $ref: '#/components/schemas/line_item_category'
+              pricebook_id:
+                $ref: '#/components/schemas/pricebook_id'
+              shipping_charge:
+                $ref: '#/components/schemas/shipping_charge'
+              adjustment:
+                $ref: '#/components/schemas/adjustment'
+              adjustment_description:
+                $ref: '#/components/schemas/adjustment_description'
+              delivery_method:
+                $ref: '#/components/schemas/delivery_method'
+              notes:
+                $ref: '#/components/schemas/notes'
+              notes_default:
+                $ref: '#/components/schemas/notes_default'
+              terms:
+                $ref: '#/components/schemas/terms'
+              terms_default:
+                $ref: '#/components/schemas/terms_default'
+              tags:
+                $ref: '#/components/schemas/tags_response'
+    delete-a-sales-order-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Sales Order Deleted Successfully.
+          readOnly: true
+    mark-a-sales-order-as-open-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Sales order status has been changed to Open.
+          readOnly: true
+    mark-a-sales-order-as-void-request:
+      type: object
+      properties:
+        reason:
+          $ref: '#/components/schemas/reason'
+    mark-a-sales-order-as-void-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Sales order status has been changed to Void.
+          readOnly: true
+    email-a-sales-order-request:
+      required:
+        - to_mail_ids
+        - subject
+        - body
+      type: object
+      properties:
+        from_address_id:
+          $ref: '#/components/schemas/from_address_id'
+        send_from_org_email_id:
+          $ref: '#/components/schemas/send_from_org_email_id'
+        to_mail_ids:
+          $ref: '#/components/schemas/to_mail_ids'
+        cc_mail_ids:
+          $ref: '#/components/schemas/cc_mail_ids'
+        bcc_mail_ids:
+          $ref: '#/components/schemas/bcc_mail_ids'
+        subject:
+          $ref: '#/components/schemas/subject'
+        documents:
+          description: Documents of the Sales Order.
+          type: string
+          format: binary
+        invoice_id:
+          $ref: '#/components/schemas/invoice_id'
+        body:
+          $ref: '#/components/schemas/body'
+    email-a-sales-order-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Your Sales Order has been sent.
+          readOnly: true
+    get-sales-order-email-content-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        data:
+          $ref: '#/components/schemas/data'
+    submit-a-sales-order-for-approval-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The Sales Order has been successfully submitted for approval.
+          readOnly: true
+    approve-a-sales-order-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: You have approved the Sales Order.
+          readOnly: true
+    bulk-export-sales-orders-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+    bulk-print-sales-orders-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+    update-billing-address-request:
+      type: object
+      properties:
+        address:
+          $ref: '#/components/schemas/address'
+        city:
+          $ref: '#/components/schemas/city'
+        state:
+          $ref: '#/components/schemas/state'
+        zip:
+          $ref: '#/components/schemas/zip'
+        country:
+          $ref: '#/components/schemas/country'
+        phone:
+          $ref: '#/components/schemas/phone'
+        fax:
+          $ref: '#/components/schemas/fax'
+        attention:
+          $ref: '#/components/schemas/attention'
+        is_one_off_address:
+          $ref: '#/components/schemas/is_one_off_address'
+        is_update_customer:
+          $ref: '#/components/schemas/is_update_customer'
+    update-billing-address-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Billing address updated.
+          readOnly: true
+    update-shipping-address-request:
+      type: object
+      properties:
+        address:
+          $ref: '#/components/schemas/address'
+        city:
+          $ref: '#/components/schemas/city'
+        state:
+          $ref: '#/components/schemas/state'
+        zip:
+          $ref: '#/components/schemas/zip'
+        country:
+          $ref: '#/components/schemas/country'
+        fax:
+          $ref: '#/components/schemas/fax'
+        attention:
+          $ref: '#/components/schemas/attention'
+        is_one_off_address:
+          $ref: '#/components/schemas/is_one_off_address'
+        is_update_customer:
+          $ref: '#/components/schemas/is_update_customer'
+    update-shipping-address-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Shipping address updated.
+          readOnly: true
+    list-sales-order-templates-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        templates:
+          $ref: '#/components/schemas/templates'
+    update-sales-order-template-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Sales Order Updated Successfully.
+          readOnly: true
+    get-a-sales-order-attachment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Success
+          readOnly: true
+    add-attachment-to-a-sales-order-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Your file has been successfully attached to the sales order.
+          readOnly: true
+    update-attachment-preference-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Sales Oder Updated Successfully.
+          readOnly: true
+    delete-an-attachment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Your file is no longer attached to the sales order.
+          readOnly: true
+    list-sales-order-comments-and-history-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        comments: {}
+    add-comment-request:
+      type: object
+      properties:
+        description:
+          description: The description of the comment.
+          type: string
+          example: This is a comment.
+    add-comment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Comments added.
+          readOnly: true
+        comment:
+          $ref: '#/components/schemas/comment'
+    update-comment-request:
+      type: object
+      properties:
+        description:
+          description: The description of the comment.
+          type: string
+          example: This is a comment.
+    update-comment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Comment has been updated.
+          readOnly: true
+        comment:
+          $ref: '#/components/schemas/comment'
+    delete-a-comment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The comment has been deleted.
+          readOnly: true
+    tag_id:
+      description: 'Tag''s ID. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000000567'
+    tag_name:
+      description: Name of the tag.
+      type: string
+      example: Business Unit
+    tag_option_id:
+      description: 'Tag Option''s ID. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000014044'
+    tag_option_name:
+      description: Name of the tag option.
+      type: string
+      example: Sales
+    is_tag_mandatory:
+      description: Used to check if the tag is mandatory.
+      type: boolean
+      example: false
+    tags:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+    tags_response:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_name:
+            $ref: '#/components/schemas/tag_name'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+          tag_option_name:
+            $ref: '#/components/schemas/tag_option_name'
+          is_tag_mandatory:
+            $ref: '#/components/schemas/is_tag_mandatory'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.salesorders.CREATE: Create Salesorders
+            ERP.salesorders.UPDATE: Update Salesorders
+            ERP.salesorders.READ: Read Salesorders
+            ERP.salesorders.DELETE: Delete Salesorders

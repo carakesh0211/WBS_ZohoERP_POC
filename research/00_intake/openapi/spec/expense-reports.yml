@@ -1,0 +1,2248 @@
+openapi: 3.0.0
+info:
+  title: Expense Reports
+  description: An expense report entity allows you to maintain details of an expense report.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v1
+    description: API Endpoint
+tags:
+  - name: expense-reports
+    description: Expense-Reports Module
+paths:
+  /expensereports:
+    x-mcp-group:
+      - Expense Reports
+    post:
+      tags:
+        - expense-reports
+      operationId: create_expense_report
+      summary: Create an expense report
+      description: Create a new expense report.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-an-expense-report-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-an-expense-report-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expensereport.CREATE
+    get:
+      tags:
+        - expense-reports
+      operationId: list_expense_reports
+      summary: List of all expense reports
+      description: List of all the submitted expense reports.
+      parameters:
+        - name: filter_by
+          in: query
+          description: For Filtering Expense Reports based on status.
+          required: false
+          schema:
+            type: string
+            pattern: ^(Status\.(All|Submitted|Draft|TakenBack|SendBack|Approved|Rejected|ApprovalInProgress|Reimbursed|Archived|OverDue|Unsubmitted|ModifiableReports|Exported|Unexported)|Type\.(Approval|Report|MyApproval|SharedReport|QBO|QBD)|FDStatus\.(NotRun|Completed))(,(Status\.(All|Submitted|Draft|TakenBack|SendBack|Approved|Rejected|ApprovalInProgress|Reimbursed|Archived|OverDue|Unsubmitted|ModifiableReports|Exported|Unexported)|Type\.(Approval|Report|MyApproval|SharedReport|QBO|QBD)|FDStatus\.(NotRun|Completed)))*$
+          example: Type.Approval,Status.Submitted
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-of-all-expense-reports-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expensereport.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /expensereports/{expense_report_id}:
+    x-mcp-group:
+      - Expense Reports
+    get:
+      tags:
+        - expense-reports
+      operationId: get_expense_report
+      summary: Retrieve details of an expense report
+      description: Details of an existing expense report.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/retrieve-details-of-an-expense-report-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expensereport.READ
+    put:
+      tags:
+        - expense-reports
+      operationId: update_expense_report
+      summary: Update an expense report
+      description: Update the details of an expense report.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-an-expense-report-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-an-expense-report-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expensereport.UPDATE
+    parameters:
+      - name: expense_report_id
+        in: path
+        required: true
+        description: Unique identifier of the expense report.
+        schema:
+          type: string
+        example: '16367000000081005'
+      - $ref: '#/components/parameters/organization_id'
+  /expensereports/{expense_report_id}/approve:
+    x-mcp-group:
+      - Expense Reports
+    post:
+      tags:
+        - expense-reports
+      operationId: approve_expense_report
+      summary: Approve an expense report
+      description: Approve an expense report.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/approve-an-expense-report-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.approval.CREATE
+    parameters:
+      - name: expense_report_id
+        in: path
+        required: true
+        description: Unique identifier of the expense report.
+        schema:
+          type: string
+        example: '16367000000081005'
+      - $ref: '#/components/parameters/organization_id'
+  /expensereports/{expense_report_id}/reject:
+    x-mcp-group:
+      - Expense Reports
+    post:
+      tags:
+        - expense-reports
+      operationId: reject_expense_report
+      summary: Reject an expense report
+      description: Reject an expense report.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/reject-an-expense-report-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/reject-an-expense-report-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.approval.CREATE
+    parameters:
+      - name: expense_report_id
+        in: path
+        required: true
+        description: Unique identifier of the expense report.
+        schema:
+          type: string
+        example: '16367000000081005'
+      - $ref: '#/components/parameters/organization_id'
+  /expensereports/{expense_report_id}/reimburse:
+    x-mcp-group:
+      - Expense Reports
+    post:
+      tags:
+        - expense-reports
+      operationId: reimburse_expense_report
+      summary: Reimburse an expense report
+      description: Reimburse an expense report.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/reimburse-an-expense-report-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/reimburse-an-expense-report-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.reimbursement.CREATE
+    parameters:
+      - name: expense_report_id
+        in: path
+        required: true
+        description: Unique identifier of the expense report.
+        schema:
+          type: string
+        example: '16367000000081005'
+      - $ref: '#/components/parameters/organization_id'
+  /expensereports/{expense_report_id}/approvalhistory:
+    x-mcp-group:
+      - Expense Reports
+    get:
+      tags:
+        - expense-reports
+      operationId: approval_history_expense_report
+      summary: Approval history of an expense report
+      description: Approval history of an expense report.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/approval-history-of-an-expense-report-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expensereport.READ
+    parameters:
+      - name: expense_report_id
+        in: path
+        required: true
+        description: Unique identifier of the expense report.
+        schema:
+          type: string
+        example: '16367000000081005'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: X-com-zoho-expense-organizationid
+      description: ID of the organization
+      in: header
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/expense_report-response'
+    expense_report-response:
+      type: object
+      properties:
+        report_id:
+          $ref: '#/components/schemas/report_id'
+        report_name:
+          $ref: '#/components/schemas/report_name'
+        description:
+          $ref: '#/components/schemas/description'
+        report_number:
+          $ref: '#/components/schemas/report_number'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        status:
+          $ref: '#/components/schemas/status'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        price_precision:
+          $ref: '#/components/schemas/price_precision'
+        currency_code:
+          $ref: '#/components/schemas/currency_code'
+        total:
+          $ref: '#/components/schemas/total'
+        reimbursable_total:
+          $ref: '#/components/schemas/reimbursable_total'
+        non_reimbursable_total:
+          $ref: '#/components/schemas/non_reimbursable_total'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        created_date:
+          $ref: '#/components/schemas/created_date'
+        created_by_id:
+          $ref: '#/components/schemas/created_by_id'
+        created_by_name:
+          $ref: '#/components/schemas/created_by_name'
+        created_by_email:
+          $ref: '#/components/schemas/created_by_email'
+        tags:
+          $ref: '#/components/schemas/tags'
+        expenses:
+          $ref: '#/components/schemas/expenses'
+        expired_expense_count:
+          $ref: '#/components/schemas/expired_expense_count'
+        reimbursable_expenses_count:
+          $ref: '#/components/schemas/reimbursable_expenses_count'
+        non_reimbursable_expenses_count:
+          $ref: '#/components/schemas/non_reimbursable_expenses_count'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        customer_name:
+          $ref: '#/components/schemas/customer_name'
+        project_id:
+          $ref: '#/components/schemas/project_id'
+        project_name:
+          $ref: '#/components/schemas/project_name'
+        employee_number:
+          $ref: '#/components/schemas/employee_number'
+        department_id:
+          $ref: '#/components/schemas/department_id'
+        department_name:
+          $ref: '#/components/schemas/department_name'
+        policy_id:
+          $ref: '#/components/schemas/policy_id'
+        policy_name:
+          $ref: '#/components/schemas/policy_name'
+    report_id:
+      description: Unique ID for expense report generated by the server . This is used as identifier.
+      type: string
+      example: '16367000000081005'
+    report_name:
+      description: Name of the report.
+      type: string
+      example: Trip to SFA
+    description:
+      description: Description of the report.
+      type: string
+      example: To client office
+    report_number:
+      description: Report Number.
+      type: string
+      example: ER-00001
+    start_date:
+      description: Start date of the report.
+      type: string
+      example: '2017-02-07'
+    end_date:
+      description: End date of the report.
+      type: string
+      example: '2017-02-18'
+    due_date:
+      description: Due date for the expense report.
+      type: string
+      example: '2017-03-15'
+    status:
+      description: Status of the report. Possible values can be <code>draft</code> or <code>submitted</code> or <code>approved</code> or <code>rejected</code> or <code>reimbursed</code> or <code>recalled</code>.
+      type: string
+      example: submitted
+    is_archived:
+      description: Whether the report is archived. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    due_days:
+      description: Number of days till the due date.
+      type: string
+      example: Due in 15 days
+    submitted_date:
+      description: Date of report submission.
+      type: string
+      example: '2017-02-28'
+    last_submitted_date:
+      description: Date of previous submission.
+      type: string
+      example: '2017-02-28'
+    currency_id:
+      description: Unique ID for currency.
+      type: string
+      example: '16367000000000099'
+    price_precision:
+      description: Precise amount upto n decimal points.
+      type: integer
+      example: 2
+    currency_code:
+      description: Currency code.
+      type: string
+      example: INR
+    approver_id:
+      description: Unique ID for the current approver.
+      type: string
+      example: '16367000000073001'
+    approver_name:
+      description: Current approver name.
+      type: string
+      example: PATRICIA BOYLE
+    approver_email:
+      description: Email ID of the current approver.
+      type: string
+      example: patriciab@zylker.org
+    approver_photo_url:
+      description: Photo Url of the current approver.
+      type: string
+      example: https://contacts.zoho.in/file?ID=16b87b9dbae5b1008b32c9736141b6f63b3864c8cf94d900cf9bb346f0eb97b105c58df21a12283d421fa80a6cb97ffca294a909bc0c7ae9f1e14dd2e499565d&fs=thumb
+    submitted_to_id:
+      description: ID of the person to whom the report was submitted first.
+      type: string
+      example: '16367000000073001'
+    submitted_to_name:
+      description: Name of the person to whom the report was submitted first.
+      type: string
+      example: PATRICIA BOYLE
+    submitted_to_email:
+      description: Email ID of the person to whom the report was submitted first.
+      type: string
+      example: patriciab@zylker.org
+    submitted_to_employee_no:
+      description: Employee Number of the person to whom the report was submitted first.
+      type: string
+      example: E001
+    submitted_to_department_name:
+      description: Department Name of the person to whom the report was submitted first.
+      type: string
+      example: Finance
+    submitted_to_photo_url:
+      description: Photo Url of the person to whom the report was submitted first.
+      type: string
+      example: https://contacts.zoho.in/file?ID=16b87b9dbae5b1008b32c9736141b6f63b3864c8cf94d900cf9bb346f0eb97b105c58df21a12283d421fa80a6cb97ffca294a909bc0c7ae9f1e14dd2e499565d&fs=thumb
+    submitted_by:
+      description: Unique ID of the submitter.
+      type: string
+      example: '16367000000073071'
+    submitter_name:
+      description: Name of the submitter.
+      type: string
+      example: Will Smith
+    submitter_email:
+      description: Email ID of the submitter.
+      type: string
+      example: will.smith@gmail.com
+    submitter_photo_url:
+      description: Photo Url of the submitter.
+      type: string
+      example: https://contacts.zoho.in/file?ID=16b87b9dbae5b1008b32c9736141b6f63b3864c8cf94d900cf9bb346f0eb97b105c58df21a12283d421fa80a6cb97ffca294a909bc0c7ae9f1e14dd2e499565d&fs=thumb
+    submitter_employee_no:
+      description: Employee Number of the submitter.
+      type: string
+      example: E002
+    submitter_department_name:
+      description: Department Name of the submitter.
+      type: string
+      example: Maintenance
+    total:
+      description: Total amount.
+      type: number
+      format: double
+      example: 70000
+    reimbursable_total:
+      description: Reimbursable amount.
+      type: number
+      format: double
+      example: 70000
+    non_reimbursable_total:
+      description: Non reimbursable total.
+      type: number
+      format: double
+      example: 0
+    created_time:
+      description: Time when the report was created.
+      type: string
+      example: 2017-02-28T18:18:03+0530
+    created_date:
+      description: Date when the report was created.
+      type: string
+      example: '2017-02-28'
+    last_modified_time:
+      description: Time when the report was last modified.
+      type: string
+      example: 2017-02-28T18:31:09+0530
+    created_by_id:
+      description: ID of the person who created the report.
+      type: string
+      example: '16367000000073071'
+    created_by_name:
+      description: Name of the person who created the report.
+      type: string
+      example: Will Smith
+    created_by_email:
+      description: Email ID of the person who created the report.
+      type: string
+      example: will.smith@gmail.com
+    creator_photo_url:
+      description: Photo Url of the person who created the report.
+      type: string
+      example: https://contacts.zoho.in/file?ID=16b87b9dbae5b1008b32c9736141b6f63b3864c8cf94d900cf9bb346f0eb97b105c58df21a12283d421fa80a6cb97ffca294a909bc0c7ae9f1e14dd2e499565d&fs=thumb
+    file_name:
+      description: Name of the Document.
+      type: string
+      example: receipt1.jpg
+    file_size_formatted:
+      description: Formatted value of File Size.
+      type: string
+      example: 35.6 KB
+    attachment_order:
+      description: Order of the Attached Document.
+      type: integer
+      example: 1
+    document_id:
+      description: Unique Id for the Document.
+      type: string
+      example: '16367000000078085'
+    date:
+      description: Date of Expense.
+      type: string
+      example: '2017-02-20'
+    receipt_name:
+      description: Receipt Name.
+      type: string
+      example: receipt1.jpg
+    tax_amount:
+      description: Tax amount.
+      type: number
+      format: double
+      example: 5000
+    start_reading:
+      description: Start reading of the odometer.
+      type: string
+      example: ''
+    category_name:
+      description: Name of the Expense Category.
+      type: string
+      example: Lodging
+    line_item_count:
+      description: Number of Line Items.
+      type: integer
+      example: 1
+    paid_through_account_id:
+      description: Unique ID for the paid through account.
+      type: string
+      example: '16367000000036003'
+    documents:
+      description: Details of Documents attached.
+      type: array
+      items:
+        type: object
+        properties:
+          file_name:
+            $ref: '#/components/schemas/file_name'
+          file_size_formatted:
+            $ref: '#/components/schemas/file_size_formatted'
+          attachment_order:
+            $ref: '#/components/schemas/attachment_order'
+          document_id:
+            $ref: '#/components/schemas/document_id'
+    project_name:
+      description: Name of the project.
+      type: string
+      example: Brochure Design - Spa
+    per_diem_rate:
+      description: Rate per Diem.
+      type: number
+      format: double
+      example: 0
+    per_diem_days:
+      description: Number of Days for Diem.
+      type: number
+      format: double
+      example: 0
+    project_id:
+      description: Unique ID for project.
+      type: string
+      example: '16367000000223045'
+    mileage_rate:
+      description: Rate for mileage.
+      type: number
+      format: double
+      example: 0
+    order:
+      description: Order of the expense in Report.
+      type: integer
+      example: 0
+    expense_type:
+      description: Type of Expense.
+      type: string
+      example: non_mileage
+    exchange_rate:
+      description: Exchange rate for the foreign currency.
+      type: number
+      format: double
+      example: 1
+    is_inclusive_tax:
+      description: Whether the Expense is inclusive of tax. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    mileage_type:
+      description: Mileage type. Possible values can be <code>non_mileage</code> or <code>manual</code> or <code>odometer</code> or <code>gps</code> or <code>imaps</code> or <code>gmaps</code> or <code>wmaps</code>.
+      type: string
+      example: non_mileage
+    customfield_id:
+      description: Unique Id for the Custom Field.
+      type: string
+      example: '16367000000277001'
+    label:
+      description: Label of the Custom Field.
+      type: string
+      example: Other Name
+    value:
+      description: Value of the Custom Field.
+      type: string
+      example: Trip
+    custom_fields:
+      description: Custom Fields related to Expense.
+      type: array
+      items:
+        type: object
+        properties:
+          customfield_id:
+            $ref: '#/components/schemas/customfield_id'
+          label:
+            $ref: '#/components/schemas/label'
+          value:
+            $ref: '#/components/schemas/value'
+    attendees:
+      description: Attendees of the Expense.
+      type: string
+      example: Will Smith
+    per_diem_name:
+      description: Name of the Per Diem.
+      type: string
+      example: ''
+    merchant_name:
+      description: Name of the merchant.
+      type: string
+      example: ABS Solutions
+    transaction_description:
+      description: Decription for Transaction.
+      type: string
+      example: Has to be done Immediately..
+    reference_number:
+      description: Reference Number.
+      type: string
+      example: DD145
+    tax_id:
+      description: Unique Id for the tax.
+      type: string
+      example: '16367000000219093'
+    is_personal:
+      description: Whether the expense is personal. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    comments_count:
+      description: Number of Comments.
+      type: integer
+      example: 0
+    distance:
+      description: Distance travelled.
+      type: number
+      format: double
+      example: 0
+    policy_id:
+      description: Unique Id for the Policy.
+      type: string
+      example: '16367000000092011'
+    merchant_id:
+      description: Unique Id for Merchant.
+      type: string
+      example: '16367000000074027'
+    end_reading:
+      description: End readind of the odometer.
+      type: string
+      example: ''
+    bcy_total:
+      description: Total in base currency.
+      type: number
+      format: double
+      example: 70000
+    category_id:
+      description: Unique Id for the expense category.
+      type: string
+      example: '16367000000033011'
+    receipt_type:
+      description: Type of receipt.
+      type: string
+      example: jpg
+    maximum_allowed_amount:
+      description: Maximum allowed expense amount.
+      type: number
+      format: double
+      example: 0
+    is_uncategorized:
+      description: Whether the expense is Uncategorized. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    is_mandatory_fields_missing:
+      description: Whether the mandatory fields are missing. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    paid_through_account_name:
+      description: Name of the paid through account.
+      type: string
+      example: Employee Reimbursements
+    amount:
+      description: Total Amount.
+      type: number
+      format: double
+      example: 70000
+    payment_mode:
+      description: Mode of payment for the expense.
+      type: string
+      example: Check
+    per_diem_id:
+      description: Unique Id for Per Diem.
+      type: string
+      example: ''
+    tax_name:
+      description: Name of the tax.
+      type: string
+      example: Service
+    bcy_tax_amount:
+      description: Tax Amount in Base Currency.
+      type: number
+      format: double
+      example: 2000
+    vehicle_type:
+      description: Type of Vehicle.
+      type: string
+      example: Bike
+    is_billable:
+      description: Whether the expense is a billable expense. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    mileage_unit:
+      description: Unit of mileage. Can be <code>km</code> or <code>mile</code>.
+      type: string
+      example: km
+    is_expired:
+      description: Whether the expense is expired. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    receipt_required_amount:
+      description: Required Amount for Receipt.
+      type: number
+      format: double
+      example: 0
+    is_reimbursable:
+      description: Whether the expense is reimbursable. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: true
+    expired_by:
+      description: No. of days since the expense has expired.
+      type: string
+      example: ''
+    tax_percentage:
+      description: Percentage of Tax.
+      type: number
+      format: double
+      example: 4
+    location:
+      description: Location.
+      type: string
+      example: Washington
+    customer_name:
+      description: Name of the Customer.
+      type: string
+      example: Peter
+    customer_id:
+      description: Unique Id for the Customer.
+      type: string
+      example: '16367000000088005'
+    expense_id:
+      description: Unique Id of the Expense.
+      type: string
+      example: '16367000000078079'
+    expenses:
+      description: Expenses associated with User.
+      type: array
+      items:
+        type: object
+        properties:
+          date:
+            $ref: '#/components/schemas/date'
+          receipt_name:
+            $ref: '#/components/schemas/receipt_name'
+          tax_amount:
+            $ref: '#/components/schemas/tax_amount'
+          start_reading:
+            $ref: '#/components/schemas/start_reading'
+          category_name:
+            $ref: '#/components/schemas/category_name'
+          line_item_count:
+            $ref: '#/components/schemas/line_item_count'
+          paid_through_account_id:
+            $ref: '#/components/schemas/paid_through_account_id'
+          documents:
+            $ref: '#/components/schemas/documents'
+          project_name:
+            $ref: '#/components/schemas/project_name'
+          per_diem_rate:
+            $ref: '#/components/schemas/per_diem_rate'
+          per_diem_days:
+            $ref: '#/components/schemas/per_diem_days'
+          project_id:
+            $ref: '#/components/schemas/project_id'
+          mileage_rate:
+            $ref: '#/components/schemas/mileage_rate'
+          order:
+            $ref: '#/components/schemas/order'
+          expense_type:
+            $ref: '#/components/schemas/expense_type'
+          exchange_rate:
+            $ref: '#/components/schemas/exchange_rate'
+          is_inclusive_tax:
+            $ref: '#/components/schemas/is_inclusive_tax'
+          custom_fields:
+            $ref: '#/components/schemas/custom_fields'
+          attendees:
+            $ref: '#/components/schemas/attendees'
+          per_diem_name:
+            $ref: '#/components/schemas/per_diem_name'
+          merchant_name:
+            $ref: '#/components/schemas/merchant_name'
+          transaction_description:
+            $ref: '#/components/schemas/transaction_description'
+          reference_number:
+            $ref: '#/components/schemas/reference_number'
+          tax_id:
+            $ref: '#/components/schemas/tax_id'
+          is_personal:
+            $ref: '#/components/schemas/is_personal'
+          due_days:
+            $ref: '#/components/schemas/due_days'
+          comments_count:
+            $ref: '#/components/schemas/comments_count'
+          distance:
+            $ref: '#/components/schemas/distance'
+          policy_id:
+            $ref: '#/components/schemas/policy_id'
+          description:
+            $ref: '#/components/schemas/description'
+          merchant_id:
+            $ref: '#/components/schemas/merchant_id'
+          currency_code:
+            $ref: '#/components/schemas/currency_code'
+          end_reading:
+            $ref: '#/components/schemas/end_reading'
+          bcy_total:
+            $ref: '#/components/schemas/bcy_total'
+          total:
+            $ref: '#/components/schemas/total'
+          category_id:
+            $ref: '#/components/schemas/category_id'
+          receipt_type:
+            $ref: '#/components/schemas/receipt_type'
+          maximum_allowed_amount:
+            $ref: '#/components/schemas/maximum_allowed_amount'
+          is_uncategorized:
+            $ref: '#/components/schemas/is_uncategorized'
+          is_mandatory_fields_missing:
+            $ref: '#/components/schemas/is_mandatory_fields_missing'
+          paid_through_account_name:
+            $ref: '#/components/schemas/paid_through_account_name'
+          amount:
+            $ref: '#/components/schemas/amount'
+          payment_mode:
+            $ref: '#/components/schemas/payment_mode'
+          last_modified_time:
+            $ref: '#/components/schemas/last_modified_time'
+          per_diem_id:
+            $ref: '#/components/schemas/per_diem_id'
+          tax_name:
+            $ref: '#/components/schemas/tax_name'
+          bcy_tax_amount:
+            $ref: '#/components/schemas/bcy_tax_amount'
+          vehicle_type:
+            $ref: '#/components/schemas/vehicle_type'
+          is_billable:
+            $ref: '#/components/schemas/is_billable'
+          mileage_unit:
+            $ref: '#/components/schemas/mileage_unit'
+          is_expired:
+            $ref: '#/components/schemas/is_expired'
+          receipt_required_amount:
+            $ref: '#/components/schemas/receipt_required_amount'
+          is_reimbursable:
+            $ref: '#/components/schemas/is_reimbursable'
+          expired_by:
+            $ref: '#/components/schemas/expired_by'
+          tax_percentage:
+            $ref: '#/components/schemas/tax_percentage'
+          location:
+            $ref: '#/components/schemas/location'
+          customer_name:
+            $ref: '#/components/schemas/customer_name'
+          customer_id:
+            $ref: '#/components/schemas/customer_id'
+          expense_id:
+            $ref: '#/components/schemas/expense_id'
+          currency_id:
+            $ref: '#/components/schemas/currency_id'
+    expired_expense_count:
+      description: Number of expenses expired.
+      type: integer
+      example: 0
+    reimbursable_expenses_count:
+      description: Number of expenses that can be reimbursed.
+      type: integer
+      example: 1
+    non_reimbursable_expenses_count:
+      description: Number of expenses that cannot be reimbursed.
+      type: integer
+      example: 0
+    uncategorized_expense_count:
+      description: Number of uncategorised expenses.
+      type: integer
+      example: 0
+    policy_violated:
+      description: Whether expense policies are violated. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    employee_reimbursement_id:
+      description: Unique Id of reimbursement.
+      type: string
+      example: '16367000000101099'
+    entity_type:
+      description: Type of entity.
+      type: integer
+      example: 62
+    bcy_amount:
+      description: Amount in Base Currency.
+      type: number
+      format: double
+      example: 70000
+    notes:
+      description: Notes on Reimbursement.
+      type: string
+      example: Finish
+    reimbursements:
+      description: Reimbursements made for the expense report.
+      type: array
+      items:
+        type: object
+        properties:
+          employee_reimbursement_id:
+            $ref: '#/components/schemas/employee_reimbursement_id'
+          date:
+            $ref: '#/components/schemas/date'
+          amount:
+            $ref: '#/components/schemas/amount'
+          entity_type:
+            $ref: '#/components/schemas/entity_type'
+          bcy_amount:
+            $ref: '#/components/schemas/bcy_amount'
+          notes:
+            $ref: '#/components/schemas/notes'
+          currency_code:
+            $ref: '#/components/schemas/currency_code'
+          currency_id:
+            $ref: '#/components/schemas/currency_id'
+    advance_payment_id:
+      description: Unique Id of advance payment.
+      type: string
+      example: '16367000000243203'
+    reimbursement_entity_id:
+      description: Entity Id of reimbursement.
+      type: string
+      example: ''
+    excess_amount:
+      description: Excess Amount.
+      type: number
+      format: double
+      example: 0
+    excess_bcy_amount:
+      description: Excess Amount in Base Currency.
+      type: number
+      format: double
+      example: 0
+    applied_amount:
+      description: Applied Amount.
+      type: number
+      format: double
+      example: 70000
+    applied_bcy_amount:
+      description: Applied Amount in Base Currency.
+      type: number
+      format: double
+      example: 70000
+    excess_applied_amount:
+      description: Excess Applied Amount.
+      type: number
+      format: double
+      example: 0
+    excess_applied_bcy_amount:
+      description: Excess Applied Amount in Base Currency.
+      type: number
+      format: double
+      example: 0
+    excess_unapplied_amount:
+      description: Excess Unapplied Amount.
+      type: number
+      format: double
+      example: 0
+    excess_unapplied_bcy_amount:
+      description: Excess Unapplied Amount in Base Currency.
+      type: number
+      format: double
+      example: 0
+    advance_payments:
+      description: Advance payments made on the expense report.
+      type: array
+      items:
+        type: object
+        properties:
+          date:
+            $ref: '#/components/schemas/date'
+          advance_payment_id:
+            $ref: '#/components/schemas/advance_payment_id'
+          reimbursement_entity_id:
+            $ref: '#/components/schemas/reimbursement_entity_id'
+          currency_id:
+            $ref: '#/components/schemas/currency_id'
+          currency_code:
+            $ref: '#/components/schemas/currency_code'
+          exchange_rate:
+            $ref: '#/components/schemas/exchange_rate'
+          amount:
+            $ref: '#/components/schemas/amount'
+          bcy_amount:
+            $ref: '#/components/schemas/bcy_amount'
+          excess_amount:
+            $ref: '#/components/schemas/excess_amount'
+          excess_bcy_amount:
+            $ref: '#/components/schemas/excess_bcy_amount'
+          applied_amount:
+            $ref: '#/components/schemas/applied_amount'
+          applied_bcy_amount:
+            $ref: '#/components/schemas/applied_bcy_amount'
+          excess_applied_amount:
+            $ref: '#/components/schemas/excess_applied_amount'
+          excess_applied_bcy_amount:
+            $ref: '#/components/schemas/excess_applied_bcy_amount'
+          excess_unapplied_amount:
+            $ref: '#/components/schemas/excess_unapplied_amount'
+          excess_unapplied_bcy_amount:
+            $ref: '#/components/schemas/excess_unapplied_bcy_amount'
+          price_precision:
+            $ref: '#/components/schemas/price_precision'
+    is_advancepayment_allowed:
+      description: Whether the Advance Payment is allowed. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: true
+    amount_to_be_reimbursed:
+      description: Amount to be reimbursed.
+      type: number
+      format: double
+      example: 70000
+    remaining_reimbursement_total:
+      description: Remaining reimbursement amount.
+      type: string
+      example: 0
+    amount_to_be_refunded:
+      description: Amount to be refunded.
+      type: number
+      format: double
+      example: 0
+    advance_total:
+      description: Total advance amount.
+      type: number
+      format: double
+      example: 70000
+    can_create_advance:
+      description: Whether the user is allowed to create advance. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: true
+    employee_number:
+      description: Employee Number.
+      type: string
+      example: E001
+    department_id:
+      description: Unique Id of the department.
+      type: string
+      example: '16367000000093001'
+    department_name:
+      description: Name of the department.
+      type: string
+      example: Finance
+    next_approver_id:
+      description: Id of the Next Approver.
+      type: string
+      example: '16367000000073001'
+    next_approver_email:
+      description: Email Id of Next Approver.
+      type: string
+      example: patriciab@zylker.org
+    next_approver_name:
+      description: Name of the Next Approver.
+      type: string
+      example: PATRICIA BOYLE
+    approver_employee_no:
+      description: Employee Number of the Approver.
+      type: string
+      example: E001
+    approver_department_name:
+      description: Department Name of the Approver.
+      type: string
+      example: Finance
+    previous_approver_id:
+      description: Id of the Previous Approver.
+      type: string
+      example: ''
+    previous_approver_name:
+      description: Name of the Previous Approver.
+      type: string
+      example: ''
+    previous_approver_employee_no:
+      description: Employee Number of the Previous Approver.
+      type: string
+      example: ''
+    previous_approver_department_name:
+      description: Department Name of the Previous Approver.
+      type: string
+      example: ''
+    policy_name:
+      description: Name of the Policy.
+      type: string
+      example: Savings
+    approval_history_id:
+      description: Unique Id of Approval.
+      type: string
+      example: '16367000000101079'
+    comments:
+      description: Comments on the report.
+      type: string
+      example: Purpose is not valid.
+    type:
+      description: Type of the Approval History.
+      type: string
+      example: approval_history
+    previous_status:
+      description: Previous status of report.
+      type: string
+      example: approved
+    approval_status:
+      description: Approval Status of report.
+      type: string
+      example: approved
+    previous_approver_email:
+      description: Email Id of the Previous Approver.
+      type: string
+      example: will.smith@gmail.com
+    time:
+      description: Time of approval.
+      type: string
+      example: 5:59 PM
+    commented_by_id:
+      description: Id of the User commented.
+      type: string
+      example: '16367000000073001'
+    commented_by:
+      description: Name of the User Commented.
+      type: string
+      example: Will Smith
+    photo_url:
+      description: Url of the Photo.
+      type: string
+      example: https://contacts.zoho.in/file?ID=16b87b9dbae5b1008b32c9736141b6f63b3864c8cf94d900cf9bb346f0eb97b105c58df21a12283d421fa80a6cb97ffca294a909bc0c7ae9f1e14dd2e499565d&fs=thumb
+    approval_history:
+      description: Approval history.
+      type: array
+      items:
+        type: object
+        properties:
+          approval_history_id:
+            $ref: '#/components/schemas/approval_history_id'
+          report_name:
+            $ref: '#/components/schemas/report_name'
+          report_id:
+            $ref: '#/components/schemas/report_id'
+          report_number:
+            $ref: '#/components/schemas/report_number'
+          expense_id:
+            $ref: '#/components/schemas/expense_id'
+          comments:
+            $ref: '#/components/schemas/comments'
+          description:
+            $ref: '#/components/schemas/description'
+          type:
+            $ref: '#/components/schemas/type'
+          previous_status:
+            $ref: '#/components/schemas/previous_status'
+          approval_status:
+            $ref: '#/components/schemas/approval_status'
+          previous_approver_id:
+            $ref: '#/components/schemas/previous_approver_id'
+          previous_approver_name:
+            $ref: '#/components/schemas/previous_approver_name'
+          previous_approver_email:
+            $ref: '#/components/schemas/previous_approver_email'
+          approver_id:
+            $ref: '#/components/schemas/approver_id'
+          approver_name:
+            $ref: '#/components/schemas/approver_name'
+          date:
+            $ref: '#/components/schemas/date'
+          date_description:
+            $ref: '#/components/schemas/date_description'
+          time:
+            $ref: '#/components/schemas/time'
+          commented_by_id:
+            $ref: '#/components/schemas/commented_by_id'
+          commented_by:
+            $ref: '#/components/schemas/commented_by'
+          photo_url:
+            $ref: '#/components/schemas/photo_url'
+    unreported_expenses_count:
+      description: Number of Unreported expenses.
+      type: integer
+      example: 1
+    unreported_expenses:
+      description: Details of Unreported expenses.
+      type: array
+      items:
+        type: object
+        properties:
+          expense_id:
+            $ref: '#/components/schemas/expense_id'
+          date:
+            $ref: '#/components/schemas/date'
+          category_id:
+            $ref: '#/components/schemas/category_id'
+          category_name:
+            $ref: '#/components/schemas/category_name'
+          total:
+            $ref: '#/components/schemas/total'
+          paid_through_account_id:
+            $ref: '#/components/schemas/paid_through_account_id'
+          paid_through_account_name:
+            $ref: '#/components/schemas/paid_through_account_name'
+          bcy_total:
+            $ref: '#/components/schemas/bcy_total'
+          currency_code:
+            $ref: '#/components/schemas/currency_code'
+          currency_id:
+            $ref: '#/components/schemas/currency_id'
+          receipt_name:
+            $ref: '#/components/schemas/receipt_name'
+          is_billable:
+            $ref: '#/components/schemas/is_billable'
+          customer_id:
+            $ref: '#/components/schemas/customer_id'
+          customer_name:
+            $ref: '#/components/schemas/customer_name'
+          project_id:
+            $ref: '#/components/schemas/project_id'
+          project_name:
+            $ref: '#/components/schemas/project_name'
+          is_reimbursable:
+            $ref: '#/components/schemas/is_reimbursable'
+          merchant_id:
+            $ref: '#/components/schemas/merchant_id'
+          merchant_name:
+            $ref: '#/components/schemas/merchant_name'
+          distance:
+            $ref: '#/components/schemas/distance'
+          mileage_rate:
+            $ref: '#/components/schemas/mileage_rate'
+          mileage_unit:
+            $ref: '#/components/schemas/mileage_unit'
+          mileage_type:
+            $ref: '#/components/schemas/mileage_type'
+          start_reading:
+            $ref: '#/components/schemas/start_reading'
+          end_reading:
+            $ref: '#/components/schemas/end_reading'
+          receipt_type:
+            $ref: '#/components/schemas/receipt_type'
+          documents:
+            $ref: '#/components/schemas/documents'
+          exchange_rate:
+            $ref: '#/components/schemas/exchange_rate'
+          is_uncategorized:
+            $ref: '#/components/schemas/is_uncategorized'
+          due_days:
+            $ref: '#/components/schemas/due_days'
+          expired_by:
+            $ref: '#/components/schemas/expired_by'
+          is_expired:
+            $ref: '#/components/schemas/is_expired'
+          payment_mode:
+            $ref: '#/components/schemas/payment_mode'
+          transaction_description:
+            $ref: '#/components/schemas/transaction_description'
+    user_id:
+      description: Unique Id of User.
+      type: string
+      example: '16367000000073001'
+    role_id:
+      description: unique Id of the User Role.
+      type: string
+      example: '16367000000030001'
+    name:
+      description: Name of the User.
+      type: string
+      example: Will Smith
+    email:
+      description: Email Id of the User.
+      type: string
+      example: will.smith@gmail.com
+    default_approver_id:
+      description: Default Approver Id.
+      type: string
+      example: '16367000000030001'
+    default_approver_name:
+      description: Default Approver Name.
+      type: string
+      example: PATRICIA BOYLE
+    user_role:
+      description: Role of the User.
+      type: string
+      example: admin
+    can_approve:
+      description: Whether the User can approve request. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: true
+    is_current_user:
+      description: Whether the User is a Current User. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: true
+    is_selected:
+      description: Whether the EMail Id is selected. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: true
+    email_ids:
+      description: EMail Ids of the User.
+      type: array
+      items:
+        type: object
+        properties:
+          is_selected:
+            $ref: '#/components/schemas/is_selected'
+          email:
+            $ref: '#/components/schemas/email'
+    approves_to_id:
+      description: Id of the User whose report can be approved.
+      type: string
+      example: '16367000000030001'
+    approves_to_name:
+      description: Name of the User whose report can be approved.
+      type: string
+      example: PATRICIA BOYLE
+    submission_amount_limit:
+      description: Maximum amount for submission.
+      type: number
+      format: double
+      example: 0
+    approval_amount_limit:
+      description: Maximum amount for approval.
+      type: number
+      format: double
+      example: 0
+    Type.Approval-Status.Submitted:
+      description: List of all Submitted Reports.
+      type: string
+      example: ''
+    Type.Approval-Status.Approved:
+      description: List of all Approved Reports.
+      type: string
+      example: ''
+    Type.Approval-Status.Rejected:
+      description: List of all Rejected Reports.
+      type: string
+      example: ''
+    Type.Approval-Status.Reimbursed:
+      description: List of all Reimbursed Reports.
+      type: string
+      example: ''
+    filter_by:
+      description: For Filtering Expense Reports based on status.
+      type: object
+      properties:
+        Type.Approval,Status.Submitted:
+          $ref: '#/components/schemas/Type.Approval-Status.Submitted'
+        Type.Approval,Status.Approved:
+          $ref: '#/components/schemas/Type.Approval-Status.Approved'
+        Type.Approval,Status.Rejected:
+          $ref: '#/components/schemas/Type.Approval-Status.Rejected'
+        Type.Approval,Status.Reimbursed:
+          $ref: '#/components/schemas/Type.Approval-Status.Reimbursed'
+    users:
+      description: Details of Users.
+      type: array
+      items:
+        type: object
+        properties:
+          user_id:
+            $ref: '#/components/schemas/user_id'
+          role_id:
+            $ref: '#/components/schemas/role_id'
+          name:
+            $ref: '#/components/schemas/name'
+          email:
+            $ref: '#/components/schemas/email'
+          default_approver_id:
+            $ref: '#/components/schemas/default_approver_id'
+          default_approver_name:
+            $ref: '#/components/schemas/default_approver_name'
+          user_role:
+            $ref: '#/components/schemas/user_role'
+          can_approve:
+            $ref: '#/components/schemas/can_approve'
+          is_current_user:
+            $ref: '#/components/schemas/is_current_user'
+          email_ids:
+            $ref: '#/components/schemas/email_ids'
+          status:
+            $ref: '#/components/schemas/status'
+          photo_url:
+            $ref: '#/components/schemas/photo_url'
+          approves_to_id:
+            $ref: '#/components/schemas/approves_to_id'
+          approves_to_name:
+            $ref: '#/components/schemas/approves_to_name'
+          submission_amount_limit:
+            $ref: '#/components/schemas/submission_amount_limit'
+          approval_amount_limit:
+            $ref: '#/components/schemas/approval_amount_limit'
+          created_time:
+            $ref: '#/components/schemas/created_time'
+          last_modified_time:
+            $ref: '#/components/schemas/last_modified_time'
+          policy_id:
+            $ref: '#/components/schemas/policy_id'
+          policy_name:
+            $ref: '#/components/schemas/policy_name'
+    reimbursement_date:
+      description: Date of Reimbursement.
+      type: string
+      example: '2017-03-01'
+    approved_date:
+      description: Date of Report Approval.
+      type: string
+      example: '2017-03-01'
+    tag_option_id:
+      description: Unique ID for Tag option generated by the server.
+      type: string
+      example: '16367000000225001'
+    tag_name:
+      description: Name of the Tag.
+      type: string
+      example: Tag 1
+    tag_id:
+      description: Unique ID for Tag generated by the server.
+      type: string
+      example: '16367000000000301'
+    tag_option_name:
+      description: Name of the Tag Option.
+      type: string
+      example: Option 1
+    date_description:
+      type: string
+      example: yesterday
+    tags:
+      description: Tags associated with the Report.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_name:
+            $ref: '#/components/schemas/tag_name'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+          tag_option_name:
+            $ref: '#/components/schemas/tag_option_name'
+    expense_report:
+      type: object
+      properties:
+        report_id:
+          $ref: '#/components/schemas/report_id'
+        report_name:
+          $ref: '#/components/schemas/report_name'
+        description:
+          $ref: '#/components/schemas/description'
+        report_number:
+          $ref: '#/components/schemas/report_number'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        due_date:
+          $ref: '#/components/schemas/due_date'
+        status:
+          $ref: '#/components/schemas/status'
+        is_archived:
+          $ref: '#/components/schemas/is_archived'
+        due_days:
+          $ref: '#/components/schemas/due_days'
+        submitted_date:
+          $ref: '#/components/schemas/submitted_date'
+        last_submitted_date:
+          $ref: '#/components/schemas/last_submitted_date'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        price_precision:
+          $ref: '#/components/schemas/price_precision'
+        currency_code:
+          $ref: '#/components/schemas/currency_code'
+        approver_id:
+          $ref: '#/components/schemas/approver_id'
+        approver_name:
+          $ref: '#/components/schemas/approver_name'
+        approver_email:
+          $ref: '#/components/schemas/approver_email'
+        approver_photo_url:
+          $ref: '#/components/schemas/approver_photo_url'
+        submitted_to_id:
+          $ref: '#/components/schemas/submitted_to_id'
+        submitted_to_name:
+          $ref: '#/components/schemas/submitted_to_name'
+        submitted_to_email:
+          $ref: '#/components/schemas/submitted_to_email'
+        submitted_to_employee_no:
+          $ref: '#/components/schemas/submitted_to_employee_no'
+        submitted_to_department_name:
+          $ref: '#/components/schemas/submitted_to_department_name'
+        submitted_to_photo_url:
+          $ref: '#/components/schemas/submitted_to_photo_url'
+        submitted_by:
+          $ref: '#/components/schemas/submitted_by'
+        submitter_name:
+          $ref: '#/components/schemas/submitter_name'
+        submitter_email:
+          $ref: '#/components/schemas/submitter_email'
+        submitter_photo_url:
+          $ref: '#/components/schemas/submitter_photo_url'
+        submitter_employee_no:
+          $ref: '#/components/schemas/submitter_employee_no'
+        submitter_department_name:
+          $ref: '#/components/schemas/submitter_department_name'
+        total:
+          $ref: '#/components/schemas/total'
+        reimbursable_total:
+          $ref: '#/components/schemas/reimbursable_total'
+        non_reimbursable_total:
+          $ref: '#/components/schemas/non_reimbursable_total'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        created_date:
+          $ref: '#/components/schemas/created_date'
+        last_modified_time:
+          $ref: '#/components/schemas/last_modified_time'
+        created_by_id:
+          $ref: '#/components/schemas/created_by_id'
+        created_by_name:
+          $ref: '#/components/schemas/created_by_name'
+        created_by_email:
+          $ref: '#/components/schemas/created_by_email'
+        creator_photo_url:
+          $ref: '#/components/schemas/creator_photo_url'
+        tags:
+          $ref: '#/components/schemas/tags'
+        expenses:
+          $ref: '#/components/schemas/expenses'
+        expired_expense_count:
+          $ref: '#/components/schemas/expired_expense_count'
+        reimbursable_expenses_count:
+          $ref: '#/components/schemas/reimbursable_expenses_count'
+        non_reimbursable_expenses_count:
+          $ref: '#/components/schemas/non_reimbursable_expenses_count'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        uncategorized_expense_count:
+          $ref: '#/components/schemas/uncategorized_expense_count'
+        policy_violated:
+          $ref: '#/components/schemas/policy_violated'
+        reimbursements:
+          $ref: '#/components/schemas/reimbursements'
+        advance_payments:
+          $ref: '#/components/schemas/advance_payments'
+        is_advancepayment_allowed:
+          $ref: '#/components/schemas/is_advancepayment_allowed'
+        amount_to_be_reimbursed:
+          $ref: '#/components/schemas/amount_to_be_reimbursed'
+        remaining_reimbursement_total:
+          $ref: '#/components/schemas/remaining_reimbursement_total'
+        amount_to_be_refunded:
+          $ref: '#/components/schemas/amount_to_be_refunded'
+        advance_total:
+          $ref: '#/components/schemas/advance_total'
+        can_create_advance:
+          $ref: '#/components/schemas/can_create_advance'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        customer_name:
+          $ref: '#/components/schemas/customer_name'
+        project_id:
+          $ref: '#/components/schemas/project_id'
+        project_name:
+          $ref: '#/components/schemas/project_name'
+        employee_number:
+          $ref: '#/components/schemas/employee_number'
+        department_id:
+          $ref: '#/components/schemas/department_id'
+        department_name:
+          $ref: '#/components/schemas/department_name'
+        next_approver_id:
+          $ref: '#/components/schemas/next_approver_id'
+        next_approver_email:
+          $ref: '#/components/schemas/next_approver_email'
+        next_approver_name:
+          $ref: '#/components/schemas/next_approver_name'
+        approver_employee_no:
+          $ref: '#/components/schemas/approver_employee_no'
+        approver_department_name:
+          $ref: '#/components/schemas/approver_department_name'
+        previous_approver_id:
+          $ref: '#/components/schemas/previous_approver_id'
+        previous_approver_name:
+          $ref: '#/components/schemas/previous_approver_name'
+        previous_approver_employee_no:
+          $ref: '#/components/schemas/previous_approver_employee_no'
+        previous_approver_department_name:
+          $ref: '#/components/schemas/previous_approver_department_name'
+        policy_id:
+          $ref: '#/components/schemas/policy_id'
+        policy_name:
+          $ref: '#/components/schemas/policy_name'
+        unreported_expenses_count:
+          $ref: '#/components/schemas/unreported_expenses_count'
+        unreported_expenses:
+          $ref: '#/components/schemas/unreported_expenses'
+        users:
+          $ref: '#/components/schemas/users'
+    expense_report_reimbursed:
+      type: object
+      properties:
+        report_id:
+          $ref: '#/components/schemas/report_id'
+        report_name:
+          $ref: '#/components/schemas/report_name'
+        description:
+          $ref: '#/components/schemas/description'
+        report_number:
+          $ref: '#/components/schemas/report_number'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        due_date:
+          $ref: '#/components/schemas/due_date'
+        status:
+          $ref: '#/components/schemas/status'
+        is_archived:
+          $ref: '#/components/schemas/is_archived'
+        due_days:
+          $ref: '#/components/schemas/due_days'
+        submitted_date:
+          $ref: '#/components/schemas/submitted_date'
+        last_submitted_date:
+          $ref: '#/components/schemas/last_submitted_date'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        price_precision:
+          $ref: '#/components/schemas/price_precision'
+        currency_code:
+          $ref: '#/components/schemas/currency_code'
+        approver_id:
+          $ref: '#/components/schemas/approver_id'
+        approver_name:
+          $ref: '#/components/schemas/approver_name'
+        approver_email:
+          $ref: '#/components/schemas/approver_email'
+        approver_photo_url:
+          $ref: '#/components/schemas/approver_photo_url'
+        submitted_to_id:
+          $ref: '#/components/schemas/submitted_to_id'
+        submitted_to_name:
+          $ref: '#/components/schemas/submitted_to_name'
+        submitted_to_email:
+          $ref: '#/components/schemas/submitted_to_email'
+        submitted_to_employee_no:
+          $ref: '#/components/schemas/submitted_to_employee_no'
+        submitted_to_department_name:
+          $ref: '#/components/schemas/submitted_to_department_name'
+        submitted_to_photo_url:
+          $ref: '#/components/schemas/submitted_to_photo_url'
+        submitted_by:
+          $ref: '#/components/schemas/submitted_by'
+        submitter_name:
+          $ref: '#/components/schemas/submitter_name'
+        submitter_email:
+          $ref: '#/components/schemas/submitter_email'
+        submitter_photo_url:
+          $ref: '#/components/schemas/submitter_photo_url'
+        submitter_employee_no:
+          $ref: '#/components/schemas/submitter_employee_no'
+        submitter_department_name:
+          $ref: '#/components/schemas/submitter_department_name'
+        total:
+          $ref: '#/components/schemas/total'
+        reimbursable_total:
+          $ref: '#/components/schemas/reimbursable_total'
+        non_reimbursable_total:
+          $ref: '#/components/schemas/non_reimbursable_total'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        created_date:
+          $ref: '#/components/schemas/created_date'
+        last_modified_time:
+          $ref: '#/components/schemas/last_modified_time'
+        created_by_id:
+          $ref: '#/components/schemas/created_by_id'
+        created_by_name:
+          $ref: '#/components/schemas/created_by_name'
+        created_by_email:
+          $ref: '#/components/schemas/created_by_email'
+        creator_photo_url:
+          $ref: '#/components/schemas/creator_photo_url'
+        expenses:
+          $ref: '#/components/schemas/expenses'
+        expired_expense_count:
+          $ref: '#/components/schemas/expired_expense_count'
+        reimbursable_expenses_count:
+          $ref: '#/components/schemas/reimbursable_expenses_count'
+        non_reimbursable_expenses_count:
+          $ref: '#/components/schemas/non_reimbursable_expenses_count'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        uncategorized_expense_count:
+          $ref: '#/components/schemas/uncategorized_expense_count'
+        policy_violated:
+          $ref: '#/components/schemas/policy_violated'
+        reimbursements:
+          $ref: '#/components/schemas/reimbursements'
+        advance_payments:
+          $ref: '#/components/schemas/advance_payments'
+        is_advancepayment_allowed:
+          $ref: '#/components/schemas/is_advancepayment_allowed'
+        amount_to_be_reimbursed:
+          $ref: '#/components/schemas/amount_to_be_reimbursed'
+        remaining_reimbursement_total:
+          $ref: '#/components/schemas/remaining_reimbursement_total'
+        amount_to_be_refunded:
+          $ref: '#/components/schemas/amount_to_be_refunded'
+        advance_total:
+          $ref: '#/components/schemas/advance_total'
+        can_create_advance:
+          $ref: '#/components/schemas/can_create_advance'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        customer_name:
+          $ref: '#/components/schemas/customer_name'
+        project_id:
+          $ref: '#/components/schemas/project_id'
+        project_name:
+          $ref: '#/components/schemas/project_name'
+        employee_number:
+          $ref: '#/components/schemas/employee_number'
+        department_id:
+          $ref: '#/components/schemas/department_id'
+        department_name:
+          $ref: '#/components/schemas/department_name'
+        next_approver_id:
+          $ref: '#/components/schemas/next_approver_id'
+        next_approver_email:
+          $ref: '#/components/schemas/next_approver_email'
+        next_approver_name:
+          $ref: '#/components/schemas/next_approver_name'
+        approver_employee_no:
+          $ref: '#/components/schemas/approver_employee_no'
+        approver_department_name:
+          $ref: '#/components/schemas/approver_department_name'
+        previous_approver_id:
+          $ref: '#/components/schemas/previous_approver_id'
+        previous_approver_name:
+          $ref: '#/components/schemas/previous_approver_name'
+        previous_approver_employee_no:
+          $ref: '#/components/schemas/previous_approver_employee_no'
+        previous_approver_department_name:
+          $ref: '#/components/schemas/previous_approver_department_name'
+        policy_id:
+          $ref: '#/components/schemas/policy_id'
+        policy_name:
+          $ref: '#/components/schemas/policy_name'
+    create-an-expense-report-request:
+      type: object
+      required:
+        - report_name
+        - start_date
+        - end_date
+      properties:
+        report_name:
+          $ref: '#/components/schemas/report_name'
+        description:
+          $ref: '#/components/schemas/description'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        expenses:
+          description: Expenses associated with User.
+          type: array
+          items:
+            type: object
+            required:
+              - expense_id
+            properties:
+              expense_id:
+                $ref: '#/components/schemas/expense_id'
+              order:
+                $ref: '#/components/schemas/order'
+        custom_fields:
+          description: Custom Fields related to Expense.
+          type: array
+          items:
+            type: object
+            required:
+              - customfield_id
+              - value
+            properties:
+              customfield_id:
+                $ref: '#/components/schemas/customfield_id'
+              value:
+                $ref: '#/components/schemas/value'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        project_id:
+          $ref: '#/components/schemas/project_id'
+        tags:
+          description: Tags associated with the Report.
+          type: array
+          items:
+            type: object
+            required:
+              - tag_id
+              - tag_option_id
+            properties:
+              tag_id:
+                $ref: '#/components/schemas/tag_id'
+              tag_option_id:
+                $ref: '#/components/schemas/tag_option_id'
+    create-an-expense-report-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Expense report created successfully.
+          readOnly: true
+        expense_report:
+          $ref: '#/components/schemas/expense_report-response'
+    list-of-all-expense-reports-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        expense_reports:
+          type: array
+          items:
+            type: object
+            properties:
+              report_id:
+                $ref: '#/components/schemas/report_id'
+              report_name:
+                $ref: '#/components/schemas/report_name'
+              description:
+                $ref: '#/components/schemas/description'
+              report_number:
+                $ref: '#/components/schemas/report_number'
+              start_date:
+                $ref: '#/components/schemas/start_date'
+              end_date:
+                $ref: '#/components/schemas/end_date'
+              status:
+                $ref: '#/components/schemas/status'
+              is_archived:
+                $ref: '#/components/schemas/is_archived'
+              due_date:
+                $ref: '#/components/schemas/due_date'
+              submitted_date:
+                $ref: '#/components/schemas/submitted_date'
+              approved_date:
+                $ref: '#/components/schemas/approved_date'
+              last_submitted_date:
+                $ref: '#/components/schemas/last_submitted_date'
+              currency_id:
+                $ref: '#/components/schemas/currency_id'
+              currency_code:
+                $ref: '#/components/schemas/currency_code'
+              approver_id:
+                $ref: '#/components/schemas/approver_id'
+              approver_name:
+                $ref: '#/components/schemas/approver_name'
+              approver_email:
+                $ref: '#/components/schemas/approver_email'
+              submitted_to_id:
+                $ref: '#/components/schemas/submitted_to_id'
+              submitted_to_name:
+                $ref: '#/components/schemas/submitted_to_name'
+              submitted_to_email:
+                $ref: '#/components/schemas/submitted_to_email'
+              submitter_email:
+                $ref: '#/components/schemas/submitter_email'
+              submitted_by:
+                $ref: '#/components/schemas/submitted_by'
+              submitter_name:
+                $ref: '#/components/schemas/submitter_name'
+              total:
+                $ref: '#/components/schemas/total'
+              reimbursable_total:
+                $ref: '#/components/schemas/reimbursable_total'
+              reimbursement_date:
+                $ref: '#/components/schemas/reimbursement_date'
+              non_reimbursable_total:
+                $ref: '#/components/schemas/non_reimbursable_total'
+              created_time:
+                $ref: '#/components/schemas/created_time'
+              last_modified_time:
+                $ref: '#/components/schemas/last_modified_time'
+              created_by_id:
+                $ref: '#/components/schemas/created_by_id'
+              created_by_name:
+                $ref: '#/components/schemas/created_by_name'
+              comments_count:
+                $ref: '#/components/schemas/comments_count'
+              policy_violated:
+                $ref: '#/components/schemas/policy_violated'
+              uncategorized_expense_count:
+                $ref: '#/components/schemas/uncategorized_expense_count'
+              customer_id:
+                $ref: '#/components/schemas/customer_id'
+              custom_fields:
+                $ref: '#/components/schemas/custom_fields'
+              project_id:
+                $ref: '#/components/schemas/project_id'
+              customer_name:
+                $ref: '#/components/schemas/customer_name'
+              project_name:
+                $ref: '#/components/schemas/project_name'
+              policy_id:
+                $ref: '#/components/schemas/policy_id'
+              policy_name:
+                $ref: '#/components/schemas/policy_name'
+              due_days:
+                $ref: '#/components/schemas/due_days'
+    retrieve-details-of-an-expense-report-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        expense_report:
+          $ref: '#/components/schemas/expense_report'
+    update-an-expense-report-request:
+      type: object
+      required:
+        - expenses
+      properties:
+        report_name:
+          $ref: '#/components/schemas/report_name'
+        description:
+          $ref: '#/components/schemas/description'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        expenses:
+          description: Expenses associated with User.
+          type: array
+          items:
+            type: object
+            required:
+              - expense_id
+            properties:
+              expense_id:
+                $ref: '#/components/schemas/expense_id'
+              order:
+                $ref: '#/components/schemas/order'
+        custom_fields:
+          description: Custom Fields related to Expense.
+          type: array
+          items:
+            type: object
+            required:
+              - customfield_id
+              - value
+            properties:
+              customfield_id:
+                $ref: '#/components/schemas/customfield_id'
+              value:
+                $ref: '#/components/schemas/value'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        project_id:
+          $ref: '#/components/schemas/project_id'
+        tags:
+          description: Tags associated with the Report.
+          type: array
+          items:
+            type: object
+            required:
+              - tag_id
+              - tag_option_id
+            properties:
+              tag_id:
+                $ref: '#/components/schemas/tag_id'
+              tag_option_id:
+                $ref: '#/components/schemas/tag_option_id'
+        expense_id:
+          $ref: '#/components/schemas/expense_id'
+        customfield_id:
+          $ref: '#/components/schemas/customfield_id'
+        value:
+          $ref: '#/components/schemas/value'
+        tag_id:
+          $ref: '#/components/schemas/tag_id'
+        tag_option_id:
+          $ref: '#/components/schemas/tag_option_id'
+    update-an-expense-report-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Expense report details updated successfully.
+          readOnly: true
+        expense_report:
+          type: object
+          properties:
+            report_id:
+              $ref: '#/components/schemas/report_id'
+            report_name:
+              $ref: '#/components/schemas/report_name'
+            description:
+              $ref: '#/components/schemas/description'
+            report_number:
+              $ref: '#/components/schemas/report_number'
+            start_date:
+              $ref: '#/components/schemas/start_date'
+            end_date:
+              $ref: '#/components/schemas/end_date'
+            status:
+              $ref: '#/components/schemas/status'
+            currency_id:
+              $ref: '#/components/schemas/currency_id'
+            price_precision:
+              $ref: '#/components/schemas/price_precision'
+            currency_code:
+              $ref: '#/components/schemas/currency_code'
+            total:
+              $ref: '#/components/schemas/total'
+            reimbursable_total:
+              $ref: '#/components/schemas/reimbursable_total'
+            non_reimbursable_total:
+              $ref: '#/components/schemas/non_reimbursable_total'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            created_date:
+              $ref: '#/components/schemas/created_date'
+            created_by_id:
+              $ref: '#/components/schemas/created_by_id'
+            created_by_name:
+              $ref: '#/components/schemas/created_by_name'
+            created_by_email:
+              $ref: '#/components/schemas/created_by_email'
+            last_modified_time:
+              $ref: '#/components/schemas/last_modified_time'
+            tags:
+              $ref: '#/components/schemas/tags'
+            expenses:
+              $ref: '#/components/schemas/expenses'
+            expired_expense_count:
+              $ref: '#/components/schemas/expired_expense_count'
+            reimbursable_expenses_count:
+              $ref: '#/components/schemas/reimbursable_expenses_count'
+            non_reimbursable_expenses_count:
+              $ref: '#/components/schemas/non_reimbursable_expenses_count'
+            custom_fields:
+              $ref: '#/components/schemas/custom_fields'
+            customer_id:
+              $ref: '#/components/schemas/customer_id'
+            customer_name:
+              $ref: '#/components/schemas/customer_name'
+            project_id:
+              $ref: '#/components/schemas/project_id'
+            project_name:
+              $ref: '#/components/schemas/project_name'
+            employee_number:
+              $ref: '#/components/schemas/employee_number'
+            department_id:
+              $ref: '#/components/schemas/department_id'
+            department_name:
+              $ref: '#/components/schemas/department_name'
+            policy_id:
+              $ref: '#/components/schemas/policy_id'
+            policy_name:
+              $ref: '#/components/schemas/policy_name'
+    approve-an-expense-report-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Report approved successfully
+          readOnly: true
+    reject-an-expense-report-request:
+      type: object
+      properties:
+        comments:
+          $ref: '#/components/schemas/comments'
+    reject-an-expense-report-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Report has been rejected
+          readOnly: true
+    reimburse-an-expense-report-request:
+      type: object
+      properties:
+        notes:
+          $ref: '#/components/schemas/notes'
+        date:
+          $ref: '#/components/schemas/date'
+        amount:
+          $ref: '#/components/schemas/amount'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+    reimburse-an-expense-report-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Report has been reimbursed
+          readOnly: true
+        expense_report_reimbursed:
+          $ref: '#/components/schemas/expense_report_reimbursed'
+    approval-history-of-an-expense-report-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        approval_history:
+          type: array
+          items:
+            type: object
+            properties:
+              approval_history_id:
+                $ref: '#/components/schemas/approval_history_id'
+              report_name:
+                $ref: '#/components/schemas/report_name'
+              report_id:
+                $ref: '#/components/schemas/report_id'
+              report_number:
+                $ref: '#/components/schemas/report_number'
+              expense_id:
+                $ref: '#/components/schemas/expense_id'
+              comments:
+                $ref: '#/components/schemas/comments'
+              description:
+                $ref: '#/components/schemas/description'
+              type:
+                $ref: '#/components/schemas/type'
+              previous_status:
+                $ref: '#/components/schemas/previous_status'
+              approval_status:
+                $ref: '#/components/schemas/approval_status'
+              previous_approver_id:
+                $ref: '#/components/schemas/previous_approver_id'
+              previous_approver_name:
+                $ref: '#/components/schemas/previous_approver_name'
+              previous_approver_email:
+                $ref: '#/components/schemas/previous_approver_email'
+              approver_id:
+                $ref: '#/components/schemas/approver_id'
+              approver_name:
+                $ref: '#/components/schemas/approver_name'
+              date:
+                $ref: '#/components/schemas/date'
+              time:
+                $ref: '#/components/schemas/time'
+              commented_by_id:
+                $ref: '#/components/schemas/commented_by_id'
+              commented_by:
+                $ref: '#/components/schemas/commented_by'
+              photo_url:
+                $ref: '#/components/schemas/photo_url'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.expensereport.CREATE: Create Expense Report
+            ERP.expensereport.READ: Read Expense Report
+            ERP.expensereport.UPDATE: Update Expense Report
+            ERP.approval.CREATE: Create Approval
+            ERP.reimbursement.CREATE: Create Reimbursement

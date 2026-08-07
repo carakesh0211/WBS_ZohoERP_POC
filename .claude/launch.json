@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "capex-hub",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "uvicorn", "app.backend.main:app", "--port", "8000", "--host", "127.0.0.1"],
+      "port": 8000
+    }
+  ]
+}

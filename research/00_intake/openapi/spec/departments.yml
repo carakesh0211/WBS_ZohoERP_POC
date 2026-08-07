@@ -1,0 +1,268 @@
+openapi: 3.0.0
+info:
+  title: Departments
+  description: The Departments module in Zoho ERP allows you to manage employee departments (India organization).
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v1
+    description: API Endpoint
+tags:
+  - name: departments
+    description: Departments Module
+paths:
+  /departments:
+    x-mcp-group:
+      - Departments
+    post:
+      tags:
+        - departments
+      operationId: create_department
+      summary: Create department
+      description: Create a new department.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-department-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-department-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.department.CREATE
+    get:
+      tags:
+        - departments
+      operationId: list_departments
+      summary: Get Departments List
+      description: Get Departments List.
+      parameters:
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-departments-list-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.department.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /departments/{department_id}:
+    x-mcp-group:
+      - Departments
+    post:
+      tags:
+        - departments
+      operationId: update_department
+      summary: Update department
+      description: Update existing department.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-department-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-department-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.department.UPDATE
+    get:
+      tags:
+        - departments
+      operationId: get_department_details
+      summary: Get Department Details
+      description: Get existing Department details.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-department-details'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.department.READ
+    delete:
+      tags:
+        - departments
+      operationId: delete_department
+      summary: Delete Department
+      description: Delete existing department.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-department'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.department.DELETE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/department_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: Unique identifier for the organization.
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+    department_id:
+      name: department_id
+      in: path
+      description: Department id.
+      schema:
+        $ref: '#/components/schemas/department_id'
+      required: true
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/department_response'
+    code:
+      type: integer
+      example: 0
+      readOnly: true
+    message:
+      type: string
+      example: success
+      readOnly: true
+    department_id:
+      type: string
+      example: '49774000000096023'
+      description: Unique identifier for the department.
+    name:
+      description: Name of the department.
+      type: string
+      example: Payroll
+    description:
+      description: Description.
+      type: string
+      example: Payroll department
+    department_code:
+      description: Department Code.
+      type: string
+      example: '24'
+    department_response:
+      type: object
+      properties:
+        department_id:
+          $ref: '#/components/schemas/department_id'
+        name:
+          $ref: '#/components/schemas/name'
+        description:
+          $ref: '#/components/schemas/description'
+        department_code:
+          $ref: '#/components/schemas/department_code'
+    create-department-request:
+      type: object
+      properties:
+        name:
+          $ref: '#/components/schemas/name'
+        description:
+          $ref: '#/components/schemas/description'
+        department_code:
+          $ref: '#/components/schemas/department_code'
+    create-department-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Department has been added
+        department:
+          $ref: '#/components/schemas/department_response'
+    get-departments-list-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        departments:
+          type: array
+          items:
+            type: object
+            properties:
+              department_id:
+                $ref: '#/components/schemas/department_id'
+              name:
+                $ref: '#/components/schemas/name'
+              description:
+                $ref: '#/components/schemas/description'
+              department_code:
+                $ref: '#/components/schemas/department_code'
+    update-department-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Department has been updated
+        department:
+          $ref: '#/components/schemas/department_response'
+    get-department-details:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        department:
+          $ref: '#/components/schemas/department_response'
+    delete-department:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Department deleted
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.department.CREATE: Create Department
+            ERP.department.UPDATE: Update Department
+            ERP.department.READ: Read Department
+            ERP.department.DELETE: Delete Department

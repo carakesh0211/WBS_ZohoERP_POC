@@ -1,0 +1,561 @@
+{
+ "frozen_at": "2026-08-06",
+ "rule": "These conflicts must be surfaced in sections 43/44/45, never silently resolved.",
+ "conflicts": [
+  {
+   "conflict_id": "CONF-01",
+   "summary": "The PDF classifies Purchase Request as a Standard Zoho ERP capability; the master prompt states that no public Purchase Request API was evident in the surfaced Zoho ERP API index and forbids assuming one exists. VERIFIED - both texts are present as described. Note the two claims are not strictly the same proposition: the PDF's 'Standard' classification is about product/UI functionality and licensing effort, while the master prompt's finding is about public REST API availability. A module can exist in the Zoho ERP UI as standard and still have no documented public API. The conflict is therefore real but its resolution may be 'both true' rather than 'one wrong'.",
+   "pdf_text_verbatim": "Requirement | Proposed Solution | Classification ... Purchase Request | Zoho ERP Purchase Request | Standard",
+   "pdf_line_hint": "atha_pdf_text.txt lines 536-548 (section 10, Proposed Zoho Solution Mapping, header row lines 538-542 and first data row lines 544-548)",
+   "prompt_text_verbatim": "The current surfaced Zoho ERP API index must be checked carefully for a public Purchase Request API.\n\nAt the time this prompt was prepared, a Purchase Request endpoint was not evident in the surfaced public API index.\n\nTherefore, the final report must not assume that a Purchase Request API exists.",
+   "prompt_line_hint": "master_prompt.md lines 1887-1914 (section '#### Purchase Request'); reinforced at line 2735 ('- Missing Purchase Request API') and line 2905 (Definition of Done item 19)",
+   "type": "CONTRADICTION",
+   "resolvable_by_research": true,
+   "treatment": "Resolve by primary research against current official Zoho ERP API documentation and the downloadable OpenAPI specification (master prompt lines 1895-1903 prescribes the exact search procedure). Report the outcome in three separate columns rather than one verdict: (a) does a Purchase Request module exist in the Zoho ERP product UI, (b) does a public REST API exist for create/read/update/approve/status, (c) are custom functions, workflow callbacks or webhooks available as a bridge. If (a) is true and (b) is false, record the PDF classification 'Standard' as correct at product level but NOT sufficient for the API-first architecture, and select a fallback from the master prompt's list at lines 1905-1913 (recommended default: Purchase Request owned by the external CAPEX & WBS Control Hub, with the approved request converted into a Zoho ERP Purchase Order). Do not silently re-classify the client's own 'Standard' label without stating why.",
+   "becomes_open_question": true,
+   "becomes_risk": true
+  },
+  {
+   "conflict_id": "CONF-02",
+   "summary": "The client PDF contains no WBS hierarchy anywhere. VERIFIED by exhaustive search of the extracted text: the strings 'WBS', 'work breakdown', 'hierarchy', 'level', 'parent' and 'child' do not appear in any structural sense. The PDF's budget structure is strictly two levels - CAPEX/CWIP project code (section 5) and budget head (section 6). Multi-level WBS, three-level WBS trees, WBS-level budgeting, WBS settlement receivers and the entire WBS workbench are introduced by the master prompt.",
+   "pdf_text_verbatim": "Maintain project-level and budget-head-level approved budgets. [section 2, the only statement of budget granularity in the document] ... Budget Head | Approved Budget | PO Commitment | Actual CWIP | Available [section 6 header - the deepest structural level present in the document]",
+   "pdf_line_hint": "atha_pdf_text.txt line 68 (section 2 bullet) and lines 334-344 (section 6 table header); also section 5 field list lines 284-332 which defines the project record and contains no hierarchy field",
+   "prompt_text_verbatim": "- Multi-level WBS capable\n\n[line 47] - WBS hierarchy\n[line 48] - Budgeting by project, WBS element and budget head\n[line 988] 2. The WBS hierarchy can display at least three levels in a tree table.\n[line 2561] 2. Create a three-level WBS.\n[line 2623] - 3 WBS levels",
+   "prompt_line_hint": "master_prompt.md line 331 (primary quote); also lines 47-48, 94-106, 331, 612-654 (WBS Hierarchy Experience), 988, 2198-2214 (module 4 WBS Structure), 2378 (data model entity), 2561, 2604-2616, 2623",
+   "type": "SCOPE-ADDITION",
+   "resolvable_by_research": false,
+   "treatment": "This cannot be resolved by research; it is a client scope decision. Carry the WBS layer as an explicitly labelled SCOPE ADDITION throughout the blueprint, never as a client-stated requirement. Design the data model so that WBS is optional depth: a project with zero WBS elements must behave exactly as the PDF describes (budget and availability control at project + budget head only), and a WBS-enabled project must roll every WBS-level figure up to the same project + budget head totals the PDF's section 6 table shows. Every WBS-only requirement in the traceability matrix must carry source 'MASTER PROMPT - NOT IN CLIENT PDF'. Raise as the single highest-priority item in the client clarification questionnaire: does Atha Group want budget control below budget-head level, and if so how many levels and who owns WBS coding.",
+   "becomes_open_question": true,
+   "becomes_risk": true
+  },
+  {
+   "conflict_id": "CONF-03",
+   "summary": "VERIFIED AND QUANTIFIED. Section 5 names the illustrative project 'New Production Line' with Original and Current Approved Budget of Rs 1,50,00,000. Section 6 totals for that budget give commitment 47,00,000 and actual CWIP 63,00,000 (exposure 1,10,00,000, available 40,00,000, utilisation 73.33%). Section 12's dashboard row 'Production Line' shows the same Rs 1.50 Cr budget but commitment 30,00,000 and actual 85,00,000 (exposure 1,15,00,000, available 35,00,000, utilisation 76.7%). Both tables are internally arithmetically perfect (see formula_verification), so neither is a calculation error. DETERMINATION: they cannot be the same project at the same instant. Same budget and effectively the same name, but commitment differs by 17,00,000, actual by 22,00,000, available by 5,00,000 and utilisation by 3.37 points. They are reconcilable only as two different points in time (between the two snapshots 17,00,000 of commitment converted to actual plus a further 5,00,000 of new actual arose with no matching PO - which itself would breach the document's own no-double-counting and PO-first control), or as two unrelated illustrative datasets that happen to share a name and a budget. The second reading is the more probable: these are presentation samples, not a consistent worked example.",
+   "pdf_text_verbatim": "Project Name | New Production Line ... Original Budget | Rs 1,50,00,000 ... Current Approved Budget | Rs 1,50,00,000 [section 5] // TOTAL | Rs 1,50,00,000 | Rs 47,00,000 | Rs 63,00,000 | Rs 40,00,000 [section 6] // Production Line | Rs 1.50 Cr | Rs 30L | Rs 85L | Rs 35L | 76.7% [section 12]",
+   "pdf_line_hint": "atha_pdf_text.txt lines 298-300 and 318-324 (section 5), lines 396-404 (section 6 TOTAL row), lines 666-676 (section 12 first data row)",
+   "prompt_text_verbatim": "Where the document is incomplete, ambiguous or internally inconsistent:\n\n1. Identify the issue explicitly.\n2. Record it under Assumptions or Open Questions.\n3. Propose a recommended treatment.\n4. Do not present the recommendation as a confirmed client requirement.",
+   "prompt_line_hint": "master_prompt.md lines 33-38 (handling rule); the affected deliverables are lines 2596-2635 (POC Data Set) and section 22 of the required report (line 2793)",
+   "type": "INTERNAL-INCONSISTENCY",
+   "resolvable_by_research": false,
+   "treatment": "Do not attempt to reconcile the two figure sets and do not average or pick one silently. Record both as separate illustrative snapshots. For the POC sample data set, build ONE authoritative dataset seeded from section 6 (it is the more detailed, budget-head-level table and it agrees with the section 7 worked example of Rs 80L - Rs 35L - Rs 30L = Rs 15L for Plant & Machinery), then derive the dashboard row from it by calculation rather than copying section 12's numbers. State in the blueprint that section 12's Production Line row was not reproducible from section 6 and list the exact deltas (commitment -17,00,000, actual +22,00,000, available -5,00,000). Ask the client which snapshot is real.",
+   "becomes_open_question": true,
+   "becomes_risk": false
+  },
+  {
+   "conflict_id": "CONF-04",
+   "summary": "VERIFIED. The master prompt mandates that every endpoint be evidenced from Zoho ERP's own documentation under the /erp/v3 root and explicitly forbids using Zoho Books or Zoho Inventory endpoints as substitutes. The client PDF makes no reference to any API, endpoint, API root, OAuth flow or data centre at all - its section 10 classifications ('Standard', 'Configuration', 'Customization') are product/effort labels, not API-availability statements. There is also an internal tension inside the master prompt itself: its own 'research baseline' endpoint list (/contacts, /items, /locations, /projects, /settings/taxes, /settings/currencies, /chartofaccounts, /purchaseorders, /purchasereceives, /bills, /vendorpayments, /journals, /fixedassets) is path-for-path the recognisable Zoho Books / Zoho Inventory API surface, while the same document forbids leaning on those products. The prompt itself demands revalidation of every one of those paths.",
+   "pdf_text_verbatim": "[NOT IN SOURCE] The client PDF contains no mention of an API, endpoint, /erp/v3, OAuth, data centre, organization_id, Zoho Books or Zoho Inventory. Its closest statements are the section 10 mapping rows, e.g.: Vendor Bill & Accounting | Zoho ERP Finance | Standard, and the section 11 architecture line: ZOHO ERP ... API / Workflow / Custom Function ... CAPEX BUDGET CONTROL LAYER",
+   "pdf_line_hint": "atha_pdf_text.txt lines 568-572 (section 10 row) and lines 624-638 (section 11 architecture block); absence verified across the whole file, lines 1-807",
+   "prompt_text_verbatim": "Do not rely on Zoho Books or Zoho Inventory APIs as substitutes unless:\n\n1. The same endpoint is expressly documented for Zoho ERP.\n2. The report clearly states why a related-product API is being referenced.\n3. The actual Zoho ERP endpoint is separately verified.\n\n[line 1478] - India API root: `https://www.zohoapis.in/erp/v3`\n[line 2874] - Do not use Zoho Books or Zoho Inventory endpoints as silent substitutes for Zoho ERP.\n[line 2119] Do not fabricate an endpoint or infer one from another Zoho product.",
+   "prompt_line_hint": "master_prompt.md lines 1461-1465 (primary quote); also 1165, 1455-1459, 1467-1501, 2115-2119, 2872-2876",
+   "type": "CONTRADICTION",
+   "resolvable_by_research": true,
+   "treatment": "Treat the prohibition as binding and the baseline endpoint list at master_prompt.md lines 1473-1501 and 1535-1913 as UNVERIFIED until each path is individually confirmed under the Zoho ERP documentation. For every endpoint in the inventory record: official Zoho ERP documentation URL, verified date, and one of VERIFIED-ERP / VERIFIED-BUT-DOCUMENTED-ONLY-FOR-BOOKS-OR-INVENTORY / NOT-FOUND. Where a path is only documented for Books or Inventory, mark it 'UNVERIFIED - REQUIRES ZOHO CONFIRMATION' per master prompt line 2117 and state the business impact rather than assuming path equivalence. Separately record that the client PDF makes no API claim whatsoever, so no section 10 row can be cited as evidence that an API exists - the PDF's 'Standard' labels must not be promoted into API-availability findings.",
+   "becomes_open_question": true,
+   "becomes_risk": true
+  },
+  {
+   "conflict_id": "CONF-05",
+   "summary": "Solution locus disagreement. The PDF proposes solving the requirement inside Zoho ERP with controlled customization - its cover states the approach, and its section 10 classifies every gap as Standard, Configuration or Customization (i.e. work done to/inside Zoho), with the budget control layer in section 11 drawn as a layer attached to Zoho ERP. The master prompt pre-states a preference for an independent external application and lists 'Configuration-only approach inside Zoho ERP' - the PDF's own proposal - as merely one of four options to be compared. The master prompt does ask for an even-handed comparison, but its Objective, Client Context, screen catalogue, data model and connector module are all written on the assumption that the independent application wins.",
+   "pdf_text_verbatim": "Proposed solution approach using Zoho ERP with controlled customization [cover page] ... CAPEX Budget Master | Project and budget-head register | Customization ... PO Commitment Register | Open PO commitment calculation | Customization ... Budget Availability Validation | Budget check before approval | Customization [section 10]",
+   "pdf_line_hint": "atha_pdf_text.txt line 32 (cover), lines 588-604 (section 10 customization rows), lines 624-646 (section 11 architecture)",
+   "prompt_text_verbatim": "The preferred direction is an independent application integrated with Zoho ERP rather than forcing the entire requirement through multiple disconnected Zoho applications.\n\n[lines 341-348] Evaluate at least these options:\n\n1. Standalone custom web application integrated with Zoho ERP\n2. Zoho Creator-based control layer\n3. Hybrid architecture\n4. Configuration-only approach inside Zoho ERP\n\nCompare the options and recommend one for the POC and one for long-term production use.",
+   "prompt_line_hint": "master_prompt.md line 60 (primary quote); also lines 15, 316-348, 337, 339, 507",
+   "type": "CONTRADICTION",
+   "resolvable_by_research": false,
+   "treatment": "Run the four-option comparison genuinely, with the PDF's own proposal (option 4, configuration plus controlled customization inside Zoho ERP) scored on the same criteria as the others, and state explicitly in the architecture section that the client's own document proposed option 4. If the recommendation departs from the client's stated approach, justify it against named constraints (e.g. absence of a Purchase Request API per CONF-01, absence of multi-level WBS in Zoho ERP per CONF-02, line-level dimension limits) rather than against preference. Keep master prompt line 337 binding in every option: Zoho ERP stays the accounting and procurement system of record.",
+   "becomes_open_question": true,
+   "becomes_risk": true
+  },
+  {
+   "conflict_id": "CONF-06",
+   "summary": "The entire SAP premise is absent from the client document. The string 'SAP' does not appear anywhere in the PDF; there is no reference to SAP Project System, WBS, Fiori, availability control, settlement rules, Asset Under Construction, networks, activities, milestones, coding masks or SAP-familiar UI. The master prompt makes SAP research, SAP terminology mapping and an SAP-familiar visual language a critical objective and ties user adoption to it, asserting that intended users may already be familiar with SAP. Nothing in the PDF establishes that Atha Group users have SAP experience.",
+   "pdf_text_verbatim": "[NOT IN SOURCE] 'SAP' appears zero times in atha_pdf_text.txt. The document's own framing is: Atha Group | CWIP & CAPEX Budget Control - Proposed Zoho ERP Workflow, and its stated benefit is: The proposed solution will provide Atha Group with a controlled and auditable CAPEX lifecycle in which management can see not only what has already been spent, but also what has been committed through Purchase Orders.",
+   "pdf_line_hint": "atha_pdf_text.txt line 10 (running header) and lines 798-806 (section 15 Expected Outcome); absence verified across lines 1-807",
+   "prompt_text_verbatim": "The intended users may already be familiar with SAP Project System, SAP WBS and SAP-style enterprise transaction processing. The new application must therefore provide a familiar enterprise experience so that users do not feel that they have moved into an unrelated or lightweight application.",
+   "prompt_line_hint": "master_prompt.md line 355 (primary quote); the SAP scope spans lines 5-11, 62-211, 351-1027 (SAP-familiar UX), 820-850 (terminology matrix), 2776-2779 and 2818-2821 of the required deliverable list",
+   "type": "SCOPE-ADDITION",
+   "resolvable_by_research": false,
+   "treatment": "Keep the SAP research as a design reference framework - it is legitimate and valuable as a maturity model for CAPEX/CWIP control - but label the SAP-familiar UI mandate as a MASTER PROMPT DESIGN DIRECTION, not a client requirement, everywhere it appears in the traceability matrix. Add a client clarification question: do Atha Group's finance, procurement and plant users currently use SAP or any SAP-derived system, and is SAP-style information density a stated adoption requirement. If the answer is no, the SAP-familiar UI mandate becomes a cost with no adoption benefit and the UI effort (40 specified screens) should be re-scoped. Note that master prompt lines 359 and 921 already forbid SAP branding, logos or implied endorsement - that constraint stays binding regardless.",
+   "becomes_open_question": true,
+   "becomes_risk": true
+  },
+  {
+   "conflict_id": "CONF-07",
+   "summary": "The dedicated Zoho ERP integration setup module - connection profiles, OAuth 2.0 wizard, data-centre matrix, organisation discovery and mapping, scope management, secret vaults, sync scheduling, retry and dead-letter queues, connector health dashboard, connector audit trail - is entirely a master-prompt construct. The PDF's only integration statement is a single architecture line naming 'API / Workflow / Custom Function' as the coupling between Zoho ERP and the budget control layer. The PDF also implies a single organisation ('Company / Unit | Atha Group Entity / Unit'), whereas the master prompt requires support for multiple Zoho organisations and at least two in the POC design.",
+   "pdf_text_verbatim": "ZOHO ERP ... PR -> Approval -> PO -> Purchase Receive / GRN -> Vendor Bill -> CWIP Accounting ... API / Workflow / Custom Function ... CAPEX BUDGET CONTROL LAYER",
+   "pdf_line_hint": "atha_pdf_text.txt lines 624-638 (section 11, the document's complete statement on integration mechanics); section 5 line 302-304 for the single Company / Unit field",
+   "prompt_text_verbatim": "The future application must include a dedicated, administrator-only setup module through which an authorised implementation administrator can connect the application to one or more Zoho ERP organisations without changing application code.\n\n[line 1409] 12. The setup supports at least two Zoho ERP organisations in the POC design.",
+   "prompt_line_hint": "master_prompt.md line 1033 (primary quote); the module spans lines 1031-1409, with 10 of the 40 mandated screens (lines 574-583) and 18 of the 46 data-model entities (lines 2397-2414) devoted to it",
+   "type": "SCOPE-ADDITION",
+   "resolvable_by_research": false,
+   "treatment": "Specify the connector module as the master prompt requires - it is technically necessary for any API-first architecture and is defensible - but flag it in the traceability matrix as MASTER PROMPT SCOPE, NOT CLIENT-STATED, and size it separately in the roadmap so the client can see its cost. Recommend a POC-minimal profile (single connection profile, single organisation, manual sync trigger, encrypted-at-rest secrets, no dead-letter UI) versus a production profile (multi-org, scheduled sync, secret manager, full audit), so that the additional scope is optional rather than embedded. Confirm with the client how many Zoho ERP organisations and legal entities actually exist - the PDF names exactly one unit.",
+   "becomes_open_question": true,
+   "becomes_risk": true
+  },
+  {
+   "conflict_id": "CONF-08",
+   "summary": "Reporting platform disagreement. The PDF assigns management dashboards to Zoho Analytics, both in its solution mapping and as a named tier in its architecture diagram. The master prompt never mentions Zoho Analytics as the reporting platform in the target architecture; it instead specifies in-application dashboards, an Executive CAPEX Dashboard, a Project Controller Workbench, ageing monitors and an exception monitor as application screens, with an enterprise chart catalogue. Zoho Analytics appears in the master prompt only in the role description (line 10) as a skill, never as a deliverable component.",
+   "pdf_text_verbatim": "Management Dashboard | Zoho Analytics | Configuration / Custom [section 10] ... ZOHO ANALYTICS ... Budget vs Commitment vs Actual vs Available -> Project / Plant / Department / Budget Head Drill-down [section 11]",
+   "pdf_line_hint": "atha_pdf_text.txt lines 618-622 (section 10 final row) and lines 640-646 (section 11 analytics tier)",
+   "prompt_text_verbatim": "Prepare a detailed UI specification for at least the following screens:\n\n1. Executive CAPEX Dashboard\n2. Project Controller Workbench\n[lines 566-568] 23. Open Commitment Ageing\n24. CWIP Ageing\n25. Exception and Overrun Monitor\n[line 763] Use enterprise charts suitable for financial and project control, including:",
+   "prompt_line_hint": "master_prompt.md lines 542-545 and 566-568 (screen catalogue); dashboard requirements lines 750-778; reporting module lines 2279-2298; report section 34 at line 2805",
+   "type": "CONTRADICTION",
+   "resolvable_by_research": false,
+   "treatment": "Present both tiers rather than dropping the client's stated tool. Recommend operational and control reporting (budget availability, commitment ageing, exception monitor, reconciliation queues) inside the application because those views must be transactional and drill-down-capable to the source records per master prompt line 474, and retain Zoho Analytics as the optional group-level / cross-source management reporting layer the client named, fed from the application or from Zoho ERP. Record explicitly that the client document nominated Zoho Analytics and that the blueprint is adding, not replacing. Ask whether Atha Group already licenses Zoho Analytics.",
+   "becomes_open_question": true,
+   "becomes_risk": false
+  },
+  {
+   "conflict_id": "CONF-09",
+   "summary": "PDF internal inconsistency: asset capitalisation and project completion are core to the document - they are step 9 and step 10 of the section 3 workflow, the final two nodes of the section 4 diagram, the subject of the cover subtitle, and the closing claim of section 15 - yet section 10 'Proposed Zoho Solution Mapping' has no row for Fixed Asset / capitalisation, project completion or settlement. Every other lifecycle stage (PR, approval, PO, GRN, vendor bill, CWIP GL, budget master, commitment register, validation, revision, exception, dashboard) has a row. So the document's own solution mapping does not cover the last two steps of its own workflow, and does not state whether capitalisation is Standard, Configuration or Customization.",
+   "pdf_text_verbatim": "9 | Project Completion | Project is reviewed for closure; open commitments and pending bills are resolved. // 10 | Asset Capitalization | Eligible CWIP is transferred to the appropriate fixed asset category and project is closed. [section 3] --- versus section 10, whose thirteen rows are: Purchase Request, PR / PO Approval, Purchase Order, Purchase Receive / GRN, Vendor Bill & Accounting, CAPEX / CWIP identification, CWIP GL Accounting, CAPEX Budget Master, PO Commitment Register, Budget Availability Validation, Budget Revision Control, Exception / Overrun Approval, Management Dashboard",
+   "pdf_line_hint": "atha_pdf_text.txt lines 184-202 (section 3 steps 9-10), lines 254-272 (section 4 diagram tail), lines 536-622 (complete section 10 table), lines 796-806 (section 15)",
+   "prompt_text_verbatim": "Verify and document:\n\n- `POST /fixedassets`\n- `GET /fixedassets`\n- `GET /fixedassets/{fixed_asset_id}`\n- `PUT /fixedassets/{fixed_asset_id}`\n- Fixed-asset type APIs",
+   "prompt_line_hint": "master_prompt.md lines 1862-1885 (Fixed Assets endpoint family); capitalisation module lines 2264-2277; POC items 19-20 at lines 2577-2578",
+   "type": "INTERNAL-INCONSISTENCY",
+   "resolvable_by_research": true,
+   "treatment": "Fill the gap explicitly rather than silently. Add capitalisation, settlement and project completion rows to the solution mapping in the blueprint, marked 'ROW ABSENT FROM CLIENT SECTION 10 - CLASSIFICATION PROPOSED BY BLUEPRINT'. Classification can be researched: verify from official Zoho ERP documentation whether Fixed Assets exists as a standard module with the create/list/detail/update endpoints listed in the master prompt, whether CWIP-to-asset transfer is a standard action or requires a journal, and whether one CWIP project can settle to multiple assets. Record the effort classification only after that verification. Flag to the client that their own mapping table stops at the dashboard.",
+   "becomes_open_question": true,
+   "becomes_risk": true
+  },
+  {
+   "conflict_id": "CONF-10",
+   "summary": "PDF internal inconsistency on whether a Purchase Request consumes budget. Section 3 step 4 and section 7 both require a budget availability check at the PR stage, and section 9 says an exception is raised when a 'PO/PR exceeds available project or budget-head limit' - but the document's core control formula counts only Actual CWIP and Open PO Commitments, so an approved PR reserves nothing. Consequence: two PRs of Rs 10L each can both pass a check against Rs 15L available, and both can then become POs. The master prompt identifies this same gap and instructs that it be treated as an explicit design decision and open question, and it also lists 'PR reservation' as a budget-grid column and a business rule to define - i.e. the prompt leans towards adding reservation, which the PDF's formula does not support.",
+   "pdf_text_verbatim": "Core Control Principle: Available Budget = Current Approved Budget - Actual CWIP - Open PO Commitments [section 1] ... 4 | Budget Availability Check | System evaluates current budget, actual CWIP and open commitments. [section 3] ... At PR/PO approval, the system should read the CAPEX Code and Budget Head and calculate the remaining budget. Open PO commitments must be considered even where the corresponding vendor bill has not yet been received. [section 7] ... Budget Exception Raised | PO/PR exceeds available project or budget-head limit. [section 9]",
+   "pdf_line_hint": "atha_pdf_text.txt lines 54-58 (core formula), lines 128-134 (step 4), lines 406-412 (section 7), lines 494-496 (section 9)",
+   "prompt_text_verbatim": "Also evaluate whether Purchase Requests should reserve budget before PO creation. The attached document requires budget validation at PR and PO stages but defines the stated commitment formula primarily using open Purchase Orders. Treat this as an explicit design decision and open question.",
+   "prompt_line_hint": "master_prompt.md line 242 (primary quote); also line 697 ('- PR reservation'), line 2237 ('- PR reservation, if adopted'), line 2332 ('- PR reservation'), line 2656 (concurrency edge case)",
+   "type": "AMBIGUITY",
+   "resolvable_by_research": false,
+   "treatment": "Client decision, not researchable. Design PR reservation as a configurable control with the PDF's behaviour as the default: soft check at PR (advisory, no reservation, exactly as the formula states) with optional hard reservation switchable per entity or per project. Model both variants in the business-rules section with worked examples showing the two-concurrent-PR case. Pair with the master prompt's concurrency edge case at line 2656 and specify pessimistic locking or a serialised budget ledger so that the race exists only where the client has chosen soft checking. Ask the client directly: should an approved PR block budget before a PO is raised?",
+   "becomes_open_question": true,
+   "becomes_risk": true
+  },
+  {
+   "conflict_id": "CONF-11",
+   "summary": "PDF internal inconsistency on the status model, compounded by a master-prompt expansion. Section 5 defines exactly four project statuses: Active / Completed / Capitalized / Closed. But section 13 requires that closed or capitalised projects can be reopened through approval - and no 'Reopened' status exists in section 5, nor any status covering the in-flight approval and exception states the workflow implies (budget exception pending, technically complete but financially open). The master prompt separately mandates a 21-value status model. Additionally the PDF's status list has no ordering rule between 'Completed', 'Capitalized' and 'Closed' - section 3 step 10 says capitalisation closes the project, which would make 'Capitalized' and 'Closed' simultaneous.",
+   "pdf_text_verbatim": "Status | Active / Completed / Capitalized / Closed [section 5] ... Closed/capitalized projects to prevent further procurement unless reopened through approval. [section 13] ... 10 | Asset Capitalization | Eligible CWIP is transferred to the appropriate fixed asset category and project is closed. [section 3]",
+   "pdf_line_hint": "atha_pdf_text.txt lines 330-332 (section 5 status field), line 746 (section 13 bullet), lines 194-202 (section 3 step 10)",
+   "prompt_text_verbatim": "Define a status model with consistent text and visual treatment.\n\nAt minimum, include:\n\n- Draft\n- Submitted\n- Under Review\n- Approved\n- Rejected\n- Returned\n- Released\n- Partially Committed\n- Fully Committed\n- Partially Actualised\n- Fully Actualised\n- Budget Exceeded\n- Exception Pending\n- Technically Completed\n- Financially Completed\n- Awaiting Capitalisation\n- Capitalised\n- Closed\n- Reopened\n- Integration Failed\n- Reconciliation Pending",
+   "prompt_line_hint": "master_prompt.md lines 780-806 (status model); state machines required at lines 2421-2431; SAP status research at lines 164-177",
+   "type": "INTERNAL-INCONSISTENCY",
+   "resolvable_by_research": false,
+   "treatment": "Define one project-lifecycle state machine that is a strict superset of the client's four values, preserving Active, Completed, Capitalized and Closed as the client's own vocabulary and adding Reopened plus the intermediate control states as clearly-marked additions. Publish the mapping table (client term -> blueprint status) so no client term is lost or renamed, per master prompt line 850. Separate 'Technically Completed' from 'Financially Completed' from 'Capitalised' from 'Closed' so that the section 3 step 10 ambiguity (capitalise and close in one step) is resolved by an explicit transition rather than by assumption, and ask the client whether closure follows capitalisation immediately or requires a separate financial-closure act.",
+   "becomes_open_question": true,
+   "becomes_risk": false
+  },
+  {
+   "conflict_id": "CONF-12",
+   "summary": "Commitment-to-actual coverage gap. The PDF's section 8 table defines exactly four transaction positions: PO approved, part billed, fully billed, PO cancelled before billing. The master prompt requires at least seventeen, adding partially received but not billed, fully received but not billed, PO amended upward, PO amended downward, PO closed with residual value, vendor bill exceeding PO, credit note, debit note, bill reversal, GRN reversal, foreign-currency PO with exchange-rate variance, tax and non-creditable tax, and freight and landed cost. Several of these (PO amendment revalidation, cancellation release, bill posting reducing commitment) are named as controls in the PDF's section 13 but are never given an exposure treatment in section 8 - so the PDF states the control without stating the arithmetic. That part is a genuine PDF internal gap, not only a prompt addition.",
+   "pdf_text_verbatim": "Transaction Position | PO Value | Actual Bill | Open Commitment | Budget Exposure // PO approved | Rs 20L | Rs 0 | Rs 20L | Rs 20L // Part billed | Rs 20L | Rs 12L | Rs 8L | Rs 20L // Fully billed | Rs 20L | Rs 20L | Rs 0 | Rs 20L // PO cancelled before billing | Rs 20L | Rs 0 | Rs 0 | Rs 0 [section 8] ... PO amendments to trigger revalidation for incremental value. ... PO cancellation/closure to release unused commitment. [section 13]",
+   "pdf_line_hint": "atha_pdf_text.txt lines 432-486 (complete section 8 table), lines 734-742 (section 13 bullets that lack exposure arithmetic)",
+   "prompt_text_verbatim": "The design must prevent double counting.\n\nIt must cover at least:\n\n- PO approved, not billed\n- Partially billed PO\n- Fully billed PO\n- Partially received but not billed\n- Fully received but not billed\n- PO amended upward\n- PO amended downward\n- PO cancelled before billing\n- PO closed with residual value\n- Vendor bill exceeding PO\n- Credit note\n- Debit note\n- Bill reversal\n- GRN reversal\n- Foreign currency PO and exchange-rate variance\n- Tax and non-creditable tax treatment\n- Freight and other landed costs",
+   "prompt_line_hint": "master_prompt.md lines 259-279 (primary quote); reinforced at lines 141-162, 2233-2248, 2891",
+   "type": "SCOPE-ADDITION",
+   "resolvable_by_research": false,
+   "treatment": "Extend section 8 into a full exposure matrix, keeping the client's four rows first and verbatim as the anchor cases, then adding the remaining thirteen as clearly-marked extensions with the same four columns plus a derived Available Budget impact column. Every added row must be arithmetically consistent with the client's own invariant Exposure = Open Commitment + Actual Bill (which all four client rows satisfy - see formula_verification). Where a case has more than one defensible treatment (vendor bill exceeding PO; PO closed with residual value; non-creditable tax capitalised or expensed), present the options and mark them for client and auditor confirmation rather than choosing silently. The PDF's own section 13 controls for amendment and cancellation must get explicit arithmetic - that is a gap the client will recognise as theirs.",
+   "becomes_open_question": true,
+   "becomes_risk": true
+  },
+  {
+   "conflict_id": "CONF-13",
+   "summary": "Budget revision is one-directional in the PDF. Section 9 describes only additional budget: the user submits 'additional budget requirement with justification', the authority approves 'additional CAPEX', and the current budget formula is 'Original Budget + Approved Revisions = Current Approved Budget'. There is no return, reduction, transfer between budget heads or transfer between projects. The master prompt requires approved reductions or returns and approved transfers as separately recorded values, and adds transfer-in and transfer-out columns to the budget grid plus a dedicated Budget Transfer screen and a 'Budget transfer after commitment' edge case. The PDF formula as written cannot express a decrease unless revisions are permitted to be negative, which the PDF never states.",
+   "pdf_text_verbatim": "Revision Request | User submits additional budget requirement with justification. // Approval | Appropriate authority approves/rejects additional CAPEX. // Budget Version Update | Original budget remains unchanged; approved revision is separately recorded. // Current Budget | Original Budget + Approved Revisions = Current Approved Budget. // PO Revalidation | Transaction is rechecked against the revised available budget.",
+   "pdf_line_hint": "atha_pdf_text.txt lines 488-524 (complete section 9 table)",
+   "prompt_text_verbatim": "The application must separately record:\n\n- Original budget\n- Approved supplements\n- Approved reductions or returns\n- Approved transfers\n- Current approved budget\n- Pending revision\n- Rejected revision\n- Revision reason\n- Requestor\n- Approver\n- Approval date\n- Approval reference\n- Effective date\n- Version number",
+   "prompt_line_hint": "master_prompt.md lines 283-300 (primary quote); also lines 128-131 (SAP supplements/returns/transfers), 556 (Budget Transfer Screen), 693-696 (grid columns), 2342-2343, 2668",
+   "type": "SCOPE-ADDITION",
+   "resolvable_by_research": false,
+   "treatment": "Preserve the client's immutability rule exactly (original budget never overwritten; every revision separately recorded with requestor, approver, date, reason and approval reference, per section 9 and section 13). Implement supplement, return and transfer as three signed revision types over the same versioned ledger so the client's formula still holds as Current Approved Budget = Original Budget + sum of approved revisions, where returns and transfers-out are negative. Mark return and transfer as blueprint additions and confirm with the client whether budget may be moved between budget heads and between projects, and whether transfer after commitment is permitted (master prompt line 2668 flags this edge case) - a transfer out of a head that already carries commitment can drive available budget negative.",
+   "becomes_open_question": true,
+   "becomes_risk": false
+  },
+  {
+   "conflict_id": "CONF-14",
+   "summary": "Budget-head taxonomy mismatch and volume mismatch. The PDF names exactly five budget heads: Civil, Plant & Machinery, Electrical, Installation, Consultancy & Other. The master prompt's POC data set requires ten budget heads and lists eleven illustrative WBS elements including four categories with no PDF equivalent: Land and site development, Utilities, Instrumentation and automation, Testing and commissioning, plus Pre-operative expenses and Contingency - the last two being accounting-policy-sensitive categories the client never raised. The prompt also requires 3 projects (the PDF's section 12 happens to show 3), 2 entities and 2 plants (the PDF shows one Company/Unit and one Plant/Location).",
+   "pdf_text_verbatim": "Civil | Rs 25,00,000 | Rs 5,00,000 | Rs 12,00,000 | Rs 8,00,000 // Plant & Machinery | Rs 80,00,000 | Rs 30,00,000 | Rs 35,00,000 | Rs 15,00,000 // Electrical | Rs 20,00,000 | Rs 6,00,000 | Rs 8,00,000 | Rs 6,00,000 // Installation | Rs 15,00,000 | Rs 4,00,000 | Rs 5,00,000 | Rs 6,00,000 // Consultancy & Other | Rs 10,00,000 | Rs 2,00,000 | Rs 3,00,000 | Rs 5,00,000",
+   "pdf_line_hint": "atha_pdf_text.txt lines 346-394 (section 6 data rows); section 5 lines 302-312 for the single Company/Unit and Plant/Location",
+   "prompt_text_verbatim": "Illustrative WBS:\n\n- Land and site development\n- Civil and structural work\n- Plant and machinery\n- Electrical\n- Utilities\n- Instrumentation and automation\n- Installation\n- Testing and commissioning\n- Consultancy and project management\n- Pre-operative expenses\n- Contingency\n\nUse realistic Indian currency examples and at least:\n\n- 2 entities\n- 2 plants\n- 3 projects\n- 3 WBS levels\n- 10 budget heads",
+   "prompt_line_hint": "master_prompt.md lines 2604-2624 (POC Data Set)",
+   "type": "SCOPE-ADDITION",
+   "resolvable_by_research": false,
+   "treatment": "Build the POC sample data so that the client's five heads and their exact figures from section 6 are reproducible as one project, and treat the extended ten-head taxonomy as a second illustrative project. Do not silently rename the client's heads - 'Consultancy & Other' is not the same as 'Consultancy and project management', and 'Plant & Machinery' must keep the client's spelling in any output the client sees. Flag Pre-operative expenses and Contingency as accounting-policy items requiring client and auditor confirmation before they are treated as capitalisable CWIP heads (they carry different capitalisation rules from direct project cost). Confirm the real entity and plant count - the PDF describes one.",
+   "becomes_open_question": true,
+   "becomes_risk": false
+  },
+  {
+   "conflict_id": "CONF-15",
+   "summary": "Tax, foreign currency, landed cost, advances and retention are entirely absent from the client PDF and required by the master prompt. The PDF never mentions GST, input tax credit, TDS, TCS, non-creditable tax, freight, duty, customs, exchange rate, advance to vendor, capital advance or retention money. Its budget figures are stated as bare rupee amounts with no statement of whether they are tax-inclusive or tax-exclusive - which materially changes every availability calculation in sections 6, 7 and 12. The master prompt requires all of these as business rules, accounting-design topics and API research areas.",
+   "pdf_text_verbatim": "[NOT IN SOURCE] atha_pdf_text.txt contains no occurrence of tax, GST, TDS, TCS, duty, freight, customs, exchange rate, currency (other than the rupee symbol), advance, or retention. The nearest statement is the unqualified section 6 column header: Budget Head | Approved Budget | PO Commitment | Actual CWIP | Available",
+   "pdf_line_hint": "atha_pdf_text.txt lines 334-344 (section 6 header); absence verified across lines 1-807",
+   "prompt_text_verbatim": "Define precise business rules for:\n\n[...]\n- Tax treatment\n- Foreign currency\n- Partial billing\n- Advance payment\n- Retention\n\n[line 1620] - Tax component included in capitalised cost\n[line 1622] Tax accounting treatment must remain subject to client policy and professional validation.\n[line 1823] Do not automatically classify a payment as CWIP actual unless accounting policy and source transaction support it.",
+   "prompt_line_hint": "master_prompt.md lines 2322-2350 (business rules); also 1607-1622 (taxes), 1624-1638 (currency), 1803-1823 (advances), 2250-2262 (CWIP accounting control), 2469-2489 (accounting design)",
+   "type": "SCOPE-ADDITION",
+   "resolvable_by_research": false,
+   "treatment": "Do not invent a tax policy. Raise as a blocking clarification: are approved CAPEX budgets stated inclusive or exclusive of GST, and is input tax credit expected to be recoverable on this capital spend. State plainly in the blueprint that this single answer changes the value of every figure in the client's own sections 6, 7 and 12. Design the commitment and actual ledgers to carry gross, tax and net amounts separately so either policy can be configured without a schema change, and keep master prompt line 2489's constraint - no legal or tax conclusions without identifying jurisdiction-specific validation. Treat retention, advances and landed cost the same way: modelled, configurable, unconfirmed.",
+   "becomes_open_question": true,
+   "becomes_risk": true
+  },
+  {
+   "conflict_id": "CONF-16",
+   "summary": "Master-prompt internal inconsistency on webhooks. Line 1501 instructs that webhook availability must not be assumed and that the surfaced API index does not confirm a general webhook framework; lines 1056 and 2148 provide for polling where events or webhooks are unavailable; and line 2737 lists missing or limited webhook support as a risk. Yet the API contract section requires 'Webhook security' as a design element and the test-scenario edge cases require a 'Duplicate webhook' case - both of which presuppose that webhooks exist. Nothing in the client PDF mentions webhooks or events at all.",
+   "pdf_text_verbatim": "[NOT IN SOURCE] The client PDF makes no reference to webhooks, events or polling. Its only integration statement is: API / Workflow / Custom Function",
+   "pdf_line_hint": "atha_pdf_text.txt line 630 (section 11); absence verified across lines 1-807",
+   "prompt_text_verbatim": "Do not assume webhook availability. The currently surfaced API index does not by itself confirm a general webhook framework.\n\n[line 2449] - Webhook security\n[line 2657] - Duplicate webhook\n[line 1056] - Configure polling intervals where events or webhooks are unavailable",
+   "prompt_line_hint": "master_prompt.md line 1501 versus lines 2449 and 2657; mitigations at 1056, 2148, 2737",
+   "type": "INTERNAL-INCONSISTENCY",
+   "resolvable_by_research": true,
+   "treatment": "Resolve by verification, then rewrite the affected requirements conditionally. Research whether Zoho ERP offers outbound webhooks, workflow-triggered custom functions or any event subscription; record the finding with a documentation reference and verified date, or mark 'UNVERIFIED - REQUIRES ZOHO CONFIRMATION'. Design polling as the primary ingestion mechanism with a look-back window and last-modified cursor, and specify webhook handling (signature verification, replay protection, idempotency, out-of-order tolerance) as a conditional module that activates only if webhooks are confirmed. Restate the 'Duplicate webhook' test case as 'Duplicate inbound event (webhook or repeated poll)' so it remains valid under either outcome.",
+   "becomes_open_question": false,
+   "becomes_risk": true
+  },
+  {
+   "conflict_id": "CONF-17",
+   "summary": "Delivery-model contradiction. The PDF's section 14 sets out a six-phase implementation that ends at UAT and production go-live, with no POC and no pilot, and its phase 2 is 'ERP Configuration' - consistent with its build-inside-Zoho proposal. The master prompt forbids building in this phase, targets a POC as the next deliverable, and defines a different six-phase roadmap (Phase 0 discovery, Phase 1 POC, Phase 2 pilot, Phase 3 production rollout, Phase 4 advanced project controls, Phase 5 multi-ERP or group-wide rollout). The two roadmaps share neither phase boundaries nor exit criteria, and the master prompt's Phases 4-5 (advanced controls, multi-ERP, group-wide) are scope the client never requested.",
+   "pdf_text_verbatim": "Phase | Activities // 1. Discovery & Design | Confirm Atha Group CAPEX approval matrix, project structure, budget heads, entities/plants and accounting policy. // 2. ERP Configuration | Configure procurement flow, custom fields/dimensions, CWIP ledgers and approvals. // 3. Budget Control Build | Develop CAPEX master, budget register, commitment logic, validation and revision workflow. // 4. Integration & Automation | Connect PO/GRN/Bill events with the budget-control layer and ensure commitment reconciliation. // 5. Analytics | Build management dashboard and exception/ageing reports. // 6. UAT & Go-Live | Scenario testing, user training, opening CAPEX/budget upload and production deployment.",
+   "pdf_line_hint": "atha_pdf_text.txt lines 752-794 (complete section 14 table)",
+   "prompt_text_verbatim": "Prepare a phased roadmap:\n\n- Phase 0: Discovery and validation\n- Phase 1: POC\n- Phase 2: Pilot\n- Phase 3: Production rollout\n- Phase 4: Advanced project controls\n- Phase 5: Multi-ERP or group-wide rollout\n\n[line 19] Do not build the application in this phase.\n[line 2703] Do not start coding.",
+   "prompt_line_hint": "master_prompt.md lines 2705-2724 (roadmap); constraints at lines 17-19, 2703, 2878",
+   "type": "CONTRADICTION",
+   "resolvable_by_research": false,
+   "treatment": "Publish a two-column reconciliation of the client's six phases against the blueprint's Phase 0-5 so the client can see where their plan maps and where it does not, and state that the POC and Pilot phases are additions justified by the unverified-API and no-WBS risks (CONF-01, CONF-02, CONF-04). Keep the client's own Phase 1 activity list - approval matrix, project structure, budget heads, entities/plants, accounting policy - as the literal agenda for Phase 0 discovery, since it is the client's own statement of what must be confirmed and it directly answers several open questions in this register. Present Phases 4-5 as optional future scope, clearly excluded from any current commitment. The no-code constraint for this engagement stands regardless.",
+   "becomes_open_question": true,
+   "becomes_risk": false
+  },
+  {
+   "conflict_id": "CONF-18",
+   "summary": "PDF ambiguity on alert thresholds. Section 12 recommends alerts at '80% budget exposure' and '90% budget exposure' but never states the basis: exposure of what over what (project-level or budget-head-level), whether exposure means commitment plus actual (as the section 8 column and the verified section 12 arithmetic both imply) or actual alone, and whether the alert fires on crossing or on every subsequent transaction. The master prompt carries only a generic '- Threshold alerts' and does not preserve the client's specific 80/90 values anywhere, so the numbers risk being lost in translation.",
+   "pdf_text_verbatim": "Recommended alerts: 80% budget exposure, 90% budget exposure, budget exceeded, open PO ageing, pending GRN/billing, overdue CWIP projects, and projects awaiting capitalization.",
+   "pdf_line_hint": "atha_pdf_text.txt lines 714-716 (section 12 closing paragraph); the ambiguous column header at lines 662-664 ('Utilisation / Exposure')",
+   "prompt_text_verbatim": "- Threshold alerts",
+   "prompt_line_hint": "master_prompt.md line 313 (Key Controls); alerting also at lines 760, 2279-2298, 2014",
+   "type": "AMBIGUITY",
+   "resolvable_by_research": false,
+   "treatment": "Carry the client's 80% and 90% values forward verbatim as configured defaults so they are not lost, and define exposure explicitly as (Open PO Commitment + Actual CWIP) / Current Approved Budget - the definition that the section 12 data empirically satisfies at all three rows (see formula_verification). Make the threshold configurable per entity and evaluable at both project level and budget-head level, defaulting to both, and specify one-shot alerting on threshold crossing with re-arm on budget revision. Confirm with the client: are the thresholds project-level, head-level or both, and who receives each alert.",
+   "becomes_open_question": true,
+   "becomes_risk": false
+  },
+  {
+   "conflict_id": "CONF-19",
+   "summary": "Terminology ambiguity: the PDF's section 12 uses a single column headed 'Utilisation / Exposure', treating the two as one measure, whereas the master prompt lists 'Exposure percentage' and 'Budget utilisation' as two separate business rules to be defined. Empirically the PDF means one thing: all three section 12 rows satisfy stated percentage = (Open Commitment + Actual CWIP) / Current Budget to one decimal place. The PDF nowhere states this formula in words, so the equivalence is inferred from the data, not asserted by the document.",
+   "pdf_text_verbatim": "Project | Current Budget | Open Commitment | Actual CWIP | Available | Utilisation / Exposure",
+   "pdf_line_hint": "atha_pdf_text.txt lines 648-664 (section 12 header row)",
+   "prompt_text_verbatim": "- Exposure percentage\n- Budget utilisation",
+   "prompt_line_hint": "master_prompt.md lines 2330-2331 (Detailed Business Rules); also line 703 ('- Exposure percentage' as a grid column) and line 2283",
+   "type": "AMBIGUITY",
+   "resolvable_by_research": false,
+   "treatment": "Adopt one definition and say so: Exposure = Open PO Commitment + Actual CWIP; Utilisation % = Exposure / Current Approved Budget - derived from the client's own section 12 data, which fits at every row. If the blueprint also needs a spend-only measure, name it distinctly (e.g. Actual Utilisation % = Actual CWIP / Current Approved Budget) rather than reusing 'utilisation', and never present two different percentages under the same label. Record that the equivalence was inferred from the data because the PDF states no formula for this column.",
+   "becomes_open_question": true,
+   "becomes_risk": false
+  },
+  {
+   "conflict_id": "CONF-20",
+   "summary": "PDF ambiguity on whether project-level and budget-head-level limits are independent controls. Section 2 requires budgets at both levels and section 9 raises an exception when a transaction 'exceeds available project or budget-head limit', implying two independent ceilings. But in section 6 the project budget is exactly the sum of the five head budgets (verified: 25+80+20+15+10 = 150 lakh), so a head-level check would always bind first and the project-level check would never fire independently. The document never states whether heads must sum to the project budget, whether an unallocated project-level reserve is permitted, or which check takes precedence.",
+   "pdf_text_verbatim": "Maintain project-level and budget-head-level approved budgets. [section 2] ... Budget Exception Raised | PO/PR exceeds available project or budget-head limit. [section 9] ... TOTAL | Rs 1,50,00,000 | Rs 47,00,000 | Rs 63,00,000 | Rs 40,00,000 [section 6]",
+   "pdf_line_hint": "atha_pdf_text.txt line 68 (section 2), lines 494-496 (section 9), lines 396-404 (section 6 TOTAL row)",
+   "prompt_text_verbatim": "- Budgeting by project, WBS element and budget head\n\n[line 2326] - Budget availability\n[line 2343] - Budget-head reclassification",
+   "prompt_line_hint": "master_prompt.md line 48 (three-level budgeting); business rules lines 2326-2348; budget module lines 2216-2231",
+   "type": "AMBIGUITY",
+   "resolvable_by_research": false,
+   "treatment": "Specify the rule explicitly rather than inheriting the ambiguity: enforce head-level availability as the binding check, plus a project-level check that becomes meaningful only when an unallocated project reserve exists (project budget greater than the sum of head budgets). Add a validation that the sum of head budgets may not exceed the project budget, and expose any unallocated remainder as a visible 'Unallocated' line so it cannot be spent invisibly. If WBS is adopted (CONF-02), the same question recurs one level down and must be answered once for all levels. Ask the client whether an unallocated project reserve is permitted and which authority may allocate it.",
+   "becomes_open_question": true,
+   "becomes_risk": false
+  },
+  {
+   "conflict_id": "CONF-21",
+   "summary": "PDF ambiguity on when commitment is recorded and how the application learns of it. Section 3 step 6 says 'Approved PO is created in Zoho ERP and reserves/commits the budget' - conflating creation and approval into one event - while section 8's first row is labelled 'PO approved' and section 7 places validation at 'PR/PO approval'. If Zoho ERP allows a draft PO to exist before approval, the document does not say whether a draft PO commits budget. Compounding this, the master prompt asks the integration design to choose between reading approved POs only, validating draft POs before approval, and creating POs after external approval, and separately warns that webhook availability is unconfirmed - so the moment of commitment may be detected only at the next poll, leaving a window in which budget is consumed in Zoho but not yet visible in the control layer.",
+   "pdf_text_verbatim": "6 | Purchase Order | Approved PO is created in Zoho ERP and reserves/commits the budget. [section 3] ... At PR/PO approval, the system should read the CAPEX Code and Budget Head and calculate the remaining budget. [section 7] ... PO approved | Rs 20L | Rs 0 | Rs 20L | Rs 20L [section 8]",
+   "pdf_line_hint": "atha_pdf_text.txt lines 146-152 (section 3 step 6), lines 406-412 (section 7), lines 446-454 (section 8 first row)",
+   "prompt_text_verbatim": "The integration design must determine whether the WBS application will:\n\n- Read approved POs only\n- Validate draft POs before approval\n- Create POs after external approval\n- Update a CAPEX or WBS reference on the PO\n- Block or flag over-budget POs\n- Receive PO status changes by polling or event\n- Reconcile line-level quantities and values",
+   "prompt_line_hint": "master_prompt.md lines 1700-1709; related warnings at line 1501 (no assumed webhooks) and line 2659 ('- Failed sync after PO approval')",
+   "type": "AMBIGUITY",
+   "resolvable_by_research": true,
+   "treatment": "Partly researchable: verify from official Zoho ERP documentation whether purchase orders carry a draft/approval status model, whether submit-for-approval, approve and reject are exposed as API actions, and what last-modified filtering is available for incremental pull. Then specify one commitment trigger - recommended: commitment is recognised on PO status becoming approved/open in Zoho ERP, detected by incremental polling with a look-back window, with the pre-approval budget check performed in the control layer before the PO is raised. Document the detection latency explicitly as a stated control limitation, quantify the exposure window, and pair it with the master prompt's 'Failed sync after PO approval' test case. Ask the client to confirm whether a draft PO should consume budget.",
+   "becomes_open_question": true,
+   "becomes_risk": true
+  },
+  {
+   "conflict_id": "CONF-22",
+   "summary": "Presentation inconsistency inside the PDF: monetary units switch between sections without a stated convention. Section 5 and section 6 use full Indian-format rupee figures (Rs 1,50,00,000), section 7 uses lakh abbreviations (Rs 80L, Rs 35L, Rs 30L, Rs 15L, Rs 20L, Rs 5L), section 8 uses lakh abbreviations, and section 12 mixes crore and lakh in the same row (Rs 1.50 Cr alongside Rs 30L). VERIFIED that the values are numerically equivalent across notations - Rs 1.50 Cr equals Rs 1,50,00,000 and the section 7 example reproduces the section 6 Plant & Machinery row exactly - so this is a formatting inconsistency, not an arithmetic one. It matters only because the master prompt requires that numbers, decimals, currency and Indian numbering format be unambiguous.",
+   "pdf_text_verbatim": "Original Budget | Rs 1,50,00,000 [section 5] ... Example: Rs 80L Budget - Rs 35L Actual CWIP - Rs 30L Open PO Commitment = Rs 15L Available [section 7] ... Production Line | Rs 1.50 Cr | Rs 30L | Rs 85L | Rs 35L | 76.7% [section 12]",
+   "pdf_line_hint": "atha_pdf_text.txt lines 318-320 (section 5), line 414 (section 7 example), lines 666-676 (section 12)",
+   "prompt_text_verbatim": "9. **Accounting precision**\n   - Numbers, signs, decimal places, currency, Indian numbering format, dates and totals must be unambiguous.",
+   "prompt_line_hint": "master_prompt.md lines 479-480 (design principle 9); also line 2618 ('Use realistic Indian currency examples')",
+   "type": "INTERNAL-INCONSISTENCY",
+   "resolvable_by_research": false,
+   "treatment": "Low severity - no figure is wrong. Fix by convention rather than by query: store all amounts as integer minor units in a single base currency, display in full Indian grouping (Rs 1,50,00,000) on transactional screens where exactness matters, and permit Cr/L abbreviation only on dashboard tiles with the full value available on hover or drill-down. Never mix notations within one table row, which section 12 currently does. No client clarification needed.",
+   "becomes_open_question": false,
+   "becomes_risk": false
+  }
+ ],
+ "formula_verification": {
+  "invariant_under_test": {
+   "exposure": "Exposure = Open PO Commitment + Actual CWIP",
+   "available_budget": "Available Budget = Current Approved Budget - Exposure",
+   "utilisation_pct": "Utilisation % = Exposure / Current Approved Budget"
+  },
+  "client_stated_form": {
+   "text": "Core Control Principle: Available Budget = Current Approved Budget - Actual CWIP - Open PO Commitments",
+   "pdf_line_hint": "atha_pdf_text.txt lines 54-58 (section 1)",
+   "algebraically_identical_to_invariant": true,
+   "note": "The client states the availability formula but never states an exposure formula or a utilisation formula in words. 'Exposure' appears only as a section 8 column header, as half of the section 12 column header 'Utilisation / Exposure', and in the section 12 alert thresholds. The exposure and utilisation definitions tested here are therefore inferred from the data and are confirmed by it at every row."
+  },
+  "overall_verdict": "PASS - all 13 numeric rows across the three PDF tables are self-consistent under the invariant, every column total in section 6 foots, and the section 7 worked example reproduces the section 6 Plant & Machinery row exactly. No arithmetic error was found anywhere in the document. The only numeric problem in the PDF is a cross-table one (CONF-03): section 6 and section 12 describe what appears to be the same project with different, mutually irreconcilable commitment and actual figures - each internally correct, but not reconcilable to each other.",
+  "tables": [
+   {
+    "table": "Section 6 - Budget Head Control",
+    "pdf_line_hint": "atha_pdf_text.txt lines 334-404",
+    "columns_as_printed": [
+     "Budget Head",
+     "Approved Budget",
+     "PO Commitment",
+     "Actual CWIP",
+     "Available"
+    ],
+    "utilisation_column_present": false,
+    "rows": [
+     {
+      "row": "Civil",
+      "approved_budget": 2500000,
+      "po_commitment": 500000,
+      "actual_cwip": 1200000,
+      "computed_exposure": 1700000,
+      "computed_available": 800000,
+      "stated_available": 800000,
+      "available_matches": true,
+      "computed_utilisation_pct": 68.0,
+      "stated_utilisation_pct": null,
+      "self_consistent": true
+     },
+     {
+      "row": "Plant & Machinery",
+      "approved_budget": 8000000,
+      "po_commitment": 3000000,
+      "actual_cwip": 3500000,
+      "computed_exposure": 6500000,
+      "computed_available": 1500000,
+      "stated_available": 1500000,
+      "available_matches": true,
+      "computed_utilisation_pct": 81.25,
+      "stated_utilisation_pct": null,
+      "self_consistent": true
+     },
+     {
+      "row": "Electrical",
+      "approved_budget": 2000000,
+      "po_commitment": 600000,
+      "actual_cwip": 800000,
+      "computed_exposure": 1400000,
+      "computed_available": 600000,
+      "stated_available": 600000,
+      "available_matches": true,
+      "computed_utilisation_pct": 70.0,
+      "stated_utilisation_pct": null,
+      "self_consistent": true
+     },
+     {
+      "row": "Installation",
+      "approved_budget": 1500000,
+      "po_commitment": 400000,
+      "actual_cwip": 500000,
+      "computed_exposure": 900000,
+      "computed_available": 600000,
+      "stated_available": 600000,
+      "available_matches": true,
+      "computed_utilisation_pct": 60.0,
+      "stated_utilisation_pct": null,
+      "self_consistent": true
+     },
+     {
+      "row": "Consultancy & Other",
+      "approved_budget": 1000000,
+      "po_commitment": 200000,
+      "actual_cwip": 300000,
+      "computed_exposure": 500000,
+      "computed_available": 500000,
+      "stated_available": 500000,
+      "available_matches": true,
+      "computed_utilisation_pct": 50.0,
+      "stated_utilisation_pct": null,
+      "self_consistent": true
+     },
+     {
+      "row": "TOTAL",
+      "approved_budget": 15000000,
+      "po_commitment": 4700000,
+      "actual_cwip": 6300000,
+      "computed_exposure": 11000000,
+      "computed_available": 4000000,
+      "stated_available": 4000000,
+      "available_matches": true,
+      "computed_utilisation_pct": 73.3333,
+      "stated_utilisation_pct": null,
+      "self_consistent": true
+     }
+    ],
+    "column_foot_check": {
+     "approved_budget_sum_of_5_rows": 15000000,
+     "stated_total": 15000000,
+     "po_commitment_sum": 4700000,
+     "stated_total_po": 4700000,
+     "actual_cwip_sum": 6300000,
+     "stated_total_actual": 6300000,
+     "available_sum": 4000000,
+     "stated_total_available": 4000000,
+     "all_columns_foot": true
+    },
+    "table_verdict": "Every row and every column total is self-consistent. The stated total budget of Rs 1,50,00,000 also equals the Original Budget and Current Approved Budget in section 5, so section 5 and section 6 agree. Project-level utilisation implied by this table is 73.33%."
+   },
+   {
+    "table": "Section 7 - Purchase Order Budget Validation Logic (worked example, not a table)",
+    "pdf_line_hint": "atha_pdf_text.txt lines 406-420",
+    "check": "Stated: Rs 80L Budget - Rs 35L Actual CWIP - Rs 30L Open PO Commitment = Rs 15L Available. Computed: 8000000 - 3500000 - 3000000 = 1500000. Matches. This example reproduces the section 6 Plant & Machinery row exactly (budget 80L, commitment 30L, actual 35L, available 15L), so sections 6 and 7 are mutually consistent.",
+    "overrun_check": "Stated: a new PO of Rs 20L exceeds available budget by Rs 5L. Computed: 2000000 - 1500000 = 500000. Matches.",
+    "self_consistent": true
+   },
+   {
+    "table": "Section 8 - Commitment-to-Actual Treatment",
+    "pdf_line_hint": "atha_pdf_text.txt lines 432-486",
+    "columns_as_printed": [
+     "Transaction Position",
+     "PO Value",
+     "Actual Bill",
+     "Open Commitment",
+     "Budget Exposure"
+    ],
+    "invariant_applicable": "Only the exposure limb applies - this table has no budget column, so Available Budget and Utilisation % cannot be tested. Tested here: Budget Exposure = Open Commitment + Actual Bill.",
+    "rows": [
+     {
+      "row": "PO approved",
+      "po_value": 2000000,
+      "actual_bill": 0,
+      "open_commitment": 2000000,
+      "computed_exposure": 2000000,
+      "stated_exposure": 2000000,
+      "exposure_matches": true,
+      "self_consistent": true
+     },
+     {
+      "row": "Part billed",
+      "po_value": 2000000,
+      "actual_bill": 1200000,
+      "open_commitment": 800000,
+      "computed_exposure": 2000000,
+      "stated_exposure": 2000000,
+      "exposure_matches": true,
+      "self_consistent": true,
+      "note": "Open commitment 8L equals PO value 20L less bill 12L, so the no-double-counting rule holds: exposure stays at 20L rather than becoming 32L."
+     },
+     {
+      "row": "Fully billed",
+      "po_value": 2000000,
+      "actual_bill": 2000000,
+      "open_commitment": 0,
+      "computed_exposure": 2000000,
+      "stated_exposure": 2000000,
+      "exposure_matches": true,
+      "self_consistent": true
+     },
+     {
+      "row": "PO cancelled before billing",
+      "po_value": 2000000,
+      "actual_bill": 0,
+      "open_commitment": 0,
+      "computed_exposure": 0,
+      "stated_exposure": 0,
+      "exposure_matches": true,
+      "self_consistent": true
+     }
+    ],
+    "table_verdict": "All four rows satisfy Exposure = Open Commitment + Actual Bill, and the invariant Open Commitment = PO Value - Actual Bill holds on the three live rows (cancellation correctly releases the residual). This table is the arithmetic proof of the client's no-double-counting requirement. Coverage gap rather than error: only four of the states the master prompt requires are present - see CONF-12."
+   },
+   {
+    "table": "Section 12 - Management Dashboard",
+    "pdf_line_hint": "atha_pdf_text.txt lines 648-702",
+    "columns_as_printed": [
+     "Project",
+     "Current Budget",
+     "Open Commitment",
+     "Actual CWIP",
+     "Available",
+     "Utilisation / Exposure"
+    ],
+    "rows": [
+     {
+      "row": "Production Line",
+      "current_budget": 15000000,
+      "open_commitment": 3000000,
+      "actual_cwip": 8500000,
+      "computed_exposure": 11500000,
+      "computed_available": 3500000,
+      "stated_available": 3500000,
+      "available_matches": true,
+      "computed_utilisation_pct": 76.6667,
+      "stated_utilisation_pct": 76.7,
+      "utilisation_matches_at_1dp": true,
+      "self_consistent": true
+     },
+     {
+      "row": "Warehouse Expansion",
+      "current_budget": 8000000,
+      "open_commitment": 1500000,
+      "actual_cwip": 4800000,
+      "computed_exposure": 6300000,
+      "computed_available": 1700000,
+      "stated_available": 1700000,
+      "available_matches": true,
+      "computed_utilisation_pct": 78.75,
+      "stated_utilisation_pct": 78.8,
+      "utilisation_matches_at_1dp": true,
+      "self_consistent": true,
+      "note": "78.75 rounds to 78.8 under round-half-up at one decimal place; under round-half-even it would print 78.8 as well only if the implementation rounds away from zero. Specify round-half-up explicitly in the blueprint so the client's printed figure is reproducible."
+     },
+     {
+      "row": "Solar Project",
+      "current_budget": 5000000,
+      "open_commitment": 1000000,
+      "actual_cwip": 2500000,
+      "computed_exposure": 3500000,
+      "computed_available": 1500000,
+      "stated_available": 1500000,
+      "available_matches": true,
+      "computed_utilisation_pct": 70.0,
+      "stated_utilisation_pct": 70.0,
+      "utilisation_matches_at_1dp": true,
+      "self_consistent": true
+     }
+    ],
+    "table_verdict": "All three rows are self-consistent on both limbs of the invariant. This also settles the definitional question in CONF-19: the column headed 'Utilisation / Exposure' is empirically (Open Commitment + Actual CWIP) / Current Budget, not actual-only spend - actual-only would give 56.7%, 60.0% and 50.0% respectively, none of which match the printed figures."
+   }
+  ],
+  "rows_failing_invariant": [],
+  "cross_table_checks": [
+   {
+    "check": "Section 5 Original Budget and Current Approved Budget (Rs 1,50,00,000) versus section 6 TOTAL Approved Budget (Rs 1,50,00,000)",
+    "result": "CONSISTENT",
+    "detail": "Both equal 15000000. Consistent with section 9's rule that Current Approved Budget = Original Budget + Approved Revisions, with no revisions yet recorded."
+   },
+   {
+    "check": "Section 6 Plant & Machinery row versus the section 7 worked example",
+    "result": "CONSISTENT",
+    "detail": "Budget 8000000, commitment 3000000, actual 3500000, available 1500000 in both places."
+   },
+   {
+    "check": "Section 5 / section 6 project 'New Production Line' versus section 12 dashboard row 'Production Line' - CONF-03",
+    "result": "INCONSISTENT",
+    "detail": "Current Approved Budget agrees at 15000000, and the names differ only by the word 'New'. Everything else diverges: PO commitment 4700000 (s6) versus 3000000 (s12), delta -1700000; Actual CWIP 6300000 (s6) versus 8500000 (s12), delta +2200000; Exposure 11000000 versus 11500000, delta +500000; Available 4000000 versus 3500000, delta -500000; Utilisation 73.33% versus 76.67%, delta +3.33 points. Both sets are internally valid, so this is not a calculation error. DETERMINATION: they cannot represent the same project at the same moment. They could represent two moments in time only under a sequence in which 1700000 of commitment converted to actual AND a further 500000 of actual arose with no supporting commitment - which would itself contravene the document's own PO-before-bill control in section 3 and its no-double-counting logic in section 8. The more probable reading is that these are two independent illustrative datasets that coincidentally share a project name and a budget. Treat as unresolved and ask the client."
+   },
+   {
+    "check": "Section 12 utilisation thresholds versus section 12 alert thresholds of 80% and 90% budget exposure",
+    "result": "CONSISTENT BUT UNTRIGGERED",
+    "detail": "The three printed rows sit at 76.7%, 78.8% and 70.0%, all below the 80% first alert threshold. The sample data therefore never demonstrates the alert the same section recommends. Recommend that the POC dataset include at least one project above 80% and one above 90% so the control is demonstrable - the master prompt already requires 'One overrun' at line 2633."
+   }
+  ],
+  "notes_on_method": [
+   "All figures were converted from the Indian notation in the PDF to integer rupees before checking: Rs 1,50,00,000 = 15000000; Rs 1.50 Cr = 15000000; Rs 30L = 3000000; Rs 20L = 2000000.",
+   "Percentages were computed as exposure divided by current approved budget and compared to the printed value at one decimal place.",
+   "No row in any table required an assumption to be made in order to pass. Where a column needed for the invariant is absent from a table (section 8 has no budget column), that limb of the invariant was recorded as not applicable rather than inferred."
+  ]
+ }
+}

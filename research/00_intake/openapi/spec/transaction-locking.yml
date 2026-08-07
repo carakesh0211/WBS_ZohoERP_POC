@@ -1,0 +1,547 @@
+openapi: 3.0.0
+info:
+  title: Transaction Locking
+  description: Lock financial transactions in Zoho ERP to prevent modifications to transactions dated on or before a specific date. Transaction locking helps maintain the integrity of your financial records by restricting edits to closed periods.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: transaction-locking
+    description: Transaction-Locking Module
+paths:
+  /transactionlock:
+    x-mcp-group:
+      - Transaction Locking
+    get:
+      tags:
+        - transaction-locking
+      operationId: get_transaction_lock
+      summary: Get transaction lock details
+      description: Get the details of financial transaction locking.
+      parameters:
+        - name: accounting_period_id
+          in: query
+          description: ID of the accounting period.
+          required: false
+          schema:
+            type: string
+          example: '982000000567001'
+        - name: transaction_lock_id
+          in: query
+          description: ID of the transaction lock.
+          required: false
+          schema:
+            type: string
+          example: '982000000567045'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-transaction-lock-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    put:
+      tags:
+        - transaction-locking
+      operationId: update_transaction_lock
+      summary: Update transaction lock
+      description: Update transaction lock settings.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-transaction-lock-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-transaction-lock-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.UPDATE
+    delete:
+      tags:
+        - transaction-locking
+      operationId: delete_transaction_lock
+      summary: Delete a transaction lock
+      description: Delete a transaction lock entry.
+      parameters:
+        - name: transaction_lock_id
+          in: query
+          description: ID of the transaction lock to delete.
+          required: true
+          schema:
+            type: string
+          example: '982000000567045'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/delete-transaction-lock-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-transaction-lock-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.DELETE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /accountingperiods/transactionlock:
+    x-mcp-group:
+      - Transaction Locking
+    get:
+      tags:
+        - transaction-locking
+      operationId: get_accounting_period_transaction_lock
+      summary: Get transaction lock for an accounting period
+      description: Get transaction locking details for an accounting period.
+      parameters:
+        - name: accounting_period_id
+          in: query
+          description: ID of the accounting period.
+          required: false
+          schema:
+            type: string
+          example: '982000000567001'
+        - name: transaction_lock_id
+          in: query
+          description: ID of the transaction lock.
+          required: false
+          schema:
+            type: string
+          example: '982000000567045'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-transaction-lock-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /transactionlocks:
+    x-mcp-group:
+      - Transaction Locking
+    get:
+      tags:
+        - transaction-locking
+      operationId: list_transaction_locks
+      summary: List transaction locks
+      description: List all transaction locks with pagination.
+      parameters:
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page.
+          required: false
+          schema:
+            type: integer
+            default: 10
+          example: 10
+        - name: accounting_period_id
+          in: query
+          description: ID of the accounting period to filter by.
+          required: false
+          schema:
+            type: string
+          example: '982000000567001'
+        - name: lock_scope
+          in: query
+          description: 'Filter by lock scope. Allowed Values: <code>0</code>, <code>1</code>, <code>2</code>, <code>3</code>, <code>4</code>, <code>5</code>.'
+          required: false
+          schema:
+            type: integer
+          example: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-transaction-locks-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /transactionlock/partialunlock:
+    x-mcp-group:
+      - Transaction Locking
+    put:
+      tags:
+        - transaction-locking
+      operationId: update_partial_unlock
+      summary: Update partial unlock settings
+      description: Update partial unlock settings for transaction locking.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-partial-unlock-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-partial-unlock-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.UPDATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/transaction-lock-response'
+    transaction-lock-response:
+      type: object
+      properties:
+        transaction_lock_id:
+          $ref: '#/components/schemas/transaction_lock_id'
+        accounting_period_id:
+          $ref: '#/components/schemas/accounting_period_id'
+        transaction_lock_status:
+          $ref: '#/components/schemas/transaction_lock_status'
+        transaction_lock_date:
+          $ref: '#/components/schemas/transaction_lock_date'
+        lock_status:
+          $ref: '#/components/schemas/lock_status'
+        lock_scope:
+          $ref: '#/components/schemas/lock_scope'
+        lock_scope_formatted:
+          $ref: '#/components/schemas/lock_scope_formatted'
+        lock_status_formatted:
+          $ref: '#/components/schemas/lock_status_formatted'
+        partial_lock_number:
+          $ref: '#/components/schemas/partial_lock_number'
+        accounting_period_name:
+          $ref: '#/components/schemas/accounting_period_name'
+        fiscal_year_name:
+          $ref: '#/components/schemas/fiscal_year_name'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        status:
+          $ref: '#/components/schemas/status'
+        is_adjustment_period:
+          $ref: '#/components/schemas/is_adjustment_period'
+        locked_by:
+          $ref: '#/components/schemas/locked_by'
+        user_exceptions:
+          $ref: '#/components/schemas/user_exceptions'
+        user_exceptions_count:
+          $ref: '#/components/schemas/user_exceptions_count'
+        account_exceptions:
+          $ref: '#/components/schemas/account_exceptions'
+        account_exceptions_count:
+          $ref: '#/components/schemas/account_exceptions_count'
+        reason:
+          $ref: '#/components/schemas/reason'
+        active_lock_summary:
+          $ref: '#/components/schemas/active_lock_summary'
+    transaction_lock_id:
+      description: ID of the transaction lock.
+      type: string
+      example: '982000000567045'
+    accounting_period_id:
+      description: ID of the accounting period.
+      type: string
+      example: '982000000567001'
+    transaction_lock_status:
+      description: 'Status of the transaction lock. Allowed Values: <code>disabled</code>, <code>enabled</code>, <code>enabled_with_logging</code>.'
+      type: string
+      example: enabled
+    transaction_lock_date:
+      description: Date up to which transactions are locked. [yyyy-MM-dd]
+      type: string
+      example: '2024-03-31'
+    lock_status:
+      description: Lock status of the transaction lock.
+      type: string
+      example: locked
+    lock_scope:
+      description: 'Scope of the lock. Allowed Values: <code>0</code>, <code>1</code>, <code>2</code>, <code>3</code>, <code>4</code>, <code>5</code>.'
+      type: integer
+      example: 0
+    lock_scope_formatted:
+      description: Formatted display value of the lock scope.
+      type: string
+      example: All
+    lock_status_formatted:
+      description: Formatted display value of the lock status.
+      type: string
+      example: Locked
+    partial_lock_number:
+      description: Partial lock number for the transaction lock.
+      type: integer
+      example: 0
+    accounting_period_name:
+      description: Name of the accounting period.
+      type: string
+      example: Q1 2024
+    fiscal_year_name:
+      description: Name of the fiscal year.
+      type: string
+      example: FY 2024-2025
+    start_date:
+      description: Start date of the accounting period. [yyyy-MM-dd]
+      type: string
+      example: '2024-04-01'
+    end_date:
+      description: End date of the accounting period. [yyyy-MM-dd]
+      type: string
+      example: '2024-06-30'
+    status:
+      description: Status of the transaction lock entry.
+      type: string
+      example: active
+    is_adjustment_period:
+      description: Whether the period is an adjustment period.
+      type: boolean
+      example: false
+    locked_by:
+      description: Name of the user who locked the period.
+      type: string
+      example: John Smith
+    user_exceptions:
+      description: List of users exempted from the transaction lock.
+      type: array
+      items:
+        type: string
+      example: []
+    user_exceptions_count:
+      description: Number of users exempted from the transaction lock.
+      type: integer
+      example: 0
+    account_exceptions:
+      description: List of accounts exempted from the transaction lock.
+      type: array
+      items:
+        type: string
+      example: []
+    account_exceptions_count:
+      description: Number of accounts exempted from the transaction lock.
+      type: integer
+      example: 0
+    reason:
+      description: Reason for the transaction lock action. Max-length [500]
+      type: string
+      example: Year-end closing
+    active_lock_summary:
+      description: Summary of the active transaction lock.
+      type: object
+    transaction_lock_module:
+      description: 'Module to which the transaction lock applies. Allowed Values: <code>sales</code>, <code>purchase</code>, <code>accountant</code>, <code>banking</code>, <code>inventory_adjustments</code>.'
+      type: string
+      example: sales
+    user_ids:
+      description: List of user IDs to exempt from the lock.
+      type: array
+      items:
+        type: string
+      example:
+        - '982000000567089'
+    account_ids:
+      description: List of account IDs to exempt from the lock.
+      type: array
+      items:
+        type: string
+      example:
+        - '982000000567101'
+    is_enabled:
+      description: Whether partial unlock is enabled.
+      type: boolean
+      example: true
+    lock_module:
+      description: 'Module for partial unlock. Allowed Values: <code>all</code>, <code>sales</code>, <code>purchase</code>, <code>accountant</code>, <code>banking</code>.'
+      type: string
+      example: all
+    page:
+      description: Number of pages
+      type: integer
+      example: 1
+    per_page:
+      description: Per page values
+      type: integer
+      example: 10
+    has_more_page:
+      description: Check if has more pages
+      type: boolean
+      example: false
+    applied_filter:
+      description: The filter applied
+      type: string
+      example: Status.All
+    sort_column:
+      description: Column used for sorting
+      type: string
+      example: start_date
+    sort_order:
+      description: The order for sorting
+      type: string
+      example: D
+    page_context:
+      type: object
+      properties:
+        page:
+          $ref: '#/components/schemas/page'
+        per_page:
+          $ref: '#/components/schemas/per_page'
+        has_more_page:
+          $ref: '#/components/schemas/has_more_page'
+        applied_filter:
+          $ref: '#/components/schemas/applied_filter'
+        sort_column:
+          $ref: '#/components/schemas/sort_column'
+        sort_order:
+          $ref: '#/components/schemas/sort_order'
+    get-transaction-lock-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        transaction_lock:
+          $ref: '#/components/schemas/transaction-lock-response'
+    list-transaction-locks-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        transaction_locks:
+          type: array
+          items:
+            $ref: '#/components/schemas/transaction-lock-response'
+        page_context:
+          $ref: '#/components/schemas/page_context'
+    update-transaction-lock-request:
+      type: object
+      properties:
+        transaction_lock_status:
+          $ref: '#/components/schemas/transaction_lock_status'
+        transaction_lock_module:
+          $ref: '#/components/schemas/transaction_lock_module'
+        transaction_lock_date:
+          $ref: '#/components/schemas/transaction_lock_date'
+        accounting_period_id:
+          $ref: '#/components/schemas/accounting_period_id'
+        reason:
+          $ref: '#/components/schemas/reason'
+        user_ids:
+          $ref: '#/components/schemas/user_ids'
+        account_ids:
+          $ref: '#/components/schemas/account_ids'
+    update-transaction-lock-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Transaction lock has been updated.
+          readOnly: true
+        transaction_lock:
+          $ref: '#/components/schemas/transaction-lock-response'
+    update-partial-unlock-request:
+      type: object
+      properties:
+        is_enabled:
+          $ref: '#/components/schemas/is_enabled'
+        lock_module:
+          $ref: '#/components/schemas/lock_module'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        reason:
+          $ref: '#/components/schemas/reason'
+    update-partial-unlock-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Partial unlock settings have been updated.
+          readOnly: true
+        transaction_lock:
+          $ref: '#/components/schemas/transaction-lock-response'
+    delete-transaction-lock-request:
+      type: object
+      properties:
+        reason:
+          $ref: '#/components/schemas/reason'
+    delete-transaction-lock-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The transaction lock has been deleted.
+          readOnly: true
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.accountants.READ: Read Accountants
+            ERP.accountants.UPDATE: Update Accountants
+            ERP.accountants.DELETE: Delete Accountants

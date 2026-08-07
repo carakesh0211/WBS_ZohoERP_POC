@@ -1,0 +1,80 @@
+openapi: 3.0.0
+info:
+  title: Receipts
+  description: Upload receipts for autoscanning.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v1
+    description: API Endpoint
+tags:
+  - name: receipts
+    description: Receipts Module
+paths:
+  /expenses:
+    x-mcp-group:
+      - Receipts
+    post:
+      tags:
+        - receipts
+      operationId: create_upload_receipts
+      summary: Upload Receipts
+      description: <p>Upload receipts for autoscanning.</p>
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/upload-receipts-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/upload-receipts-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expense.CREATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: X-com-zoho-expense-organizationid
+      description: ID of the organization
+      in: header
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.expense.CREATE: Create expense
+  schemas:
+    upload-receipts-request:
+      type: object
+      required:
+        - receipt
+      properties:
+        receipt:
+          type: string
+          format: binary
+          example: '@/receipt.jpg'
+          description: File Path of the Receipt to be uploaded.
+    upload-receipts-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The receipt has been uploaded successfully.
+          readOnly: true

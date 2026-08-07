@@ -1,0 +1,306 @@
+openapi: 3.0.0
+info:
+  title: Cards
+  description: A card object represents the credit card information of a particular customer.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: cards
+    description: Cards Module
+paths:
+  /customers/{customer_id}/cards/{card_id}:
+    x-mcp-group:
+      - Cards
+    get:
+      tags:
+        - cards
+      operationId: get_card
+      summary: Retrieve a credit card information
+      description: Details of an existing credit card.
+      parameters:
+        - name: card_id
+          in: path
+          required: true
+          description: Unique identifier of the card.
+          schema:
+            type: string
+          example: '90300000079226'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/retrieve-a-credit-card-information-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customers.READ
+    delete:
+      tags:
+        - cards
+      operationId: delete_card
+      summary: Delete a credit card
+      description: Delete an existing credit card.
+      parameters:
+        - name: card_id
+          in: path
+          required: true
+          description: Unique identifier of the card.
+          schema:
+            type: string
+          example: '90300000079226'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-credit-card-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customers.DELETE
+    parameters:
+      - name: customer_id
+        in: path
+        required: true
+        description: Unique identifier of the customer.
+        schema:
+          type: string
+        example: '9030000005664'
+      - $ref: '#/components/parameters/organization_id'
+  /customers/{customer_id}/cards:
+    x-mcp-group:
+      - Cards
+    get:
+      tags:
+        - cards
+      operationId: list_cards
+      summary: List active credit cards of a customer
+      description: List all active credit cards of a customer.
+      parameters:
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-all-active-credit-cards-of-a-customer-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customers.READ
+    parameters:
+      - name: customer_id
+        in: path
+        required: true
+        description: Unique identifier of the customer.
+        schema:
+          type: string
+        example: '9030000005664'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization.
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/card-response'
+    card-response:
+      type: object
+      properties:
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        card_id:
+          $ref: '#/components/schemas/card_id'
+        last_four_digits:
+          $ref: '#/components/schemas/last_four_digits'
+        expiry_month:
+          $ref: '#/components/schemas/expiry_month'
+        expiry_year:
+          $ref: '#/components/schemas/expiry_year'
+        payment_gateway:
+          $ref: '#/components/schemas/payment_gateway'
+        first_name:
+          $ref: '#/components/schemas/first_name'
+        last_name:
+          $ref: '#/components/schemas/last_name'
+        street:
+          $ref: '#/components/schemas/street'
+        city:
+          $ref: '#/components/schemas/city'
+        state:
+          $ref: '#/components/schemas/state'
+        zip:
+          $ref: '#/components/schemas/zip'
+        country:
+          $ref: '#/components/schemas/country'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        updated_time:
+          $ref: '#/components/schemas/updated_time'
+    customer_id:
+      description: Unique ID associated with the customer.
+      type: string
+      example: '9030000005664'
+    card_id:
+      description: Card ID of the card from which payment is about to made by the customer.
+      type: string
+      example: '90300000079226'
+    card_number:
+      description: Customer's card number.
+      type: string
+      example: '4111111111111111'
+    last_four_digits:
+      description: Last four digits of the customer's card.
+      type: string
+      example: '1111'
+    cvv_number:
+      description: CVV number of the customer's card.
+      type: string
+      example: '232'
+    expiry_month:
+      description: Expiry month of the customer's card.
+      type: string
+      example: '09'
+    expiry_year:
+      description: Expiry year of the customer's card.
+      type: string
+      example: '2030'
+    payment_gateway:
+      description: Payment gateway through which payment needs to be made. Supported payment gateway values <code>stripe</code>, <code>razorpay</code>, <code>ccavenue</code>, <code>payu</code> and <code>icici_eazypay</code>.
+      type: string
+      example: stripe
+    first_name:
+      description: Customer's first name in card.
+      type: string
+      example: Rahul
+    last_name:
+      description: Customer's last name in card.
+      type: string
+      example: Kumar
+    street:
+      description: The street mentioned in the customer's card address.
+      type: string
+      example: 4/53, Mount Road
+    city:
+      description: City mentioned in the customer's card address.
+      type: string
+      example: Chennai
+    state:
+      description: State mentioned in the customer's card address.
+      type: string
+      example: TN
+    zip:
+      description: Zip code mentioned in the customer's card address.
+      type: string
+      example: '600002'
+    country:
+      description: The country mentioned in the customer's card address.
+      type: string
+      example: India
+    status:
+      description: Status of the card.
+      type: string
+      example: active
+    created_time:
+      description: Time at which the card was created.
+      type: string
+      example: 2016-06-05T12:30:08+0530
+    updated_time:
+      description: Time at which the card details were last updated.
+      type: string
+      example: 2016-06-05T02:30:08+0530
+    retrieve-a-credit-card-information-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        card:
+          $ref: '#/components/schemas/card-response'
+    delete-a-credit-card-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The credit card has been deleted.
+          readOnly: true
+    list-all-active-credit-cards-of-a-customer-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        cards:
+          type: array
+          items:
+            type: object
+            properties:
+              card_id:
+                $ref: '#/components/schemas/card_id'
+              customer_id:
+                $ref: '#/components/schemas/customer_id'
+              status:
+                $ref: '#/components/schemas/status'
+              last_four_digits:
+                $ref: '#/components/schemas/last_four_digits'
+              expiry_month:
+                $ref: '#/components/schemas/expiry_month'
+              expiry_year:
+                $ref: '#/components/schemas/expiry_year'
+              payment_gateway:
+                $ref: '#/components/schemas/payment_gateway'
+              created_time:
+                $ref: '#/components/schemas/created_time'
+              updated_time:
+                $ref: '#/components/schemas/updated_time'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.customers.READ: Read Customers
+            ERP.customers.DELETE: Delete Customers

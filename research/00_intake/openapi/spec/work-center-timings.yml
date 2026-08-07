@@ -1,0 +1,1233 @@
+openapi: 3.0.0
+info:
+  title: Work Center Timings
+  description: Work center timings define the working days and operating hours of a work center. They are used to schedule manufacturing operations during available working hours and to plan production capacity. A timing configuration can be standard (the same schedule each week) or alternating (different schedules across Week 1 and Week 2), and can include up to three break intervals per day.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v1
+    description: API Endpoint
+tags:
+  - name: work-center-timings
+    description: Work Center Timings Module
+paths:
+  /workcentertimings:
+    x-mcp-group:
+      - Work Center Timings
+    post:
+      tags:
+        - work-center-timings
+      operationId: create_workcenter_timing
+      summary: Create a work center timing
+      description: Create a work center timing.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-workcenter-timing-request'
+            example:
+              workcalendar_name: Sample Work Center Timing
+              source: work_center
+              type: standard
+              workweekdays:
+                week1:
+                  - day_name: sunday
+                    start_time: '09:00'
+                    end_time: '18:00'
+                    breaks: []
+                    is_working: true
+                  - day_name: monday
+                    start_time: '09:00'
+                    end_time: '18:00'
+                    breaks: []
+                    is_working: true
+                  - day_name: tuesday
+                    start_time: '09:00'
+                    end_time: '18:00'
+                    breaks: []
+                    is_working: true
+                  - day_name: wednesday
+                    start_time: '09:00'
+                    end_time: '18:00'
+                    breaks: []
+                    is_working: true
+                  - day_name: thursday
+                    start_time: '09:00'
+                    end_time: '18:00'
+                    breaks: []
+                    is_working: true
+                  - day_name: friday
+                    start_time: '09:00'
+                    end_time: '18:00'
+                    breaks: []
+                    is_working: true
+                  - day_name: saturday
+                    start_time: '09:00'
+                    end_time: '18:00'
+                    breaks: []
+                    is_working: true
+              weeks:
+                - day_of_week: sunday
+                  working_weeks:
+                    week1: fullday
+                    week2: fullday
+                    week3: fullday
+                    week4: fullday
+                    week5: fullday
+                - day_of_week: monday
+                  working_weeks:
+                    week1: fullday
+                    week2: fullday
+                    week3: fullday
+                    week4: fullday
+                    week5: fullday
+                - day_of_week: tuesday
+                  working_weeks:
+                    week1: fullday
+                    week2: fullday
+                    week3: fullday
+                    week4: fullday
+                    week5: fullday
+                - day_of_week: wednesday
+                  working_weeks:
+                    week1: fullday
+                    week2: fullday
+                    week3: fullday
+                    week4: fullday
+                    week5: fullday
+                - day_of_week: thursday
+                  working_weeks:
+                    week1: fullday
+                    week2: fullday
+                    week3: fullday
+                    week4: fullday
+                    week5: fullday
+                - day_of_week: friday
+                  working_weeks:
+                    week1: fullday
+                    week2: fullday
+                    week3: fullday
+                    week4: fullday
+                    week5: fullday
+                - day_of_week: saturday
+                  working_weeks:
+                    week1: fullday
+                    week2: fullday
+                    week3: fullday
+                    week4: fullday
+                    week5: fullday
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-workcenter-timing-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.CREATE
+    get:
+      tags:
+        - work-center-timings
+      operationId: list_workcenter_timings
+      summary: List work center timings
+      description: List all work center timings.
+      parameters:
+        - name: sort_column
+          in: query
+          description: 'Specify the column field for sorting results. Allowed Values: <code>workcalendar_name</code>.'
+          required: false
+          schema:
+            type: string
+          example: workcalendar_name
+        - name: sort_order
+          in: query
+          description: 'Sort order for results. Allowed Values: <code>A</code> (ascending) and <code>D</code> (descending).'
+          required: false
+          schema:
+            type: string
+          example: A
+        - name: search_text
+          in: query
+          description: Search across work center timing name.
+          required: false
+          schema:
+            type: string
+          example: Company Work Center Timing
+        - name: page
+          in: query
+          description: Page number for pagination. Default is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-workcenter-timings-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /workcentertimings/{workcalendar_id}:
+    x-mcp-group:
+      - Work Center Timings
+    get:
+      tags:
+        - work-center-timings
+      operationId: get_workcenter_timing
+      summary: Get a work center timing
+      description: Get the details of a work center timing.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-workcenter-timing-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.READ
+    put:
+      tags:
+        - work-center-timings
+      operationId: update_workcenter_timing
+      summary: Update a work center timing
+      description: Update an existing work center timing.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-workcenter-timing-request'
+            example:
+              workcalendar_name: Work Calendar
+              source: work_center
+              type: standard
+              workweekdays:
+                week1:
+                  - day_name: sunday
+                    day_id: '3863095000000040004'
+                    is_working: true
+                    start_time: '09:00'
+                    end_time: '18:00'
+                    breaks: []
+                  - day_name: monday
+                    day_id: '3863095000000040005'
+                    is_working: true
+                    start_time: '09:00'
+                    end_time: '18:00'
+                    breaks: []
+                  - day_name: tuesday
+                    day_id: '3863095000000040006'
+                    is_working: true
+                    start_time: '09:00'
+                    end_time: '18:00'
+                    breaks: []
+                  - day_name: wednesday
+                    day_id: '3863095000000040007'
+                    is_working: true
+                    start_time: '09:00'
+                    end_time: '18:00'
+                    breaks: []
+                  - day_name: thursday
+                    day_id: '3863095000000040008'
+                    is_working: true
+                    start_time: '09:00'
+                    end_time: '18:00'
+                    breaks: []
+                  - day_name: friday
+                    day_id: '3863095000000040009'
+                    is_working: true
+                    start_time: '09:00'
+                    end_time: '18:00'
+                    breaks: []
+                  - day_name: saturday
+                    day_id: '3863095000000040010'
+                    is_working: true
+                    start_time: '09:00'
+                    end_time: '18:00'
+                    breaks: []
+              weeks:
+                - day_of_week: sunday
+                  working_weeks:
+                    week1: fullday
+                    week2: fullday
+                    week3: fullday
+                    week4: fullday
+                    week5: fullday
+                  workcalendar_session_id: '3863095000000040011'
+                - day_of_week: monday
+                  working_weeks:
+                    week1: fullday
+                    week2: fullday
+                    week3: fullday
+                    week4: fullday
+                    week5: fullday
+                  workcalendar_session_id: '3863095000000040012'
+                - day_of_week: tuesday
+                  working_weeks:
+                    week1: fullday
+                    week2: fullday
+                    week3: fullday
+                    week4: fullday
+                    week5: fullday
+                  workcalendar_session_id: '3863095000000040013'
+                - day_of_week: wednesday
+                  working_weeks:
+                    week1: fullday
+                    week2: fullday
+                    week3: fullday
+                    week4: fullday
+                    week5: fullday
+                  workcalendar_session_id: '3863095000000040014'
+                - day_of_week: thursday
+                  working_weeks:
+                    week1: fullday
+                    week2: fullday
+                    week3: fullday
+                    week4: fullday
+                    week5: fullday
+                  workcalendar_session_id: '3863095000000040015'
+                - day_of_week: friday
+                  working_weeks:
+                    week1: fullday
+                    week2: fullday
+                    week3: fullday
+                    week4: fullday
+                    week5: fullday
+                  workcalendar_session_id: '3863095000000040016'
+                - day_of_week: saturday
+                  working_weeks:
+                    week1: fullday
+                    week2: fullday
+                    week3: fullday
+                    week4: fullday
+                    week5: fullday
+                  workcalendar_session_id: '3863095000000040017'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-workcenter-timing-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.UPDATE
+    delete:
+      tags:
+        - work-center-timings
+      operationId: delete_workcenter_timing
+      summary: Delete a work center timing
+      description: Delete an existing work center timing. Work center timings assigned to a work center cannot be deleted.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-workcenter-timing-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.DELETE
+    parameters:
+      - name: workcalendar_id
+        in: path
+        required: true
+        description: 'ID of the work center timing. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '3863095000000067001'
+      - $ref: '#/components/parameters/organization_id'
+  /workcentertimings/{workcalendar_id}/version/{workcalendar_version_id}:
+    x-mcp-group:
+      - Work Center Timings
+    get:
+      tags:
+        - work-center-timings
+      operationId: get_workcenter_timing_version
+      summary: Get a work center timing version
+      description: Get the details of a specific version of a work center timing.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-workcenter-timing-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.READ
+    parameters:
+      - name: workcalendar_id
+        in: path
+        required: true
+        description: 'ID of the work center timing. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '3863095000000067001'
+      - name: workcalendar_version_id
+        in: path
+        required: true
+        description: 'ID of the specific version of the work center timing. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '3863095000000067002'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization.
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/workcenter_timing'
+    break_request:
+      type: object
+      description: Break interval definition used in create and update requests.
+      required:
+        - break_name
+        - start_time
+        - end_time
+      properties:
+        break_name:
+          description: 'Name of the break interval. Maximum length: 100 characters.'
+          type: string
+          example: Lunch Break
+        start_time:
+          description: 'Start time of the break. Format: <code>HH:MM</code>.'
+          type: string
+          example: '13:00'
+        end_time:
+          description: 'End time of the break. Format: <code>HH:MM</code>.'
+          type: string
+          example: '14:00'
+    break:
+      type: object
+      description: A break interval within a working day shift, returned in API responses.
+      properties:
+        break_id:
+          description: 'ID of the break. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000067051'
+        break_name:
+          description: Name of the break interval.
+          type: string
+          example: Lunch Break
+        start_time:
+          description: 'Start time of the break. Format: <code>HH:MM</code>.'
+          type: string
+          example: '13:00'
+        end_time:
+          description: 'End time of the break. Format: <code>HH:MM</code>.'
+          type: string
+          example: '14:00'
+    day_request:
+      type: object
+      description: A single day entry within the weekly schedule, used in create and update requests.
+      required:
+        - day_name
+        - is_working
+      properties:
+        day_id:
+          description: 'ID of an existing day entry. Required when updating days within an existing work center timing (PUT requests). Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000040004'
+        day_name:
+          description: 'Name of the day of the week. Allowed Values: <code>sunday</code>, <code>monday</code>, <code>tuesday</code>, <code>wednesday</code>, <code>thursday</code>, <code>friday</code>, and <code>saturday</code>.'
+          type: string
+          example: monday
+        is_working:
+          description: Indicates whether this day is a working day (<code>true</code>) or a non-working day (<code>false</code>).
+          type: boolean
+          example: true
+        start_time:
+          description: 'Shift start time for this day. Required when <code>is_working</code> is <code>true</code>. Format: <code>HH:MM</code>.'
+          type: string
+          example: '09:00'
+        end_time:
+          description: 'Shift end time for this day. Required when <code>is_working</code> is <code>true</code>. Format: <code>HH:MM</code>.'
+          type: string
+          example: '18:00'
+        breaks:
+          description: 'List of break intervals for this day. Applicable only when <code>is_working</code> is <code>true</code>. Pass an empty array if no breaks are required. Maximum: 100 breaks per day.'
+          type: array
+          items:
+            $ref: '#/components/schemas/break_request'
+    day:
+      type: object
+      description: A single day entry within the weekly schedule, returned in API responses.
+      properties:
+        day_id:
+          description: 'ID of the day entry. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000067005'
+        day_name:
+          description: 'Name of the day of the week. Allowed Values: <code>sunday</code>, <code>monday</code>, <code>tuesday</code>, <code>wednesday</code>, <code>thursday</code>, <code>friday</code>, and <code>saturday</code>.'
+          type: string
+          example: monday
+        is_working:
+          description: Indicates whether this day is a working day (<code>true</code>) or a non-working day (<code>false</code>).
+          type: boolean
+          example: true
+        start_time:
+          description: 'Shift start time for this day. Format: <code>HH:MM</code>. Present only when <code>is_working</code> is <code>true</code>.'
+          type: string
+          example: '09:00'
+        end_time:
+          description: 'Shift end time for this day. Format: <code>HH:MM</code>. Present only when <code>is_working</code> is <code>true</code>.'
+          type: string
+          example: '18:00'
+        breaks:
+          description: List of break intervals within this day. Empty array when no breaks are configured.
+          type: array
+          items:
+            $ref: '#/components/schemas/break'
+    workweekdays_request:
+      type: object
+      description: Weekly schedule definition used in create and update requests. For a <code>standard</code> type, only <code>week1</code> is required. For an <code>alternating</code> type, both <code>week1</code> and <code>week2</code> must be provided.
+      properties:
+        week1:
+          description: Day-by-day schedule for Week 1 (or the only week for a standard schedule). Must contain exactly 7 entries, one per day of the week.
+          type: array
+          items:
+            $ref: '#/components/schemas/day_request'
+        week2:
+          description: Day-by-day schedule for Week 2. Required only when <code>type</code> is <code>alternating</code>. Must contain exactly 7 entries, one per day of the week.
+          type: array
+          items:
+            $ref: '#/components/schemas/day_request'
+    workweekdays:
+      type: object
+      description: Weekly schedule returned in API responses.
+      properties:
+        week1:
+          description: Day-by-day schedule for Week 1 (or the only week for a standard schedule).
+          type: array
+          items:
+            $ref: '#/components/schemas/day'
+        week2:
+          description: Day-by-day schedule for Week 2. Present only when <code>type</code> is <code>alternating</code>.
+          type: array
+          items:
+            $ref: '#/components/schemas/day'
+    working_weeks:
+      type: object
+      description: Attendance type assignment across a five-week cycle for a given day of the week.
+      properties:
+        week1:
+          description: 'Attendance type for Week 1. Allowed Values: <code>fullday</code>, <code>halfday</code>, and <code>leave</code>.'
+          type: string
+          example: fullday
+        week2:
+          description: 'Attendance type for Week 2. Allowed Values: <code>fullday</code>, <code>halfday</code>, and <code>leave</code>.'
+          type: string
+          example: fullday
+        week3:
+          description: 'Attendance type for Week 3. Allowed Values: <code>fullday</code>, <code>halfday</code>, and <code>leave</code>.'
+          type: string
+          example: fullday
+        week4:
+          description: 'Attendance type for Week 4. Allowed Values: <code>fullday</code>, <code>halfday</code>, and <code>leave</code>.'
+          type: string
+          example: fullday
+        week5:
+          description: 'Attendance type for Week 5. Allowed Values: <code>fullday</code>, <code>halfday</code>, and <code>leave</code>.'
+          type: string
+          example: fullday
+    week_session_request:
+      type: object
+      description: Session-based schedule entry for a single day of the week, used in create and update requests.
+      required:
+        - day_of_week
+        - working_weeks
+      properties:
+        workcalendar_session_id:
+          description: 'ID of an existing session entry. Required when updating sessions within an existing work center timing (PUT requests). Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000040011'
+        day_of_week:
+          description: 'Day of the week this session entry applies to. Allowed Values: <code>sunday</code>, <code>monday</code>, <code>tuesday</code>, <code>wednesday</code>, <code>thursday</code>, <code>friday</code>, and <code>saturday</code>.'
+          type: string
+          example: monday
+        working_weeks:
+          $ref: '#/components/schemas/working_weeks'
+    week_session:
+      type: object
+      description: Session-based schedule entry for a single day of the week, returned in API responses.
+      properties:
+        workcalendar_session_id:
+          description: 'ID of the session entry. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000067012'
+        day_of_week:
+          description: 'Day of the week this session entry applies to. Allowed Values: <code>sunday</code>, <code>monday</code>, <code>tuesday</code>, <code>wednesday</code>, <code>thursday</code>, <code>friday</code>, and <code>saturday</code>.'
+          type: string
+          example: monday
+        working_weeks:
+          $ref: '#/components/schemas/working_weeks'
+    workcenter_timing:
+      type: object
+      description: Represents a work center timing configuration returned in API responses.
+      properties:
+        workcalendar_id:
+          description: 'ID of the Work Center Timing. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000067001'
+        workcalendar_version_id:
+          description: 'ID of the current active version of the work center timing. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000067002'
+        workcalendar_name:
+          description: 'Name of the work center timing. Maximum length: 100 characters.'
+          type: string
+          example: Company Work Center Timing
+        source:
+          description: 'Defines the schedule source type. Allowed Values: <code>work_center</code>.'
+          type: string
+          example: work_center
+        type:
+          description: 'Defines the week rotation type. Allowed Values: <code>standard</code> (same schedule every week) and <code>alternating</code> (alternates between two weekly schedules).'
+          type: string
+          example: standard
+        breaks_count:
+          description: List of break count details per working day. Returns an empty array when no breaks are configured.
+          type: array
+          readOnly: true
+          items:
+            type: object
+        workweekdays:
+          description: Weekly schedule of working days, shift hours, and break intervals.
+          $ref: '#/components/schemas/workweekdays'
+        weeks:
+          description: Session-based week pattern schedule defining the attendance type for each day of the week across a five-week cycle.
+          type: array
+          items:
+            $ref: '#/components/schemas/week_session'
+    create-a-workcenter-timing-request:
+      type: object
+      required:
+        - workcalendar_name
+        - source
+        - type
+      properties:
+        workcalendar_name:
+          description: 'Name of the work center timing. Maximum length: 100 characters.'
+          type: string
+          example: Sample Work Center Timing
+        source:
+          description: 'Defines the schedule source type. Allowed Values: <code>work_center</code>.'
+          type: string
+          example: work_center
+        type:
+          description: 'Defines the week rotation type. Allowed Values: <code>standard</code> (same schedule every week) and <code>alternating</code> (alternates between two weekly schedules).'
+          type: string
+          example: standard
+        workweekdays:
+          description: Weekly schedule of working days, shift hours, and break intervals. Required when <code>source</code> is <code>work_center</code>.
+          $ref: '#/components/schemas/workweekdays_request'
+        weeks:
+          description: Session-based week pattern schedule. Provide exactly 7 entries, one for each day of the week, defining the attendance type across a five-week cycle.
+          type: array
+          items:
+            $ref: '#/components/schemas/week_session_request'
+      example:
+        workcalendar_name: Sample Work Center Timing
+        source: work_center
+        type: standard
+        workweekdays:
+          week1:
+            - day_name: sunday
+              start_time: '09:00'
+              end_time: '18:00'
+              breaks: []
+              is_working: true
+            - day_name: monday
+              start_time: '09:00'
+              end_time: '18:00'
+              breaks: []
+              is_working: true
+            - day_name: tuesday
+              start_time: '09:00'
+              end_time: '18:00'
+              breaks: []
+              is_working: true
+            - day_name: wednesday
+              start_time: '09:00'
+              end_time: '18:00'
+              breaks: []
+              is_working: true
+            - day_name: thursday
+              start_time: '09:00'
+              end_time: '18:00'
+              breaks: []
+              is_working: true
+            - day_name: friday
+              start_time: '09:00'
+              end_time: '18:00'
+              breaks: []
+              is_working: true
+            - day_name: saturday
+              start_time: '09:00'
+              end_time: '18:00'
+              breaks: []
+              is_working: true
+        weeks:
+          - day_of_week: sunday
+            working_weeks:
+              week1: fullday
+              week2: fullday
+              week3: fullday
+              week4: fullday
+              week5: fullday
+          - day_of_week: monday
+            working_weeks:
+              week1: fullday
+              week2: fullday
+              week3: fullday
+              week4: fullday
+              week5: fullday
+          - day_of_week: tuesday
+            working_weeks:
+              week1: fullday
+              week2: fullday
+              week3: fullday
+              week4: fullday
+              week5: fullday
+          - day_of_week: wednesday
+            working_weeks:
+              week1: fullday
+              week2: fullday
+              week3: fullday
+              week4: fullday
+              week5: fullday
+          - day_of_week: thursday
+            working_weeks:
+              week1: fullday
+              week2: fullday
+              week3: fullday
+              week4: fullday
+              week5: fullday
+          - day_of_week: friday
+            working_weeks:
+              week1: fullday
+              week2: fullday
+              week3: fullday
+              week4: fullday
+              week5: fullday
+          - day_of_week: saturday
+            working_weeks:
+              week1: fullday
+              week2: fullday
+              week3: fullday
+              week4: fullday
+              week5: fullday
+    update-a-workcenter-timing-request:
+      type: object
+      properties:
+        workcalendar_name:
+          description: 'Name of the work center timing. Maximum length: 100 characters.'
+          type: string
+          example: Work Calendar
+        source:
+          description: 'Defines the schedule source type. Allowed Values: <code>work_center</code>.'
+          type: string
+          example: work_center
+        type:
+          description: 'Defines the week rotation type. Allowed Values: <code>standard</code> (same schedule every week) and <code>alternating</code> (alternates between two weekly schedules).'
+          type: string
+          example: standard
+        workweekdays:
+          description: Updated weekly schedule of working days, shift hours, and break intervals.
+          $ref: '#/components/schemas/workweekdays_request'
+        weeks:
+          description: Updated session-based week pattern schedule. Provide exactly 7 entries, one for each day of the week.
+          type: array
+          items:
+            $ref: '#/components/schemas/week_session_request'
+      example:
+        workcalendar_name: Work Calendar
+        source: work_center
+        type: standard
+        workweekdays:
+          week1:
+            - day_name: sunday
+              day_id: '3863095000000040004'
+              is_working: true
+              start_time: '09:00'
+              end_time: '18:00'
+              breaks: []
+            - day_name: monday
+              day_id: '3863095000000040005'
+              is_working: true
+              start_time: '09:00'
+              end_time: '18:00'
+              breaks: []
+            - day_name: tuesday
+              day_id: '3863095000000040006'
+              is_working: true
+              start_time: '09:00'
+              end_time: '18:00'
+              breaks: []
+            - day_name: wednesday
+              day_id: '3863095000000040007'
+              is_working: true
+              start_time: '09:00'
+              end_time: '18:00'
+              breaks: []
+            - day_name: thursday
+              day_id: '3863095000000040008'
+              is_working: true
+              start_time: '09:00'
+              end_time: '18:00'
+              breaks: []
+            - day_name: friday
+              day_id: '3863095000000040009'
+              is_working: true
+              start_time: '09:00'
+              end_time: '18:00'
+              breaks: []
+            - day_name: saturday
+              day_id: '3863095000000040010'
+              is_working: true
+              start_time: '09:00'
+              end_time: '18:00'
+              breaks: []
+        weeks:
+          - day_of_week: sunday
+            working_weeks:
+              week1: fullday
+              week2: fullday
+              week3: fullday
+              week4: fullday
+              week5: fullday
+            workcalendar_session_id: '3863095000000040011'
+          - day_of_week: monday
+            working_weeks:
+              week1: fullday
+              week2: fullday
+              week3: fullday
+              week4: fullday
+              week5: fullday
+            workcalendar_session_id: '3863095000000040012'
+          - day_of_week: tuesday
+            working_weeks:
+              week1: fullday
+              week2: fullday
+              week3: fullday
+              week4: fullday
+              week5: fullday
+            workcalendar_session_id: '3863095000000040013'
+          - day_of_week: wednesday
+            working_weeks:
+              week1: fullday
+              week2: fullday
+              week3: fullday
+              week4: fullday
+              week5: fullday
+            workcalendar_session_id: '3863095000000040014'
+          - day_of_week: thursday
+            working_weeks:
+              week1: fullday
+              week2: fullday
+              week3: fullday
+              week4: fullday
+              week5: fullday
+            workcalendar_session_id: '3863095000000040015'
+          - day_of_week: friday
+            working_weeks:
+              week1: fullday
+              week2: fullday
+              week3: fullday
+              week4: fullday
+              week5: fullday
+            workcalendar_session_id: '3863095000000040016'
+          - day_of_week: saturday
+            working_weeks:
+              week1: fullday
+              week2: fullday
+              week3: fullday
+              week4: fullday
+              week5: fullday
+            workcalendar_session_id: '3863095000000040017'
+    create-a-workcenter-timing-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: WorkCalendar created successfully
+          readOnly: true
+        data:
+          $ref: '#/components/schemas/workcenter_timing'
+      example:
+        code: 0
+        message: WorkCalendar created successfully
+        data:
+          workcalendar_id: '3863095000000067001'
+          workcalendar_version_id: '3863095000000067002'
+          workcalendar_name: Company Work Center Timing
+          source: work_center
+          type: standard
+          breaks_count: []
+          workweekdays:
+            week1:
+              - day_name: sunday
+                day_id: '3863095000000067004'
+                is_working: true
+                start_time: '09:00'
+                end_time: '18:00'
+                breaks: []
+              - day_name: monday
+                day_id: '3863095000000067005'
+                is_working: true
+                start_time: '09:00'
+                end_time: '18:00'
+                breaks: []
+              - day_name: tuesday
+                day_id: '3863095000000067006'
+                is_working: true
+                start_time: '09:00'
+                end_time: '18:00'
+                breaks: []
+              - day_name: wednesday
+                day_id: '3863095000000067007'
+                is_working: true
+                start_time: '09:00'
+                end_time: '18:00'
+                breaks: []
+              - day_name: thursday
+                day_id: '3863095000000067008'
+                is_working: true
+                start_time: '09:00'
+                end_time: '18:00'
+                breaks: []
+              - day_name: friday
+                day_id: '3863095000000067009'
+                is_working: true
+                start_time: '09:00'
+                end_time: '18:00'
+                breaks: []
+              - day_name: saturday
+                day_id: '3863095000000067010'
+                is_working: true
+                start_time: '09:00'
+                end_time: '18:00'
+                breaks: []
+          weeks:
+            - workcalendar_session_id: '3863095000000067011'
+              day_of_week: sunday
+              working_weeks:
+                week1: fullday
+                week2: fullday
+                week3: fullday
+                week4: fullday
+                week5: fullday
+            - workcalendar_session_id: '3863095000000067012'
+              day_of_week: monday
+              working_weeks:
+                week1: fullday
+                week2: fullday
+                week3: fullday
+                week4: fullday
+                week5: fullday
+            - workcalendar_session_id: '3863095000000067013'
+              day_of_week: tuesday
+              working_weeks:
+                week1: fullday
+                week2: fullday
+                week3: fullday
+                week4: fullday
+                week5: fullday
+            - workcalendar_session_id: '3863095000000067014'
+              day_of_week: wednesday
+              working_weeks:
+                week1: fullday
+                week2: fullday
+                week3: fullday
+                week4: fullday
+                week5: fullday
+            - workcalendar_session_id: '3863095000000067015'
+              day_of_week: thursday
+              working_weeks:
+                week1: fullday
+                week2: fullday
+                week3: fullday
+                week4: fullday
+                week5: fullday
+            - workcalendar_session_id: '3863095000000067016'
+              day_of_week: friday
+              working_weeks:
+                week1: fullday
+                week2: fullday
+                week3: fullday
+                week4: fullday
+                week5: fullday
+            - workcalendar_session_id: '3863095000000067017'
+              day_of_week: saturday
+              working_weeks:
+                week1: fullday
+                week2: fullday
+                week3: fullday
+                week4: fullday
+                week5: fullday
+    update-a-workcenter-timing-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: WorkCalendar updated successfully
+          readOnly: true
+        data:
+          $ref: '#/components/schemas/workcenter_timing'
+      example:
+        code: 0
+        message: WorkCalendar updated successfully
+        data:
+          workcalendar_id: '3863095000000040001'
+          workcalendar_version_id: '3863095000000040002'
+          workcalendar_name: Work Calendar
+          source: work_center
+          type: standard
+          breaks_count: []
+          workweekdays:
+            week1:
+              - day_name: sunday
+                day_id: '3863095000000040004'
+                is_working: true
+                start_time: '09:00'
+                end_time: '18:00'
+                breaks: []
+              - day_name: monday
+                day_id: '3863095000000040005'
+                is_working: true
+                start_time: '09:00'
+                end_time: '18:00'
+                breaks: []
+              - day_name: tuesday
+                day_id: '3863095000000040006'
+                is_working: true
+                start_time: '09:00'
+                end_time: '18:00'
+                breaks: []
+              - day_name: wednesday
+                day_id: '3863095000000040007'
+                is_working: true
+                start_time: '09:00'
+                end_time: '18:00'
+                breaks: []
+              - day_name: thursday
+                day_id: '3863095000000040008'
+                is_working: true
+                start_time: '09:00'
+                end_time: '18:00'
+                breaks: []
+              - day_name: friday
+                day_id: '3863095000000040009'
+                is_working: true
+                start_time: '09:00'
+                end_time: '18:00'
+                breaks: []
+              - day_name: saturday
+                day_id: '3863095000000040010'
+                is_working: true
+                start_time: '09:00'
+                end_time: '18:00'
+                breaks: []
+          weeks:
+            - workcalendar_session_id: '3863095000000040011'
+              day_of_week: sunday
+              working_weeks:
+                week1: fullday
+                week2: fullday
+                week3: fullday
+                week4: fullday
+                week5: fullday
+            - workcalendar_session_id: '3863095000000040012'
+              day_of_week: monday
+              working_weeks:
+                week1: fullday
+                week2: fullday
+                week3: fullday
+                week4: fullday
+                week5: fullday
+            - workcalendar_session_id: '3863095000000040013'
+              day_of_week: tuesday
+              working_weeks:
+                week1: fullday
+                week2: fullday
+                week3: fullday
+                week4: fullday
+                week5: fullday
+            - workcalendar_session_id: '3863095000000040014'
+              day_of_week: wednesday
+              working_weeks:
+                week1: fullday
+                week2: fullday
+                week3: fullday
+                week4: fullday
+                week5: fullday
+            - workcalendar_session_id: '3863095000000040015'
+              day_of_week: thursday
+              working_weeks:
+                week1: fullday
+                week2: fullday
+                week3: fullday
+                week4: fullday
+                week5: fullday
+            - workcalendar_session_id: '3863095000000040016'
+              day_of_week: friday
+              working_weeks:
+                week1: fullday
+                week2: fullday
+                week3: fullday
+                week4: fullday
+                week5: fullday
+            - workcalendar_session_id: '3863095000000040017'
+              day_of_week: saturday
+              working_weeks:
+                week1: fullday
+                week2: fullday
+                week3: fullday
+                week4: fullday
+                week5: fullday
+    get-a-workcenter-timing-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        data:
+          $ref: '#/components/schemas/workcenter_timing'
+    list-workcenter-timings-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        work_calendars:
+          type: array
+          readOnly: true
+          items:
+            type: object
+            properties:
+              workcalendar_id:
+                description: 'ID of the work center timing. Note: This value is a set of numeric characters.'
+                type: string
+                example: '3863095000000067001'
+              workcalendar_version_id:
+                description: 'ID of the current active version of the work center timing. Note: This value is a set of numeric characters.'
+                type: string
+                example: '3863095000000067002'
+              workcalendar_name:
+                description: Name of the work center timing.
+                type: string
+                example: Company Work Center Timing
+              source:
+                description: 'Schedule source type. Allowed Values: <code>work_center</code>.'
+                type: string
+                example: work_center
+              type:
+                description: 'Week rotation type. Allowed Values: <code>standard</code> and <code>alternating</code>.'
+                type: string
+                example: standard
+              is_default:
+                description: Indicates whether this is the default work center timing for the organization.
+                type: boolean
+                example: false
+              created_time:
+                description: Timestamp when the work center timing was created.
+                type: string
+                example: 2026-01-19T01:06:42+0530
+              last_modified_time:
+                description: Timestamp when the work center timing was last modified.
+                type: string
+                example: 2026-01-19T01:06:42+0530
+        page_context:
+          type: object
+          readOnly: true
+          properties:
+            page:
+              type: integer
+              description: Current page number.
+              example: 1
+            per_page:
+              type: integer
+              description: Number of records per page.
+              example: 200
+            has_more_page:
+              type: boolean
+              description: Indicates if there are more pages.
+              example: false
+            report_name:
+              type: string
+              example: Work Center Timings
+            sort_column:
+              type: string
+              example: workcalendar_name
+            sort_order:
+              type: string
+              example: A
+    delete-a-workcenter-timing-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The work center timing has been deleted.
+          readOnly: true
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.manufacturing.CREATE: Create Work Center Timings
+            ERP.manufacturing.UPDATE: Update Work Center Timings
+            ERP.manufacturing.READ: Read Work Center Timings
+            ERP.manufacturing.DELETE: Delete Work Center Timings

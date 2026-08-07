@@ -1,0 +1,373 @@
+openapi: 3.0.0
+info:
+  title: Operations
+  description: An operation defines an individual manufacturing process involved in producing an item. Operations are referenced during Bill of Materials (BOM) creation, allowing you to select and associate them with components to define the manufacturing workflow.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: operations
+    description: Operations Module
+paths:
+  /operations:
+    x-mcp-group:
+      - Operations
+    post:
+      tags:
+        - operations
+      operationId: create_operation
+      summary: Create an operation
+      description: Create an operation.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-an-operation-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-an-operation-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.CREATE
+    get:
+      tags:
+        - operations
+      operationId: list_operations
+      summary: List operations
+      description: List all operations.
+      parameters:
+        - name: sort_column
+          in: query
+          description: 'Specify the column field for sorting results. Allowed Values: <code>operation_name</code>.'
+          required: false
+          schema:
+            type: string
+          example: operation_name
+        - name: sort_order
+          in: query
+          description: 'Sort order for results. Allowed Values: <code>A</code> (ascending) and <code>D</code> (descending).'
+          required: false
+          schema:
+            type: string
+          example: A
+        - name: search_text
+          in: query
+          description: Search operations by name. Searches across <code>operation_name</code>.
+          required: false
+          schema:
+            type: string
+          example: Assembly
+        - name: page
+          in: query
+          description: Page number for pagination. Default is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-operations-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /operations/{operation_id}:
+    x-mcp-group:
+      - Operations
+    get:
+      tags:
+        - operations
+      operationId: get_operation
+      summary: Get an operation
+      description: Get the details of an operation.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-an-operation-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.READ
+    put:
+      tags:
+        - operations
+      operationId: update_operation
+      summary: Update an operation
+      description: Update an existing operation.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-an-operation-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-an-operation-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.UPDATE
+    delete:
+      tags:
+        - operations
+      operationId: delete_operation
+      summary: Delete an operation
+      description: Delete an existing operation.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-an-operation-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.DELETE
+    parameters:
+      - name: operation_id
+        in: path
+        required: true
+        description: 'ID of the operation. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '982000000015001'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization.
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/operation'
+    operation_id:
+      description: 'ID of the Operation. Note: This value is a set of numeric characters.'
+      type: string
+      example: '982000000015001'
+    operation_name:
+      description: Name of the operation.
+      type: string
+      example: Assembly OPR
+    workcenter_type_id:
+      description: 'ID of the workcenter type associated with this operation. Note: This value is a set of numeric characters.'
+      type: string
+      example: '982000000012001'
+    workcenter_type_name:
+      description: Name of the workcenter type associated with this operation.
+      type: string
+      example: Assembly WCT
+      readOnly: true
+    description:
+      description: 'Description of the operation. Maximum length: 500 characters.'
+      type: string
+      maxLength: 500
+      example: Assemble all sub-components into the final product chassis.
+    document_attachment:
+      type: object
+      properties:
+        document_id:
+          description: 'ID of the document attachment. Note: This value is a set of numeric characters.'
+          type: string
+          example: '982000000015301'
+        file_name:
+          description: Name of the attached file.
+          type: string
+          example: assembly_instructions.pdf
+    documents:
+      description: List of file attachments associated with the operation.
+      type: array
+      items:
+        $ref: '#/components/schemas/document_attachment'
+    documents_request:
+      description: List of file attachments to associate with the operation. A maximum of 1 attachment is allowed.
+      type: array
+      maxItems: 1
+      items:
+        $ref: '#/components/schemas/document_attachment'
+    operation:
+      type: object
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/operation_id'
+        operation_name:
+          $ref: '#/components/schemas/operation_name'
+        workcenter_type_id:
+          $ref: '#/components/schemas/workcenter_type_id'
+        workcenter_type_name:
+          $ref: '#/components/schemas/workcenter_type_name'
+        description:
+          $ref: '#/components/schemas/description'
+        documents:
+          $ref: '#/components/schemas/documents'
+    create-an-operation-request:
+      type: object
+      required:
+        - operation_name
+        - workcenter_type_id
+      properties:
+        operation_name:
+          $ref: '#/components/schemas/operation_name'
+        workcenter_type_id:
+          $ref: '#/components/schemas/workcenter_type_id'
+        description:
+          $ref: '#/components/schemas/description'
+        documents:
+          $ref: '#/components/schemas/documents_request'
+    update-an-operation-request:
+      type: object
+      properties:
+        operation_name:
+          $ref: '#/components/schemas/operation_name'
+        workcenter_type_id:
+          $ref: '#/components/schemas/workcenter_type_id'
+        description:
+          $ref: '#/components/schemas/description'
+        documents:
+          $ref: '#/components/schemas/documents_request'
+    create-an-operation-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Operation created.
+          readOnly: true
+        operation:
+          $ref: '#/components/schemas/operation'
+    update-an-operation-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Operation updated.
+          readOnly: true
+        operation:
+          $ref: '#/components/schemas/operation'
+    get-an-operation-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        operation:
+          $ref: '#/components/schemas/operation'
+    list-operations-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        operations:
+          type: array
+          items:
+            type: object
+            properties:
+              operation_id:
+                $ref: '#/components/schemas/operation_id'
+              operation_name:
+                $ref: '#/components/schemas/operation_name'
+              description:
+                $ref: '#/components/schemas/description'
+              workcenter_type_id:
+                $ref: '#/components/schemas/workcenter_type_id'
+              workcenter_type_name:
+                $ref: '#/components/schemas/workcenter_type_name'
+        page_context:
+          type: object
+          readOnly: true
+          properties:
+            page:
+              type: integer
+              description: Current page number.
+              example: 1
+            per_page:
+              type: integer
+              description: Number of records per page.
+              example: 200
+            has_more_page:
+              type: boolean
+              description: Indicates if there are more pages.
+              example: false
+            report_name:
+              type: string
+              example: Operations
+            sort_column:
+              type: string
+              example: operation_name
+            sort_order:
+              type: string
+              example: A
+    delete-an-operation-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The operation has been deleted.
+          readOnly: true
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.manufacturing.CREATE: Create Operations
+            ERP.manufacturing.UPDATE: Update Operations
+            ERP.manufacturing.READ: Read Operations
+            ERP.manufacturing.DELETE: Delete Operations
+            ERP.manufacturing.ALL: All permissions for Manufacturing

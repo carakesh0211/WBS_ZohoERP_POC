@@ -1,0 +1,1094 @@
+openapi: 3.0.0
+info:
+  title: Chart Of Accounts
+  description: The Chart of Accounts in Zoho ERP consists of a wide range of accounts that are generally used with any type of business. The accounts are classified into different types such as Income, Expense, Equity, Liability & Assets.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: chart-of-accounts
+    description: Chart-Of-Accounts Module
+paths:
+  /chartofaccounts:
+    x-mcp-group:
+      - Chart Of Accounts
+    post:
+      tags:
+        - chart-of-accounts
+      operationId: create_chart_of_account
+      summary: Create an account
+      description: Creates an account with the given account type.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-an-account-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-an-account-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    get:
+      tags:
+        - chart-of-accounts
+      operationId: list_chart_of_accounts
+      summary: List chart of accounts
+      description: List all chart of accounts along with pagination.
+      parameters:
+        - name: showbalance
+          in: query
+          description: Boolean to get current balance of accounts.
+          required: false
+          schema:
+            type: boolean
+        - name: filter_by
+          in: query
+          description: 'Filter accounts based on its account type and status. Allowed Values: <code>AccountType.All</code>, <code>AccountType.Active</code>, <code>AccountType.Inactive</code>, <code>AccountType.Asset</code>, <code>AccountType.Liability</code>, <code>AccountType.Equity</code>, <code>AccountType.Income</code> and <code>AccountType.Expense</code>.'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: sort_column
+          in: query
+          description: 'Sort accounts. Allowed Values: <code>account_name</code>, <code>account_type</code> and <code>account_code</code>.'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: last_modified_time
+          in: query
+          description: List accounts modified after the given date and time.
+          required: false
+          schema:
+            type: string
+          example: 2013-01-17T15:27:23+0530
+        - name: customview_id
+          in: query
+          description: ID of the custom view.
+          required: false
+          schema:
+            type: string
+          example: '460000000080163'
+        - name: account_id
+          in: query
+          description: 'Search by account ID. Variants: <code>account_id_equal</code>, <code>account_id_not_equal</code>.'
+          required: false
+          schema:
+            type: string
+          example: '460000000038079'
+        - name: account_code
+          in: query
+          description: 'Search by account code. Variants: <code>account_code_contains</code>, <code>account_code_starts_with</code>, <code>account_code_ends_with</code>.'
+          required: false
+          schema:
+            type: string
+        - name: account_name
+          in: query
+          description: 'Search by account name. Variants: <code>account_name_contains</code>, <code>account_name_starts_with</code>, <code>account_name_ends_with</code>.'
+          required: false
+          schema:
+            type: string
+        - name: search_text
+          in: query
+          description: Search accounts by account name or code.
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page.
+          required: false
+          schema:
+            type: integer
+            default: 10
+          example: 10
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-chart-of-accounts-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /chartofaccounts/{account_id}:
+    x-mcp-group:
+      - Chart Of Accounts
+    put:
+      tags:
+        - chart-of-accounts
+      operationId: update_chart_of_account
+      summary: Update an account
+      description: Updates the account information.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-an-account-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-an-account-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.UPDATE
+    get:
+      tags:
+        - chart-of-accounts
+      operationId: get_chart_of_account
+      summary: Get an account
+      description: Gets the details of an account.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-an-account-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    delete:
+      tags:
+        - chart-of-accounts
+      operationId: delete_chart_of_account
+      summary: Delete an account
+      description: Deletes the given account. Accounts associated in any transaction/products could not be deleted.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-an-account-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.DELETE
+    parameters:
+      - name: account_id
+        in: path
+        required: true
+        description: Unique identifier of the account.
+        schema:
+          type: string
+        example: '460000000038079'
+      - $ref: '#/components/parameters/organization_id'
+  /chartofaccounts/{account_id}/active:
+    x-mcp-group:
+      - Chart Of Accounts
+    post:
+      tags:
+        - chart-of-accounts
+      operationId: mark_chart_of_account_active
+      summary: Mark an account as active
+      description: Updates the account status as active.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-an-account-as-active-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    parameters:
+      - name: account_id
+        in: path
+        required: true
+        description: Unique identifier of the account.
+        schema:
+          type: string
+        example: '460000000038079'
+      - $ref: '#/components/parameters/organization_id'
+  /chartofaccounts/{account_id}/inactive:
+    x-mcp-group:
+      - Chart Of Accounts
+    post:
+      tags:
+        - chart-of-accounts
+      operationId: mark_chart_of_account_inactive
+      summary: Mark an account as inactive
+      description: Updates the account status as inactive.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-an-account-as-inactive-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    parameters:
+      - name: account_id
+        in: path
+        required: true
+        description: Unique identifier of the account.
+        schema:
+          type: string
+        example: '460000000038079'
+      - $ref: '#/components/parameters/organization_id'
+  /chartofaccounts/active:
+    x-mcp-group:
+      - Chart Of Accounts
+    post:
+      tags:
+        - chart-of-accounts
+      operationId: bulk_mark_chart_of_accounts_active
+      summary: Bulk mark accounts as active
+      description: Marks multiple accounts as active.
+      parameters:
+        - name: account_ids
+          in: query
+          description: Comma separated account IDs to be marked as active.
+          required: true
+          schema:
+            type: string
+          example: 460000000038079,460000000038080
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-an-account-as-active-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /chartofaccounts/inactive:
+    x-mcp-group:
+      - Chart Of Accounts
+    post:
+      tags:
+        - chart-of-accounts
+      operationId: bulk_mark_chart_of_accounts_inactive
+      summary: Bulk mark accounts as inactive
+      description: Marks multiple accounts as inactive.
+      parameters:
+        - name: account_ids
+          in: query
+          description: Comma separated account IDs to be marked as inactive.
+          required: true
+          schema:
+            type: string
+          example: 460000000038079,460000000038080
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-an-account-as-inactive-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /chartofaccounts/bulkdelete:
+    x-mcp-group:
+      - Chart Of Accounts
+    delete:
+      tags:
+        - chart-of-accounts
+      operationId: bulk_delete_chart_of_accounts
+      summary: Bulk delete accounts
+      description: Deletes multiple accounts.
+      parameters:
+        - name: account_ids
+          in: query
+          description: Comma separated account IDs to be deleted.
+          required: true
+          schema:
+            type: string
+          example: 460000000038079,460000000038080
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-an-account-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.DELETE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /chartofaccounts/accounttransactions:
+    x-mcp-group:
+      - Chart Of Accounts
+    get:
+      tags:
+        - chart-of-accounts
+      operationId: list_chart_of_account_transactions
+      summary: List of transactions for an account
+      description: List all involved transactions for the given account.
+      parameters:
+        - name: account_id
+          in: query
+          description: ID of the Account
+          required: true
+          schema:
+            type: string
+          example: '460000000038079'
+        - name: date
+          in: query
+          description: Filter account transactions for an exact transaction date. Returns transactions on the specified date. Use yyyy-mm-dd format.
+          required: false
+          schema:
+            type: string
+            format: date
+          example: '2013-10-04'
+        - name: date_start
+          in: query
+          description: Filter account transactions with a transaction date on or after the specified date. Useful for defining the start of a date range. Use yyyy-mm-dd format.
+          required: false
+          schema:
+            type: string
+            format: date
+          example: '2013-10-01'
+        - name: date_end
+          in: query
+          description: Filter account transactions with a transaction date on or before the specified date. Useful for defining the end of a date range. Use yyyy-mm-dd format.
+          required: false
+          schema:
+            type: string
+            format: date
+          example: '2013-10-31'
+        - name: date_before
+          in: query
+          description: Filter account transactions with a transaction date strictly before the specified date (exclusive). Use yyyy-mm-dd format.
+          required: false
+          schema:
+            type: string
+            format: date
+          example: '2013-10-04'
+        - name: date_after
+          in: query
+          description: Filter account transactions with a transaction date strictly after the specified date (exclusive). Use yyyy-mm-dd format.
+          required: false
+          schema:
+            type: string
+            format: date
+          example: '2013-10-04'
+        - name: amount
+          in: query
+          description: Filter account transactions for an exact amount.
+          required: false
+          schema:
+            type: number
+            format: double
+          example: 25
+        - name: amount_less_than
+          in: query
+          description: Filter account transactions with an amount less than the specified value.
+          required: false
+          schema:
+            type: number
+            format: double
+          example: 25
+        - name: amount_less_equals
+          in: query
+          description: Filter account transactions with an amount less than or equal to the specified value.
+          required: false
+          schema:
+            type: number
+            format: double
+          example: 25
+        - name: amount_greater_than
+          in: query
+          description: Filter account transactions with an amount greater than the specified value.
+          required: false
+          schema:
+            type: number
+            format: double
+          example: 25
+        - name: amount_greater_equals
+          in: query
+          description: Filter account transactions with an amount greater than or equal to the specified value.
+          required: false
+          schema:
+            type: number
+            format: double
+          example: 25
+        - name: filter_by
+          in: query
+          description: 'Filter transactions. Allowed Values: <code>TransactionType.All</code>.'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: transaction_type
+          in: query
+          description: 'Search transactions based on the given transaction type. Allowed Values: <code>invoice</code>, <code>customer_payment</code>, <code>bills</code>, <code>vendor_payment</code>, <code>credit_notes</code>, <code>creditnote_refund</code>, <code>expense</code>, <code>card_payment</code>, <code>purchase_or_charges</code>, <code>journal</code>, <code>deposit</code>, <code>refund</code>, <code>transfer_fund</code>, <code>base_currency_adjustment</code>, <code>opening_balance</code>, <code>sales_without_invoices</code>, <code>expense_refund</code>, <code>tax_refund</code>, <code>receipt_from_initial_debtors</code>, <code>owner_contribution</code>, <code>interest_income</code>, <code>other_income</code>, <code>owner_drawings</code> and <code>payment_to_initial_creditors</code>.'
+          required: false
+          schema:
+            type: string
+          example: customer_payment
+        - name: sort_column
+          in: query
+          description: 'Sort transactions. Allowed Values: <code>transaction_date</code>, <code>payee</code>, <code>glname</code>, <code>transaction_type_formatted</code>, <code>reconcile_status</code>, <code>debit_amount</code> and <code>credit_amount</code>.'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page.
+          required: false
+          schema:
+            type: integer
+            default: 10
+          example: 10
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-of-transactions-for-an-account-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /chartofaccounts/transactions/{transaction_id}:
+    x-mcp-group:
+      - Chart Of Accounts
+    delete:
+      tags:
+        - chart-of-accounts
+      operationId: delete_chart_of_account_transaction
+      summary: Delete a transaction
+      description: Deletes the transaction.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-transaction-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.DELETE
+    parameters:
+      - name: transaction_id
+        in: path
+        required: true
+        description: Unique identifier of the transaction.
+        schema:
+          type: string
+        example: '460000000050163'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/chart_of_account'
+    account_name:
+      description: Name of the account
+      type: string
+      example: Notes Payable
+    account_code:
+      description: Code Associated with the Account
+      type: string
+    account_type:
+      description: 'Type of the account. Allowed Values: <code>other_asset</code>, <code>other_current_asset</code>, <code>cash</code>, <code>bank</code>, <code>fixed_asset</code>, <code>other_current_liability</code>, <code>credit_card</code>, <code>long_term_liability</code>, <code>equity</code>, <code>income</code>, <code>other_income</code>, <code>expense</code>, <code>cost_of_goods_sold</code>, <code>other_expense</code>, <code>accounts_receivable</code>, <code>accounts_payable</code> and more.'
+      type: string
+      example: long_term_liability
+    currency_id:
+      description: ID of the account currency.
+      type: string
+      example: '460000000000097'
+    can_show_in_ze:
+      description: Whether the account can be shown in Zoho Expense.
+      type: boolean
+      example: false
+    parent_account_id:
+      description: ID of the Parent Account
+      type: string
+      example: '460000000009097'
+    bank_account_number:
+      description: Number of the Bank Account
+      type: string
+    description:
+      description: Description of the account
+      type: string
+      example: A Liability account which can be paid off in a time period longer than one year.
+    include_in_vat_return:
+      description: Boolean to include an account in VAT returns.
+      type: boolean
+      x-node_available_in:
+        - uk
+      x-node_unavailable_in: []
+    account_id:
+      description: ID of the Account
+      type: string
+      example: '460000000038079'
+    is_active:
+      description: Check if account is Active or Inactive
+      type: boolean
+      example: true
+    currency_code:
+      description: Code of the Currency Associated with the Account
+      type: string
+      example: INR
+    show_on_dashboard:
+      description: Whether to show the account balance on the dashboard.
+      type: boolean
+      example: false
+    has_transaction:
+      description: Check if the account has transactions associated with it
+      type: boolean
+      example: false
+    index:
+      description: Index of the custom field
+      type: integer
+      example: 1
+    label:
+      description: Label of the Custom Field
+      type: string
+    value:
+      description: Value of the Custom Field
+      type: string
+      example: Normal
+    customfield_id:
+      description: ID of the Custom Field
+      type: string
+      example: '460000000080163'
+    custom_fields:
+      description: List of custom fields for the account.
+      type: array
+      items:
+        type: object
+        properties:
+          customfield_id:
+            $ref: '#/components/schemas/customfield_id'
+          value:
+            $ref: '#/components/schemas/value'
+    documents:
+      type: array
+      items:
+        type: string
+    created_time:
+      description: Created Time associated with the Entity
+      type: string
+      example: 2013-01-17T15:27:23+0530
+    last_modified_time:
+      description: Last Modified time associated with the entity
+      type: string
+      example: 2013-01-17T15:27:23+0530
+    showbalance:
+      description: Boolean to get current balance of accounts.
+      type: boolean
+    filter_by:
+      description: 'Filter accounts based on its account type and status. Allowed Values: <code>AccountType.All</code>, <code>AccountType.Active</code>, <code>AccountType.Inactive</code>, <code>AccountType.Asset</code>, <code>AccountType.Liability</code>, <code>AccountType.Equity</code>, <code>AccountType.Income</code> and <code>AccountType.Expense</code>.'
+      type: string
+    sort_column:
+      description: 'Sort accounts. Allowed Values: <code>account_name</code>, <code>account_type</code> and <code>account_code</code>.'
+      type: string
+    is_user_created:
+      description: Check if it is an User Created Account
+      type: boolean
+      example: true
+    is_system_account:
+      description: Check if it is an System Account
+      type: boolean
+      example: true
+    is_standalone_account:
+      description: Check if it is an Standalone Account
+      type: boolean
+      example: false
+    is_involved_in_transaction:
+      description: Check if account is involved in transaction
+      type: boolean
+      example: false
+    parent_account_name:
+      description: Name of the Parent Account
+      type: string
+      example: ' '
+    depth:
+      type: string
+    has_attachment:
+      description: Check if the entity has attachment
+      type: boolean
+      example: false
+    is_child_present:
+      description: Check if a child account is present for the Account
+      type: string
+    child_count:
+      type: string
+    date:
+      description: Filter account transactions for an exact transaction date. Returns transactions on the specified date. Use yyyy-mm-dd format.
+      type: string
+      format: date
+      example: '2013-10-04'
+    date_start:
+      description: Filter account transactions with a transaction date on or after the specified date. Useful for defining the start of a date range. Use yyyy-mm-dd format.
+      type: string
+      format: date
+      example: '2013-10-01'
+    date_end:
+      description: Filter account transactions with a transaction date on or before the specified date. Useful for defining the end of a date range. Use yyyy-mm-dd format.
+      type: string
+      format: date
+      example: '2013-10-31'
+    date_before:
+      description: Filter account transactions with a transaction date strictly before the specified date (exclusive). Use yyyy-mm-dd format.
+      type: string
+      format: date
+      example: '2013-10-04'
+    date_after:
+      description: Filter account transactions with a transaction date strictly after the specified date (exclusive). Use yyyy-mm-dd format.
+      type: string
+      format: date
+      example: '2013-10-04'
+    amount:
+      description: Filter account transactions for an exact amount.
+      type: number
+      format: double
+      example: 25
+    amount_less_than:
+      description: Filter account transactions with an amount less than the specified value.
+      type: number
+      format: double
+      example: 25
+    amount_less_equals:
+      description: Filter account transactions with an amount less than or equal to the specified value.
+      type: number
+      format: double
+      example: 25
+    amount_greater_than:
+      description: Filter account transactions with an amount greater than the specified value.
+      type: number
+      format: double
+      example: 25
+    amount_greater_equals:
+      description: Filter account transactions with an amount greater than or equal to the specified value.
+      type: number
+      format: double
+      example: 25
+    transaction_type:
+      description: 'Search transactions based on the given transaction type. Allowed Values: <code>invoice</code>, <code>customer_payment</code>, <code>bills</code>, <code>vendor_payment</code>, <code>credit_notes</code>, <code>creditnote_refund</code>, <code>expense</code>, <code>card_payment</code>, <code>purchase_or_charges</code>, <code>journal</code>, <code>deposit</code>, <code>refund</code>, <code>transfer_fund</code>, <code>base_currency_adjustment</code>, <code>opening_balance</code>, <code>sales_without_invoices</code>, <code>expense_refund</code>, <code>tax_refund</code>, <code>receipt_from_initial_debtors</code>, <code>owner_contribution</code>, <code>interest_income</code>, <code>other_income</code>, <code>owner_drawings</code> and <code>payment_to_initial_creditors</code>.'
+      type: string
+      example: customer_payment
+    categorized_transaction_id:
+      type: string
+      example: '460000000052051'
+    transaction_id:
+      type: string
+      example: '460000000050163'
+    transaction_date:
+      type: string
+      example: '2013-10-04'
+    customer_id:
+      type: string
+      example: '460000000044001'
+    payee:
+      type: string
+      example: Richards Electric Company
+    entry_number:
+      type: string
+      example: INV-00004
+    debit_or_credit:
+      type: string
+      example: credit
+    offset_account_name:
+      description: Name of the Offset Account
+      type: string
+    reference_number:
+      description: Reference Number of the Transaction
+      type: string
+    reconcile_status:
+      type: string
+    debit_amount:
+      type: string
+    closing_balance:
+      description: Closing balances of the account
+      type: number
+      format: double
+      example: 0
+    credit_amount:
+      type: number
+      format: double
+      example: 25
+    chart_of_account:
+      type: object
+      properties:
+        account_id:
+          $ref: '#/components/schemas/account_id'
+        account_name:
+          $ref: '#/components/schemas/account_name'
+        account_code:
+          $ref: '#/components/schemas/account_code'
+        is_active:
+          $ref: '#/components/schemas/is_active'
+        account_type:
+          $ref: '#/components/schemas/account_type'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        currency_code:
+          $ref: '#/components/schemas/currency_code'
+        description:
+          $ref: '#/components/schemas/description'
+        is_system_account:
+          $ref: '#/components/schemas/is_system_account'
+        is_involved_in_transaction:
+          $ref: '#/components/schemas/is_involved_in_transaction'
+        can_show_in_ze:
+          $ref: '#/components/schemas/can_show_in_ze'
+        include_in_vat_return:
+          $ref: '#/components/schemas/include_in_vat_return'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        parent_account_id:
+          $ref: '#/components/schemas/parent_account_id'
+        documents:
+          $ref: '#/components/schemas/documents'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        last_modified_time:
+          $ref: '#/components/schemas/last_modified_time'
+    current_balance:
+      description: Current Balance in the account
+    transaction_status:
+      description: Status of the Transaction
+      type: string
+    transaction_source:
+      description: Source of the transaction
+      type: string
+    create-an-account-request:
+      type: object
+      properties:
+        account_name:
+          $ref: '#/components/schemas/account_name'
+        account_code:
+          $ref: '#/components/schemas/account_code'
+        account_type:
+          $ref: '#/components/schemas/account_type'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        description:
+          $ref: '#/components/schemas/description'
+        show_on_dashboard:
+          $ref: '#/components/schemas/show_on_dashboard'
+        can_show_in_ze:
+          $ref: '#/components/schemas/can_show_in_ze'
+        include_in_vat_return:
+          $ref: '#/components/schemas/include_in_vat_return'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        parent_account_id:
+          $ref: '#/components/schemas/parent_account_id'
+    create-an-account-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The account has been created.
+          readOnly: true
+        chart_of_account:
+          $ref: '#/components/schemas/chart_of_account'
+    list-chart-of-accounts-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        chartofaccounts:
+          type: array
+          items:
+            type: object
+            properties:
+              account_id:
+                $ref: '#/components/schemas/account_id'
+              account_name:
+                $ref: '#/components/schemas/account_name'
+              account_code:
+                $ref: '#/components/schemas/account_code'
+              account_type:
+                $ref: '#/components/schemas/account_type'
+              is_user_created:
+                $ref: '#/components/schemas/is_user_created'
+              is_system_account:
+                $ref: '#/components/schemas/is_system_account'
+              is_standalone_account:
+                $ref: '#/components/schemas/is_standalone_account'
+              is_active:
+                $ref: '#/components/schemas/is_active'
+              can_show_in_ze:
+                $ref: '#/components/schemas/can_show_in_ze'
+              is_involved_in_transaction:
+                $ref: '#/components/schemas/is_involved_in_transaction'
+              current_balance:
+                $ref: '#/components/schemas/current_balance'
+              parent_account_id:
+                $ref: '#/components/schemas/parent_account_id'
+              parent_account_name:
+                $ref: '#/components/schemas/parent_account_name'
+              depth:
+                $ref: '#/components/schemas/depth'
+              has_attachment:
+                $ref: '#/components/schemas/has_attachment'
+              is_child_present:
+                $ref: '#/components/schemas/is_child_present'
+              child_count:
+                $ref: '#/components/schemas/child_count'
+              documents:
+                $ref: '#/components/schemas/documents'
+              created_time:
+                $ref: '#/components/schemas/created_time'
+              last_modified_time:
+                $ref: '#/components/schemas/last_modified_time'
+    update-an-account-request:
+      type: object
+      properties:
+        account_name:
+          $ref: '#/components/schemas/account_name'
+        account_code:
+          $ref: '#/components/schemas/account_code'
+        account_type:
+          $ref: '#/components/schemas/account_type'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        description:
+          $ref: '#/components/schemas/description'
+        show_on_dashboard:
+          $ref: '#/components/schemas/show_on_dashboard'
+        can_show_in_ze:
+          $ref: '#/components/schemas/can_show_in_ze'
+        include_in_vat_return:
+          $ref: '#/components/schemas/include_in_vat_return'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        parent_account_id:
+          $ref: '#/components/schemas/parent_account_id'
+    update-an-account-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The details of the account have been updated.
+          readOnly: true
+        chart_of_account:
+          $ref: '#/components/schemas/chart_of_account'
+    get-an-account-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        account_id:
+          $ref: '#/components/schemas/account_id'
+        account_name:
+          $ref: '#/components/schemas/account_name'
+        account_code:
+          $ref: '#/components/schemas/account_code'
+        is_active:
+          $ref: '#/components/schemas/is_active'
+        account_type:
+          $ref: '#/components/schemas/account_type'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        currency_code:
+          $ref: '#/components/schemas/currency_code'
+        description:
+          $ref: '#/components/schemas/description'
+        is_system_account:
+          $ref: '#/components/schemas/is_system_account'
+        is_involved_in_transaction:
+          $ref: '#/components/schemas/is_involved_in_transaction'
+        can_show_in_ze:
+          $ref: '#/components/schemas/can_show_in_ze'
+        include_in_vat_return:
+          $ref: '#/components/schemas/include_in_vat_return'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        closing_balance:
+          $ref: '#/components/schemas/closing_balance'
+        parent_account_id:
+          $ref: '#/components/schemas/parent_account_id'
+        documents:
+          $ref: '#/components/schemas/documents'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        last_modified_time:
+          $ref: '#/components/schemas/last_modified_time'
+    delete-an-account-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The account has been deleted.
+          readOnly: true
+    mark-an-account-as-active-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The account has been marked as active.
+          readOnly: true
+    mark-an-account-as-inactive-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The account has been marked as inactive.
+          readOnly: true
+    list-of-transactions-for-an-account-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        transactions:
+          type: array
+          items:
+            type: object
+            properties:
+              categorized_transaction_id:
+                $ref: '#/components/schemas/categorized_transaction_id'
+              transaction_type:
+                $ref: '#/components/schemas/transaction_type'
+              transaction_status:
+                $ref: '#/components/schemas/transaction_status'
+              transaction_source:
+                $ref: '#/components/schemas/transaction_source'
+              transaction_id:
+                $ref: '#/components/schemas/transaction_id'
+              transaction_date:
+                $ref: '#/components/schemas/transaction_date'
+              account_id:
+                $ref: '#/components/schemas/account_id'
+              customer_id:
+                $ref: '#/components/schemas/customer_id'
+              payee:
+                $ref: '#/components/schemas/payee'
+              description:
+                $ref: '#/components/schemas/description'
+              entry_number:
+                $ref: '#/components/schemas/entry_number'
+              currency_id:
+                $ref: '#/components/schemas/currency_id'
+              currency_code:
+                $ref: '#/components/schemas/currency_code'
+              debit_or_credit:
+                $ref: '#/components/schemas/debit_or_credit'
+              offset_account_name:
+                $ref: '#/components/schemas/offset_account_name'
+              reference_number:
+                $ref: '#/components/schemas/reference_number'
+              reconcile_status:
+                $ref: '#/components/schemas/reconcile_status'
+              debit_amount:
+                $ref: '#/components/schemas/debit_amount'
+              credit_amount:
+                $ref: '#/components/schemas/credit_amount'
+    delete-a-transaction-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The transaction has been deleted.
+          readOnly: true
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.accountants.CREATE: Create Accountants
+            ERP.accountants.UPDATE: Update Accountants
+            ERP.accountants.READ: Read Accountants
+            ERP.accountants.DELETE: Delete Accountants

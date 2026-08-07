@@ -1,0 +1,361 @@
+{
+ "generated_at": "2026-08-05",
+ "derivation": "Machine-extracted from Zoho ERP official OpenAPI bundle openapi-all.zip (SHA256 E95A0399...C447F8), downloaded 2026-08-05 from https://www.zoho.com/erp/api/v3/openapi-all.zip. Vendor-authoritative; supersedes page-scraped claims where they conflict.",
+ "totals": {
+  "modules": 78,
+  "operations": 869,
+  "distinct_paths": 561,
+  "distinct_oauth_scopes": 163
+ },
+ "findings": [
+  {
+   "id": "OAS-01",
+   "severity": "HIGH",
+   "title": "The ERP API is NOT uniformly /erp/v3 — 14 of 78 modules are served from /erp/v1",
+   "evidence": {
+    "servers": {
+     "https://www.zohoapis.in/erp/v3": 64,
+     "https://www.zohoapis.in/erp/v1": 14
+    },
+    "v1_modules": [
+     "departments",
+     "designations",
+     "employee-salary",
+     "employee-statutory",
+     "employees",
+     "expense-categories",
+     "expense-claims",
+     "expense-reports",
+     "income-tax-details",
+     "payruns",
+     "receipts",
+     "salary-revisions",
+     "trips",
+     "work-center-timings"
+    ]
+   },
+   "impact": "The connection profile cannot hold a single API base path. Base URL must be resolved per module, and the API Version field in the connection-profile master must be per-module, not per-connection."
+  },
+  {
+   "id": "OAS-02",
+   "severity": "HIGH",
+   "title": "Purchase Request does not exist anywhere in the official ERP API specification",
+   "evidence": {
+    "matching_paths": [],
+    "matching_modules": [],
+    "matching_scopes": [],
+    "searched": "all 78 modules, 561 paths, 163 scopes"
+   },
+   "impact": "Mechanically proven clean negative, far stronger than a documentation search. PR must be owned by our application. Client PDF classification of PR as Zoho ERP Standard refers to the product feature, not an API."
+  },
+  {
+   "id": "OAS-03",
+   "severity": "HIGH",
+   "title": "The GRN leg of line-level matching is broken; the PO-to-bill leg is intact",
+   "evidence": {
+    "po_line_fields": [
+     "account_id",
+     "description",
+     "hsn_or_sac",
+     "item_custom_fields",
+     "item_id",
+     "item_order",
+     "line_item_category",
+     "location_id",
+     "name",
+     "project_id",
+     "quantity",
+     "rate",
+     "reverse_charge_tax_id",
+     "tags",
+     "tax_exemption_code",
+     "tax_exemption_id",
+     "tax_id",
+     "tds_tax_id",
+     "unit"
+    ],
+    "bill_line_fields": [
+     "account_id",
+     "customer_id",
+     "description",
+     "hsn_or_sac",
+     "is_billable",
+     "item_custom_fields",
+     "item_id",
+     "item_order",
+     "line_item_category",
+     "line_item_id",
+     "location_id",
+     "name",
+     "project_id",
+     "purchaseorder_item_id",
+     "quantity",
+     "rate",
+     "reverse_charge_tax_id",
+     "serial_numbers",
+     "tags",
+     "tax_exemption_code",
+     "tax_exemption_id",
+     "tax_id",
+     "tds_tax_id",
+     "unit"
+    ],
+    "bill_line_carries_po_link": true,
+    "purchase_receive_line_fields": [
+     "description",
+     "item_id",
+     "item_order",
+     "line_item_id",
+     "name",
+     "quantity",
+     "unit"
+    ],
+    "receipt_line_carries_po_link": false,
+    "purchasereceives_paths": [
+     "POST /purchasereceives",
+     "GET /purchasereceives/{purchasereceive_id}",
+     "PUT /purchasereceives/{purchasereceive_id}",
+     "DELETE /purchasereceives/{purchasereceive_id}"
+    ]
+   },
+   "impact": "PO line to BILL line IS linked via purchaseorder_item_id on the bill line, so commitment-to-actual conversion and double-count prevention are achievable against documented fields. PO line to RECEIPT line is NOT linked: receipt lines expose no purchaseorder_item_id and no project/tag/custom-field coding, and the module has no list or search endpoint. Consequence: received-but-unbilled exposure and partial-GRN tracking cannot be derived from Zoho alone and must be reconstructed in our application or raised as an open question to Zoho.",
+   "correction_note": "Supersedes an earlier, over-broad statement that line-level matching could not be completed at all. The commitment-to-actual leg DOES work."
+  },
+  {
+   "id": "OAS-04",
+   "severity": "HIGH",
+   "title": "Purchase Order LINE items do carry project_id, tags, item_custom_fields, account_id and location_id",
+   "evidence": {
+    "po_header_coding_fields": [
+     "crm_custom_reference_id",
+     "custom_fields",
+     "delivery_customer_id",
+     "is_update_customer",
+     "location_id",
+     "tags"
+    ],
+    "po_line_fields": [
+     "account_id",
+     "description",
+     "hsn_or_sac",
+     "item_custom_fields",
+     "item_id",
+     "item_order",
+     "line_item_category",
+     "location_id",
+     "name",
+     "project_id",
+     "quantity",
+     "rate",
+     "reverse_charge_tax_id",
+     "tags",
+     "tax_exemption_code",
+     "tax_exemption_id",
+     "tax_id",
+     "tds_tax_id",
+     "unit"
+    ]
+   },
+   "impact": "POSITIVE. CAPEX code, WBS code and budget head can be carried at PO line level via project_id, reporting tags and item_custom_fields. This is the enabling fact for line-level commitment control."
+  },
+  {
+   "id": "OAS-05",
+   "severity": "MEDIUM",
+   "title": "Zoho ERP Projects are flat; hierarchy exists only under Tasks via parent_id",
+   "evidence": {
+    "project_body_fields": [
+     "billing_type",
+     "budget_amount",
+     "budget_hours",
+     "budget_type",
+     "cost_budget_amount",
+     "currency_id",
+     "customer_id",
+     "description",
+     "project_name",
+     "rate",
+     "tasks",
+     "user_id",
+     "users"
+    ],
+    "parent_fields_found": {
+     "projects": [],
+     "tasks": [
+      "parent_id"
+     ]
+    }
+   },
+   "impact": "REFUTES the earlier page-scraped claim that ERP Projects offer only two levels with no parent field. Tasks do expose parent_id, so nesting is possible under a project. However Project carries only scalar budget fields (budget_amount, budget_type, cost_budget_amount) with no budget-by-head object, so the multi-level WBS and budget register must remain owned by our application."
+  },
+  {
+   "id": "OAS-06",
+   "severity": "HIGH",
+   "title": "There is no API to CREATE a custom field definition; only to set values on a record",
+   "evidence": {
+    "customfield_paths": [
+     "/bill/{bill_id}/customfields",
+     "/customerpayment/{customer_payment_id}/customfields",
+     "/estimate/{estimate_id}/customfields",
+     "/invoice/{invoice_id}/customfields",
+     "/item/{item_id}/customfields",
+     "/purchaseorder/{purchaseorder_id}/customfields",
+     "/salesorder/{salesorder_id}/customfields",
+     "/subscriptions/{subscription_id}/customfields"
+    ]
+   },
+   "impact": "The CAPEX/WBS custom-field layout cannot be provisioned as code. It must be created manually in the Zoho ERP UI per organisation, then discovered by the connector. This becomes a documented manual prerequisite in the setup wizard and the handover section."
+  },
+  {
+   "id": "OAS-07",
+   "severity": "MEDIUM",
+   "title": "The published OAuth scope list covers a small fraction of the real scope surface",
+   "evidence": {
+    "scopes_in_spec": 163,
+    "scopes_on_oauth_doc_page": 16,
+    "distinct_service_prefixes": 44
+   },
+   "impact": "Least-privilege scope design must be driven from the specification, not the OAuth documentation page. Closes the gap flagged by lane R10."
+  },
+  {
+   "id": "OAS-08",
+   "severity": "MEDIUM",
+   "title": "Pagination contract is now evidenced",
+   "evidence": {
+    "filter_by": {
+     "occurrences": 50,
+     "defaults": {},
+     "maxima": {}
+    },
+    "page": {
+     "occurrences": 79,
+     "defaults": {
+      "1": 73
+     },
+     "maxima": {}
+    },
+    "per_page": {
+     "occurrences": 79,
+     "defaults": {
+      "200": 64,
+      "10": 10
+     },
+     "maxima": {
+      "200": 2
+     }
+    },
+    "sort_column": {
+     "occurrences": 51,
+     "defaults": {},
+     "maxima": {}
+    },
+    "search_text": {
+     "occurrences": 31,
+     "defaults": {},
+     "maxima": {}
+    },
+    "sort_order": {
+     "occurrences": 18,
+     "defaults": {},
+     "maxima": {}
+    }
+   },
+   "impact": "per_page default 200 with a documented maximum of 200; page defaults to 1. Closes the unevidenced pagination gap flagged by lane R10 and lets bulk-extract sizing be specified rather than probed."
+  },
+  {
+   "id": "OAS-09",
+   "severity": "HIGH",
+   "title": "Fixed assets cannot be linked to a source project, PO or bill, and cannot be incrementally synced",
+   "evidence": {
+    "create_body": [
+     "asset_account_id",
+     "asset_cost",
+     "asset_name",
+     "asset_purchase_date",
+     "computation_type",
+     "custom_fields",
+     "dep_start_value",
+     "depreciation_account_id",
+     "depreciation_frequency",
+     "depreciation_method",
+     "depreciation_percentage",
+     "depreciation_start_date",
+     "description",
+     "expense_account_id",
+     "fixed_asset_type_id",
+     "notes",
+     "salvage_value",
+     "serial_no",
+     "tags",
+     "total_life",
+     "warranty_expiry_date"
+    ],
+    "linkage_fields_found": [
+     "asset_purchase_date"
+    ],
+    "list_parameters": [
+     "organization_id",
+     "filter_by",
+     "sort_column",
+     "sort_order",
+     "page",
+     "per_page"
+    ],
+    "has_last_modified_filter": false
+   },
+   "impact": "Capitalisation cannot be traced from asset back to the CWIP that funded it using documented fields, and the asset list cannot be polled incrementally (no created_time / last_modified_time). Capitalisation reconciliation must be anchored on our own capitalisation-request record, and asset sync must be full-refresh."
+  },
+  {
+   "id": "OAS-10",
+   "severity": "MEDIUM",
+   "title": "Journal and bill LINES carry project_id and tags; bill HEADER does not",
+   "evidence": {
+    "journal_line_fields": [
+     "account_id",
+     "acquisition_vat_id",
+     "amount",
+     "customer_id",
+     "debit_or_credit",
+     "description",
+     "line_id",
+     "location_id",
+     "project_id",
+     "reverse_charge_vat_id",
+     "tags",
+     "tax_authority_id",
+     "tax_authority_name",
+     "tax_exemption_code",
+     "tax_exemption_id",
+     "tax_exemption_type",
+     "tax_id"
+    ],
+    "bill_header_has_project_id": false,
+    "bill_line_has_project_id": true
+   },
+   "impact": "POSITIVE for capitalisation: a CWIP-transfer journal can be WBS-coded at line level. Also means every WBS-to-transaction mapping must be defined at LINE level, never header — a binding rule for the field-mapping workbench."
+  },
+  {
+   "id": "OAS-11",
+   "severity": "MEDIUM",
+   "title": "Vendor advances have no dedicated endpoint or flag",
+   "evidence": {
+    "vendorpayment_paths": [
+     "GET /vendorpayments",
+     "POST /vendorpayments",
+     "PUT /vendorpayments",
+     "DELETE /vendorpayments",
+     "GET /vendorpayments/{payment_id}",
+     "PUT /vendorpayments/{payment_id}",
+     "DELETE /vendorpayments/{payment_id}",
+     "GET /vendorpayments/{payment_id}/refunds"
+    ]
+   },
+   "impact": "An advance is simply a vendor payment whose bills[] allocation array is empty. There is no is_advance flag, so classifying capital advances for budget-exposure purposes requires our own derivation rule."
+  }
+ ],
+ "corrections_log": [
+  {
+   "date": "2026-08-05",
+   "what": "OAS-03 was initially stated as a blanket failure of line-level matching. Verified against the specification: bill lines DO carry purchaseorder_item_id. Only the receipt leg lacks linkage. Severity reduced CRITICAL to HIGH and the finding split."
+  }
+ ]
+}

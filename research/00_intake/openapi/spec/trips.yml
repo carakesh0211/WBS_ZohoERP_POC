@@ -1,0 +1,1605 @@
+openapi: 3.0.0
+info:
+  title: Trips
+  description: A trip entity allows you to maintain information about the trips of your employees.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v1
+    description: API Endpoint
+tags:
+  - name: trips
+    description: Trips Module
+paths:
+  /trips:
+    x-mcp-group:
+      - Trips
+    post:
+      tags:
+        - trips
+      operationId: create_trip
+      summary: Create a trip
+      description: Create a new trip.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-trip-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-trip-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.trip.CREATE
+    get:
+      tags:
+        - trips
+      operationId: list_trips
+      summary: Retrive list of all trips
+      description: List all existing trips.
+      parameters:
+        - name: filter_by
+          in: query
+          description: For filtering trips based on status.
+          required: false
+          schema:
+            type: object
+            properties:
+              Type.Trip%2CStatus.Submitted:
+                $ref: '#/components/schemas/Type.Trip-Status.Submitted'
+              Type.Trip%2CStatus.Approved:
+                $ref: '#/components/schemas/Type.Trip-Status.Approved'
+              Type.Trip%2CStatus.Rejected:
+                $ref: '#/components/schemas/Type.Trip-Status.Rejected'
+              Type.Trip%2CStatus.Closed:
+                $ref: '#/components/schemas/Type.Trip-Status.Closed'
+              Type.Trip%2CStatus.Cancelled:
+                $ref: '#/components/schemas/Type.Trip-Status.Cancelled'
+          example: ''
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/retrive-list-of-all-trips-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.trip.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /trips/{trip_id}:
+    x-mcp-group:
+      - Trips
+    get:
+      tags:
+        - trips
+      operationId: get_trip
+      summary: Retrive details of a trip
+      description: Retrive details of an existing trip.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/retrive-details-of-a-trip-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.trip.READ
+    put:
+      tags:
+        - trips
+      operationId: update_trip
+      summary: Update a trip
+      description: Update an existing Trip.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-trip-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-trip-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.trip.UPDATE
+    delete:
+      tags:
+        - trips
+      operationId: delete_trip
+      summary: Delete a trip request
+      description: Delete a trip request. Approved, Closed and Cancelled trips cannot be deleted.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-trip-request-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.trip.DELETE
+    parameters:
+      - name: trip_id
+        in: path
+        required: true
+        description: Unique identifier of the trip.
+        schema:
+          type: string
+        example: '34017000000000103'
+      - $ref: '#/components/parameters/organization_id'
+  /trips/{trip_id}/approve:
+    x-mcp-group:
+      - Trips
+    post:
+      tags:
+        - trips
+      operationId: approve_trip
+      summary: Approve a trip request
+      description: Approve a submitted trip request.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/approve-a-trip-request-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.approval.CREATE
+    parameters:
+      - name: trip_id
+        in: path
+        required: true
+        description: Unique identifier of the trip.
+        schema:
+          type: string
+        example: '34017000000000103'
+      - $ref: '#/components/parameters/organization_id'
+  /trips/{trip_id}/reject:
+    x-mcp-group:
+      - Trips
+    post:
+      tags:
+        - trips
+      operationId: reject_trip
+      summary: Reject a trip request
+      description: Reject a submitted trip request.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/reject-a-trip-request-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/reject-a-trip-request-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.approval.CREATE
+    parameters:
+      - name: trip_id
+        in: path
+        required: true
+        description: Unique identifier of the trip.
+        schema:
+          type: string
+        example: '34017000000000103'
+      - $ref: '#/components/parameters/organization_id'
+  /trips/{trip_id}/cancel:
+    x-mcp-group:
+      - Trips
+    post:
+      tags:
+        - trips
+      operationId: cancel_trip
+      summary: Cancel a trip
+      description: Cancel a trip.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/cancel-a-trip-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/cancel-a-trip-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.trip.CREATE
+    parameters:
+      - name: trip_id
+        in: path
+        required: true
+        description: Unique identifier of the trip.
+        schema:
+          type: string
+        example: '34017000000000103'
+      - $ref: '#/components/parameters/organization_id'
+  /trips/{trip_id}/close:
+    x-mcp-group:
+      - Trips
+    post:
+      tags:
+        - trips
+      operationId: close_trip
+      summary: Close a trip
+      description: Close an approved trip.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/close-a-trip-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.trip.CREATE
+    parameters:
+      - name: trip_id
+        in: path
+        required: true
+        description: Unique identifier of the trip.
+        schema:
+          type: string
+        example: '34017000000000103'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: X-com-zoho-expense-organizationid
+      description: ID of the organization
+      in: header
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/trip'
+    trip_id:
+      description: Unique ID generated by the server. This is used as a identifier.
+      type: string
+      example: '34017000000000103'
+    currency_id:
+      description: Unique ID for currency.
+      type: string
+      example: '16367000000000097'
+    budget_amount:
+      description: Budget amount for the trip.
+      type: number
+      format: double
+      example: 5000
+    bcy_budget_amount:
+      description: Budget amount for the trip in base currency.
+      type: number
+      format: double
+      example: 5000
+    is_international:
+      description: Whether the trip is an international trip.
+      type: boolean
+      example: true
+    is_round_trip:
+      description: Whether the trip is a round trip.
+      type: boolean
+      example: true
+    is_visa_required:
+      description: Whether visa is required for the trip.
+      type: boolean
+      example: true
+    start_date:
+      description: Start date of the trip.
+      type: string
+      example: '2017-02-21'
+    end_date:
+      description: End date of the trip.
+      type: string
+      example: '2017-02-27'
+    trip_number:
+      description: Trip's unique number.
+      type: string
+      example: TRIP-00001
+    business_purpose:
+      description: Purpose of the trip.
+      type: string
+      example: Meeting with client
+    description:
+      description: Any comments about the trip.
+      type: string
+      example: Regarding business proposal
+    departure:
+      description: Place of departure.
+      type: string
+      example: ABC International Airport
+    destination_country:
+      description: Destination Country of the trip.
+      type: string
+      example: India
+    destination_city:
+      description: Destination City of the trip.
+      type: string
+      example: Mumbai
+    meal_preference:
+      description: Meal preference for the traveller in flight.
+      type: string
+      example: avml
+    seat_preference:
+      description: Seat preference for the traveller in flight.
+      type: string
+      example: middle
+    is_billable:
+      description: Whether the customer needs to be billed for the trip.
+      type: boolean
+      example: false
+    customer_id:
+      description: Unique ID of the customer associated with the trip.
+      type: string
+      example: '16367000000096001'
+    project_id:
+      description: Unique ID of the project associated with the trip.
+      type: string
+      example: '16367000000096055'
+    project_name:
+      description: Name of the project associated with the trip.
+      type: string
+      example: Brochure Design - Spa
+    customer_name:
+      description: Name of the customer associated with the trip.
+      type: string
+      example: Kenny Digital
+    status:
+      description: Status of the trip.
+      type: string
+      example: draft
+    order:
+      description: Order of the line item.
+      type: integer
+      example: 1
+    departure_date:
+      description: Date of departure.
+      type: string
+      example: '2017-09-08'
+    departure_country:
+      description: Departure Country.
+      type: string
+      example: india
+    departure_state:
+      description: Departure State.
+      type: string
+      example: tamil nadu
+    departure_city:
+      description: Departure City.
+      type: string
+      example: chennai
+    arrival_date:
+      description: Date of arrival.
+      type: string
+      example: '2017-09-08'
+    arrival_country:
+      description: Arrival Country.
+      type: string
+      example: australia
+    arrival_state:
+      description: Arrival State.
+      type: string
+      example: victoria
+    arrival_city:
+      description: Arrival City.
+      type: string
+      example: melbourne
+    travel_mode:
+      description: Mode of transportation. Possible values are <code>flight</code> ,<code>by_road</code>, <code>train</code>, <code>bus</code>
+      type: string
+      example: flight
+    is_personal_travel:
+      description: Whether it is a personal trip.
+      type: boolean
+      example: true
+    is_accomodation:
+      description: Whether accomodation is provided.
+      type: boolean
+      example: false
+    line_item_id:
+      description: Unique ID for identifying the line item. This is server generated.
+      type: string
+      example: '34017000000091584'
+    line_items:
+      type: array
+      description: List of items associated with the trip.
+      items:
+        type: object
+        properties:
+          line_item_id:
+            $ref: '#/components/schemas/line_item_id'
+          order:
+            $ref: '#/components/schemas/order'
+          departure_date:
+            $ref: '#/components/schemas/departure_date'
+          departure_country:
+            $ref: '#/components/schemas/departure_country'
+          departure_state:
+            $ref: '#/components/schemas/departure_state'
+          departure_city:
+            $ref: '#/components/schemas/departure_city'
+          arrival_date:
+            $ref: '#/components/schemas/arrival_date'
+          arrival_country:
+            $ref: '#/components/schemas/arrival_country'
+          arrival_state:
+            $ref: '#/components/schemas/arrival_state'
+          arrival_city:
+            $ref: '#/components/schemas/arrival_city'
+          travel_mode:
+            $ref: '#/components/schemas/travel_mode'
+          is_personal_travel:
+            $ref: '#/components/schemas/is_personal_travel'
+          is_accomodation:
+            $ref: '#/components/schemas/is_accomodation'
+    air_travel_itinerary:
+      description: Air Travel Itinerary.
+      type: array
+      items:
+        type: object
+        properties:
+          is_accomodation:
+            $ref: '#/components/schemas/is_accomodation'
+          is_personal_travel:
+            $ref: '#/components/schemas/is_personal_travel'
+          line_item_id:
+            $ref: '#/components/schemas/line_item_id'
+          departure_state:
+            $ref: '#/components/schemas/departure_state'
+          departure_date:
+            $ref: '#/components/schemas/departure_date'
+          description:
+            $ref: '#/components/schemas/description'
+          departure_city:
+            $ref: '#/components/schemas/departure_city'
+          departure_country:
+            $ref: '#/components/schemas/departure_country'
+          arrival_country:
+            $ref: '#/components/schemas/arrival_country'
+          travel_mode:
+            $ref: '#/components/schemas/travel_mode'
+          arrival_state:
+            $ref: '#/components/schemas/arrival_state'
+          arrival_city:
+            $ref: '#/components/schemas/arrival_city'
+          arrival_date:
+            $ref: '#/components/schemas/arrival_date'
+          order:
+            $ref: '#/components/schemas/order'
+    hotel_reservation_itinerary:
+      description: Hotel Accommodation Itinerary.
+      type: array
+      items:
+        type: object
+        properties:
+          is_accomodation:
+            $ref: '#/components/schemas/is_accomodation'
+          is_personal_travel:
+            $ref: '#/components/schemas/is_personal_travel'
+          line_item_id:
+            $ref: '#/components/schemas/line_item_id'
+          departure_state:
+            $ref: '#/components/schemas/departure_state'
+          departure_date:
+            $ref: '#/components/schemas/departure_date'
+          description:
+            $ref: '#/components/schemas/description'
+          departure_city:
+            $ref: '#/components/schemas/departure_city'
+          departure_country:
+            $ref: '#/components/schemas/departure_country'
+          arrival_country:
+            $ref: '#/components/schemas/arrival_country'
+          travel_mode:
+            $ref: '#/components/schemas/travel_mode'
+          arrival_state:
+            $ref: '#/components/schemas/arrival_state'
+          arrival_city:
+            $ref: '#/components/schemas/arrival_city'
+          arrival_date:
+            $ref: '#/components/schemas/arrival_date'
+          order:
+            $ref: '#/components/schemas/order'
+    car_rental_itinerary:
+      description: Car Rental Itinerary.
+      type: array
+      items:
+        type: object
+        properties:
+          is_accomodation:
+            $ref: '#/components/schemas/is_accomodation'
+          is_personal_travel:
+            $ref: '#/components/schemas/is_personal_travel'
+          line_item_id:
+            $ref: '#/components/schemas/line_item_id'
+          departure_state:
+            $ref: '#/components/schemas/departure_state'
+          departure_date:
+            $ref: '#/components/schemas/departure_date'
+          description:
+            $ref: '#/components/schemas/description'
+          departure_city:
+            $ref: '#/components/schemas/departure_city'
+          departure_country:
+            $ref: '#/components/schemas/departure_country'
+          arrival_country:
+            $ref: '#/components/schemas/arrival_country'
+          travel_mode:
+            $ref: '#/components/schemas/travel_mode'
+          arrival_state:
+            $ref: '#/components/schemas/arrival_state'
+          arrival_city:
+            $ref: '#/components/schemas/arrival_city'
+          arrival_date:
+            $ref: '#/components/schemas/arrival_date'
+          order:
+            $ref: '#/components/schemas/order'
+    other_itinerary:
+      description: Other Itinerary.
+      type: array
+      items:
+        type: object
+        properties:
+          is_accomodation:
+            $ref: '#/components/schemas/is_accomodation'
+          is_personal_travel:
+            $ref: '#/components/schemas/is_personal_travel'
+          line_item_id:
+            $ref: '#/components/schemas/line_item_id'
+          departure_state:
+            $ref: '#/components/schemas/departure_state'
+          departure_date:
+            $ref: '#/components/schemas/departure_date'
+          description:
+            $ref: '#/components/schemas/description'
+          departure_city:
+            $ref: '#/components/schemas/departure_city'
+          departure_country:
+            $ref: '#/components/schemas/departure_country'
+          arrival_country:
+            $ref: '#/components/schemas/arrival_country'
+          travel_mode:
+            $ref: '#/components/schemas/travel_mode'
+          arrival_state:
+            $ref: '#/components/schemas/arrival_state'
+          arrival_city:
+            $ref: '#/components/schemas/arrival_city'
+          arrival_date:
+            $ref: '#/components/schemas/arrival_date'
+          order:
+            $ref: '#/components/schemas/order'
+    attendee_id:
+      description: Unique ID of the attendee as a identifier.
+      type: string
+      example: '31672000000003102'
+    name:
+      description: Name of the User.
+      type: string
+      example: Jayson
+    email:
+      description: Email ID of the User.
+      type: string
+      example: jayson@gmail.com
+    attendees:
+      description: Other travellers of the trip.
+      type: array
+      items:
+        type: object
+        properties:
+          department_id:
+            $ref: '#/components/schemas/department_id'
+          user_id:
+            $ref: '#/components/schemas/user_id'
+          attendee_id:
+            $ref: '#/components/schemas/attendee_id'
+          name:
+            $ref: '#/components/schemas/name'
+          employee_number:
+            $ref: '#/components/schemas/employee_number'
+          email:
+            $ref: '#/components/schemas/email'
+    file_name:
+      description: Name of the Document.
+      type: string
+      example: receipt1.jpg
+    file_size_formatted:
+      description: Formatted value of File Size.
+      type: string
+      example: 35.6 KB
+    attachment_order:
+      description: Order of the Attached Document.
+      type: integer
+      example: 1
+    document_id:
+      description: Unique Id for the Document.
+      type: string
+      example: '16367000000078085'
+    documents:
+      description: Details of Documents attached.
+      type: array
+      items:
+        type: object
+        properties:
+          file_name:
+            $ref: '#/components/schemas/file_name'
+          file_size_formatted:
+            $ref: '#/components/schemas/file_size_formatted'
+          attachment_order:
+            $ref: '#/components/schemas/attachment_order'
+          document_id:
+            $ref: '#/components/schemas/document_id'
+    customfield_id:
+      description: Unique ID for the Custom Field.
+      type: string
+      example: '16367000000093005'
+    data_type:
+      description: Data Type of the Custom Field.
+      type: string
+      example: string
+    is_active:
+      description: Whether the Custom Field is Active. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: true
+    is_mandatory:
+      description: Whether the Custom Field is Mandatory. It can either be <code>true</code> or <code>false</code>.
+      type: boolean
+      example: false
+    label:
+      description: Label for the Custom Field.
+      type: string
+      example: Nick Name
+    value:
+      description: Value entered in the Custom Field.
+      type: string
+      example: Tric
+    trip:
+      type: object
+      properties:
+        trip_id:
+          $ref: '#/components/schemas/trip_id'
+        is_international:
+          $ref: '#/components/schemas/is_international'
+        is_round_trip:
+          $ref: '#/components/schemas/is_round_trip'
+        is_visa_required:
+          $ref: '#/components/schemas/is_visa_required'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        trip_number:
+          $ref: '#/components/schemas/trip_number'
+        business_purpose:
+          $ref: '#/components/schemas/business_purpose'
+        description:
+          $ref: '#/components/schemas/description'
+        departure:
+          $ref: '#/components/schemas/departure'
+        destination_country:
+          $ref: '#/components/schemas/destination_country'
+        destination_city:
+          $ref: '#/components/schemas/destination_city'
+        meal_preference:
+          $ref: '#/components/schemas/meal_preference'
+        seat_preference:
+          $ref: '#/components/schemas/seat_preference'
+        is_billable:
+          $ref: '#/components/schemas/is_billable'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        project_id:
+          $ref: '#/components/schemas/project_id'
+        project_name:
+          $ref: '#/components/schemas/project_name'
+        customer_name:
+          $ref: '#/components/schemas/customer_name'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        currency_code:
+          $ref: '#/components/schemas/currency_code'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        price_precision:
+          $ref: '#/components/schemas/price_precision'
+        budget_amount:
+          $ref: '#/components/schemas/budget_amount'
+        bcy_budget_amount:
+          $ref: '#/components/schemas/bcy_budget_amount'
+        status:
+          $ref: '#/components/schemas/status'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        submitted_date:
+          $ref: '#/components/schemas/submitted_date'
+        last_submitted_date:
+          $ref: '#/components/schemas/last_submitted_date'
+        approved_date:
+          $ref: '#/components/schemas/approved_date'
+        approver_id:
+          $ref: '#/components/schemas/approver_id'
+        approver_name:
+          $ref: '#/components/schemas/approver_name'
+        approver_email:
+          $ref: '#/components/schemas/approver_email'
+        submitted_to_id:
+          $ref: '#/components/schemas/submitted_to_id'
+        submitted_to_name:
+          $ref: '#/components/schemas/submitted_to_name'
+        submitted_to_email:
+          $ref: '#/components/schemas/submitted_to_email'
+        submitted_to_employee_no:
+          $ref: '#/components/schemas/submitted_to_employee_no'
+        submitted_to_department_name:
+          $ref: '#/components/schemas/submitted_to_department_name'
+        submitted_by:
+          $ref: '#/components/schemas/submitted_by'
+        submitter_name:
+          $ref: '#/components/schemas/submitter_name'
+        submitter_email:
+          $ref: '#/components/schemas/submitter_email'
+        submitter_employee_no:
+          $ref: '#/components/schemas/submitter_employee_no'
+        submitter_department_name:
+          $ref: '#/components/schemas/submitter_department_name'
+        employee_number:
+          $ref: '#/components/schemas/employee_number'
+        department_id:
+          $ref: '#/components/schemas/department_id'
+        department_name:
+          $ref: '#/components/schemas/department_name'
+        air_travel_itinerary:
+          $ref: '#/components/schemas/air_travel_itinerary'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        created_date:
+          $ref: '#/components/schemas/created_date'
+        last_modified_time:
+          $ref: '#/components/schemas/last_modified_time'
+        documents:
+          $ref: '#/components/schemas/documents'
+        created_by_id:
+          $ref: '#/components/schemas/created_by_id'
+        created_by_name:
+          $ref: '#/components/schemas/created_by_name'
+        user_id:
+          $ref: '#/components/schemas/user_id'
+        user_name:
+          $ref: '#/components/schemas/user_name'
+        user_email:
+          $ref: '#/components/schemas/user_email'
+        created_by_email:
+          $ref: '#/components/schemas/created_by_email'
+    custom_fields:
+      description: Custom field added.
+      type: array
+      items:
+        type: object
+        properties:
+          customfield_id:
+            $ref: '#/components/schemas/customfield_id'
+          data_type:
+            $ref: '#/components/schemas/data_type'
+          is_active:
+            $ref: '#/components/schemas/is_active'
+          is_mandatory:
+            $ref: '#/components/schemas/is_mandatory'
+          label:
+            $ref: '#/components/schemas/label'
+          value:
+            $ref: '#/components/schemas/value'
+    policy_id:
+      description: Unique ID of the policy applied to the trip request.
+      type: string
+      example: '30082000000003588'
+    policy_name:
+      description: Name of the Policy.
+      type: string
+      example: Official Trips
+    submitted_date:
+      description: Date of trip submission.
+      type: string
+      example: '2017-02-28'
+    last_submitted_date:
+      description: Date of previous submission.
+      type: string
+      example: '2017-02-28'
+    approved_date:
+      description: Date of trip Approval.
+      type: string
+      example: '2017-03-01'
+    approver_id:
+      description: Unique ID for the current approver.
+      type: string
+      example: '16367000000073001'
+    approver_name:
+      description: Current approver name.
+      type: string
+      example: PATRICIA BOYLE
+    approver_email:
+      description: Email ID of the current approver.
+      type: string
+      example: patriciab@zylker.org
+    approver_department_name:
+      description: Department Name of the Approver.
+      type: string
+      example: Finance
+    submitted_to_id:
+      description: Unique ID of the person to whom the trip was submitted first.
+      type: string
+      example: '16367000000073001'
+    submitted_to_name:
+      description: Name of the person to whom the trip was submitted first.
+      type: string
+      example: PATRICIA BOYLE
+    submitted_to_email:
+      description: Email ID of the person to whom the trip was submitted first.
+      type: string
+      example: patriciab@zylker.org
+    submitted_to_employee_no:
+      description: Employee Number of the person to whom the trip was submitted first.
+      type: string
+      example: E001
+    submitted_to_department_name:
+      description: Department Name of the person to whom the trip was submitted first.
+      type: string
+      example: Finance
+    submitted_by:
+      description: Unique ID of the submitter.
+      type: string
+      example: '34017000000091001'
+    submitter_name:
+      description: Name of the submitter.
+      type: string
+      example: Will Smith
+    submitter_email:
+      description: Email ID of the submitter.
+      type: string
+      example: will.smith@gmail.com
+    submitter_employee_no:
+      description: Employee Number of the submitter.
+      type: string
+      example: E002
+    submitter_department_name:
+      description: Department Name of the submitter.
+      type: string
+      example: Maintenance
+    next_approver_id:
+      description: Unique ID of the Next Approver.
+      type: string
+      example: '16367000000073001'
+    next_approver_email:
+      description: Email Id of Next Approver.
+      type: string
+      example: patriciab@zylker.org
+    next_approver_name:
+      description: Name of the Next Approver.
+      type: string
+      example: PATRICIA BOYLE
+    employee_number:
+      description: Employee Number of the owner of the trip.
+      type: string
+      example: E003
+    department_id:
+      description: Unique ID of the department.
+      type: string
+      example: '16367000000093001'
+    department_name:
+      description: Name of the department.
+      type: string
+      example: Finance
+    created_time:
+      description: Time when the trip was created.
+      type: string
+      example: 2017-02-28T18:18:03+0530
+    created_date:
+      description: Date when the trip was created.
+      type: string
+      example: '2017-02-28'
+    last_modified_time:
+      description: Time when the trip was last modified.
+      type: string
+      example: 2017-02-28T18:31:09+0530
+    created_by_id:
+      description: Unique ID of the person who created the trip.
+      type: string
+      example: '16367000000073071'
+    created_by_name:
+      description: Name of the person who created the trip.
+      type: string
+      example: Will Smith
+    created_by_email:
+      description: Email ID of the person who created the trip.
+      type: string
+      example: will.smith@gmail.com
+    user_id:
+      description: Unique ID of the owner of the trip.
+      type: string
+      example: '16367000000073001'
+    role_id:
+      description: Unique ID of the User Role.
+      type: string
+      example: '16367000000030001'
+    user_name:
+      description: Name of the User.
+      type: string
+      example: Will Smith
+    user_email:
+      description: Email Id of the User.
+      type: string
+      example: will.smith@gmail.com
+    user_employee_no:
+      description: Employee number of the user.
+      type: string
+      example: E002
+    user_department_name:
+      description: Department of the user.
+      type: string
+      example: Maintenance
+    commented_by_id:
+      description: Unique ID of the person who commented.
+      type: string
+      example: '34017000000091216'
+    commented_by:
+      description: Name of the User Commented.
+      type: string
+      example: Will Smith
+    report_id:
+      description: Unique ID of the report.
+      type: string
+      example: '34017012500061219'
+    date:
+      description: Date of Approval.
+      type: string
+      example: '2017-03-01'
+    previous_approver_id:
+      description: Unique ID of Previous Approver.
+      type: string
+      example: '16367000000073001'
+    previous_approver_name:
+      description: Name of the Previous Approver.
+      type: string
+      example: Will Smith
+    previous_approver_email:
+      description: Email ID of the Previous Approver.
+      type: string
+      example: will.smith@gmail.com
+    previous_approver_employee_no:
+      description: Employee Number of the Previous Approver.
+      type: string
+      example: E008
+    previous_approver_department_name:
+      description: Department Name of the Previous Approver.
+      type: string
+      example: Marketing
+    approver_employee_no:
+      description: Employee Number of the Approver.
+      type: string
+      example: E001
+    comments:
+      type: array
+      description: List of comments associated with the trip.
+      items:
+        type: object
+        properties:
+          description:
+            $ref: '#/components/schemas/description'
+          commented_by_id:
+            $ref: '#/components/schemas/commented_by_id'
+          commented_by:
+            $ref: '#/components/schemas/commented_by'
+    currency_code:
+      description: Currency code.
+      type: string
+      example: INR
+    price_precision:
+      description: Amount precision upto n decimal points.
+      type: integer
+      example: 2
+    exchange_rate:
+      description: Exchange rate of the currency with respect to base currency.
+      type: number
+      format: double
+      example: 1
+    Type.Trip-Status.Submitted:
+      description: List all submitted trip requests.
+      type: string
+    Type.Trip-Status.Approved:
+      description: List all approved trip requests.
+      type: string
+    Type.Trip-Status.Rejected:
+      description: List all rejected trip requests.
+      type: string
+    Type.Trip-Status.Closed:
+      description: List all closed trips.
+      type: string
+    Type.Trip-Status.Cancelled:
+      description: List all the cancelled trips.
+      type: string
+    filter_by:
+      description: For filtering trips based on status.
+      type: object
+      properties:
+        Type.Trip%2CStatus.Submitted:
+          $ref: '#/components/schemas/Type.Trip-Status.Submitted'
+        Type.Trip%2CStatus.Approved:
+          $ref: '#/components/schemas/Type.Trip-Status.Approved'
+        Type.Trip%2CStatus.Rejected:
+          $ref: '#/components/schemas/Type.Trip-Status.Rejected'
+        Type.Trip%2CStatus.Closed:
+          $ref: '#/components/schemas/Type.Trip-Status.Closed'
+        Type.Trip%2CStatus.Cancelled:
+          $ref: '#/components/schemas/Type.Trip-Status.Cancelled'
+    trips:
+      type: object
+      properties:
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        budget_amount:
+          $ref: '#/components/schemas/budget_amount'
+        bcy_budget_amount:
+          $ref: '#/components/schemas/bcy_budget_amount'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        trip_id:
+          $ref: '#/components/schemas/trip_id'
+        is_round_trip:
+          $ref: '#/components/schemas/is_round_trip'
+        is_international:
+          $ref: '#/components/schemas/is_international'
+        is_visa_required:
+          $ref: '#/components/schemas/is_visa_required'
+        trip_number:
+          $ref: '#/components/schemas/trip_number'
+        business_purpose:
+          $ref: '#/components/schemas/business_purpose'
+        description:
+          $ref: '#/components/schemas/description'
+        departure:
+          $ref: '#/components/schemas/departure'
+        destination_country:
+          $ref: '#/components/schemas/destination_country'
+        destination_city:
+          $ref: '#/components/schemas/destination_city'
+        meal_preference:
+          $ref: '#/components/schemas/meal_preference'
+        seat_preference:
+          $ref: '#/components/schemas/seat_preference'
+        is_billable:
+          $ref: '#/components/schemas/is_billable'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        project_id:
+          $ref: '#/components/schemas/project_id'
+        customer_name:
+          $ref: '#/components/schemas/customer_name'
+        project_name:
+          $ref: '#/components/schemas/project_name'
+        status:
+          $ref: '#/components/schemas/status'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        submitted_date:
+          $ref: '#/components/schemas/submitted_date'
+        last_submitted_date:
+          $ref: '#/components/schemas/last_submitted_date'
+        approver_id:
+          $ref: '#/components/schemas/approver_id'
+        approver_name:
+          $ref: '#/components/schemas/approver_name'
+        approver_email:
+          $ref: '#/components/schemas/approver_email'
+        submitted_to_id:
+          $ref: '#/components/schemas/submitted_to_id'
+        submitted_to_email:
+          $ref: '#/components/schemas/submitted_to_email'
+        submitted_to_name:
+          $ref: '#/components/schemas/submitted_to_name'
+        submitted_by:
+          $ref: '#/components/schemas/submitted_by'
+        submitter_name:
+          $ref: '#/components/schemas/submitter_name'
+        submitter_email:
+          $ref: '#/components/schemas/submitter_email'
+        submitter_employee_no:
+          $ref: '#/components/schemas/submitter_employee_no'
+        submitter_department_name:
+          $ref: '#/components/schemas/submitter_department_name'
+        employee_number:
+          $ref: '#/components/schemas/employee_number'
+        department_id:
+          $ref: '#/components/schemas/department_id'
+        next_approver_id:
+          $ref: '#/components/schemas/next_approver_id'
+        next_approver_email:
+          $ref: '#/components/schemas/next_approver_email'
+        next_approver_name:
+          $ref: '#/components/schemas/next_approver_name'
+        approver_employee_no:
+          $ref: '#/components/schemas/approver_employee_no'
+        approver_department_name:
+          $ref: '#/components/schemas/approver_department_name'
+        previous_approver_id:
+          $ref: '#/components/schemas/previous_approver_id'
+        previous_approver_name:
+          $ref: '#/components/schemas/previous_approver_name'
+        previous_approver_email:
+          $ref: '#/components/schemas/previous_approver_email'
+        previous_approver_employee_no:
+          $ref: '#/components/schemas/previous_approver_employee_no'
+        previous_approver_department_name:
+          $ref: '#/components/schemas/previous_approver_department_name'
+        air_travel_itinerary:
+          $ref: '#/components/schemas/air_travel_itinerary'
+        hotel_reservation_itinerary:
+          $ref: '#/components/schemas/hotel_reservation_itinerary'
+        car_rental_itinerary:
+          $ref: '#/components/schemas/car_rental_itinerary'
+        other_itinerary:
+          $ref: '#/components/schemas/other_itinerary'
+        attendees:
+          $ref: '#/components/schemas/attendees'
+        line_items:
+          $ref: '#/components/schemas/line_items'
+        comments:
+          $ref: '#/components/schemas/comments'
+        currency_code:
+          $ref: '#/components/schemas/currency_code'
+        price_precision:
+          $ref: '#/components/schemas/price_precision'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        created_date:
+          $ref: '#/components/schemas/created_date'
+        last_modified_time:
+          $ref: '#/components/schemas/last_modified_time'
+        created_by_id:
+          $ref: '#/components/schemas/created_by_id'
+        created_by_name:
+          $ref: '#/components/schemas/created_by_name'
+        created_by_email:
+          $ref: '#/components/schemas/created_by_email'
+        user_id:
+          $ref: '#/components/schemas/user_id'
+        policy_id:
+          $ref: '#/components/schemas/policy_id'
+        policy_name:
+          $ref: '#/components/schemas/policy_name'
+        user_name:
+          $ref: '#/components/schemas/user_name'
+        user_email:
+          $ref: '#/components/schemas/user_email'
+        user_employee_no:
+          $ref: '#/components/schemas/user_employee_no'
+        user_department_name:
+          $ref: '#/components/schemas/user_department_name'
+        documents:
+          $ref: '#/components/schemas/documents'
+    create-a-trip-request:
+      required:
+        - is_international
+        - destination_country
+        - trip_number
+      type: object
+      properties:
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        budget_amount:
+          $ref: '#/components/schemas/budget_amount'
+        is_international:
+          $ref: '#/components/schemas/is_international'
+        is_visa_required:
+          $ref: '#/components/schemas/is_visa_required'
+        business_purpose:
+          $ref: '#/components/schemas/business_purpose'
+        is_billable:
+          $ref: '#/components/schemas/is_billable'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        project_id:
+          $ref: '#/components/schemas/project_id'
+        destination_country:
+          $ref: '#/components/schemas/destination_country'
+        meal_preference:
+          $ref: '#/components/schemas/meal_preference'
+        seat_preference:
+          $ref: '#/components/schemas/seat_preference'
+        line_items:
+          $ref: '#/components/schemas/line_items'
+        description:
+          $ref: '#/components/schemas/description'
+        custom_fields:
+          description: Custom field added.
+          type: array
+          items:
+            type: object
+            properties:
+              customfield_id:
+                $ref: '#/components/schemas/customfield_id'
+              value:
+                $ref: '#/components/schemas/value'
+        attendees:
+          description: Other travellers of the trip.
+          type: array
+          items:
+            type: object
+            properties:
+              user_id:
+                $ref: '#/components/schemas/user_id'
+        trip_number:
+          $ref: '#/components/schemas/trip_number'
+    create-a-trip-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: trip created successfully
+          readOnly: true
+        trip:
+          $ref: '#/components/schemas/trip'
+    retrive-list-of-all-trips-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        trips:
+          type: array
+          items:
+            type: object
+            properties:
+              currency_id:
+                $ref: '#/components/schemas/currency_id'
+              budget_amount:
+                $ref: '#/components/schemas/budget_amount'
+              bcy_budget_amount:
+                $ref: '#/components/schemas/bcy_budget_amount'
+              start_date:
+                $ref: '#/components/schemas/start_date'
+              end_date:
+                $ref: '#/components/schemas/end_date'
+              trip_id:
+                $ref: '#/components/schemas/trip_id'
+              is_round_trip:
+                $ref: '#/components/schemas/is_round_trip'
+              is_international:
+                $ref: '#/components/schemas/is_international'
+              is_visa_required:
+                $ref: '#/components/schemas/is_visa_required'
+              trip_number:
+                $ref: '#/components/schemas/trip_number'
+              business_purpose:
+                $ref: '#/components/schemas/business_purpose'
+              description:
+                $ref: '#/components/schemas/description'
+              departure:
+                $ref: '#/components/schemas/departure'
+              destination_country:
+                $ref: '#/components/schemas/destination_country'
+              destination_city:
+                $ref: '#/components/schemas/destination_city'
+              meal_preference:
+                $ref: '#/components/schemas/meal_preference'
+              seat_preference:
+                $ref: '#/components/schemas/seat_preference'
+              is_billable:
+                $ref: '#/components/schemas/is_billable'
+              customer_id:
+                $ref: '#/components/schemas/customer_id'
+              project_id:
+                $ref: '#/components/schemas/project_id'
+              customer_name:
+                $ref: '#/components/schemas/customer_name'
+              project_name:
+                $ref: '#/components/schemas/project_name'
+              status:
+                $ref: '#/components/schemas/status'
+              custom_fields:
+                $ref: '#/components/schemas/custom_fields'
+              submitted_date:
+                $ref: '#/components/schemas/submitted_date'
+              last_submitted_date:
+                $ref: '#/components/schemas/last_submitted_date'
+              approver_id:
+                $ref: '#/components/schemas/approver_id'
+              approver_name:
+                $ref: '#/components/schemas/approver_name'
+              approver_email:
+                $ref: '#/components/schemas/approver_email'
+              submitted_to_id:
+                $ref: '#/components/schemas/submitted_to_id'
+              submitted_to_email:
+                $ref: '#/components/schemas/submitted_to_email'
+              submitted_to_name:
+                $ref: '#/components/schemas/submitted_to_name'
+              submitted_by:
+                $ref: '#/components/schemas/submitted_by'
+              submitter_name:
+                $ref: '#/components/schemas/submitter_name'
+              submitter_email:
+                $ref: '#/components/schemas/submitter_email'
+              submitter_employee_no:
+                $ref: '#/components/schemas/submitter_employee_no'
+              submitter_department_name:
+                $ref: '#/components/schemas/submitter_department_name'
+              employee_number:
+                $ref: '#/components/schemas/employee_number'
+              department_id:
+                $ref: '#/components/schemas/department_id'
+              next_approver_id:
+                $ref: '#/components/schemas/next_approver_id'
+              next_approver_email:
+                $ref: '#/components/schemas/next_approver_email'
+              next_approver_name:
+                $ref: '#/components/schemas/next_approver_name'
+              approver_employee_no:
+                $ref: '#/components/schemas/approver_employee_no'
+              approver_department_name:
+                $ref: '#/components/schemas/approver_department_name'
+              previous_approver_id:
+                $ref: '#/components/schemas/previous_approver_id'
+              previous_approver_name:
+                $ref: '#/components/schemas/previous_approver_name'
+              previous_approver_email:
+                $ref: '#/components/schemas/previous_approver_email'
+              previous_approver_employee_no:
+                $ref: '#/components/schemas/previous_approver_employee_no'
+              previous_approver_department_name:
+                $ref: '#/components/schemas/previous_approver_department_name'
+              air_travel_itinerary:
+                $ref: '#/components/schemas/air_travel_itinerary'
+              hotel_reservation_itinerary:
+                $ref: '#/components/schemas/hotel_reservation_itinerary'
+              car_rental_itinerary:
+                $ref: '#/components/schemas/car_rental_itinerary'
+              other_itinerary:
+                $ref: '#/components/schemas/other_itinerary'
+              attendees:
+                $ref: '#/components/schemas/attendees'
+              line_items:
+                $ref: '#/components/schemas/line_items'
+              comments:
+                $ref: '#/components/schemas/comments'
+              currency_code:
+                $ref: '#/components/schemas/currency_code'
+              price_precision:
+                $ref: '#/components/schemas/price_precision'
+              created_time:
+                $ref: '#/components/schemas/created_time'
+              created_date:
+                $ref: '#/components/schemas/created_date'
+              last_modified_time:
+                $ref: '#/components/schemas/last_modified_time'
+              created_by_id:
+                $ref: '#/components/schemas/created_by_id'
+              created_by_name:
+                $ref: '#/components/schemas/created_by_name'
+              created_by_email:
+                $ref: '#/components/schemas/created_by_email'
+              user_id:
+                $ref: '#/components/schemas/user_id'
+              policy_id:
+                $ref: '#/components/schemas/policy_id'
+              policy_name:
+                $ref: '#/components/schemas/policy_name'
+              user_name:
+                $ref: '#/components/schemas/user_name'
+              user_email:
+                $ref: '#/components/schemas/user_email'
+              user_employee_no:
+                $ref: '#/components/schemas/user_employee_no'
+              user_department_name:
+                $ref: '#/components/schemas/user_department_name'
+              documents:
+                $ref: '#/components/schemas/documents'
+    retrive-details-of-a-trip-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        trip:
+          $ref: '#/components/schemas/trip'
+    update-a-trip-request:
+      type: object
+      required:
+        - is_international
+        - destination_country
+        - trip_number
+      properties:
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        budget_amount:
+          $ref: '#/components/schemas/budget_amount'
+        is_international:
+          $ref: '#/components/schemas/is_international'
+        is_visa_required:
+          $ref: '#/components/schemas/is_visa_required'
+        business_purpose:
+          $ref: '#/components/schemas/business_purpose'
+        is_billable:
+          $ref: '#/components/schemas/is_billable'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        project_id:
+          $ref: '#/components/schemas/project_id'
+        destination_country:
+          $ref: '#/components/schemas/destination_country'
+        meal_preference:
+          $ref: '#/components/schemas/meal_preference'
+        seat_preference:
+          $ref: '#/components/schemas/seat_preference'
+        line_items:
+          $ref: '#/components/schemas/line_items'
+        description:
+          $ref: '#/components/schemas/description'
+        custom_fields:
+          description: Custom field added.
+          type: array
+          items:
+            type: object
+            properties:
+              customfield_id:
+                $ref: '#/components/schemas/customfield_id'
+              value:
+                $ref: '#/components/schemas/value'
+        attendees:
+          description: Other travellers of the trip.
+          type: array
+          items:
+            type: object
+            properties:
+              user_id:
+                $ref: '#/components/schemas/user_id'
+        trip_number:
+          $ref: '#/components/schemas/trip_number'
+    update-a-trip-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Trip details updated successfully
+          readOnly: true
+        trips:
+          $ref: '#/components/schemas/trips'
+    delete-a-trip-request-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Trip(s) deleted successfully
+          readOnly: true
+    approve-a-trip-request-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Trip approved successfully
+          readOnly: true
+    reject-a-trip-request-request:
+      type: object
+      properties:
+        comments:
+          $ref: '#/components/schemas/comments'
+    reject-a-trip-request-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Trip has been rejected.
+          readOnly: true
+    cancel-a-trip-request:
+      type: object
+      properties:
+        comments:
+          $ref: '#/components/schemas/comments'
+    cancel-a-trip-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Trip has been marked 'Cancelled'.
+          readOnly: true
+    close-a-trip-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Trip closed successfully
+          readOnly: true
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.trip.CREATE: Create trip
+            ERP.trip.READ: Read trip
+            ERP.trip.UPDATE: Update trip
+            ERP.trip.DELETE: Delete trip
+            ERP.approval.CREATE: Create approval

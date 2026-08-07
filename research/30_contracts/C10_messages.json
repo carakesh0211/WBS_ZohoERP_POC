@@ -1,0 +1,47 @@
+{
+ "frozen_at": "2026-08-06",
+ "rule": "FROZEN. Every user-facing message uses an ID from this scheme and follows the template. A message that does not name the object, the numbers and the next action is not acceptable.",
+ "id_scheme": "MSG-<AREA>-<nnn>; AREA in BUD (budget), PRC (procurement), CAP (capitalisation), INT (integration), SEC (security/permission), GEN (generic)",
+ "template": {
+  "structure": "<What happened, with the specific object identified> <The numbers that matter> <What the user can do next>",
+  "must_contain": ["the object identifier (project, WBS, budget head, document number)", "the actual amounts involved", "the shortfall or difference where relevant", "at least one concrete next action"],
+  "must_not_contain": ["bare error codes with no explanation", "the words 'invalid', 'error occurred' or 'failed' without a reason", "technical exception text shown to a business user"],
+  "worked_exemplar_from_brief": "The proposed PO value of 20,00,000 exceeds the available budget of 15,00,000 for WBS CAPEX-2026-001.03 by 5,00,000. Submit a budget revision or request exception approval."
+ },
+ "severity_levels": ["information", "success", "warning", "error"],
+ "placement_rules": {
+  "field_level": "Validation that concerns one field appears beneath that field and moves focus there.",
+  "form_level": "An error summary appears at the top of the form listing every failed field as a link to it. Required for accessibility.",
+  "page_level": "A message strip below the page header for conditions affecting the whole object, such as budget exceeded or integration failed.",
+  "toast": "Confirmation of a completed action only. Never used for errors the user must act on, because it disappears.",
+  "dialog": "Only for destructive or irreversible actions, and only with the consequence stated explicitly."
+ },
+ "messages": [
+  {"id": "MSG-BUD-001", "severity": "error", "trigger": "Proposed commitment exceeds available budget", "text": "The proposed {document_type} value of {amount} exceeds the available budget of {available} for {wbs_code} ({budget_head}) by {shortfall}. Submit a budget revision or request exception approval."},
+  {"id": "MSG-BUD-002", "severity": "warning", "trigger": "Utilisation crosses 80 percent", "text": "{wbs_code} has reached {utilisation} of its approved budget of {budget}. Exposure is {exposure} ({commitment} committed, {actual} actual). Review before approving further commitments."},
+  {"id": "MSG-BUD-003", "severity": "warning", "trigger": "Utilisation crosses 90 percent", "text": "{wbs_code} has reached {utilisation} of its approved budget of {budget}. Only {available} remains. Further commitments will require exception approval."},
+  {"id": "MSG-BUD-004", "severity": "error", "trigger": "Budget head missing on a capital transaction", "text": "A CAPEX code and budget head are mandatory on capital procurement. Select a budget head for line {line_number} before submitting."},
+  {"id": "MSG-BUD-005", "severity": "information", "trigger": "Budget revision approved", "text": "Revision {revision_number} approved by {approver} on {date}. Current approved budget for {wbs_code} is now {new_budget} (original {original_budget}, revisions {revision_total}). The original budget is unchanged."},
+  {"id": "MSG-BUD-006", "severity": "error", "trigger": "Budget transfer would leave a source with negative availability", "text": "Transferring {amount} from {source_wbs} would leave it with negative availability of {resulting_available}, because {committed} is already committed. Reduce the transfer to at most {max_transferable}."},
+  {"id": "MSG-PRC-001", "severity": "warning", "trigger": "PO amended upward", "text": "{po_number} has increased from {old_value} to {new_value}. The additional {delta} has been revalidated against {wbs_code}, where {available} is available."},
+  {"id": "MSG-PRC-002", "severity": "information", "trigger": "PO cancelled before billing", "text": "{po_number} has been cancelled. Commitment of {released} has been released back to {wbs_code}. Available budget is now {available}."},
+  {"id": "MSG-PRC-003", "severity": "information", "trigger": "PO closed with residual", "text": "{po_number} has been closed with {billed} billed against an ordered value of {ordered}. The unbilled residual of {residual} has been released back to {wbs_code}."},
+  {"id": "MSG-PRC-004", "severity": "warning", "trigger": "Bill value exceeds the PO line it references", "text": "Bill {bill_number} line {line_number} is {bill_amount} against purchase order line {po_line} of {po_amount}, an excess of {excess}. Confirm this is intended, or correct the bill before it is posted to CWIP."},
+  {"id": "MSG-PRC-005", "severity": "warning", "trigger": "Received but unbilled exposure ageing", "text": "{wbs_code} has {amount} received but not yet billed, the oldest for {days} days. This is included in exposure and will convert to actual CWIP when the vendor bills."},
+  {"id": "MSG-PRC-006", "severity": "error", "trigger": "Procurement attempted against a closed or capitalised project", "text": "{project_code} is {status}. Procurement is not permitted. Request a controlled reopening, which requires {approver_role} approval and a recorded reason."},
+  {"id": "MSG-CAP-001", "severity": "warning", "trigger": "Capitalisation requested while commitments remain open", "text": "{project_code} has {open_commitment} in open commitments and {unbilled} received but unbilled. Resolve or explicitly write off these before capitalising, or the asset value will be understated."},
+  {"id": "MSG-CAP-002", "severity": "error", "trigger": "Capitalisation allocation does not total the CWIP balance", "text": "The allocation totals {allocated} against a CWIP balance of {balance}, a difference of {difference}. Allocate the full balance across assets, or record the remainder as a write-off with a reason."},
+  {"id": "MSG-CAP-003", "severity": "information", "trigger": "Capitalisation completed", "text": "{project_code} capitalised on {date}. {balance} transferred from CWIP to {asset_count} fixed asset(s). The project is now Capitalised and closed to further procurement."},
+  {"id": "MSG-INT-001", "severity": "error", "trigger": "Required OAuth scope missing", "text": "The connected Zoho organisation is missing the scope {scope}, required for {module}. {impact} Re-authorise the connection and grant this scope."},
+  {"id": "MSG-INT-002", "severity": "error", "trigger": "Token revoked or expired beyond refresh", "text": "The Zoho connection for {organisation_name} can no longer refresh its access token. Sync has been paused since {since}. Re-authorise to resume."},
+  {"id": "MSG-INT-003", "severity": "warning", "trigger": "Rate limit reached", "text": "Zoho returned a rate-limit response for {organisation_name}. {pending} records are queued and will retry with backoff. No data has been lost."},
+  {"id": "MSG-INT-004", "severity": "error", "trigger": "Record moved to dead letter", "text": "{record_type} {record_id} failed {attempts} times and has been moved to the dead-letter queue. Last error: {error}. Review and replay once the cause is corrected."},
+  {"id": "MSG-INT-005", "severity": "warning", "trigger": "Organisation mapping change attempted", "text": "Changing the mapped Zoho organisation from {current} to {proposed} will re-point every synced record. This requires {approver_role} approval and is recorded in the connector audit trail."},
+  {"id": "MSG-INT-006", "severity": "warning", "trigger": "Reconciliation difference beyond tolerance", "text": "{object_type} {reference}: our value {our_value} differs from Zoho's {their_value} by {difference}, beyond the tolerance of {tolerance}. Investigate before relying on the affected report."},
+  {"id": "MSG-SEC-001", "severity": "error", "trigger": "Insufficient permission", "text": "Your role ({role}) cannot {action} for {entity}. Contact {approver_role} if you need this access."},
+  {"id": "MSG-SEC-002", "severity": "warning", "trigger": "Session about to expire", "text": "Your session will expire in {minutes} minutes. Save your work, or continue to stay signed in."},
+  {"id": "MSG-SEC-003", "severity": "warning", "trigger": "Override requires a reason", "text": "You are overriding {control} for {object}. A reason is mandatory and will be stored in the audit trail with your name and the current time."},
+  {"id": "MSG-GEN-001", "severity": "warning", "trigger": "Destructive action confirmation", "text": "{action} on {object} cannot be undone. {consequence} Type the {identifier_type} to confirm."},
+  {"id": "MSG-GEN-002", "severity": "information", "trigger": "Empty state on a filtered list", "text": "No {object_type} match the current filters. Clear filters, or adjust the {primary_filter} to widen the search."}
+ ]
+}

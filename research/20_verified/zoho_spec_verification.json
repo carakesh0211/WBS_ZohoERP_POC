@@ -1,0 +1,3919 @@
+{
+ "generated_at": "2026-08-05",
+ "method": "Deterministic verification of every endpoint-shaped research record against Zoho's own published OpenAPI bundle. No model judgement involved: paths and methods are normalised and matched, and the claimed OAuth scope is compared to the scope the specification attaches to that operation.",
+ "spec_source": "https://www.zoho.com/erp/api/v3/openapi-all.zip",
+ "spec_sha256": "E95A039969F5C2FC2A44C47CFF77E41BACFF18957DCA1C870D48DDDA15C447F8",
+ "spec_totals": {
+  "module_count": 78,
+  "operation_count": 869,
+  "distinct_path_count": 561,
+  "distinct_scope_count": 163,
+  "servers": {
+   "https://www.zohoapis.in/erp/v3": 64,
+   "https://www.zohoapis.in/erp/v1": 14
+  },
+  "security_schemes": {
+   "Zoho_Auth": {
+    "type": "oauth2",
+    "flows": [
+     "implicit"
+    ]
+   }
+  },
+  "pagination_params": {
+   "filter_by": {
+    "occurrences": 50,
+    "defaults": {},
+    "maxima": {}
+   },
+   "page": {
+    "occurrences": 79,
+    "defaults": {
+     "1": 73
+    },
+    "maxima": {}
+   },
+   "per_page": {
+    "occurrences": 79,
+    "defaults": {
+     "200": 64,
+     "10": 10
+    },
+    "maxima": {
+     "200": 2
+    }
+   },
+   "sort_column": {
+    "occurrences": 51,
+    "defaults": {},
+    "maxima": {}
+   },
+   "search_text": {
+    "occurrences": 31,
+    "defaults": {},
+    "maxima": {}
+   },
+   "sort_order": {
+    "occurrences": 18,
+    "defaults": {},
+    "maxima": {}
+   }
+  }
+ },
+ "verdict_counts": {
+  "NON-ENDPOINT-CLAIM": 53,
+  "PATH-NOT-IN-SPEC": 10,
+  "CONFIRMED-BY-SPEC": 204,
+  "RELATED-PRODUCT": 1,
+  "SCOPE-MISMATCH": 18,
+  "PARTIAL-METHOD-MATCH": 8
+ },
+ "results": [
+  {
+   "lane": "R10",
+   "index": 0,
+   "business_object": "API Root Endpoint (India DC)",
+   "endpoint": "https://www.zohoapis.in/erp/v3",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 1,
+   "business_object": "REST design principle statement",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 2,
+   "business_object": "OpenAPI specification artifact (ERP)",
+   "endpoint": "https://www.zoho.com/erp/api/v3/openapi-all.zip",
+   "http_method": "GET",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "PATH-NOT-IN-SPEC",
+   "detail": "normalised '/erp/api/v3/openapi-all.zip' absent from 560 spec paths"
+  },
+  {
+   "lane": "R10",
+   "index": 3,
+   "business_object": "organization_id requirement",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 4,
+   "business_object": "organization_id discovery via API",
+   "endpoint": "/organizations",
+   "http_method": "GET",
+   "claimed_scope": "ERP.settings.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=organizations; spec_path=/organizations; scopes=['ERP.settings.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R10",
+   "index": 5,
+   "business_object": "OAuth scope printed for GET /organizations",
+   "endpoint": "/organizations",
+   "http_method": "GET",
+   "claimed_scope": "ERP.settings.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=organizations; spec_path=/organizations; scopes=['ERP.settings.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R10",
+   "index": 6,
+   "business_object": "Authorization header format",
+   "endpoint": "/organizations",
+   "http_method": "GET",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=organizations; spec_path=/organizations; scopes=['ERP.settings.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R10",
+   "index": 7,
+   "business_object": "GET /organizations sample response fields",
+   "endpoint": "/organizations",
+   "http_method": "GET",
+   "claimed_scope": "ERP.settings.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=organizations; spec_path=/organizations; scopes=['ERP.settings.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R10",
+   "index": 8,
+   "business_object": "Rate limit - per minute, per organization",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 9,
+   "business_object": "Rate limit rationale",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 10,
+   "business_object": "Daily request limit - plan availability (India)",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 11,
+   "business_object": "Daily request limit - Standard plan",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 12,
+   "business_object": "Daily request limit - Premium plan",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 13,
+   "business_object": "429 on daily plan quota exceeded",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 14,
+   "business_object": "Error body code 45 - org call rate limit",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 15,
+   "business_object": "Error body code 44 - per-account block",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 16,
+   "business_object": "Error body code 44 - per-organisation block",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 17,
+   "business_object": "Concurrent rate limiter - definition",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 18,
+   "business_object": "Concurrent limit - Trial plans",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 19,
+   "business_object": "Concurrent limit - all plans",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 20,
+   "business_object": "Error body code 1070 - concurrency exceeded",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 21,
+   "business_object": "OAuth scope grammar",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 22,
+   "business_object": "OAuth operation types",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 23,
+   "business_object": "COMPLETE documented OAuth scope_name list (16 services)",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": "ERP.contacts.ALL",
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 24,
+   "business_object": "Scope description - contacts",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": "ERP.contacts.READ",
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 25,
+   "business_object": "Scope description - settings (broadest scope)",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": "ERP.settings.READ",
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 26,
+   "business_object": "Scope description - manufacturing",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": "ERP.manufacturing.READ",
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 27,
+   "business_object": "Scope string irregularity - fixedasset (singular)",
+   "endpoint": "/fixedassets",
+   "http_method": "GET",
+   "claimed_scope": "ERP.fixedasset.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassets; scopes=['ERP.fixedasset.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R10",
+   "index": 28,
+   "business_object": "Fixed Assets endpoints",
+   "endpoint": "/fixedassets/{fixed_asset_id}",
+   "http_method": "GET",
+   "claimed_scope": "ERP.fixedasset.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassets/{fixed_asset_id}; scopes=['ERP.fixedasset.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R10",
+   "index": 29,
+   "business_object": "Access token lifetime",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 30,
+   "business_object": "Refresh token lifetime",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 31,
+   "business_object": "Refresh token count limit",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 32,
+   "business_object": "Grant code (authorization code) validity",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 33,
+   "business_object": "OAuth authorization endpoint",
+   "endpoint": "/oauth/v2/auth",
+   "http_method": "GET",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "PATH-NOT-IN-SPEC",
+   "detail": "normalised '/oauth/v2/auth' absent from 560 spec paths"
+  },
+  {
+   "lane": "R10",
+   "index": 34,
+   "business_object": "OAuth token endpoint",
+   "endpoint": "/oauth/v2/token",
+   "http_method": "POST",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "PATH-NOT-IN-SPEC",
+   "detail": "normalised '/oauth/v2/token' absent from 560 spec paths"
+  },
+  {
+   "lane": "R10",
+   "index": 35,
+   "business_object": "Refresh token exchange",
+   "endpoint": "/oauth/v2/token",
+   "http_method": "POST",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "PATH-NOT-IN-SPEC",
+   "detail": "normalised '/oauth/v2/token' absent from 560 spec paths"
+  },
+  {
+   "lane": "R10",
+   "index": 36,
+   "business_object": "api_domain discovery from token response",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 37,
+   "business_object": "Data centre - India (ERP-documented)",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 38,
+   "business_object": "Data centre matrix - non-India regions",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "OTHER",
+   "verdict": "RELATED-PRODUCT",
+   "detail": "product=OTHER; justification=present"
+  },
+  {
+   "lane": "R10",
+   "index": 39,
+   "business_object": "Response envelope",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 40,
+   "business_object": "Timestamp format",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 41,
+   "business_object": "Alternate response formats (PDF/CSV)",
+   "endpoint": "N/A",
+   "http_method": "GET",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 42,
+   "business_object": "HTTP method semantics",
+   "endpoint": "N/A",
+   "http_method": "GET|POST|PUT|DELETE",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 43,
+   "business_object": "organization_id transport (query string)",
+   "endpoint": "N/A",
+   "http_method": "GET",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 44,
+   "business_object": "HTTP status code table",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 45,
+   "business_object": "Error 401 semantics",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 46,
+   "business_object": "Pagination parameters",
+   "endpoint": "/contacts?page=2&per_page=25",
+   "http_method": "GET",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "PATH-NOT-IN-SPEC",
+   "detail": "normalised '/contacts?page=2&per_page=25' absent from 560 spec paths"
+  },
+  {
+   "lane": "R10",
+   "index": 47,
+   "business_object": "Pagination default page",
+   "endpoint": "N/A",
+   "http_method": "GET",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 48,
+   "business_object": "page_context response node",
+   "endpoint": "N/A",
+   "http_method": "GET",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 49,
+   "business_object": "Pagination per_page default/maximum",
+   "endpoint": "N/A",
+   "http_method": "GET",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 50,
+   "business_object": "Custom Modules - module definition CRUD",
+   "endpoint": "/settings/modules",
+   "http_method": "POST",
+   "claimed_scope": "ERP.settings.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=custom-modules; spec_path=/settings/modules; scopes=['ERP.settings.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R10",
+   "index": 51,
+   "business_object": "Custom Modules - generic record CRUD",
+   "endpoint": "/{module_name}/{module_id}",
+   "http_method": "GET",
+   "claimed_scope": "ERP.settings.READ",
+   "product": "ERP",
+   "verdict": "SCOPE-MISMATCH",
+   "detail": "GET: claimed ERP.settings.READ, spec ['ERP.custommodules.ALL']"
+  },
+  {
+   "lane": "R10",
+   "index": 52,
+   "business_object": "Invoices - approval workflow endpoints",
+   "endpoint": "/invoices/{invoice_id}/approve",
+   "http_method": "POST",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=invoices; spec_path=/invoices/{invoice_id}/approve; scopes=['ERP.invoices.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R10",
+   "index": 53,
+   "business_object": "Custom field endpoint path irregularity",
+   "endpoint": "/invoice/{invoice_id}/customfields",
+   "http_method": "PUT",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=invoices; spec_path=/invoice/{invoice_id}/customfields; scopes=['ERP.invoices.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R10",
+   "index": 54,
+   "business_object": "WEBHOOKS - absence from the ERP REST API",
+   "endpoint": "NONE EXISTS",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 55,
+   "business_object": "Webhooks as a workflow ACTION (UI-configured only)",
+   "endpoint": "N/A",
+   "http_method": "PUT|POST|DELETE (outbound, chosen per webhook)",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 56,
+   "business_object": "Webhook outbound method and default",
+   "endpoint": "N/A",
+   "http_method": "POST (default)",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 57,
+   "business_object": "Webhook payload format options",
+   "endpoint": "N/A",
+   "http_method": "POST",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 58,
+   "business_object": "Webhook secret token / verification",
+   "endpoint": "N/A",
+   "http_method": "POST",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 59,
+   "business_object": "Webhook configuration path (manual, per tenant)",
+   "endpoint": "N/A",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 60,
+   "business_object": "SANDBOX - absence in Zoho ERP",
+   "endpoint": "NONE EXISTS",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R10",
+   "index": 61,
+   "business_object": "Multiple organisations as the tenancy/isolation primitive",
+   "endpoint": "/organizations",
+   "http_method": "GET",
+   "claimed_scope": "ERP.settings.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=organizations; spec_path=/organizations; scopes=['ERP.settings.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R10",
+   "index": 62,
+   "business_object": "COMPLETE 84-entry ERP API documentation index",
+   "endpoint": "N/A - index of doc pages",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R11",
+   "index": 0,
+   "business_object": "User (org user / project resource)",
+   "endpoint": "/users",
+   "http_method": "POST, GET",
+   "claimed_scope": "ERP.settings.CREATE",
+   "product": "ERP",
+   "verdict": "SCOPE-MISMATCH",
+   "detail": "GET: claimed ERP.settings.CREATE, spec ['ERP.settings.READ']"
+  },
+  {
+   "lane": "R11",
+   "index": 1,
+   "business_object": "User - list filtering / pagination contract",
+   "endpoint": "/users",
+   "http_method": "GET",
+   "claimed_scope": "ERP.settings.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=users; spec_path=/users; scopes=['ERP.settings.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 2,
+   "business_object": "Department (cost-centre-like org unit)",
+   "endpoint": "/departments",
+   "http_method": "POST, GET",
+   "claimed_scope": "ERP.department.CREATE",
+   "product": "ERP",
+   "verdict": "SCOPE-MISMATCH",
+   "detail": "GET: claimed ERP.department.CREATE, spec ['ERP.department.READ']"
+  },
+  {
+   "lane": "R11",
+   "index": 3,
+   "business_object": "Department - base-path anomaly",
+   "endpoint": "/departments",
+   "http_method": "POST",
+   "claimed_scope": "ERP.department.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=departments; spec_path=/departments; scopes=['ERP.department.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v1"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 4,
+   "business_object": "Contact (customer AND vendor - single object)",
+   "endpoint": "/contacts",
+   "http_method": "POST, GET, PUT",
+   "claimed_scope": "ERP.contacts.CREATE",
+   "product": "ERP",
+   "verdict": "SCOPE-MISMATCH",
+   "detail": "GET: claimed ERP.contacts.CREATE, spec ['ERP.contacts.READ']; PUT: claimed ERP.contacts.CREATE, spec ['ERP.contacts.UPDATE']"
+  },
+  {
+   "lane": "R11",
+   "index": 5,
+   "business_object": "Contact - list search/filter contract",
+   "endpoint": "/contacts",
+   "http_method": "GET",
+   "claimed_scope": "ERP.contacts.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=contacts; spec_path=/contacts; scopes=['ERP.contacts.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 6,
+   "business_object": "Contact custom fields - index cap",
+   "endpoint": "/contacts",
+   "http_method": "POST",
+   "claimed_scope": "ERP.contacts.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=contacts; spec_path=/contacts; scopes=['ERP.contacts.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 7,
+   "business_object": "Contact Person",
+   "endpoint": "/contacts/contactpersons",
+   "http_method": "POST",
+   "claimed_scope": "ERP.contacts.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=contact-persons; spec_path=/contacts/contactpersons; scopes=['ERP.contacts.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 8,
+   "business_object": "Item (material / service master)",
+   "endpoint": "/items",
+   "http_method": "POST, GET, PUT",
+   "claimed_scope": "ERP.settings.CREATE",
+   "product": "ERP",
+   "verdict": "SCOPE-MISMATCH",
+   "detail": "GET: claimed ERP.settings.CREATE, spec ['ERP.settings.READ']; PUT: claimed ERP.settings.CREATE, spec ['ERP.settings.UPDATE']"
+  },
+  {
+   "lane": "R11",
+   "index": 9,
+   "business_object": "Item - list search parameters",
+   "endpoint": "/items",
+   "http_method": "GET",
+   "claimed_scope": "ERP.settings.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=items; spec_path=/items; scopes=['ERP.settings.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 10,
+   "business_object": "Location (plant / site / warehouse)",
+   "endpoint": "/locations",
+   "http_method": "POST, GET",
+   "claimed_scope": "ERP.settings.CREATE",
+   "product": "ERP",
+   "verdict": "SCOPE-MISMATCH",
+   "detail": "GET: claimed ERP.settings.CREATE, spec ['ERP.settings.READ']"
+  },
+  {
+   "lane": "R11",
+   "index": 11,
+   "business_object": "Project (top-level WBS candidate)",
+   "endpoint": "/projects",
+   "http_method": "POST, GET, PUT",
+   "claimed_scope": "ERP.projects.CREATE",
+   "product": "ERP",
+   "verdict": "SCOPE-MISMATCH",
+   "detail": "GET: claimed ERP.projects.CREATE, spec ['ERP.projects.READ']; PUT: claimed ERP.projects.CREATE, spec ['ERP.projects.UPDATE']"
+  },
+  {
+   "lane": "R11",
+   "index": 12,
+   "business_object": "Project hierarchy - NEGATIVE FINDING (the R11 headline)",
+   "endpoint": "/projects",
+   "http_method": "GET",
+   "claimed_scope": "ERP.projects.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=projects; spec_path=/projects; scopes=['ERP.projects.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 13,
+   "business_object": "Project Task (nested task under a project)",
+   "endpoint": "/projects/{project_id}/tasks",
+   "http_method": "POST, GET",
+   "claimed_scope": "ERP.projects.CREATE",
+   "product": "ERP",
+   "verdict": "SCOPE-MISMATCH",
+   "detail": "GET: claimed ERP.projects.CREATE, spec ['ERP.projects.READ']"
+  },
+  {
+   "lane": "R11",
+   "index": 14,
+   "business_object": "Task (standalone Tasks module - DIFFERENT object from project task)",
+   "endpoint": "/tasks",
+   "http_method": "POST, PUT, GET, DELETE",
+   "claimed_scope": "ERP.settings.CREATE",
+   "product": "ERP",
+   "verdict": "SCOPE-MISMATCH",
+   "detail": "PUT: claimed ERP.settings.CREATE, spec ['ERP.settings.UPDATE']; GET: claimed ERP.settings.CREATE, spec ['ERP.settings.READ']; DELETE: claimed ERP.settings.CREATE, spec ['ERP.settings.DELETE']"
+  },
+  {
+   "lane": "R11",
+   "index": 15,
+   "business_object": "Task self-reference and dependencies (n-level, but on the WRONG object)",
+   "endpoint": "/tasks",
+   "http_method": "POST, PUT",
+   "claimed_scope": "ERP.settings.CREATE",
+   "product": "ERP",
+   "verdict": "SCOPE-MISMATCH",
+   "detail": "PUT: claimed ERP.settings.CREATE, spec ['ERP.settings.UPDATE']"
+  },
+  {
+   "lane": "R11",
+   "index": 16,
+   "business_object": "Task custom fields carry a cf_ API name",
+   "endpoint": "/tasks",
+   "http_method": "GET",
+   "claimed_scope": "ERP.settings.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=tasks; spec_path=/tasks; scopes=['ERP.settings.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 17,
+   "business_object": "Custom field DEFINITION / metadata endpoint",
+   "endpoint": "NOT PRESENT",
+   "http_method": "NOT PRESENT",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R11",
+   "index": 18,
+   "business_object": "Tax",
+   "endpoint": "/settings/taxes",
+   "http_method": "POST, GET, DELETE",
+   "claimed_scope": "ERP.settings.CREATE",
+   "product": "ERP",
+   "verdict": "SCOPE-MISMATCH",
+   "detail": "GET: claimed ERP.settings.CREATE, spec ['ERP.settings.READ']; DELETE: claimed ERP.settings.CREATE, spec ['ERP.settings.DELETE']"
+  },
+  {
+   "lane": "R11",
+   "index": 19,
+   "business_object": "Tax Group",
+   "endpoint": "/settings/taxgroups",
+   "http_method": "POST, PUT, GET, DELETE",
+   "claimed_scope": "ERP.settings.CREATE",
+   "product": "ERP",
+   "verdict": "PARTIAL-METHOD-MATCH",
+   "detail": "matched ['POST']; unmatched ['PUT', 'GET', 'DELETE'] (spec has ['POST'])"
+  },
+  {
+   "lane": "R11",
+   "index": 20,
+   "business_object": "Currency",
+   "endpoint": "/settings/currencies",
+   "http_method": "POST, GET, PUT, DELETE",
+   "claimed_scope": "ERP.settings.CREATE",
+   "product": "ERP",
+   "verdict": "PARTIAL-METHOD-MATCH",
+   "detail": "matched ['POST', 'GET']; unmatched ['PUT', 'DELETE'] (spec has ['GET', 'POST'])"
+  },
+  {
+   "lane": "R11",
+   "index": 21,
+   "business_object": "Exchange Rate",
+   "endpoint": "/settings/currencies/{currency_id}/exchangerates",
+   "http_method": "POST, GET, PUT, DELETE",
+   "claimed_scope": "ERP.settings.READ",
+   "product": "ERP",
+   "verdict": "PARTIAL-METHOD-MATCH",
+   "detail": "matched ['POST', 'GET']; unmatched ['PUT', 'DELETE'] (spec has ['GET', 'POST'])"
+  },
+  {
+   "lane": "R11",
+   "index": 22,
+   "business_object": "GL Account (Chart of Accounts)",
+   "endpoint": "/chartofaccounts",
+   "http_method": "POST, GET",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "SCOPE-MISMATCH",
+   "detail": "GET: claimed ERP.accountants.CREATE, spec ['ERP.accountants.READ']"
+  },
+  {
+   "lane": "R11",
+   "index": 23,
+   "business_object": "GL Account - list/delta contract",
+   "endpoint": "/chartofaccounts",
+   "http_method": "GET",
+   "claimed_scope": "ERP.accountants.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=chart-of-accounts; spec_path=/chartofaccounts; scopes=['ERP.accountants.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 24,
+   "business_object": "Reporting Tag (cost-centre / business-unit dimension)",
+   "endpoint": "/reportingtags",
+   "http_method": "POST, GET",
+   "claimed_scope": "ERP.settings.CREATE",
+   "product": "ERP",
+   "verdict": "SCOPE-MISMATCH",
+   "detail": "GET: claimed ERP.settings.CREATE, spec ['ERP.settings.READ']"
+  },
+  {
+   "lane": "R11",
+   "index": 25,
+   "business_object": "Reporting Tag - LINE-ITEM level applicability (design question b)",
+   "endpoint": "/reportingtags",
+   "http_method": "POST",
+   "claimed_scope": "ERP.settings.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=reporting-tags; spec_path=/reportingtags; scopes=['ERP.settings.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 26,
+   "business_object": "Reporting Tag - which entities can be tagged",
+   "endpoint": "/reportingtags",
+   "http_method": "POST",
+   "claimed_scope": "ERP.settings.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=reporting-tags; spec_path=/reportingtags; scopes=['ERP.settings.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 27,
+   "business_object": "Custom Module (fallback carrier for objects with no native endpoint)",
+   "endpoint": "/settings/modules",
+   "http_method": "POST, GET, PUT, DELETE",
+   "claimed_scope": "ERP.settings.CREATE",
+   "product": "ERP",
+   "verdict": "PARTIAL-METHOD-MATCH",
+   "detail": "matched ['POST', 'GET']; unmatched ['PUT', 'DELETE'] (spec has ['GET', 'POST'])"
+  },
+  {
+   "lane": "R11",
+   "index": 28,
+   "business_object": "Custom Module - parent_module_id and reporting-tag opt-in",
+   "endpoint": "/settings/modules",
+   "http_method": "POST",
+   "claimed_scope": "ERP.settings.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=custom-modules; spec_path=/settings/modules; scopes=['ERP.settings.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 29,
+   "business_object": "Custom Module Record",
+   "endpoint": "/{module_name}",
+   "http_method": "POST, PUT, GET, DELETE",
+   "claimed_scope": "ERP.custommodules.ALL",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=custom-modules; spec_path=/{module_name}; scopes=['ERP.custommodules.ALL']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 30,
+   "business_object": "Custom Modules OAuth scope (undocumented on the OAuth page)",
+   "endpoint": "/{module_name}",
+   "http_method": "GET",
+   "claimed_scope": "ERP.custommodules.ALL",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=custom-modules; spec_path=/{module_name}; scopes=['ERP.custommodules.ALL']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 31,
+   "business_object": "Purchase Order - line item dimensions (design question c)",
+   "endpoint": "/purchaseorders",
+   "http_method": "POST, PUT",
+   "claimed_scope": "ERP.purchaseorders.CREATE",
+   "product": "ERP",
+   "verdict": "SCOPE-MISMATCH",
+   "detail": "PUT: claimed ERP.purchaseorders.CREATE, spec ['ERP.purchaseorders.UPDATE']"
+  },
+  {
+   "lane": "R11",
+   "index": 32,
+   "business_object": "Purchase Order - line_item_category (header/subtotal rows)",
+   "endpoint": "/purchaseorders",
+   "http_method": "POST",
+   "claimed_scope": "ERP.purchaseorders.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders; scopes=['ERP.purchaseorders.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 33,
+   "business_object": "Purchase Order - header dimensions and scopes",
+   "endpoint": "/purchaseorders/{purchaseorder_id}",
+   "http_method": "GET, PUT, DELETE",
+   "claimed_scope": "ERP.purchaseorders.READ",
+   "product": "ERP",
+   "verdict": "SCOPE-MISMATCH",
+   "detail": "PUT: claimed ERP.purchaseorders.READ, spec ['ERP.purchaseorders.UPDATE']; DELETE: claimed ERP.purchaseorders.READ, spec ['ERP.purchaseorders.DELETE']"
+  },
+  {
+   "lane": "R11",
+   "index": 34,
+   "business_object": "Bill - line item dimensions (design question c)",
+   "endpoint": "/bills",
+   "http_method": "POST, PUT",
+   "claimed_scope": "ERP.bills.CREATE",
+   "product": "ERP",
+   "verdict": "SCOPE-MISMATCH",
+   "detail": "PUT: claimed ERP.bills.CREATE, spec ['ERP.bills.UPDATE']"
+  },
+  {
+   "lane": "R11",
+   "index": 35,
+   "business_object": "Bill - line-level field descriptions",
+   "endpoint": "/bills",
+   "http_method": "POST",
+   "claimed_scope": "ERP.bills.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills; scopes=['ERP.bills.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 36,
+   "business_object": "Journal line - dimensions (design question c)",
+   "endpoint": "/journals",
+   "http_method": "POST, PUT",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "PARTIAL-METHOD-MATCH",
+   "detail": "matched ['POST']; unmatched ['PUT'] (spec has ['GET', 'POST'])"
+  },
+  {
+   "lane": "R11",
+   "index": 37,
+   "business_object": "Journal - header custom fields",
+   "endpoint": "/journals",
+   "http_method": "POST",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals; scopes=['ERP.accountants.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 38,
+   "business_object": "Invoice line - custom field NEGATIVE",
+   "endpoint": "/invoices",
+   "http_method": "POST",
+   "claimed_scope": "ERP.invoices.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=invoices; spec_path=/invoices; scopes=['ERP.invoices.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 39,
+   "business_object": "Sales Order line - custom fields present",
+   "endpoint": "/salesorders",
+   "http_method": "POST",
+   "claimed_scope": "ERP.salesorders.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=sales-order; spec_path=/salesorders; scopes=['ERP.salesorders.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 40,
+   "business_object": "Expense",
+   "endpoint": "/expenses",
+   "http_method": "POST, GET, PUT, DELETE",
+   "claimed_scope": "ERP.expenses.CREATE",
+   "product": "ERP",
+   "verdict": "PARTIAL-METHOD-MATCH",
+   "detail": "matched ['POST', 'GET', 'PUT']; unmatched ['DELETE'] (spec has ['GET', 'POST', 'PUT'])"
+  },
+  {
+   "lane": "R11",
+   "index": 41,
+   "business_object": "Fixed Asset (CAPEX capitalisation target)",
+   "endpoint": "/fixedassets",
+   "http_method": "POST, GET, PUT, DELETE",
+   "claimed_scope": "ERP.fixedasset.CREATE",
+   "product": "ERP",
+   "verdict": "PARTIAL-METHOD-MATCH",
+   "detail": "matched ['POST', 'GET']; unmatched ['PUT', 'DELETE'] (spec has ['GET', 'POST'])"
+  },
+  {
+   "lane": "R11",
+   "index": 42,
+   "business_object": "Time Entry (project/task actuals)",
+   "endpoint": "/projects/timeentries",
+   "http_method": "POST, GET, PUT, DELETE",
+   "claimed_scope": "ERP.projects.CREATE",
+   "product": "ERP",
+   "verdict": "PARTIAL-METHOD-MATCH",
+   "detail": "matched ['POST', 'GET', 'DELETE']; unmatched ['PUT'] (spec has ['DELETE', 'GET', 'POST'])"
+  },
+  {
+   "lane": "R11",
+   "index": 43,
+   "business_object": "OAuth scope grammar and the authoritative scope list",
+   "endpoint": "n/a",
+   "http_method": "n/a",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R11",
+   "index": 44,
+   "business_object": "Global pagination contract",
+   "endpoint": "n/a (applies to list endpoints)",
+   "http_method": "GET",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "PATH-NOT-IN-SPEC",
+   "detail": "normalised '/n/a (applies to list endpoints)' absent from 560 spec paths"
+  },
+  {
+   "lane": "R11",
+   "index": 45,
+   "business_object": "Register / budget-vs-actuals per GL account",
+   "endpoint": "/registers/{account_id}/budgetvsactuals",
+   "http_method": "GET",
+   "claimed_scope": "ERP.accountants.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=registers; spec_path=/registers/{account_id}/budgetvsactuals; scopes=['ERP.accountants.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 46,
+   "business_object": "OpenAPI artifact availability (contradicts prior probe)",
+   "endpoint": "https://www.zoho.com/erp/api/v3/openapi-all.zip",
+   "http_method": "GET",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "PATH-NOT-IN-SPEC",
+   "detail": "normalised '/erp/api/v3/openapi-all.zip' absent from 560 spec paths"
+  },
+  {
+   "lane": "R11",
+   "index": 47,
+   "business_object": "Line-level custom field support matrix (answer to design question a)",
+   "endpoint": "/purchaseorders, /bills, /salesorders",
+   "http_method": "POST",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "PATH-NOT-IN-SPEC",
+   "detail": "normalised '/purchaseorders, /bills, /salesorders' absent from 560 spec paths"
+  },
+  {
+   "lane": "R11",
+   "index": 48,
+   "business_object": "CAPEX / WBS / budget-head carrier options (answer to design question c)",
+   "endpoint": "/reportingtags",
+   "http_method": "POST",
+   "claimed_scope": "ERP.settings.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=reporting-tags; spec_path=/reportingtags; scopes=['ERP.settings.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R11",
+   "index": 49,
+   "business_object": "n-level WBS feasibility (answer to design question d)",
+   "endpoint": "/projects",
+   "http_method": "GET",
+   "claimed_scope": "ERP.projects.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=projects; spec_path=/projects; scopes=['ERP.projects.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 0,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders",
+   "http_method": "POST",
+   "claimed_scope": "ERP.purchaseorders.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders; scopes=['ERP.purchaseorders.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 1,
+   "business_object": "Purchase Order - request body / line_items schema",
+   "endpoint": "/purchaseorders",
+   "http_method": "POST",
+   "claimed_scope": "ERP.purchaseorders.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders; scopes=['ERP.purchaseorders.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 2,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders",
+   "http_method": "GET",
+   "claimed_scope": "ERP.purchaseorders.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders; scopes=['ERP.purchaseorders.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 3,
+   "business_object": "Purchase Order - list filtering & pagination",
+   "endpoint": "/purchaseorders",
+   "http_method": "GET",
+   "claimed_scope": "ERP.purchaseorders.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders; scopes=['ERP.purchaseorders.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 4,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.purchaseorders.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders; scopes=['ERP.purchaseorders.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 5,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.purchaseorders.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}; scopes=['ERP.purchaseorders.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 6,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}",
+   "http_method": "GET",
+   "claimed_scope": "ERP.purchaseorders.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}; scopes=['ERP.purchaseorders.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 7,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.purchaseorders.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}; scopes=['ERP.purchaseorders.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 8,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorder/{purchaseorder_id}/customfields",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.purchaseorders.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorder/{purchaseorder_id}/customfields; scopes=['ERP.purchaseorders.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 9,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}/status/open",
+   "http_method": "POST",
+   "claimed_scope": "ERP.purchaseorders.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}/status/open; scopes=['ERP.purchaseorders.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 10,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}/status/billed",
+   "http_method": "POST",
+   "claimed_scope": "ERP.purchaseorders.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}/status/billed; scopes=['ERP.purchaseorders.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 11,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}/status/cancelled",
+   "http_method": "POST",
+   "claimed_scope": "ERP.purchaseorders.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}/status/cancelled; scopes=['ERP.purchaseorders.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 12,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}/submit",
+   "http_method": "POST",
+   "claimed_scope": "ERP.purchaseorders.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}/submit; scopes=['ERP.purchaseorders.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 13,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}/approve",
+   "http_method": "POST",
+   "claimed_scope": "ERP.purchaseorders.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}/approve; scopes=['ERP.purchaseorders.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 14,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}/reject",
+   "http_method": "POST",
+   "claimed_scope": "ERP.purchaseorders.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}/reject; scopes=['ERP.purchaseorders.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 15,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}/email",
+   "http_method": "POST",
+   "claimed_scope": "ERP.purchaseorders.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}/email; scopes=['ERP.purchaseorders.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 16,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}/email",
+   "http_method": "GET",
+   "claimed_scope": "ERP.purchaseorders.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}/email; scopes=['ERP.purchaseorders.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 17,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}/address/billing",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.purchaseorders.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}/address/billing; scopes=['ERP.purchaseorders.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 18,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/templates",
+   "http_method": "GET",
+   "claimed_scope": "ERP.purchaseorders.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/templates; scopes=['ERP.purchaseorders.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 19,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}/templates/{template_id}",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.purchaseorders.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}/templates/{template_id}; scopes=['ERP.purchaseorders.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 20,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}/attachment",
+   "http_method": "GET",
+   "claimed_scope": "ERP.purchaseorders.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}/attachment; scopes=['ERP.purchaseorders.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 21,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}/attachment",
+   "http_method": "POST",
+   "claimed_scope": "ERP.purchaseorders.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}/attachment; scopes=['ERP.purchaseorders.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 22,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}/attachment",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.purchaseorders.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}/attachment; scopes=['ERP.purchaseorders.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 23,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}/attachment",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.purchaseorders.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}/attachment; scopes=['ERP.purchaseorders.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 24,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}/comments",
+   "http_method": "GET",
+   "claimed_scope": "ERP.purchaseorders.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}/comments; scopes=['ERP.purchaseorders.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 25,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}/comments",
+   "http_method": "POST",
+   "claimed_scope": "ERP.purchaseorders.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}/comments; scopes=['ERP.purchaseorders.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 26,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}/comments/{comment_id}",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.purchaseorders.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}/comments/{comment_id}; scopes=['ERP.purchaseorders.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 27,
+   "business_object": "Purchase Order",
+   "endpoint": "/purchaseorders/{purchaseorder_id}/comments/{comment_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.purchaseorders.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders/{purchaseorder_id}/comments/{comment_id}; scopes=['ERP.purchaseorders.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 28,
+   "business_object": "Purchase Order - reporting tags",
+   "endpoint": "/purchaseorders",
+   "http_method": "POST",
+   "claimed_scope": "ERP.purchaseorders.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchase-order; spec_path=/purchaseorders; scopes=['ERP.purchaseorders.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 29,
+   "business_object": "Purchase Receive",
+   "endpoint": "/purchasereceives",
+   "http_method": "POST",
+   "claimed_scope": "ERP.purchasereceives.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchasereceives; spec_path=/purchasereceives; scopes=['ERP.purchasereceives.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 30,
+   "business_object": "Purchase Receive - line_items schema",
+   "endpoint": "/purchasereceives",
+   "http_method": "POST",
+   "claimed_scope": "ERP.purchasereceives.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchasereceives; spec_path=/purchasereceives; scopes=['ERP.purchasereceives.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 31,
+   "business_object": "Purchase Receive",
+   "endpoint": "/purchasereceives/{purchasereceive_id}",
+   "http_method": "GET",
+   "claimed_scope": "ERP.purchasereceives.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchasereceives; spec_path=/purchasereceives/{purchasereceive_id}; scopes=['ERP.purchasereceives.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 32,
+   "business_object": "Purchase Receive",
+   "endpoint": "/purchasereceives/{purchasereceive_id}",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.purchasereceives.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchasereceives; spec_path=/purchasereceives/{purchasereceive_id}; scopes=['ERP.purchasereceives.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 33,
+   "business_object": "Purchase Receive",
+   "endpoint": "/purchasereceives/{purchasereceive_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.purchasereceives.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=purchasereceives; spec_path=/purchasereceives/{purchasereceive_id}; scopes=['ERP.purchasereceives.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 34,
+   "business_object": "Purchase Receive - LIST/search endpoint",
+   "endpoint": "GET /purchasereceives (collection)",
+   "http_method": "GET",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "PATH-NOT-IN-SPEC",
+   "detail": "normalised '/get /purchasereceives (collection)' absent from 560 spec paths"
+  },
+  {
+   "lane": "R12",
+   "index": 35,
+   "business_object": "Custom Module (documented fallback carrier for Purchase Request / RFQ)",
+   "endpoint": "/settings/modules",
+   "http_method": "GET",
+   "claimed_scope": "ERP.settings.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=custom-modules; spec_path=/settings/modules; scopes=['ERP.settings.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 36,
+   "business_object": "Custom Module (documented fallback carrier for Purchase Request / RFQ)",
+   "endpoint": "/settings/modules",
+   "http_method": "POST",
+   "claimed_scope": "ERP.settings.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=custom-modules; spec_path=/settings/modules; scopes=['ERP.settings.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 37,
+   "business_object": "Custom Module (documented fallback carrier for Purchase Request / RFQ)",
+   "endpoint": "/settings/modules/{module_api_name}",
+   "http_method": "GET",
+   "claimed_scope": "ERP.settings.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=custom-modules; spec_path=/settings/modules/{module_api_name}; scopes=['ERP.settings.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 38,
+   "business_object": "Custom Module (documented fallback carrier for Purchase Request / RFQ)",
+   "endpoint": "/settings/modules/{module_api_name}",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.settings.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=custom-modules; spec_path=/settings/modules/{module_api_name}; scopes=['ERP.settings.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 39,
+   "business_object": "Custom Module (documented fallback carrier for Purchase Request / RFQ)",
+   "endpoint": "/settings/modules/{module_api_name}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.settings.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=custom-modules; spec_path=/settings/modules/{module_api_name}; scopes=['ERP.settings.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 40,
+   "business_object": "Custom Module - capability flags (approval / attachment / reporting tags)",
+   "endpoint": "/settings/modules",
+   "http_method": "POST",
+   "claimed_scope": "ERP.settings.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=custom-modules; spec_path=/settings/modules; scopes=['ERP.settings.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 41,
+   "business_object": "Custom Module (documented fallback carrier for Purchase Request / RFQ)",
+   "endpoint": "/{module_name}",
+   "http_method": "GET",
+   "claimed_scope": "ERP.custommodules.ALL",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=custom-modules; spec_path=/{module_name}; scopes=['ERP.custommodules.ALL']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 42,
+   "business_object": "Custom Module (documented fallback carrier for Purchase Request / RFQ)",
+   "endpoint": "/{module_name}",
+   "http_method": "POST",
+   "claimed_scope": "ERP.custommodules.ALL",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=custom-modules; spec_path=/{module_name}; scopes=['ERP.custommodules.ALL']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 43,
+   "business_object": "Custom Module (documented fallback carrier for Purchase Request / RFQ)",
+   "endpoint": "/{module_name}",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.custommodules.ALL",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=custom-modules; spec_path=/{module_name}; scopes=['ERP.custommodules.ALL']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 44,
+   "business_object": "Custom Module (documented fallback carrier for Purchase Request / RFQ)",
+   "endpoint": "/{module_name}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.custommodules.ALL",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=custom-modules; spec_path=/{module_name}; scopes=['ERP.custommodules.ALL']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 45,
+   "business_object": "Custom Module (documented fallback carrier for Purchase Request / RFQ)",
+   "endpoint": "/{module_name}/{module_id}",
+   "http_method": "GET",
+   "claimed_scope": "ERP.custommodules.ALL",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=custom-modules; spec_path=/{module_name}/{module_id}; scopes=['ERP.custommodules.ALL']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 46,
+   "business_object": "Custom Module (documented fallback carrier for Purchase Request / RFQ)",
+   "endpoint": "/{module_name}/{module_id}",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.custommodules.ALL",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=custom-modules; spec_path=/{module_name}/{module_id}; scopes=['ERP.custommodules.ALL']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 47,
+   "business_object": "Custom Module (documented fallback carrier for Purchase Request / RFQ)",
+   "endpoint": "/{module_name}/{module_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.custommodules.ALL",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=custom-modules; spec_path=/{module_name}/{module_id}; scopes=['ERP.custommodules.ALL']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R12",
+   "index": 48,
+   "business_object": "OAuth scope grammar (ERP)",
+   "endpoint": "/erp/v3 (all endpoints)",
+   "http_method": "N/A",
+   "claimed_scope": "scope = service_name.scope_name.operation_type",
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R12",
+   "index": 49,
+   "business_object": "OAuth token lifetime (ERP)",
+   "endpoint": "/erp/v3 (all endpoints)",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R12",
+   "index": 50,
+   "business_object": "Zoho ERP OpenAPI artifact (machine-readable spec bundle)",
+   "endpoint": "/erp/api/v3/openapi-all.zip",
+   "http_method": "GET",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "PATH-NOT-IN-SPEC",
+   "detail": "normalised '/erp/api/v3/openapi-all.zip' absent from 560 spec paths"
+  },
+  {
+   "lane": "R12",
+   "index": 51,
+   "business_object": "Purchase Request",
+   "endpoint": "NOT DOCUMENTED",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R12",
+   "index": 52,
+   "business_object": "Request for Quotes (RFQ)",
+   "endpoint": "NOT DOCUMENTED",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R12",
+   "index": 53,
+   "business_object": "Purchase Returns (adjacent procurement gap, noted in passing)",
+   "endpoint": "NOT DOCUMENTED",
+   "http_method": "N/A",
+   "claimed_scope": null,
+   "product": "ERP",
+   "verdict": "NON-ENDPOINT-CLAIM",
+   "detail": "No concrete path+method; must be verified by evidence quote, not by spec."
+  },
+  {
+   "lane": "R13",
+   "index": 0,
+   "business_object": "Bill",
+   "endpoint": "/bills",
+   "http_method": "POST",
+   "claimed_scope": "ERP.bills.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills; scopes=['ERP.bills.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 1,
+   "business_object": "Bill",
+   "endpoint": "/bills",
+   "http_method": "GET",
+   "claimed_scope": "ERP.bills.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills; scopes=['ERP.bills.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 2,
+   "business_object": "Bill",
+   "endpoint": "/bills",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.bills.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills; scopes=['ERP.bills.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 3,
+   "business_object": "Bill",
+   "endpoint": "/bills/{bill_id}",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.bills.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/{bill_id}; scopes=['ERP.bills.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 4,
+   "business_object": "Bill",
+   "endpoint": "/bills/{bill_id}",
+   "http_method": "GET",
+   "claimed_scope": "ERP.bills.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/{bill_id}; scopes=['ERP.bills.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 5,
+   "business_object": "Bill",
+   "endpoint": "/bills/{bill_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.bills.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/{bill_id}; scopes=['ERP.bills.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 6,
+   "business_object": "Bill",
+   "endpoint": "/bill/{bill_id}/customfields",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.bills.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bill/{bill_id}/customfields; scopes=['ERP.bills.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 7,
+   "business_object": "Bill",
+   "endpoint": "/bills/{bill_id}/status/void",
+   "http_method": "POST",
+   "claimed_scope": "ERP.bills.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/{bill_id}/status/void; scopes=['ERP.bills.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 8,
+   "business_object": "Bill",
+   "endpoint": "/bills/{bill_id}/status/open",
+   "http_method": "POST",
+   "claimed_scope": "ERP.bills.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/{bill_id}/status/open; scopes=['ERP.bills.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 9,
+   "business_object": "Bill",
+   "endpoint": "/bills/{bill_id}/submit",
+   "http_method": "POST",
+   "claimed_scope": "ERP.bills.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/{bill_id}/submit; scopes=['ERP.bills.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 10,
+   "business_object": "Bill",
+   "endpoint": "/bills/{bill_id}/approve",
+   "http_method": "POST",
+   "claimed_scope": "ERP.bills.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/{bill_id}/approve; scopes=['ERP.bills.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 11,
+   "business_object": "Bill",
+   "endpoint": "/bills/{bill_id}/address/billing",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.bills.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/{bill_id}/address/billing; scopes=['ERP.bills.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 12,
+   "business_object": "Bill",
+   "endpoint": "/bills/{bill_id}/payments",
+   "http_method": "GET",
+   "claimed_scope": "ERP.bills.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/{bill_id}/payments; scopes=['ERP.bills.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 13,
+   "business_object": "Bill",
+   "endpoint": "/bills/{bill_id}/credits",
+   "http_method": "POST",
+   "claimed_scope": "ERP.bills.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/{bill_id}/credits; scopes=['ERP.bills.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 14,
+   "business_object": "Bill",
+   "endpoint": "/bills/{bill_id}/payments/{bill_payment_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.bills.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/{bill_id}/payments/{bill_payment_id}; scopes=['ERP.bills.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 15,
+   "business_object": "Bill",
+   "endpoint": "/bills/{bill_id}/attachment",
+   "http_method": "GET",
+   "claimed_scope": "ERP.bills.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/{bill_id}/attachment; scopes=['ERP.bills.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 16,
+   "business_object": "Bill",
+   "endpoint": "/bills/{bill_id}/attachment",
+   "http_method": "POST",
+   "claimed_scope": "ERP.bills.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/{bill_id}/attachment; scopes=['ERP.bills.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 17,
+   "business_object": "Bill",
+   "endpoint": "/bills/{bill_id}/attachment",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.bills.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/{bill_id}/attachment; scopes=['ERP.bills.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 18,
+   "business_object": "Bill",
+   "endpoint": "/bills/{bill_id}/comments",
+   "http_method": "GET",
+   "claimed_scope": "ERP.bills.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/{bill_id}/comments; scopes=['ERP.bills.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 19,
+   "business_object": "Bill",
+   "endpoint": "/bills/{bill_id}/comments",
+   "http_method": "POST",
+   "claimed_scope": "ERP.bills.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/{bill_id}/comments; scopes=['ERP.bills.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 20,
+   "business_object": "Bill",
+   "endpoint": "/bills/{bill_id}/comments/{comment_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.bills.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/{bill_id}/comments/{comment_id}; scopes=['ERP.bills.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 21,
+   "business_object": "Bill",
+   "endpoint": "/bills/editpage/frompurchaseorders",
+   "http_method": "GET",
+   "claimed_scope": "ERP.bills.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/editpage/frompurchaseorders; scopes=['ERP.bills.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 22,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits",
+   "http_method": "POST",
+   "claimed_scope": "ERP.debitnotes.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits; scopes=['ERP.debitnotes.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 23,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits",
+   "http_method": "GET",
+   "claimed_scope": "ERP.debitnotes.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits; scopes=['ERP.debitnotes.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 24,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits/{vendor_credit_id}",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.debitnotes.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits/{vendor_credit_id}; scopes=['ERP.debitnotes.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 25,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits/{vendor_credit_id}",
+   "http_method": "GET",
+   "claimed_scope": "ERP.debitnotes.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits/{vendor_credit_id}; scopes=['ERP.debitnotes.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 26,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits/{vendor_credit_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.debitnotes.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits/{vendor_credit_id}; scopes=['ERP.debitnotes.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 27,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits/{vendor_credit_id}/status/open",
+   "http_method": "POST",
+   "claimed_scope": "ERP.debitnotes.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits/{vendor_credit_id}/status/open; scopes=['ERP.debitnotes.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 28,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits/{vendor_credit_id}/status/void",
+   "http_method": "POST",
+   "claimed_scope": "ERP.debitnotes.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits/{vendor_credit_id}/status/void; scopes=['ERP.debitnotes.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 29,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits/{vendor_credit_id}/submit",
+   "http_method": "POST",
+   "claimed_scope": "ERP.debitnotes.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits/{vendor_credit_id}/submit; scopes=['ERP.debitnotes.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 30,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits/{vendor_credit_id}/approve",
+   "http_method": "POST",
+   "claimed_scope": "ERP.debitnotes.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits/{vendor_credit_id}/approve; scopes=['ERP.debitnotes.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 31,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits/{vendor_credit_id}/bills",
+   "http_method": "GET",
+   "claimed_scope": "ERP.debitnotes.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits/{vendor_credit_id}/bills; scopes=['ERP.debitnotes.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 32,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits/{vendor_credit_id}/bills",
+   "http_method": "POST",
+   "claimed_scope": "ERP.debitnotes.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits/{vendor_credit_id}/bills; scopes=['ERP.debitnotes.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 33,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits/{vendor_credit_id}/bills/{vendor_credit_bill_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.debitnotes.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits/{vendor_credit_id}/bills/{vendor_credit_bill_id}; scopes=['ERP.debitnotes.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 34,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits/{vendor_credit_id}/refunds",
+   "http_method": "POST",
+   "claimed_scope": "ERP.debitnotes.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits/{vendor_credit_id}/refunds; scopes=['ERP.debitnotes.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 35,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits/{vendor_credit_id}/refunds",
+   "http_method": "GET",
+   "claimed_scope": "ERP.debitnotes.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits/{vendor_credit_id}/refunds; scopes=['ERP.debitnotes.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 36,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits/{vendor_credit_id}/refunds/{vendor_credit_refund_id}",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.debitnotes.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits/{vendor_credit_id}/refunds/{vendor_credit_refund_id}; scopes=['ERP.debitnotes.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 37,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits/{vendor_credit_id}/refunds/{vendor_credit_refund_id}",
+   "http_method": "GET",
+   "claimed_scope": "ERP.debitnotes.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits/{vendor_credit_id}/refunds/{vendor_credit_refund_id}; scopes=['ERP.debitnotes.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 38,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits/{vendor_credit_id}/refunds/{vendor_credit_refund_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.debitnotes.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits/{vendor_credit_id}/refunds/{vendor_credit_refund_id}; scopes=['ERP.debitnotes.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 39,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits/refunds",
+   "http_method": "GET",
+   "claimed_scope": "ERP.debitnotes.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits/refunds; scopes=['ERP.debitnotes.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 40,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits/{vendor_credit_id}/comments",
+   "http_method": "POST",
+   "claimed_scope": "ERP.debitnotes.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits/{vendor_credit_id}/comments; scopes=['ERP.debitnotes.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 41,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits/{vendor_credit_id}/comments",
+   "http_method": "GET",
+   "claimed_scope": "ERP.debitnotes.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits/{vendor_credit_id}/comments; scopes=['ERP.debitnotes.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 42,
+   "business_object": "Vendor Credit",
+   "endpoint": "/vendorcredits/{vendor_credit_id}/comments/{comment_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.debitnotes.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-credits; spec_path=/vendorcredits/{vendor_credit_id}/comments/{comment_id}; scopes=['ERP.debitnotes.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 43,
+   "business_object": "Vendor Payment",
+   "endpoint": "/vendorpayments",
+   "http_method": "POST",
+   "claimed_scope": "ERP.vendorpayments.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-payments; spec_path=/vendorpayments; scopes=['ERP.vendorpayments.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 44,
+   "business_object": "Vendor Payment",
+   "endpoint": "/vendorpayments",
+   "http_method": "GET",
+   "claimed_scope": "ERP.vendorpayments.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-payments; spec_path=/vendorpayments; scopes=['ERP.vendorpayments.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 45,
+   "business_object": "Vendor Payment",
+   "endpoint": "/vendorpayments",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.vendorpayments.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-payments; spec_path=/vendorpayments; scopes=['ERP.vendorpayments.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 46,
+   "business_object": "Vendor Payment",
+   "endpoint": "/vendorpayments",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.vendorpayments.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-payments; spec_path=/vendorpayments; scopes=['ERP.vendorpayments.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 47,
+   "business_object": "Vendor Payment",
+   "endpoint": "/vendorpayments/{payment_id}",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.vendorpayments.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-payments; spec_path=/vendorpayments/{payment_id}; scopes=['ERP.vendorpayments.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 48,
+   "business_object": "Vendor Payment",
+   "endpoint": "/vendorpayments/{payment_id}",
+   "http_method": "GET",
+   "claimed_scope": "ERP.vendorpayments.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-payments; spec_path=/vendorpayments/{payment_id}; scopes=['ERP.vendorpayments.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 49,
+   "business_object": "Vendor Payment",
+   "endpoint": "/vendorpayments/{payment_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.vendorpayments.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-payments; spec_path=/vendorpayments/{payment_id}; scopes=['ERP.vendorpayments.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 50,
+   "business_object": "Vendor Payment",
+   "endpoint": "/vendorpayments/{payment_id}/refunds",
+   "http_method": "GET",
+   "claimed_scope": "ERP.vendorpayments.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-payments; spec_path=/vendorpayments/{payment_id}/refunds; scopes=['ERP.vendorpayments.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 51,
+   "business_object": "Vendor Payment",
+   "endpoint": "/vendorpayments/{payment_id}/refunds",
+   "http_method": "POST",
+   "claimed_scope": "ERP.vendorpayments.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-payments; spec_path=/vendorpayments/{payment_id}/refunds; scopes=['ERP.vendorpayments.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 52,
+   "business_object": "Vendor Payment",
+   "endpoint": "/vendorpayments/{payment_id}/refunds/{vendorpayment_refund_id}",
+   "http_method": "GET",
+   "claimed_scope": "ERP.vendorpayments.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-payments; spec_path=/vendorpayments/{payment_id}/refunds/{vendorpayment_refund_id}; scopes=['ERP.vendorpayments.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 53,
+   "business_object": "Vendor Payment",
+   "endpoint": "/vendorpayments/{payment_id}/refunds/{vendorpayment_refund_id}",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.vendorpayments.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-payments; spec_path=/vendorpayments/{payment_id}/refunds/{vendorpayment_refund_id}; scopes=['ERP.vendorpayments.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 54,
+   "business_object": "Vendor Payment",
+   "endpoint": "/vendorpayments/{payment_id}/refunds/{vendorpayment_refund_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.vendorpayments.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-payments; spec_path=/vendorpayments/{payment_id}/refunds/{vendorpayment_refund_id}; scopes=['ERP.vendorpayments.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 55,
+   "business_object": "Vendor Payment",
+   "endpoint": "/vendorpayments/{payment_id}/email",
+   "http_method": "POST",
+   "claimed_scope": "ERP.vendorpayments.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-payments; spec_path=/vendorpayments/{payment_id}/email; scopes=['ERP.vendorpayments.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 56,
+   "business_object": "Vendor Payment",
+   "endpoint": "/vendorpayments/{payment_id}/email",
+   "http_method": "GET",
+   "claimed_scope": "ERP.vendorpayments.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-payments; spec_path=/vendorpayments/{payment_id}/email; scopes=['ERP.vendorpayments.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 57,
+   "business_object": "Expense",
+   "endpoint": "/expenses",
+   "http_method": "POST",
+   "claimed_scope": "ERP.expenses.CREATE",
+   "product": "ERP",
+   "verdict": "SCOPE-MISMATCH",
+   "detail": "POST: claimed ERP.expenses.CREATE, spec ['ERP.expense.CREATE']"
+  },
+  {
+   "lane": "R13",
+   "index": 58,
+   "business_object": "Expense",
+   "endpoint": "/expenses",
+   "http_method": "GET",
+   "claimed_scope": "ERP.expenses.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=expenses; spec_path=/expenses; scopes=['ERP.expenses.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 59,
+   "business_object": "Expense",
+   "endpoint": "/expenses",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.expenses.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=expenses; spec_path=/expenses; scopes=['ERP.expenses.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 60,
+   "business_object": "Expense",
+   "endpoint": "/expenses/{expense_id}",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.expenses.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=expenses; spec_path=/expenses/{expense_id}; scopes=['ERP.expenses.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 61,
+   "business_object": "Expense",
+   "endpoint": "/expenses/{expense_id}",
+   "http_method": "GET",
+   "claimed_scope": "ERP.expenses.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=expenses; spec_path=/expenses/{expense_id}; scopes=['ERP.expenses.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 62,
+   "business_object": "Expense",
+   "endpoint": "/expenses/{expense_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.expenses.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=expenses; spec_path=/expenses/{expense_id}; scopes=['ERP.expenses.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 63,
+   "business_object": "Expense",
+   "endpoint": "/expenses/{expense_id}/comments",
+   "http_method": "GET",
+   "claimed_scope": "ERP.expenses.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=expenses; spec_path=/expenses/{expense_id}/comments; scopes=['ERP.expenses.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 64,
+   "business_object": "Expense",
+   "endpoint": "/expenses/{expense_id}/receipt",
+   "http_method": "GET",
+   "claimed_scope": "ERP.expenses.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=expenses; spec_path=/expenses/{expense_id}/receipt; scopes=['ERP.expenses.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 65,
+   "business_object": "Expense",
+   "endpoint": "/expenses/{expense_id}/receipt",
+   "http_method": "POST",
+   "claimed_scope": "ERP.expenses.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=expenses; spec_path=/expenses/{expense_id}/receipt; scopes=['ERP.expenses.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 66,
+   "business_object": "Expense",
+   "endpoint": "/expenses/{expense_id}/receipt",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.expenses.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=expenses; spec_path=/expenses/{expense_id}/receipt; scopes=['ERP.expenses.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 67,
+   "business_object": "Expense",
+   "endpoint": "/expenses/{expense_id}/attachment",
+   "http_method": "POST",
+   "claimed_scope": "ERP.expenses.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=expenses; spec_path=/expenses/{expense_id}/attachment; scopes=['ERP.expenses.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 68,
+   "business_object": "Journal",
+   "endpoint": "/journals",
+   "http_method": "POST",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals; scopes=['ERP.accountants.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 69,
+   "business_object": "Journal",
+   "endpoint": "/journals",
+   "http_method": "GET",
+   "claimed_scope": "ERP.accountants.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals; scopes=['ERP.accountants.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 70,
+   "business_object": "Journal",
+   "endpoint": "/journals/{journal_id}",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.accountants.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/{journal_id}; scopes=['ERP.accountants.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 71,
+   "business_object": "Journal",
+   "endpoint": "/journals/{journal_id}",
+   "http_method": "GET",
+   "claimed_scope": "ERP.accountants.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/{journal_id}; scopes=['ERP.accountants.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 72,
+   "business_object": "Journal",
+   "endpoint": "/journals/{journal_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.accountants.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/{journal_id}; scopes=['ERP.accountants.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 73,
+   "business_object": "Journal",
+   "endpoint": "/journals/{journal_id}/status/publish",
+   "http_method": "POST",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/{journal_id}/status/publish; scopes=['ERP.accountants.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 74,
+   "business_object": "Journal",
+   "endpoint": "/journals/{journal_id}/attachment",
+   "http_method": "POST",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/{journal_id}/attachment; scopes=['ERP.accountants.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 75,
+   "business_object": "Journal",
+   "endpoint": "/journals/{journal_id}/comments",
+   "http_method": "POST",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/{journal_id}/comments; scopes=['ERP.accountants.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 76,
+   "business_object": "Journal",
+   "endpoint": "/journals/{journal_id}/comments/{comment_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.accountants.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/{journal_id}/comments/{comment_id}; scopes=['ERP.accountants.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 77,
+   "business_object": "Journal",
+   "endpoint": "/journals/{journal_id}/reverse",
+   "http_method": "POST",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/{journal_id}/reverse; scopes=['ERP.accountants.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 78,
+   "business_object": "Journal",
+   "endpoint": "/journals/{journal_id}/submit",
+   "http_method": "POST",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/{journal_id}/submit; scopes=['ERP.accountants.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 79,
+   "business_object": "Journal",
+   "endpoint": "/journals/{journal_id}/approve",
+   "http_method": "POST",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/{journal_id}/approve; scopes=['ERP.accountants.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 80,
+   "business_object": "Journal",
+   "endpoint": "/journals/{journal_id}/reject",
+   "http_method": "POST",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/{journal_id}/reject; scopes=['ERP.accountants.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 81,
+   "business_object": "Journal",
+   "endpoint": "/journals/{journal_id}/credits",
+   "http_method": "GET",
+   "claimed_scope": "ERP.accountants.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/{journal_id}/credits; scopes=['ERP.accountants.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 82,
+   "business_object": "Journal",
+   "endpoint": "/journals/{journal_id}/credits/{journal_line_id}/invoices",
+   "http_method": "POST",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/{journal_id}/credits/{journal_line_id}/invoices; scopes=['ERP.accountants.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 83,
+   "business_object": "Journal",
+   "endpoint": "/journals/{journal_id}/credits/{journal_line_id}/bills",
+   "http_method": "POST",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/{journal_id}/credits/{journal_line_id}/bills; scopes=['ERP.accountants.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 84,
+   "business_object": "Journal",
+   "endpoint": "/journals/{journal_id}/credits/{journal_line_id}/receivables",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.accountants.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/{journal_id}/credits/{journal_line_id}/receivables; scopes=['ERP.accountants.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 85,
+   "business_object": "Journal",
+   "endpoint": "/journals/{journal_id}/credits/{journal_line_id}/payables",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.accountants.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/{journal_id}/credits/{journal_line_id}/payables; scopes=['ERP.accountants.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 86,
+   "business_object": "Journal",
+   "endpoint": "/journals/submit",
+   "http_method": "POST",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/submit; scopes=['ERP.accountants.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 87,
+   "business_object": "Journal",
+   "endpoint": "/journals/approve",
+   "http_method": "POST",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/approve; scopes=['ERP.accountants.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 88,
+   "business_object": "Journal",
+   "endpoint": "/journals/status/publish",
+   "http_method": "POST",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/status/publish; scopes=['ERP.accountants.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 89,
+   "business_object": "Journal",
+   "endpoint": "/journals/bulkdelete",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.accountants.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals/bulkdelete; scopes=['ERP.accountants.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 90,
+   "business_object": "Journal",
+   "endpoint": "/recurringjournals",
+   "http_method": "POST",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/recurringjournals; scopes=['ERP.accountants.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 91,
+   "business_object": "Journal",
+   "endpoint": "/recurringjournals",
+   "http_method": "GET",
+   "claimed_scope": "ERP.accountants.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/recurringjournals; scopes=['ERP.accountants.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 92,
+   "business_object": "Journal",
+   "endpoint": "/recurringjournals/{recurring_journal_id}",
+   "http_method": "GET",
+   "claimed_scope": "ERP.accountants.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/recurringjournals/{recurring_journal_id}; scopes=['ERP.accountants.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 93,
+   "business_object": "Journal",
+   "endpoint": "/recurringjournals/{recurring_journal_id}",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.accountants.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/recurringjournals/{recurring_journal_id}; scopes=['ERP.accountants.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 94,
+   "business_object": "Journal",
+   "endpoint": "/recurringjournals/{recurring_journal_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.accountants.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/recurringjournals/{recurring_journal_id}; scopes=['ERP.accountants.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 95,
+   "business_object": "Journal",
+   "endpoint": "/recurringjournals/{recurring_journal_id}/status/resume",
+   "http_method": "POST",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/recurringjournals/{recurring_journal_id}/status/resume; scopes=['ERP.accountants.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 96,
+   "business_object": "Journal",
+   "endpoint": "/recurringjournals/{recurring_journal_id}/status/stop",
+   "http_method": "POST",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/recurringjournals/{recurring_journal_id}/status/stop; scopes=['ERP.accountants.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 97,
+   "business_object": "Journal",
+   "endpoint": "/recurringjournals/{recurring_journal_id}/journals",
+   "http_method": "GET",
+   "claimed_scope": "ERP.accountants.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/recurringjournals/{recurring_journal_id}/journals; scopes=['ERP.accountants.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 98,
+   "business_object": "Journal",
+   "endpoint": "/transactions/{transaction_id}/journals",
+   "http_method": "GET",
+   "claimed_scope": "ERP.accountants.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/transactions/{transaction_id}/journals; scopes=['ERP.accountants.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 99,
+   "business_object": "Fixed Asset",
+   "endpoint": "/fixedassets",
+   "http_method": "POST",
+   "claimed_scope": "ERP.fixedasset.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassets; scopes=['ERP.fixedasset.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 100,
+   "business_object": "Fixed Asset",
+   "endpoint": "/fixedassets",
+   "http_method": "GET",
+   "claimed_scope": "ERP.fixedasset.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassets; scopes=['ERP.fixedasset.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 101,
+   "business_object": "Fixed Asset",
+   "endpoint": "/fixedassets/{fixed_asset_id}",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.fixedasset.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassets/{fixed_asset_id}; scopes=['ERP.fixedasset.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 102,
+   "business_object": "Fixed Asset",
+   "endpoint": "/fixedassets/{fixed_asset_id}",
+   "http_method": "GET",
+   "claimed_scope": "ERP.fixedasset.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassets/{fixed_asset_id}; scopes=['ERP.fixedasset.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 103,
+   "business_object": "Fixed Asset",
+   "endpoint": "/fixedassets/{fixed_asset_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.fixedasset.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassets/{fixed_asset_id}; scopes=['ERP.fixedasset.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 104,
+   "business_object": "Fixed Asset",
+   "endpoint": "/fixedassets/{fixed_asset_id}/history",
+   "http_method": "GET",
+   "claimed_scope": "ERP.fixedasset.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassets/{fixed_asset_id}/history; scopes=['ERP.fixedasset.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 105,
+   "business_object": "Fixed Asset",
+   "endpoint": "/fixedassets/{fixed_asset_id}/forecast",
+   "http_method": "GET",
+   "claimed_scope": "ERP.fixedasset.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassets/{fixed_asset_id}/forecast; scopes=['ERP.fixedasset.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 106,
+   "business_object": "Fixed Asset",
+   "endpoint": "/fixedassets/{fixed_asset_id}/status/active",
+   "http_method": "POST",
+   "claimed_scope": "ERP.fixedasset.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassets/{fixed_asset_id}/status/active; scopes=['ERP.fixedasset.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 107,
+   "business_object": "Fixed Asset",
+   "endpoint": "/fixedassets/{fixed_asset_id}/status/cancel",
+   "http_method": "POST",
+   "claimed_scope": "ERP.fixedasset.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassets/{fixed_asset_id}/status/cancel; scopes=['ERP.fixedasset.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 108,
+   "business_object": "Fixed Asset",
+   "endpoint": "/fixedassets/{fixed_asset_id}/status/draft",
+   "http_method": "POST",
+   "claimed_scope": "ERP.fixedasset.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassets/{fixed_asset_id}/status/draft; scopes=['ERP.fixedasset.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 109,
+   "business_object": "Fixed Asset",
+   "endpoint": "/fixedassets/{fixed_asset_id}/writeoff",
+   "http_method": "POST",
+   "claimed_scope": "ERP.fixedasset.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassets/{fixed_asset_id}/writeoff; scopes=['ERP.fixedasset.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 110,
+   "business_object": "Fixed Asset",
+   "endpoint": "/fixedassets/{fixed_asset_id}/sell",
+   "http_method": "POST",
+   "claimed_scope": "ERP.fixedasset.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassets/{fixed_asset_id}/sell; scopes=['ERP.fixedasset.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 111,
+   "business_object": "Fixed Asset",
+   "endpoint": "/fixedassets/{fixed_asset_id}/comments",
+   "http_method": "POST",
+   "claimed_scope": "ERP.fixedasset.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassets/{fixed_asset_id}/comments; scopes=['ERP.fixedasset.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 112,
+   "business_object": "Fixed Asset",
+   "endpoint": "/fixedassets/{fixed_asset_id}/comments/{comment_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.fixedasset.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassets/{fixed_asset_id}/comments/{comment_id}; scopes=['ERP.fixedasset.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 113,
+   "business_object": "Fixed Asset",
+   "endpoint": "/fixedassettypes",
+   "http_method": "POST",
+   "claimed_scope": "ERP.fixedasset.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassettypes; scopes=['ERP.fixedasset.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 114,
+   "business_object": "Fixed Asset",
+   "endpoint": "/fixedassettypes",
+   "http_method": "GET",
+   "claimed_scope": "ERP.fixedasset.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassettypes; scopes=['ERP.fixedasset.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 115,
+   "business_object": "Fixed Asset",
+   "endpoint": "/fixedassettypes/{fixed_asset_type_id}",
+   "http_method": "PUT",
+   "claimed_scope": "ERP.fixedasset.UPDATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassettypes/{fixed_asset_type_id}; scopes=['ERP.fixedasset.UPDATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 116,
+   "business_object": "Fixed Asset",
+   "endpoint": "/fixedassettypes/{fixed_asset_type_id}",
+   "http_method": "DELETE",
+   "claimed_scope": "ERP.fixedasset.DELETE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassettypes/{fixed_asset_type_id}; scopes=['ERP.fixedasset.DELETE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 117,
+   "business_object": "Bill line item -> Purchase Order line linkage (FIELD EVIDENCE)",
+   "endpoint": "/bills",
+   "http_method": "POST",
+   "claimed_scope": "ERP.bills.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills; scopes=['ERP.bills.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 118,
+   "business_object": "Bill header -> Purchase Order header linkage (FIELD EVIDENCE)",
+   "endpoint": "/bills/{bill_id}",
+   "http_method": "GET",
+   "claimed_scope": "ERP.bills.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/{bill_id}; scopes=['ERP.bills.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 119,
+   "business_object": "Bill dimension coding: project is LINE-level, not header (FIELD EVIDENCE)",
+   "endpoint": "/bills",
+   "http_method": "POST",
+   "claimed_scope": "ERP.bills.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills; scopes=['ERP.bills.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 120,
+   "business_object": "Excess vendor payment becomes applicable credit (FIELD EVIDENCE)",
+   "endpoint": "/bills/{bill_id}/credits",
+   "http_method": "POST",
+   "claimed_scope": "ERP.bills.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=bills; spec_path=/bills/{bill_id}/credits; scopes=['ERP.bills.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 121,
+   "business_object": "Advance vs bill payment distinction (FIELD EVIDENCE)",
+   "endpoint": "/vendorpayments",
+   "http_method": "POST",
+   "claimed_scope": "ERP.vendorpayments.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=vendor-payments; spec_path=/vendorpayments; scopes=['ERP.vendorpayments.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 122,
+   "business_object": "Expense project / custom-field / reporting-tag coding (FIELD EVIDENCE)",
+   "endpoint": "/expenses",
+   "http_method": "POST",
+   "claimed_scope": "ERP.expenses.CREATE",
+   "product": "ERP",
+   "verdict": "SCOPE-MISMATCH",
+   "detail": "POST: claimed ERP.expenses.CREATE, spec ['ERP.expense.CREATE']"
+  },
+  {
+   "lane": "R13",
+   "index": 123,
+   "business_object": "Journal line dimension coding (FIELD EVIDENCE)",
+   "endpoint": "/journals",
+   "http_method": "POST",
+   "claimed_scope": "ERP.accountants.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=journals; spec_path=/journals; scopes=['ERP.accountants.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 124,
+   "business_object": "Fixed asset acquisition cost and capitalisation date (FIELD EVIDENCE)",
+   "endpoint": "/fixedassets",
+   "http_method": "POST",
+   "claimed_scope": "ERP.fixedasset.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassets; scopes=['ERP.fixedasset.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 125,
+   "business_object": "Fixed asset creation from project / CWIP — DOCUMENTED NEGATIVE",
+   "endpoint": "/fixedassets",
+   "http_method": "POST",
+   "claimed_scope": "ERP.fixedasset.CREATE",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassets; scopes=['ERP.fixedasset.CREATE']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  },
+  {
+   "lane": "R13",
+   "index": 126,
+   "business_object": "Fixed asset incremental-sync limitation — DOCUMENTED NEGATIVE",
+   "endpoint": "/fixedassets",
+   "http_method": "GET",
+   "claimed_scope": "ERP.fixedasset.READ",
+   "product": "ERP",
+   "verdict": "CONFIRMED-BY-SPEC",
+   "detail": "module=fixed-assets; spec_path=/fixedassets; scopes=['ERP.fixedasset.READ']",
+   "spec_servers": [
+    "https://www.zohoapis.in/erp/v3"
+   ]
+  }
+ ]
+}

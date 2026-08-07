@@ -1,0 +1,125 @@
+{
+ "frozen_at": "2026-08-06",
+ "rule": "FROZEN. These are the only design tokens. Authors and the future coding agent must reference token names, never raw hex values, in screen specifications.",
+ "ip_statement": "Every value below is originally chosen for this product. No SAP theme value, palette, asset or brand element is reproduced. The intent is an enterprise visual language that feels familiar to an SAP-experienced user through information density, hierarchy and interaction conventions - not through imitation of SAP's colours or marks.",
+ "identity": {
+  "working_product_name": "CAPEX & WBS Control Hub",
+  "alternative_names_for_section_47_to_decide": ["Plinth - CAPEX & WBS Control", "Ledgerworks Project Control"],
+  "positioning": "An independent capital-project control application. Must never imply SAP production, certification or endorsement, and must carry no SAP logo or mark.",
+  "logo_direction": "A geometric mark derived from a work-breakdown tree: one parent node above three descending children, set in the primary-700 tone. Reads at 16px favicon size as a simple three-step form.",
+  "white_label": "Client branding is applied through a single override of brand.primary.* plus a logo slot in the shell bar. No other token changes are permitted, so contrast compliance is preserved."
+ },
+ "colour": {
+  "brand": {
+   "primary-50":  "#EAF4F6",
+   "primary-100": "#CFE6EA",
+   "primary-300": "#7FBAC4",
+   "primary-500": "#2E8A9A",
+   "primary-600": "#24707E",
+   "primary-700": "#1B5762",
+   "primary-800": "#123B43",
+   "usage": "primary-600 is the default interactive tone (primary buttons, active nav, focused field border). primary-700 for hover/pressed. primary-50/100 for selected-row and active-tab backgrounds."
+  },
+  "neutral": {
+   "neutral-0":   "#FFFFFF",
+   "neutral-50":  "#F7F8F9",
+   "neutral-100": "#EFF1F3",
+   "neutral-200": "#E1E4E8",
+   "neutral-300": "#C9CDD3",
+   "neutral-500": "#6B7280",
+   "neutral-700": "#3A4048",
+   "neutral-900": "#1B1F24",
+   "usage": "neutral-50 page background, neutral-0 card/table surface, neutral-100 table header fill, neutral-200 borders and grid lines, neutral-500 secondary text and placeholders, neutral-900 primary text."
+  },
+  "semantic": {
+   "positive-600": "#1E7A45", "positive-bg": "#E8F5ED",
+   "warning-600":  "#A66A00", "warning-bg":  "#FDF3E2",
+   "negative-600": "#B3261E", "negative-bg": "#FBEAE9",
+   "info-600":     "#2E5AAC", "info-bg":     "#EAF0FB",
+   "progress-600": "#5B4BB5", "progress-bg": "#EFEDFA",
+   "usage": "Maps one-to-one onto the five semantic_roles in C3_statuses.json: positive, warning, negative, neutral (uses neutral-500/neutral-100), in-progress (uses progress-*)."
+  },
+  "financial": {
+   "value-negative": "#B3261E",
+   "value-positive": "#1B1F24",
+   "variance-favourable": "#1E7A45",
+   "variance-adverse": "#B3261E",
+   "exposure-band-safe": "#1E7A45",
+   "exposure-band-watch": "#A66A00",
+   "exposure-band-breach": "#B3261E",
+   "usage": "Exposure bands correspond to the client's own alert thresholds: below 80 percent safe, 80 to 90 percent watch, above 90 percent or exceeded breach.",
+   "rule": "Negative monetary values are shown in value-negative AND in parentheses. Colour is never the sole carrier of sign."
+  },
+  "contrast_rule": "Every text/background pairing above meets WCAG 2.2 AA (4.5:1 for body text, 3:1 for large text and UI boundaries). Any new pairing must be checked before use."
+ },
+ "typography": {
+  "font_stack_ui": "Inter, 'Segoe UI', Roboto, system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif",
+  "font_stack_numeric": "'Inter', 'Segoe UI', system-ui, sans-serif; font-variant-numeric: tabular-nums",
+  "rule_numeric": "ALL monetary and quantity columns use tabular-nums and are right-aligned, so digits align vertically down a column. This is non-negotiable for financial review.",
+  "scale": {
+   "display": "20px / 28px / 600",
+   "page-title": "18px / 24px / 600",
+   "section-title": "15px / 20px / 600",
+   "body": "13px / 18px / 400",
+   "body-strong": "13px / 18px / 600",
+   "label": "12px / 16px / 500",
+   "caption": "11px / 15px / 400",
+   "table-cell": "13px / 18px / 400",
+   "table-header": "12px / 16px / 600"
+  },
+  "note": "13px body is deliberate. This is a dense desktop control application for accountants and project controllers who need many fields visible at once, not a consumer app."
+ },
+ "spacing": {
+  "base": "4px",
+  "scale": {"xs": "4px", "sm": "8px", "md": "12px", "lg": "16px", "xl": "24px", "2xl": "32px"},
+  "form_field_gap": "12px",
+  "section_gap": "24px",
+  "page_padding": "16px"
+ },
+ "density": {
+  "compact": {"table_row_height": "28px", "input_height": "28px", "button_height": "28px", "default": true},
+  "cosy":    {"table_row_height": "36px", "input_height": "34px", "button_height": "34px"},
+  "rule": "Compact is the default. The density toggle lives in the shell bar and persists per user."
+ },
+ "border": {
+  "width": "1px",
+  "colour": "neutral-200",
+  "radius-sm": "2px",
+  "radius-md": "4px",
+  "radius-lg": "6px",
+  "note": "Small radii only. Large rounded corners read as consumer software and reduce perceived information density."
+ },
+ "elevation": {
+  "flat": "none",
+  "raised": "0 1px 2px rgba(27,31,36,0.08)",
+  "overlay": "0 4px 12px rgba(27,31,36,0.14)",
+  "rule": "Shadows are reserved for genuinely floating layers - popovers, dialogs, dropdowns, value-help. Tables, cards and toolbars are flat with borders."
+ },
+ "iconography": {
+  "style": "16px outline icons on a 16px grid, 1.5px stroke. 20px permitted in the shell bar only.",
+  "licence_note": "Choose an icon set whose licence is verified before adoption. Candidates to verify in section 49: Lucide (ISC), Tabler (MIT), Phosphor (MIT). No SAP icon font may be used.",
+  "status_icons_required": "Each of the 21 statuses carries a distinct icon so status is legible without colour."
+ },
+ "number_and_date_format": {
+  "currency_symbol": "INR symbol, prefixed, no space",
+  "grouping": "Indian digit grouping - 1,50,00,000 not 150,000,00",
+  "lakh_crore_rule": "Full grouped figures in tables and on transaction screens. Lakh/Crore abbreviations (1.50 Cr, 80L) ONLY on dashboard tiles and chart axes, matching the client's own documents.",
+  "decimals": "Amounts 2 decimal places on transaction and detail screens; 0 decimal places on dashboard tiles. Percentages 1 decimal place.",
+  "negative": "Parentheses plus value-negative colour",
+  "date": "dd-MMM-yyyy (06-Aug-2026) in the UI; ISO-8601 in exports, APIs and audit records",
+  "timezone": "Display in the organisation's timezone with an explicit label on audit timestamps"
+ },
+ "charts": {
+  "principle": "Only charts that support a management decision. No decorative charts.",
+  "series_colours": ["#24707E", "#A66A00", "#5B4BB5", "#1E7A45", "#B3261E", "#6B7280"],
+  "budget_chart_convention": "Budget as a reference line or track; commitment and actual as stacked segments within it so exposure against budget is readable at a glance.",
+  "accessibility": "Every chart has a table equivalent reachable by keyboard. Series are distinguished by pattern or direct label as well as colour."
+ },
+ "print": {
+  "rule": "Every list and object page has a print/PDF view: white background, no shell chrome, repeated table headers, visible page numbers, and a footer carrying report name, filter criteria, generated-by and generated-at."
+ },
+ "dark_mode": {
+  "recommendation": "Not in POC scope. The primary users work in daylight office and plant-office conditions, and a second theme doubles the visual-regression surface. Revisit after pilot.",
+  "if_built_later": "Invert the neutral ramp only; keep brand and semantic hues, raising lightness one step to preserve contrast."
+ }
+}

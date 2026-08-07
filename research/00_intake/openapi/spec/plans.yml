@@ -1,0 +1,1365 @@
+openapi: 3.0.0
+info:
+  title: Plans
+  description: A plan object contains the billing and pricing information of a plan. Your organization may consist of plans that differ either by features or by the plan's billing frequency. You can have a $10 basic plan, $20 professional plan, $24 monthly or a $240 yearly plan.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: plans
+    description: Plans Module
+paths:
+  /plans:
+    x-mcp-group:
+      - Plans
+    post:
+      tags:
+        - plans
+      operationId: create_plan
+      summary: Create a plan
+      description: Create a new plan.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-plan-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-plan-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.plans.CREATE
+    get:
+      tags:
+        - plans
+      operationId: list_plans
+      summary: List all plans
+      description: List of all plans created.
+      parameters:
+        - name: filter_by
+          in: query
+          description: To list plans based on the Status, use the parameter <code>filter_by</code>. The allowed values for filter_by are PlanStatus.(<code>All</code>, <code>ACTIVE</code> and <code>INACTIVE</code>).
+          required: false
+          schema:
+            type: string
+          example: PlanStatus.ACTIVE
+        - name: product_id
+          in: query
+          description: To list plans of a particular product use the parameter <code>product_id</code>. .
+          required: false
+          schema:
+            type: string
+          example: '903000000045027'
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-all-plans-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.plans.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /plans/{plan_code}:
+    x-mcp-group:
+      - Plans
+    get:
+      tags:
+        - plans
+      operationId: get_plan
+      summary: Retrieve a plan
+      description: Retrieve details of an existing plan.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/retrieve-a-plan-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.plans.READ
+    put:
+      tags:
+        - plans
+      operationId: update_plan
+      summary: Update a plan
+      description: Update details of an existing plan.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-plan-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-plan-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.plans.UPDATE
+    delete:
+      tags:
+        - plans
+      operationId: delete_plan
+      summary: Delete a plan
+      description: Delete an existing plan. A plan can only be deleted if it has no transactions associated with it.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-plan-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.plans.DELETE
+    parameters:
+      - name: plan_code
+        in: path
+        required: true
+        description: Unique code of the plan.
+        schema:
+          type: string
+        example: basic-monthly
+      - $ref: '#/components/parameters/organization_id'
+  /plans/{plan_code}/markasactive:
+    x-mcp-group:
+      - Plans
+    post:
+      tags:
+        - plans
+      operationId: mark_plan_as_active
+      summary: Mark as active
+      description: Change the status of the plan to <strong>active</strong>.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-as-active-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.plans.CREATE
+    parameters:
+      - name: plan_code
+        in: path
+        required: true
+        description: Unique code of the plan.
+        schema:
+          type: string
+        example: basic-monthly
+      - $ref: '#/components/parameters/organization_id'
+  /plans/{plan_code}/markasinactive:
+    x-mcp-group:
+      - Plans
+    post:
+      tags:
+        - plans
+      operationId: mark_plan_as_inactive
+      summary: Mark as inactive
+      description: Change the status of the plan to <strong>inactive</strong>.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-as-inactive-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.plans.CREATE
+    parameters:
+      - name: plan_code
+        in: path
+        required: true
+        description: Unique code of the plan.
+        schema:
+          type: string
+        example: basic-monthly
+      - $ref: '#/components/parameters/organization_id'
+  /plans/{plan_code}/markasfree:
+    x-mcp-group:
+      - Plans
+    post:
+      tags:
+        - plans
+      operationId: mark_plan_as_free
+      summary: Mark as free
+      description: Change the plan to a free plan.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-plan-as-free-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.plans.CREATE
+    parameters:
+      - name: plan_code
+        in: path
+        required: true
+        description: Unique code of the plan.
+        schema:
+          type: string
+        example: basic-monthly
+      - $ref: '#/components/parameters/organization_id'
+  /plans/{plan_code}/markasnonfree:
+    x-mcp-group:
+      - Plans
+    post:
+      tags:
+        - plans
+      operationId: mark_plan_as_non_free
+      summary: Mark as non-free
+      description: Change the plan to a non-free plan.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-plan-as-non-free-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.plans.CREATE
+    parameters:
+      - name: plan_code
+        in: path
+        required: true
+        description: Unique code of the plan.
+        schema:
+          type: string
+        example: basic-monthly
+      - $ref: '#/components/parameters/organization_id'
+  /plans/{plan_id}/comments:
+    x-mcp-group:
+      - Plans
+    get:
+      tags:
+        - plans
+      operationId: list_plan_comments
+      summary: List plan comments
+      description: Retrieve the list of comments for a plan.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-plan-comments-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.plans.READ
+    post:
+      tags:
+        - plans
+      operationId: add_plan_comment
+      summary: Add a comment
+      description: Add a comment to a plan.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/add-plan-comment-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/add-plan-comment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.plans.CREATE
+    parameters:
+      - name: plan_id
+        in: path
+        required: true
+        description: Unique ID of the plan.
+        schema:
+          type: string
+        example: '903000000045027'
+      - $ref: '#/components/parameters/organization_id'
+  /plans/{plan_id}/comments/{comment_id}:
+    x-mcp-group:
+      - Plans
+    delete:
+      tags:
+        - plans
+      operationId: delete_plan_comment
+      summary: Delete a comment
+      description: Delete an existing comment on a plan.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-plan-comment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.plans.DELETE
+    parameters:
+      - name: plan_id
+        in: path
+        required: true
+        description: Unique ID of the plan.
+        schema:
+          type: string
+        example: '903000000045027'
+      - name: comment_id
+        in: path
+        required: true
+        description: Unique ID of the comment.
+        schema:
+          type: string
+        example: '903000000067001'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/plan-response'
+    plan-response:
+      type: object
+      properties:
+        plan_code:
+          $ref: '#/components/schemas/plan_code'
+        name:
+          $ref: '#/components/schemas/name'
+        description:
+          $ref: '#/components/schemas/description'
+        store_markup_description:
+          $ref: '#/components/schemas/store_markup_description'
+        status:
+          $ref: '#/components/schemas/status'
+        product_id:
+          $ref: '#/components/schemas/product_id'
+        account_id:
+          $ref: '#/components/schemas/account_id'
+        account_name:
+          $ref: '#/components/schemas/account_name'
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        trial_period:
+          description: Number of free trial days that can be granted when a customer is subscribed to this plan.
+          type: integer
+          example: 1
+          default: 0
+        setup_fee:
+          description: This indicates a one-time fee charged upfront while creating a subscription for this plan.
+          type: number
+          format: double
+          example: 0
+          default: 0
+        setup_fee_account_id:
+          $ref: '#/components/schemas/setup_fee_account_id'
+        setup_fee_account_name:
+          $ref: '#/components/schemas/setup_fee_account_name'
+        tags:
+          type: array
+          description: List of tags associated with the item.
+          items:
+            type: object
+            properties:
+              tag_option_id:
+                description: Id of the Tag Option.
+                type: string
+                example: '460000000054280'
+              is_tag_mandatory:
+                type: string
+                example: false
+              tag_name:
+                type: string
+                example: Colors
+              tag_id:
+                description: ID of the Tag.
+                type: string
+                example: '460000000054182'
+              tag_option_name:
+                type: string
+                example: Black
+        custom_fields:
+          description: Custom fields for a Plan.
+          type: array
+          items:
+            type: object
+            properties:
+              customfield_id:
+                type: string
+                example: '2000000029001'
+              is_active:
+                type: string
+                example: 'true'
+              show_in_all_pdf:
+                type: string
+                example: 'true'
+              value_formatted:
+                type: string
+                example: Normal
+              data_type:
+                type: string
+                example: string
+              index:
+                type: integer
+                example: 1
+              label:
+                description: Label of the Custom Field.
+                type: string
+                example: cfitem
+              show_on_pdf:
+                type: string
+                example: false
+              placeholder:
+                type: string
+                example: cf_cfitem
+              value:
+                description: Value of the Custom Field.
+                type: string
+                example: Normal
+        recurring_price:
+          $ref: '#/components/schemas/recurring_price'
+        unit:
+          $ref: '#/components/schemas/unit'
+        interval:
+          $ref: '#/components/schemas/interval'
+        interval_unit:
+          $ref: '#/components/schemas/interval_unit'
+        billing_cycles:
+          $ref: '#/components/schemas/billing_cycles'
+        hsn_or_sac:
+          $ref: '#/components/schemas/hsn_or_sac'
+        item_tax_preferences:
+          $ref: '#/components/schemas/item_tax_preferences'
+        addons:
+          description: List of addons that the plan is associated with. It holds the list of objects with <code>addon_code</code> and <code>name</code> as properties.
+          type: array
+          items:
+            type: object
+            properties:
+              addon_code:
+                $ref: '#/components/schemas/addon_code'
+              name:
+                description: The name of the addon.
+                example: Monthly_Addon
+              status:
+                $ref: '#/components/schemas/status'
+              pricing_scheme:
+                $ref: '#/components/schemas/pricing_scheme'
+              unit_name:
+                $ref: '#/components/schemas/unit_name'
+              price_brackets:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    start_quantity:
+                      $ref: '#/components/schemas/start_quantity'
+                    end_quantity:
+                      $ref: '#/components/schemas/end_quantity'
+                    price:
+                      $ref: '#/components/schemas/price'
+        url:
+          $ref: '#/components/schemas/url'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        updated_time:
+          $ref: '#/components/schemas/updated_time'
+    plan_code:
+      description: Unique string of your choice which lets you identify this plan.
+      type: string
+      example: basic-monthly
+    name:
+      description: Name of your choice to be displayed in the interface and invoices.
+      type: string
+      example: Basic
+    status:
+      description: Status of the plan. It can be either <code> active </code>  or <code> inactive </code>.
+      type: string
+      example: active
+    recurring_price:
+      description: The customer is charged an amount over an interval for the subscription.
+      type: number
+      format: double
+      example: 400
+    pricing_scheme:
+      description: Pricing type of the addon.
+      type: string
+      example: unit
+    type:
+      description: Indicates type of the addon. This could be either <code>recurring</code> or <code>one_time</code>.
+      type: string
+      example: recurring
+    unit:
+      description: A name of your choice to refer to one unit of the plan.
+      type: string
+      example: kg
+    unit_name:
+      description: A name of your choice to refer to one unit of the addon.
+      type: string
+      example: Email
+    tags:
+      type: array
+      description: List of tags associated with the item.
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+    tag_id:
+      description: ID of the Tag.
+      type: string
+      example: '460000000054182'
+    tag_option_id:
+      description: Id of the Tag Option.
+      type: string
+      example: '460000000054280'
+    label:
+      description: Label of the Custom Field.
+      type: string
+      example: cfitem
+    value:
+      description: Value of the Custom Field.
+      type: string
+      example: Normal
+    custom_fields:
+      description: Custom fields for a Plan.
+      type: array
+      items:
+        type: object
+        properties:
+          label:
+            $ref: '#/components/schemas/label'
+          value:
+            $ref: '#/components/schemas/value'
+    start_quantity:
+      description: Lower limit of the addon range.
+      type: integer
+      example: 1
+      x-required_info: for "volume" and "tier" pricing schemes.
+    end_quantity:
+      description: Upper limit of the addon range.
+      type: integer
+      example: 50
+      x-required_info: for "volume", "tier" and "package" pricing schemes.
+    price:
+      description: Per unit cost of the addon for the selected range. For the "package" pricing scheme, this would be the price of the specified quantity of addons.
+      type: number
+      format: double
+      example: 10
+    interval:
+      description: Indicates the number of intervals between each billing. If interval=2, the customer would be billed every two months or years depending on the value for interval_unit.
+      type: integer
+      example: 1
+    interval_unit:
+      description: The values can be either <code>months</code> or <code>years</code>. For interval=2 and interval_unit=months, the customer is billed every two months.
+      type: string
+      example: months
+      default: months
+    billing_cycles:
+      description: Number of cycles this plan's subscription should run for. If billing_cycles=12, the subscription would expire after 12 cycles. If billing_cycles=-1, the subscription would run until it is cancelled. If interval=2, interval_unit=months and billing_cycles=12, the customer would be billed every 2 months and this would go on for 12 times.
+      type: integer
+      example: -1
+      default: -1
+    trial_period:
+      description: Number of free trial days that can be granted when a customer is subscribed to this plan.
+      type: integer
+      example: 0
+      default: 0
+    setup_fee:
+      description: This indicates a one-time fee charged upfront while creating a subscription for this plan.
+      type: number
+      format: double
+      example: 0
+      default: 0
+    addons:
+      description: List of addons that the plan is associated with. It holds the list of objects with <code>addon_code</code> and <code>name</code> as properties.
+      type: array
+      items:
+        type: object
+        properties:
+          addon_code:
+            $ref: '#/components/schemas/addon_code'
+          name:
+            description: The name of the addon.
+            type: string
+            example: Monthly_Addon
+    addon_code:
+      description: The addon code of the addon which is associated with the plan .
+      type: string
+      example: Email-basic
+    product_id:
+      description: Product ID to which you want to associate this plan with.
+      type: string
+      example: '903000000045027'
+    setup_fee_account_id:
+      description: Setup Fee Account ID which the setup fee of the plan is associated.
+      type: string
+      example: '903000987009903'
+    setup_fee_account_name:
+      description: Setup Fee Account Name which the setup fee of the plan is associated.
+      type: string
+      example: General Income
+    account_id:
+      description: Account ID which the plan is associated.
+      type: string
+      example: '903000987009900'
+    account_name:
+      description: Account name which the plan is associated.
+      type: string
+      example: Sales
+    hsn_or_sac:
+      description: HSN or SAC code for Goods/Services plan.
+      type: string
+      example: '74191010'
+    item_tax_preferences:
+      description: Tax preference for the plan (GST).
+      type: array
+      items:
+        type: object
+        properties:
+          tax_specification:
+            $ref: '#/components/schemas/tax_specification'
+          tax_name:
+            $ref: '#/components/schemas/tax_name'
+          tax_percentage:
+            $ref: '#/components/schemas/tax_percentage'
+          tax_id:
+            $ref: '#/components/schemas/tax_id'
+    tax_specification:
+      description: Tax specification for the plan. It can be either <code>inter</code> or <code>intra</code>.
+      type: string
+      example: intra
+    tax_name:
+      description: Name of the tax to which subscription is associated.
+      type: string
+      example: GST
+    tax_type:
+      description: Specifies the type of tax associated with the plan/addon.
+      type: string
+      example: tax
+    tax_percentage:
+      description: Percentage of tax applied to the plan/addon.
+      type: number
+      example: 10
+    tax_id:
+      description: Tax ID to which you would like to associate with this plan.
+      type: string
+      example: '903000000065300'
+      default: no tax will be associated
+    tax_exemption_id:
+      description: Unique ID of the tax exemption.
+      type: string
+      example: '903000006345'
+    tax_exemption_code:
+      description: Unique code of the tax exemption.
+      type: string
+      example: GST FREE
+    is_taxable:
+      description: Set to true if plan must be tax inclusive.
+      type: string
+      example: true
+    description:
+      description: Short description regarding the plan.
+      type: string
+      example: Basic monthly plan.
+    store_markup_description:
+      description: Long Description regarding the plan.
+      type: string
+      example: Mailbox Storage-100GB | User & Docs Storage-500GB | User
+    can_charge_setup_fee_immediately:
+      description: Set this value to "true", if you want to enable upfront setup fees charges while creating or updating subscriptions with this plan.
+      type: boolean
+    url:
+      description: Unique url of the plan.
+      type: string
+      example: https://erp.zoho.in/subscribe/3b884751f87f05e584c3952b6388e7f96a2bba0f6b0532177e00f0ba8db832fc/basic-monthly
+    created_time:
+      description: The time at which the plan was created.
+      type: string
+      example: 2016-06-05T17:40:49+0530
+    updated_time:
+      description: The time at which the plan details were last updated.
+      type: string
+      example: 2016-06-05T24:40:49+0530
+    create-a-plan-request:
+      required:
+        - plan_code
+        - name
+        - recurring_price
+        - interval
+        - product_id
+      type: object
+      properties:
+        plan_code:
+          $ref: '#/components/schemas/plan_code'
+        name:
+          $ref: '#/components/schemas/name'
+        recurring_price:
+          $ref: '#/components/schemas/recurring_price'
+        unit:
+          $ref: '#/components/schemas/unit'
+        interval:
+          $ref: '#/components/schemas/interval'
+        interval_unit:
+          $ref: '#/components/schemas/interval_unit'
+        billing_cycles:
+          $ref: '#/components/schemas/billing_cycles'
+        trial_period:
+          description: Number of free trial days that can be granted when a customer is subscribed to this plan.
+          type: integer
+          example: 1
+          default: 0
+        setup_fee:
+          description: This indicates a one-time fee charged upfront while creating a subscription for this plan.
+          type: number
+          format: double
+          example: 100
+          default: 0
+        setup_fee_account_id:
+          $ref: '#/components/schemas/setup_fee_account_id'
+        tags:
+          $ref: '#/components/schemas/tags'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        product_id:
+          $ref: '#/components/schemas/product_id'
+        hsn_or_sac:
+          $ref: '#/components/schemas/hsn_or_sac'
+        item_tax_preferences:
+          $ref: '#/components/schemas/item_tax_preferences'
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        is_taxable:
+          $ref: '#/components/schemas/is_taxable'
+        tax_exemption_id:
+          $ref: '#/components/schemas/tax_exemption_id'
+        tax_exemption_code:
+          $ref: '#/components/schemas/tax_exemption_code'
+        description:
+          $ref: '#/components/schemas/description'
+        store_markup_description:
+          $ref: '#/components/schemas/store_markup_description'
+        can_charge_setup_fee_immediately:
+          $ref: '#/components/schemas/can_charge_setup_fee_immediately'
+    create-a-plan-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The plan has been created.
+          readOnly: true
+        plan:
+          $ref: '#/components/schemas/plan-response'
+    list-all-plans-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        plans:
+          type: array
+          items:
+            type: object
+            properties:
+              plan_code:
+                $ref: '#/components/schemas/plan_code'
+              name:
+                $ref: '#/components/schemas/name'
+              recurring_price:
+                $ref: '#/components/schemas/recurring_price'
+              unit:
+                $ref: '#/components/schemas/unit'
+              interval:
+                $ref: '#/components/schemas/interval'
+              interval_unit:
+                $ref: '#/components/schemas/interval_unit'
+              billing_cycles:
+                $ref: '#/components/schemas/billing_cycles'
+              trial_period:
+                $ref: '#/components/schemas/trial_period'
+              setup_fee:
+                $ref: '#/components/schemas/setup_fee'
+              setup_fee_account_id:
+                $ref: '#/components/schemas/setup_fee_account_id'
+              setup_fee_account_name:
+                $ref: '#/components/schemas/setup_fee_account_name'
+              product_id:
+                $ref: '#/components/schemas/product_id'
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              hsn_or_sac:
+                $ref: '#/components/schemas/hsn_or_sac'
+              item_tax_preferences:
+                $ref: '#/components/schemas/item_tax_preferences'
+              description:
+                $ref: '#/components/schemas/description'
+              store_markup_description:
+                $ref: '#/components/schemas/store_markup_description'
+              status:
+                $ref: '#/components/schemas/status'
+              addons:
+                description: List of addons that the plan is associated with. It holds the list of objects with <code>addon_code</code> and <code>name</code> as properties.
+                type: array
+                items:
+                  type: object
+                  properties:
+                    addon_code:
+                      $ref: '#/components/schemas/addon_code'
+                    name:
+                      $ref: '#/components/schemas/name'
+              created_time:
+                $ref: '#/components/schemas/created_time'
+              updated_time:
+                $ref: '#/components/schemas/updated_time'
+    retrieve-a-plan-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        plan:
+          type: object
+          properties:
+            plan_code:
+              $ref: '#/components/schemas/plan_code'
+            name:
+              $ref: '#/components/schemas/name'
+            description:
+              $ref: '#/components/schemas/description'
+            store_markup_description:
+              $ref: '#/components/schemas/store_markup_description'
+            status:
+              $ref: '#/components/schemas/status'
+            product_id:
+              $ref: '#/components/schemas/product_id'
+            account_id:
+              $ref: '#/components/schemas/account_id'
+            account_name:
+              $ref: '#/components/schemas/account_name'
+            trial_period:
+              $ref: '#/components/schemas/trial_period'
+            setup_fee:
+              $ref: '#/components/schemas/setup_fee'
+            setup_fee_account_id:
+              $ref: '#/components/schemas/setup_fee_account_id'
+            setup_fee_account_name:
+              $ref: '#/components/schemas/setup_fee_account_name'
+            tags:
+              type: array
+              description: List of tags associated with the item.
+              items:
+                type: object
+                properties:
+                  tag_option_id:
+                    description: Id of the Tag Option.
+                    type: string
+                    example: '460000000054280'
+                  is_tag_mandatory:
+                    type: string
+                    example: false
+                  tag_name:
+                    type: string
+                    example: Colors
+                  tag_id:
+                    description: ID of the Tag.
+                    type: string
+                    example: '460000000054182'
+                  tag_option_name:
+                    type: string
+                    example: Black
+            custom_fields:
+              description: Custom fields for a Plan.
+              type: array
+              items:
+                type: object
+                properties:
+                  customfield_id:
+                    type: string
+                    example: '2000000029001'
+                  is_active:
+                    type: string
+                    example: 'true'
+                  show_in_all_pdf:
+                    type: string
+                    example: 'true'
+                  value_formatted:
+                    type: string
+                    example: Normal
+                  data_type:
+                    type: string
+                    example: string
+                  index:
+                    type: integer
+                    example: 1
+                  label:
+                    description: Label of the Custom Field.
+                    type: string
+                    example: cfitem
+                  show_on_pdf:
+                    type: string
+                    example: false
+                  placeholder:
+                    type: string
+                    example: cf_cfitem
+                  value:
+                    description: Value of the Custom Field.
+                    type: string
+                    example: Normal
+            recurring_price:
+              $ref: '#/components/schemas/recurring_price'
+            unit:
+              $ref: '#/components/schemas/unit'
+            interval:
+              $ref: '#/components/schemas/interval'
+            interval_unit:
+              $ref: '#/components/schemas/interval_unit'
+            billing_cycles:
+              $ref: '#/components/schemas/billing_cycles'
+            url:
+              $ref: '#/components/schemas/url'
+            tax_id:
+              $ref: '#/components/schemas/tax_id'
+            hsn_or_sac:
+              $ref: '#/components/schemas/hsn_or_sac'
+            item_tax_preferences:
+              $ref: '#/components/schemas/item_tax_preferences'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            updated_time:
+              $ref: '#/components/schemas/updated_time'
+    update-a-plan-request:
+      required:
+        - plan_code
+        - name
+        - recurring_price
+        - interval
+      type: object
+      properties:
+        plan_code:
+          $ref: '#/components/schemas/plan_code'
+        name:
+          $ref: '#/components/schemas/name'
+        recurring_price:
+          $ref: '#/components/schemas/recurring_price'
+        unit:
+          $ref: '#/components/schemas/unit'
+        interval:
+          $ref: '#/components/schemas/interval'
+        interval_unit:
+          $ref: '#/components/schemas/interval_unit'
+        billing_cycles:
+          $ref: '#/components/schemas/billing_cycles'
+        trial_period:
+          description: Number of free trial days that can be granted when a customer is subscribed to this plan.
+          type: integer
+          example: 0
+          default: 0
+        setup_fee:
+          description: This indicates a one-time fee charged upfront while creating a subscription for this plan.
+          type: number
+          format: double
+          example: 0
+          default: 0
+        setup_fee_account_id:
+          description: Setup Fee Account ID which the setup fee of the plan is associated.
+          type: string
+          example: '903000987009905'
+        tags:
+          type: array
+          description: List of tags associated with the item.
+          items:
+            type: object
+            properties:
+              tag_id:
+                description: ID of the Tag.
+                type: string
+                example: '460000000054182'
+              tag_option_id:
+                description: Id of the Tag Option.
+                type: string
+                example: '460000000054278'
+        custom_fields:
+          description: Custom fields for a Plan.
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                description: Label of the Custom Field.
+                type: string
+                example: cfitem
+              value:
+                description: Value of the Custom Field.
+                type: string
+                example: test
+        addons:
+          $ref: '#/components/schemas/addons'
+        hsn_or_sac:
+          $ref: '#/components/schemas/hsn_or_sac'
+        item_tax_preferences:
+          $ref: '#/components/schemas/item_tax_preferences'
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        is_taxable:
+          $ref: '#/components/schemas/is_taxable'
+        tax_exemption_id:
+          $ref: '#/components/schemas/tax_exemption_id'
+        tax_exemption_code:
+          $ref: '#/components/schemas/tax_exemption_code'
+        description:
+          $ref: '#/components/schemas/description'
+        store_markup_description:
+          $ref: '#/components/schemas/store_markup_description'
+        can_charge_setup_fee_immediately:
+          description: Set this value to "true", if you want to enable upfront setup fees charges while creating or updating subscriptions with this plan.
+          type: boolean
+    update-a-plan-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The plan details has been updated.
+          readOnly: true
+        plan:
+          type: object
+          properties:
+            plan_code:
+              $ref: '#/components/schemas/plan_code'
+            name:
+              $ref: '#/components/schemas/name'
+            description:
+              $ref: '#/components/schemas/description'
+            store_markup_description:
+              $ref: '#/components/schemas/store_markup_description'
+            can_charge_setup_fee_immediately:
+              $ref: '#/components/schemas/can_charge_setup_fee_immediately'
+            status:
+              $ref: '#/components/schemas/status'
+            product_id:
+              $ref: '#/components/schemas/product_id'
+            account_id:
+              $ref: '#/components/schemas/account_id'
+            account_name:
+              $ref: '#/components/schemas/account_name'
+            trial_period:
+              description: Number of free trial days that can be granted when a customer is subscribed to this plan.
+              type: integer
+              example: 0
+              default: 0
+            setup_fee:
+              description: This indicates a one-time fee charged upfront while creating a subscription for this plan.
+              type: number
+              format: double
+              example: 0
+              default: 0
+            setup_fee_account_id:
+              description: Setup Fee Account ID which the setup fee of the plan is associated.
+              type: string
+              example: '903000987009905'
+            setup_fee_account_name:
+              description: Setup Fee Account Name which the setup fee of the plan is associated.
+              type: string
+              example: Sales
+            tags:
+              type: array
+              description: List of tags associated with the item.
+              items:
+                type: object
+                properties:
+                  tag_option_id:
+                    description: Id of the Tag Option.
+                    type: string
+                    example: '460000000054278'
+                  is_tag_mandatory:
+                    type: string
+                    example: false
+                  tag_name:
+                    type: string
+                    example: Colors
+                  tag_id:
+                    description: ID of the Tag.
+                    type: string
+                    example: '460000000054182'
+                  tag_option_name:
+                    type: string
+                    example: Green
+            custom_fields:
+              description: Custom fields for a Plan.
+              type: array
+              items:
+                type: object
+                properties:
+                  customfield_id:
+                    type: string
+                    example: '2000000029001'
+                  is_active:
+                    type: string
+                    example: 'true'
+                  show_in_all_pdf:
+                    type: string
+                    example: 'true'
+                  value_formatted:
+                    type: string
+                    example: test
+                  data_type:
+                    type: string
+                    example: string
+                  index:
+                    type: integer
+                    example: 1
+                  label:
+                    description: Label of the Custom Field.
+                    type: string
+                    example: cfitem
+                  show_on_pdf:
+                    type: string
+                    example: false
+                  placeholder:
+                    type: string
+                    example: cf_cfitem
+                  value:
+                    description: Value of the Custom Field.
+                    type: string
+                    example: test
+            recurring_price:
+              $ref: '#/components/schemas/recurring_price'
+            unit:
+              $ref: '#/components/schemas/unit'
+            interval:
+              $ref: '#/components/schemas/interval'
+            interval_unit:
+              $ref: '#/components/schemas/interval_unit'
+            billing_cycles:
+              $ref: '#/components/schemas/billing_cycles'
+            url:
+              $ref: '#/components/schemas/url'
+            tax_id:
+              $ref: '#/components/schemas/tax_id'
+            hsn_or_sac:
+              $ref: '#/components/schemas/hsn_or_sac'
+            item_tax_preferences:
+              $ref: '#/components/schemas/item_tax_preferences'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            updated_time:
+              $ref: '#/components/schemas/updated_time'
+    delete-a-plan-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The plan has been deleted.
+          readOnly: true
+    mark-as-active-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The plan has been marked as active.
+          readOnly: true
+    mark-as-inactive-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The plan has been marked as inactive.
+          readOnly: true
+    mark-plan-as-free-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The plan has been marked as free.
+          readOnly: true
+    mark-plan-as-non-free-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The plan has been marked as non-free.
+          readOnly: true
+    plan-comment-response:
+      type: object
+      properties:
+        comment_id:
+          description: Unique ID of the comment.
+          type: string
+          example: '903000000067001'
+        product_id:
+          description: ID of the plan to which the comment belongs.
+          type: string
+          example: '903000000045027'
+        description:
+          description: Content of the comment.
+          type: string
+          example: Updating the trial period for this plan.
+        commented_by_id:
+          description: ID of the user who added the comment.
+          type: string
+          example: '903000000015003'
+        commented_by:
+          description: Name of the user who added the comment.
+          type: string
+          example: John Smith
+        date:
+          description: Date on which the comment was added.
+          type: string
+          example: '2016-06-05'
+        time:
+          description: Time at which the comment was added.
+          type: string
+          example: 5:38 PM
+        is_customer_note:
+          description: Whether the comment is a customer-facing note.
+          type: boolean
+          example: false
+    list-plan-comments-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/plan-comment-response'
+    add-plan-comment-request:
+      required:
+        - description
+      type: object
+      properties:
+        description:
+          description: Content of the comment.
+          type: string
+          example: Updating the trial period for this plan.
+    add-plan-comment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Comment added.
+          readOnly: true
+        comment:
+          $ref: '#/components/schemas/plan-comment-response'
+    delete-plan-comment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The comment has been deleted.
+          readOnly: true
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.plans.CREATE: Create Plans
+            ERP.plans.READ: Read Plans
+            ERP.plans.UPDATE: Update Plans
+            ERP.plans.DELETE: Delete Plans

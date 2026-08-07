@@ -1,0 +1,1218 @@
+openapi: 3.0.0
+info:
+  title: Manufacturing Orders
+  description: A manufacturing order records the production of a finished item. It specifies the item to be produced by associating a Bill of Materials (BOM) to determine the required components and operations. Once the manufacturing order is completed, the quantity of the manufactured item increases based on the specified production quantity, while the component quantities are reduced.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: manufacturing-orders
+    description: Manufacturing Orders Module
+paths:
+  /manufacturingorders:
+    x-mcp-group:
+      - Manufacturing Orders
+    post:
+      tags:
+        - manufacturing-orders
+      operationId: create_manufacturing_order
+      summary: Create a manufacturing order
+      description: Create a manufacturing order.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-manufacturing-order-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-manufacturing-order-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.CREATE
+    get:
+      tags:
+        - manufacturing-orders
+      operationId: list_manufacturing_orders
+      summary: List manufacturing orders
+      description: List all manufacturing orders.
+      parameters:
+        - name: sort_column
+          in: query
+          description: 'Specify the column field for sorting results. Allowed Values: <code>created_time</code>, <code>manufacturingorder_number</code>, <code>item_name</code>, <code>status</code>, <code>planned_start_date</code>, <code>quantity</code>, <code>completed_quantity</code> and <code>assigned_owner_name</code>.'
+          required: false
+          schema:
+            type: string
+          example: created_time
+        - name: search_text
+          in: query
+          description: Search across manufacturing order number, item name, and other fields.
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: filter_by
+          in: query
+          description: 'Filter manufacturing orders by status. Allowed Values: <code>Status.All</code>, <code>Status.Draft</code>, <code>Status.Confirmed</code>, <code>Status.InProgress</code>, <code>Status.Released</code>, <code>Status.Completed</code> and <code>Status.Cancelled</code>.'
+          required: false
+          schema:
+            type: string
+          example: Status.All
+        - name: manufacturingorder_number
+          in: query
+          description: Filter by manufacturing order number. Available variants include <code>manufacturingorder_number_startswith</code> and <code>manufacturingorder_number_contains</code>.
+          required: false
+          schema:
+            type: string
+          example: MFG-00001
+        - name: status
+          in: query
+          description: 'Filter manufacturing orders by status. Allowed Values: <code>draft</code>, <code>confirmed</code>, <code>canceled</code>, <code>released</code>, <code>inprogress</code> and <code>completed</code>.'
+          required: false
+          schema:
+            type: string
+          example: inprogress
+        - name: item_id
+          in: query
+          description: 'Filter manufacturing orders by the finished goods item identifier. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: '982000000017088'
+        - name: finished_product_unit
+          in: query
+          description: Filter by the unit of the finished product. Available variants include <code>finished_product_unit_startswith</code> and <code>finished_product_unit_contains</code>.
+          required: false
+          schema:
+            type: string
+          example: pcs
+        - name: location_id
+          in: query
+          description: 'Filter manufacturing orders by the location identifier. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: '982000000040001'
+        - name: billofmaterials_id
+          in: query
+          description: 'Filter manufacturing orders by Bill of Materials identifier. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: '982000000025001'
+        - name: version_id
+          in: query
+          description: 'Filter manufacturing orders by BOM version identifier. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: '982000000025010'
+        - name: parent_manufacturing_order_id
+          in: query
+          description: 'Filter manufacturing orders by parent manufacturing order identifier for sub-assembly orders. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: '982000000567001'
+        - name: quantity
+          in: query
+          description: Filter by planned quantity. Available variants include <code>quantity_start</code>, <code>quantity_end</code>, <code>quantity_less_than</code>, <code>quantity_less_equals</code>, <code>quantity_greater_than</code> and <code>quantity_greater_equals</code>.
+          required: false
+          schema:
+            type: number
+            format: double
+          example: 50
+        - name: completed_quantity
+          in: query
+          description: Filter by completed quantity. Available variants include <code>completed_quantity_start</code>, <code>completed_quantity_end</code>, <code>completed_quantity_less_than</code>, <code>completed_quantity_less_equals</code>, <code>completed_quantity_greater_than</code> and <code>completed_quantity_greater_equals</code>.
+          required: false
+          schema:
+            type: number
+            format: double
+          example: 20
+        - name: planned_start_date
+          in: query
+          description: 'Filter by planned start date. Available variants include <code>planned_start_date_start</code>, <code>planned_start_date_end</code>, <code>planned_start_date_before</code> and <code>planned_start_date_after</code>. Date format: <code>yyyy-MM-dd</code>.'
+          required: false
+          schema:
+            type: string
+          example: '2024-08-01'
+        - name: planned_end_date
+          in: query
+          description: 'Filter by planned end date. Available variants include <code>planned_end_date_start</code>, <code>planned_end_date_end</code>, <code>planned_end_date_before</code> and <code>planned_end_date_after</code>. Date format: <code>yyyy-MM-dd</code>.'
+          required: false
+          schema:
+            type: string
+          example: '2024-08-15'
+        - name: owner_id
+          in: query
+          description: 'Filter manufacturing orders by the assigned owner identifier. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: '982000000000097'
+        - name: created_by
+          in: query
+          description: Filter manufacturing orders by the user who created them.
+          required: false
+          schema:
+            type: string
+          example: '982000000000097'
+        - name: customview_id
+          in: query
+          description: 'Filter manufacturing orders using a saved custom view identifier. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: '982000000084001'
+        - name: page
+          in: query
+          description: Page number for pagination. Default is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-manufacturing-orders-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /manufacturingorders/{manufacturingorder_id}:
+    x-mcp-group:
+      - Manufacturing Orders
+    get:
+      tags:
+        - manufacturing-orders
+      operationId: get_manufacturing_order
+      summary: Get a manufacturing order
+      description: Get the details of a manufacturing order.
+      parameters:
+        - name: print
+          in: query
+          description: Indicates if the manufacturing order is to be retrieved in print format.
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: accept
+          in: query
+          description: 'Get the details of a particular manufacturing order in formats such as json/ pdf. Default format is json. Allowed Values: <code>json</code> and <code>pdf</code>.'
+          required: false
+          schema:
+            type: string
+          example: ''
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-manufacturing-order-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.READ
+    put:
+      tags:
+        - manufacturing-orders
+      operationId: update_manufacturing_order
+      summary: Update a manufacturing order
+      description: Update an existing manufacturing order.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-manufacturing-order-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-manufacturing-order-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.UPDATE
+    delete:
+      tags:
+        - manufacturing-orders
+      operationId: delete_manufacturing_order
+      summary: Delete a manufacturing order
+      description: Delete an existing manufacturing order.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-manufacturing-order-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.DELETE
+    parameters:
+      - name: manufacturingorder_id
+        in: path
+        required: true
+        description: 'ID of the manufacturing order. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '982000000567001'
+      - $ref: '#/components/parameters/organization_id'
+  /manufacturingorders/{manufacturingorder_id}/status:
+    x-mcp-group:
+      - Manufacturing Orders
+    put:
+      tags:
+        - manufacturing-orders
+      operationId: update_manufacturing_order_status
+      summary: Update manufacturing order status
+      description: Update the status of a manufacturing order.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-manufacturing-order-status-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-manufacturing-order-status-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.UPDATE
+    parameters:
+      - name: manufacturingorder_id
+        in: path
+        required: true
+        description: 'ID of the manufacturing order. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '982000000567001'
+      - $ref: '#/components/parameters/organization_id'
+  /manufacturingorders/{manufacturingorder_id}/comments:
+    x-mcp-group:
+      - Manufacturing Orders
+    get:
+      tags:
+        - manufacturing-orders
+      operationId: list_manufacturing_order_comments
+      summary: List comments and history
+      description: List all comments of a manufacturing order.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-manufacturing-order-comments-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.READ
+    post:
+      tags:
+        - manufacturing-orders
+      operationId: add_manufacturing_order_comment
+      summary: Add a comment
+      description: Add a comment to a manufacturing order.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/add-comment-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/add-comment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.CREATE
+    parameters:
+      - name: manufacturingorder_id
+        in: path
+        required: true
+        description: 'ID of the manufacturing order. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '982000000567001'
+      - $ref: '#/components/parameters/organization_id'
+  /manufacturingorders/{manufacturingorder_id}/comments/{comment_id}:
+    x-mcp-group:
+      - Manufacturing Orders
+    delete:
+      tags:
+        - manufacturing-orders
+      operationId: delete_manufacturing_order_comment
+      summary: Delete a comment
+      description: Delete a comment from a manufacturing order.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-comment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.DELETE
+    parameters:
+      - name: manufacturingorder_id
+        in: path
+        required: true
+        description: 'ID of the manufacturing order. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '982000000567001'
+      - name: comment_id
+        in: path
+        required: true
+        description: 'ID of the comment. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '982000000567211'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: 'ID of the organization. Note: This value is a set of numeric characters.'
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/manufacturingorder'
+    mo_component_id:
+      description: 'ID of the manufacturing order component. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000057238'
+    mo_bom_component_id:
+      description: 'ID of the corresponding BOM component this entry is derived from. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000039175'
+    mo_component_item_id:
+      description: 'ID of the raw material or sub-component item. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000046015'
+    mo_component_description:
+      description: 'Description of the component. Maximum length: 500 characters.'
+      type: string
+      maxLength: 500
+      example: ''
+    mo_component_quantity:
+      description: Quantity of the component required for the manufacturing order. Must be greater than 0.
+      type: number
+      format: double
+      minimum: 0.000001
+      example: 1
+    mo_component_unit:
+      description: 'Unit of measure for this component. Maximum length: 120 characters.'
+      type: string
+      maxLength: 120
+      example: kg
+    mo_subassembly_bom_id:
+      description: 'ID of the Bill of Materials for the sub-assembly item. Leave empty if the component is not a sub-assembly. Note: This value is a set of numeric characters.'
+      type: string
+      example: ''
+    mo_operation_id:
+      description: 'ID of the manufacturing order operation. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000057234'
+    mo_master_operation_id:
+      description: 'ID of the operation to be performed. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000039095'
+    mo_bom_operation_id:
+      description: 'ID of the BOM operation this entry is derived from. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000039163'
+    mo_operation_lead_time:
+      description: 'Lead time required to complete this operation. Format: <code>MM:SS</code>.'
+      type: string
+      example: '00:18'
+    mo_operation_instructions:
+      description: 'Step-by-step instructions for performing this operation. Maximum length: 500 characters.'
+      type: string
+      maxLength: 500
+      example: ''
+    manufacturingorder_id_schema:
+      description: 'ID of the Manufacturing Order. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000057231'
+    manufacturingorder_number:
+      description: 'Auto-generated or manually set number for the manufacturing order. Maximum length: 50 characters.'
+      type: string
+      maxLength: 50
+      example: MFG-00017
+    mo_item_id:
+      description: 'ID of the finished goods item to be manufactured. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000046004'
+    mo_quantity:
+      description: Total quantity of the finished good to be produced. Must be greater than 0.
+      type: number
+      format: double
+      minimum: 0.000001
+      example: 50
+    mo_unit:
+      description: 'Unit of measure for the finished goods quantity. Maximum length: 120 characters.'
+      type: string
+      maxLength: 120
+      example: pcs
+    mo_billofmaterials_id:
+      description: 'ID of the Bill of Materials used for this manufacturing order. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000039154'
+    mo_version_id:
+      description: 'ID of the BOM version to use for this manufacturing order. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000039157'
+    mo_status:
+      description: 'Status of the manufacturing order. Allowed Values: <code>draft</code>, <code>confirmed</code>, <code>released</code>, <code>inprogress</code>, <code>completed</code> and <code>canceled</code>.'
+      type: string
+      example: draft
+    mo_assigned_owner_id:
+      description: 'ID of the user assigned as owner of this manufacturing order. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000032003'
+    mo_parent_manufacturing_order_id:
+      description: 'ID of the parent manufacturing order. Populated when this order is a sub-assembly order linked to a parent order. Note: This value is a set of numeric characters.'
+      type: string
+      example: ''
+    mo_planned_start_date:
+      description: 'Planned start date for the manufacturing process. Date format: <code>yyyy-MM-dd</code>.'
+      type: string
+      example: '2026-05-11'
+    mo_planned_end_date:
+      description: 'Planned end date for the manufacturing process.<br>Date format: <code>yyyy-MM-dd</code>.'
+      type: string
+      example: '2026-05-15'
+    mo_unit_conversion_id:
+      description: 'ID of the unit conversion to apply between the BOM unit and the order unit. Note: This value is a set of numeric characters.'
+      type: string
+      example: ''
+    mo_component:
+      type: object
+      properties:
+        mo_component_id:
+          $ref: '#/components/schemas/mo_component_id'
+        bom_component_id:
+          $ref: '#/components/schemas/mo_bom_component_id'
+        item_id:
+          $ref: '#/components/schemas/mo_component_item_id'
+        name:
+          description: Name of the raw material or sub-component item.
+          type: string
+          example: Wood
+        item_sku:
+          description: SKU of the component item.
+          type: string
+          example: WD-001
+        description:
+          $ref: '#/components/schemas/mo_component_description'
+        rate:
+          description: Unit cost rate of the component.
+          type: number
+          format: double
+          example: 10
+        total_amount:
+          description: Total cost amount for the required quantity of this component.
+          type: number
+          format: double
+          example: 10
+        availability_status:
+          description: 'Stock availability status of the component. Allowed Values: <code>available</code> and <code>not_available</code>.'
+          type: string
+          example: not_available
+        quantity:
+          $ref: '#/components/schemas/mo_component_quantity'
+        quantity_available:
+          description: Current stock quantity available for this component.
+          type: number
+          format: double
+          example: -21.01
+        quantity_available_for_production:
+          description: Quantity available for production, accounting for committed stock.
+          type: number
+          format: double
+          example: -22.02
+        quantity_consumed:
+          description: Quantity of the component that has been consumed in production so far.
+          type: number
+          format: double
+          example: 0
+        unit:
+          $ref: '#/components/schemas/mo_component_unit'
+        subassembly_bom_id:
+          $ref: '#/components/schemas/mo_subassembly_bom_id'
+        item_type:
+          description: 'Type of the component item. Allowed Values: <code>inventory</code> and <code>service</code>.'
+          type: string
+          example: inventory
+        consumed_in_operation_id:
+          description: Identifier of the operation in which this component is consumed.
+          type: string
+          example: ''
+        consumed_in_operation_name:
+          description: Name of the operation in which this component is consumed.
+          type: string
+          example: ''
+        component_manufacturing_order_id:
+          description: Identifier of the sub-assembly manufacturing order for this component, if applicable.
+          type: string
+          example: ''
+        component_manufacturing_order_number:
+          description: Manufacturing order number of the sub-assembly order for this component, if applicable.
+          type: string
+          example: ''
+    components:
+      description: List of raw material and component line items required for this manufacturing order.
+      type: array
+      items:
+        $ref: '#/components/schemas/mo_component'
+    mo_operation:
+      type: object
+      properties:
+        mo_operation_id:
+          $ref: '#/components/schemas/mo_operation_id'
+        operation_id:
+          $ref: '#/components/schemas/mo_master_operation_id'
+        operation_name:
+          description: Name of the operation.
+          type: string
+          example: Manufacturing OPR
+        bom_operation_id:
+          $ref: '#/components/schemas/mo_bom_operation_id'
+        workcenter_type_id:
+          description: 'ID of the workcenter type assigned to this operation. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000039041'
+        workcenter_type_name:
+          description: Name of the workcenter type assigned to this operation.
+          type: string
+          example: Manufacturing WCT
+        lead_time:
+          $ref: '#/components/schemas/mo_operation_lead_time'
+        instructions:
+          $ref: '#/components/schemas/mo_operation_instructions'
+        operation_cost:
+          description: Calculated cost of this operation based on the assigned cost template.
+          type: number
+          format: double
+          example: 1050
+        documents:
+          description: List of file attachments associated with this operation.
+          type: array
+          items:
+            type: object
+    operations:
+      description: List of operations to be performed for this manufacturing order.
+      type: array
+      items:
+        $ref: '#/components/schemas/mo_operation'
+    comment:
+      type: object
+      properties:
+        comment_id:
+          description: 'ID of the comment. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000057252'
+          readOnly: true
+        description:
+          description: Text content of the comment.
+          type: string
+          example: Manufacturing order created
+        commented_by_id:
+          description: 'ID of the user who added the comment. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000032003'
+          readOnly: true
+        commented_by:
+          description: Name of the user who added the comment.
+          type: string
+          example: John Smith
+          readOnly: true
+        comment_type:
+          description: 'Type of comment. Allowed Values: <code>system</code> and <code>user</code>.'
+          type: string
+          example: system
+          readOnly: true
+        date:
+          description: Date on which the comment was added.
+          type: string
+          example: '2026-05-11'
+          readOnly: true
+        date_description:
+          description: Relative description of when the comment was added.
+          type: string
+          example: few seconds ago
+          readOnly: true
+        time:
+          description: Time at which the comment was added.
+          type: string
+          example: 9:46 AM
+          readOnly: true
+        operation_type:
+          description: Type of operation that triggered this comment.
+          type: string
+          example: Added
+          readOnly: true
+        transaction_type:
+          description: Module or transaction type associated with this comment.
+          type: string
+          example: manufacturingorder
+          readOnly: true
+    custom_field:
+      type: object
+      properties:
+        customfield_id:
+          description: 'ID of the custom field. Note: This value is a set of numeric characters.'
+          type: string
+          example: '982000000000183'
+        value:
+          description: Value of the custom field.
+          type: string
+          example: Batch-A
+    manufacturingorder:
+      type: object
+      properties:
+        manufacturingorder_id:
+          $ref: '#/components/schemas/manufacturingorder_id_schema'
+        manufacturingorder_number:
+          $ref: '#/components/schemas/manufacturingorder_number'
+        item_id:
+          $ref: '#/components/schemas/mo_item_id'
+        item_name:
+          description: Name of the finished goods item to be manufactured.
+          type: string
+          example: Pencil
+        item_sku:
+          description: SKU of the finished goods item.
+          type: string
+          example: ''
+        quantity:
+          $ref: '#/components/schemas/mo_quantity'
+        unit:
+          $ref: '#/components/schemas/mo_unit'
+        billofmaterials_id:
+          $ref: '#/components/schemas/mo_billofmaterials_id'
+        billofmaterials_name:
+          description: Name of the Bill of Materials used.
+          type: string
+          example: Pencil BOM 3
+        version_id:
+          $ref: '#/components/schemas/mo_version_id'
+        version_name:
+          description: Name of the BOM version used.
+          type: string
+          example: Pencil BOM 3 V1
+        status:
+          $ref: '#/components/schemas/mo_status'
+        completed_quantity:
+          description: Total quantity of the finished good that has been produced.
+          type: number
+          format: double
+          example: 0
+        assigned_owner_id:
+          $ref: '#/components/schemas/mo_assigned_owner_id'
+        assigned_owner_name:
+          description: Name of the user assigned as owner of this manufacturing order.
+          type: string
+          example: ''
+        parent_manufacturing_order_id:
+          $ref: '#/components/schemas/mo_parent_manufacturing_order_id'
+        parent_manufacturing_order_number:
+          description: Number of the parent manufacturing order.
+          type: string
+          example: ''
+        posted_date:
+          description: Epoch timestamp of when the manufacturing order was posted.
+          type: string
+          example: '1778437800000'
+        planned_start_date:
+          $ref: '#/components/schemas/mo_planned_start_date'
+        planned_end_date:
+          $ref: '#/components/schemas/mo_planned_end_date'
+        actual_start_date:
+          description: 'Actual date when production started. Date format: <code>yyyy-MM-dd</code>.'
+          type: string
+          example: ''
+        actual_end_date:
+          description: 'Actual date when production ended. Date format: <code>yyyy-MM-dd</code>.'
+          type: string
+          example: ''
+        estimated_duration:
+          description: 'Total estimated duration for all operations in this manufacturing order. Format: <code>HH:MM:SS</code>.'
+          type: string
+          example: '00:35:00'
+        actual_duration:
+          description: 'Actual elapsed production duration. Format: <code>HH:MM:SS</code>.'
+          type: string
+          example: '00:00:00'
+        total_jobcard_count:
+          description: Total number of job cards associated with this manufacturing order.
+          type: integer
+          example: 0
+        completed_jobcard_count:
+          description: Number of job cards that have been completed.
+          type: integer
+          example: 0
+        pending_jobcard_count:
+          description: Number of job cards that are still pending.
+          type: integer
+          example: 0
+        custom_fields:
+          description: Custom field values associated with the manufacturing order.
+          type: array
+          maxItems: 250
+          items:
+            $ref: '#/components/schemas/custom_field'
+        components:
+          $ref: '#/components/schemas/components'
+        operations:
+          $ref: '#/components/schemas/operations'
+        comments:
+          description: List of comments and activity history for this manufacturing order.
+          type: array
+          items:
+            $ref: '#/components/schemas/comment'
+        quality_queue_status:
+          description: 'Quality queue status of the manufacturing order. Allowed Values: <code>not_applicable</code>, <code>pending</code> and <code>completed</code>.'
+          type: string
+          example: not_applicable
+    mo_operation_request:
+      type: object
+      required:
+        - operation_id
+        - bom_operation_id
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/mo_master_operation_id'
+        bom_operation_id:
+          $ref: '#/components/schemas/mo_bom_operation_id'
+        lead_time:
+          $ref: '#/components/schemas/mo_operation_lead_time'
+        instructions:
+          $ref: '#/components/schemas/mo_operation_instructions'
+    mo_component_request:
+      type: object
+      required:
+        - item_id
+        - quantity
+      properties:
+        bom_component_id:
+          $ref: '#/components/schemas/mo_bom_component_id'
+        item_id:
+          $ref: '#/components/schemas/mo_component_item_id'
+        description:
+          $ref: '#/components/schemas/mo_component_description'
+        quantity:
+          $ref: '#/components/schemas/mo_component_quantity'
+        unit:
+          $ref: '#/components/schemas/mo_component_unit'
+        subassembly_bom_id:
+          $ref: '#/components/schemas/mo_subassembly_bom_id'
+    create-a-manufacturing-order-request:
+      type: object
+      required:
+        - item_id
+        - quantity
+        - billofmaterials_id
+        - version_id
+        - status
+        - planned_start_date
+      properties:
+        manufacturingorder_number:
+          $ref: '#/components/schemas/manufacturingorder_number'
+        item_id:
+          $ref: '#/components/schemas/mo_item_id'
+        quantity:
+          $ref: '#/components/schemas/mo_quantity'
+        billofmaterials_id:
+          $ref: '#/components/schemas/mo_billofmaterials_id'
+        version_id:
+          $ref: '#/components/schemas/mo_version_id'
+        parent_manufacturing_order_id:
+          $ref: '#/components/schemas/mo_parent_manufacturing_order_id'
+        planned_start_date:
+          $ref: '#/components/schemas/mo_planned_start_date'
+        planned_end_date:
+          $ref: '#/components/schemas/mo_planned_end_date'
+        assigned_owner_id:
+          $ref: '#/components/schemas/mo_assigned_owner_id'
+        operations:
+          description: List of operations to be performed for this manufacturing order.
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/mo_operation_request'
+        components:
+          description: List of raw material and component line items required for this manufacturing order.
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/mo_component_request'
+        custom_fields:
+          description: Custom field values to associate with the manufacturing order.
+          type: array
+          maxItems: 250
+          items:
+            $ref: '#/components/schemas/custom_field'
+        status:
+          description: 'Initial status of the manufacturing order. Allowed Values: <code>draft</code> and <code>confirmed</code>.'
+          type: string
+          example: draft
+        unit:
+          $ref: '#/components/schemas/mo_unit'
+        unit_conversion_id:
+          $ref: '#/components/schemas/mo_unit_conversion_id'
+    update-a-manufacturing-order-request:
+      type: object
+      properties:
+        manufacturingorder_number:
+          $ref: '#/components/schemas/manufacturingorder_number'
+        item_id:
+          $ref: '#/components/schemas/mo_item_id'
+        quantity:
+          $ref: '#/components/schemas/mo_quantity'
+        billofmaterials_id:
+          $ref: '#/components/schemas/mo_billofmaterials_id'
+        version_id:
+          $ref: '#/components/schemas/mo_version_id'
+        planned_start_date:
+          $ref: '#/components/schemas/mo_planned_start_date'
+        planned_end_date:
+          $ref: '#/components/schemas/mo_planned_end_date'
+        assigned_owner_id:
+          $ref: '#/components/schemas/mo_assigned_owner_id'
+        operations:
+          description: List of operations to be performed for this manufacturing order.
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/mo_operation_request'
+        components:
+          description: List of raw material and component line items required for this manufacturing order.
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/mo_component_request'
+        custom_fields:
+          description: Custom field values to associate with the manufacturing order.
+          type: array
+          maxItems: 250
+          items:
+            $ref: '#/components/schemas/custom_field'
+        status:
+          $ref: '#/components/schemas/mo_status'
+        unit:
+          $ref: '#/components/schemas/mo_unit'
+        unit_conversion_id:
+          $ref: '#/components/schemas/mo_unit_conversion_id'
+    update-manufacturing-order-status-request:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: '#/components/schemas/mo_status'
+    add-comment-request:
+      type: object
+      required:
+        - description
+      properties:
+        description:
+          description: Content of the comment.
+          type: string
+          example: Production started for batch 1.
+    create-a-manufacturing-order-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Manufacturing Order Created
+          readOnly: true
+        manufacturingorder:
+          $ref: '#/components/schemas/manufacturingorder'
+    update-a-manufacturing-order-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Manufacturing Order Updated
+          readOnly: true
+        manufacturingorder:
+          $ref: '#/components/schemas/manufacturingorder'
+    get-a-manufacturing-order-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        manufacturingorder:
+          $ref: '#/components/schemas/manufacturingorder'
+    list-manufacturing-orders-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        manufacturingorders:
+          type: array
+          items:
+            type: object
+            properties:
+              manufacturingorder_id:
+                $ref: '#/components/schemas/manufacturingorder_id_schema'
+              manufacturingorder_number:
+                $ref: '#/components/schemas/manufacturingorder_number'
+              status:
+                $ref: '#/components/schemas/mo_status'
+              billofmaterials_id:
+                $ref: '#/components/schemas/mo_billofmaterials_id'
+              billofmaterials_name:
+                description: Name of the Bill of Materials used.
+                type: string
+                example: Pencil BOM 3
+              version_id:
+                $ref: '#/components/schemas/mo_version_id'
+              version_name:
+                description: Name of the BOM version used.
+                type: string
+                example: v3
+              item_id:
+                $ref: '#/components/schemas/mo_item_id'
+              item_name:
+                description: Name of the finished goods item to be manufactured.
+                type: string
+                example: Bottle
+              finished_product_group_id:
+                description: 'ID of the finished product group. Note: This value is a set of numeric characters.'
+                type: string
+                example: ''
+              finished_product_group_name:
+                description: Name of the finished product group.
+                type: string
+                example: ''
+              finished_product_unit:
+                description: Unit of measurement for the finished product.
+                type: string
+                example: ''
+              sales_order_id:
+                description: 'ID of the linked sales order, if any. Note: This value is a set of numeric characters.'
+                type: string
+                example: ''
+              quantity:
+                $ref: '#/components/schemas/mo_quantity'
+              completed_quantity:
+                description: Total quantity of the finished good that has been produced.
+                type: number
+                format: double
+                example: 8
+              posted_date:
+                description: Epoch timestamp of when the manufacturing order was posted.
+                type: integer
+                format: int64
+                example: 1778610600000
+              planned_start_date:
+                $ref: '#/components/schemas/mo_planned_start_date'
+              planned_end_date:
+                $ref: '#/components/schemas/mo_planned_end_date'
+              actual_start_date:
+                description: 'Actual date when production started. Date format: <code>yyyy-MM-dd</code>.'
+                type: string
+                example: ''
+              actual_end_date:
+                description: 'Actual date when production ended. Date format: <code>yyyy-MM-dd</code>.'
+                type: string
+                example: ''
+              owner_id:
+                description: 'ID of the user assigned as owner of this manufacturing order. Note: This value is a set of numeric characters.'
+                type: string
+                example: ''
+              assigned_owner_name:
+                description: Name of the user assigned as owner of this manufacturing order.
+                type: string
+                example: ''
+              parent_manufacturing_order_id:
+                $ref: '#/components/schemas/mo_parent_manufacturing_order_id'
+              component_availability_status:
+                description: Availability status of components required for this manufacturing order.
+                type: string
+                example: ''
+              created_time:
+                description: Timestamp when the manufacturing order was created.
+                type: string
+                example: 2026-05-13T14:19:35+0530
+              last_modified_time:
+                description: Timestamp when the manufacturing order was last modified.
+                type: string
+                example: 2026-05-13T14:19:35+0530
+              created_by_id:
+                description: 'ID of the user who created the manufacturing order. Note: This value is a set of numeric characters.'
+                type: string
+                example: '340832000000139005'
+              last_modified_by_id:
+                description: 'ID of the user who last modified the manufacturing order. Note: This value is a set of numeric characters.'
+                type: string
+                example: '340832000000139005'
+        page_context:
+          type: object
+          readOnly: true
+          properties:
+            page:
+              type: integer
+              description: Current page number.
+              example: 1
+            per_page:
+              type: integer
+              description: Number of records per page.
+              example: 200
+            has_more_page:
+              type: boolean
+              description: Indicates if there are more pages.
+              example: false
+            report_name:
+              type: string
+              example: Manufacturing Orders
+            applied_filter:
+              type: string
+              example: Status.All
+            sort_column:
+              type: string
+              example: created_time
+            sort_order:
+              type: string
+              example: D
+    delete-a-manufacturing-order-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The manufacturing order has been deleted.
+          readOnly: true
+    update-manufacturing-order-status-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Manufacturing Order status updated.
+          readOnly: true
+        manufacturingorder:
+          $ref: '#/components/schemas/manufacturingorder'
+    list-manufacturing-order-comments-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/comment'
+    add-comment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Comment added.
+          readOnly: true
+        comment:
+          $ref: '#/components/schemas/comment'
+    delete-a-comment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The comment has been deleted.
+          readOnly: true
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.manufacturing.CREATE: Create Manufacturing Orders
+            ERP.manufacturing.UPDATE: Update Manufacturing Orders
+            ERP.manufacturing.READ: Read Manufacturing Orders
+            ERP.manufacturing.DELETE: Delete Manufacturing Orders
+            ERP.manufacturing.ALL: All permissions for Manufacturing

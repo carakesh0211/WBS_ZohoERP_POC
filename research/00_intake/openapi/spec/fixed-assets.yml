@@ -1,0 +1,1509 @@
+openapi: 3.0.0
+info:
+  title: Fixed Assets
+  description: Fixed assets are long-term tangible assets that a business owns and uses to produce goods and services. In Zoho ERP, you can record fixed assets and automatically calculate depreciation for them. You can sell or write off the asset when it is likely to generate a profit, after it has completed its useful life, or when it has been fully depreciated.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: fixed-assets
+    description: Fixed-Assets Module
+paths:
+  /fixedassets:
+    x-mcp-group:
+      - Fixed Assets
+    post:
+      tags:
+        - fixed-assets
+      operationId: create_fixed_asset
+      summary: Create a fixed asset
+      description: Create a fixed asset.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-fixed-asset-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-fixed-asset-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.fixedasset.CREATE
+    get:
+      tags:
+        - fixed-assets
+      operationId: list_fixed_assets
+      summary: Get fixed asset list
+      description: fixed asset list.
+      parameters:
+        - name: filter_by
+          in: query
+          description: 'Filter fixed asset by fixed asset status. Allowed Values: <code>Status.All</code>, <code>Status.Active</code>, <code>Status.Cancel</code>, <code>Status.FullyDepreciated</code>, <code>Status.WriteOff</code>, <code>Status.Sold</code> and <code>Status.Draft</code>'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: sort_column
+          in: query
+          description: 'Sort fixed asset list. Allowed Values: <code>asset_name</code>, <code>asset_number</code>, <code>asset_cost</code>, <code>created_time</code> and <code>current_asset_value</code>'
+          required: false
+          schema:
+            type: string
+          example: asset_number
+        - name: sort_order
+          in: query
+          description: 'Sort fixed asset list in ascendeing or descending order. Allowed Values: <code>A</code> and <code>D</code>'
+          required: false
+          schema:
+            type: string
+          example: A
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-fixed-asset-list-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.fixedasset.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /fixedassets/{fixed_asset_id}:
+    x-mcp-group:
+      - Fixed Assets
+    put:
+      tags:
+        - fixed-assets
+      operationId: update_fixed_asset
+      summary: Update a fixed asset
+      description: Updates the fixed asset with given information.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-fixed-asset-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-fixed-asset-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.fixedasset.UPDATE
+    get:
+      tags:
+        - fixed-assets
+      operationId: get_fixed_asset
+      summary: Get fixed asset
+      description: Get the details of the fixed asset.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-fixed-asset-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.fixedasset.READ
+    delete:
+      tags:
+        - fixed-assets
+      operationId: delete_fixed_asset
+      summary: Delete a fixed asset
+      description: Deletes the given fixed asset.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-fixed-asset-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.fixedasset.DELETE
+    parameters:
+      - name: fixed_asset_id
+        in: path
+        required: true
+        description: Unique identifier of the fixed asset.
+        schema:
+          type: string
+        example: '3640355000000319008'
+      - $ref: '#/components/parameters/organization_id'
+  /fixedassets/{fixed_asset_id}/history:
+    x-mcp-group:
+      - Fixed Assets
+    get:
+      tags:
+        - fixed-assets
+      operationId: get_fixed_asset_history
+      summary: Get fixed asset history
+      description: It displays a detailed summary of the asset from acquisition till write off.
+      parameters:
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-fixed-asset-history-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.fixedasset.READ
+    parameters:
+      - name: fixed_asset_id
+        in: path
+        required: true
+        description: Unique identifier of the fixed asset.
+        schema:
+          type: string
+        example: '3640355000000319008'
+      - $ref: '#/components/parameters/organization_id'
+  /fixedassets/{fixed_asset_id}/forecast:
+    x-mcp-group:
+      - Fixed Assets
+    get:
+      tags:
+        - fixed-assets
+      operationId: get_fixed_asset_forecast
+      summary: Get fixed asset's forecast depreciation
+      description: It displays a detailed summary of the asset's future depreciation rates.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-fixed-asset-forecast-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.fixedasset.READ
+    parameters:
+      - name: fixed_asset_id
+        in: path
+        required: true
+        description: Unique identifier of the fixed asset.
+        schema:
+          type: string
+        example: '3640355000000319008'
+      - $ref: '#/components/parameters/organization_id'
+  /fixedassets/{fixed_asset_id}/status/active:
+    x-mcp-group:
+      - Fixed Assets
+    post:
+      tags:
+        - fixed-assets
+      operationId: mark_fixed_asset_active
+      summary: Mark fixed asset as active
+      description: Mark the fixed asset as active to start calculating depreciation for the asset.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-fixed-asset-status'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.fixedasset.CREATE
+    parameters:
+      - name: fixed_asset_id
+        in: path
+        required: true
+        description: Unique identifier of the fixed asset.
+        schema:
+          type: string
+        example: '3640355000000319008'
+      - $ref: '#/components/parameters/organization_id'
+  /fixedassets/{fixed_asset_id}/status/cancel:
+    x-mcp-group:
+      - Fixed Assets
+    post:
+      tags:
+        - fixed-assets
+      operationId: mark_fixed_asset_cancel
+      summary: Cancel fixed asset
+      description: Cancel the fixed asset.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-fixed-asset-status'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.fixedasset.CREATE
+    parameters:
+      - name: fixed_asset_id
+        in: path
+        required: true
+        description: Unique identifier of the fixed asset.
+        schema:
+          type: string
+        example: '3640355000000319008'
+      - $ref: '#/components/parameters/organization_id'
+  /fixedassets/{fixed_asset_id}/status/draft:
+    x-mcp-group:
+      - Fixed Assets
+    post:
+      tags:
+        - fixed-assets
+      operationId: mark_fixed_asset_draft
+      summary: Mark fixed asset as draft
+      description: Mark the fixed asset as draft.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-fixed-asset-status'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.fixedasset.CREATE
+    parameters:
+      - name: fixed_asset_id
+        in: path
+        required: true
+        description: Unique identifier of the fixed asset.
+        schema:
+          type: string
+        example: '3640355000000319008'
+      - $ref: '#/components/parameters/organization_id'
+  /fixedassets/{fixed_asset_id}/writeoff:
+    x-mcp-group:
+      - Fixed Assets
+    post:
+      tags:
+        - fixed-assets
+      operationId: write_off_fixed_asset
+      summary: Write off fixed asset
+      description: Write off the fixed asset.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/write-off-fixed-asset-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/write-off-fixed-asset-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.fixedasset.CREATE
+    parameters:
+      - name: fixed_asset_id
+        in: path
+        required: true
+        description: Unique identifier of the fixed asset.
+        schema:
+          type: string
+        example: '3640355000000319008'
+      - $ref: '#/components/parameters/organization_id'
+  /fixedassets/{fixed_asset_id}/sell:
+    x-mcp-group:
+      - Fixed Assets
+    post:
+      tags:
+        - fixed-assets
+      operationId: sell_fixed_asset
+      summary: Sell fixed asset
+      description: Sell the fixed asset.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/sell-fixed-asset-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/sell-fixed-asset-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.fixedasset.CREATE
+    parameters:
+      - name: fixed_asset_id
+        in: path
+        required: true
+        description: Unique identifier of the fixed asset.
+        schema:
+          type: string
+        example: '3640355000000319008'
+      - $ref: '#/components/parameters/organization_id'
+  /fixedassets/{fixed_asset_id}/comments:
+    x-mcp-group:
+      - Fixed Assets
+    post:
+      tags:
+        - fixed-assets
+      operationId: create_fixed_asset_comment
+      summary: Add a comment
+      description: Add a comment to the fixed asset.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/add-comment-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/add-comment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.fixedasset.CREATE
+    parameters:
+      - name: fixed_asset_id
+        in: path
+        required: true
+        description: Unique identifier of the fixed asset.
+        schema:
+          type: string
+        example: '3640355000000319008'
+      - $ref: '#/components/parameters/organization_id'
+  /fixedassets/{fixed_asset_id}/comments/{comment_id}:
+    x-mcp-group:
+      - Fixed Assets
+    delete:
+      tags:
+        - fixed-assets
+      operationId: delete_fixed_asset_comment
+      summary: Delete a comment
+      description: Delete the comment of the fixed asset.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-comment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.fixedasset.DELETE
+    parameters:
+      - name: fixed_asset_id
+        in: path
+        required: true
+        description: Unique identifier of the fixed asset.
+        schema:
+          type: string
+        example: '3640355000000319008'
+      - name: comment_id
+        in: path
+        required: true
+        description: Unique identifier of the comment.
+        schema:
+          type: string
+        example: '3640355000000319013'
+      - $ref: '#/components/parameters/organization_id'
+  /fixedassettypes:
+    x-mcp-group:
+      - Fixed Assets
+    post:
+      tags:
+        - fixed-assets
+      operationId: create_fixed_asset_type
+      summary: Create a fixed asset type
+      description: Create a fixed asset type.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-fixed-asset-type-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-fixed-asset-type-response'
+      security:
+        - Zoho_Auth:
+            - ERP.fixedasset.CREATE
+    get:
+      tags:
+        - fixed-assets
+      operationId: get_fixed_asset_type_list
+      summary: Get fixed asset type list
+      description: fixed asset type list.
+      parameters:
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-fixed-asset-type-list-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.fixedasset.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /fixedassettypes/{fixed_asset_type_id}:
+    x-mcp-group:
+      - Fixed Assets
+    put:
+      tags:
+        - fixed-assets
+      operationId: update_fixed_asset_type
+      summary: Update a fixed asset type
+      description: Updates the fixed asset type with given information.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-fixed-asset-type-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-fixed-asset-type-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.fixedasset.UPDATE
+    delete:
+      tags:
+        - fixed-assets
+      operationId: delete_fixed_asset_type
+      summary: Delete a fixed asset type
+      description: Deletes the given fixed asset type.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-fixed-asset-type-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.fixedasset.DELETE
+    parameters:
+      - name: fixed_asset_type_id
+        in: path
+        required: true
+        description: Unique identifier of the fixed asset type.
+        schema:
+          type: string
+        example: '3640355000000319008'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+    fixed_asset_id:
+      name: fixed_asset_id
+      description: ID of the fixed asset.
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '3640355000000319008'
+  schemas:
+    asset_name:
+      description: Enter the name of the fixed asset.
+      type: string
+      example: Laptop
+    fixed_asset_type_id:
+      description: Associate the fixed asset with a fixed asset type by specifying fixed asset type id.
+      type: string
+      example: '3640355000000319008'
+    asset_account_id:
+      description: Enter the account id to track the fixed asset.
+      type: string
+      example: '3640355000000000367'
+    expense_account_id:
+      description: Enter the account id to track the expenses associated with the asset's depreciation. The available account types are <b>Expense</b>  and <b>Other Expense</b>
+      type: string
+      example: '3640355000000000421'
+    depreciation_account_id:
+      description: Enter the account id to track the asset's depreciation over time.
+      type: string
+      example: '3640355000000000367'
+    depreciation_method:
+      description: 'Enter the depreciation method for your asset. The available methods are: <code>declining_method</code> and <code>straight_line</code>. <br/><b>For US and GLobal Edition:</b> <code>declining_method</code>, <code>straight_line</code>, <code>200_declining_method</code> and <code>150_declining_method</code>'
+      type: string
+      example: declining_method
+    depreciation_frequency:
+      description: 'Enter the frequency of depreciation. The available frequencies are: <code>yearly</code> and <code>monthly</code>'
+      type: string
+      example: yearly
+    depreciation_percentage:
+      description: Enter the depreciation percentage only if the entered depreciation method is a declining method. The entered percentage should be within the range of 0 to 100.
+      type: number
+      format: double
+      example: 12
+    total_life:
+      description: Enter the total life of the asset (in months)
+      type: number
+      example: 60
+    salvage_value:
+      description: Enter the remaining amount of the asset after its useful life or the value after it's fully depreciated.
+      type: string
+      format: double
+      example: 100
+    depreciation_start_date:
+      description: Enter the depreciation start date of the asset.
+      type: string
+      example: '2024-12-17'
+    description:
+      description: Description of the asset.
+      type: string
+    asset_cost:
+      description: Enter the purchase cost of the asset.
+      type: number
+      format: double
+      example: 1000
+    computation_type:
+      description: 'Enter the computation types of assets. The available types are: <code>prorata_basis</code> and <code>no_prorata</code>'
+      type: string
+      example: prorata_basis
+    warranty_expiry_date:
+      description: Enter the warranty expiration date of the asset.
+      type: string
+      example: '2027-12-17'
+    asset_purchase_date:
+      description: Enter the Purchase date of the asset.
+      type: string
+      example: '2024-12-17'
+    serial_no:
+      description: serial number of the asset.
+      type: string
+      example: SN-0001
+    dep_start_value:
+      description: Enter the value from which depreciation will be calculated.
+      type: number
+      format: double
+      example: 1000
+    notes:
+      description: Provide notes for the asset, if required.
+      type: string
+      example: This is a laptop Model 2024
+    value:
+      description: Value of the Custom Field.
+      type: string
+      example: Normal
+    label:
+      description: Label of the Custom Field.
+      type: string
+    customfield_id:
+      description: ID of the Custom Field.
+      type: string
+      example: '460000000098001'
+    custom_fields:
+      description: Custom fields for the fixed asset.
+      type: array
+      items:
+        type: object
+        properties:
+          customfield_id:
+            $ref: '#/components/schemas/customfield_id'
+          value:
+            $ref: '#/components/schemas/value'
+    fixed_asset_id:
+      description: ID of the fixed asset.
+      type: string
+      example: '3640355000000319008'
+    status:
+      description: Status of the fixed asset.
+      type: string
+      example: draft
+    asset_number:
+      description: Number of the fixed asset.
+      type: string
+      example: FA-00013
+    asset_number_prefix:
+      description: Prefix of the asset number.
+      type: string
+      example: FA-
+    asset_number_suffix:
+      description: Suffix of the asset number.
+      type: integer
+      example: 13
+    fixed_asset_type_name:
+      description: Enter the name of fixed asset type.
+      type: string
+      example: Machines
+    current_asset_value:
+      description: Current value of the fixed asset.
+      type: number
+      example: 1000
+    accumulated_dep_value:
+      description: Accumulated depreciation value of the fixed asset.
+      type: number
+      example: 0
+    last_depreciation_date:
+      description: Last depreciation date of the fixed asset.
+      type: string
+      example: ''
+    asset_account_name:
+      description: Name of the asset account.
+      type: string
+      example: Furniture and Equipment
+    expense_account_name:
+      description: Name of the expense account.
+      type: string
+      example: Telephone Expense
+    depreciation_account_name:
+      description: Name of the depreciation account.
+      type: string
+      example: Furniture and Equipment
+    associated_transactions:
+      description: Associated transactions of the fixed asset.
+      type: array
+      items:
+        type: object
+    comment_id:
+      description: ID of the comment.
+      type: string
+      example: '3640355000000319013'
+    commented_by_id:
+      description: ID of the person who commented.
+      type: string
+      example: '3640355000000075001'
+    commented_by:
+      description: Name of the person who commented.
+      type: string
+      example: Zoho ERP
+    comment_type:
+      description: Type of the comment.
+      type: string
+      example: system
+    date:
+      description: Date of the comment.
+      type: string
+      example: '2024-12-17'
+    date_description:
+      description: Description of the date.
+      type: string
+      example: few seconds ago
+    time:
+      description: Time of the comment.
+      type: string
+      example: 11:34 AM
+    operation_type:
+      description: Type of Operation that caused the comment.
+      type: string
+      example: Added
+    valuation_id:
+      description: ID of the valuation.
+      type: string
+      example: '3640355000000319008'
+    valuation_date:
+      description: Date of the valuation.
+      type: string
+      example: '2024-06-30'
+    depreciated_value:
+      description: Depreciated value of the fixed asset.
+      type: number
+      example: 91.65
+    current_value:
+      description: Current value of the fixed asset.
+      type: number
+      example: 824.78
+    accumulated_value:
+      description: Accumulated value of the fixed asset.
+      type: number
+      example: 175.22
+    type:
+      description: Type of this entry.
+      type: string
+      example: depreciation
+    is_journal_posted:
+      description: Whether the journal is posted or not.
+      type: boolean
+      example: true
+    page:
+      type: integer
+      example: 1
+    per_page:
+      type: integer
+      example: 10
+    has_more_page:
+      type: boolean
+      example: false
+    sort_column:
+      type: string
+      example: asset_name
+    sort_order:
+      type: string
+      example: A
+    invoice_id:
+      type: string
+      description: ID of the invoice.
+      example: '3640355000000319008'
+    line_item_id:
+      type: string
+      description: Enter the line item id that is associated with the fixed asset account.
+      example: '3640355000000319008'
+    page_context:
+      type: object
+      properties:
+        page:
+          $ref: '#/components/schemas/page'
+        per_page:
+          $ref: '#/components/schemas/per_page'
+        has_more_page:
+          $ref: '#/components/schemas/has_more_page'
+    comments:
+      type: array
+      items:
+        type: object
+        properties:
+          comment_id:
+            $ref: '#/components/schemas/comment_id'
+          description:
+            $ref: '#/components/schemas/description'
+          commented_by_id:
+            $ref: '#/components/schemas/commented_by_id'
+          commented_by:
+            $ref: '#/components/schemas/commented_by'
+          comment_type:
+            $ref: '#/components/schemas/comment_type'
+          date:
+            $ref: '#/components/schemas/date'
+          date_description:
+            $ref: '#/components/schemas/date_description'
+          time:
+            $ref: '#/components/schemas/time'
+          operation_type:
+            $ref: '#/components/schemas/operation_type'
+    fixed_asset:
+      type: object
+      properties:
+        fixed_asset_id:
+          $ref: '#/components/schemas/fixed_asset_id'
+        asset_name:
+          $ref: '#/components/schemas/asset_name'
+        status:
+          $ref: '#/components/schemas/status'
+        asset_number:
+          $ref: '#/components/schemas/asset_number'
+        asset_number_prefix:
+          $ref: '#/components/schemas/asset_number_prefix'
+        asset_number_suffix:
+          $ref: '#/components/schemas/asset_number_suffix'
+        description:
+          $ref: '#/components/schemas/description'
+        total_life:
+          $ref: '#/components/schemas/total_life'
+        fixed_asset_type_id:
+          $ref: '#/components/schemas/fixed_asset_type_id'
+        fixed_asset_type_name:
+          $ref: '#/components/schemas/fixed_asset_type_name'
+        depreciation_method:
+          $ref: '#/components/schemas/depreciation_method'
+        depreciation_percentage:
+          $ref: '#/components/schemas/depreciation_percentage'
+        depreciation_frequency:
+          $ref: '#/components/schemas/depreciation_frequency'
+        asset_cost:
+          $ref: '#/components/schemas/asset_cost'
+        dep_start_value:
+          $ref: '#/components/schemas/dep_start_value'
+        salvage_value:
+          $ref: '#/components/schemas/salvage_value'
+        asset_purchase_date:
+          $ref: '#/components/schemas/asset_purchase_date'
+        current_asset_value:
+          $ref: '#/components/schemas/current_asset_value'
+        accumulated_dep_value:
+          $ref: '#/components/schemas/accumulated_dep_value'
+        serial_no:
+          $ref: '#/components/schemas/serial_no'
+        depreciation_start_date:
+          $ref: '#/components/schemas/depreciation_start_date'
+        last_depreciation_date:
+          $ref: '#/components/schemas/last_depreciation_date'
+        asset_account_id:
+          $ref: '#/components/schemas/asset_account_id'
+        asset_account_name:
+          $ref: '#/components/schemas/asset_account_name'
+        expense_account_id:
+          $ref: '#/components/schemas/expense_account_id'
+        expense_account_name:
+          $ref: '#/components/schemas/expense_account_name'
+        depreciation_account_id:
+          $ref: '#/components/schemas/depreciation_account_id'
+        depreciation_account_name:
+          $ref: '#/components/schemas/depreciation_account_name'
+        computation_type:
+          $ref: '#/components/schemas/computation_type'
+        warranty_expiry_date:
+          $ref: '#/components/schemas/warranty_expiry_date'
+        notes:
+          $ref: '#/components/schemas/notes'
+        tags:
+          $ref: '#/components/schemas/tags_response'
+        associated_transactions:
+          $ref: '#/components/schemas/associated_transactions'
+        comments:
+          $ref: '#/components/schemas/comments'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+    asset_history:
+      type: array
+      items:
+        type: object
+        properties:
+          valuation_id:
+            $ref: '#/components/schemas/valuation_id'
+          description:
+            $ref: '#/components/schemas/description'
+          valuation_date:
+            $ref: '#/components/schemas/valuation_date'
+          depreciated_value:
+            $ref: '#/components/schemas/depreciated_value'
+          current_value:
+            $ref: '#/components/schemas/current_value'
+          accumulated_value:
+            $ref: '#/components/schemas/accumulated_value'
+          type:
+            $ref: '#/components/schemas/type'
+          is_journal_posted:
+            $ref: '#/components/schemas/is_journal_posted'
+    asset_forcast:
+      type: array
+      items:
+        type: object
+        properties:
+          valuation_date:
+            $ref: '#/components/schemas/valuation_date'
+          depreciated_value:
+            $ref: '#/components/schemas/depreciated_value'
+          current_value:
+            $ref: '#/components/schemas/current_value'
+          accumulated_value:
+            $ref: '#/components/schemas/accumulated_value'
+    fixed_asset_type_param:
+      type: object
+      properties:
+        fixed_asset_type_name:
+          $ref: '#/components/schemas/fixed_asset_type_name'
+        expense_account_id:
+          $ref: '#/components/schemas/expense_account_id'
+        depreciation_account_id:
+          $ref: '#/components/schemas/depreciation_account_id'
+        depreciation_method:
+          $ref: '#/components/schemas/depreciation_method'
+        depreciation_frequency:
+          $ref: '#/components/schemas/depreciation_frequency'
+        depreciation_percentage:
+          $ref: '#/components/schemas/depreciation_percentage'
+        total_life:
+          $ref: '#/components/schemas/total_life'
+        computation_type:
+          $ref: '#/components/schemas/computation_type'
+    fixed_asset_type:
+      type: object
+      properties:
+        fixed_asset_type_id:
+          $ref: '#/components/schemas/fixed_asset_type_id'
+        fixed_asset_type_name:
+          $ref: '#/components/schemas/fixed_asset_type_name'
+        expense_account_id:
+          $ref: '#/components/schemas/expense_account_id'
+        expense_account_name:
+          $ref: '#/components/schemas/expense_account_name'
+        depreciation_account_id:
+          $ref: '#/components/schemas/depreciation_account_id'
+        depreciation_account_name:
+          $ref: '#/components/schemas/depreciation_account_name'
+        depreciation_method:
+          $ref: '#/components/schemas/depreciation_method'
+        depreciation_percentage:
+          $ref: '#/components/schemas/depreciation_percentage'
+        total_life:
+          $ref: '#/components/schemas/total_life'
+        depreciation_frequency:
+          $ref: '#/components/schemas/depreciation_frequency'
+        computation_type:
+          $ref: '#/components/schemas/computation_type'
+    create-a-fixed-asset-request:
+      type: object
+      required:
+        - asset_name
+        - fixed_asset_type_id
+        - asset_account_id
+        - asset_cost
+        - asset_purchase_date
+      properties:
+        asset_name:
+          $ref: '#/components/schemas/asset_name'
+        fixed_asset_type_id:
+          $ref: '#/components/schemas/fixed_asset_type_id'
+        asset_account_id:
+          $ref: '#/components/schemas/asset_account_id'
+        expense_account_id:
+          $ref: '#/components/schemas/expense_account_id'
+        depreciation_account_id:
+          $ref: '#/components/schemas/depreciation_account_id'
+        depreciation_method:
+          $ref: '#/components/schemas/depreciation_method'
+        depreciation_frequency:
+          $ref: '#/components/schemas/depreciation_frequency'
+        depreciation_percentage:
+          $ref: '#/components/schemas/depreciation_percentage'
+        total_life:
+          $ref: '#/components/schemas/total_life'
+        salvage_value:
+          $ref: '#/components/schemas/salvage_value'
+        depreciation_start_date:
+          $ref: '#/components/schemas/depreciation_start_date'
+        description:
+          $ref: '#/components/schemas/description'
+        asset_cost:
+          $ref: '#/components/schemas/asset_cost'
+        computation_type:
+          $ref: '#/components/schemas/computation_type'
+        warranty_expiry_date:
+          $ref: '#/components/schemas/warranty_expiry_date'
+        asset_purchase_date:
+          $ref: '#/components/schemas/asset_purchase_date'
+        serial_no:
+          $ref: '#/components/schemas/serial_no'
+        dep_start_value:
+          $ref: '#/components/schemas/dep_start_value'
+        notes:
+          $ref: '#/components/schemas/notes'
+        tags:
+          $ref: '#/components/schemas/tags'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+    create-a-fixed-asset-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The fixed asset has been created.
+          readOnly: true
+        fixed_asset:
+          $ref: '#/components/schemas/fixed_asset'
+    get-fixed-asset-list-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        fixedassets:
+          type: array
+          items:
+            type: object
+            properties:
+              fixed_asset_id:
+                $ref: '#/components/schemas/fixed_asset_id'
+              asset_number:
+                $ref: '#/components/schemas/asset_number'
+              asset_name:
+                $ref: '#/components/schemas/asset_name'
+              status:
+                $ref: '#/components/schemas/status'
+              current_asset_value:
+                $ref: '#/components/schemas/current_asset_value'
+              asset_cost:
+                $ref: '#/components/schemas/asset_cost'
+              fixed_asset_type_name:
+                $ref: '#/components/schemas/fixed_asset_type_name'
+    update-a-fixed-asset-request:
+      type: object
+      required:
+        - asset_name
+        - fixed_asset_type_id
+        - asset_account_id
+        - asset_cost
+        - asset_purchase_date
+      properties:
+        asset_name:
+          $ref: '#/components/schemas/asset_name'
+        fixed_asset_type_id:
+          $ref: '#/components/schemas/fixed_asset_type_id'
+        asset_account_id:
+          $ref: '#/components/schemas/asset_account_id'
+        expense_account_id:
+          $ref: '#/components/schemas/expense_account_id'
+        depreciation_account_id:
+          $ref: '#/components/schemas/depreciation_account_id'
+        depreciation_method:
+          $ref: '#/components/schemas/depreciation_method'
+        depreciation_frequency:
+          $ref: '#/components/schemas/depreciation_frequency'
+        depreciation_percentage:
+          $ref: '#/components/schemas/depreciation_percentage'
+        total_life:
+          $ref: '#/components/schemas/total_life'
+        salvage_value:
+          $ref: '#/components/schemas/salvage_value'
+        depreciation_start_date:
+          $ref: '#/components/schemas/depreciation_start_date'
+        description:
+          $ref: '#/components/schemas/description'
+        asset_cost:
+          $ref: '#/components/schemas/asset_cost'
+        computation_type:
+          $ref: '#/components/schemas/computation_type'
+        warranty_expiry_date:
+          $ref: '#/components/schemas/warranty_expiry_date'
+        asset_purchase_date:
+          $ref: '#/components/schemas/asset_purchase_date'
+        serial_no:
+          $ref: '#/components/schemas/serial_no'
+        dep_start_value:
+          $ref: '#/components/schemas/dep_start_value'
+        notes:
+          $ref: '#/components/schemas/notes'
+        tags:
+          $ref: '#/components/schemas/tags'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+    update-a-fixed-asset-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The fixed asset has been updated.
+          readOnly: true
+        fixed_asset:
+          $ref: '#/components/schemas/fixed_asset'
+    get-fixed-asset-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        fissed-asset:
+          $ref: '#/components/schemas/fixed_asset'
+    delete-a-fixed-asset-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The selected fixed asset has been deleted.
+          readOnly: true
+    get-fixed-asset-history-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        asset_history:
+          $ref: '#/components/schemas/asset_history'
+        page_context:
+          $ref: '#/components/schemas/page_context'
+    get-fixed-asset-forecast-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        data:
+          $ref: '#/components/schemas/asset_forcast'
+    update-fixed-asset-status:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Fixed asset's status changed
+          readOnly: true
+    write-off-fixed-asset-request:
+      required:
+        - date
+        - expense_account_id
+        - reason
+      type: object
+      properties:
+        date:
+          type: string
+          description: Enter the date on which the fixed asset is written off.
+          example: '2024-12-17'
+        expense_account_id:
+          type: string
+          description: Enter an account id to track the expenses associated with the written-off fixed asset.
+          example: '3640355000000000421'
+        reason:
+          type: string
+          description: Enter the reason for writing off the fixed asset.
+          example: Asset is damaged
+    write-off-fixed-asset-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Fixed asset has been written off
+          readOnly: true
+    sell-fixed-asset-request:
+      required:
+        - invoice_id
+        - line_item_id
+        - reason
+        - expense_account_id
+      type: object
+      properties:
+        expense_account_id:
+          $ref: '#/components/schemas/expense_account_id'
+        invoice_id:
+          type: string
+          description: Enter the invoice id associated with selling the fixed asset.
+          example: '3640355000000319008'
+        line_item_id:
+          $ref: '#/components/schemas/line_item_id'
+        reason:
+          type: string
+          description: Enter the reason for selling the fixed asset.
+          example: Asset is no longer required
+    sell-fixed-asset-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Fixed asset has been sold
+          readOnly: true
+    add-comment-request:
+      type: object
+      properties:
+        description:
+          type: string
+          description: It displays the description of the comment added for the fixed asset.
+          example: Fixed asset is in good condition
+    add-comment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Comment has been added
+          readOnly: true
+        comment:
+          type: object
+          properties:
+            comment_id:
+              $ref: '#/components/schemas/comment_id'
+            description:
+              $ref: '#/components/schemas/description'
+            commented_by_id:
+              $ref: '#/components/schemas/commented_by_id'
+            commented_by:
+              $ref: '#/components/schemas/commented_by'
+            comment_type:
+              $ref: '#/components/schemas/comment_type'
+            date:
+              $ref: '#/components/schemas/date'
+            date_description:
+              $ref: '#/components/schemas/date_description'
+            time:
+              $ref: '#/components/schemas/time'
+            operation_type:
+              $ref: '#/components/schemas/operation_type'
+    delete-comment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Fixed asset comment has been deleted
+          readOnly: true
+    create-a-fixed-asset-type-request:
+      required:
+        - fixed_asset_type_name
+        - expense_account_id
+        - depreciation_account_id
+        - depreciation_method
+        - depreciation_frequency
+        - depreciation_percentage
+        - total_life
+        - computation_type
+      type: object
+      properties:
+        fixed_asset_type_name:
+          $ref: '#/components/schemas/fixed_asset_type_name'
+        expense_account_id:
+          $ref: '#/components/schemas/expense_account_id'
+        depreciation_account_id:
+          $ref: '#/components/schemas/depreciation_account_id'
+        depreciation_method:
+          $ref: '#/components/schemas/depreciation_method'
+        depreciation_frequency:
+          $ref: '#/components/schemas/depreciation_frequency'
+        depreciation_percentage:
+          $ref: '#/components/schemas/depreciation_percentage'
+        total_life:
+          $ref: '#/components/schemas/total_life'
+        computation_type:
+          $ref: '#/components/schemas/computation_type'
+    create-a-fixed-asset-type-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The fixed asset type has been created.
+          readOnly: true
+        fixed_asset_type:
+          $ref: '#/components/schemas/fixed_asset_type'
+    get-fixed-asset-type-list-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        fixed_asset_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/fixed_asset_type'
+    update-a-fixed-asset-type-request:
+      required:
+        - fixed_asset_type_name
+        - expense_account_id
+        - depreciation_account_id
+        - depreciation_method
+        - depreciation_frequency
+        - depreciation_percentage
+        - total_life
+        - computation_type
+      type: object
+      properties:
+        fixed_asset_type_name:
+          $ref: '#/components/schemas/fixed_asset_type_name'
+        expense_account_id:
+          $ref: '#/components/schemas/expense_account_id'
+        depreciation_account_id:
+          $ref: '#/components/schemas/depreciation_account_id'
+        depreciation_method:
+          $ref: '#/components/schemas/depreciation_method'
+        depreciation_frequency:
+          $ref: '#/components/schemas/depreciation_frequency'
+        depreciation_percentage:
+          $ref: '#/components/schemas/depreciation_percentage'
+        total_life:
+          $ref: '#/components/schemas/total_life'
+        computation_type:
+          $ref: '#/components/schemas/computation_type'
+    update-a-fixed-asset-type-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The fixed asset type has been update.
+          readOnly: true
+        fixed_asset_type:
+          $ref: '#/components/schemas/fixed_asset_type'
+    delete-a-fixed-asset-type-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The selected fixed asset type has been deleted.
+          readOnly: true
+    tag_id:
+      description: ID of the tag.
+      type: string
+      example: '460000000000567'
+    tag_name:
+      description: Name of the tag.
+      type: string
+      example: Business Unit
+    tag_option_id:
+      description: ID of the tag option.
+      type: string
+      example: '460000000014044'
+    tag_option_name:
+      description: Name of the tag option.
+      type: string
+      example: Sales
+    is_tag_mandatory:
+      description: Used to check if the tag is mandatory.
+      type: boolean
+      example: false
+    tags:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+    tags_response:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_name:
+            $ref: '#/components/schemas/tag_name'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+          tag_option_name:
+            $ref: '#/components/schemas/tag_option_name'
+          is_tag_mandatory:
+            $ref: '#/components/schemas/is_tag_mandatory'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.fixedasset.CREATE: Create Accountants
+            ERP.fixedasset.UPDATE: Update Accountants
+            ERP.fixedasset.READ: Read Accountants
+            ERP.fixedasset.DELETE: Delete Accountants

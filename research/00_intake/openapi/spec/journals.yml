@@ -1,0 +1,2165 @@
+openapi: 3.0.0
+info:
+  title: Journals
+  description: Journals are used by accountants to work directly with the general ledger to create both debit and credit entries for unique financial transactions.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: journals
+    description: Journals Module
+paths:
+  /journals:
+    x-mcp-group:
+      - Journals
+    post:
+      tags:
+        - journals
+      operationId: create_journal
+      summary: Create a journal
+      description: Create a journal.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-journal-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    get:
+      tags:
+        - journals
+      operationId: list_journals
+      summary: Get journal list
+      description: Get journal list.
+      parameters:
+        - name: entry_number
+          in: query
+          description: 'Search journals by journal entry number. Variants: <code>entry_number_startswith</code> and <code>entry_number_contains</code>'
+          required: false
+          schema:
+            type: string
+          example: '1'
+        - name: reference_number
+          in: query
+          description: 'Search journals by journal reference number. Variants: <code>reference_number_startswith</code> and <code>reference_number_contains</code>'
+          required: false
+          schema:
+            type: string
+          example: '7355'
+        - name: date
+          in: query
+          description: 'Search journals by journal date. Variants: <code>date_start</code>, <code>date_end</code>, <code>date_before and</code> <code>date_after</code>'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: notes
+          in: query
+          description: 'Search journals by journal notes. Variants: <code>notes_startswith</code> and <code>notes_contains</code>'
+          required: false
+          schema:
+            type: string
+          example: Loan repayment
+        - name: last_modified_time
+          in: query
+          description: Search the journals using Last Modified Time
+          required: false
+          schema:
+            type: string
+          example: 2013-09-05T17:13:31+0530
+        - name: total
+          in: query
+          description: 'Search journals by journal total. Variants: <code>total_less_than</code>, <code>total_less_equals</code>, <code>total_greater_than</code> and <code>total_greater_equals</code>'
+          required: false
+          schema:
+            type: number
+            format: double
+          example: 5000
+        - name: customer_id
+          in: query
+          description: Search Journals using Customer ID
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: vendor_id
+          in: query
+          description: Search the journals using Vendor ID
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: filter_by
+          in: query
+          description: 'Filter journals by journal date. Allowed Values: <code>JournalDate.All</code>, <code>JournalDate.Today</code>, <code>JournalDate.ThisWeek</code>, <code>JournalDate.ThisMonth</code>, <code>JournalDate.ThisQuarter</code> and <code>JournalDate.ThisYear</code>'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: sort_column
+          in: query
+          description: 'Sort journal list. Allowed Values: <code>journal_date</code>, <code>entry_number</code>, <code>reference_number</code>, <code>total</code> and <code>last_modified_time</code>.'
+          required: false
+          schema:
+            type: string
+          example: journal_date
+        - name: status
+          in: query
+          description: 'Filter journals by status. Allowed Values: <code>draft</code>, <code>published</code>, <code>approved</code>, <code>submitted</code> and <code>rejected</code>.'
+          required: false
+          schema:
+            type: string
+        - name: journal_type
+          in: query
+          description: Filter journals by journal type.
+          required: false
+          schema:
+            type: string
+        - name: account_id
+          in: query
+          description: Filter journals by account ID.
+          required: false
+          schema:
+            type: string
+        - name: account_code
+          in: query
+          description: Search journals by account code.
+          required: false
+          schema:
+            type: string
+        - name: customview_id
+          in: query
+          description: ID of the custom view.
+          required: false
+          schema:
+            type: string
+        - name: journal_ids
+          in: query
+          description: Comma separated journal IDs. Maximum of 200.
+          required: false
+          schema:
+            type: string
+        - name: currency
+          in: query
+          description: Filter by currency ID.
+          required: false
+          schema:
+            type: string
+        - name: tax_id
+          in: query
+          description: Filter by tax ID.
+          required: false
+          schema:
+            type: string
+        - name: tax_exemption_id
+          in: query
+          description: Filter by tax exemption ID.
+          required: false
+          schema:
+            type: string
+        - name: tax_authority_id
+          in: query
+          description: Filter by tax authority ID.
+          required: false
+          schema:
+            type: string
+        - name: search_text
+          in: query
+          description: Search journals by text.
+          required: false
+          schema:
+            type: string
+        - name: branch_ids
+          in: query
+          description: Comma separated branch IDs. Maximum of 200.
+          required: false
+          schema:
+            type: string
+        - name: location_ids
+          in: query
+          description: Comma separated location IDs. Maximum of 200.
+          required: false
+          schema:
+            type: string
+        - name: project_id
+          in: query
+          description: Filter by project ID.
+          required: false
+          schema:
+            type: string
+        - name: journal_entity_type
+          in: query
+          description: 'Filter by journal entity type. Allowed Values: <code>journal</code>, <code>period_end_journal</code>, <code>consolidation_journal</code>, <code>consolidation_adjustment_journal</code>, <code>elimination_journal</code> and <code>intercompany_journal</code>.'
+          required: false
+          schema:
+            type: string
+        - name: period_closure_id
+          in: query
+          description: Filter by period closure ID.
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page.
+          required: false
+          schema:
+            type: integer
+            default: 10
+          example: 10
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-journal-list-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /journals/{journal_id}:
+    x-mcp-group:
+      - Journals
+    put:
+      tags:
+        - journals
+      operationId: update_journal
+      summary: Update a journal
+      description: Updates the journal with given information.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-journal-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.UPDATE
+    get:
+      tags:
+        - journals
+      operationId: get_journal
+      summary: Get journal
+      description: Get the details of the journal.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    delete:
+      tags:
+        - journals
+      operationId: delete_journal
+      summary: Delete a journal
+      description: Deletes the given journal.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.DELETE
+    parameters:
+      - name: journal_id
+        in: path
+        required: true
+        description: Unique identifier of the journal.
+        schema:
+          type: string
+        example: '460000000038001'
+      - $ref: '#/components/parameters/organization_id'
+  /journals/{journal_id}/status/publish:
+    x-mcp-group:
+      - Journals
+    post:
+      tags:
+        - journals
+      operationId: mark_journal_published
+      summary: Mark a journal as published
+      description: Mark a draft journal as published.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-a-journal-as-published-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    parameters:
+      - name: journal_id
+        in: path
+        required: true
+        description: Unique identifier of the journal.
+        schema:
+          type: string
+        example: '460000000038001'
+      - $ref: '#/components/parameters/organization_id'
+  /journals/{journal_id}/attachment:
+    x-mcp-group:
+      - Journals
+    post:
+      tags:
+        - journals
+      operationId: add_journal_attachment
+      summary: Add attachment to a journal
+      description: Attach a file to a journal.
+      parameters:
+        - name: attachment
+          in: query
+          description: The file that is to be added as an Attachment in the Journal
+          required: false
+          schema:
+            type: string
+            format: binary
+          example: ''
+        - name: doc
+          in: query
+          description: Document that is to be attached
+          required: false
+          schema:
+            type: string
+            format: binary
+          example: ''
+        - name: totalFiles
+          in: query
+          description: Total number of files.
+          required: false
+          schema:
+            type: integer
+          example: 0
+        - name: document_ids
+          in: query
+          description: ID's of the document
+          required: false
+          schema:
+            type: string
+          example: ''
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/add-attachment-to-a-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    parameters:
+      - name: journal_id
+        in: path
+        required: true
+        description: Unique identifier of the journal.
+        schema:
+          type: string
+        example: '460000000038001'
+      - $ref: '#/components/parameters/organization_id'
+  /journals/{journal_id}/comments:
+    x-mcp-group:
+      - Journals
+    post:
+      tags:
+        - journals
+      operationId: add_journal_comment
+      summary: Add comment
+      description: Add a comment for a journal.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/add-comment-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/add-comment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    parameters:
+      - name: journal_id
+        in: path
+        required: true
+        description: Unique identifier of the journal.
+        schema:
+          type: string
+        example: '460000000038001'
+      - $ref: '#/components/parameters/organization_id'
+  /journals/{journal_id}/comments/{comment_id}:
+    x-mcp-group:
+      - Journals
+    delete:
+      tags:
+        - journals
+      operationId: delete_journal_comment
+      summary: Delete a comment
+      description: Delete a jounral comment.
+      parameters:
+        - name: comment_id
+          in: path
+          required: true
+          description: Unique identifier of the comment.
+          schema:
+            type: string
+          example: '460000000048023'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-comment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.DELETE
+    parameters:
+      - name: journal_id
+        in: path
+        required: true
+        description: Unique identifier of the journal.
+        schema:
+          type: string
+        example: '460000000038001'
+      - $ref: '#/components/parameters/organization_id'
+  /journals/{journal_id}/reverse:
+    x-mcp-group:
+      - Journals
+    post:
+      tags:
+        - journals
+      operationId: reverse_journal
+      summary: Reverse a journal
+      description: Reverses a journal entry.
+      parameters:
+        - name: reversal_date
+          in: query
+          description: Date on which the reversal needs to be recorded.
+          required: true
+          schema:
+            type: string
+          example: '2013-10-01'
+        - name: is_reversal_scheduled
+          in: query
+          description: Whether the reversal is scheduled.
+          required: true
+          schema:
+            type: boolean
+          example: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/reverse-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    parameters:
+      - name: journal_id
+        in: path
+        required: true
+        description: Unique identifier of the journal.
+        schema:
+          type: string
+        example: '460000000038001'
+      - $ref: '#/components/parameters/organization_id'
+  /journals/{journal_id}/submit:
+    x-mcp-group:
+      - Journals
+    post:
+      tags:
+        - journals
+      operationId: submit_journal_for_approval
+      summary: Submit a journal for approval
+      description: Submits a journal for approval.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/action-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    parameters:
+      - name: journal_id
+        in: path
+        required: true
+        description: Unique identifier of the journal.
+        schema:
+          type: string
+        example: '460000000038001'
+      - $ref: '#/components/parameters/organization_id'
+  /journals/{journal_id}/approve:
+    x-mcp-group:
+      - Journals
+    post:
+      tags:
+        - journals
+      operationId: approve_journal
+      summary: Approve a journal
+      description: Approves a journal.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/action-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    parameters:
+      - name: journal_id
+        in: path
+        required: true
+        description: Unique identifier of the journal.
+        schema:
+          type: string
+        example: '460000000038001'
+      - $ref: '#/components/parameters/organization_id'
+  /journals/{journal_id}/reject:
+    x-mcp-group:
+      - Journals
+    post:
+      tags:
+        - journals
+      operationId: reject_journal
+      summary: Reject a journal
+      description: Rejects a journal.
+      parameters:
+        - name: reason
+          in: query
+          description: Reason for rejecting the journal. Max-length [500].
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/action-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    parameters:
+      - name: journal_id
+        in: path
+        required: true
+        description: Unique identifier of the journal.
+        schema:
+          type: string
+        example: '460000000038001'
+      - $ref: '#/components/parameters/organization_id'
+  /journals/{journal_id}/credits:
+    x-mcp-group:
+      - Journals
+    get:
+      tags:
+        - journals
+      operationId: list_journal_credits
+      summary: List available credits of a journal
+      description: Lists available credits of a journal.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-journal-credits-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    parameters:
+      - name: journal_id
+        in: path
+        required: true
+        description: Unique identifier of the journal.
+        schema:
+          type: string
+        example: '460000000038001'
+      - $ref: '#/components/parameters/organization_id'
+  /journals/{journal_id}/credits/{journal_line_id}/invoices:
+    x-mcp-group:
+      - Journals
+    post:
+      tags:
+        - journals
+      operationId: apply_journal_credits_to_invoices
+      summary: Apply journal credits to invoices
+      description: Applies available journal credits to invoices.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/apply-credits-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/action-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    parameters:
+      - name: journal_id
+        in: path
+        required: true
+        description: Unique identifier of the journal.
+        schema:
+          type: string
+        example: '460000000038001'
+      - name: journal_line_id
+        in: path
+        required: true
+        description: Unique identifier of the journal line item.
+        schema:
+          type: string
+        example: '460000000038005'
+      - $ref: '#/components/parameters/organization_id'
+  /journals/{journal_id}/credits/{journal_line_id}/bills:
+    x-mcp-group:
+      - Journals
+    post:
+      tags:
+        - journals
+      operationId: apply_journal_credits_to_bills
+      summary: Apply journal credits to bills
+      description: Applies available journal credits to bills.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/apply-credits-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/action-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    parameters:
+      - name: journal_id
+        in: path
+        required: true
+        description: Unique identifier of the journal.
+        schema:
+          type: string
+        example: '460000000038001'
+      - name: journal_line_id
+        in: path
+        required: true
+        description: Unique identifier of the journal line item.
+        schema:
+          type: string
+        example: '460000000038005'
+      - $ref: '#/components/parameters/organization_id'
+  /journals/{journal_id}/credits/{journal_line_id}/receivables:
+    x-mcp-group:
+      - Journals
+    delete:
+      tags:
+        - journals
+      operationId: delete_journal_credits_receivables
+      summary: Delete applied credits from receivables
+      description: Deletes applied journal credits from receivables.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/action-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.DELETE
+    parameters:
+      - name: journal_id
+        in: path
+        required: true
+        description: Unique identifier of the journal.
+        schema:
+          type: string
+        example: '460000000038001'
+      - name: journal_line_id
+        in: path
+        required: true
+        description: Unique identifier of the journal line item.
+        schema:
+          type: string
+        example: '460000000038005'
+      - $ref: '#/components/parameters/organization_id'
+  /journals/{journal_id}/credits/{journal_line_id}/payables:
+    x-mcp-group:
+      - Journals
+    delete:
+      tags:
+        - journals
+      operationId: delete_journal_credits_payables
+      summary: Delete applied credits from payables
+      description: Deletes applied journal credits from payables.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/action-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.DELETE
+    parameters:
+      - name: journal_id
+        in: path
+        required: true
+        description: Unique identifier of the journal.
+        schema:
+          type: string
+        example: '460000000038001'
+      - name: journal_line_id
+        in: path
+        required: true
+        description: Unique identifier of the journal line item.
+        schema:
+          type: string
+        example: '460000000038005'
+      - $ref: '#/components/parameters/organization_id'
+  /journals/submit:
+    x-mcp-group:
+      - Journals
+    post:
+      tags:
+        - journals
+      operationId: bulk_submit_journals
+      summary: Bulk submit journals for approval
+      description: Submits multiple journals for approval.
+      parameters:
+        - name: journal_ids
+          in: query
+          description: Comma separated journal IDs to be submitted. Maximum of 25.
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/action-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /journals/approve:
+    x-mcp-group:
+      - Journals
+    post:
+      tags:
+        - journals
+      operationId: bulk_approve_journals
+      summary: Bulk approve journals
+      description: Approves multiple journals.
+      parameters:
+        - name: journal_ids
+          in: query
+          description: Comma separated journal IDs to be approved. Maximum of 25.
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/action-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /journals/status/publish:
+    x-mcp-group:
+      - Journals
+    post:
+      tags:
+        - journals
+      operationId: bulk_publish_journals
+      summary: Bulk publish journals
+      description: Publishes multiple draft journals.
+      parameters:
+        - name: journal_ids
+          in: query
+          description: Comma separated journal IDs to be published. Maximum of 10.
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/action-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /journals/bulkdelete:
+    x-mcp-group:
+      - Journals
+    delete:
+      tags:
+        - journals
+      operationId: bulk_delete_journals
+      summary: Bulk delete journals
+      description: Deletes multiple journals.
+      parameters:
+        - name: journal_ids
+          in: query
+          description: Comma separated journal IDs to be deleted. Maximum of 200.
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.DELETE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /recurringjournals:
+    x-mcp-group:
+      - Journals
+    post:
+      tags:
+        - journals
+      operationId: create_recurring_journal
+      summary: Create a recurring journal
+      description: Creates a recurring journal.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-journal-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    get:
+      tags:
+        - journals
+      operationId: list_recurring_journals
+      summary: List recurring journals
+      description: Lists all recurring journals.
+      parameters:
+        - name: filter_by
+          in: query
+          description: 'Filter recurring journals by status. Allowed Values: <code>Status.All</code>, <code>Status.Active</code>, <code>Status.Stopped</code> and <code>Status.Expired</code>.'
+          required: false
+          schema:
+            type: string
+        - name: sort_column
+          in: query
+          description: 'Sort recurring journals. Allowed Values: <code>created_time</code>, <code>total</code> and <code>bcy_total</code>.'
+          required: false
+          schema:
+            type: string
+        - name: account_id
+          in: query
+          description: Filter by account ID.
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-recurring-journals-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /recurringjournals/{recurring_journal_id}:
+    x-mcp-group:
+      - Journals
+    get:
+      tags:
+        - journals
+      operationId: get_recurring_journal
+      summary: Get a recurring journal
+      description: Gets the details of a recurring journal.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    put:
+      tags:
+        - journals
+      operationId: update_recurring_journal
+      summary: Update a recurring journal
+      description: Updates an existing recurring journal.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-journal-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.UPDATE
+    delete:
+      tags:
+        - journals
+      operationId: delete_recurring_journal
+      summary: Delete a recurring journal
+      description: Deletes a recurring journal.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.DELETE
+    parameters:
+      - name: recurring_journal_id
+        in: path
+        required: true
+        description: Unique identifier of the recurring journal.
+        schema:
+          type: string
+        example: '460000000042001'
+      - $ref: '#/components/parameters/organization_id'
+  /recurringjournals/{recurring_journal_id}/status/resume:
+    x-mcp-group:
+      - Journals
+    post:
+      tags:
+        - journals
+      operationId: resume_recurring_journal
+      summary: Resume a recurring journal
+      description: Resumes a stopped recurring journal.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/action-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    parameters:
+      - name: recurring_journal_id
+        in: path
+        required: true
+        description: Unique identifier of the recurring journal.
+        schema:
+          type: string
+        example: '460000000042001'
+      - $ref: '#/components/parameters/organization_id'
+  /recurringjournals/{recurring_journal_id}/status/stop:
+    x-mcp-group:
+      - Journals
+    post:
+      tags:
+        - journals
+      operationId: stop_recurring_journal
+      summary: Stop a recurring journal
+      description: Stops an active recurring journal.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/action-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.CREATE
+    parameters:
+      - name: recurring_journal_id
+        in: path
+        required: true
+        description: Unique identifier of the recurring journal.
+        schema:
+          type: string
+        example: '460000000042001'
+      - $ref: '#/components/parameters/organization_id'
+  /recurringjournals/{recurring_journal_id}/journals:
+    x-mcp-group:
+      - Journals
+    get:
+      tags:
+        - journals
+      operationId: list_child_journals
+      summary: List child journals of a recurring journal
+      description: Lists all child journals created from a recurring journal.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-journal-list-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    parameters:
+      - name: recurring_journal_id
+        in: path
+        required: true
+        description: Unique identifier of the recurring journal.
+        schema:
+          type: string
+        example: '460000000042001'
+      - $ref: '#/components/parameters/organization_id'
+  /transactions/{transaction_id}/journals:
+    x-mcp-group:
+      - Journals
+    get:
+      tags:
+        - journals
+      operationId: get_transaction_journal_view
+      summary: Get journal view of a transaction
+      description: Gets the journal view of a transaction.
+      parameters:
+        - name: entity_type
+          in: query
+          description: 'Type of the transaction entity. Allowed Values: <code>journal</code>, <code>invoice</code>, <code>creditnote</code>, <code>expense</code>, <code>bill</code>, <code>vendor_credit</code>, <code>customer_payment</code>, <code>vendor_payment</code> and more.'
+          required: true
+          schema:
+            type: string
+        - name: report_basis
+          in: query
+          description: 'Basis for the report. Allowed Values: <code>cash</code> and <code>accrual</code>.'
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-journal-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    parameters:
+      - name: transaction_id
+        in: path
+        required: true
+        description: Unique identifier of the transaction.
+        schema:
+          type: string
+        example: '460000000050163'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/journal'
+    journal_date:
+      description: Date on which the journal to be recorded.
+      type: string
+      example: '2013-09-04'
+    reference_number:
+      description: Reference number for the journal.
+      type: string
+      example: '7355'
+    notes:
+      description: Notes for the journal.
+      type: string
+      example: Loan repayment
+    account_id:
+      description: ID of account for which journals to be recorded.
+      type: string
+      example: '460000000000361'
+    description:
+      description: Description that can be given at the line item level.
+      type: string
+    product_type:
+      description: 'Type of the journal. This denotes whether the journal is to be treated as goods or service. Allowed Values: <code> digital_service</code>, <code>goods</code> and <code>service</code>.'
+      type: string
+      x-node_available_in:
+        - uk
+      x-node_unavailable_in: []
+    tax_id:
+      description: ID of the tax.
+      type: string
+    amount:
+      description: Amount to be recorded for the journal.
+      type: number
+      format: double
+      example: 5000
+    tax_account:
+      description: Account for recording Tax
+      type: boolean
+    debit_or_credit:
+      description: 'Whether the accounts needs to be debited or credited. Allowed Values: <code>debit</code> and <code>credit</code>.'
+      type: string
+      example: credit
+    acquisition_vat_id:
+      description: (Optional) This is the ID of the tax applied in case this is an EU - goods journal and acquisition VAT needs to be reported.
+      type: string
+      x-node_available_in:
+        - uk
+      x-node_unavailable_in: []
+    reverse_charge_vat_id:
+      description: (Optional) This is the ID of the tax applied in case this is a non UK - service journal and reverse charge VAT needs to be reported.
+      type: string
+      x-node_available_in:
+        - uk
+      x-node_unavailable_in: []
+    journal_id:
+      description: ID of the Journal
+      type: string
+      example: '460000000038001'
+    entry_number:
+      description: Entry Number of the Journal
+      type: string
+      example: '1'
+    currency_id:
+      description: ID of the Currency Associated with the Journal
+      type: string
+      example: '460000000000097'
+    currency_code:
+      description: Code of the Currency Associated with the Journal
+      type: string
+      example: USD
+    currency_symbol:
+      description: Symbol of the Currency Associated with the Journal
+      type: string
+      example: $
+    line_item_total:
+      description: Total of the Line Item
+      type: number
+      format: double
+      example: 5000
+    total:
+      description: Total of the Journal
+      type: number
+      format: double
+      example: 5000
+    price_precision:
+      description: Price Precision for the Values
+      type: integer
+      example: 2
+    taxes:
+      type: array
+      items:
+        type: object
+        properties:
+          tax_name:
+            $ref: '#/components/schemas/tax_name'
+          tax_amount:
+            $ref: '#/components/schemas/tax_amount'
+          debit_or_credit:
+            $ref: '#/components/schemas/debit_or_credit'
+          tax_account:
+            $ref: '#/components/schemas/tax_account'
+    created_time:
+      description: Created Time of the Journal
+      type: string
+      example: 2013-09-04T09:40:07+0530
+    last_modified_time:
+      description: Last Modified Time of the Journal
+      type: string
+      example: 2013-09-05T17:13:31+0530
+    line_id:
+      description: ID of the Line
+      type: string
+      example: '460000000038005'
+    account_name:
+      description: Name of the Account
+      type: string
+      example: Petty Cash
+    tax_name:
+      description: Name of the Tax
+      type: string
+    tax_amount:
+      description: Amount of Tax
+      type: number
+      format: double
+    tax_type:
+      description: Type of the Tax
+      type: string
+      example: tax
+    tax_percentage:
+      description: Percentage of the Tax
+      type: string
+    journal_type:
+      description: 'Type of the Journal. Allowed values: <code> Cash </code> and  <code> Both </code>.'
+      type: string
+      example: both
+    customer_id:
+      description: ID of the Customer/Vendor
+      type: string
+    customer_name:
+      description: Name of the Customer/Vendor
+      type: string
+    acquisition_vat_name:
+      description: Name of the VAT Acquistion
+      type: string
+      x-node_available_in:
+        - uk
+        - eu
+      x-node_unavailable_in: []
+    acquisition_vat_percentage:
+      description: Percentage of the VAT Acquistion
+      type: string
+      x-node_available_in:
+        - uk
+        - eu
+      x-node_unavailable_in: []
+    acquisition_vat_amount:
+      description: Amount of the VAT Acquistion
+      type: string
+      x-node_available_in:
+        - uk
+        - eu
+      x-node_unavailable_in: []
+    reverse_charge_vat_name:
+      description: Name of the Reverse Charge
+      type: string
+      x-node_available_in:
+        - uk
+        - eu
+      x-node_unavailable_in: []
+    reverse_charge_vat_percentage:
+      description: Percentage of the Reverse Charge
+      type: string
+      x-node_available_in:
+        - uk
+        - eu
+      x-node_unavailable_in: []
+    reverse_charge_vat_amount:
+      description: Percentage of the Reverse Charge
+      type: string
+      x-node_available_in:
+        - uk
+        - eu
+      x-node_unavailable_in: []
+    tax_exemption_id:
+      description: ID of the Tax Exemption
+      type: string
+      x-node_available_in:
+        - in
+        - us
+        - au
+        - ca
+        - mx
+      x-node_unavailable_in: []
+    tax_exemption_type:
+      description: 'Type of the Tax Exemption. Allowed Values : <code>customer</code> and <code>item</code>'
+      type: string
+      x-node_available_in:
+        - in
+        - us
+        - au
+        - ca
+        - mx
+      x-node_unavailable_in: []
+    tax_exemption_code:
+      description: Code of the Tax Exemption
+      type: string
+      x-node_available_in:
+        - in
+        - us
+        - au
+        - ca
+      x-node_unavailable_in: []
+    tax_authority_id:
+      description: ID of the Tax Authority
+      type: string
+      x-node_available_in:
+        - us
+        - au
+        - ca
+        - mx
+      x-node_unavailable_in: []
+    tax_authority_name:
+      description: Name of the Tax Authority
+      type: string
+      x-node_available_in:
+        - us
+        - au
+        - ca
+      x-node_unavailable_in: []
+    vat_treatment:
+      description: (Optional) VAT treatment for the journals. VAT treatment denotes the location of the customer, if the customer resides in UK then the VAT treatment is <code>uk</code>. If the customer is in an EU country & VAT registered, you are resides in Northen Ireland and selling Goods then his VAT treatment is <code>eu_vat_registered</code>, if he resides outside of the UK then his VAT treatment is <code>overseas</code> (For Pre Brexit, this can be split as <code>eu_vat_registered</code>, <code>eu_vat_not_registered</code> and <code>non_eu</code>).
+      type: string
+      x-node_available_in:
+        - uk
+        - eu
+      x-node_unavailable_in: []
+    include_in_vat_return:
+      description: Check if Journal should be included in VAT Return
+      type: boolean
+      x-node_available_in:
+        - eu
+        - uk
+      x-node_unavailable_in: []
+    is_bas_adjustment:
+      description: Check if Journal is created for BAS Adjustment
+      type: boolean
+      x-node_available_in:
+        - au
+      x-node_unavailable_in: []
+    bcy_amount:
+      description: Amount in Base Currency
+      type: number
+      format: double
+      example: 100
+    status:
+      description: 'Search Journal by journal status. Allowed Values: <code>draft</code> and  <code>published</code>.'
+      type: string
+      example: draft
+    document_ids:
+      description: ID's of the document
+      type: string
+    attachment:
+      description: The file that is to be added as an Attachment in the Journal
+      type: string
+      format: binary
+    totalFiles:
+      description: Total number of files.
+      type: integer
+      example: 0
+    doc:
+      description: Document that is to be attached
+      type: string
+      format: binary
+    comment_id:
+      type: string
+      example: '460000000048023'
+    commented_by_id:
+      description: The ID of customer who caused the commented.
+      type: string
+      example: '460000000017003'
+    commented_by:
+      description: The name of User who caused the comment.
+      type: string
+      example: John
+    comment_type:
+      description: Type of the Comment
+      type: string
+      example: system
+    operation_type:
+      description: Type of Operation that caused the comment
+      type: string
+      example: Added
+    comment:
+      type: array
+      items:
+        type: object
+        properties:
+          comment_id:
+            $ref: '#/components/schemas/comment_id'
+          description:
+            $ref: '#/components/schemas/description'
+          commented_by_id:
+            $ref: '#/components/schemas/commented_by_id'
+          commented_by:
+            $ref: '#/components/schemas/commented_by'
+          comment_type:
+            $ref: '#/components/schemas/comment_type'
+          date:
+            $ref: '#/components/schemas/date'
+          operation_type:
+            $ref: '#/components/schemas/operation_type'
+    comments:
+      type: array
+      items:
+        type: object
+        properties:
+          comment:
+            $ref: '#/components/schemas/comment'
+    exchange_rate:
+      description: Exchange Rate between the Currencies
+      type: number
+      format: double
+      example: 1
+    bcy_total:
+      description: Total in Base Currency
+      type: number
+      format: double
+      example: 100
+    index:
+      description: Index of the Custom Field
+      type: integer
+      example: 1
+    value:
+      description: Value of the Custom Field
+      type: string
+      example: Normal
+    label:
+      description: Label of the Custom Field
+      type: string
+    customfield_id:
+      description: ID of the Custom Field
+      type: string
+      example: '460000000098001'
+    custom_fields:
+      description: Custom fields for the journal.
+      type: array
+      items:
+        type: object
+        properties:
+          customfield_id:
+            $ref: '#/components/schemas/customfield_id'
+          value:
+            $ref: '#/components/schemas/value'
+    project_id:
+      description: ID of the Project
+      type: string
+      example: '460000000898001'
+    project_name:
+      description: Name of the Project
+      type: string
+      example: Network Distribution
+    entity_type:
+      description: Name of the Entity
+      type: string
+      example: journal
+    page:
+      type: integer
+      example: 1
+    per_page:
+      type: integer
+      example: 10
+    has_more_page:
+      type: boolean
+      example: false
+    report_name:
+      type: string
+      example: Manual Journals
+    applied_filter:
+      type: string
+      example: JournalDate.All
+    sort_column:
+      description: 'Sort journal list. Allowed Values: <code>journal_date</code>, <code>entry_number</code>, <code>reference_number</code>, <code>total</code> and <code>last_modified_time</code>.'
+      type: string
+      example: journal_date
+    sort_order:
+      type: string
+      example: D
+    filter_by:
+      description: 'Filter journals by journal date. Allowed Values: <code>JournalDate.All</code>, <code>JournalDate.Today</code>, <code>JournalDate.ThisWeek</code>, <code>JournalDate.ThisMonth</code>, <code>JournalDate.ThisQuarter</code> and <code>JournalDate.ThisYear</code>'
+      type: string
+    vendor_id:
+      description: Search the journals using Vendor ID
+      type: string
+    location_id:
+      description: Location ID
+      type: string
+      example: '460000000038080'
+    location_name:
+      description: Name of the location.
+      type: string
+    line_items:
+      description: Line items for the journal.
+      type: array
+      items:
+        type: object
+        properties:
+          line_id:
+            $ref: '#/components/schemas/line_id'
+          account_id:
+            $ref: '#/components/schemas/account_id'
+          customer_id:
+            $ref: '#/components/schemas/customer_id'
+          customer_name:
+            $ref: '#/components/schemas/customer_name'
+          account_name:
+            $ref: '#/components/schemas/account_name'
+          description:
+            $ref: '#/components/schemas/description'
+          debit_or_credit:
+            $ref: '#/components/schemas/debit_or_credit'
+          tax_exemption_id:
+            $ref: '#/components/schemas/tax_exemption_id'
+          tax_exemption_type:
+            $ref: '#/components/schemas/tax_exemption_type'
+          tax_exemption_code:
+            $ref: '#/components/schemas/tax_exemption_code'
+          tax_authority_id:
+            $ref: '#/components/schemas/tax_authority_id'
+          tax_authority_name:
+            $ref: '#/components/schemas/tax_authority_name'
+          tax_id:
+            $ref: '#/components/schemas/tax_id'
+          tax_name:
+            $ref: '#/components/schemas/tax_name'
+          tax_type:
+            $ref: '#/components/schemas/tax_type'
+          tax_percentage:
+            $ref: '#/components/schemas/tax_percentage'
+          amount:
+            $ref: '#/components/schemas/amount'
+          bcy_amount:
+            $ref: '#/components/schemas/bcy_amount'
+          acquisition_vat_id:
+            $ref: '#/components/schemas/acquisition_vat_id'
+          acquisition_vat_name:
+            $ref: '#/components/schemas/acquisition_vat_name'
+          acquisition_vat_percentage:
+            $ref: '#/components/schemas/acquisition_vat_percentage'
+          acquisition_vat_amount:
+            $ref: '#/components/schemas/acquisition_vat_amount'
+          reverse_charge_vat_id:
+            $ref: '#/components/schemas/reverse_charge_vat_id'
+          reverse_charge_vat_name:
+            $ref: '#/components/schemas/reverse_charge_vat_name'
+          reverse_charge_vat_percentage:
+            $ref: '#/components/schemas/reverse_charge_vat_percentage'
+          reverse_charge_vat_amount:
+            $ref: '#/components/schemas/reverse_charge_vat_amount'
+          tags:
+            $ref: '#/components/schemas/tags'
+          location_id:
+            $ref: '#/components/schemas/location_id'
+          location_name:
+            $ref: '#/components/schemas/location_name'
+          project_id:
+            $ref: '#/components/schemas/project_id'
+          project_name:
+            $ref: '#/components/schemas/project_name'
+    journal:
+      type: object
+      properties:
+        journal_id:
+          $ref: '#/components/schemas/journal_id'
+        entry_number:
+          $ref: '#/components/schemas/entry_number'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        notes:
+          $ref: '#/components/schemas/notes'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        currency_code:
+          $ref: '#/components/schemas/currency_code'
+        currency_symbol:
+          $ref: '#/components/schemas/currency_symbol'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        journal_date:
+          $ref: '#/components/schemas/journal_date'
+        journal_type:
+          $ref: '#/components/schemas/journal_type'
+        vat_treatment:
+          $ref: '#/components/schemas/vat_treatment'
+        product_type:
+          $ref: '#/components/schemas/product_type'
+        include_in_vat_return:
+          $ref: '#/components/schemas/include_in_vat_return'
+        is_bas_adjustment:
+          $ref: '#/components/schemas/is_bas_adjustment'
+        line_items:
+          $ref: '#/components/schemas/line_items'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        location_name:
+          $ref: '#/components/schemas/location_name'
+        line_item_total:
+          $ref: '#/components/schemas/line_item_total'
+        total:
+          $ref: '#/components/schemas/total'
+        bcy_total:
+          $ref: '#/components/schemas/bcy_total'
+        price_precision:
+          $ref: '#/components/schemas/price_precision'
+        taxes:
+          $ref: '#/components/schemas/taxes'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        last_modified_time:
+          $ref: '#/components/schemas/last_modified_time'
+        status:
+          $ref: '#/components/schemas/status'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        tags:
+          $ref: '#/components/schemas/tags_response'
+    page_context:
+      type: object
+      properties:
+        page:
+          $ref: '#/components/schemas/page'
+        per_page:
+          $ref: '#/components/schemas/per_page'
+        has_more_page:
+          $ref: '#/components/schemas/has_more_page'
+        report_name:
+          $ref: '#/components/schemas/report_name'
+        applied_filter:
+          $ref: '#/components/schemas/applied_filter'
+        sort_column:
+          $ref: '#/components/schemas/sort_column'
+        sort_order:
+          $ref: '#/components/schemas/sort_order'
+    custom_field:
+      description: 'Search journals using customfields. Variants : <code>custom_field_startswith</code> and <code>sutom_field_contains</code>'
+      type: string
+    date:
+      description: 'Search journals by journal date. Variants: <code>date_start</code>, <code>date_end</code>, <code>date_before and</code> <code>date_after</code>'
+      type: string
+    create-a-journal-request:
+      required:
+        - journal_date
+      type: object
+      properties:
+        journal_date:
+          $ref: '#/components/schemas/journal_date'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        notes:
+          $ref: '#/components/schemas/notes'
+        journal_type:
+          $ref: '#/components/schemas/journal_type'
+        vat_treatment:
+          $ref: '#/components/schemas/vat_treatment'
+        include_in_vat_return:
+          $ref: '#/components/schemas/include_in_vat_return'
+        product_type:
+          $ref: '#/components/schemas/product_type'
+        is_bas_adjustment:
+          $ref: '#/components/schemas/is_bas_adjustment'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        line_items:
+          description: Line items for the journal.
+          type: array
+          items:
+            type: object
+            required:
+              - amount
+              - debit_or_credit
+            properties:
+              account_id:
+                $ref: '#/components/schemas/account_id'
+              customer_id:
+                $ref: '#/components/schemas/customer_id'
+              line_id:
+                $ref: '#/components/schemas/line_id'
+              description:
+                $ref: '#/components/schemas/description'
+              tax_exemption_id:
+                $ref: '#/components/schemas/tax_exemption_id'
+              tax_authority_id:
+                $ref: '#/components/schemas/tax_authority_id'
+              tax_exemption_type:
+                $ref: '#/components/schemas/tax_exemption_type'
+              tax_exemption_code:
+                $ref: '#/components/schemas/tax_exemption_code'
+              tax_authority_name:
+                $ref: '#/components/schemas/tax_authority_name'
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              amount:
+                $ref: '#/components/schemas/amount'
+              debit_or_credit:
+                $ref: '#/components/schemas/debit_or_credit'
+              acquisition_vat_id:
+                $ref: '#/components/schemas/acquisition_vat_id'
+              reverse_charge_vat_id:
+                $ref: '#/components/schemas/reverse_charge_vat_id'
+              location_id:
+                $ref: '#/components/schemas/location_id'
+              tags:
+                $ref: '#/components/schemas/tags'
+              project_id:
+                $ref: '#/components/schemas/project_id'
+        tax_exemption_code:
+          $ref: '#/components/schemas/tax_exemption_code'
+        tax_exemption_type:
+          $ref: '#/components/schemas/tax_exemption_type'
+        status:
+          $ref: '#/components/schemas/status'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        tags:
+          $ref: '#/components/schemas/tags'
+    create-a-journal-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The journal entry has been created.
+          readOnly: true
+        journal:
+          $ref: '#/components/schemas/journal'
+    get-journal-list-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        journals:
+          type: array
+          items:
+            type: object
+            properties:
+              journal_id:
+                $ref: '#/components/schemas/journal_id'
+              journal_date:
+                $ref: '#/components/schemas/journal_date'
+              entry_number:
+                $ref: '#/components/schemas/entry_number'
+              reference_number:
+                $ref: '#/components/schemas/reference_number'
+              currency_id:
+                $ref: '#/components/schemas/currency_id'
+              notes:
+                $ref: '#/components/schemas/notes'
+              journal_type:
+                $ref: '#/components/schemas/journal_type'
+              entity_type:
+                $ref: '#/components/schemas/entity_type'
+              total:
+                $ref: '#/components/schemas/total'
+              bcy_total:
+                $ref: '#/components/schemas/bcy_total'
+              custom_field:
+                $ref: '#/components/schemas/custom_field'
+              tags:
+                $ref: '#/components/schemas/tags_response'
+    update-a-journal-request:
+      required:
+        - journal_date
+      type: object
+      properties:
+        journal_date:
+          $ref: '#/components/schemas/journal_date'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        notes:
+          $ref: '#/components/schemas/notes'
+        journal_type:
+          $ref: '#/components/schemas/journal_type'
+        vat_treatment:
+          $ref: '#/components/schemas/vat_treatment'
+        include_in_vat_return:
+          $ref: '#/components/schemas/include_in_vat_return'
+        product_type:
+          $ref: '#/components/schemas/product_type'
+        is_bas_adjustment:
+          $ref: '#/components/schemas/is_bas_adjustment'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        line_items:
+          description: Line items for the journal.
+          type: array
+          items:
+            type: object
+            required:
+              - amount
+              - debit_or_credit
+            properties:
+              account_id:
+                $ref: '#/components/schemas/account_id'
+              customer_id:
+                $ref: '#/components/schemas/customer_id'
+              line_id:
+                $ref: '#/components/schemas/line_id'
+              description:
+                $ref: '#/components/schemas/description'
+              tax_exemption_id:
+                $ref: '#/components/schemas/tax_exemption_id'
+              tax_authority_id:
+                $ref: '#/components/schemas/tax_authority_id'
+              tax_exemption_type:
+                $ref: '#/components/schemas/tax_exemption_type'
+              tax_exemption_code:
+                $ref: '#/components/schemas/tax_exemption_code'
+              tax_authority_name:
+                $ref: '#/components/schemas/tax_authority_name'
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              amount:
+                $ref: '#/components/schemas/amount'
+              debit_or_credit:
+                $ref: '#/components/schemas/debit_or_credit'
+              acquisition_vat_id:
+                $ref: '#/components/schemas/acquisition_vat_id'
+              reverse_charge_vat_id:
+                $ref: '#/components/schemas/reverse_charge_vat_id'
+              tags:
+                $ref: '#/components/schemas/tags'
+              location_id:
+                $ref: '#/components/schemas/location_id'
+              project_id:
+                $ref: '#/components/schemas/project_id'
+        tax_exemption_code:
+          $ref: '#/components/schemas/tax_exemption_code'
+        tax_exemption_type:
+          $ref: '#/components/schemas/tax_exemption_type'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        tags:
+          $ref: '#/components/schemas/tags'
+    update-a-journal-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The journal entry has been updated.
+          readOnly: true
+        journal:
+          $ref: '#/components/schemas/journal'
+    get-journal-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        journal:
+          $ref: '#/components/schemas/journal'
+    delete-a-journal-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The selected journal entry has been deleted.
+          readOnly: true
+    mark-a-journal-as-published-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Journal has been published.
+          readOnly: true
+    add-attachment-to-a-journal-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Your file has been successfully attached to the journal.
+          readOnly: true
+    add-comment-request:
+      type: object
+      properties:
+        description:
+          description: Description of a comment
+          type: string
+          example: Journal Created
+    add-comment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Journal comment has been added successfully.
+          readOnly: true
+        comment:
+          $ref: '#/components/schemas/comment'
+    delete-a-comment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The selected journal comment entries have been deleted.
+          readOnly: true
+    reverse-journal-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The journal entry has been reversed.
+          readOnly: true
+        journal:
+          $ref: '#/components/schemas/journal'
+    action-journal-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+    list-journal-credits-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        credits:
+          type: array
+          items:
+            type: object
+            properties:
+              credit_id:
+                description: ID of the credit.
+                type: string
+              amount:
+                $ref: '#/components/schemas/amount'
+              balance:
+                description: Available balance.
+                type: number
+                format: double
+    apply-credits-request:
+      type: object
+      properties:
+        invoices:
+          description: List of invoices to which the journal credits are applied.
+          type: array
+          items:
+            type: object
+            properties:
+              invoice_id:
+                description: ID of the invoice.
+                type: string
+              amount_applied:
+                description: Amount to be applied.
+                type: number
+                format: double
+    list-recurring-journals-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        recurring_journals:
+          type: array
+          items:
+            $ref: '#/components/schemas/journal'
+        page_context:
+          $ref: '#/components/schemas/page_context'
+    tag_id:
+      description: Tag's ID
+      type: string
+      example: '460000000000567'
+    tag_name:
+      description: Tag's Name
+      type: string
+      example: Business Unit
+    tag_option_id:
+      description: Tag Option's ID
+      type: string
+      example: '460000000014044'
+    tag_option_name:
+      description: Tag Option's Name
+      type: string
+      example: Sales
+    is_tag_mandatory:
+      description: Used to check if the tag is mandatory
+      type: boolean
+      example: false
+    tags:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+    tags_response:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_name:
+            $ref: '#/components/schemas/tag_name'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+          tag_option_name:
+            $ref: '#/components/schemas/tag_option_name'
+          is_tag_mandatory:
+            $ref: '#/components/schemas/is_tag_mandatory'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.accountants.CREATE: Create Accountants
+            ERP.accountants.UPDATE: Update Accountants
+            ERP.accountants.READ: Read Accountants
+            ERP.accountants.DELETE: Delete Accountants

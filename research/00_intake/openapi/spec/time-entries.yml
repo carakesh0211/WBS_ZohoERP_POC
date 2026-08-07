@@ -1,0 +1,1065 @@
+openapi: 3.0.0
+info:
+  title: Time Entries
+  description: Time entries are various entries of time made by users in a project, based on the time they spent on a project, in a task.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: time-entries
+    description: Time-Entries Module
+paths:
+  /projects/timeentries:
+    x-mcp-group:
+      - Time Entries
+    post:
+      tags:
+        - time-entries
+      operationId: create_time_entries
+      summary: Log time entries
+      description: Logging time entries.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/log-time-entries-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/log-time-entries-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.projects.CREATE
+    get:
+      tags:
+        - time-entries
+      operationId: list_time_entries
+      summary: List time entries.
+      description: List all time entries with pagination.
+      parameters:
+        - name: from_date
+          in: query
+          description: Date from which the time entries logged to be fetched.
+          required: false
+          schema:
+            type: string
+          example: '2013-09-17'
+        - name: to_date
+          in: query
+          description: Date up to which the time entries logged to be fetched.
+          required: false
+          schema:
+            type: string
+          example: '2013-09-17'
+        - name: filter_by
+          in: query
+          description: 'Filter time entries by date and status. Allowed Values: <code>Date.All</code>, <code>Date.Today</code>, <code>Date.ThisWeek</code>, <code>Date.ThisMonth</code>, <code>Date.ThisQuarter</code>, <code>Date.ThisYear</code>, <code>Date.PreviousDay</code>, <code>Date.PreviousWeek</code>, <code>Date.PreviousMonth</code>, <code>Date.PreviousQuarter</code>, <code>Date.PreviousYear</code>, <code>Date.CustomDate</code>, <code>Status.Unbilled</code> and <code>Status.Invoiced</code>'
+          required: false
+          schema:
+            type: string
+          example: Status.Unbilled
+        - name: project_id
+          in: query
+          description: Search time entries by project_id.
+          required: false
+          schema:
+            type: string
+          example: '460000000044019'
+        - name: user_id
+          in: query
+          description: Search time entries by user_id.
+          required: false
+          schema:
+            type: string
+          example: '460000000024003'
+        - name: sort_column
+          in: query
+          description: 'Sort time entries. Allowed Values: <code>project_name</code>, <code>task_name</code>, <code>user_name</code>, <code>log_date</code>, <code>timer_started_at</code> and <code>customer_name</code>'
+          required: false
+          schema:
+            type: string
+          example: customer_name
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-time-entries-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.projects.READ
+    delete:
+      tags:
+        - time-entries
+      operationId: delete_time_entries
+      summary: Delete time entries
+      description: Deleting time entries.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-time-entries-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.projects.DELETE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /projects/timeentries/{time_entry_id}:
+    x-mcp-group:
+      - Time Entries
+    put:
+      tags:
+        - time-entries
+      operationId: update_time_entry
+      summary: Update time entry
+      description: Update logged time entry.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-time-entry-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-time-entry-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.projects.UPDATE
+    get:
+      tags:
+        - time-entries
+      operationId: get_time_entry
+      summary: Get a time entry
+      description: Get details of a time entry.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-time-entry-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.projects.READ
+    delete:
+      tags:
+        - time-entries
+      operationId: delete_time_entry
+      summary: Delete time entry
+      description: Deleting a logged time entry.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-time-entry-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.projects.DELETE
+    parameters:
+      - name: time_entry_id
+        in: path
+        schema:
+          type: string
+        required: true
+        description: Unique identifier of the time entry.
+        example: '460000000044021'
+      - $ref: '#/components/parameters/organization_id'
+  /projects/timeentries/{time_entry_id}/timer/start:
+    x-mcp-group:
+      - Time Entries
+    post:
+      tags:
+        - time-entries
+      operationId: start_entry_timer
+      summary: Start timer
+      description: Start tracking time spent.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/start-timer-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.projects.CREATE
+    parameters:
+      - name: time_entry_id
+        in: path
+        schema:
+          type: string
+        required: true
+        description: Unique identifier of the time entry.
+        example: '460000000044021'
+      - $ref: '#/components/parameters/organization_id'
+  /projects/timeentries/timer/stop:
+    x-mcp-group:
+      - Time Entries
+    post:
+      tags:
+        - time-entries
+      operationId: stop_entry_timer
+      summary: Stop timer
+      description: Stop tracking time, say taking a break or leaving.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/stop-timer-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.projects.CREATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /projects/timeentries/runningtimer/me:
+    x-mcp-group:
+      - Time Entries
+    get:
+      tags:
+        - time-entries
+      operationId: get_running_timer
+      summary: Get timer
+      description: Get current running timer.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-timer-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.projects.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/time_entry-response'
+    time_entry-response:
+      type: object
+      properties:
+        time_entry_id:
+          $ref: '#/components/schemas/time_entry_id'
+        project_id:
+          $ref: '#/components/schemas/project_id'
+        project_name:
+          $ref: '#/components/schemas/project_name'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        customer_name:
+          $ref: '#/components/schemas/customer_name'
+        task_id:
+          $ref: '#/components/schemas/task_id'
+        task_name:
+          $ref: '#/components/schemas/task_name'
+        user_id:
+          $ref: '#/components/schemas/user_id'
+        user_name:
+          $ref: '#/components/schemas/user_name'
+        is_current_user:
+          $ref: '#/components/schemas/is_current_user'
+        log_date:
+          $ref: '#/components/schemas/log_date'
+        begin_time:
+          $ref: '#/components/schemas/begin_time'
+        end_time:
+          $ref: '#/components/schemas/end_time'
+        log_time:
+          $ref: '#/components/schemas/log_time'
+        is_billable:
+          $ref: '#/components/schemas/is_billable'
+        billed_status:
+          $ref: '#/components/schemas/billed_status'
+        invoice_id:
+          $ref: '#/components/schemas/invoice_id'
+        notes:
+          $ref: '#/components/schemas/notes'
+        timer_started_at:
+          $ref: '#/components/schemas/timer_started_at'
+        timer_started_at_utc_time:
+          $ref: '#/components/schemas/timer_started_at_utc_time'
+        timer_duration_in_minutes:
+          $ref: '#/components/schemas/timer_duration_in_minutes'
+        timer_duration_in_seconds:
+          $ref: '#/components/schemas/timer_duration_in_seconds'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        timesheet_custom_fields:
+          $ref: '#/components/schemas/timesheet_custom_fields'
+    filter_by:
+      description: 'Filter time entries by date and status. Allowed Values: <code>Date.All</code>, <code>Date.Today</code>, <code>Date.ThisWeek</code>, <code>Date.ThisMonth</code>, <code>Date.ThisQuarter</code>, <code>Date.ThisYear</code>, <code>Date.PreviousDay</code>, <code>Date.PreviousWeek</code>, <code>Date.PreviousMonth</code>, <code>Date.PreviousQuarter</code>, <code>Date.PreviousYear</code>, <code>Date.CustomDate</code>, <code>Status.Unbilled</code> and <code>Status.Invoiced</code>'
+      type: string
+      example: Status.Unbilled
+    customer_id:
+      description: Search projects by customer id.
+      type: string
+      example: '460000000044001'
+    invoice_id:
+      type: string
+      example: ''
+    time_entry_ids:
+      description: ID of the time entries to be deleted.
+      type: string
+      example: ' '
+    sort_column:
+      description: 'Sort time entries. Allowed Values: <code>project_name</code>, <code>task_name</code>, <code>user_name</code>, <code>log_date</code>, <code>timer_started_at</code> and <code>customer_name</code>'
+      type: string
+      example: customer_name
+    created_time:
+      type: string
+      example: 2013-09-18T18:05:27+0530
+    from_date:
+      description: Date from which the time entries logged to be fetched.
+      type: string
+      example: '2013-09-17'
+    to_date:
+      description: Date up to which the time entries logged to be fetched.
+      type: string
+      example: '2013-09-17'
+    rate:
+      type: number
+      format: float
+      example: 5000
+    status:
+      type: string
+      example: active
+    billing_type:
+      type: string
+      example: fixed_cost_for_project
+    description:
+      type: string
+      example: A simple algorithm is to be tested with vehicle detection application.
+    customer_name:
+      type: string
+      example: SAF Instruments Inc
+    project_name:
+      type: string
+      example: REAL TIME TRAFFIC FLUX
+    time_entry_id:
+      type: string
+      example: '460000000044021'
+    log_date:
+      description: Date on which the user spent on the task. <code>Date-Format [HH:mm]</code>
+      type: string
+      example: '2013-09-17'
+    begin_time:
+      type: string
+      example: '03:00'
+    end_time:
+      type: string
+      example: '04:00'
+    log_time:
+      type: string
+      example: '05:00'
+    is_billable:
+      type: boolean
+      example: true
+    billed_status:
+      type: string
+      example: unbilled
+    notes:
+      type: string
+      example: ' '
+    start_timer:
+      type: string
+      example: ' '
+    timer_started_at:
+      type: string
+      example: ' '
+    timer_duration_in_minutes:
+      type: string
+      example: ' '
+    project_id:
+      description: Search time entries by project_id.
+      type: string
+      example: '460000000044019'
+    per_page:
+      type: number
+      format: double
+      example: 10
+    page:
+      type: number
+      format: double
+      example: 10
+    report_name:
+      type: string
+      example: Projects
+    has_more_page:
+      type: boolean
+      example: false
+    sort_order:
+      type: string
+      example: D
+    currency_code:
+      type: string
+      example: USD
+    budget_type:
+      type: string
+      example: ' '
+    total_hours:
+      type: string
+      example: '12:26'
+    billed_hours:
+      type: string
+      example: '12:27'
+    un_billed_hours:
+      type: string
+      example: '00:00'
+    task_id:
+      description: ID of the task.
+      type: string
+      example: '460000000044009'
+    task_name:
+      type: string
+      example: Distribution Analysis
+    budget_hours:
+      type: string
+      example: '0'
+    user_id:
+      description: Search time entries by user_id.
+      type: string
+      example: '460000000024003'
+    is_current_user:
+      type: boolean
+      example: true
+    user_name:
+      type: string
+      example: John David
+    email:
+      type: string
+      example: johndavid@zylker.org
+    user_role:
+      type: string
+      example: admin
+    cost_rate:
+      description: Hourly cost rate.
+      type: number
+      format: double
+      example: 0
+    cost_amount:
+      description: Cost amount.
+      type: number
+      format: double
+      example: 0
+    budget_amount:
+      type: string
+      example: ' '
+    tasks:
+      type: array
+      items:
+        type: string
+    users:
+      type: array
+      items:
+        type: string
+    project:
+      type: object
+    timer_started_at_utc_time:
+      type: string
+      example: ''
+    timer_duration_in_seconds:
+      type: string
+      example: ''
+    timesheet_custom_fields:
+      type: string
+      example: ''
+    log-time-entries-request:
+      required:
+        - project_id
+        - task_id
+        - user_id
+        - log_date
+      type: object
+      properties:
+        project_id:
+          description: ID of the project.
+          type: string
+          example: Network Distribution
+        task_id:
+          description: ID of the task.
+          type: string
+          example: '460000000044001'
+        user_id:
+          description: ID of the user.
+          type: string
+          example: '460000000024003'
+        log_date:
+          description: Date on which the user spent on the task. <code>Date-Format [HH:mm]</code>
+          type: string
+          example: '2013-09-17'
+        log_time:
+          description: Time the user spent on this task. Either send this attribute or begin and end time attributes. <code>Time-Format [HH:mm]</code>
+          type: string
+          example: ' '
+        begin_time:
+          description: Time the user started working on this task. <code>Time-Format [HH:mm]</code>
+          type: string
+          example: '10:00'
+        end_time:
+          description: Time the user stopped working on this task. <code>Time-Format [HH:mm]</code>
+          type: string
+          example: '15:00'
+        is_billable:
+          description: Whether it is billable or not.
+          type: boolean
+          example: true
+        notes:
+          description: Description of the work done. <code>Max-length [500]</code>
+          type: string
+          example: ' '
+        start_timer:
+          description: Start timer.
+          type: string
+          example: ' '
+        cost_rate:
+          description: Hourly cost rate.
+          type: number
+          format: double
+          example: 10
+    log-time-entries-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Your timesheet entry has been added.
+          readOnly: true
+        time_entry:
+          $ref: '#/components/schemas/time_entry-response'
+    list-time-entries-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        time_entries:
+          type: array
+          items:
+            type: object
+            properties:
+              time_entry_id:
+                $ref: '#/components/schemas/time_entry_id'
+              project_id:
+                $ref: '#/components/schemas/project_id'
+              project_name:
+                $ref: '#/components/schemas/project_name'
+              customer_id:
+                $ref: '#/components/schemas/customer_id'
+              customer_name:
+                $ref: '#/components/schemas/customer_name'
+              task_id:
+                $ref: '#/components/schemas/task_id'
+              task_name:
+                $ref: '#/components/schemas/task_name'
+              user_id:
+                $ref: '#/components/schemas/user_id'
+              is_current_user:
+                $ref: '#/components/schemas/is_current_user'
+              user_name:
+                $ref: '#/components/schemas/user_name'
+              log_date:
+                $ref: '#/components/schemas/log_date'
+              begin_time:
+                $ref: '#/components/schemas/begin_time'
+              end_time:
+                $ref: '#/components/schemas/end_time'
+              log_time:
+                $ref: '#/components/schemas/log_time'
+              is_billable:
+                $ref: '#/components/schemas/is_billable'
+              billed_status:
+                $ref: '#/components/schemas/billed_status'
+              invoice_id:
+                $ref: '#/components/schemas/invoice_id'
+              notes:
+                $ref: '#/components/schemas/notes'
+              timer_started_at:
+                $ref: '#/components/schemas/timer_started_at'
+              timer_duration_in_minutes:
+                $ref: '#/components/schemas/timer_duration_in_minutes'
+              created_time:
+                $ref: '#/components/schemas/created_time'
+              cost_rate:
+                $ref: '#/components/schemas/cost_rate'
+              cost_amount:
+                $ref: '#/components/schemas/cost_amount'
+        page_context:
+          type: array
+          items:
+            type: object
+            properties:
+              page:
+                $ref: '#/components/schemas/page'
+              per_page:
+                $ref: '#/components/schemas/per_page'
+              report_name:
+                $ref: '#/components/schemas/report_name'
+              has_more_page:
+                $ref: '#/components/schemas/has_more_page'
+              sort_order:
+                $ref: '#/components/schemas/sort_order'
+              sort_column:
+                $ref: '#/components/schemas/sort_column'
+    delete-time-entries-request:
+      required:
+        - time_entry_ids
+      type: object
+      properties:
+        time_entry_ids:
+          $ref: '#/components/schemas/time_entry_ids'
+    delete-time-entries-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The selected timesheet entries have been deleted
+          readOnly: true
+    update-time-entry-request:
+      required:
+        - project_id
+        - task_id
+        - user_id
+        - log_date
+      type: object
+      properties:
+        project_id:
+          description: ID of the project.
+          type: string
+          example: Network Distribution
+        task_id:
+          description: ID of the task.
+          type: string
+          example: '460000000044001'
+        user_id:
+          description: ID of the user.
+          type: string
+          example: '460000000024003'
+        log_date:
+          description: Date on which the user spent on the task. <code>Date-Format [HH:mm]</code>
+          type: string
+          example: '2013-09-17'
+        log_time:
+          description: Time the user spent on this task. Either send this attribute or begin and end time attributes. <code>Time-Format [HH:mm]</code>
+          type: string
+          example: ' '
+        begin_time:
+          description: Time the user started working on this task. <code>Time-Format [HH:mm]</code>
+          type: string
+          example: '10:00'
+        end_time:
+          description: Time the user stopped working on this task. <code>Time-Format [HH:mm]</code>
+          type: string
+          example: '15:00'
+        is_billable:
+          description: Whether it is billable or not.
+          type: boolean
+          example: true
+        notes:
+          description: Description of the work done. <code>Max-length [500]</code>
+          type: string
+          example: ' '
+        start_timer:
+          description: Start timer.
+          type: string
+          example: ' '
+        cost_rate:
+          description: Hourly cost rate.
+          type: number
+          format: double
+          example: 0
+    update-time-entry-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The timesheet's information has been updated.
+          readOnly: true
+        time_entry:
+          type: object
+          properties:
+            time_entry_id:
+              $ref: '#/components/schemas/time_entry_id'
+            project_id:
+              $ref: '#/components/schemas/project_id'
+            project_name:
+              $ref: '#/components/schemas/project_name'
+            customer_id:
+              $ref: '#/components/schemas/customer_id'
+            customer_name:
+              $ref: '#/components/schemas/customer_name'
+            task_id:
+              $ref: '#/components/schemas/task_id'
+            task_name:
+              $ref: '#/components/schemas/task_name'
+            user_id:
+              $ref: '#/components/schemas/user_id'
+            user_name:
+              $ref: '#/components/schemas/user_name'
+            is_current_user:
+              $ref: '#/components/schemas/is_current_user'
+            log_date:
+              $ref: '#/components/schemas/log_date'
+            begin_time:
+              $ref: '#/components/schemas/begin_time'
+            end_time:
+              $ref: '#/components/schemas/end_time'
+            log_time:
+              $ref: '#/components/schemas/log_time'
+            is_billable:
+              $ref: '#/components/schemas/is_billable'
+            billed_status:
+              $ref: '#/components/schemas/billed_status'
+            invoice_id:
+              $ref: '#/components/schemas/invoice_id'
+            notes:
+              $ref: '#/components/schemas/notes'
+            timer_started_at:
+              $ref: '#/components/schemas/timer_started_at'
+            timer_started_at_utc_time:
+              $ref: '#/components/schemas/timer_started_at_utc_time'
+            timer_duration_in_minutes:
+              $ref: '#/components/schemas/timer_duration_in_minutes'
+            timer_duration_in_seconds:
+              $ref: '#/components/schemas/timer_duration_in_seconds'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            timesheet_custom_fields:
+              $ref: '#/components/schemas/timesheet_custom_fields'
+    get-a-time-entry-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        time_entry:
+          type: object
+          properties:
+            time_entry_id:
+              $ref: '#/components/schemas/time_entry_id'
+            project_id:
+              $ref: '#/components/schemas/project_id'
+            project_name:
+              $ref: '#/components/schemas/project_name'
+            customer_id:
+              $ref: '#/components/schemas/customer_id'
+            customer_name:
+              $ref: '#/components/schemas/customer_name'
+            task_id:
+              $ref: '#/components/schemas/task_id'
+            task_name:
+              $ref: '#/components/schemas/task_name'
+            user_id:
+              $ref: '#/components/schemas/user_id'
+            user_name:
+              $ref: '#/components/schemas/user_name'
+            is_current_user:
+              $ref: '#/components/schemas/is_current_user'
+            log_date:
+              $ref: '#/components/schemas/log_date'
+            begin_time:
+              $ref: '#/components/schemas/begin_time'
+            end_time:
+              $ref: '#/components/schemas/end_time'
+            log_time:
+              $ref: '#/components/schemas/log_time'
+            is_billable:
+              $ref: '#/components/schemas/is_billable'
+            billed_status:
+              $ref: '#/components/schemas/billed_status'
+            invoice_id:
+              $ref: '#/components/schemas/invoice_id'
+            notes:
+              $ref: '#/components/schemas/notes'
+            timer_started_at:
+              $ref: '#/components/schemas/timer_started_at'
+            timer_started_at_utc_time:
+              $ref: '#/components/schemas/timer_started_at_utc_time'
+            timer_duration_in_minutes:
+              $ref: '#/components/schemas/timer_duration_in_minutes'
+            timer_duration_in_seconds:
+              $ref: '#/components/schemas/timer_duration_in_seconds'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            timesheet_custom_fields:
+              $ref: '#/components/schemas/timesheet_custom_fields'
+            cost_rate:
+              $ref: '#/components/schemas/cost_rate'
+    delete-time-entry-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The time entry has been deleted.
+          readOnly: true
+    start-timer-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The timer has been started.
+          readOnly: true
+        time_entry:
+          type: object
+          properties:
+            time_entry_id:
+              $ref: '#/components/schemas/time_entry_id'
+            project_id:
+              $ref: '#/components/schemas/project_id'
+            project_name:
+              $ref: '#/components/schemas/project_name'
+            customer_id:
+              $ref: '#/components/schemas/customer_id'
+            customer_name:
+              $ref: '#/components/schemas/customer_name'
+            task_id:
+              $ref: '#/components/schemas/task_id'
+            task_name:
+              $ref: '#/components/schemas/task_name'
+            user_id:
+              $ref: '#/components/schemas/user_id'
+            user_name:
+              $ref: '#/components/schemas/user_name'
+            is_current_user:
+              $ref: '#/components/schemas/is_current_user'
+            log_date:
+              $ref: '#/components/schemas/log_date'
+            begin_time:
+              $ref: '#/components/schemas/begin_time'
+            end_time:
+              $ref: '#/components/schemas/end_time'
+            log_time:
+              $ref: '#/components/schemas/log_time'
+            is_billable:
+              $ref: '#/components/schemas/is_billable'
+            billed_status:
+              $ref: '#/components/schemas/billed_status'
+            invoice_id:
+              $ref: '#/components/schemas/invoice_id'
+            notes:
+              $ref: '#/components/schemas/notes'
+            timer_started_at:
+              $ref: '#/components/schemas/timer_started_at'
+            timer_started_at_utc_time:
+              $ref: '#/components/schemas/timer_started_at_utc_time'
+            timer_duration_in_minutes:
+              $ref: '#/components/schemas/timer_duration_in_minutes'
+            timer_duration_in_seconds:
+              $ref: '#/components/schemas/timer_duration_in_seconds'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            timesheet_custom_fields:
+              $ref: '#/components/schemas/timesheet_custom_fields'
+    stop-timer-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Timer has been stopped successfully.
+          readOnly: true
+        time_entry:
+          type: object
+          properties:
+            time_entry_id:
+              $ref: '#/components/schemas/time_entry_id'
+            project_id:
+              $ref: '#/components/schemas/project_id'
+            project_name:
+              $ref: '#/components/schemas/project_name'
+            customer_id:
+              $ref: '#/components/schemas/customer_id'
+            customer_name:
+              $ref: '#/components/schemas/customer_name'
+            task_id:
+              $ref: '#/components/schemas/task_id'
+            task_name:
+              $ref: '#/components/schemas/task_name'
+            user_id:
+              $ref: '#/components/schemas/user_id'
+            user_name:
+              $ref: '#/components/schemas/user_name'
+            is_current_user:
+              $ref: '#/components/schemas/is_current_user'
+            log_date:
+              $ref: '#/components/schemas/log_date'
+            begin_time:
+              $ref: '#/components/schemas/begin_time'
+            end_time:
+              $ref: '#/components/schemas/end_time'
+            log_time:
+              $ref: '#/components/schemas/log_time'
+            is_billable:
+              $ref: '#/components/schemas/is_billable'
+            billed_status:
+              $ref: '#/components/schemas/billed_status'
+            invoice_id:
+              $ref: '#/components/schemas/invoice_id'
+            notes:
+              $ref: '#/components/schemas/notes'
+            timer_started_at:
+              $ref: '#/components/schemas/timer_started_at'
+            timer_started_at_utc_time:
+              $ref: '#/components/schemas/timer_started_at_utc_time'
+            timer_duration_in_minutes:
+              $ref: '#/components/schemas/timer_duration_in_minutes'
+            timer_duration_in_seconds:
+              $ref: '#/components/schemas/timer_duration_in_seconds'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            timesheet_custom_fields:
+              $ref: '#/components/schemas/timesheet_custom_fields'
+    get-timer-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        time_entry:
+          type: object
+          properties:
+            time_entry_id:
+              $ref: '#/components/schemas/time_entry_id'
+            project_id:
+              $ref: '#/components/schemas/project_id'
+            project_name:
+              $ref: '#/components/schemas/project_name'
+            customer_id:
+              $ref: '#/components/schemas/customer_id'
+            customer_name:
+              $ref: '#/components/schemas/customer_name'
+            task_id:
+              $ref: '#/components/schemas/task_id'
+            task_name:
+              $ref: '#/components/schemas/task_name'
+            user_id:
+              $ref: '#/components/schemas/user_id'
+            user_name:
+              $ref: '#/components/schemas/user_name'
+            is_current_user:
+              $ref: '#/components/schemas/is_current_user'
+            log_date:
+              $ref: '#/components/schemas/log_date'
+            begin_time:
+              $ref: '#/components/schemas/begin_time'
+            end_time:
+              $ref: '#/components/schemas/end_time'
+            log_time:
+              $ref: '#/components/schemas/log_time'
+            is_billable:
+              $ref: '#/components/schemas/is_billable'
+            billed_status:
+              $ref: '#/components/schemas/billed_status'
+            invoice_id:
+              $ref: '#/components/schemas/invoice_id'
+            notes:
+              $ref: '#/components/schemas/notes'
+            timer_started_at:
+              $ref: '#/components/schemas/timer_started_at'
+            timer_started_at_utc_time:
+              $ref: '#/components/schemas/timer_started_at_utc_time'
+            timer_duration_in_minutes:
+              $ref: '#/components/schemas/timer_duration_in_minutes'
+            timer_duration_in_seconds:
+              $ref: '#/components/schemas/timer_duration_in_seconds'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            timesheet_custom_fields:
+              $ref: '#/components/schemas/timesheet_custom_fields'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.projects.CREATE: Create Projects
+            ERP.projects.UPDATE: Update Projects
+            ERP.projects.READ: Read Projects
+            ERP.projects.DELETE: Delete Projects

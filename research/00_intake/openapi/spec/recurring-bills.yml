@@ -1,0 +1,1451 @@
+openapi: 3.0.0
+info:
+  title: Recurring Bills
+  description: Recurring Bills are those bills that repeat itself after a fixed interval of time.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: recurring-bills
+    description: Recurring-Bills Module
+paths:
+  /recurringbills:
+    x-mcp-group:
+      - Recurring Bills
+    post:
+      tags:
+        - recurring-bills
+      operationId: create_recurring_bill
+      summary: Create a recurring bill
+      description: Create a recurring bill.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-recurring-bill-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-recurring-bill-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.CREATE
+    get:
+      tags:
+        - recurring-bills
+      operationId: list_recurring_bills
+      summary: List recurring bills
+      description: List all recurring bills with pagination.
+      parameters:
+        - name: recurring_bill_id
+          in: query
+          description: Unique identifier of the recurring bill.
+          required: false
+          schema:
+            type: string
+          example: 982000000567240
+        - name: vendor_id
+          in: query
+          description: Search recurring bills by Vendor ID.
+          required: false
+          schema:
+            type: string
+          example: '460000000038029'
+        - name: vendor_name
+          in: query
+          description: 'Search recurring bills by vendor name. Variants: <code>vendor_name_startswith</code> and <code>vendor_name_contains</code>'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: status
+          in: query
+          description: 'Search recurring bills by recurring bill status. Allowed Values: <code>active</code>, <code>stopped</code>, <code>expired</code>'
+          required: false
+          schema:
+            type: string
+          example: active
+        - name: recurrence_name
+          in: query
+          description: 'Search recurring bills by recurrence number. Variants: <code>recurrence_name_startswith</code> and <code>recurrence_name_contains</code>'
+          required: false
+          schema:
+            type: string
+          example: Monthly Rental
+        - name: currency_id
+          in: query
+          description: ID of the Currency.
+          required: false
+          schema:
+            type: string
+          example: '460000000000099'
+        - name: currency_code
+          in: query
+          description: Code of the Currency.
+          required: false
+          schema:
+            type: string
+          example: INR
+        - name: currency_symbol
+          in: query
+          description: Symbol of the Currency.
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: start_date
+          in: query
+          description: 'Search recurring bills by recurring bill start date. Variants: <code>start_date_start</code>, <code>start_date_end</code>, <code>start_date_before</code> and <code>start_date_after</code>'
+          required: false
+          schema:
+            type: string
+          example: '2013-11-18'
+        - name: end_date
+          in: query
+          description: Date on which recurring bill has to expire. Can be left as empty to run forever. Format [yyyy-mm-dd].
+          required: false
+          schema:
+            type: string
+          example: '2013-12-18'
+        - name: source_of_supply
+          in: query
+          description: Place from where the goods/services are supplied. (If not given, <code>place of contact</code> given for the contact will be taken)
+          required: false
+          schema:
+            type: string
+          example: AP
+          x-node_available_in:
+            - in
+          x-node_unavailable_in: []
+        - name: place_of_supply
+          in: query
+          description: 'Place of supply for GST (Indian state/UT code where the purchase is treated as supplied). If omitted, vendor contact or organization defaults may apply. Example: <code>TN</code> (Tamil Nadu).'
+          required: false
+          schema:
+            type: string
+          example: TN
+          x-node_available_in:
+            - in
+          x-node_unavailable_in: []
+        - name: destination_of_supply
+          in: query
+          description: Place where the goods/services are supplied to. (If not given, organization's home state will be taken)
+          required: false
+          schema:
+            type: string
+          example: TN
+          x-node_available_in:
+            - in
+          x-node_unavailable_in: []
+        - name: gst_treatment
+          in: query
+          description: Choose whether the contact is GST registered/unregistered/consumer/overseas. Allowed values are <code> business_gst </code> , <code> business_none </code> , <code> overseas </code> , <code> consumer </code>.
+          required: false
+          schema:
+            type: string
+          example: business_gst
+          x-node_available_in:
+            - in
+          x-node_unavailable_in: []
+        - name: gst_no
+          in: query
+          description: 15 digit GST identification number of the vendor.
+          required: false
+          schema:
+            type: string
+          example: 22AAAAA0000A1Z5
+          x-node_available_in:
+            - in
+          x-node_unavailable_in: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-recurring-bills-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.READ
+    put:
+      tags:
+        - recurring-bills
+      operationId: update_recurring_bill_using_custom_field
+      summary: Update a recurring bill using a custom field's unique value
+      description: A custom field will have unique values if it's configured to not accept duplicate values. Now, you can use that custom field's value to update a recurring bill by providing its API name in the X-Unique-Identifier-Key header and its value in the X-Unique-Identifier-Value header. Based on this value, the corresponding recurring bill will be retrieved and updated. Additionally, there is an optional X-Upsert header. If the X-Upsert header is true and the custom field's unique value is not found in any of the existing recurring bills, a new recurring bill will be created if the necessary payload details are available.
+      parameters:
+        - name: X-Unique-Identifier-Key
+          in: header
+          description: Unique CustomField Api Name.
+          required: true
+          schema:
+            type: string
+            example: cf_unique_cf
+        - name: X-Unique-Identifier-Value
+          in: header
+          description: Unique CustomField Value.
+          required: true
+          schema:
+            type: string
+            example: unique Value
+        - name: X-Upsert
+          in: header
+          description: If there is no record is found unique custom field value , will create new invoice.
+          required: false
+          schema:
+            type: boolean
+            example: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-recurring-bill-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-recurring-bill-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.UPDATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /recurringbills/{recurring_bill_id}:
+    x-mcp-group:
+      - Recurring Bills
+    put:
+      tags:
+        - recurring-bills
+      operationId: update_recurring_bill
+      summary: Update a recurring bill
+      description: Update a recurring bill. To delete a line item just remove it from the line_items list.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-recurring-bill-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-recurring-bill-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.UPDATE
+    parameters:
+      - name: recurring_bill_id
+        in: path
+        required: true
+        description: Unique identifier of the recurring bill.
+        schema:
+          type: string
+        example: 982000000567240
+      - $ref: '#/components/parameters/organization_id'
+  /recurring_bills/{recurring_bill_id}:
+    x-mcp-group:
+      - Recurring Bills
+    get:
+      tags:
+        - recurring-bills
+      operationId: get_recurring_bill
+      summary: Get a recurring bill
+      description: Get the details of a recurring bill.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-recurring-bill-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.READ
+    delete:
+      tags:
+        - recurring-bills
+      operationId: delete_recurring_bill
+      summary: Delete a recurring bill
+      description: Delete an existing recurring bill.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-recurring-bill-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.DELETE
+    parameters:
+      - name: recurring_bill_id
+        in: path
+        required: true
+        description: Unique identifier of the recurring bill.
+        schema:
+          type: string
+        example: 982000000567240
+      - $ref: '#/components/parameters/organization_id'
+  /recurringbills/{recurring_bill_id}/status/stop:
+    x-mcp-group:
+      - Recurring Bills
+    post:
+      tags:
+        - recurring-bills
+      operationId: stop_recurring_bill
+      summary: Stop a recurring bill
+      description: Stop an active recurring bill.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/stop-a-recurring-bill-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.CREATE
+    parameters:
+      - name: recurring_bill_id
+        in: path
+        required: true
+        description: Unique identifier of the recurring bill.
+        schema:
+          type: string
+        example: 982000000567240
+      - $ref: '#/components/parameters/organization_id'
+  /recurringbills/{recurring_bill_id}/status/resume:
+    x-mcp-group:
+      - Recurring Bills
+    post:
+      tags:
+        - recurring-bills
+      operationId: resume_recurring_bill
+      summary: Resume a recurring Bill
+      description: Resume a stopped recurring bill.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/resume-a-recurring-bill-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.CREATE
+    parameters:
+      - name: recurring_bill_id
+        in: path
+        required: true
+        description: Unique identifier of the recurring bill.
+        schema:
+          type: string
+        example: 982000000567240
+      - $ref: '#/components/parameters/organization_id'
+  /recurringbills/{recurring_bill_id}/comments:
+    x-mcp-group:
+      - Recurring Bills
+    get:
+      tags:
+        - recurring-bills
+      operationId: list_recurring_bill_history
+      summary: List recurring bill history
+      description: Get history and comments of a recurring bill.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-recurring-bill-history-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.READ
+    parameters:
+      - name: recurring_bill_id
+        in: path
+        required: true
+        description: Unique identifier of the recurring bill.
+        schema:
+          type: string
+        example: 982000000567240
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/recurring_bill'
+    vendor_id:
+      description: ID of the vendor the bill has to be created.
+      type: string
+      example: '460000000038029'
+    recurring_bill_id:
+      description: Unique ID of the recurring bill.
+      type: string
+      example: 982000000567240
+    recurrence_name:
+      description: Name of the Recurring Bill. Max-length [100]
+      type: string
+      example: Monthly Rental
+    start_date:
+      description: Start date of the recurring bill. Bills will not be generated for dates prior to the current date. Format [yyyy-mm-dd].
+      type: string
+      example: '2013-11-18'
+    end_date:
+      description: Date on which recurring bill has to expire. Can be left as empty to run forever. Format [yyyy-mm-dd].
+      type: string
+      example: '2013-12-18'
+    source_of_supply:
+      description: Place from where the goods/services are supplied. (If not given, <code>place of contact</code> given for the contact will be taken)
+      type: string
+      example: AP
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    destination_of_supply:
+      description: Place where the goods/services are supplied to. (If not given, organization's home state will be taken)
+      type: string
+      example: TN
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    place_of_supply:
+      description: 'Place of supply for GST (Indian state/UT code where the purchase is treated as supplied). If omitted, the contact''s place of contact may apply. Example: <code>TN</code> (Tamil Nadu).'
+      type: string
+      example: TN
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    gst_treatment:
+      description: Choose whether the contact is GST registered/unregistered/consumer/overseas. Allowed values are <code> business_gst </code> , <code> business_none </code> , <code> overseas </code> , <code> consumer </code>.
+      type: string
+      example: business_gst
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    gst_no:
+      description: 15 digit GST identification number of the vendor.
+      type: string
+      example: 22AAAAA0000A1Z5
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    hsn_or_sac:
+      description: Add HSN/SAC code for your goods/services.
+      type: string
+      example: 80540
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    reverse_charge_tax_id:
+      description: Reverse charge tax ID.
+      type: string
+      example: 460000000038056
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    location_id:
+      description: Location ID.
+      type: string
+      example: '460000000038080'
+    pricebook_id:
+      description: Enter ID of the price book.
+      type: string
+      example: 460000000038090
+    image_document_id:
+      description: ID of the image document.
+      type: string
+      example: 460000000038067
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    location_name:
+      description: Name of the location.
+      type: string
+    reverse_charge_tax_name:
+      description: Name of the reverse charge tax.
+      type: string
+      example: inter
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    reverse_charge_tax_percentage:
+      description: Enter reverse charge percentage.
+      type: number
+      format: double
+      example: 10
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    reverse_charge_tax_amount:
+      description: Enter reverse charge amount.
+      type: number
+      format: double
+      example: 100
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    pricebook_name:
+      description: Name of the price book.
+      type: string
+    is_reverse_charge_applied:
+      description: Applicable for transactions where you pay reverse charge.
+      type: boolean
+      example: true
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    is_inclusive_tax:
+      description: Used to specify whether the line item rates are inclusive or exclusive of tax.
+      type: boolean
+      example: false
+    is_tds_applied:
+      description: Indicates if TDS is applied.
+      type: boolean
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    tax_exemption_id:
+      description: ID of the Tax Exemption Applied.
+      type: string
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    tax_exemption_code:
+      description: Code of the Tax Exemption Applied.
+      type: string
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    item_total_inclusive_of_tax:
+      description: Total of the Item Inclusive of Tax.
+      type: number
+      format: double
+      example: 40
+    notes:
+      description: Notes for the Bill.
+      type: string
+      example: Thanks for your business.
+    terms:
+      description: Terms and Conditions for the Bill.
+      type: string
+      example: Terms and conditions apply.
+    item_order:
+      description: Order of the line item.
+      type: integer
+      example: 1
+    item_id:
+      description: ID of the Item.
+      type: string
+      example: '460000000054135'
+    name:
+      description: Name of the line item.
+      type: string
+    unit:
+      description: Unit of the Item.
+      type: string
+      example: kgs
+    payment_terms:
+      description: Number Referring to Payment Terms.
+      type: integer
+      example: 0
+    payment_terms_label:
+      description: Label of the Payment Terms.
+      type: string
+      example: Due on Receipt
+    index:
+      description: Index of the custom field.
+      type: integer
+    label:
+      description: Label of the Custom Field.
+      type: string
+    value:
+      description: Value of the Custom Field.
+      type: string
+    custom_field_id:
+      description: Unique ID of the custom field.
+      type: string
+    custom_fields:
+      description: List of custom fields for the recurring bill.
+      type: array
+      items:
+        type: object
+        properties:
+          custom_field_id:
+            $ref: '#/components/schemas/custom_field_id'
+          index:
+            $ref: '#/components/schemas/index'
+          label:
+            $ref: '#/components/schemas/label'
+          value:
+            $ref: '#/components/schemas/value'
+    vendor_name:
+      description: Name of the Vendor.
+      type: string
+    status:
+      description: Status of the Recurring Bill.
+      type: string
+      example: active
+    currency_id:
+      description: ID of the Currency.
+      type: string
+      example: '460000000000099'
+    currency_code:
+      description: Code of the Currency.
+      type: string
+      example: INR
+    currency_symbol:
+      description: Symbol of the Currency.
+      type: string
+    price_precision:
+      description: Precision for the values.
+      type: integer
+      example: 2
+    sub_total:
+      description: Sub Total of the Bill.
+      type: integer
+      example: 40
+    tax_total:
+      description: Tax Total of the Bill.
+      type: integer
+      example: 0
+    total:
+      description: Total of the Bill.
+      type: integer
+      example: 40
+    created_time:
+      description: Created time of the bill.
+      type: string
+      example: 2013-09-11T17:18:32+0530
+    created_by_id:
+      description: Name of User who created the Bill.
+      type: string
+      example: '4600000053001'
+    last_modified_time:
+      description: Last Modified Time of the Bill.
+      type: string
+      example: 2013-09-11T17:18:32+0530
+    line_item_id:
+      description: ID of the Line Item.
+      type: string
+      example: '460000000067009'
+    sku:
+      description: SKU of the Item.
+      type: string
+    account_name:
+      description: Name of the Account.
+      type: string
+      example: Other Expenses
+    bcy_rate:
+      description: Rate in Base Currency of the Organization.
+      type: integer
+      example: 40
+    tax_type:
+      description: Type of tax.
+      type: string
+      example: tax
+    tax_percentage:
+      description: Percentage of Tax.
+      type: integer
+      example: 0
+    item_total:
+      description: Total of the Item.
+      type: integer
+      example: 40
+    is_billable:
+      description: Indicates if entity is Billable.
+      type: boolean
+      example: false
+    customer_id:
+      description: ID of the Customer.
+      type: string
+    customer_name:
+      description: Name of the Customer.
+      type: string
+    project_id:
+      description: ID of the Project.
+      type: string
+    project_name:
+      description: Name of the Project.
+      type: string
+    item_custom_fields:
+      description: List of custom fields for the line item.
+      type: array
+      items:
+        type: object
+        properties:
+          custom_field_id:
+            $ref: '#/components/schemas/custom_field_id'
+          index:
+            $ref: '#/components/schemas/index'
+          value:
+            $ref: '#/components/schemas/value'
+          label:
+            $ref: '#/components/schemas/label'
+    tax_name:
+      description: Name of the Tax.
+      type: string
+      example: VAT (12.5%)
+    tax_amount:
+      description: Amount of Tax in the Bill.
+      type: string
+      example: 1.25
+    amount:
+      type: number
+      format: double
+      example: 31.25
+    account_id:
+      description: 'ID of the chart of accounts entry for the line item. Use the Chart of Accounts API to resolve valid IDs. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000000403'
+    description:
+      description: Description of the line item.
+      type: string
+    line_item_category:
+      description: Category of the line item. Allowed values are <code>line_item</code>, <code>header</code> and <code>subtotal</code>. Use <code>line_item</code> for regular line items, <code>header</code> for header titles and <code>subtotal</code> for intermediate subtotal rows. For regular line items, you can send line_item or omit this field
+      type: string
+      example: line_item
+    rate:
+      description: Rate of the line item.
+      type: number
+      format: double
+      example: 10
+    quantity:
+      description: Quantity of the line item.
+      type: number
+      format: double
+      example: 1
+    tax_id:
+      description: 'ID of the tax or tax group applied to the line item. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000027005'
+    tds_tax_id:
+      description: 'TDS (Tax Deducted at Source) tax or tax group ID for this line item, as returned by the Taxes API. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000027001'
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    discount:
+      description: Discount applied to the recurring bill, which can be either a percentage or a flat amount. For percentage discounts, the value should include the % symbol (e.g., 10%). For example, on Rs.1000, a 10% discount results in Rs.900, while a flat Rs.200 discount results in Rs.800.
+      type: string
+      example: 30%
+    discount_account_id:
+      description: ID of the account associated with the discount account.
+      type: string
+      example: '460000000000403'
+    is_discount_before_tax:
+      description: To specify discount applied in before /after tax.
+      type: boolean
+      example: true
+    page:
+      type: integer
+      example: 1
+    per_page:
+      type: integer
+      example: 10
+    has_more_page:
+      type: boolean
+      example: false
+    applied_filter:
+      description: Filter that is applied.
+      type: string
+      example: Status.All
+    sort_order:
+      type: string
+      example: D
+    filter_by:
+      description: 'Filter recurrence bills by any status. Allowed Values: <code>Status.All</code>, <code>Status.Active</code>, <code>Status.Stopped</code>, <code>Status.Expired</code>.'
+      type: string
+    search_text:
+      description: Search Recurring bills by recurrence number or vendor name.
+      type: string
+    sort_column:
+      description: 'Sort recurrencr bills. Allowed Values: <code>vendor_name</code>, <code>next_bill_date</code>, <code>recurrence_name</code>, <code>total</code> and <code>created_time</code>.'
+      type: string
+    comment_id:
+      description: ID of the Comment.
+      type: string
+      example: '460000000069037'
+    commented_by_id:
+      description: ID of the User who caused the Comment.
+      type: string
+      example: '460000000053001'
+    commented_by:
+      description: Name of the User who Caused the Comment.
+      type: string
+      example: John Roberts
+    comment_type:
+      description: Type of Comment.
+      type: string
+      example: internal
+    date_description:
+      description: Description of the Date of Comment.
+      type: string
+      example: few seconds ago
+    time:
+      description: Time of Comment.
+      type: string
+      example: 12:09 PM
+    operation_type:
+      description: Type of Operation that Caused the Comment.
+      type: string
+      example: Added
+    transaction_id:
+      description: ID of the Transaction that Caused the Comment.
+      type: string
+      example: '460000000068015'
+    transaction_type:
+      description: Type of Transaction that caused the comment.
+      type: string
+      example: bill_payment
+    taxes:
+      type: array
+      items:
+        type: object
+        properties:
+          tax_name:
+            $ref: '#/components/schemas/tax_name'
+          tax_amount:
+            $ref: '#/components/schemas/tax_amount'
+    line_items:
+      description: Line items of a recurrence bill.
+      type: array
+      items:
+        type: object
+        properties:
+          line_item_id:
+            $ref: '#/components/schemas/line_item_id'
+          item_id:
+            $ref: '#/components/schemas/item_id'
+          sku:
+            $ref: '#/components/schemas/sku'
+          name:
+            $ref: '#/components/schemas/name'
+          account_id:
+            $ref: '#/components/schemas/account_id'
+          account_name:
+            $ref: '#/components/schemas/account_name'
+          image_document_id:
+            $ref: '#/components/schemas/image_document_id'
+          location_id:
+            $ref: '#/components/schemas/location_id'
+          location_name:
+            $ref: '#/components/schemas/location_name'
+          reverse_charge_tax_id:
+            $ref: '#/components/schemas/reverse_charge_tax_id'
+          reverse_charge_tax_name:
+            $ref: '#/components/schemas/reverse_charge_tax_name'
+          reverse_charge_tax_percentage:
+            $ref: '#/components/schemas/reverse_charge_tax_percentage'
+          reverse_charge_tax_amount:
+            $ref: '#/components/schemas/reverse_charge_tax_amount'
+          description:
+            $ref: '#/components/schemas/description'
+          bcy_rate:
+            $ref: '#/components/schemas/bcy_rate'
+          rate:
+            $ref: '#/components/schemas/rate'
+          tags:
+            $ref: '#/components/schemas/tags'
+          line_item_category:
+            $ref: '#/components/schemas/line_item_category'
+          quantity:
+            $ref: '#/components/schemas/quantity'
+          tax_id:
+            $ref: '#/components/schemas/tax_id'
+          tds_tax_id:
+            $ref: '#/components/schemas/tds_tax_id'
+          tax_exemption_id:
+            $ref: '#/components/schemas/tax_exemption_id'
+          tax_exemption_code:
+            $ref: '#/components/schemas/tax_exemption_code'
+          tax_name:
+            $ref: '#/components/schemas/tax_name'
+          tax_type:
+            $ref: '#/components/schemas/tax_type'
+          tax_percentage:
+            $ref: '#/components/schemas/tax_percentage'
+          item_total:
+            $ref: '#/components/schemas/item_total'
+          item_total_inclusive_of_tax:
+            $ref: '#/components/schemas/item_total_inclusive_of_tax'
+          item_order:
+            $ref: '#/components/schemas/item_order'
+          unit:
+            $ref: '#/components/schemas/unit'
+          hsn_or_sac:
+            $ref: '#/components/schemas/hsn_or_sac'
+          is_billable:
+            $ref: '#/components/schemas/is_billable'
+          customer_id:
+            $ref: '#/components/schemas/customer_id'
+          customer_name:
+            $ref: '#/components/schemas/customer_name'
+          project_id:
+            $ref: '#/components/schemas/project_id'
+          project_name:
+            $ref: '#/components/schemas/project_name'
+          item_custom_fields:
+            $ref: '#/components/schemas/item_custom_fields'
+    serial_numbers:
+      description: List of serial numbers for the line item.
+      type: array
+      items:
+        type: string
+    recurring_bill:
+      type: object
+      properties:
+        recurring_bill_id:
+          $ref: '#/components/schemas/recurring_bill_id'
+        vendor_id:
+          $ref: '#/components/schemas/vendor_id'
+        vendor_name:
+          $ref: '#/components/schemas/vendor_name'
+        status:
+          $ref: '#/components/schemas/status'
+        recurrence_name:
+          $ref: '#/components/schemas/recurrence_name'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        currency_code:
+          $ref: '#/components/schemas/currency_code'
+        currency_symbol:
+          $ref: '#/components/schemas/currency_symbol'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        source_of_supply:
+          $ref: '#/components/schemas/source_of_supply'
+        place_of_supply:
+          $ref: '#/components/schemas/place_of_supply'
+        destination_of_supply:
+          $ref: '#/components/schemas/destination_of_supply'
+        gst_treatment:
+          $ref: '#/components/schemas/gst_treatment'
+        gst_no:
+          $ref: '#/components/schemas/gst_no'
+        is_reverse_charge_applied:
+          $ref: '#/components/schemas/is_reverse_charge_applied'
+        pricebook_id:
+          $ref: '#/components/schemas/pricebook_id'
+        pricebook_name:
+          $ref: '#/components/schemas/pricebook_name'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        location_name:
+          $ref: '#/components/schemas/location_name'
+        line_items:
+          $ref: '#/components/schemas/line_items'
+        is_tds_applied:
+          $ref: '#/components/schemas/is_tds_applied'
+        notes:
+          $ref: '#/components/schemas/notes'
+        terms:
+          $ref: '#/components/schemas/terms'
+        payment_terms:
+          $ref: '#/components/schemas/payment_terms'
+        payment_terms_label:
+          $ref: '#/components/schemas/payment_terms_label'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        created_by_id:
+          $ref: '#/components/schemas/created_by_id'
+        last_modified_time:
+          $ref: '#/components/schemas/last_modified_time'
+        discount:
+          $ref: '#/components/schemas/discount'
+        discount_account_id:
+          $ref: '#/components/schemas/discount_account_id'
+        is_discount_before_tax:
+          $ref: '#/components/schemas/is_discount_before_tax'
+        tags:
+          $ref: '#/components/schemas/tags_response'
+    page_context:
+      type: object
+      properties:
+        page:
+          $ref: '#/components/schemas/page'
+        per_page:
+          $ref: '#/components/schemas/per_page'
+        has_more_page:
+          $ref: '#/components/schemas/has_more_page'
+        applied_filter:
+          $ref: '#/components/schemas/applied_filter'
+        sort_column:
+          $ref: '#/components/schemas/sort_column'
+        sort_order:
+          $ref: '#/components/schemas/sort_order'
+    comment:
+      type: object
+      properties:
+        comment_id:
+          $ref: '#/components/schemas/comment_id'
+        recurring_bill_id:
+          $ref: '#/components/schemas/recurring_bill_id'
+        description:
+          $ref: '#/components/schemas/description'
+        commented_by_id:
+          $ref: '#/components/schemas/commented_by_id'
+        commented_by:
+          $ref: '#/components/schemas/commented_by'
+        comment_type:
+          $ref: '#/components/schemas/comment_type'
+        date:
+          $ref: '#/components/schemas/date'
+        date_description:
+          $ref: '#/components/schemas/date_description'
+        time:
+          $ref: '#/components/schemas/time'
+    item_description:
+      description: 'Search recurrence bills by item description. Variants: <code>item_description_startswith</code> and <code>item_description_contains</code>'
+      type: string
+    item_name:
+      description: 'Search recurrence bills by item name. Variants: <code>item_name_startswith</code> and <code>item_name_contains</code>'
+      type: string
+    custom_field:
+      description: 'Search recurrence bills by item name. Variants: <code>custom_field_startswith</code> and <code>custom_field_contains</code>'
+      type: string
+    date:
+      description: Date of the Comment.
+      type: string
+      example: 17 Nov 2016
+    create-a-recurring-bill-request:
+      required:
+        - vendor_id
+        - recurrence_name
+        - start_date
+        - repeat_every
+        - recurrence_frequency
+      type: object
+      properties:
+        vendor_id:
+          $ref: '#/components/schemas/vendor_id'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        recurrence_name:
+          $ref: '#/components/schemas/recurrence_name'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        source_of_supply:
+          $ref: '#/components/schemas/source_of_supply'
+        place_of_supply:
+          $ref: '#/components/schemas/place_of_supply'
+        destination_of_supply:
+          $ref: '#/components/schemas/destination_of_supply'
+        gst_treatment:
+          $ref: '#/components/schemas/gst_treatment'
+        gst_no:
+          $ref: '#/components/schemas/gst_no'
+        is_reverse_charge_applied:
+          $ref: '#/components/schemas/is_reverse_charge_applied'
+        pricebook_id:
+          $ref: '#/components/schemas/pricebook_id'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        line_items:
+          description: Line items of a recurrence bill.
+          type: array
+          items:
+            type: object
+            properties:
+              line_item_id:
+                $ref: '#/components/schemas/line_item_id'
+              item_id:
+                $ref: '#/components/schemas/item_id'
+              name:
+                $ref: '#/components/schemas/name'
+              account_id:
+                $ref: '#/components/schemas/account_id'
+              description:
+                $ref: '#/components/schemas/description'
+              rate:
+                $ref: '#/components/schemas/rate'
+              hsn_or_sac:
+                $ref: '#/components/schemas/hsn_or_sac'
+              reverse_charge_tax_id:
+                $ref: '#/components/schemas/reverse_charge_tax_id'
+              location_id:
+                $ref: '#/components/schemas/location_id'
+              quantity:
+                $ref: '#/components/schemas/quantity'
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              tds_tax_id:
+                $ref: '#/components/schemas/tds_tax_id'
+              tax_exemption_id:
+                $ref: '#/components/schemas/tax_exemption_id'
+              tax_exemption_code:
+                $ref: '#/components/schemas/tax_exemption_code'
+              item_order:
+                $ref: '#/components/schemas/item_order'
+              unit:
+                $ref: '#/components/schemas/unit'
+              tags:
+                $ref: '#/components/schemas/tags'
+              line_item_category:
+                $ref: '#/components/schemas/line_item_category'
+              is_billable:
+                $ref: '#/components/schemas/is_billable'
+              project_id:
+                $ref: '#/components/schemas/project_id'
+              customer_id:
+                $ref: '#/components/schemas/customer_id'
+              item_custom_fields:
+                $ref: '#/components/schemas/item_custom_fields'
+              serial_numbers:
+                $ref: '#/components/schemas/serial_numbers'
+        is_tds_applied:
+          $ref: '#/components/schemas/is_tds_applied'
+        notes:
+          $ref: '#/components/schemas/notes'
+        terms:
+          $ref: '#/components/schemas/terms'
+        payment_terms:
+          $ref: '#/components/schemas/payment_terms'
+        payment_terms_label:
+          $ref: '#/components/schemas/payment_terms_label'
+        custom_fields:
+          type: array
+          description: List of custom fields for the recurring bill.
+          items:
+            type: object
+            properties:
+              index:
+                $ref: '#/components/schemas/index'
+              value:
+                $ref: '#/components/schemas/value'
+        discount:
+          $ref: '#/components/schemas/discount'
+        discount_account_id:
+          $ref: '#/components/schemas/discount_account_id'
+        is_discount_before_tax:
+          $ref: '#/components/schemas/is_discount_before_tax'
+        repeat_every:
+          description: Description for repeat_every.
+          type: string
+          example: ''
+        recurrence_frequency:
+          description: Description for recurrence_frequency.
+          type: string
+          example: ''
+        tags:
+          $ref: '#/components/schemas/tags'
+    create-a-recurring-bill-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        recurring_bill:
+          $ref: '#/components/schemas/recurring_bill'
+    list-recurring-bills-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        recurringbills:
+          type: array
+          items:
+            $ref: '#/components/schemas/recurring_bill'
+    update-a-recurring-bill-request:
+      required:
+        - vendor_id
+        - recurrence_name
+        - start_date
+        - repeat_every
+        - recurrence_frequency
+      type: object
+      properties:
+        recurring_bill_id:
+          $ref: '#/components/schemas/recurring_bill_id'
+        vendor_id:
+          $ref: '#/components/schemas/vendor_id'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        status:
+          $ref: '#/components/schemas/status'
+        recurrence_name:
+          $ref: '#/components/schemas/recurrence_name'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        source_of_supply:
+          $ref: '#/components/schemas/source_of_supply'
+        place_of_supply:
+          $ref: '#/components/schemas/place_of_supply'
+        destination_of_supply:
+          $ref: '#/components/schemas/destination_of_supply'
+        gst_treatment:
+          $ref: '#/components/schemas/gst_treatment'
+        gst_no:
+          $ref: '#/components/schemas/gst_no'
+        is_reverse_charge_applied:
+          $ref: '#/components/schemas/is_reverse_charge_applied'
+        pricebook_id:
+          $ref: '#/components/schemas/pricebook_id'
+        pricebook_name:
+          $ref: '#/components/schemas/pricebook_name'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        line_items:
+          description: Line items of a recurrence bill.
+          type: array
+          items:
+            type: object
+            properties:
+              line_item_id:
+                $ref: '#/components/schemas/line_item_id'
+              item_id:
+                $ref: '#/components/schemas/item_id'
+              name:
+                $ref: '#/components/schemas/name'
+              account_id:
+                $ref: '#/components/schemas/account_id'
+              description:
+                $ref: '#/components/schemas/description'
+              rate:
+                $ref: '#/components/schemas/rate'
+              hsn_or_sac:
+                $ref: '#/components/schemas/hsn_or_sac'
+              reverse_charge_tax_id:
+                $ref: '#/components/schemas/reverse_charge_tax_id'
+              location_id:
+                $ref: '#/components/schemas/location_id'
+              quantity:
+                $ref: '#/components/schemas/quantity'
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              tds_tax_id:
+                $ref: '#/components/schemas/tds_tax_id'
+              tax_exemption_id:
+                $ref: '#/components/schemas/tax_exemption_id'
+              tax_exemption_code:
+                $ref: '#/components/schemas/tax_exemption_code'
+              item_order:
+                $ref: '#/components/schemas/item_order'
+              unit:
+                $ref: '#/components/schemas/unit'
+              tags:
+                $ref: '#/components/schemas/tags'
+              line_item_category:
+                $ref: '#/components/schemas/line_item_category'
+              is_billable:
+                $ref: '#/components/schemas/is_billable'
+              project_id:
+                $ref: '#/components/schemas/project_id'
+              customer_id:
+                $ref: '#/components/schemas/customer_id'
+              item_custom_fields:
+                $ref: '#/components/schemas/item_custom_fields'
+              serial_numbers:
+                $ref: '#/components/schemas/serial_numbers'
+        is_tds_applied:
+          $ref: '#/components/schemas/is_tds_applied'
+        notes:
+          $ref: '#/components/schemas/notes'
+        terms:
+          $ref: '#/components/schemas/terms'
+        payment_terms:
+          $ref: '#/components/schemas/payment_terms'
+        payment_terms_label:
+          $ref: '#/components/schemas/payment_terms_label'
+        custom_fields:
+          type: array
+          description: List of custom fields for the recurring bill.
+          items:
+            type: object
+            properties:
+              index:
+                $ref: '#/components/schemas/index'
+              value:
+                $ref: '#/components/schemas/value'
+        discount:
+          $ref: '#/components/schemas/discount'
+        discount_account_id:
+          $ref: '#/components/schemas/discount_account_id'
+        is_discount_before_tax:
+          $ref: '#/components/schemas/is_discount_before_tax'
+        repeat_every:
+          description: Description for repeat_every.
+          type: string
+          example: ''
+        recurrence_frequency:
+          description: Description for recurrence_frequency.
+          type: string
+          example: ''
+        tags:
+          $ref: '#/components/schemas/tags'
+    update-a-recurring-bill-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Recurring Bill information has been updated.
+          readOnly: true
+    get-a-recurring-bill-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        recurring_bill:
+          $ref: '#/components/schemas/recurring_bill'
+    delete-a-recurring-bill-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The recurring bill has been deleted.
+          readOnly: true
+    stop-a-recurring-bill-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The recurring bill has been stopped.
+          readOnly: true
+    resume-a-recurring-bill-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The recurring bill has been activated.
+          readOnly: true
+    list-recurring-bill-history-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+    tag_id:
+      description: ID of the tag.
+      type: string
+      example: '460000000000567'
+    tag_name:
+      description: Name of the tag.
+      type: string
+      example: Business Unit
+    tag_option_id:
+      description: ID of the tag option.
+      type: string
+      example: '460000000014044'
+    tag_option_name:
+      description: Name of the tag option.
+      type: string
+      example: Sales
+    is_tag_mandatory:
+      description: Used to check if the tag is mandatory.
+      type: boolean
+      example: false
+    tags:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+    tags_response:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_name:
+            $ref: '#/components/schemas/tag_name'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+          tag_option_name:
+            $ref: '#/components/schemas/tag_option_name'
+          is_tag_mandatory:
+            $ref: '#/components/schemas/is_tag_mandatory'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.bills.CREATE: Create Bills
+            ERP.bills.UPDATE: Update Bills
+            ERP.bills.READ: Read Bills
+            ERP.bills.DELETE: Delete Bills

@@ -1,0 +1,193 @@
+{
+ "frozen_at": "2026-08-06",
+ "rule": "Every one of the 40 screens must specify ALL 24 attributes as sub-headings. A QA gate counts them.",
+ "count": 40,
+ "required_attributes_per_screen": [
+  "Screen purpose",
+  "Primary users",
+  "Entry points",
+  "Header fields",
+  "Search and filter fields",
+  "Table columns",
+  "Form sections",
+  "Tabs",
+  "Actions",
+  "Mass actions",
+  "Status indicators",
+  "Validations",
+  "Warning messages",
+  "Error messages",
+  "Drill-down links",
+  "Attachments",
+  "Comments",
+  "Audit information",
+  "Permission requirements",
+  "Empty state",
+  "Loading state",
+  "Failure state",
+  "Mobile or tablet behaviour",
+  "Export and print behaviour"
+ ],
+ "screens": [
+  {
+   "screen_id": "SCR-01",
+   "name_verbatim": "Executive CAPEX Dashboard"
+  },
+  {
+   "screen_id": "SCR-02",
+   "name_verbatim": "Project Controller Workbench"
+  },
+  {
+   "screen_id": "SCR-03",
+   "name_verbatim": "My Approval Inbox"
+  },
+  {
+   "screen_id": "SCR-04",
+   "name_verbatim": "CAPEX Project List"
+  },
+  {
+   "screen_id": "SCR-05",
+   "name_verbatim": "CAPEX Project Object Page"
+  },
+  {
+   "screen_id": "SCR-06",
+   "name_verbatim": "WBS Hierarchy Explorer"
+  },
+  {
+   "screen_id": "SCR-07",
+   "name_verbatim": "WBS Tree Table"
+  },
+  {
+   "screen_id": "SCR-08",
+   "name_verbatim": "WBS Element Detail Page"
+  },
+  {
+   "screen_id": "SCR-09",
+   "name_verbatim": "Budget Planning Grid"
+  },
+  {
+   "screen_id": "SCR-10",
+   "name_verbatim": "Budget Version Comparison"
+  },
+  {
+   "screen_id": "SCR-11",
+   "name_verbatim": "Budget Revision Request"
+  },
+  {
+   "screen_id": "SCR-12",
+   "name_verbatim": "Budget Transfer Screen"
+  },
+  {
+   "screen_id": "SCR-13",
+   "name_verbatim": "Budget Availability Check"
+  },
+  {
+   "screen_id": "SCR-14",
+   "name_verbatim": "Purchase Request Control View"
+  },
+  {
+   "screen_id": "SCR-15",
+   "name_verbatim": "Purchase Order Commitment View"
+  },
+  {
+   "screen_id": "SCR-16",
+   "name_verbatim": "GRN and Unbilled Receipt View"
+  },
+  {
+   "screen_id": "SCR-17",
+   "name_verbatim": "Vendor Bill and Actual CWIP View"
+  },
+  {
+   "screen_id": "SCR-18",
+   "name_verbatim": "Commitment-to-Actual Reconciliation"
+  },
+  {
+   "screen_id": "SCR-19",
+   "name_verbatim": "CWIP Ledger"
+  },
+  {
+   "screen_id": "SCR-20",
+   "name_verbatim": "Project Completion Review"
+  },
+  {
+   "screen_id": "SCR-21",
+   "name_verbatim": "Capitalisation Workbench"
+  },
+  {
+   "screen_id": "SCR-22",
+   "name_verbatim": "Asset Allocation Screen"
+  },
+  {
+   "screen_id": "SCR-23",
+   "name_verbatim": "Open Commitment Ageing"
+  },
+  {
+   "screen_id": "SCR-24",
+   "name_verbatim": "CWIP Ageing"
+  },
+  {
+   "screen_id": "SCR-25",
+   "name_verbatim": "Exception and Overrun Monitor"
+  },
+  {
+   "screen_id": "SCR-26",
+   "name_verbatim": "Integration Event Monitor"
+  },
+  {
+   "screen_id": "SCR-27",
+   "name_verbatim": "Reconciliation Exception Queue"
+  },
+  {
+   "screen_id": "SCR-28",
+   "name_verbatim": "Audit Trail Viewer"
+  },
+  {
+   "screen_id": "SCR-29",
+   "name_verbatim": "Approval Matrix Configuration"
+  },
+  {
+   "screen_id": "SCR-30",
+   "name_verbatim": "Master Data Configuration"
+  },
+  {
+   "screen_id": "SCR-31",
+   "name_verbatim": "Zoho ERP Connection Setup Wizard"
+  },
+  {
+   "screen_id": "SCR-32",
+   "name_verbatim": "Zoho OAuth Authorisation and Consent Screen"
+  },
+  {
+   "screen_id": "SCR-33",
+   "name_verbatim": "Zoho Organisation Selection and Mapping"
+  },
+  {
+   "screen_id": "SCR-34",
+   "name_verbatim": "API Scope and Permission Validation"
+  },
+  {
+   "screen_id": "SCR-35",
+   "name_verbatim": "Master Data Mapping Workbench"
+  },
+  {
+   "screen_id": "SCR-36",
+   "name_verbatim": "Transaction Field Mapping Workbench"
+  },
+  {
+   "screen_id": "SCR-37",
+   "name_verbatim": "Sync Direction and Scheduling Configuration"
+  },
+  {
+   "screen_id": "SCR-38",
+   "name_verbatim": "Integration Health and API Usage Dashboard"
+  },
+  {
+   "screen_id": "SCR-39",
+   "name_verbatim": "Failed Sync and Retry Queue"
+  },
+  {
+   "screen_id": "SCR-40",
+   "name_verbatim": "Connector Audit and Credential Activity Log"
+  }
+ ]
+}

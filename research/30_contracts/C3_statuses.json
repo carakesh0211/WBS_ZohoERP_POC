@@ -1,0 +1,161 @@
+{
+ "frozen_at": "2026-08-06",
+ "rule": "Exactly these 21 status labels. No synonyms. Every status must also be distinguishable without colour (icon plus text) for accessibility.",
+ "count": 21,
+ "semantic_roles": [
+  "neutral",
+  "in-progress",
+  "positive",
+  "warning",
+  "negative"
+ ],
+ "statuses": [
+  {
+   "code": "DRAFT",
+   "label": "Draft",
+   "semantic_role": "neutral",
+   "meaning": "Editable, no control effect.",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "SUBMITTED",
+   "label": "Submitted",
+   "semantic_role": "in-progress",
+   "meaning": "Awaiting first approval decision.",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "UNDER_REVIEW",
+   "label": "Under Review",
+   "semantic_role": "in-progress",
+   "meaning": "Approver has opened it.",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "APPROVED",
+   "label": "Approved",
+   "semantic_role": "positive",
+   "meaning": "Approved; downstream action permitted.",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "REJECTED",
+   "label": "Rejected",
+   "semantic_role": "negative",
+   "meaning": "Terminal for this version; a new version may be raised.",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "RETURNED",
+   "label": "Returned",
+   "semantic_role": "warning",
+   "meaning": "Sent back to requestor for correction.",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "RELEASED",
+   "label": "Released",
+   "semantic_role": "positive",
+   "meaning": "Budget released; procurement permitted.",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "PARTIALLY_COMMITTED",
+   "label": "Partially Committed",
+   "semantic_role": "in-progress",
+   "meaning": "Some but not all budget consumed by open POs.",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "FULLY_COMMITTED",
+   "label": "Fully Committed",
+   "semantic_role": "in-progress",
+   "meaning": "Open PO commitment equals available budget.",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "PARTIALLY_ACTUALISED",
+   "label": "Partially Actualised",
+   "semantic_role": "in-progress",
+   "meaning": "Some committed value converted to actual CWIP.",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "FULLY_ACTUALISED",
+   "label": "Fully Actualised",
+   "semantic_role": "positive",
+   "meaning": "All committed value converted to actual CWIP.",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "BUDGET_EXCEEDED",
+   "label": "Budget Exceeded",
+   "semantic_role": "negative",
+   "meaning": "Exposure exceeds current approved budget.",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "EXCEPTION_PENDING",
+   "label": "Exception Pending",
+   "semantic_role": "warning",
+   "meaning": "Over-budget transaction awaiting exception approval.",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "TECHNICALLY_COMPLETED",
+   "label": "Technically Completed",
+   "semantic_role": "in-progress",
+   "meaning": "Physical work complete; financial postings may continue.",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "FINANCIALLY_COMPLETED",
+   "label": "Financially Completed",
+   "semantic_role": "positive",
+   "meaning": "No further postings permitted.",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "AWAITING_CAPITALISATION",
+   "label": "Awaiting Capitalisation",
+   "semantic_role": "warning",
+   "meaning": "CWIP eligible for transfer to fixed assets.",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "CAPITALISED",
+   "label": "Capitalised",
+   "semantic_role": "positive",
+   "meaning": "CWIP transferred to fixed asset(s).",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "CLOSED",
+   "label": "Closed",
+   "semantic_role": "neutral",
+   "meaning": "Terminal. Procurement and posting blocked.",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "REOPENED",
+   "label": "Reopened",
+   "semantic_role": "warning",
+   "meaning": "Reopened under controlled approval; audit trail records who and why.",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "INTEGRATION_FAILED",
+   "label": "Integration Failed",
+   "semantic_role": "negative",
+   "meaning": "Outbound or inbound sync failed; retry or dead-letter.",
+   "non_colour_indicator_required": true
+  },
+  {
+   "code": "RECONCILIATION_PENDING",
+   "label": "Reconciliation Pending",
+   "semantic_role": "warning",
+   "meaning": "Source and target values differ beyond tolerance.",
+   "non_colour_indicator_required": true
+  }
+ ]
+}

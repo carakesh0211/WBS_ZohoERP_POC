@@ -1,0 +1,1862 @@
+openapi: 3.0.0
+info:
+  title: Vendor Payments
+  description: Payments to Vendors towards Bills.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: vendor-payments
+    description: Vendor-Payments Module
+paths:
+  /vendorpayments:
+    x-mcp-group:
+      - Vendor Payments
+    post:
+      tags:
+        - vendor-payments
+      operationId: create_vendor_payment
+      summary: Create a vendor payment
+      description: Create a payment made to your vendor and you can also apply them to bills either partially or fully.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-vendor-payment-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-vendor-payment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.vendorpayments.CREATE
+    get:
+      tags:
+        - vendor-payments
+      operationId: list_vendor_payments
+      summary: List vendor payments
+      description: List all the payments made to your vendor.
+      parameters:
+        - name: vendor_name
+          in: query
+          description: 'Search payments by vendor name. Variants: <code>vendor_name_startswith</code> and <code>vendor_name_contains</code>.'
+          required: false
+          schema:
+            type: string
+          example: Zylker Inc
+        - name: reference_number
+          in: query
+          description: 'Search payments by reference number. Variants: <code>reference_number_startswith</code> and <code>reference_number_contains</code>. In refunds, reference number for the refund recorded.'
+          required: false
+          schema:
+            type: string
+          example: REF#912300
+        - name: payment_number
+          in: query
+          description: 'Search with Payment Number. Variant: <code>payment_number_startswith</code>, <code>payment_number_contains</code>'
+          required: false
+          schema:
+            type: string
+          example: '1'
+        - name: date
+          in: query
+          description: 'Date the payment is made. Search payments by payment made date. Variants: <code>date_start</code>, <code>date_end</code>, <code>date_before</code> and <code>date_after</code>.'
+          required: false
+          schema:
+            type: string
+          example: '2013-10-07'
+        - name: amount
+          in: query
+          description: 'Payment amount made to the vendor. Search payments by payment amount. Variants: <code>amount_less_than</code>, <code>amount_less_equals</code>, <code>amount_greater_than</code> and <code>amount_greater_equals</code>. In refunds, Amount refunded from the vendor payment.'
+          required: false
+          schema:
+            type: number
+            format: double
+          example: 500
+        - name: payment_mode
+          in: query
+          description: 'Search payments by payment mode. Variants: <code>payment_mode_startswith</code> and <code>payment_mode_contains</code>.'
+          required: false
+          schema:
+            type: string
+          example: Stripe
+        - name: notes
+          in: query
+          description: 'Search with Payment Notes. Variant: <code>notes_startswith</code>, <code>notes_contains</code>'
+          required: false
+          schema:
+            type: string
+          example: Payment
+        - name: vendor_id
+          in: query
+          description: ID of the vendor. Search payments by vendor id.
+          required: false
+          schema:
+            type: string
+          example: '460000000026049'
+        - name: last_modified_time
+          in: query
+          description: Search with the Last Modified Time of the Vendor Payment.
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: bill_id
+          in: query
+          description: Search payments by Bill ID.
+          required: false
+          schema:
+            type: string
+          example: B-01
+        - name: description
+          in: query
+          description: 'Search payments by description. Variants: <code>description_startswith</code> and <code>description_contains</code>.'
+          required: false
+          schema:
+            type: string
+          example: Payment
+        - name: filter_by
+          in: query
+          description: 'Filter payments by mode. Allowed Values: <code>PaymentMode.All</code>, <code>PaymentMode.Check</code>, <code>PaymentMode.Cash</code>, <code>PaymentMode.BankTransfer</code>, <code>PaymentMode.CreditCard</code>, <code>PaymentMode.Credit</code>, <code>PaymentMode.BankRemittance</code> and <code>PaymentMode.Others</code>.'
+          required: false
+          schema:
+            type: string
+          example: PaymentMode.All
+        - name: search_text
+          in: query
+          description: Search payments by reference number or vendor name or payment description.
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: sort_column
+          in: query
+          description: 'Sort the payment list. Allowed Values: <code>vendor_name</code>, <code>date</code>, <code>reference_number</code>, <code>amount</code> and <code>balance</code>.'
+          required: false
+          schema:
+            type: string
+          example: vendor_name
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-vendor-payments-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.vendorpayments.READ
+    put:
+      tags:
+        - vendor-payments
+      operationId: update_vendor_payment_using_custom_field
+      summary: Update an vendor payment using a custom field's unique value
+      description: A custom field will have unique values if it's configured to not accept duplicate values. Now, you can use that custom field's value to update a vendor payment by providing its API name in the X-Unique-Identifier-Key header and its value in the X-Unique-Identifier-Value header. Based on this value, the corresponding vendor payment will be retrieved and updated. Additionally, there is an optional X-Upsert header. If the X-Upsert header is true and the custom field's unique value is not found in any of the existing vendor payments, a new vendor payment will be created if the necessary payload details are available.
+      parameters:
+        - name: X-Unique-Identifier-Key
+          in: header
+          description: Unique CustomField Api Name.
+          required: true
+          schema:
+            type: string
+            example: cf_unique_cf
+        - name: X-Unique-Identifier-Value
+          in: header
+          description: Unique CustomField Value.
+          required: true
+          schema:
+            type: string
+            example: unique Value
+        - name: X-Upsert
+          in: header
+          description: If there is no record is found unique custom field value , will create new invoice.
+          required: false
+          schema:
+            type: boolean
+            example: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-vendor-payment-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-vendor-payment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.vendorpayments.UPDATE
+    delete:
+      tags:
+        - vendor-payments
+      operationId: bulk_delete_vendor_payments
+      summary: Bulk delete vendor payments
+      description: Delete multiple vendor payments.
+      parameters:
+        - name: vendorpayment_id
+          in: query
+          description: Comma-separated list of vendor payment IDs to be deleted.
+          required: true
+          schema:
+            type: string
+          example: 460000000053219,460000000053220,460000000053221
+        - name: bulk_delete
+          in: query
+          description: Flag to indicate bulk delete operation.
+          required: true
+          schema:
+            type: boolean
+          example: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/bulk-delete-vendor-payments-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.vendorpayments.DELETE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /vendorpayments/{payment_id}:
+    x-mcp-group:
+      - Vendor Payments
+    put:
+      tags:
+        - vendor-payments
+      operationId: update_vendor_payment
+      summary: Update a vendor payment
+      description: Update an existing vendor payment. You can also modify the amount applied to the bills.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-vendor-payment-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-vendor-payment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.vendorpayments.UPDATE
+    get:
+      tags:
+        - vendor-payments
+      operationId: get_vendor_payment
+      summary: Get a vendor payment
+      description: Get the details of a vendor payment.
+      parameters:
+        - name: fetchTaxInfo
+          in: query
+          description: Indicates if tax information should be fetched.
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: fetchstatementlineinfo
+          in: query
+          description: Check is Statement Line Information for Vendor Payment be fetched.
+          required: false
+          schema:
+            type: boolean
+          example: true
+        - name: print
+          in: query
+          description: Indicates if Vendor Payment must be printed.
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: is_bill_payment_id
+          in: query
+          description: Indicates if the ID is Bill Payment or Vendor Payment.
+          required: false
+          schema:
+            type: boolean
+          example: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-vendor-payment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.vendorpayments.READ
+    delete:
+      tags:
+        - vendor-payments
+      operationId: delete_vendor_payment
+      summary: Delete a vendor payment
+      description: Delete an existing vendor payment.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-vendor-payment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.vendorpayments.DELETE
+    parameters:
+      - name: payment_id
+        in: path
+        required: true
+        description: Unique identifier of the payment.
+        schema:
+          type: string
+        example: '460000000053219'
+      - $ref: '#/components/parameters/organization_id'
+  /vendorpayments/{payment_id}/refunds:
+    x-mcp-group:
+      - Vendor Payments
+    get:
+      tags:
+        - vendor-payments
+      operationId: list_vendor_payment_refunds
+      summary: List refunds of a vendor payment
+      description: List all the refunds pertaining to an existing vendor payment.
+      parameters:
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-refunds-of-a-vendor-payment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.vendorpayments.READ
+    post:
+      tags:
+        - vendor-payments
+      operationId: refund_excess_vendor_payment
+      summary: Refund an excess vendor payment
+      description: Refund the excess amount paid to the vendor.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/refund-an-excess-vendor-payment-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/refund-an-excess-vendor-payment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.vendorpayments.CREATE
+    parameters:
+      - name: payment_id
+        in: path
+        required: true
+        description: Unique identifier of the payment.
+        schema:
+          type: string
+        example: '460000000053219'
+      - $ref: '#/components/parameters/organization_id'
+  /vendorpayments/{payment_id}/refunds/{vendorpayment_refund_id}:
+    x-mcp-group:
+      - Vendor Payments
+    get:
+      tags:
+        - vendor-payments
+      operationId: get_vendor_payment_refund
+      summary: Details of a refund
+      description: Obtain details of a particular refund of a vendor payment.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/details-of-a-refund-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.vendorpayments.READ
+    put:
+      tags:
+        - vendor-payments
+      operationId: update_vendor_payment_refund
+      summary: Update a refund
+      description: Update the refunded transaction.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-refund-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-refund-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.vendorpayments.UPDATE
+    delete:
+      tags:
+        - vendor-payments
+      operationId: delete_vendor_payment_refund
+      summary: Delete a refund
+      description: Delete refund pertaining to an existing vendor payment.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-refund-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.vendorpayments.DELETE
+    parameters:
+      - name: payment_id
+        in: path
+        required: true
+        description: Unique identifier of the payment.
+        schema:
+          type: string
+        example: '460000000053219'
+      - name: vendorpayment_refund_id
+        in: path
+        required: true
+        description: Unique identifier of the vendor payment refund.
+        schema:
+          type: string
+        example: '460000000003017'
+      - $ref: '#/components/parameters/organization_id'
+  /vendorpayments/{payment_id}/email:
+    x-mcp-group:
+      - Vendor Payments
+    post:
+      tags:
+        - vendor-payments
+      operationId: email_vendor_payment
+      summary: Email a vendor payment
+      description: Send a vendor payment receipt to the vendor via email. You can customize the email content, attach files, and control sender preferences. If the request body is empty, the email will be sent with default content based on the email template associated with the vendor or the default template.
+      parameters:
+        - name: send_attachment
+          in: query
+          description: Send the vendor payment attachment with the email.
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: attachments
+          in: query
+          description: Files to be attached to the email.
+          required: false
+          schema:
+            type: string
+            format: binary
+          example: ''
+        - name: file_name
+          in: query
+          description: Name of the file to be attached.
+          required: false
+          schema:
+            type: string
+          example: payment_receipt.pdf
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/email-a-vendor-payment-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/email-a-vendor-payment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.vendorpayments.CREATE
+    get:
+      tags:
+        - vendor-payments
+      operationId: get_vendor_payment_email_content
+      summary: Get vendor payment email content
+      description: Retrieve the pre-populated email content for a vendor payment, including subject, body, recipient contacts, sender options, and attachment details. This endpoint provides all the necessary information to compose and send a vendor payment receipt email.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-vendor-payment-email-content-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.vendorpayments.READ
+    parameters:
+      - name: payment_id
+        in: path
+        required: true
+        description: Unique identifier of the payment.
+        schema:
+          type: string
+        example: '460000000053219'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    vendor_id:
+      description: ID of the vendor associated with the Vendor Payment.
+      type: string
+      example: '460000000026049'
+    bill_id:
+      description: ID of the bill the payment is to be applied.
+      type: string
+      example: '460000000053199'
+    amount_applied:
+      description: Amount applied to the bill.
+      type: number
+      format: double
+      example: 150
+    payment_mode:
+      description: Mode of Vendor Payment.
+      type: string
+      example: Stripe
+    description:
+      description: Description for the Vendor Payment recorded.
+      type: string
+    date:
+      description: Date the payment is made.
+      type: string
+      example: '2013-10-07'
+    reference_number:
+      description: Reference number for the Vendor Payment recorded.
+      type: string
+      example: REF#912300
+    exchange_rate:
+      description: Exchange rate of the currency.
+      type: number
+      format: double
+      example: 1
+    amount:
+      description: Total Amount of Vendor Payment.
+      type: number
+      format: double
+      example: 500
+    paid_through_account_id:
+      description: ID of the cash/ bank account from which the payment is made.
+      type: string
+      example: '460000000000358'
+    payment_id:
+      description: ID of the Payment.
+      type: string
+      example: '460000000053219'
+    vendor_name:
+      description: Name of the Vendor Associated with the Vendor Payment.
+      type: string
+      example: Zylker Inc
+    currency_symbol:
+      description: Symbol of the Currency.
+      type: string
+      example: $
+    paid_through_account_name:
+      description: Name of the Cash/Bank Account through which the Vendor Payment is made.
+      type: string
+      example: Undeposited Funds
+    bill_number:
+      description: Number associated with the Bill.
+      type: string
+      example: B-1000
+    bill_payment_id:
+      description: ID of the Bill Payment.
+      type: string
+      example: '460000000053221'
+    total:
+      description: Total Bill Payment Amount.
+      type: number
+      format: double
+      example: 450
+    balance:
+      description: Balance due for the Bill.
+      type: number
+      format: double
+      example: 300
+    due_date:
+      description: Due date of the Bill.
+      type: string
+      example: '2013-10-07'
+    filter_by:
+      description: 'Filter payments by mode. Allowed Values: <code>PaymentMode.All</code>, <code>PaymentMode.Check</code>, <code>PaymentMode.Cash</code>, <code>PaymentMode.BankTransfer</code>, <code>PaymentMode.CreditCard</code>, <code>PaymentMode.Credit</code>, <code>PaymentMode.BankRemittance</code> and <code>PaymentMode.Others</code>.'
+      type: string
+      example: PaymentMode.All
+    search_text:
+      description: Search payments by reference number or vendor name or payment description.
+      type: string
+    sort_column:
+      description: 'Sort the payment list. Allowed Values: <code>vendor_name</code>, <code>date</code>, <code>reference_number</code>, <code>amount</code> and <code>balance</code>.'
+      type: string
+      example: vendor_name
+    notes:
+      description: 'Search payments by notes. Variants: <code>notes_startswith</code> and <code>notes_contains</code>.'
+      type: string
+      example: ''
+    page:
+      type: integer
+      example: 1
+    per_page:
+      type: integer
+      example: 10
+    has_more_page:
+      type: boolean
+      example: false
+    report_name:
+      type: string
+      example: Payments Made
+    applied_filter:
+      type: string
+      example: PaymentMode.All
+    sort_order:
+      type: string
+      example: D
+    vendorpayment_refund_id:
+      description: ID of the Vendor Payment Refund.
+      type: string
+      example: '460000000003017'
+    vendorpayment_id:
+      type: string
+      example: '460000000003001'
+    refund_mode:
+      description: Mode in which refund is made.
+      type: string
+      example: cash
+    vendorpayment_number:
+      description: Number of the Vendor Payment.
+      type: string
+      example: '2'
+    amount_bcy:
+      type: integer
+      example: 10
+    amount_fcy:
+      type: integer
+      example: 10
+    to_account_id:
+      description: The account to which payment is refunded.
+      type: string
+      example: '460000000000385'
+    payment_number:
+      description: Number of the Vendor Payment.
+      type: integer
+      example: 4
+    custom_field_id:
+      description: ID of the Custom Field.
+      type: string
+    index:
+      description: Index of the Custom Field.
+      type: integer
+    label:
+      description: Label of the Custom Field.
+      type: string
+    value:
+      description: Value for the Custom Field.
+      type: string
+    custom_fields:
+      type: array
+      description: Custom fields associated with the vendor payment.
+      items:
+        type: object
+        properties:
+          custom_field_id:
+            $ref: '#/components/schemas/custom_field_id'
+          index:
+            $ref: '#/components/schemas/index'
+          label:
+            $ref: '#/components/schemas/label'
+          value:
+            $ref: '#/components/schemas/value'
+    documents:
+      type: array
+      items:
+        type: string
+    tax_account_name:
+      description: Name of the tax Account.
+      type: string
+    currency_id:
+      description: ID of the Currency.
+      type: string
+      example: '460000000000099'
+    created_time:
+      description: Creation Time of the Vendor Payment.
+      type: string
+      example: 2016-12-16T00:18:42-0500
+    last_modified_time:
+      description: The Last Modified Time of the Vendor Payment.
+      type: string
+    paid_through_account_type:
+      description: The type of Paid Through Account.
+      type: string
+      example: cash
+    is_paid_via_print_check:
+      description: Indicates if the Bill Payment is paid Via Print Check Option.
+      type: boolean
+      example: false
+    is_ach_payment:
+      description: Indicates if Vendor Payment ACH.
+      type: boolean
+      example: false
+    ach_payment_status:
+      description: Status of the ACH Payment.
+      type: string
+    address:
+      description: Address.
+      type: string
+    city:
+      description: City in the Address.
+      type: string
+    state:
+      description: State in the Address.
+      type: string
+    zip:
+      description: ZIP Code of the Address.
+      type: string
+    country:
+      description: Country of the Address.
+      type: string
+    fax:
+      description: Fax Number.
+      type: string
+    attention:
+      type: string
+    check_id:
+      description: ID of the Check Printed.
+      type: string
+    check_number:
+      description: Check Number that is printed.
+      type: string
+    memo:
+      description: Memo of the Check.
+      type: string
+    amount_in_words:
+      description: Check Amount in Words.
+      type: string
+    check_status:
+      description: Status of the Check.
+      type: string
+    bcy_balance:
+      description: Balance in Base Currency.
+      type: integer
+      example: 76
+    billing_address_id:
+      description: ID of the Billing Address.
+      type: string
+    check_details:
+      type: array
+      description: Details of the check when the payment mode is Check.
+      items:
+        type: string
+    billing_address:
+      type: array
+      items:
+        type: string
+      example:
+        - address
+        - city
+        - state
+        - zip
+        - country
+        - fax
+        - attention
+    vendorpayment_refunds:
+      type: array
+      items:
+        type: object
+        properties:
+          vendorpayment_refund_id:
+            $ref: '#/components/schemas/vendorpayment_refund_id'
+          date:
+            description: Date of the Vendor Payment Refund.
+            type: string
+            example: '2017-01-10'
+          refund_mode:
+            $ref: '#/components/schemas/refund_mode'
+          reference_number:
+            description: Reference Number of the Payment Refund.
+            type: string
+          description:
+            description: Description of the Payment Refund.
+            type: string
+            example: Payment Refund
+          amount_bcy:
+            description: Payment Refund Amount in Base Currency.
+            type: number
+            format: double
+            example: 4
+          amount_fcy:
+            description: Payment Refund Amount in Foreign Currency.
+            type: number
+            format: double
+            example: 4
+    imported_transactions:
+      type: array
+      items:
+        type: string
+    to_account_name:
+      type: string
+      example: Petty Cash
+    bill_numbers:
+      description: Numbers of the bill.
+      type: string
+    bcy_amount:
+      description: Amount in Base Currency.
+      type: integer
+      example: 76
+    has_attachment:
+      description: Indicates if Vendor Payment has attachment.
+      type: boolean
+      example: false
+    ach_gw_transaction_id:
+      description: ID of the ACH Payment Transaction.
+      type: string
+    page_context:
+      type: array
+      items:
+        type: object
+        properties:
+          page:
+            $ref: '#/components/schemas/page'
+          per_page:
+            $ref: '#/components/schemas/per_page'
+          has_more_page:
+            $ref: '#/components/schemas/has_more_page'
+          report_name:
+            $ref: '#/components/schemas/report_name'
+          applied_filter:
+            $ref: '#/components/schemas/applied_filter'
+          sort_column:
+            $ref: '#/components/schemas/sort_column'
+          sort_order:
+            $ref: '#/components/schemas/sort_order'
+    tax_amount_withheld:
+      description: Tax Amount Withheld during Bill Payment.
+      type: number
+      format: double
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    bills:
+      description: Individual bill payment details as array.
+      type: array
+      items:
+        type: object
+        properties:
+          bill_payment_id:
+            $ref: '#/components/schemas/bill_payment_id'
+          bill_id:
+            $ref: '#/components/schemas/bill_id'
+          amount_applied:
+            $ref: '#/components/schemas/amount_applied'
+          tax_amount_withheld:
+            $ref: '#/components/schemas/tax_amount_withheld'
+    location_id:
+      description: Location ID.
+      type: string
+      example: '460000000038080'
+    location_name:
+      description: Name of the location.
+      type: string
+    vendorpayment:
+      type: array
+      items:
+        type: object
+        properties:
+          payment_id:
+            $ref: '#/components/schemas/payment_id'
+          vendor_id:
+            $ref: '#/components/schemas/vendor_id'
+          vendor_name:
+            $ref: '#/components/schemas/vendor_name'
+          payment_mode:
+            $ref: '#/components/schemas/payment_mode'
+          payment_number:
+            $ref: '#/components/schemas/payment_number'
+          custom_fields:
+            $ref: '#/components/schemas/custom_fields'
+          description:
+            $ref: '#/components/schemas/description'
+          documents:
+            $ref: '#/components/schemas/documents'
+          date:
+            $ref: '#/components/schemas/date'
+          reference_number:
+            $ref: '#/components/schemas/reference_number'
+          exchange_rate:
+            $ref: '#/components/schemas/exchange_rate'
+          tax_account_name:
+            $ref: '#/components/schemas/tax_account_name'
+          tax_amount_withheld:
+            $ref: '#/components/schemas/tax_amount_withheld'
+          amount:
+            $ref: '#/components/schemas/amount'
+          balance:
+            $ref: '#/components/schemas/balance'
+          currency_id:
+            $ref: '#/components/schemas/currency_id'
+          currency_symbol:
+            $ref: '#/components/schemas/currency_symbol'
+          location_id:
+            $ref: '#/components/schemas/location_id'
+          location_name:
+            $ref: '#/components/schemas/location_name'
+          created_time:
+            $ref: '#/components/schemas/created_time'
+          last_modified_time:
+            $ref: '#/components/schemas/last_modified_time'
+          paid_through_account_id:
+            $ref: '#/components/schemas/paid_through_account_id'
+          paid_through_account_name:
+            $ref: '#/components/schemas/paid_through_account_name'
+          paid_through_account_type:
+            $ref: '#/components/schemas/paid_through_account_type'
+          is_paid_via_print_check:
+            $ref: '#/components/schemas/is_paid_via_print_check'
+          is_ach_payment:
+            $ref: '#/components/schemas/is_ach_payment'
+          ach_payment_status:
+            $ref: '#/components/schemas/ach_payment_status'
+          check_details:
+            $ref: '#/components/schemas/check_details'
+          billing_address:
+            $ref: '#/components/schemas/billing_address'
+          bills:
+            $ref: '#/components/schemas/bills'
+          vendorpayment_refunds:
+            $ref: '#/components/schemas/vendorpayment_refunds'
+          imported_transactions:
+            $ref: '#/components/schemas/imported_transactions'
+          tags:
+            $ref: '#/components/schemas/tags_response'
+    vendorpayments:
+      type: array
+      items:
+        type: object
+        properties:
+          payment_id:
+            $ref: '#/components/schemas/payment_id'
+          vendor_id:
+            $ref: '#/components/schemas/vendor_id'
+          vendor_name:
+            $ref: '#/components/schemas/vendor_name'
+          bill_numbers:
+            $ref: '#/components/schemas/bill_numbers'
+          payment_mode:
+            $ref: '#/components/schemas/payment_mode'
+          payment_number:
+            $ref: '#/components/schemas/payment_number'
+          description:
+            $ref: '#/components/schemas/description'
+          date:
+            $ref: '#/components/schemas/date'
+          reference_number:
+            $ref: '#/components/schemas/reference_number'
+          exchange_rate:
+            $ref: '#/components/schemas/exchange_rate'
+          amount:
+            $ref: '#/components/schemas/amount'
+          bcy_amount:
+            $ref: '#/components/schemas/bcy_amount'
+          paid_through_account_id:
+            $ref: '#/components/schemas/paid_through_account_id'
+          paid_through_account_name:
+            $ref: '#/components/schemas/paid_through_account_name'
+          balance:
+            $ref: '#/components/schemas/balance'
+          bcy_balance:
+            $ref: '#/components/schemas/bcy_balance'
+          created_time:
+            $ref: '#/components/schemas/created_time'
+          last_modified_time:
+            $ref: '#/components/schemas/last_modified_time'
+          is_paid_via_print_check:
+            $ref: '#/components/schemas/is_paid_via_print_check'
+          has_attachment:
+            $ref: '#/components/schemas/has_attachment'
+          is_ach_payment:
+            $ref: '#/components/schemas/is_ach_payment'
+          ach_payment_status:
+            $ref: '#/components/schemas/ach_payment_status'
+          ach_gw_transaction_id:
+            $ref: '#/components/schemas/ach_gw_transaction_id'
+          check_details:
+            $ref: '#/components/schemas/check_details'
+          tags:
+            $ref: '#/components/schemas/tags_response'
+    vendorpayment_refund:
+      type: array
+      items:
+        type: object
+        properties:
+          vendorpayment_refund_id:
+            $ref: '#/components/schemas/vendorpayment_refund_id'
+          vendorpayment_id:
+            $ref: '#/components/schemas/vendorpayment_id'
+          date:
+            $ref: '#/components/schemas/date'
+          refund_mode:
+            $ref: '#/components/schemas/refund_mode'
+          reference_number:
+            $ref: '#/components/schemas/reference_number'
+          amount:
+            $ref: '#/components/schemas/amount'
+          exchange_rate:
+            $ref: '#/components/schemas/exchange_rate'
+          to_account_id:
+            $ref: '#/components/schemas/to_account_id'
+          to_account_name:
+            $ref: '#/components/schemas/to_account_name'
+          description:
+            $ref: '#/components/schemas/description'
+    price_precision:
+      description: Precision of the Amount.
+      type: integer
+      example: 2
+    comment_id:
+      description: ID of the Comment.
+      type: string
+      example: '340108000000074051'
+    commented_by:
+      description: User who caused the comment.
+      type: string
+      example: John Roberts
+    commented_by_id:
+      description: ID of the user who caused the Comment.
+      type: string
+      example: '340108000000044001'
+    date_description:
+      description: Description of the Date.
+      type: string
+      example: few seconds ago
+    operation_type:
+      description: Type of Operation that caused the comment.
+      type: string
+      example: Added
+    time:
+      description: Time the Comment was Added.
+      type: string
+      example: 5:04 AM
+    comments:
+      description: Description of the Comment.
+      type: string
+      example: Payment of amount $150.00 made and applied for b-01
+    fetchTaxInfo:
+      description: Indicates if tax information should be fetched.
+      type: boolean
+      example: false
+    fetchstatementlineinfo:
+      description: Check is Statement Line Information for Vendor Payment be fetched.
+      type: boolean
+      example: true
+    print:
+      description: Indicates if Vendor Payment must be printed.
+      type: boolean
+      example: false
+    is_bill_payment_id:
+      description: Indicates if the ID is Bill Payment or Vendor Payment.
+      type: boolean
+      example: true
+    transaction_type:
+      description: Type of transaction.
+      type: string
+    create-a-vendor-payment-request:
+      required:
+        - amount
+      type: object
+      properties:
+        vendor_id:
+          $ref: '#/components/schemas/vendor_id'
+        bills:
+          $ref: '#/components/schemas/bills'
+        date:
+          $ref: '#/components/schemas/date'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        amount:
+          $ref: '#/components/schemas/amount'
+        paid_through_account_id:
+          $ref: '#/components/schemas/paid_through_account_id'
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        description:
+          $ref: '#/components/schemas/description'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        check_details:
+          $ref: '#/components/schemas/check_details'
+        is_paid_via_print_check:
+          $ref: '#/components/schemas/is_paid_via_print_check'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        tags:
+          $ref: '#/components/schemas/tags'
+        custom_fields:
+          type: array
+          description: Custom fields associated with the vendor payment.
+          items:
+            type: object
+            properties:
+              index:
+                $ref: '#/components/schemas/index'
+              value:
+                $ref: '#/components/schemas/value'
+    create-a-vendor-payment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The payment made to the vendor has been recorded.
+          readOnly: true
+        ach_payment_status:
+          $ref: '#/components/schemas/ach_payment_status'
+        amount:
+          $ref: '#/components/schemas/amount'
+        balance:
+          $ref: '#/components/schemas/balance'
+        billing_address:
+          $ref: '#/components/schemas/billing_address'
+        bills:
+          description: Individual bill payment details as list.
+          type: array
+          items:
+            type: object
+            properties:
+              bill_payment_id:
+                $ref: '#/components/schemas/bill_payment_id'
+              bill_id:
+                $ref: '#/components/schemas/bill_id'
+              amount_applied:
+                $ref: '#/components/schemas/amount_applied'
+              tax_amount_withheld:
+                $ref: '#/components/schemas/tax_amount_withheld'
+              balance:
+                $ref: '#/components/schemas/balance'
+              bill_number:
+                $ref: '#/components/schemas/bill_number'
+              date:
+                $ref: '#/components/schemas/date'
+              due_date:
+                $ref: '#/components/schemas/due_date'
+              price_precision:
+                $ref: '#/components/schemas/price_precision'
+              total:
+                $ref: '#/components/schemas/total'
+        check_details:
+          type: object
+          description: Details of the check when the payment mode is Check.
+          properties:
+            amount_in_words:
+              $ref: '#/components/schemas/amount_in_words'
+            check_id:
+              $ref: '#/components/schemas/check_id'
+            check_number:
+              $ref: '#/components/schemas/check_number'
+            check_status:
+              $ref: '#/components/schemas/check_status'
+            memo:
+              $ref: '#/components/schemas/memo'
+        comments:
+          $ref: '#/components/schemas/comments'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        currency_symbol:
+          $ref: '#/components/schemas/currency_symbol'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        date:
+          $ref: '#/components/schemas/date'
+        description:
+          $ref: '#/components/schemas/description'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        imported_transactions:
+          $ref: '#/components/schemas/imported_transactions'
+        documents:
+          $ref: '#/components/schemas/documents'
+        is_ach_payment:
+          $ref: '#/components/schemas/is_ach_payment'
+        is_paid_via_print_check:
+          $ref: '#/components/schemas/is_paid_via_print_check'
+        last_modified_time:
+          $ref: '#/components/schemas/last_modified_time'
+        paid_through_account_id:
+          $ref: '#/components/schemas/paid_through_account_id'
+        paid_through_account_name:
+          $ref: '#/components/schemas/paid_through_account_name'
+        paid_through_account_type:
+          $ref: '#/components/schemas/paid_through_account_type'
+        payment_id:
+          $ref: '#/components/schemas/payment_id'
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        payment_number:
+          $ref: '#/components/schemas/payment_number'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        tags:
+          $ref: '#/components/schemas/tags_response'
+        tax_account_name:
+          $ref: '#/components/schemas/tax_account_name'
+        tax_amount_withheld:
+          $ref: '#/components/schemas/tax_amount_withheld'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        location_name:
+          $ref: '#/components/schemas/location_name'
+        vendor_id:
+          $ref: '#/components/schemas/vendor_id'
+        vendor_name:
+          $ref: '#/components/schemas/vendor_name'
+        vendorpayment_refunds:
+          $ref: '#/components/schemas/vendorpayment_refunds'
+    list-vendor-payments-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        vendorpayments:
+          type: array
+          items:
+            type: object
+            properties:
+              payment_id:
+                $ref: '#/components/schemas/payment_id'
+              vendor_id:
+                $ref: '#/components/schemas/vendor_id'
+              vendor_name:
+                $ref: '#/components/schemas/vendor_name'
+              bill_numbers:
+                $ref: '#/components/schemas/bill_numbers'
+              payment_mode:
+                $ref: '#/components/schemas/payment_mode'
+              payment_number:
+                $ref: '#/components/schemas/payment_number'
+              description:
+                $ref: '#/components/schemas/description'
+              date:
+                $ref: '#/components/schemas/date'
+              reference_number:
+                $ref: '#/components/schemas/reference_number'
+              exchange_rate:
+                $ref: '#/components/schemas/exchange_rate'
+              amount:
+                $ref: '#/components/schemas/amount'
+              bcy_amount:
+                $ref: '#/components/schemas/bcy_amount'
+              paid_through_account_id:
+                $ref: '#/components/schemas/paid_through_account_id'
+              paid_through_account_name:
+                $ref: '#/components/schemas/paid_through_account_name'
+              balance:
+                $ref: '#/components/schemas/balance'
+              bcy_balance:
+                $ref: '#/components/schemas/bcy_balance'
+              created_time:
+                $ref: '#/components/schemas/created_time'
+              last_modified_time:
+                $ref: '#/components/schemas/last_modified_time'
+              is_paid_via_print_check:
+                $ref: '#/components/schemas/is_paid_via_print_check'
+              has_attachment:
+                $ref: '#/components/schemas/has_attachment'
+              is_ach_payment:
+                $ref: '#/components/schemas/is_ach_payment'
+              ach_payment_status:
+                $ref: '#/components/schemas/ach_payment_status'
+              ach_gw_transaction_id:
+                $ref: '#/components/schemas/ach_gw_transaction_id'
+              tags:
+                $ref: '#/components/schemas/tags_response'
+              check_details:
+                type: array
+                description: Details of the check when the payment mode is Check.
+                items:
+                  type: object
+                  properties:
+                    check_id:
+                      $ref: '#/components/schemas/check_id'
+                    check_status:
+                      $ref: '#/components/schemas/check_status'
+                    check_number:
+                      $ref: '#/components/schemas/check_number'
+                    memo:
+                      $ref: '#/components/schemas/memo'
+    update-a-vendor-payment-request:
+      required:
+        - amount
+      type: object
+      properties:
+        vendor_id:
+          $ref: '#/components/schemas/vendor_id'
+        bills:
+          $ref: '#/components/schemas/bills'
+        date:
+          $ref: '#/components/schemas/date'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        amount:
+          $ref: '#/components/schemas/amount'
+        paid_through_account_id:
+          $ref: '#/components/schemas/paid_through_account_id'
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        description:
+          $ref: '#/components/schemas/description'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        is_paid_via_print_check:
+          $ref: '#/components/schemas/is_paid_via_print_check'
+        check_details:
+          $ref: '#/components/schemas/check_details'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        tags:
+          $ref: '#/components/schemas/tags'
+        custom_fields:
+          type: array
+          description: Custom fields associated with the vendor payment.
+          items:
+            type: object
+            properties:
+              index:
+                $ref: '#/components/schemas/index'
+              value:
+                $ref: '#/components/schemas/value'
+    update-a-vendor-payment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The details of the payment made to the vendor has been updated
+          readOnly: true
+        vendorpayment:
+          $ref: '#/components/schemas/vendorpayment'
+    get-a-vendor-payment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        vendorpayment:
+          type: object
+          properties:
+            payment_id:
+              $ref: '#/components/schemas/payment_id'
+            vendor_id:
+              $ref: '#/components/schemas/vendor_id'
+            vendor_name:
+              $ref: '#/components/schemas/vendor_name'
+            payment_mode:
+              $ref: '#/components/schemas/payment_mode'
+            payment_number:
+              $ref: '#/components/schemas/payment_number'
+            description:
+              $ref: '#/components/schemas/description'
+            date:
+              $ref: '#/components/schemas/date'
+            reference_number:
+              $ref: '#/components/schemas/reference_number'
+            exchange_rate:
+              $ref: '#/components/schemas/exchange_rate'
+            tax_account_name:
+              $ref: '#/components/schemas/tax_account_name'
+            tax_amount_withheld:
+              $ref: '#/components/schemas/tax_amount_withheld'
+            amount:
+              $ref: '#/components/schemas/amount'
+            balance:
+              $ref: '#/components/schemas/balance'
+            currency_id:
+              $ref: '#/components/schemas/currency_id'
+            currency_symbol:
+              $ref: '#/components/schemas/currency_symbol'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            last_modified_time:
+              $ref: '#/components/schemas/last_modified_time'
+            paid_through_account_id:
+              $ref: '#/components/schemas/paid_through_account_id'
+            paid_through_account_name:
+              $ref: '#/components/schemas/paid_through_account_name'
+            paid_through_account_type:
+              $ref: '#/components/schemas/paid_through_account_type'
+            is_paid_via_print_check:
+              $ref: '#/components/schemas/is_paid_via_print_check'
+            is_ach_payment:
+              $ref: '#/components/schemas/is_ach_payment'
+            ach_payment_status:
+              $ref: '#/components/schemas/ach_payment_status'
+            check_details:
+              type: object
+              description: Details of the check when the payment mode is Check.
+              properties:
+                amount_in_words:
+                  $ref: '#/components/schemas/amount_in_words'
+                check_id:
+                  $ref: '#/components/schemas/check_id'
+                check_number:
+                  $ref: '#/components/schemas/check_number'
+                check_status:
+                  $ref: '#/components/schemas/check_status'
+                memo:
+                  $ref: '#/components/schemas/memo'
+            billing_address:
+              $ref: '#/components/schemas/billing_address'
+            comments:
+              $ref: '#/components/schemas/comments'
+            vendorpayment_refunds:
+              $ref: '#/components/schemas/vendorpayment_refunds'
+            bills:
+              $ref: '#/components/schemas/bills'
+            location_id:
+              $ref: '#/components/schemas/location_id'
+            location_name:
+              $ref: '#/components/schemas/location_name'
+            documents:
+              $ref: '#/components/schemas/documents'
+            custom_fields:
+              $ref: '#/components/schemas/custom_fields'
+            tags:
+              $ref: '#/components/schemas/tags_response'
+    delete-a-vendor-payment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The payment has been deleted.
+          readOnly: true
+    list-refunds-of-a-vendor-payment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        vendorpayment_refunds:
+          $ref: '#/components/schemas/vendorpayment_refunds'
+    refund-an-excess-vendor-payment-request:
+      required:
+        - date
+        - amount
+        - to_account_id
+      type: object
+      properties:
+        date:
+          description: Date of the Vendor Payment Refund.
+          type: string
+          example: '2017-01-10'
+        refund_mode:
+          $ref: '#/components/schemas/refund_mode'
+        reference_number:
+          description: Reference Number of the Payment Refund.
+          type: string
+        amount:
+          $ref: '#/components/schemas/amount'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        to_account_id:
+          $ref: '#/components/schemas/to_account_id'
+        description:
+          description: Description of the Payment Refund.
+          type: string
+          example: Payment Refund
+    refund-an-excess-vendor-payment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Vendor Payment Refunded successfully
+          readOnly: true
+        vendorpayment_refund:
+          $ref: '#/components/schemas/vendorpayment_refund'
+    details-of-a-refund-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        vendorpayment_refund:
+          $ref: '#/components/schemas/vendorpayment_refund'
+    update-a-refund-request:
+      required:
+        - date
+        - amount
+        - to_account_id
+      type: object
+      properties:
+        date:
+          description: Date of the Vendor Payment Refund.
+          type: string
+          example: '2017-01-10'
+        refund_mode:
+          $ref: '#/components/schemas/refund_mode'
+        reference_number:
+          description: Reference Number of the Payment Refund.
+          type: string
+        amount:
+          $ref: '#/components/schemas/amount'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        to_account_id:
+          $ref: '#/components/schemas/to_account_id'
+        description:
+          description: Description of the Payment Refund.
+          type: string
+          example: Payment Refund
+    update-a-refund-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The refund information has been saved.
+          readOnly: true
+        vendorpayment_refund:
+          $ref: '#/components/schemas/vendorpayment_refund'
+    delete-a-refund-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The refund has been deleted.
+          readOnly: true
+    bulk-delete-vendor-payments-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The selected vendor payments have been deleted.
+          readOnly: true
+    email-a-vendor-payment-request:
+      required:
+        - to_mail_ids
+        - subject
+        - body
+      type: object
+      properties:
+        send_from_org_email_id:
+          description: Indicates whether to trigger the email from the organization's email address.
+          type: boolean
+          example: false
+        from_address_id:
+          description: From email address id.
+          type: string
+          example: '2000000011993'
+        to_mail_ids:
+          description: Array of email address of the recipients.
+          type: array
+          items:
+            type: string
+          example:
+            - vendor@example.com
+        cc_mail_ids:
+          description: Array of email address of the recipients to be CC'd.
+          type: array
+          items:
+            type: string
+          example:
+            - manager@example.com
+        subject:
+          description: Subject of the email.
+          type: string
+          example: 'Vendor Payment Receipt from Your Company (Payment#: VP-00001)'
+        body:
+          description: Body of the email.
+          type: string
+          example: 'Dear Vendor,<br/><br/>Thank you for your services.<br/><br/>Please find attached the payment receipt for Payment#: VP-00001.<br/><br/>Payment Details:<br/>Payment Number: VP-00001<br/>Date: 2024-01-15<br/>Amount: $1,500.00<br/><br/>Best regards,<br/>Your Company'
+        email_template_id:
+          description: Get the email content based on a specific email template. If this param is not inputted, then the content will be based on the email template associated with the vendor. If no template is associated with the vendor, then default template will be used.
+          type: string
+    email-a-vendor-payment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Your vendor payment receipt has been sent.
+          readOnly: true
+    get-vendor-payment-email-content-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        body:
+          description: The body of the email.
+          type: string
+          example: 'Dear Vendor,<br/><br/>Thank you for your services.<br/><br/>Please find attached the payment receipt for Payment#: VP-00001.<br/><br/>Payment Details:<br/>Payment Number: VP-00001<br/>Date: 2024-01-15<br/>Amount: $1,500.00<br/><br/>Best regards,<br/>Your Company'
+        subject:
+          description: Subject of the email.
+          type: string
+          example: 'Vendor Payment Receipt from Your Company (Payment#: VP-00001)'
+        to_contacts:
+          description: Recipients of the email.
+          type: array
+          items:
+            type: object
+            properties:
+              first_name:
+                description: First name of the contact person.
+                type: string
+                example: John
+              last_name:
+                description: Last name of the contact person.
+                type: string
+                example: Doe
+              email:
+                description: Email address of the contact person.
+                type: string
+                example: john.doe@vendor.com
+              phone:
+                description: Phone number of the contact person.
+                type: string
+                example: +91-44-4567-8900
+              mobile:
+                description: Mobile number of the contact person.
+                type: string
+                example: +91-9876543210
+              selected:
+                description: Whether this contact is selected as recipient.
+                type: boolean
+                example: true
+              contact_person_id:
+                description: ID of the contact person.
+                type: string
+                example: '460000000026050'
+              salutation:
+                description: Salutation for the contact person.
+                type: string
+                example: Mr.
+        attachment_name:
+          description: Name of the attachment file.
+          type: string
+          example: vendor_payment_receipt.pdf
+        email_template_id:
+          description: ID of the email template used.
+          type: string
+          example: '460000000000123'
+        file_name:
+          description: Name of the file.
+          type: string
+          example: VP-00001.pdf
+        from_emails:
+          description: Sender email addresses available.
+          type: array
+          items:
+            type: object
+            properties:
+              user_name:
+                description: Name of the sender.
+                type: string
+                example: Your Company
+              selected:
+                description: Whether this email is selected as sender.
+                type: boolean
+                example: true
+              email:
+                description: Email address of the sender.
+                type: string
+                example: noreply@yourcompany.in
+        gateways_configured:
+          description: Whether payment gateways are configured.
+          type: boolean
+          example: false
+        deprecated_placeholders_used:
+          description: List of deprecated placeholders used in the template.
+          type: array
+          items:
+            type: string
+          example: []
+        error_list:
+          description: List of errors if any.
+          type: array
+          items:
+            type: string
+          example: []
+    tag_id:
+      description: ID of the tag.
+      type: string
+      example: '460000000000567'
+    tag_name:
+      description: Name of the tag.
+      type: string
+      example: Business Unit
+    tag_option_id:
+      description: ID of the tag option.
+      type: string
+      example: '460000000014044'
+    tag_option_name:
+      description: Name of the tag option.
+      type: string
+      example: Sales
+    is_tag_mandatory:
+      description: Used to check if the tag is mandatory.
+      type: boolean
+      example: false
+    tags:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+    tags_response:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_name:
+            $ref: '#/components/schemas/tag_name'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+          tag_option_name:
+            $ref: '#/components/schemas/tag_option_name'
+          is_tag_mandatory:
+            $ref: '#/components/schemas/is_tag_mandatory'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.vendorpayments.CREATE: Create Vendorpayments
+            ERP.vendorpayments.UPDATE: Update Vendorpayments
+            ERP.vendorpayments.READ: Read Vendorpayments
+            ERP.vendorpayments.DELETE: Delete Vendorpayments

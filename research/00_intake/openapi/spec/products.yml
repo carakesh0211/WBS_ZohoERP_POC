@@ -1,0 +1,504 @@
+openapi: 3.0.0
+info:
+  title: Products
+  description: A product refers to the service you offer your customers. There can be multiple products created if you offer more than one service. Each product can have different plans and addons associated with it.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: products
+    description: Products Module
+paths:
+  /products:
+    x-mcp-group:
+      - Products
+    post:
+      tags:
+        - products
+      operationId: create_product
+      summary: Create a product
+      description: Create a new product.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-product-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-product-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.products.CREATE
+    get:
+      tags:
+        - products
+      operationId: list_products
+      summary: List of all products
+      description: List of all created products.
+      parameters:
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-of-all-products-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.products.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /products/{product_id}:
+    x-mcp-group:
+      - Products
+    get:
+      tags:
+        - products
+      operationId: get_product
+      summary: Retrieve a product
+      description: Details of an existing product.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/retrieve-a-product-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.products.READ
+    put:
+      tags:
+        - products
+      operationId: update_product
+      summary: Update a product
+      description: Update details of an existing product.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-product-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-product-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.products.UPDATE
+    delete:
+      tags:
+        - products
+      operationId: delete_product
+      summary: Delete a product
+      description: Delete an existing product.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-product-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.products.DELETE
+    parameters:
+      - name: product_id
+        in: path
+        required: true
+        description: Unique identifier of the product.
+        schema:
+          type: string
+        example: '903000000045027'
+      - $ref: '#/components/parameters/organization_id'
+  /products/{product_id}/markasactive:
+    x-mcp-group:
+      - Products
+    post:
+      tags:
+        - products
+      operationId: mark_product_as_active
+      summary: Mark as active
+      description: The product has been marked as active.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-as-active-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.products.CREATE
+    parameters:
+      - name: product_id
+        in: path
+        required: true
+        description: Unique identifier of the product.
+        schema:
+          type: string
+        example: '903000000045027'
+      - $ref: '#/components/parameters/organization_id'
+  /products/{product_id}/markasinactive:
+    x-mcp-group:
+      - Products
+    post:
+      tags:
+        - products
+      operationId: mark_product_as_inactive
+      summary: Mark as inactive
+      description: The product has been marked as inactive.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-as-inactive-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.products.CREATE
+    parameters:
+      - name: product_id
+        in: path
+        required: true
+        description: Unique identifier of the product.
+        schema:
+          type: string
+        example: '903000000045027'
+      - $ref: '#/components/parameters/organization_id'
+  /products/{product_id}/emailtemplates:
+    x-mcp-group:
+      - Products
+    put:
+      tags:
+        - products
+      operationId: update_product_email_templates
+      summary: Update email templates
+      description: Update the email templates associated with a product.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-product-email-templates-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-product-email-templates-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.products.UPDATE
+    parameters:
+      - name: product_id
+        in: path
+        required: true
+        description: Unique identifier of the product.
+        schema:
+          type: string
+        example: '903000000045027'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/product-response'
+    product-response:
+      type: object
+      properties:
+        product_id:
+          $ref: '#/components/schemas/product_id'
+        name:
+          $ref: '#/components/schemas/name'
+        description:
+          $ref: '#/components/schemas/description'
+        email_ids:
+          $ref: '#/components/schemas/email_ids'
+        redirect_url:
+          $ref: '#/components/schemas/redirect_url'
+        status:
+          $ref: '#/components/schemas/status'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        updated_time:
+          $ref: '#/components/schemas/updated_time'
+    product_id:
+      description: Unique ID generated by the server for the product.
+      type: string
+      example: '903000000045027'
+    name:
+      description: Name of your choice to be displayed in the interface.
+      type: string
+      example: PiperHost
+    description:
+      description: Short description regarding the product.
+      type: string
+      example: Dedicated server for web hosting
+    email_ids:
+      description: The email IDs to which notifications related to the product need to be sent. (Use comma separation for multiple email-ids)
+      type: string
+      example: piper@zylker.org
+    redirect_url:
+      description: The URL to which customers should be redirected to once they subscribe to the product.
+      type: string
+      example: https://www.zylker.org/products/piperhost
+    status:
+      description: Status of the product. It can be <code>active</code> or <code>inactive</code>
+      type: string
+      example: active
+    created_time:
+      description: The time at which the product was created.
+      type: string
+      example: 2016-06-05T17:38:06+0530
+    updated_time:
+      description: The time at which the product details were last updated.
+      type: string
+      example: 2016-06-05T20:09:23+0530
+    create-a-product-request:
+      required:
+        - name
+      type: object
+      properties:
+        name:
+          $ref: '#/components/schemas/name'
+        description:
+          $ref: '#/components/schemas/description'
+        email_ids:
+          $ref: '#/components/schemas/email_ids'
+        redirect_url:
+          $ref: '#/components/schemas/redirect_url'
+    create-a-product-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The product has been created
+          readOnly: true
+        product:
+          $ref: '#/components/schemas/product-response'
+    list-of-all-products-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        products:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id:
+                $ref: '#/components/schemas/product_id'
+              name:
+                $ref: '#/components/schemas/name'
+              description:
+                $ref: '#/components/schemas/description'
+              email_ids:
+                $ref: '#/components/schemas/email_ids'
+              redirect_url:
+                $ref: '#/components/schemas/redirect_url'
+              status:
+                $ref: '#/components/schemas/status'
+              created_time:
+                $ref: '#/components/schemas/created_time'
+              updated_time:
+                $ref: '#/components/schemas/updated_time'
+    retrieve-a-product-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        product:
+          type: object
+          properties:
+            product_id:
+              $ref: '#/components/schemas/product_id'
+            name:
+              $ref: '#/components/schemas/name'
+            description:
+              $ref: '#/components/schemas/description'
+            email_ids:
+              $ref: '#/components/schemas/email_ids'
+            redirect_url:
+              $ref: '#/components/schemas/redirect_url'
+            status:
+              $ref: '#/components/schemas/status'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            updated_time:
+              $ref: '#/components/schemas/updated_time'
+    update-a-product-request:
+      required:
+        - name
+      type: object
+      properties:
+        name:
+          $ref: '#/components/schemas/name'
+        description:
+          $ref: '#/components/schemas/description'
+        email_ids:
+          $ref: '#/components/schemas/email_ids'
+        redirect_url:
+          $ref: '#/components/schemas/redirect_url'
+    update-a-product-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The product details have been updated.
+          readOnly: true
+        product:
+          type: object
+          properties:
+            product_id:
+              $ref: '#/components/schemas/product_id'
+            name:
+              $ref: '#/components/schemas/name'
+            description:
+              $ref: '#/components/schemas/description'
+            email_ids:
+              $ref: '#/components/schemas/email_ids'
+            redirect_url:
+              $ref: '#/components/schemas/redirect_url'
+            status:
+              $ref: '#/components/schemas/status'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            updated_time:
+              $ref: '#/components/schemas/updated_time'
+    delete-a-product-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The product has been deleted.
+          readOnly: true
+    mark-as-active-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The product has been marked as active.
+          readOnly: true
+    mark-as-inactive-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The product has been marked as inactive.
+          readOnly: true
+    update-product-email-templates-request:
+      type: object
+      properties:
+        template_id:
+          type: string
+          description: Unique identifier of the email template.
+          example: '903000000089001'
+        template_name:
+          type: string
+          description: Name of the email template.
+          example: Invoice Template
+        to_mail_ids:
+          type: array
+          description: Email addresses to which the notification should be sent.
+          items:
+            type: string
+          example:
+            - piper@zillum.com
+    update-product-email-templates-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Email templates have been updated.
+          readOnly: true
+        product:
+          $ref: '#/components/schemas/product-response'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.products.CREATE: Create Products
+            ERP.products.READ: Read Products
+            ERP.products.UPDATE: Update Products
+            ERP.products.DELETE: Delete Products

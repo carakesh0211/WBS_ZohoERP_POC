@@ -1,0 +1,2588 @@
+openapi: 3.0.0
+info:
+  title: Bills
+  description: When your vendor supplies goods/services to you on credit, you're sent an invoice that details the amount of money you owe him. You can record this as a bill in Zoho ERP and track it until it's paid.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: bills
+    description: Bills Module
+paths:
+  /bills:
+    x-mcp-group:
+      - Bills
+    post:
+      tags:
+        - bills
+      operationId: create_bill
+      summary: Create a bill
+      description: Create a bill received from your vendor.
+      parameters:
+        - name: attachment
+          in: query
+          description: 'File to attach. Allowed Extensions: <code>gif</code>, <code>png</code>, <code>jpeg</code>, <code>jpg</code>, <code>bmp</code> and <code>pdf</code>.'
+          required: false
+          schema:
+            type: string
+            format: binary
+          example: ''
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-bill-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-bill-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.CREATE
+    get:
+      tags:
+        - bills
+      operationId: list_bills
+      summary: List bills
+      description: List all bills with pagination.
+      parameters:
+        - name: bill_number
+          in: query
+          description: Filter bills by bill number. Accepts exact matches or use <code>bill_number_startswith</code> for prefix matching and <code>bill_number_contains</code> for substring matching. Useful for finding bills by unique identifier or partial patterns.
+          required: false
+          schema:
+            type: string
+          example: '00454'
+        - name: reference_number
+          in: query
+          description: Filter bills by reference number. Accepts exact matches or use <code>reference_number_startswith</code> for prefix matching and <code>reference_number_contains</code> for substring matching. Useful for finding bills by external references or vendor invoice numbers.
+          required: false
+          schema:
+            type: string
+          example: '4321133'
+        - name: date
+          in: query
+          description: Filter bills by bill date in YYYY-MM-DD format. Use <code>date_start</code>/<code>date_end</code> for ranges, <code>date_before</code>/<code>date_after</code> for relative dates. Useful for billing periods and due date management.
+          required: false
+          schema:
+            type: string
+          example: '2013-09-11'
+        - name: status
+          in: query
+          description: 'Filter bills by status: <code>paid</code>, <code>open</code>, <code>overdue</code>, <code>void</code>, or <code>partially_paid</code>. Useful for payment status filtering, accounts payable management, and status-specific reporting.'
+          required: false
+          schema:
+            type: string
+          example: open
+        - name: description
+          in: query
+          description: Filter bills by description text. Accepts exact matches or use <code>description_startswith</code> for prefix matching and <code>description_contains</code> for substring matching. Useful for finding bills by line item descriptions or vendor notes.
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: vendor_name
+          in: query
+          description: Filter bills by vendor name. Use <code>vendor_name_startswith</code> for prefix matching or <code>vendor_name_contains</code> for substring matching. Useful for finding bills from specific suppliers.
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: total
+          in: query
+          description: Filter bills by total amount. Use <code>total_less_than</code>, <code>total_less_equals</code>, <code>total_greater_than</code>, or <code>total_greater_equals</code> for amount-based filtering. Useful for finding bills within specific price ranges or above/below certain thresholds.
+          required: false
+          schema:
+            type: number
+            format: double
+          example: 40
+        - name: vendor_id
+          in: query
+          description: Filter bills by specific vendor ID. Accepts the unique identifier for a vendor to retrieve all bills associated with that particular supplier or vendor account.
+          required: false
+          schema:
+            type: string
+          example: '460000000038029'
+        - name: project_id
+          in: query
+          description: Filter bills by specific project ID. Accepts the unique identifier for a project to retrieve all bills associated with that particular project.
+          required: false
+          schema:
+            type: string
+          example: '460000000038030'
+        - name: item_id
+          in: query
+          description: Filter bills by specific item ID. Retrieves all bills containing a particular product or service item based on its unique identifier.
+          required: false
+          schema:
+            type: string
+          example: '460000000054135'
+        - name: recurring_bill_id
+          in: query
+          description: Filter bills by recurring bill ID. Retrieves all bills generated from a specific recurring bill template or schedule.
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: purchaseorder_id
+          in: query
+          description: Filter bills by purchase order ID. Retrieves all bills associated with a specific purchase order for tracking procurement workflows.
+          required: false
+          schema:
+            type: string
+          example: '460000000068231'
+        - name: last_modified_time
+          in: query
+          description: Filter bills by last modification timestamp. Accepts ISO 8601 format (YYYY-MM-DDTHH:MM:SS+/-HHMM) to find bills modified at or after a specific time.
+          required: false
+          schema:
+            type: string
+          example: 2013-09-11T17:18:32+0530
+        - name: filter_by
+          in: query
+          description: Filter bills by status using predefined status constants. Options include <code>Status.All</code>, <code>Status.PartiallyPaid</code>, <code>Status.Paid</code>, <code>Status.Overdue</code>, <code>Status.Void</code>, and <code>Status.Open</code>.
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: search_text
+          in: query
+          description: Filter bills using general search text. Searches across bill number, reference number, and vendor name fields to find matching bills. Useful for quick searches when you know part of the bill information.
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: page
+          in: query
+          description: Specify the page number for pagination. Use this parameter to navigate through multiple pages of bills when the total number of bills exceeds the per_page limit.
+          required: false
+          schema:
+            type: integer
+          example: 1
+        - name: per_page
+          in: query
+          description: Specify the number of bills to retrieve per page. The default value is 200, but you can adjust this to optimize performance based on your needs and API rate limits.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+        - name: sort_column
+          in: query
+          description: Specify the column to sort bills by. Available options include <code>vendor_name</code>, <code>bill_number</code>, <code>date</code>, <code>due_date</code>, <code>total</code>, <code>balance</code>, and <code>created_time</code>.
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: sort_order
+          in: query
+          description: Specify the sorting order for bills. Use <code>A</code> for ascending order (A-Z, 0-9, earliest to latest) or <code>D</code> for descending order (Z-A, 9-0, latest to earliest).
+          required: false
+          schema:
+            type: string
+          example: D
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-bills-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.READ
+    put:
+      tags:
+        - bills
+      operationId: update_bill_using_custom_field
+      summary: Update a bill using a custom field's unique value
+      description: A custom field will have unique values if it's configured to not accept duplicate values. Now, you can use that custom field's value to update a bill by providing its API name in the X-Unique-Identifier-Key header and its value in the X-Unique-Identifier-Value header. Based on this value, the corresponding bill will be retrieved and updated. Additionally, there is an optional X-Upsert header. If the X-Upsert header is true and the custom field's unique value is not found in any of the existing bills, a new bill will be created if the necessary payload details are available.
+      parameters:
+        - name: X-Unique-Identifier-Key
+          in: header
+          description: Specify the API name of the custom field that contains unique values. This field must be configured to not accept duplicate values for the upsert functionality to work properly.
+          required: true
+          schema:
+            type: string
+            example: cf_unique_cf
+        - name: X-Unique-Identifier-Value
+          in: header
+          description: Provide the unique value from the custom field that identifies the specific bill to update. This value will be used to locate the existing bill record in the system.
+          required: true
+          schema:
+            type: string
+            example: unique Value
+        - name: X-Upsert
+          in: header
+          description: When set to true, this header enables upsert functionality. If no bill is found with the specified custom field value, a new bill will be created using the provided payload data.
+          required: false
+          schema:
+            type: boolean
+            example: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-bill-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-bill-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.UPDATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /bills/{bill_id}:
+    x-mcp-group:
+      - Bills
+    put:
+      tags:
+        - bills
+      operationId: update_bill
+      summary: Update a bill
+      description: Update a bill. To delete a line item just remove it from the line_items list.
+      parameters:
+        - name: attachment
+          in: query
+          description: 'File to attach. Allowed Extensions: <code>gif</code>, <code>png</code>, <code>jpeg</code>, <code>jpg</code>, <code>bmp</code> and <code>pdf</code>.'
+          required: false
+          schema:
+            type: string
+            format: binary
+          example: ''
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-bill-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-bill-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.UPDATE
+    get:
+      tags:
+        - bills
+      operationId: get_bill
+      summary: Get a bill
+      description: Get the details of a bill.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-bill-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.READ
+    delete:
+      tags:
+        - bills
+      operationId: delete_bill
+      summary: Delete a bill
+      description: Delete an existing bill. Bills which have payments applied cannot be deleted.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-bill-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.DELETE
+    parameters:
+      - name: bill_id
+        in: path
+        required: true
+        description: Unique identifier of the bill.
+        schema:
+          type: string
+        example: '460000000098765'
+      - $ref: '#/components/parameters/organization_id'
+  /bill/{bill_id}/customfields:
+    x-mcp-group:
+      - Bills
+    put:
+      tags:
+        - bills
+      operationId: update_custom_fields_in_bill
+      summary: Update custom field in existing bills
+      description: Update the value of the custom field in existing bills.
+      parameters:
+        - name: bill_id
+          in: path
+          required: true
+          description: Unique identifier of the bill.
+          schema:
+            type: string
+          example: '460000000098765'
+        - $ref: '#/components/parameters/organization_id'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/custom_fields'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-an-bill-customfield-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.UPDATE
+  /bills/{bill_id}/status/void:
+    x-mcp-group:
+      - Bills
+    post:
+      tags:
+        - bills
+      operationId: mark_bill_void
+      summary: Void a bill
+      description: Mark a bill status as void.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/void-a-bill-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.CREATE
+    parameters:
+      - name: bill_id
+        in: path
+        required: true
+        description: Unique identifier of the bill.
+        schema:
+          type: string
+        example: '460000000098765'
+      - $ref: '#/components/parameters/organization_id'
+  /bills/{bill_id}/status/open:
+    x-mcp-group:
+      - Bills
+    post:
+      tags:
+        - bills
+      operationId: mark_bill_open
+      summary: Mark a bill as open
+      description: Mark a void bill as open.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-a-bill-as-open-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.CREATE
+    parameters:
+      - name: bill_id
+        in: path
+        required: true
+        description: Unique identifier of the bill.
+        schema:
+          type: string
+        example: '460000000098765'
+      - $ref: '#/components/parameters/organization_id'
+  /bills/{bill_id}/submit:
+    x-mcp-group:
+      - Bills
+    post:
+      tags:
+        - bills
+      operationId: submit_bill
+      summary: Submit a bill for approval
+      description: Submit a bill for approval.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/submit-a-bill-for-approval-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.CREATE
+    parameters:
+      - name: bill_id
+        in: path
+        required: true
+        description: Unique identifier of the bill.
+        schema:
+          type: string
+        example: '460000000098765'
+      - $ref: '#/components/parameters/organization_id'
+  /bills/{bill_id}/approve:
+    x-mcp-group:
+      - Bills
+    post:
+      tags:
+        - bills
+      operationId: approve_bill
+      summary: Approve a bill
+      description: Approve a bill.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/approve-a-bill-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.CREATE
+    parameters:
+      - name: bill_id
+        in: path
+        required: true
+        description: Unique identifier of the bill.
+        schema:
+          type: string
+        example: '460000000098765'
+      - $ref: '#/components/parameters/organization_id'
+  /bills/{bill_id}/address/billing:
+    x-mcp-group:
+      - Bills
+    put:
+      tags:
+        - bills
+      operationId: update_bill_billing_address
+      summary: Update billing address
+      description: Updates the billing address for this bill.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-billing-address-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-billing-address-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.UPDATE
+    parameters:
+      - name: bill_id
+        in: path
+        required: true
+        description: Unique identifier of the bill.
+        schema:
+          type: string
+        example: '460000000098765'
+      - $ref: '#/components/parameters/organization_id'
+  /bills/{bill_id}/payments:
+    x-mcp-group:
+      - Bills
+    get:
+      tags:
+        - bills
+      operationId: list_bill_payments
+      summary: List bill payments
+      description: Get the list of payments made for a bill.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-bill-payments-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.READ
+    parameters:
+      - name: bill_id
+        in: path
+        required: true
+        description: Unique identifier of the bill.
+        schema:
+          type: string
+        example: '460000000098765'
+      - $ref: '#/components/parameters/organization_id'
+  /bills/{bill_id}/credits:
+    x-mcp-group:
+      - Bills
+    post:
+      tags:
+        - bills
+      operationId: apply_credits_to_bill
+      summary: Apply credits
+      description: Apply the vendor credits from excess vendor payments to a bill. Multiple credits can be applied at once.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/apply-credits-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apply-credits-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.CREATE
+    parameters:
+      - name: bill_id
+        in: path
+        required: true
+        description: Unique identifier of the bill.
+        schema:
+          type: string
+        example: '460000000098765'
+      - $ref: '#/components/parameters/organization_id'
+  /bills/{bill_id}/payments/{bill_payment_id}:
+    x-mcp-group:
+      - Bills
+    delete:
+      tags:
+        - bills
+      operationId: delete_bill_payment
+      summary: Delete a payment
+      description: Delete a payment made to a bill.
+      parameters:
+        - name: bill_payment_id
+          in: path
+          required: true
+          description: Unique identifier of the bill payment.
+          schema:
+            type: string
+          example: '460000000042061'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-payment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.DELETE
+    parameters:
+      - name: bill_id
+        in: path
+        required: true
+        description: Unique identifier of the bill.
+        schema:
+          type: string
+        example: '460000000098765'
+      - $ref: '#/components/parameters/organization_id'
+  /bills/{bill_id}/attachment:
+    x-mcp-group:
+      - Bills
+    get:
+      tags:
+        - bills
+      operationId: get_bill_attachment
+      summary: Get a bill attachment
+      description: Returns the file attached to the bill.
+      parameters:
+        - name: preview
+          in: query
+          description: Get the thumbnail of the attachment.
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-bill-attachment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.READ
+    post:
+      tags:
+        - bills
+      operationId: add_bill_attachment
+      summary: Add attachment to a bill
+      description: Attach a file to a bill.
+      parameters:
+        - name: attachment
+          in: query
+          description: 'File to attach. Allowed Extensions: <code>gif</code>, <code>png</code>, <code>jpeg</code>, <code>jpg</code>, <code>bmp</code> and <code>pdf</code>.'
+          required: false
+          schema:
+            type: string
+            format: binary
+          example: ''
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/add-attachment-to-a-bill-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.CREATE
+    delete:
+      tags:
+        - bills
+      operationId: delete_bill_attachment
+      summary: Delete an attachment
+      description: Delete the file attached to a bill.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-an-attachment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.DELETE
+    parameters:
+      - name: bill_id
+        in: path
+        required: true
+        description: Unique identifier of the bill.
+        schema:
+          type: string
+        example: '460000000098765'
+      - $ref: '#/components/parameters/organization_id'
+  /bills/{bill_id}/comments:
+    x-mcp-group:
+      - Bills
+    get:
+      tags:
+        - bills
+      operationId: get_bill_comments
+      summary: List bill comments & history
+      description: Get the complete history and comments of a bill.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-bill-comments-and-history-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.READ
+    post:
+      tags:
+        - bills
+      operationId: add_bill_comment
+      summary: Add comment
+      description: Add a comment for a bill.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/add-comment-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/add-comment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.CREATE
+    parameters:
+      - name: bill_id
+        in: path
+        required: true
+        description: Unique identifier of the bill.
+        schema:
+          type: string
+        example: '460000000098765'
+      - $ref: '#/components/parameters/organization_id'
+  /bills/{bill_id}/comments/{comment_id}:
+    x-mcp-group:
+      - Bills
+    delete:
+      tags:
+        - bills
+      operationId: delete_bill_comment
+      summary: Delete a comment
+      description: Delete a bill comment.
+      parameters:
+        - name: comment_id
+          in: path
+          required: true
+          description: Unique identifier of the comment.
+          schema:
+            type: string
+          example: '460000000069037'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-comment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.DELETE
+    parameters:
+      - name: bill_id
+        in: path
+        required: true
+        description: Unique identifier of the bill.
+        schema:
+          type: string
+        example: '460000000098765'
+      - $ref: '#/components/parameters/organization_id'
+  /bills/editpage/frompurchaseorders:
+    x-mcp-group:
+      - Bills
+    get:
+      tags:
+        - bills
+      operationId: convert_purchase_order_to_bill
+      summary: Convert PO to Bill
+      description: Create a bill for the selected purchase orders. Use this api to fetch the Bill payload by passing the purchaseorder_ids in the query parameters and then use the create bill API and pass the payload to create a bill.<br/><a href=/erp/api/v3/bills/#create-a-bill>Create bill API Endpoint</a>.
+      parameters:
+        - $ref: '#/components/parameters/purchaseorder_ids'
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/convert-po-to-bill-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.bills.READ
+    parameters:
+      - $ref: '#/components/parameters/purchaseorder_ids'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    purchaseorder_ids:
+      name: purchaseorder_ids
+      in: query
+      required: true
+      description: ID of the purchase order.
+      schema:
+        type: string
+      example: '460000000098765'
+    organization_id:
+      name: organization_id
+      description: ID of the organization.
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/bill'
+    attachment:
+      description: 'File to attach. Allowed Extensions: <code>gif</code>, <code>png</code>, <code>jpeg</code>, <code>jpg</code>, <code>bmp</code> and <code>pdf</code>.'
+      type: string
+      format: binary
+    vendor_id:
+      description: Unique identifier for the vendor who supplied the goods/services. Can be fetched from the Get Contacts API.
+      type: string
+      example: '460000000038029'
+    bill_number:
+      description: Unique sequential identifier for the bill. Used for tracking and reference purposes. Format varies by organization settings. Can be auto-generated or manually entered. Must be unique within the organization.
+      type: string
+      example: '00454'
+    source_of_supply:
+      description: State code where goods/services originate. Used for GST calculations in India. Defaults to vendor contact location if not specified. Supports 2-letter state codes (e.g., AP for Andhra Pradesh, TN for Tamil Nadu).
+      type: string
+      example: AP
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    destination_of_supply:
+      description: State code where goods/services are delivered. Used for GST calculations in India. Defaults to organization home state if not specified. Supports 2-letter state codes (e.g., AP for Andhra Pradesh, TN for Tamil Nadu).
+      type: string
+      example: TN
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    gst_treatment:
+      description: Choose whether the contact is GST registered/unregistered/consumer/overseas. Allowed values are <code> business_gst </code> , <code> business_none </code> , <code> overseas </code> , <code> consumer </code>.
+      type: string
+      example: business_gst
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    gst_no:
+      description: 15 digit GST identification number of the vendor.
+      type: string
+      example: 22AAAAA0000A1Z5
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    hsn_or_sac:
+      description: Add HSN/SAC code for your goods/services.
+      type: string
+      example: 80540
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    reverse_charge_tax_id:
+      description: Reverse charge tax ID.
+      type: string
+      example: 460000000038056
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    location_id:
+      description: Unique identifier for the business location where the bill transaction occurs. Used for multi-location organizations to track expenses by location. Affects reporting and tax calculations based on location-specific rules. Can be fetched from the Locations API. Required for organizations with multiple locations. Influences tax rates, reporting structures, and approval workflows based on location-specific configurations.
+      type: string
+      example: '460000000038080'
+    pricebook_id:
+      description: Identifier for the price book containing item rates and pricing rules. Used to apply standardized pricing across bills. If not specified, default pricing from items will be used. Helps maintain consistent pricing across multiple transactions.
+      type: string
+      example: 460000000038090
+    image_document_id:
+      description: ID of the image document.
+      type: string
+      example: 460000000038067
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    location_name:
+      description: Name of the location.
+      type: string
+    reverse_charge_tax_name:
+      description: Name of the reverse charge tax.
+      type: string
+      example: inter
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    reverse_charge_tax_percentage:
+      description: Enter reverse charge percentage.
+      type: number
+      format: double
+      example: 10
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    reverse_charge_tax_amount:
+      description: Enter reverse charge amount.
+      type: number
+      format: double
+      example: 100
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    street2:
+      description: Additional address details (street line 2).
+      type: string
+      example: Suite 310
+    is_pre_gst:
+      description: Applicable for transactions that fall before July 1, 2017.
+      type: boolean
+      example: false
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    pricebook_name:
+      description: Name of the price book.
+      type: string
+    is_reverse_charge_applied:
+      description: Applicable for transactions where you pay reverse charge.
+      type: boolean
+      example: true
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    date:
+      description: 'Date when the bill was issued by the vendor. Format: yyyy-mm-dd. Used for payment terms and aging calculations. This date determines when payment terms begin and affects aging reports, late payment calculations, and financial reporting.'
+      type: string
+      example: '2013-09-11'
+    due_date:
+      description: Date when payment is due for the bill. Used for payment tracking, aging reports, and overdue calculations. Calculated based on bill date and payment terms. Bills become overdue after this date, affecting vendor relationships and cash flow planning.
+      type: string
+      example: '2013-09-26'
+    exchange_rate:
+      description: Exchange rate from bill currency to organization base currency. Used for multi-currency transactions. 1.0 indicates same as base currency. Required when currency differs from organization default. Affects financial reporting, profit/loss calculations, and tax computations. Can be manually set or auto-fetched from currency exchange services.
+      type: number
+      format: double
+      example: 1.23
+    is_inclusive_tax:
+      description: Flag indicating whether line item rates include tax amounts. When true, tax is calculated on top of displayed rates. When false, tax is added separately. Affects total calculations and tax reporting. Common in countries where tax-inclusive pricing is standard. Impacts customer-facing documents and tax return preparation.
+      type: boolean
+      example: false
+    is_tds_applied:
+      description: Indicates if TDS is applied.
+      type: boolean
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    tax_exemption_id:
+      description: ID of the applied tax exemption.
+      type: string
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    tax_exemption_code:
+      description: Code of the applied tax exemption.
+      type: string
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    item_total_inclusive_of_tax:
+      description: Total of the item inclusive of tax.
+      type: number
+      format: double
+      example: 40
+    account_id:
+      description: Unique identifier for the chart of accounts entry. Can be fetched from the Chart of Accounts API. Determines how this expense is categorized in financial reports and general ledger. Required for proper expense classification and accounting compliance.
+      type: string
+      example: '460000000000403'
+    description:
+      description: Detailed description of the line item. Provides additional context about the product, service, or expense. Used for vendor communication, internal documentation, and expense justification. Can include specifications, requirements, or special instructions.
+      type: string
+    line_item_category:
+      description: Category of the line item. Allowed values are <code>line_item</code>, <code>header</code> and <code>subtotal</code>. Use <code>line_item</code> for regular line items, <code>header</code> for header titles and <code>subtotal</code> for intermediate subtotal rows. For regular line items, you can send line_item or omit this field
+      type: string
+      example: line_item
+    rate:
+      description: Unit price or rate for the line item. Can be manually entered or auto-populated from item details or price books. Used to calculate line item totals. Supports decimal precision based on currency settings.
+      type: number
+      format: double
+      example: 10
+    quantity:
+      description: Number of units for the line item. Used to calculate line item totals (quantity x rate). Supports decimal quantities for items sold by weight, length, or other non-whole units. Required for accurate billing and inventory tracking.
+      type: number
+      format: double
+      example: 1
+    tax_id:
+      description: Unique identifier for the tax or tax group applied to this line item. Can be fetched from the Taxes API. Determines tax rate and calculations for the line item. Required when tax calculations are enabled. Affects final line item total and tax reporting.
+      type: string
+      example: '460000000027005'
+    tds_tax_id:
+      description: TDS (Tax Deducted at Source) tax or tax group ID for this line item, as returned by the Taxes API. Applicable for India organizations.
+      type: string
+      example: '460000000027009'
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    reference_number:
+      description: External reference number from vendor invoice or purchase order. Used for cross-referencing with vendor documents. Helps in reconciliation and tracking payments. Can include invoice numbers, PO references, or any vendor-specific identifiers.
+      type: string
+      example: '4321133'
+    notes:
+      description: Additional information or comments about the bill. Used for internal communication, vendor instructions, or special handling requirements. Visible to vendors and included in bill communications. Useful for tracking special arrangements or payment instructions.
+      type: string
+      example: Thanks for your business.
+    terms:
+      description: Terms and conditions that apply to the bill transaction. Includes payment terms, delivery conditions, warranty information, or other contractual obligations. Displayed on bill documents and vendor communications. Important for legal compliance and vendor relationship management.
+      type: string
+      example: Terms and conditions apply.
+    item_order:
+      description: Order of the line item in the bill.
+      type: integer
+      example: 1
+    item_id:
+      description: Unique identifier for the product or service item. Can be fetched from the Items API. When specified, automatically populates item details like name, description, and default rates. Required for inventory tracking and item-based reporting.
+      type: string
+      example: '460000000054135'
+    name:
+      description: Name or description of the line item. Can be manually entered or auto-populated from item details. Should clearly describe the product, service, or expense for vendor and accounting purposes.
+      type: string
+    unit:
+      description: 'Unit of measurement for the item quantity. Examples: pieces, kgs, liters, hours, days. Used for accurate billing and inventory tracking. Auto-populated when item_id is specified. Important for vendor communication and expense categorization.'
+      type: string
+      example: kgs
+    document_id:
+      description: ID of the document.
+      type: string
+    file_name:
+      description: Name of the file.
+      type: string
+    documents:
+      description: List of documents attached to the bill.
+      type: array
+      items:
+        type: object
+        properties:
+          document_id:
+            $ref: '#/components/schemas/document_id'
+          file_name:
+            $ref: '#/components/schemas/file_name'
+    payment_terms:
+      description: 'Numeric identifier for payment terms configuration. Defines when payment is due relative to bill date. 0 = Due on Receipt, positive numbers = days after bill date, negative numbers = days before bill date. Common values: 0 (Due on Receipt), 15 (Net 15), 30 (Net 30), 45 (Net 45). Affects due date calculation and aging reports.'
+      type: integer
+      example: 0
+    payment_terms_label:
+      description: Label of the payment terms.
+      type: string
+      example: Due on Receipt
+    index:
+      description: Index of the custom field.
+      type: integer
+    label:
+      description: Label of the custom field.
+      type: string
+    value:
+      description: Value of the custom field.
+      type: string
+    custom_field_id:
+      description: ID of the custom field.
+      type: string
+    custom_fields:
+      description: List of custom fields for the bill.
+      type: array
+      items:
+        type: object
+        properties:
+          custom_field_id:
+            $ref: '#/components/schemas/custom_field_id'
+          index:
+            $ref: '#/components/schemas/index'
+          label:
+            $ref: '#/components/schemas/label'
+          value:
+            $ref: '#/components/schemas/value'
+    update-an-bill-customfield-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Custom Fields Updated Successfully
+          readOnly: true
+    bill_id:
+      description: ID of the bill.
+      type: string
+      example: '460000000098765'
+    purchaseorder_ids:
+      description: Array of purchase order identifiers linked to this bill for tracking purposes.
+      type: array
+      items:
+        type: string
+      example:
+        - 460000000068231
+        - 460000000068233
+    vendor_name:
+      description: Name of the vendor.
+      type: string
+    unused_credits_payable_amount:
+      description: Unused credits for this vendor.
+      type: integer
+      example: 187
+    status:
+      description: Status of the bill.
+      type: string
+      example: open
+    payment_expected_date:
+      description: Expected payment date of the bill.
+      type: string
+    recurring_bill_id:
+      description: Identifier linking this bill to a recurring bill template. Used for bills that are automatically generated on a schedule (weekly, monthly, quarterly, etc.). Enables automated bill generation, consistent billing cycles, and reduces manual data entry. Can be modified to change recurring schedule.
+      type: string
+    due_by_days:
+      description: Days by which the bill is due.
+      type: string
+    due_in_days:
+      description: Days in which the bill will be due.
+      type: integer
+      example: 0
+    currency_id:
+      description: Unique identifier for the currency used in the bill transaction. Can be fetched from the Currencies API if multi-currency is enabled.
+      type: string
+      example: '460000000000099'
+    currency_code:
+      description: Code of the currency.
+      type: string
+      example: INR
+    currency_symbol:
+      description: Symbol of the currency.
+      type: string
+    price_precision:
+      description: Precision for the values.
+      type: integer
+      example: 2
+    is_item_level_tax_calc:
+      description: Flag indicating whether taxes are calculated at individual line item level rather than bill total. Enables different tax rates for different items. Provides more accurate tax calculations for mixed tax scenarios. When enabled, each line item can have different tax rates based on item type, location, or tax rules. Improves tax compliance and reporting accuracy.
+      type: boolean
+      example: false
+    sub_total:
+      description: Subtotal of the bill.
+      type: integer
+      example: 40
+    tax_total:
+      description: Tax total of the bill.
+      type: integer
+      example: 0
+    total:
+      description: Total of the bill.
+      type: integer
+      example: 40
+    payment_made:
+      description: Amount of payment made.
+      type: integer
+      example: 0
+    vendor_credits_applied:
+      description: Amount of credits applied.
+      type: integer
+      example: 0
+    is_line_item_invoiced:
+      description: Indicates if the line item is invoiced.
+      type: boolean
+      example: false
+    purchaseorders:
+      type: array
+      items:
+        type: object
+        properties:
+          purchaseorder_id:
+            $ref: '#/components/schemas/purchaseorder_id'
+          purchaseorder_number:
+            $ref: '#/components/schemas/purchaseorder_number'
+          purchaseorder_date:
+            $ref: '#/components/schemas/purchaseorder_date'
+          purchaseorder_status:
+            $ref: '#/components/schemas/purchaseorder_status'
+    balance:
+      description: Balance of the bill.
+      type: integer
+      example: 40
+    vendor_credit_id:
+      description: ID of the vendor credit.
+      type: string
+      example: '4600000053221'
+    vendor_credit_bill_id:
+      description: ID of the bill credited using the vendor credit.
+      type: string
+      example: '4600000211221'
+    vendor_credit_number:
+      description: Number of the vendor credit.
+      type: string
+      example: DN-001
+    vendor_credits:
+      type: array
+      items:
+        type: object
+        properties:
+          vendor_credit_id:
+            $ref: '#/components/schemas/vendor_credit_id'
+          vendor_credit_bill_id:
+            $ref: '#/components/schemas/vendor_credit_bill_id'
+          vendor_credit_number:
+            $ref: '#/components/schemas/vendor_credit_number'
+          date:
+            description: Date the vendor credit was applied.
+            type: string
+            example: 27 Dec 2016
+          amount:
+            description: Amount of credit applied to the bill.
+            type: number
+            format: double
+            example: 10
+    created_time:
+      description: Created time of the bill.
+      type: string
+      example: 2013-09-11T17:18:32+0530
+    created_by_id:
+      description: Name of the user who created the bill.
+      type: string
+      example: '4600000053001'
+    last_modified_time:
+      description: Last modified time of the bill.
+      type: string
+      example: 2013-09-11T17:18:32+0530
+    reference_id:
+      type: string
+    attachment_name:
+      description: Name of the attachment.
+      type: string
+    open_purchaseorders_count:
+      description: Number of open purchase orders.
+      type: integer
+      example: 1
+    address:
+      description: Address involved in the bill.
+      type: string
+    city:
+      description: City in the address.
+      type: string
+    state:
+      description: State involved in the address.
+      type: string
+    zip:
+      description: ZIP code involved in the address.
+      type: string
+    country:
+      description: Country involved in the address.
+      type: string
+    fax:
+      description: Fax of the vendor.
+      type: string
+    attention:
+      description: Attention field for the billing address.
+      type: string
+    purchaseorder_item_id:
+      description: Unique identifier linking this line item to a specific item in the purchase order. Used for tracking PO-to-bill conversions and maintaining audit trails. Required when converting purchase orders to bills.
+      type: string
+    line_item_id:
+      description: Unique identifier for this specific line item within the bill. Auto-generated when line item is created. Used for updating, deleting, or referencing specific line items in API operations.
+      type: string
+      example: '460000000067009'
+    sku:
+      description: Stock Keeping Unit identifier for the item. Used for inventory management, product identification, and vendor communications. Auto-populated when item_id is specified. Helps track specific product variants and manage stock levels.
+      type: string
+    account_name:
+      description: Name of the account.
+      type: string
+      example: Other Expenses
+    bcy_rate:
+      description: Rate in base currency of the organization.
+      type: integer
+      example: 40
+    tax_type:
+      description: Type of tax.
+      type: string
+      example: tax
+    tax_percentage:
+      description: Percentage of tax.
+      type: integer
+      example: 0
+    item_total:
+      description: Calculated total for the line item (quantity x rate + taxes - discounts). Auto-calculated based on line item details. Used for bill totals, financial reporting, and payment processing. Cannot be manually edited.
+      type: integer
+      example: 40
+    is_billable:
+      description: Boolean flag indicating whether the line item or entity can be billed to customers or clients. Determines if costs are recoverable through customer billing, affects project profitability calculations, and controls expense allocation for client projects and service delivery.
+      type: boolean
+      example: false
+    customer_id:
+      description: ID of the customer.
+      type: string
+    customer_name:
+      description: Name of the customer.
+      type: string
+    project_id:
+      description: ID of the project.
+      type: string
+    project_name:
+      description: Name of the project.
+      type: string
+    invoice_id:
+      description: ID of the invoice.
+      type: string
+    invoice_number:
+      description: Number associated with the invoice.
+      type: string
+    item_custom_fields:
+      description: List of custom fields for the line item.
+      type: array
+      items:
+        type: object
+        properties:
+          custom_field_id:
+            $ref: '#/components/schemas/custom_field_id'
+          index:
+            $ref: '#/components/schemas/index'
+          value:
+            $ref: '#/components/schemas/value'
+          label:
+            $ref: '#/components/schemas/label'
+    tax_name:
+      description: Name of the tax.
+      type: string
+      example: IGST (18%)
+    tax_amount:
+      description: Amount of tax in the bill.
+      type: string
+      example: 1.25
+    payment_id:
+      description: ID of the payment.
+      type: string
+      example: '460000000042059'
+    bill_payment_id:
+      description: ID of the bill payment.
+      type: string
+      example: '460000000042061'
+    payment_mode:
+      description: Mode of payment.
+      type: string
+      example: Cash
+    amount:
+      type: number
+      format: double
+      example: 31.25
+    paid_through_account_id:
+      description: ID of the account through which the bill is paid.
+      type: string
+      example: '460000000000358'
+    paid_through_account_name:
+      description: Name of the account through which the bill is paid.
+      type: string
+      example: Undeposited Funds
+    is_single_bill_payment:
+      description: Indicates if it is a single bill payment.
+      type: boolean
+      example: true
+    page:
+      type: integer
+      example: 1
+    per_page:
+      type: integer
+      example: 10
+    has_more_page:
+      type: boolean
+      example: false
+    report_name:
+      description: Name of the report.
+      type: string
+      example: Bills
+    applied_filter:
+      description: Filter that is applied.
+      type: string
+      example: Status.All
+    sort_order:
+      type: string
+      example: D
+    due_days:
+      type: string
+    has_attachment:
+      description: Indicates if the bill has an attachment.
+      type: boolean
+      example: false
+    filter_by:
+      description: 'Filter bills by any status. Allowed Values: <code>Status.All</code>, <code>Status.PartiallyPaid</code>, <code>Status.Paid</code>, <code>Status.Overdue</code>, <code>Status.Void</code> and <code>Status.Open</code>.'
+      type: string
+    search_text:
+      description: Search bills by bill number or reference number or vendor name.
+      type: string
+    sort_column:
+      description: 'Sort bills. Allowed Values: <code>vendor_name</code>, <code>bill_number</code>, <code>date</code>, <code>due_date</code>, <code>total</code>, <code>balance</code> and <code>created_time</code>.'
+      type: string
+    paid_through:
+      description: Account through which the bill is paid.
+      type: string
+      example: Petty Cash
+    amount_applied:
+      description: Amount applied to the bill.
+      type: number
+      format: double
+      example: 31.25
+    preview:
+      description: Get the thumbnail of the attachment.
+      type: boolean
+    comment_id:
+      description: ID of the comment.
+      type: string
+      example: '460000000069037'
+    commented_by_id:
+      description: ID of the user who caused the comment.
+      type: string
+      example: '460000000053001'
+    commented_by:
+      description: Name of the user who caused the comment.
+      type: string
+      example: John Roberts
+    comment_type:
+      description: Type of comment.
+      type: string
+      example: internal
+    date_description:
+      description: Description of the date of comment.
+      type: string
+      example: few seconds ago
+    time:
+      description: Time of the comment.
+      type: string
+      example: 12:09 PM
+    operation_type:
+      description: Type of operation that caused the comment.
+      type: string
+      example: Added
+    transaction_id:
+      description: ID of the transaction that caused the comment.
+      type: string
+      example: '460000000068015'
+    transaction_type:
+      description: Type of transaction that caused the comment.
+      type: string
+      example: bill_payment
+    purchaseorder_id:
+      description: ID of the purchase order.
+      type: string
+      example: '460000000068231'
+    purchaseorder_number:
+      description: Number of the purchase order.
+      type: string
+      example: PO-0001
+    purchaseorder_date:
+      description: Date of the purchase order.
+      type: string
+      example: 19 Jan 2017
+    purchaseorder_status:
+      description: Status of the purchase order.
+      type: string
+      example: billed
+    taxes:
+      description: List of taxes applied to the bill.
+      type: array
+      items:
+        type: object
+        properties:
+          tax_name:
+            $ref: '#/components/schemas/tax_name'
+          tax_amount:
+            $ref: '#/components/schemas/tax_amount'
+    payment_number:
+      description: Number of the payment made.
+      type: string
+    is_paid_via_print_check:
+      description: Indicates if the bill payment is paid via the print check option.
+      type: boolean
+      example: false
+    check_number:
+      description: Check number that is printed.
+      type: string
+    check_status:
+      description: Status of the check.
+      type: string
+    check_details:
+      type: array
+      items:
+        type: object
+        properties:
+          check_status:
+            $ref: '#/components/schemas/check_status'
+          check_number:
+            $ref: '#/components/schemas/check_number'
+    is_ach_payment:
+      description: Indicates if the vendor payment is an ACH payment.
+      type: boolean
+      example: false
+    ach_payment_status:
+      description: Status of the ACH payment.
+      type: string
+    ach_gw_transaction_id:
+      description: ID of the ACH payment transaction.
+      type: string
+    payments:
+      type: array
+      items:
+        type: object
+        properties:
+          payment_id:
+            $ref: '#/components/schemas/payment_id'
+          bill_id:
+            $ref: '#/components/schemas/bill_id'
+          bill_payment_id:
+            $ref: '#/components/schemas/bill_payment_id'
+          payment_mode:
+            $ref: '#/components/schemas/payment_mode'
+          payment_number:
+            $ref: '#/components/schemas/payment_number'
+          description:
+            $ref: '#/components/schemas/description'
+          date:
+            $ref: '#/components/schemas/date'
+          reference_number:
+            $ref: '#/components/schemas/reference_number'
+          exchange_rate:
+            $ref: '#/components/schemas/exchange_rate'
+          amount:
+            $ref: '#/components/schemas/amount'
+          paid_through_account_id:
+            $ref: '#/components/schemas/paid_through_account_id'
+          paid_through_account_name:
+            $ref: '#/components/schemas/paid_through_account_name'
+          is_single_bill_payment:
+            $ref: '#/components/schemas/is_single_bill_payment'
+          is_paid_via_print_check:
+            $ref: '#/components/schemas/is_paid_via_print_check'
+          check_details:
+            $ref: '#/components/schemas/check_details'
+          is_ach_payment:
+            $ref: '#/components/schemas/is_ach_payment'
+          ach_payment_status:
+            $ref: '#/components/schemas/ach_payment_status'
+          ach_gw_transaction_id:
+            $ref: '#/components/schemas/ach_gw_transaction_id'
+    billing_address:
+      type: object
+      properties:
+        address:
+          $ref: '#/components/schemas/address'
+        street2:
+          $ref: '#/components/schemas/street2'
+        city:
+          $ref: '#/components/schemas/city'
+        state:
+          $ref: '#/components/schemas/state'
+        zip:
+          $ref: '#/components/schemas/zip'
+        country:
+          $ref: '#/components/schemas/country'
+        fax:
+          $ref: '#/components/schemas/fax'
+        attention:
+          $ref: '#/components/schemas/attention'
+    line_items:
+      description: Individual items, services, or expenses included in the bill. Each line item represents a specific product, service, or expense with its own quantity, rate, and tax calculations. Required for detailed billing, inventory tracking, and expense categorization.
+      type: array
+      items:
+        type: object
+        properties:
+          purchaseorder_item_id:
+            $ref: '#/components/schemas/purchaseorder_item_id'
+          line_item_id:
+            $ref: '#/components/schemas/line_item_id'
+          item_id:
+            $ref: '#/components/schemas/item_id'
+          sku:
+            $ref: '#/components/schemas/sku'
+          name:
+            $ref: '#/components/schemas/name'
+          account_id:
+            $ref: '#/components/schemas/account_id'
+          account_name:
+            $ref: '#/components/schemas/account_name'
+          image_document_id:
+            $ref: '#/components/schemas/image_document_id'
+          location_id:
+            $ref: '#/components/schemas/location_id'
+          location_name:
+            $ref: '#/components/schemas/location_name'
+          reverse_charge_tax_id:
+            $ref: '#/components/schemas/reverse_charge_tax_id'
+          reverse_charge_tax_name:
+            $ref: '#/components/schemas/reverse_charge_tax_name'
+          reverse_charge_tax_percentage:
+            $ref: '#/components/schemas/reverse_charge_tax_percentage'
+          reverse_charge_tax_amount:
+            $ref: '#/components/schemas/reverse_charge_tax_amount'
+          description:
+            $ref: '#/components/schemas/description'
+          bcy_rate:
+            $ref: '#/components/schemas/bcy_rate'
+          rate:
+            $ref: '#/components/schemas/rate'
+          tags:
+            $ref: '#/components/schemas/tags'
+          line_item_category:
+            $ref: '#/components/schemas/line_item_category'
+          quantity:
+            $ref: '#/components/schemas/quantity'
+          tax_id:
+            $ref: '#/components/schemas/tax_id'
+          tds_tax_id:
+            $ref: '#/components/schemas/tds_tax_id'
+          tax_exemption_id:
+            $ref: '#/components/schemas/tax_exemption_id'
+          tax_exemption_code:
+            $ref: '#/components/schemas/tax_exemption_code'
+          tax_name:
+            $ref: '#/components/schemas/tax_name'
+          tax_type:
+            $ref: '#/components/schemas/tax_type'
+          tax_percentage:
+            $ref: '#/components/schemas/tax_percentage'
+          item_total:
+            $ref: '#/components/schemas/item_total'
+          item_total_inclusive_of_tax:
+            $ref: '#/components/schemas/item_total_inclusive_of_tax'
+          item_order:
+            $ref: '#/components/schemas/item_order'
+          unit:
+            $ref: '#/components/schemas/unit'
+          hsn_or_sac:
+            $ref: '#/components/schemas/hsn_or_sac'
+          is_billable:
+            $ref: '#/components/schemas/is_billable'
+          customer_id:
+            $ref: '#/components/schemas/customer_id'
+          customer_name:
+            $ref: '#/components/schemas/customer_name'
+          project_id:
+            $ref: '#/components/schemas/project_id'
+          project_name:
+            $ref: '#/components/schemas/project_name'
+          invoice_id:
+            $ref: '#/components/schemas/invoice_id'
+          invoice_number:
+            $ref: '#/components/schemas/invoice_number'
+          item_custom_fields:
+            $ref: '#/components/schemas/item_custom_fields'
+    serial_numbers:
+      description: List of serial numbers associated with the line item.
+      type: array
+      items:
+        type: string
+    bill:
+      type: object
+      properties:
+        bill_id:
+          $ref: '#/components/schemas/bill_id'
+        purchaseorder_ids:
+          $ref: '#/components/schemas/purchaseorder_ids'
+        vendor_id:
+          $ref: '#/components/schemas/vendor_id'
+        vendor_name:
+          $ref: '#/components/schemas/vendor_name'
+        source_of_supply:
+          $ref: '#/components/schemas/source_of_supply'
+        destination_of_supply:
+          $ref: '#/components/schemas/destination_of_supply'
+        gst_no:
+          $ref: '#/components/schemas/gst_no'
+        gst_treatment:
+          $ref: '#/components/schemas/gst_treatment'
+        is_pre_gst:
+          $ref: '#/components/schemas/is_pre_gst'
+        pricebook_id:
+          $ref: '#/components/schemas/pricebook_id'
+        pricebook_name:
+          $ref: '#/components/schemas/pricebook_name'
+        is_reverse_charge_applied:
+          $ref: '#/components/schemas/is_reverse_charge_applied'
+        unused_credits_payable_amount:
+          $ref: '#/components/schemas/unused_credits_payable_amount'
+        status:
+          $ref: '#/components/schemas/status'
+        bill_number:
+          $ref: '#/components/schemas/bill_number'
+        date:
+          $ref: '#/components/schemas/date'
+        due_date:
+          $ref: '#/components/schemas/due_date'
+        payment_terms:
+          $ref: '#/components/schemas/payment_terms'
+        payment_terms_label:
+          $ref: '#/components/schemas/payment_terms_label'
+        payment_expected_date:
+          $ref: '#/components/schemas/payment_expected_date'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        recurring_bill_id:
+          $ref: '#/components/schemas/recurring_bill_id'
+        due_by_days:
+          $ref: '#/components/schemas/due_by_days'
+        due_in_days:
+          $ref: '#/components/schemas/due_in_days'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        currency_code:
+          $ref: '#/components/schemas/currency_code'
+        currency_symbol:
+          $ref: '#/components/schemas/currency_symbol'
+        documents:
+          $ref: '#/components/schemas/documents'
+        price_precision:
+          $ref: '#/components/schemas/price_precision'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        adjustment:
+          $ref: '#/components/schemas/adjustment'
+        adjustment_description:
+          $ref: '#/components/schemas/adjustment_description'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        tags:
+          $ref: '#/components/schemas/tags_response'
+        is_tds_applied:
+          $ref: '#/components/schemas/is_tds_applied'
+        is_item_level_tax_calc:
+          $ref: '#/components/schemas/is_item_level_tax_calc'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        line_items:
+          $ref: '#/components/schemas/line_items'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        location_name:
+          $ref: '#/components/schemas/location_name'
+        sub_total:
+          $ref: '#/components/schemas/sub_total'
+        tax_total:
+          $ref: '#/components/schemas/tax_total'
+        total:
+          $ref: '#/components/schemas/total'
+        payment_made:
+          $ref: '#/components/schemas/payment_made'
+        vendor_credits_applied:
+          $ref: '#/components/schemas/vendor_credits_applied'
+        is_line_item_invoiced:
+          $ref: '#/components/schemas/is_line_item_invoiced'
+        purchaseorders:
+          $ref: '#/components/schemas/purchaseorders'
+        taxes:
+          $ref: '#/components/schemas/taxes'
+        balance:
+          $ref: '#/components/schemas/balance'
+        billing_address:
+          $ref: '#/components/schemas/billing_address'
+        payments:
+          $ref: '#/components/schemas/payments'
+        vendor_credits:
+          $ref: '#/components/schemas/vendor_credits'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        created_by_id:
+          $ref: '#/components/schemas/created_by_id'
+        last_modified_time:
+          $ref: '#/components/schemas/last_modified_time'
+        reference_id:
+          $ref: '#/components/schemas/reference_id'
+        notes:
+          $ref: '#/components/schemas/notes'
+        terms:
+          $ref: '#/components/schemas/terms'
+        attachment_name:
+          $ref: '#/components/schemas/attachment_name'
+        open_purchaseorders_count:
+          $ref: '#/components/schemas/open_purchaseorders_count'
+    page_context:
+      type: object
+      properties:
+        page:
+          $ref: '#/components/schemas/page'
+        per_page:
+          $ref: '#/components/schemas/per_page'
+        has_more_page:
+          $ref: '#/components/schemas/has_more_page'
+        report_name:
+          $ref: '#/components/schemas/report_name'
+        applied_filter:
+          $ref: '#/components/schemas/applied_filter'
+        sort_column:
+          $ref: '#/components/schemas/sort_column'
+        sort_order:
+          $ref: '#/components/schemas/sort_order'
+    bill_payments:
+      description: List of payments applied to the bill.
+      type: array
+      items:
+        type: object
+        properties:
+          payment_id:
+            $ref: '#/components/schemas/payment_id'
+          amount_applied:
+            $ref: '#/components/schemas/amount_applied'
+    apply_vendor_credits:
+      description: List of vendor credits applied to the bill.
+      type: array
+      items:
+        type: object
+        properties:
+          vendor_credit_id:
+            $ref: '#/components/schemas/vendor_credit_id'
+          amount_applied:
+            $ref: '#/components/schemas/amount_applied'
+    comment:
+      type: object
+      properties:
+        comment_id:
+          $ref: '#/components/schemas/comment_id'
+        bill_id:
+          $ref: '#/components/schemas/bill_id'
+        description:
+          $ref: '#/components/schemas/description'
+        commented_by_id:
+          $ref: '#/components/schemas/commented_by_id'
+        commented_by:
+          $ref: '#/components/schemas/commented_by'
+        comment_type:
+          $ref: '#/components/schemas/comment_type'
+        date:
+          $ref: '#/components/schemas/date'
+        date_description:
+          $ref: '#/components/schemas/date_description'
+        time:
+          $ref: '#/components/schemas/time'
+    is_update_customer:
+      description: Flag to determine if customer information should be updated when creating the bill.
+      type: boolean
+      example: false
+    approver_id:
+      description: ID of the Approver.
+      type: string
+    order:
+      description: Order of the approver.
+      type: integer
+    approvers:
+      description: List of approvers for the bill.
+      type: array
+      items:
+        type: object
+        properties:
+          approver_id:
+            $ref: '#/components/schemas/approver_id'
+          order:
+            $ref: '#/components/schemas/order'
+    item_description:
+      description: 'Search bills by item description. Variants: <code>item_description_startswith</code> and <code>item_description_contains</code>'
+      type: string
+    item_name:
+      description: 'Search bills by item name. Variants: <code>item_name_startswith</code> and <code>item_name_contains</code>'
+      type: string
+    custom_field:
+      description: 'Search bills by item name. Variants: <code>custom_field_startswith</code> and <code>custom_field_contains</code>'
+      type: string
+    adjustment:
+      description: Additional amount added to or subtracted from bill total. Positive values increase total, negative values decrease total. Used for discounts, surcharges, rounding adjustments, or other modifications. Affects final bill amount, tax calculations, and payment processing.
+      type: number
+      format: double
+      example: 0
+    adjustment_description:
+      description: 'Text description explaining the reason for bill adjustment. Examples: "Early payment discount", "Volume discount", "Rounding adjustment", "Handling fee". Helps in audit trails and reporting. Required when adjustment amount is non-zero. Used in financial reports, tax returns, and vendor communications. Should be clear and specific for compliance purposes.'
+      type: string
+      example: ' '
+    create-a-bill-request:
+      required:
+        - vendor_id
+        - bill_number
+      type: object
+      properties:
+        vendor_id:
+          $ref: '#/components/schemas/vendor_id'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        is_update_customer:
+          $ref: '#/components/schemas/is_update_customer'
+        purchaseorder_ids:
+          $ref: '#/components/schemas/purchaseorder_ids'
+        bill_number:
+          $ref: '#/components/schemas/bill_number'
+        documents:
+          $ref: '#/components/schemas/documents'
+        source_of_supply:
+          $ref: '#/components/schemas/source_of_supply'
+        destination_of_supply:
+          $ref: '#/components/schemas/destination_of_supply'
+        gst_treatment:
+          $ref: '#/components/schemas/gst_treatment'
+        gst_no:
+          $ref: '#/components/schemas/gst_no'
+        pricebook_id:
+          $ref: '#/components/schemas/pricebook_id'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        date:
+          $ref: '#/components/schemas/date'
+        due_date:
+          $ref: '#/components/schemas/due_date'
+        payment_terms:
+          $ref: '#/components/schemas/payment_terms'
+        payment_terms_label:
+          $ref: '#/components/schemas/payment_terms_label'
+        recurring_bill_id:
+          $ref: '#/components/schemas/recurring_bill_id'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        is_item_level_tax_calc:
+          $ref: '#/components/schemas/is_item_level_tax_calc'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        adjustment:
+          $ref: '#/components/schemas/adjustment'
+        adjustment_description:
+          $ref: '#/components/schemas/adjustment_description'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        custom_fields:
+          type: array
+          description: List of custom fields for the bill.
+          items:
+            type: object
+            properties:
+              index:
+                $ref: '#/components/schemas/index'
+              value:
+                $ref: '#/components/schemas/value'
+        tags:
+          $ref: '#/components/schemas/tags'
+        line_items:
+          description: Line items of a bill.
+          type: array
+          items:
+            type: object
+            properties:
+              purchaseorder_item_id:
+                $ref: '#/components/schemas/purchaseorder_item_id'
+              line_item_id:
+                $ref: '#/components/schemas/line_item_id'
+              item_id:
+                $ref: '#/components/schemas/item_id'
+              name:
+                $ref: '#/components/schemas/name'
+              account_id:
+                $ref: '#/components/schemas/account_id'
+              description:
+                $ref: '#/components/schemas/description'
+              rate:
+                $ref: '#/components/schemas/rate'
+              hsn_or_sac:
+                $ref: '#/components/schemas/hsn_or_sac'
+              reverse_charge_tax_id:
+                $ref: '#/components/schemas/reverse_charge_tax_id'
+              location_id:
+                $ref: '#/components/schemas/location_id'
+              quantity:
+                $ref: '#/components/schemas/quantity'
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              tds_tax_id:
+                $ref: '#/components/schemas/tds_tax_id'
+              tax_exemption_id:
+                $ref: '#/components/schemas/tax_exemption_id'
+              tax_exemption_code:
+                $ref: '#/components/schemas/tax_exemption_code'
+              item_order:
+                $ref: '#/components/schemas/item_order'
+              unit:
+                $ref: '#/components/schemas/unit'
+              tags:
+                $ref: '#/components/schemas/tags'
+              line_item_category:
+                $ref: '#/components/schemas/line_item_category'
+              is_billable:
+                $ref: '#/components/schemas/is_billable'
+              project_id:
+                $ref: '#/components/schemas/project_id'
+              customer_id:
+                $ref: '#/components/schemas/customer_id'
+              item_custom_fields:
+                $ref: '#/components/schemas/item_custom_fields'
+              serial_numbers:
+                $ref: '#/components/schemas/serial_numbers'
+        taxes:
+          type: array
+          description: List of taxes applied to the bill.
+          items:
+            type: object
+            properties:
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              tax_name:
+                $ref: '#/components/schemas/tax_name'
+              tax_amount:
+                $ref: '#/components/schemas/tax_amount'
+        notes:
+          $ref: '#/components/schemas/notes'
+        terms:
+          $ref: '#/components/schemas/terms'
+        approvers:
+          $ref: '#/components/schemas/approvers'
+    create-a-bill-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        bill:
+          $ref: '#/components/schemas/bill'
+    list-bills-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        bills:
+          type: array
+          items:
+            type: object
+            properties:
+              bill_id:
+                $ref: '#/components/schemas/bill_id'
+              vendor_id:
+                $ref: '#/components/schemas/vendor_id'
+              vendor_name:
+                $ref: '#/components/schemas/vendor_name'
+              status:
+                $ref: '#/components/schemas/status'
+              bill_number:
+                $ref: '#/components/schemas/bill_number'
+              reference_number:
+                $ref: '#/components/schemas/reference_number'
+              date:
+                $ref: '#/components/schemas/date'
+              due_date:
+                $ref: '#/components/schemas/due_date'
+              due_days:
+                $ref: '#/components/schemas/due_days'
+              currency_id:
+                $ref: '#/components/schemas/currency_id'
+              currency_code:
+                $ref: '#/components/schemas/currency_code'
+              price_precision:
+                $ref: '#/components/schemas/price_precision'
+              exchange_rate:
+                $ref: '#/components/schemas/exchange_rate'
+              total:
+                $ref: '#/components/schemas/total'
+              balance:
+                $ref: '#/components/schemas/balance'
+              location_id:
+                $ref: '#/components/schemas/location_id'
+              location_name:
+                $ref: '#/components/schemas/location_name'
+              created_time:
+                $ref: '#/components/schemas/created_time'
+              last_modified_time:
+                $ref: '#/components/schemas/last_modified_time'
+              attachment_name:
+                $ref: '#/components/schemas/attachment_name'
+              has_attachment:
+                $ref: '#/components/schemas/has_attachment'
+              is_tds_applied:
+                $ref: '#/components/schemas/is_tds_applied'
+        page_context:
+          $ref: '#/components/schemas/page_context'
+    update-a-bill-request:
+      required:
+        - vendor_id
+        - bill_number
+      type: object
+      properties:
+        vendor_id:
+          $ref: '#/components/schemas/vendor_id'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        is_update_customer:
+          $ref: '#/components/schemas/is_update_customer'
+        purchaseorder_ids:
+          $ref: '#/components/schemas/purchaseorder_ids'
+        bill_number:
+          $ref: '#/components/schemas/bill_number'
+        documents:
+          $ref: '#/components/schemas/documents'
+        source_of_supply:
+          $ref: '#/components/schemas/source_of_supply'
+        destination_of_supply:
+          $ref: '#/components/schemas/destination_of_supply'
+        gst_treatment:
+          $ref: '#/components/schemas/gst_treatment'
+        gst_no:
+          $ref: '#/components/schemas/gst_no'
+        pricebook_id:
+          $ref: '#/components/schemas/pricebook_id'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        date:
+          $ref: '#/components/schemas/date'
+        due_date:
+          $ref: '#/components/schemas/due_date'
+        payment_terms:
+          $ref: '#/components/schemas/payment_terms'
+        payment_terms_label:
+          $ref: '#/components/schemas/payment_terms_label'
+        recurring_bill_id:
+          $ref: '#/components/schemas/recurring_bill_id'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        is_item_level_tax_calc:
+          $ref: '#/components/schemas/is_item_level_tax_calc'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        adjustment:
+          $ref: '#/components/schemas/adjustment'
+        adjustment_description:
+          $ref: '#/components/schemas/adjustment_description'
+        custom_fields:
+          type: array
+          description: List of custom fields for the bill.
+          items:
+            type: object
+            properties:
+              index:
+                $ref: '#/components/schemas/index'
+              value:
+                $ref: '#/components/schemas/value'
+        tags:
+          $ref: '#/components/schemas/tags'
+        line_items:
+          description: Line items of a bill.
+          type: array
+          items:
+            type: object
+            properties:
+              purchaseorder_item_id:
+                $ref: '#/components/schemas/purchaseorder_item_id'
+              line_item_id:
+                $ref: '#/components/schemas/line_item_id'
+              item_id:
+                $ref: '#/components/schemas/item_id'
+              name:
+                $ref: '#/components/schemas/name'
+              account_id:
+                $ref: '#/components/schemas/account_id'
+              description:
+                $ref: '#/components/schemas/description'
+              rate:
+                $ref: '#/components/schemas/rate'
+              hsn_or_sac:
+                $ref: '#/components/schemas/hsn_or_sac'
+              reverse_charge_tax_id:
+                $ref: '#/components/schemas/reverse_charge_tax_id'
+              location_id:
+                $ref: '#/components/schemas/location_id'
+              quantity:
+                $ref: '#/components/schemas/quantity'
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              tds_tax_id:
+                $ref: '#/components/schemas/tds_tax_id'
+              tax_exemption_id:
+                $ref: '#/components/schemas/tax_exemption_id'
+              tax_exemption_code:
+                $ref: '#/components/schemas/tax_exemption_code'
+              item_order:
+                $ref: '#/components/schemas/item_order'
+              unit:
+                $ref: '#/components/schemas/unit'
+              tags:
+                $ref: '#/components/schemas/tags'
+              line_item_category:
+                $ref: '#/components/schemas/line_item_category'
+              is_billable:
+                $ref: '#/components/schemas/is_billable'
+              project_id:
+                $ref: '#/components/schemas/project_id'
+              customer_id:
+                $ref: '#/components/schemas/customer_id'
+              item_custom_fields:
+                $ref: '#/components/schemas/item_custom_fields'
+              serial_numbers:
+                $ref: '#/components/schemas/serial_numbers'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        taxes:
+          type: array
+          description: List of taxes applied to the bill.
+          items:
+            type: object
+            properties:
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              tax_name:
+                $ref: '#/components/schemas/tax_name'
+              tax_amount:
+                $ref: '#/components/schemas/tax_amount'
+        notes:
+          $ref: '#/components/schemas/notes'
+        terms:
+          $ref: '#/components/schemas/terms'
+        approvers:
+          $ref: '#/components/schemas/approvers'
+    update-a-bill-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Bill information has been updated.
+          readOnly: true
+        bill:
+          $ref: '#/components/schemas/bill'
+    get-a-bill-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        bill:
+          $ref: '#/components/schemas/bill'
+    delete-a-bill-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The bill has been deleted.
+          readOnly: true
+    void-a-bill-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The bill has been marked as void.
+          readOnly: true
+    mark-a-bill-as-open-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The status of the bill has been chaged to open.
+          readOnly: true
+    submit-a-bill-for-approval-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The bill has been submitted for approval successfully.
+          readOnly: true
+    approve-a-bill-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+    update-billing-address-request:
+      type: object
+      properties:
+        address:
+          $ref: '#/components/schemas/address'
+        city:
+          $ref: '#/components/schemas/city'
+        state:
+          $ref: '#/components/schemas/state'
+        zip:
+          $ref: '#/components/schemas/zip'
+        country:
+          $ref: '#/components/schemas/country'
+        fax:
+          $ref: '#/components/schemas/fax'
+        attention:
+          $ref: '#/components/schemas/attention'
+        is_update_customer:
+          $ref: '#/components/schemas/is_update_customer'
+    update-billing-address-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Billing address updated.
+          readOnly: true
+        billing_address:
+          $ref: '#/components/schemas/billing_address'
+    list-bill-payments-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        payments:
+          type: array
+          items:
+            type: object
+            properties:
+              payment_id:
+                $ref: '#/components/schemas/payment_id'
+              bill_id:
+                $ref: '#/components/schemas/bill_id'
+              bill_payment_id:
+                $ref: '#/components/schemas/bill_payment_id'
+              vendor_id:
+                $ref: '#/components/schemas/vendor_id'
+              vendor_name:
+                $ref: '#/components/schemas/vendor_name'
+              payment_mode:
+                $ref: '#/components/schemas/payment_mode'
+              description:
+                $ref: '#/components/schemas/description'
+              date:
+                $ref: '#/components/schemas/date'
+              reference_number:
+                $ref: '#/components/schemas/reference_number'
+              exchange_rate:
+                $ref: '#/components/schemas/exchange_rate'
+              amount:
+                $ref: '#/components/schemas/amount'
+              paid_through:
+                $ref: '#/components/schemas/paid_through'
+              is_single_bill_payment:
+                $ref: '#/components/schemas/is_single_bill_payment'
+    apply-credits-request:
+      type: object
+      properties:
+        bill_payments:
+          $ref: '#/components/schemas/bill_payments'
+        apply_vendor_credits:
+          $ref: '#/components/schemas/apply_vendor_credits'
+    apply-credits-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Credits have been applied to the bill(s)."
+          readOnly: true
+    delete-a-payment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The payment has been deleted.
+          readOnly: true
+    get-a-bill-attachment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+    add-attachment-to-a-bill-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The document has been attached.
+          readOnly: true
+    delete-an-attachment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The attachment has been deleted.
+          readOnly: true
+    convert-po-to-bill-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        purchaseorder_ids:
+          $ref: '#/components/schemas/purchaseorder_ids'
+        bill:
+          $ref: '#/components/schemas/bill'
+    list-bill-comments-and-history-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        comments:
+          type: array
+          items:
+            type: object
+            properties:
+              comment_id:
+                $ref: '#/components/schemas/comment_id'
+              bill_id:
+                $ref: '#/components/schemas/bill_id'
+              description:
+                $ref: '#/components/schemas/description'
+              commented_by_id:
+                $ref: '#/components/schemas/commented_by_id'
+              commented_by:
+                $ref: '#/components/schemas/commented_by'
+              comment_type:
+                $ref: '#/components/schemas/comment_type'
+              date:
+                description: Date of the comment.
+                type: string
+                example: 17 Nov 2016
+              date_description:
+                $ref: '#/components/schemas/date_description'
+              time:
+                $ref: '#/components/schemas/time'
+              operation_type:
+                $ref: '#/components/schemas/operation_type'
+              transaction_id:
+                $ref: '#/components/schemas/transaction_id'
+              transaction_type:
+                $ref: '#/components/schemas/transaction_type'
+    add-comment-request:
+      required:
+        - description
+      type: object
+      properties:
+        description:
+          $ref: '#/components/schemas/description'
+    add-comment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Comments added.
+          readOnly: true
+        comment:
+          $ref: '#/components/schemas/comment'
+    delete-a-comment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The comment has been deleted.
+          readOnly: true
+    tag_id:
+      description: ID of the tag.
+      type: string
+      example: '460000000000567'
+    tag_name:
+      description: Name of the tag.
+      type: string
+      example: Business Unit
+    tag_option_id:
+      description: Tag option ID.
+      type: string
+      example: '460000000014044'
+    tag_option_name:
+      description: Tag option name.
+      type: string
+      example: Sales
+    is_tag_mandatory:
+      description: Indicates if the tag is mandatory.
+      type: boolean
+      example: false
+    tags:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+    tags_response:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_name:
+            $ref: '#/components/schemas/tag_name'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+          tag_option_name:
+            $ref: '#/components/schemas/tag_option_name'
+          is_tag_mandatory:
+            $ref: '#/components/schemas/is_tag_mandatory'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.bills.CREATE: Create Bills
+            ERP.bills.UPDATE: Update Bills
+            ERP.bills.READ: Read Bills
+            ERP.bills.DELETE: Delete Bills

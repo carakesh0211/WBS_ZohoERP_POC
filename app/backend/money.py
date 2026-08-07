@@ -1,0 +1,120 @@
+"""Exact money handling.
+
+AUD-H-007. The previous conversion was ``int(round(float(rupees) * 100))``, which
+lost money in two distinct ways the audit reproduced:
+
+    L(0.005)            -> 0                      (banker's rounding through binary float)
+    L(0.015)            -> 2                      (inconsistent with the line above)
+    L(90071992547409.93)-> 9007199254740994       (float64 mantissa exhausted)
+
+Money is therefore parsed with ``decimal.Decimal`` from a *string* and rounded
+once, explicitly, half-up - the convention Indian accounting expects. Amounts are
+stored and computed as integer paise; no float ever touches a monetary value.
+"""
+from __future__ import annotations
+
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP, localcontext
+
+# Guard rails. A single CAPEX line beyond this is a data error, not a business case.
+MAX_PAISE = 10 ** 18          # ~1e16 rupees
+CURRENCY_EXPONENT = 2         # INR: 2 decimal places
+
+
+class MoneyError(ValueError):
+    """Raised when a monetary input cannot be represented exactly."""
+
+
+def to_paise(value, *, field: str = "amount", allow_negative: bool = False) -> int:
+    """Convert a user/API supplied amount in rupees to integer paise.
+
+    Accepts str, int, Decimal. A float is accepted only when it is exactly
+    representable at 2dp, because silently rounding a float is how the original
+    defect happened; anything else is rejected so the caller sends a string.
+    """
+    if value is None:
+        raise MoneyError(f"{field} is required.")
+    if isinstance(value, bool):
+        raise MoneyError(f"{field} must be a number, not a boolean.")
+
+    if isinstance(value, float):
+        # inf/nan must fail as a controlled MoneyError, not as decimal.InvalidOperation
+        # escaping from quantize() below.
+        if value != value or value in (float("inf"), float("-inf")):
+            raise MoneyError(f"{field} must be a finite amount.")
+        # A float is only accepted when it already denotes an exact 2dp amount.
+        # 0.1 + 0.2 becomes 0.30000000000000004, which is NOT an exact 2dp value:
+        # accepting it would silently round away a defect the caller should fix by
+        # sending a decimal string.
+        exact = Decimal(repr(value))
+        if exact != exact.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP):
+            raise MoneyError(
+                f"{field} was sent as a float ({value!r}) that is not an exact "
+                f"2-decimal amount. Send monetary values as decimal strings.")
+        dec = exact
+    elif isinstance(value, Decimal):
+        dec = value
+    else:
+        try:
+            dec = Decimal(str(value).strip().replace(",", ""))
+        except (InvalidOperation, AttributeError):
+            raise MoneyError(f"{field} is not a valid amount: {value!r}")
+
+    if not dec.is_finite():
+        raise MoneyError(f"{field} must be a finite amount.")
+
+    with localcontext() as ctx:
+        ctx.prec = 34                       # IEEE decimal128: ample for CAPEX values
+        paise = (dec * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+
+    ipaise = int(paise)
+    if not allow_negative and ipaise < 0:
+        raise MoneyError(f"{field} must not be negative.")
+    if abs(ipaise) > MAX_PAISE:
+        raise MoneyError(f"{field} exceeds the maximum supported amount.")
+    return ipaise
+
+
+def to_rupees(paise: int) -> Decimal:
+    """Integer paise -> exact Decimal rupees. Never returns a float."""
+    if paise is None:
+        return Decimal("0")
+    return (Decimal(int(paise)) / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def format_inr(paise: int, *, symbol: bool = True) -> str:
+    """Indian digit grouping, e.g. 15000000 paise -> Rs 1,50,000.00"""
+    neg = paise is not None and paise < 0
+    amt = to_rupees(abs(int(paise or 0)))
+    whole, _, frac = str(amt).partition(".")
+    if len(whole) > 3:
+        head, tail = whole[:-3], whole[-3:]
+        parts = []
+        while len(head) > 2:
+            parts.insert(0, head[-2:]); head = head[:-2]
+        if head:
+            parts.insert(0, head)
+        whole = ",".join(parts) + "," + tail
+    out = f"{whole}.{frac or '00'}"
+    if symbol:
+        out = "₹" + out
+    return f"({out})" if neg else out
+
+
+def split_pro_rata(total_paise: int, weights: list[int]) -> list[int]:
+    """Allocate an integer amount across weights with no paise lost.
+
+    Largest-remainder method: the sum of the result always equals total_paise,
+    which matters for capitalisation allocation and common-cost distribution.
+    """
+    total_w = sum(weights)
+    if total_w <= 0:
+        raise MoneyError("Cannot allocate across zero total weight.")
+    raw = [(total_paise * w) // total_w for w in weights]
+    remainder = total_paise - sum(raw)
+    # hand the leftover paise to the largest fractional parts, deterministically
+    order = sorted(range(len(weights)),
+                   key=lambda i: ((total_paise * weights[i]) % total_w, weights[i], -i),
+                   reverse=True)
+    for k in range(remainder):
+        raw[order[k % len(order)]] += 1
+    return raw

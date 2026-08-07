@@ -1,0 +1,244 @@
+openapi: 3.0.0
+info:
+  title: Designations
+  description: The Designations module in Zoho ERP allows you to manage employee designations.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v1
+    description: API Endpoint
+tags:
+  - name: designations
+    description: Designations Module
+paths:
+  /designations:
+    x-mcp-group:
+      - Designations
+    post:
+      tags:
+        - designations
+      operationId: create_designation
+      summary: Create Designation
+      description: Create a new designation.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-designation-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-designation-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.designation.CREATE
+    get:
+      tags:
+        - designations
+      operationId: list_designations
+      summary: Designations List
+      description: Get Designations List.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-designations-list-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.designation.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /designations/{designation_id}:
+    x-mcp-group:
+      - Designations
+    post:
+      tags:
+        - designations
+      operationId: update_designation
+      summary: Update Designation
+      description: Update existing designation.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-designation-request'
+      responses:
+        '201':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-designation-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.designation.UPDATE
+    get:
+      tags:
+        - designations
+      operationId: get_designation
+      summary: Designation details
+      description: Get Designation details.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-designation-details'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.designation.READ
+    delete:
+      tags:
+        - designations
+      operationId: delete_designation
+      summary: Delete designation
+      description: Delete existing designation.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-designation'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.designation.DELETE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/designation_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: Unique identifier for the organization.
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+    designation_id:
+      name: designation_id
+      description: Unique identifier for the designation.
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/designation_id'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/designation-response'
+    designation-response:
+      type: object
+      properties:
+        designation_id:
+          $ref: '#/components/schemas/designation_id'
+        name:
+          $ref: '#/components/schemas/name'
+    code:
+      type: integer
+      example: 0
+      readOnly: true
+    message:
+      type: string
+      example: success
+      readOnly: true
+    designation_id:
+      type: string
+      example: '49774000000096021'
+      description: Unique identifier for the designation.
+    name:
+      description: Name of the designation.
+      type: string
+      example: Developer
+    employees_count:
+      type: integer
+      example: 5
+    create-designation-request:
+      type: object
+      properties:
+        name:
+          $ref: '#/components/schemas/name'
+    create-designation-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Designation added successfully.
+        designation:
+          $ref: '#/components/schemas/designation-response'
+    update-designation-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Designation updated successfully.
+        designation:
+          type: object
+          properties:
+            designation_id:
+              $ref: '#/components/schemas/designation_id'
+            name:
+              $ref: '#/components/schemas/name'
+    get-designation-details:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        designation:
+          type: object
+          properties:
+            designation_id:
+              $ref: '#/components/schemas/designation_id'
+            name:
+              $ref: '#/components/schemas/name'
+    get-designations-list-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        designations:
+          type: array
+          items:
+            type: object
+            properties:
+              designation_id:
+                $ref: '#/components/schemas/designation_id'
+              name:
+                $ref: '#/components/schemas/name'
+    delete-designation:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Designation deleted successfully.
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.designation.CREATE: Create Designation
+            ERP.designation.UPDATE: Update Designation
+            ERP.designation.READ: Read Designation
+            ERP.designation.DELETE: Delete Designation

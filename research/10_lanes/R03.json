@@ -1,0 +1,2296 @@
+{
+  "lane_id": "R03",
+  "generated_at": "2026-08-05",
+  "records": [
+    {
+      "claim_id": "R03-001",
+      "lane_id": "R03",
+      "topic": "assigned-value-definition",
+      "claim_text": "SAP defines the assigned value for projects as a calculated aggregate, not a single stored field; the page enumerates the exact contributing components.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/f711d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The assigned value for projects is calculated from:",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "assigned-value-formula",
+        "availability-control",
+        "data-model"
+      ]
+    },
+    {
+      "claim_id": "R03-002",
+      "lane_id": "R03",
+      "topic": "assigned-value-definition",
+      "claim_text": "Actual costs posted on the budget-carrying WBS element itself count toward that element's assigned value.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/f711d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Actual costs of WBS element carrying budget",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "assigned-value-formula"
+      ]
+    },
+    {
+      "claim_id": "R03-003",
+      "lane_id": "R03",
+      "topic": "assigned-value-definition",
+      "claim_text": "Statistical actual costs on the budget-carrying WBS element also count toward assigned value, alongside real actual costs.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/f711d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Statistical actual costs of WBS element carrying budget",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "assigned-value-formula"
+      ]
+    },
+    {
+      "claim_id": "R03-004",
+      "lane_id": "R03",
+      "topic": "assigned-value-definition",
+      "claim_text": "Actual costs of subordinate WBS elements roll into the parent's assigned value only when those subordinates do not themselves carry budget.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/f711d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Actual costs of subordinate WBS elements if these do not carry budget",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "assigned-value-formula",
+        "hierarchy-rollup"
+      ]
+    },
+    {
+      "claim_id": "R03-005",
+      "lane_id": "R03",
+      "topic": "assigned-value-definition",
+      "claim_text": "Commitments on the budget-carrying WBS element count toward assigned value, so purchase commitments consume budget before any actual cost posts.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/f711d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Commitments of WBS element carrying budget",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "assigned-value-formula",
+        "commitment-model"
+      ]
+    },
+    {
+      "claim_id": "R03-006",
+      "lane_id": "R03",
+      "topic": "assigned-value-definition",
+      "claim_text": "Commitments of subordinate WBS elements roll up into assigned value only when those subordinates do not carry their own budget.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/f711d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Commitments of subordinate WBS elements if these do not carry budget",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "assigned-value-formula",
+        "hierarchy-rollup"
+      ]
+    },
+    {
+      "claim_id": "R03-007",
+      "lane_id": "R03",
+      "topic": "assigned-value-definition",
+      "claim_text": "For assigned networks or orders SAP takes the MAXIMUM of plan versus actual-plus-commitment, not the sum. This is a non-obvious rule worth replicating.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/f711d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Maximum of plan and actual costs + commitments from assigned networks or orders",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "assigned-value-formula",
+        "order-integration"
+      ]
+    },
+    {
+      "claim_id": "R03-008",
+      "lane_id": "R03",
+      "topic": "assigned-value-definition",
+      "claim_text": "Settlement debits posted to a WBS element increase its assigned value.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/f711d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Debit from settlement to WBS element",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "assigned-value-formula",
+        "settlement"
+      ]
+    },
+    {
+      "claim_id": "R03-009",
+      "lane_id": "R03",
+      "topic": "assigned-value-definition",
+      "claim_text": "Settlement credits reduce assigned value only when the receiving object is itself budget-controlled, such as an internal order or WBS element.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/f711d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Credit from settlement to budget-controlled object (internal order, WBS element)",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "assigned-value-formula",
+        "settlement"
+      ]
+    },
+    {
+      "claim_id": "R03-010",
+      "lane_id": "R03",
+      "topic": "assigned-value-exclusions",
+      "claim_text": "SAP explicitly lists exclusions from assigned value; the exclusion list is normative, not incidental.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/f711d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Not used for calculation of the assigned value:",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "assigned-value-formula"
+      ]
+    },
+    {
+      "claim_id": "R03-011",
+      "lane_id": "R03",
+      "topic": "assigned-value-exclusions",
+      "claim_text": "Cost elements flagged as exempt in availability-control Customizing are excluded from assigned value, giving a configurable carve-out mechanism.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/f711d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Actual costs with a cost element defined in Customizing for availability control as an exempt cost element",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "assigned-value-formula",
+        "config-tolerances"
+      ]
+    },
+    {
+      "claim_id": "R03-012",
+      "lane_id": "R03",
+      "topic": "assigned-value-exclusions",
+      "claim_text": "Costs from business transactions outside the valid business transaction groups of availability control are excluded from assigned value.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/f711d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Actual costs that resulted from a business transaction that does not belong to the valid business transaction groups of availability control",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "assigned-value-formula",
+        "config-tolerances"
+      ]
+    },
+    {
+      "claim_id": "R03-013",
+      "lane_id": "R03",
+      "topic": "assigned-value-exclusions",
+      "claim_text": "Settlement credits to a non-budget-controlled object such as a cost center do NOT reduce assigned value, so settling to a cost center does not free budget.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/f711d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Credits from settlement to an object that is not budget-controlled (for example, cost center)",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "assigned-value-formula",
+        "settlement"
+      ]
+    },
+    {
+      "claim_id": "R03-014",
+      "lane_id": "R03",
+      "topic": "assigned-value-exclusions",
+      "claim_text": "Revenues are excluded from assigned value entirely; budget consumption in SAP PS is a cost-side concept only.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/f711d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Revenues",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "assigned-value-formula",
+        "accounting-principles"
+      ]
+    },
+    {
+      "claim_id": "R03-015",
+      "lane_id": "R03",
+      "topic": "assigned-value-short-definition",
+      "claim_text": "In the budgeting value display SAP gives the compact definition of assigned value as the total of commitment and actual postings, shown only when availability control is active.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/0213d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Total of commitment and actual postings. The assigned value is only displayed if availability control is active.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "assigned-value-formula",
+        "ux-patterns"
+      ]
+    },
+    {
+      "claim_id": "R03-016",
+      "lane_id": "R03",
+      "topic": "current-budget-definition",
+      "claim_text": "Current budget equals original budget as modified by budget updates, namely supplements, returns and transfers.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/0213d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Original budget that was changed by budget updates (supplements, returns, and transfers).",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "budget-lifecycle",
+        "budget-model"
+      ]
+    },
+    {
+      "claim_id": "R03-017",
+      "lane_id": "R03",
+      "topic": "distributed-value",
+      "claim_text": "Distributed value is the total of the current budget held by a WBS element's lower-level WBS elements.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/0213d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The total of the current budget (see below) for a WBS element or lower-level WBS elements.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "budget-model",
+        "hierarchy-rollup"
+      ]
+    },
+    {
+      "claim_id": "R03-018",
+      "lane_id": "R03",
+      "topic": "distributable-value",
+      "claim_text": "Distributable value is current budget minus distributed value; this is the amount still available to push down the hierarchy.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/0213d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "This is the difference between the current budget and distributed value.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "budget-model",
+        "available-budget-formula"
+      ]
+    },
+    {
+      "claim_id": "R03-019",
+      "lane_id": "R03",
+      "topic": "cumulated-and-remaining",
+      "claim_text": "Cumulated value is the total of the annual budgets, and remaining value is overall budget minus cumulated - the annual-versus-overall reconciliation pair.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/0213d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Cumulated value Total of the annual budgets.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "budget-model",
+        "annual-vs-overall"
+      ]
+    },
+    {
+      "claim_id": "R03-020",
+      "lane_id": "R03",
+      "topic": "budget-release",
+      "claim_text": "The Release value in the budget display is derived from the current budget, confirming release is a subset of current budget rather than an independent amount.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/0213d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Release Based on the released budget from the current budget",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "budget-release",
+        "budget-model"
+      ]
+    },
+    {
+      "claim_id": "R03-021",
+      "lane_id": "R03",
+      "topic": "budget-updates-recalculation",
+      "claim_text": "After supplements, returns or transfers, all derived display values are recomputed from the current budget, never from the frozen original budget.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/0213d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "the displayed values (such as the distributed value) are always based on the current budget, not the original budget.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "budget-lifecycle",
+        "budget-model"
+      ]
+    },
+    {
+      "claim_id": "R03-022",
+      "lane_id": "R03",
+      "topic": "availability-control-activation",
+      "claim_text": "Availability control activation behaviour is driven by an Activation Type field on the budget profile, not by a per-transaction switch.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/0012d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "In the budget profile, you use Activation Type to define whether, and how, availability control is to be activated.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control",
+        "config-tolerances"
+      ]
+    },
+    {
+      "claim_id": "R03-023",
+      "lane_id": "R03",
+      "topic": "availability-control-activation",
+      "claim_text": "SAP offers exactly three activation types: cannot be activated, automatic activation with budget allocation, and background activation.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/0012d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "0 = Cannot be activated 1 = Automatic Activation With Budget Allocation 2 = Background Activation",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control",
+        "config-tolerances"
+      ]
+    },
+    {
+      "claim_id": "R03-024",
+      "lane_id": "R03",
+      "topic": "availability-control-activation",
+      "claim_text": "On activation SAP first determines which WBS elements carry budget; SAP calls these the controlling elements.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/0012d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Determination of WBS elements carrying budget (\"controlling elements\")",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control",
+        "hierarchy-rollup"
+      ]
+    },
+    {
+      "claim_id": "R03-025",
+      "lane_id": "R03",
+      "topic": "availability-control-scope",
+      "claim_text": "Assigned funds checked against a controlling element may sit on that element, on lower-level WBS elements, or on their assigned project orders.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/0012d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The assigned funds can be on the budget-carrying WBS element, the lower-level WBS elements and their assigned project orders.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control",
+        "hierarchy-rollup"
+      ]
+    },
+    {
+      "claim_id": "R03-026",
+      "lane_id": "R03",
+      "topic": "availability-control-runtime",
+      "claim_text": "Once availability control is active every posting to the project is checked, making it a synchronous gate on transaction processing.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/0012d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "After activation, each posting to the project is checked by the availability control.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control",
+        "runtime-behaviour"
+      ]
+    },
+    {
+      "claim_id": "R03-027",
+      "lane_id": "R03",
+      "topic": "availability-control-performance",
+      "claim_text": "SAP warns that availability control affects system performance and recommends background activation for less detailed projects - a real cost of always-on checking.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/0012d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "As availability control affects system performance, you should activate it in the background for projects with less detail",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control",
+        "performance",
+        "runtime-behaviour"
+      ]
+    },
+    {
+      "claim_id": "R03-028",
+      "lane_id": "R03",
+      "topic": "availability-control-background",
+      "claim_text": "Background activation triggers on a usage level threshold defined in the budget profile; exceeding that usage level activates availability control.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/9111d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Background activation for availability control checks whether or not the usage level defined in the budget profile has been reached.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control",
+        "usage-levels",
+        "config-tolerances"
+      ]
+    },
+    {
+      "claim_id": "R03-029",
+      "lane_id": "R03",
+      "topic": "availability-control-background",
+      "claim_text": "Background activation of availability control writes a log of the objects for which it activated control, enabling audit of when a project became gated.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/9111d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Background activation of availability control logs the objects for which you activated availability control.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control",
+        "audit-log"
+      ]
+    },
+    {
+      "claim_id": "R03-030",
+      "lane_id": "R03",
+      "topic": "availability-control-online",
+      "claim_text": "Online activation lets a user activate availability control for a single project ahead of the usage level being reached or the next batch run.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5911d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "You can activate availability control for a project before the usage level is reached or before the next batch run.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control",
+        "usage-levels"
+      ]
+    },
+    {
+      "claim_id": "R03-031",
+      "lane_id": "R03",
+      "topic": "availability-control-online",
+      "claim_text": "Online activation takes effect at the next Save or Check action, after which every posting in the project is checked.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5911d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Availability control is activated the next time you choose Save or Check. After activation, every posting in the project is checked",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control",
+        "runtime-behaviour"
+      ]
+    },
+    {
+      "claim_id": "R03-032",
+      "lane_id": "R03",
+      "topic": "availability-control-check-basis",
+      "claim_text": "The budget profile determines both whether availability control activates and which budget values it checks against.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5513d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "whether/how availability control is to be activated and which budget values should be checked by availability control.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control",
+        "config-tolerances",
+        "budget-model"
+      ]
+    },
+    {
+      "claim_id": "R03-033",
+      "lane_id": "R03",
+      "topic": "availability-control-check-basis",
+      "claim_text": "Availability control can be configured against year-independent total values or year-dependent annual values, a fundamental modelling fork.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5513d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "year-independent (= total values) or year-dependent values.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control",
+        "annual-vs-overall"
+      ]
+    },
+    {
+      "claim_id": "R03-034",
+      "lane_id": "R03",
+      "topic": "availability-control-passive-active",
+      "claim_text": "SAP splits availability control into a passive mode giving an overview of funds and their assignment, and an active mode that blocks over-assignment.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/358fd153370e4608e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Overview of funds, their assignment and type",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control",
+        "ux-patterns"
+      ]
+    },
+    {
+      "claim_id": "R03-035",
+      "lane_id": "R03",
+      "topic": "availability-control-purpose",
+      "claim_text": "Active availability control exists to prevent the assignment of too many funds, checking remaining budget as business transactions create costs.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/358fd153370e4608e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Prevents the assignment of too many funds",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control"
+      ]
+    },
+    {
+      "claim_id": "R03-036",
+      "lane_id": "R03",
+      "topic": "distributable-budget",
+      "claim_text": "SAP defines distributable budget as the controlling element's budget not yet distributed to lower-level WBS elements.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/358fd153370e4608e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The budget from the controlling element that is _not_ yet distributed to other, lower-level WBS elements.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "budget-model",
+        "available-budget-formula",
+        "hierarchy-rollup"
+      ]
+    },
+    {
+      "claim_id": "R03-037",
+      "lane_id": "R03",
+      "topic": "availability-control-messaging",
+      "claim_text": "Availability control controls costs actively by issuing warnings and error messages at the moment costs are incurred.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/358fd153370e4608e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "control costs actively by issuing warnings and error messages when costs are incurred.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control",
+        "ux-patterns"
+      ]
+    },
+    {
+      "claim_id": "R03-038",
+      "lane_id": "R03",
+      "topic": "tolerance-limits",
+      "claim_text": "Tolerance limits are keyed on a three-part combination of budget profile, transaction group and action, and may be expressed as relative or absolute variance.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/9814c753b1081d4be10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "You can define relative or absolute variance from budget values as tolerance limits for budget profile/transaction group/action combinations.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "config-tolerances",
+        "usage-levels"
+      ]
+    },
+    {
+      "claim_id": "R03-039",
+      "lane_id": "R03",
+      "topic": "tolerance-limits-default",
+      "claim_text": "If no tolerance limit is found for a posting, SAP permits the posting - the control is opt-in and fails open, not closed.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/9814c753b1081d4be10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "If no tolerance limit is found, the posting is permitted.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "config-tolerances",
+        "availability-control",
+        "edge-cases"
+      ]
+    },
+    {
+      "claim_id": "R03-040",
+      "lane_id": "R03",
+      "topic": "tolerance-actions",
+      "claim_text": "Action 1 is a pure warning: the user is told the tolerance limit is exceeded but the posting is not rejected.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/1afacc53a8b77214e10000000a174cb4/3.6/en-US/d4f8cc53a8b77214e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The system informs you that the tolerance limit is being exceeded. However, the posting in question is not rejected.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "config-tolerances",
+        "ux-patterns"
+      ]
+    },
+    {
+      "claim_id": "R03-041",
+      "lane_id": "R03",
+      "topic": "tolerance-actions",
+      "claim_text": "Action 3 is a hard stop: a posting that breaches the action-3 tolerance limit is rejected and an error message is generated.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/1afacc53a8b77214e10000000a174cb4/3.6/en-US/d4f8cc53a8b77214e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "If a posting leads to the action 3 tolerance limit being exceeded, the system rejects the posting and generates an error message.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "config-tolerances",
+        "ux-patterns"
+      ]
+    },
+    {
+      "claim_id": "R03-042",
+      "lane_id": "R03",
+      "topic": "tolerance-actions",
+      "claim_text": "The middle action tier is warning plus mail, notifying a responsible manager rather than only the posting user. Documented on the Funds Management action page.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/9814c753b1081d4be10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Warning with Mail to funds center manager",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "config-tolerances",
+        "notifications",
+        "ux-patterns"
+      ]
+    },
+    {
+      "claim_id": "R03-043",
+      "lane_id": "R03",
+      "topic": "business-transaction-groups",
+      "claim_text": "Every business transaction is assigned to a transaction group for availability control, and tolerance limits are set per group.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/a911d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "All business transactions are assigned to a transaction group in availability control.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "config-tolerances",
+        "transaction-groups"
+      ]
+    },
+    {
+      "claim_id": "R03-044",
+      "lane_id": "R03",
+      "topic": "business-transaction-groups",
+      "claim_text": "An all-transaction-groups catch-all exists so tolerance limits need not be defined for every group individually; specific groups override the catch-all.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/a911d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "simplifies entry and is useful if you do _not_ want to define separate tolerance limits for every transaction group.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "config-tolerances",
+        "transaction-groups"
+      ]
+    },
+    {
+      "claim_id": "R03-045",
+      "lane_id": "R03",
+      "topic": "budget-updates-as-transaction-group",
+      "claim_text": "Budgeting itself is a transaction group, which lets availability control react to retrospective budget reductions made during a running project.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/a911d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Budgeting: Enables availability control to account for retrospective budget changes during projects",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "config-tolerances",
+        "budget-lifecycle",
+        "edge-cases"
+      ]
+    },
+    {
+      "claim_id": "R03-046",
+      "lane_id": "R03",
+      "topic": "avc-exclusion-by-status",
+      "claim_text": "A user status can exclude a budgeted WBS element and its lower-level assignment elements from availability control.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5b13d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "You can exclude a WBS element with budget and the lower-level account assignment elements from availability control.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control",
+        "status-management",
+        "edge-cases"
+      ]
+    },
+    {
+      "claim_id": "R03-047",
+      "lane_id": "R03",
+      "topic": "avc-exclusion-by-status",
+      "claim_text": "When excluded by status, assigned funds trigger no availability-control action, yet assigned values continue to be updated on the controlling element.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5b13d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "the assigned funds are not included in the availability control, in other words, no action is triggered. However, the assigned values are still updated",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control",
+        "status-management",
+        "edge-cases"
+      ]
+    },
+    {
+      "claim_id": "R03-048",
+      "lane_id": "R03",
+      "topic": "cost-planning-vs-budgeting",
+      "claim_text": "SAP states budget allocation is generally preceded by a cost plan which forms the initial basis for determining and allocating the budget.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/a213d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Budget allocation for a project or an order is generally preceded by a cost plan that provides the initial basis for determination and allocation",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cost-planning",
+        "budget-lifecycle"
+      ]
+    },
+    {
+      "claim_id": "R03-049",
+      "lane_id": "R03",
+      "topic": "cost-planning-vs-budgeting",
+      "claim_text": "SAP's learning material draws the key distinction: the budget is the approved cost framework and differs from the cost plan by being binding.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "source_url": "https://learning.sap.com/courses/exploring-investment-projects-in-sap-s-4hana/budgeting-projects",
+      "source_tier": "2-VENDOR-LEARNING",
+      "evidence_quote": "The budget is the approved cost framework for a project. It differs from the cost plan in that it is binding.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cost-planning",
+        "budget-model",
+        "accounting-principles"
+      ]
+    },
+    {
+      "claim_id": "R03-050",
+      "lane_id": "R03",
+      "topic": "plan-to-budget-transfer",
+      "claim_text": "Plan values can be copied into budget by selecting WBS elements carrying the plan values, applying a chosen percentage of plan total.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/a213d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Select the WBS elements that contain the plan values you want to use as the budget",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cost-planning",
+        "budget-lifecycle"
+      ]
+    },
+    {
+      "claim_id": "R03-051",
+      "lane_id": "R03",
+      "topic": "budget-allocation-prerequisites",
+      "claim_text": "The budget profile controls the period of time during which budgeting is allowed - a time-window gate on the budgeting activity itself.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/2313d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The period of time during which budgeting is allowed",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "budget-model",
+        "config-tolerances"
+      ]
+    },
+    {
+      "claim_id": "R03-052",
+      "lane_id": "R03",
+      "topic": "budget-allocation-prerequisites",
+      "claim_text": "The budget profile also determines whether budgeting is permitted for total values, annual values, or both.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/2313d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Whether budgeting is allowed for total annual values, and/or annual values",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "annual-vs-overall",
+        "budget-model"
+      ]
+    },
+    {
+      "claim_id": "R03-053",
+      "lane_id": "R03",
+      "topic": "budget-allocation-prerequisites",
+      "claim_text": "Budget may be allocated once the object has reached status Created; a user status can be defined to restrict this further.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/2313d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "You can allocate budget after the status Created has been reached.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "status-management",
+        "budget-lifecycle"
+      ]
+    },
+    {
+      "claim_id": "R03-054",
+      "lane_id": "R03",
+      "topic": "budget-supplement",
+      "claim_text": "A supplement posts additional budget to a receiver WBS element for a stated receiver year, which is the year the receiver gains additional budget.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/9913d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The Receiver year is the year in which the receiver object receives additional budget.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "budget-lifecycle",
+        "annual-vs-overall"
+      ]
+    },
+    {
+      "claim_id": "R03-055",
+      "lane_id": "R03",
+      "topic": "budget-supplement",
+      "claim_text": "A Total values too indicator makes the supplement change the receiver's total budget by the same amount as the annual values, keeping the two layers in sync.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/9913d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "the system changes the total budget for the receiver to the same extent as the annual values.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "budget-lifecycle",
+        "annual-vs-overall"
+      ]
+    },
+    {
+      "claim_id": "R03-056",
+      "lane_id": "R03",
+      "topic": "budget-supplement",
+      "claim_text": "Supplement entry supports Hold, Check and Post; Check reports errors before posting and erroneous rows are excluded from the post.",
+      "claim_class": "UX-PATTERN",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/9913d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "You can use the checking function before posting to determine whether the entered items contain any errors.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "ux-patterns",
+        "budget-lifecycle"
+      ]
+    },
+    {
+      "claim_id": "R03-057",
+      "lane_id": "R03",
+      "topic": "budget-return",
+      "claim_text": "A budget return is entered against a sender WBS element and an amount, mirroring the supplement flow but reducing budget.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/da11d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "entering the sender WBS element and the amount",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "budget-lifecycle"
+      ]
+    },
+    {
+      "claim_id": "R03-058",
+      "lane_id": "R03",
+      "topic": "budget-transfer",
+      "claim_text": "Budget transfers move budget between different WBS elements in the same period, and SAP also supports transfers across periods and years.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/9f13d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Transfers between different WBS elements in the same period",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "budget-lifecycle",
+        "carry-forward"
+      ]
+    },
+    {
+      "claim_id": "R03-059",
+      "lane_id": "R03",
+      "topic": "budget-transfer-currency",
+      "claim_text": "When budgeting in object currency, transfers made in other currencies do not appear as entered values at higher hierarchy levels though current budget includes them.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/9f13d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "transfers made in other currencies are not displayed as an entered value in objects from higher hierarchy levels",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "multi-currency",
+        "edge-cases"
+      ]
+    },
+    {
+      "claim_id": "R03-060",
+      "lane_id": "R03",
+      "topic": "budget-consistency-check",
+      "claim_text": "The budget Check function runs both consistency checks and availability control checks in one action.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/ee11d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The Check function executes both consistency checks and availability control checks.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "validation",
+        "ux-patterns"
+      ]
+    },
+    {
+      "claim_id": "R03-061",
+      "lane_id": "R03",
+      "topic": "budget-consistency-check",
+      "claim_text": "The consistency rule is that the summed budget of lower-level WBS elements must not exceed the budget of the level above.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/ee11d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "the budget values of a lower-level of the WBS element (distributed values) exceed the budget value of the level above",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "validation",
+        "hierarchy-rollup"
+      ]
+    },
+    {
+      "claim_id": "R03-062",
+      "lane_id": "R03",
+      "topic": "budget-consistency-check",
+      "claim_text": "SAP warns that totals matching annual values in one currency can still diverge in controlling area or object currency - a rounding and translation trap.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/ee11d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Even if the total values match the annual values in a defined currency, the values in the controlling area or object currency can differ.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "multi-currency",
+        "validation",
+        "edge-cases"
+      ]
+    },
+    {
+      "claim_id": "R03-063",
+      "lane_id": "R03",
+      "topic": "budget-distribution",
+      "claim_text": "Budget is distributed top-down from the total budget to individual WBS elements, and may be entered directly on WBS elements when plan values are unsuitable.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/1e12d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Distribute the total budget (using the top-down method) to the individual elements.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "hierarchy-rollup",
+        "budget-lifecycle"
+      ]
+    },
+    {
+      "claim_id": "R03-064",
+      "lane_id": "R03",
+      "topic": "budget-reassignment-restriction",
+      "claim_text": "SAP does not support reassigning a WBS element that carries budget within the work breakdown structure - a hard structural constraint.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/1e12d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Reassigning a WBS element (that has a budget) within the work breakdown structure is not supported",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "edge-cases",
+        "status-management"
+      ]
+    },
+    {
+      "claim_id": "R03-065",
+      "lane_id": "R03",
+      "topic": "budget-rollup",
+      "claim_text": "The Total Up function overwrites a WBS element's budget value with the value actually distributed to its children, a downward-driven roll-up.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/2013d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "overwrites a budget value on a WBS element with the distributed value (roll-up).",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "hierarchy-rollup",
+        "budget-lifecycle"
+      ]
+    },
+    {
+      "claim_id": "R03-066",
+      "lane_id": "R03",
+      "topic": "budget-rollup",
+      "claim_text": "Total Up exists because in decentralized budgeting the person responsible for the overall budget needs an overview of the sectional budgets.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/2013d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "the person responsible for the overall budget requires an overview of the sectional budgets.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "hierarchy-rollup",
+        "ux-patterns"
+      ]
+    },
+    {
+      "claim_id": "R03-067",
+      "lane_id": "R03",
+      "topic": "system-status-budgeted",
+      "claim_text": "Allocating budget to a WBS element for the first time sets the system status budgeted, which persists even if the budget is later removed.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/fd11d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "the system status budgeted is set.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "status-management",
+        "budget-lifecycle"
+      ]
+    },
+    {
+      "claim_id": "R03-068",
+      "lane_id": "R03",
+      "topic": "system-status-budgeted",
+      "claim_text": "The budgeted status blocks deletion of WBS elements and reassignment of the element and all subordinate objects.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/fd11d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Deletion of WBS elements",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "status-management",
+        "edge-cases"
+      ]
+    },
+    {
+      "claim_id": "R03-069",
+      "lane_id": "R03",
+      "topic": "system-status-budgeted",
+      "claim_text": "The budgeted status can only be removed when budget was removed using the same transaction that allocated it and the selected WBS elements have budget zero.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/fd11d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The budget is removed using the same transaction with which it was allocated and The selected WBS elements have budget 0.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "status-management",
+        "edge-cases"
+      ]
+    },
+    {
+      "claim_id": "R03-070",
+      "lane_id": "R03",
+      "topic": "budget-line-items",
+      "claim_text": "Every saved budgeting change is documented by the system as a line item, giving budget a full audit trail.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/eb11d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Each change that you save in budgeting is documented as a line item by the system.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "audit-log",
+        "data-model"
+      ]
+    },
+    {
+      "claim_id": "R03-071",
+      "lane_id": "R03",
+      "topic": "budget-line-items",
+      "claim_text": "Line item writing can be suppressed for original budget changes via user status, but line items are always written for budget updates.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/eb11d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "You can prohibit line item writing for changes to the original budget by means of a user status",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "audit-log",
+        "status-management"
+      ]
+    },
+    {
+      "claim_id": "R03-072",
+      "lane_id": "R03",
+      "topic": "multi-currency-budgeting",
+      "claim_text": "Each budget line item is stored in the currency in which it was entered, which SAP calls the budgeting currency.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/7c11d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Each budget line item is saved in the currency in which you entered it (budgeting currency).",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "multi-currency",
+        "data-model"
+      ]
+    },
+    {
+      "claim_id": "R03-073",
+      "lane_id": "R03",
+      "topic": "multi-currency-budgeting",
+      "claim_text": "SAP advises keeping exchange rates stable and specifically not changing them while entering the original budget, because retranslation distorts comparisons.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/7c11d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Keep the exchange rates as stable as possible. In particular, you should _not_ change the exchange rates while entering the original budget.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "multi-currency",
+        "edge-cases"
+      ]
+    },
+    {
+      "claim_id": "R03-074",
+      "lane_id": "R03",
+      "topic": "budget-carryforward",
+      "claim_text": "Budget carryforward moves budget remainders from projects, internal orders and plant maintenance orders into the following fiscal year.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5311d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The budget carryforward enables you to carry forward budget remainders from projects, internal orders, and plant maintenance orders to the following fiscal year.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "carry-forward",
+        "period-close"
+      ]
+    },
+    {
+      "claim_id": "R03-075",
+      "lane_id": "R03",
+      "topic": "budget-carryforward",
+      "claim_text": "Unused budget for carryforward is defined as planned budget minus incurred actual costs - notably a different base than assigned value.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5311d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "A budget that has _not_ been used up is mainly defined here as the difference between planned budget and incurred actual costs.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "carry-forward",
+        "available-budget-formula",
+        "edge-cases"
+      ]
+    },
+    {
+      "claim_id": "R03-076",
+      "lane_id": "R03",
+      "topic": "budget-carryforward",
+      "claim_text": "Commitments are excluded from the unused-budget calculation, so commitment carryforward must be executed before budget carryforward.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5311d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Commitments are not taken into account when the _unused_ budget is calculated.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "carry-forward",
+        "period-close",
+        "sequencing"
+      ]
+    },
+    {
+      "claim_id": "R03-077",
+      "lane_id": "R03",
+      "topic": "budget-carryforward",
+      "claim_text": "There is no availability control during budget carryforward, so the carryforward run itself cannot be blocked by tolerance limits.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5311d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "There is _no_ availability control during the budget carryforward.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "carry-forward",
+        "availability-control",
+        "edge-cases"
+      ]
+    },
+    {
+      "claim_id": "R03-078",
+      "lane_id": "R03",
+      "topic": "budget-carryforward",
+      "claim_text": "Carryforward is permitted only for objects with status Created, Released or Technically completed, and is blocked for Closed or deletion-flagged objects.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5311d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Budget carryforward is only allowed if the object (WBS element/internal order) has been Created, Released, or Technically completed.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "carry-forward",
+        "status-management"
+      ]
+    },
+    {
+      "claim_id": "R03-079",
+      "lane_id": "R03",
+      "topic": "budget-carryforward",
+      "claim_text": "Negative budget cannot be carried forward into the following year.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5311d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "You _cannot_ carry forward negative budget into the following year.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "carry-forward",
+        "edge-cases"
+      ]
+    },
+    {
+      "claim_id": "R03-080",
+      "lane_id": "R03",
+      "topic": "budget-carryforward",
+      "claim_text": "Carryforward is repeatable and idempotent by design: repeat runs pick up only budgets excluded from earlier runs, and it supports test and update modes.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5311d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "You can carry forward budget more than once in a row.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "carry-forward",
+        "period-close"
+      ]
+    },
+    {
+      "claim_id": "R03-081",
+      "lane_id": "R03",
+      "topic": "budget-carryforward-reversal",
+      "claim_text": "Follow-up postings of actual costs cause the system to post carried-forward budget back, capped at the total budget carried forward.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5311d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "If you make follow-up postings of actual costs, the system posts back budget that was carried forward to the following year",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "carry-forward",
+        "edge-cases"
+      ]
+    },
+    {
+      "claim_id": "R03-082",
+      "lane_id": "R03",
+      "topic": "modern-bac-profile",
+      "claim_text": "In S/4HANA Cloud the budget availability control profile bundles time range, cost items as semantic tags, tolerance limits for budget usage, and the requested system response.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_CLOUD/c56f622a2edf491b9f1b596b55587009/183ab1f86115419da31288fe18dcbbd0.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "you specify the time range of the budget, the cost items (as relevant semantic tags), the tolerance limits for budget usage",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "config-tolerances",
+        "budget-model",
+        "modern-s4"
+      ]
+    },
+    {
+      "claim_id": "R03-083",
+      "lane_id": "R03",
+      "topic": "modern-bac-time-range",
+      "claim_text": "Time Range decides whether budget is treated as a yearly or an overall budget for projects and WBS elements.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_CLOUD/c56f622a2edf491b9f1b596b55587009/183ab1f86115419da31288fe18dcbbd0.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The Time Range defines whether the budget is considered as a yearly budget or an overall budget for projects and WBS elements.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "annual-vs-overall",
+        "modern-s4"
+      ]
+    },
+    {
+      "claim_id": "R03-084",
+      "lane_id": "R03",
+      "topic": "modern-bac-time-range",
+      "claim_text": "Selecting Overall Budget compares posted costs against a project overall budget that may span more than one fiscal year.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_CLOUD/c56f622a2edf491b9f1b596b55587009/183ab1f86115419da31288fe18dcbbd0.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "If you select Overall Budget, the posted costs are compared with the overall budget of a project, which could span more than one fiscal year.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "annual-vs-overall",
+        "modern-s4"
+      ]
+    },
+    {
+      "claim_id": "R03-085",
+      "lane_id": "R03",
+      "topic": "modern-bac-time-range",
+      "claim_text": "Selecting Annual Budget compares posted costs against the project's annual budget within the related fiscal year only.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_CLOUD/c56f622a2edf491b9f1b596b55587009/183ab1f86115419da31288fe18dcbbd0.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "If you select Annual Budget, the posted costs are compared with the annual budget of a project within the related fiscal year.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "annual-vs-overall",
+        "modern-s4"
+      ]
+    },
+    {
+      "claim_id": "R03-086",
+      "lane_id": "R03",
+      "topic": "modern-bac-tolerances",
+      "claim_text": "Tolerance limits are expressed as budget usage rates maintained per activity group, each carrying an assigned message type.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_CLOUD/c56f622a2edf491b9f1b596b55587009/183ab1f86115419da31288fe18dcbbd0.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The Tolerance Limits for the budget usage rates are maintained for each activity group.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "config-tolerances",
+        "usage-levels",
+        "modern-s4"
+      ]
+    },
+    {
+      "claim_id": "R03-087",
+      "lane_id": "R03",
+      "topic": "modern-bac-warning-semantics",
+      "claim_text": "A warning-type tolerance limit still allows budget to be used after the limit is exceeded - warnings are advisory only.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_CLOUD/c56f622a2edf491b9f1b596b55587009/183ab1f86115419da31288fe18dcbbd0.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "If you assign a warning to a budget tolerance limit, the budget can still be used even after the tolerance limit has been exceeded.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "config-tolerances",
+        "ux-patterns",
+        "modern-s4"
+      ]
+    },
+    {
+      "claim_id": "R03-088",
+      "lane_id": "R03",
+      "topic": "modern-bac-error-semantics",
+      "claim_text": "An error-type tolerance limit blocks the posting of commitments such as purchase orders or purchase requisitions once exceeded.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_CLOUD/c56f622a2edf491b9f1b596b55587009/183ab1f86115419da31288fe18dcbbd0.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "the system responds with an error message and commitments, such as purchase orders or purchase requisitions, can't be posted.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "config-tolerances",
+        "ux-patterns",
+        "modern-s4"
+      ]
+    },
+    {
+      "claim_id": "R03-089",
+      "lane_id": "R03",
+      "topic": "modern-bac-activity-groups",
+      "claim_text": "The catch-all activity group All Activity Groups is mandatory in every budget availability control profile, configured with either a warning or an error message type.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_CLOUD/c56f622a2edf491b9f1b596b55587009/183ab1f86115419da31288fe18dcbbd0.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "In a budget availability control profile, the activity group All Activity Groups (++) is mandatory.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "config-tolerances",
+        "transaction-groups",
+        "modern-s4"
+      ]
+    },
+    {
+      "claim_id": "R03-090",
+      "lane_id": "R03",
+      "topic": "modern-bac-activity-groups",
+      "claim_text": "A specific activity group's usage rate is checked when configured; otherwise the All Activity Groups rate applies by default.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_CLOUD/c56f622a2edf491b9f1b596b55587009/183ab1f86115419da31288fe18dcbbd0.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Otherwise, the usage rate for activity group All Activity Groups (++) is used by default.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "config-tolerances",
+        "transaction-groups",
+        "modern-s4"
+      ]
+    },
+    {
+      "claim_id": "R03-091",
+      "lane_id": "R03",
+      "topic": "modern-bac-notifications",
+      "claim_text": "Per semantic tag you specify budget usage rates at which a first notification and further notifications are sent - a stepped alerting model.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_CLOUD/c56f622a2edf491b9f1b596b55587009/183ab1f86115419da31288fe18dcbbd0.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "For each semantic tag, you can specify budget usage rates at which a first notification and further notifications are sent.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "notifications",
+        "usage-levels",
+        "modern-s4"
+      ]
+    },
+    {
+      "claim_id": "R03-092",
+      "lane_id": "R03",
+      "topic": "modern-bac-notifications",
+      "claim_text": "The threshold fields are named % of Budget Used before First Notification and % Increment for Further Notifications.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_CLOUD/c56f622a2edf491b9f1b596b55587009/183ab1f86115419da31288fe18dcbbd0.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "% of Budget Used before First Notification % Increment for Further Notifications",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "notifications",
+        "usage-levels",
+        "modern-s4"
+      ]
+    },
+    {
+      "claim_id": "R03-093",
+      "lane_id": "R03",
+      "topic": "modern-bac-reporting-fields",
+      "claim_text": "SAP's project financial reporting surfaces Budget, Project Stock, Actual Cost, Commitment, Assigned Value and Available Budget as distinct displayed measures.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_CLOUD/c56f622a2edf491b9f1b596b55587009/183ab1f86115419da31288fe18dcbbd0.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "correctly displays the Budget, Project Stock, Actual Cost, Commitment, Assigned Value, and Available Budget in Global Currency.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "available-budget-formula",
+        "ux-patterns",
+        "reporting",
+        "modern-s4"
+      ]
+    },
+    {
+      "claim_id": "R03-094",
+      "lane_id": "R03",
+      "topic": "modern-bac-currency",
+      "claim_text": "Budget Currency Type for availability control is either Global Currency or Project Currency, and budget data must exist in the selected type.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_CLOUD/c56f622a2edf491b9f1b596b55587009/183ab1f86115419da31288fe18dcbbd0.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "You can select either Global Currency or Project Currency. However, you must ensure that budget data is available in the currency type that you select.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "multi-currency",
+        "modern-s4"
+      ]
+    },
+    {
+      "claim_id": "R03-095",
+      "lane_id": "R03",
+      "topic": "modern-bac-lifecycle",
+      "claim_text": "Budget availability control spans the whole lifecycle: it starts at budget maintenance, runs on each commitment and actual cost posting, and ends at cost-versus-budget analysis.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/docs/SAP_S4HANA_CLOUD/f369b2eff700401494ba6e7c9a573288/9ab379f49ca04540a73aca752e284506.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "starts with the budget maintenance process, runs with each commitment posting and actual cost posting, and ends with the analysis of costs and budget.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control",
+        "budget-lifecycle",
+        "modern-s4"
+      ]
+    },
+    {
+      "claim_id": "R03-096",
+      "lane_id": "R03",
+      "topic": "avc-troubleshooting-mail",
+      "claim_text": "Warning-with-mail actions fail when no manager name is entered on the WBS element or project definition - the notification target is master data, not config.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/1113d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "no manager name has been entered in the WBS element, or in the project definition",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "notifications",
+        "edge-cases"
+      ]
+    },
+    {
+      "claim_id": "R03-097",
+      "lane_id": "R03",
+      "topic": "avc-troubleshooting",
+      "claim_text": "Absence of any availability control message means either control is not active or no tolerance limit has been exceeded - silence is ambiguous.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/1113d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "This indicates availability control isn't active or tolerance limits haven't been exceeded.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "edge-cases",
+        "ux-patterns"
+      ]
+    },
+    {
+      "claim_id": "R03-098",
+      "lane_id": "R03",
+      "topic": "avc-monitoring-report",
+      "claim_text": "SAP ships a dedicated monitor comparing budget and assigned values for WBS elements in real time, reachable via transaction IM_AVCHANA_WBS.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/79bddae7e93646b38e73d9ba1fb780ed.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "drill down according to the characteristics in this layout",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "reporting",
+        "ux-patterns"
+      ]
+    },
+    {
+      "claim_id": "R03-099",
+      "lane_id": "R03",
+      "topic": "cost-planning-overall",
+      "claim_text": "Overall planning plans project costs hierarchically in the WBS, per element, either yearly or as a single overall value.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/cda5a86357ca4a0fabc34fc48800c46a.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "You can plan the cost of each WBS element on a yearly basis or plan using the overall value.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cost-planning",
+        "annual-vs-overall"
+      ]
+    },
+    {
+      "claim_id": "R03-100",
+      "lane_id": "R03",
+      "topic": "cost-planning-currency",
+      "claim_text": "Projects can be planned in controlling area currency, object currency, or transaction currency, configured through the planning profile.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/cda5a86357ca4a0fabc34fc48800c46a.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Projects can be planned in the controlling area currency, object currency, or transaction currency",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cost-planning",
+        "multi-currency"
+      ]
+    },
+    {
+      "claim_id": "R03-101",
+      "lane_id": "R03",
+      "topic": "planning-versions",
+      "claim_text": "The first cost planning run for a project automatically creates version 0, which is the leading plan version.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/4e37432d879d5103e10000000a42189e.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The first time you run cost planning for a project, this automatically creates version 0.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cost-planning",
+        "planning-versions"
+      ]
+    },
+    {
+      "claim_id": "R03-102",
+      "lane_id": "R03",
+      "topic": "planning-versions",
+      "claim_text": "Transfer of Easy Cost Planning from an appropriation request to a project or WBS element always occurs in the leading CO version, not an alternative version.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/4c01cf53c6744608e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Transferring ECP from an appropriation request to a project or WBS element always occurs in the leading CO version.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "planning-versions",
+        "cost-planning",
+        "edge-cases"
+      ]
+    },
+    {
+      "claim_id": "R03-103",
+      "lane_id": "R03",
+      "topic": "cost-planning-methods",
+      "claim_text": "Overall planning is the simplest cost planning type; cost element planning is used when detailed information exists at a more advanced project stage.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/a1e600518c19c557e10000000a44176d.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "when you have detailed information available, normally at a more advanced stage of a project",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cost-planning",
+        "maturity-model"
+      ]
+    },
+    {
+      "claim_id": "R03-104",
+      "lane_id": "R03",
+      "topic": "cost-planning-purpose",
+      "claim_text": "Manual cost planning captures the costs, activities and business processes expected to occur during the project, per WBS element.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/a1e600518c19c557e10000000a44176d.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "enter the costs, activities, and business processes you expect to occur during your project for the WBS element.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cost-planning"
+      ]
+    },
+    {
+      "claim_id": "R03-105",
+      "lane_id": "R03",
+      "topic": "cost-planning-structure-oriented",
+      "claim_text": "Structure-oriented overall planning is neither by cost element nor period-specific, making it suitable only for a first rough estimate.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://learning.sap.com/courses/project-financials-control-in-sap-s-4hana/performing-direct-cost-planning-using-wbs-elements",
+      "source_tier": "2-VENDOR-LEARNING",
+      "evidence_quote": "neither by cost element nor is it period-specific",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cost-planning",
+        "maturity-model"
+      ]
+    },
+    {
+      "claim_id": "R03-106",
+      "lane_id": "R03",
+      "topic": "cost-planning-use-case",
+      "claim_text": "SAP positions overall planning as suitable for a simple first rough estimate of costs for the project and its work packages.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://learning.sap.com/courses/project-financials-control-in-sap-s-4hana/performing-direct-cost-planning-using-wbs-elements",
+      "source_tier": "2-VENDOR-LEARNING",
+      "evidence_quote": "is suitable for a simple, first (rough) estimate of the costs for the project and its work packages.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cost-planning",
+        "maturity-model"
+      ]
+    },
+    {
+      "claim_id": "R03-107",
+      "lane_id": "R03",
+      "topic": "avc-consumption-semantics",
+      "claim_text": "Availability control checks against the budget while taking assigned funds into account, confirming assigned value is the consumption side of the comparison.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://learning.sap.com/courses/exploring-investment-projects-in-sap-s-4hana/budgeting-projects",
+      "source_tier": "2-VENDOR-LEARNING",
+      "evidence_quote": "checks against the budget, taking assigned funds into account.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control",
+        "available-budget-formula"
+      ]
+    },
+    {
+      "claim_id": "R03-108",
+      "lane_id": "R03",
+      "topic": "budget-consistency-principle",
+      "claim_text": "Budgets must be distributed consistently within the project structure; consistency is a first-class rule, not a report-time nicety.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "source_url": "https://learning.sap.com/courses/exploring-investment-projects-in-sap-s-4hana/budgeting-projects",
+      "source_tier": "2-VENDOR-LEARNING",
+      "evidence_quote": "must be distributed consistently",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "hierarchy-rollup",
+        "validation",
+        "accounting-principles"
+      ]
+    },
+    {
+      "claim_id": "R03-109",
+      "lane_id": "R03",
+      "topic": "budget-release-concept",
+      "claim_text": "SAP treats distributing a budget as distinct from releasing the funds, which is why a separate release layer exists at all.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/33eacc53a8b77214e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "In many organizations, distributing a budget is not the same as releasing the funds allocated to it.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "budget-release",
+        "accounting-principles"
+      ]
+    },
+    {
+      "claim_id": "R03-110",
+      "lane_id": "R03",
+      "topic": "budget-release-mechanics",
+      "claim_text": "In SAP's Budget Control System a release is based on the current total budget and may be done all at once or periodically. Note: this page documents Funds Management, not PS.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/33eacc53a8b77214e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "A release is based on the current total budget, which you can release at one time. You can also release your budget periodically.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "budget-release"
+      ]
+    },
+    {
+      "claim_id": "R03-111",
+      "lane_id": "R03",
+      "topic": "statistical-budget-monitoring",
+      "claim_text": "Statistical orders or WBS elements permit planning and budget monitoring without allowing settlement, giving a monitor-only budget object pattern.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/fd3dde531ed3424de10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "planning and budget monitoring",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "budget-model",
+        "edge-cases"
+      ]
+    },
+    {
+      "claim_id": "R03-112",
+      "lane_id": "R03",
+      "topic": "active-check-semantics",
+      "claim_text": "Active availability checks prevent posting of transactions that would exceed the budget, based on tolerance limits configured in budget profiles.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/fd3dde531ed3424de10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "prevent posting of transactions that would exceed the budget",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "availability-control",
+        "config-tolerances"
+      ]
+    },
+    {
+      "claim_id": "R03-113",
+      "lane_id": "R03",
+      "topic": "available-budget-formula",
+      "claim_text": "INFERENCE: available budget equals the checked budget basis (current or released, overall or annual) minus assigned value. SAP never prints this formula on one page.",
+      "claim_class": "INFERENCE",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5513d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "whether/how availability control is to be activated and which budget values should be checked by availability control.",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "available-budget-formula",
+        "budget-model"
+      ]
+    },
+    {
+      "claim_id": "R03-114",
+      "lane_id": "R03",
+      "topic": "current-budget-components",
+      "claim_text": "INFERENCE: the current budget basis for availability control is composed of original budget plus supplement, less return, plus repostings from the budget.",
+      "claim_class": "INFERENCE",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5513d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Original Budget Supplement Return Repostings from the Budget",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "budget-model",
+        "budget-lifecycle"
+      ]
+    },
+    {
+      "claim_id": "R03-115",
+      "lane_id": "R03",
+      "topic": "budget-release-check-basis",
+      "claim_text": "For projects specifically, availability control can be configured to check against the released budget rather than the current budget.",
+      "claim_class": "SAP-CONFIG",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5513d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "For projects: can check against current or released budget",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "budget-release",
+        "availability-control",
+        "config-tolerances"
+      ]
+    },
+    {
+      "claim_id": "R03-116",
+      "lane_id": "R03",
+      "topic": "budgeting-vs-avc-component",
+      "claim_text": "SAP's budgeting components support both top-down and bottom-up budget principles, so a design must not assume one direction only.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/7ef7cc53a8b77214e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "top-down principle or the bottom-up principle",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "hierarchy-rollup",
+        "budget-model"
+      ]
+    },
+    {
+      "claim_id": "R03-117",
+      "lane_id": "R03",
+      "topic": "overall-vs-annual-budget",
+      "claim_text": "SAP budgeting supports overall budgets or annual budgets depending on how funds are used, and the two coexist rather than being alternatives.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/7ef7cc53a8b77214e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "overall budgets or annual budgets",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "annual-vs-overall",
+        "budget-model"
+      ]
+    },
+    {
+      "claim_id": "R03-118",
+      "lane_id": "R03",
+      "topic": "annual-budget-distribution",
+      "claim_text": "Annual budget distribution can be driven either per WBS element across years, or by fixing a year and budgeting all WBS elements for that year.",
+      "claim_class": "UX-PATTERN",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/8113d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "budget all WBS elements for a certain year",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "annual-vs-overall",
+        "ux-patterns"
+      ]
+    },
+    {
+      "claim_id": "R03-119",
+      "lane_id": "R03",
+      "topic": "annual-budget-distribution",
+      "claim_text": "Copy view, revaluate and total up functions are all available when budgeting annual values, not only for overall values.",
+      "claim_class": "UX-PATTERN",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/8113d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The Copy view, reevaluate, and Total up functions are also available for budgeting annual values",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "annual-vs-overall",
+        "ux-patterns"
+      ]
+    },
+    {
+      "claim_id": "R03-120",
+      "lane_id": "R03",
+      "topic": "plan-total-composition",
+      "claim_text": "Plan total sums structure planning, cost element planning, unit costing, additive assigned orders and additive networks or activities across the element and its subordinates.",
+      "claim_class": "SAP-STANDARD",
+      "source_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/0213d553088f4308e10000000a174cb4.html",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Structure planning value (independent of cost element) + Cost element planning value + Unit costing value",
+      "fetch_status": "OK",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cost-planning",
+        "data-model"
+      ]
+    }
+  ],
+  "search_log": [
+    {
+      "query_or_url": "WebSearch: help.sap.com saphelp project system availability control budget tolerance limits content.htm",
+      "result": "OK - surfaced /doc/ legacy GUID routes and help.sap.com/docs SPA routes"
+    },
+    {
+      "query_or_url": "WebSearch: SAP Project System \"assigned value\" availability control definition help.sap.com",
+      "result": "OK - located Availability Control and Assigned Values doc GUIDs"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/358fd153370e4608e10000000a174cb4.html",
+      "result": "OK - Availability Control (PS). Key route discovery: /doc/<docset>/<ver>/en-US/<guid>.html renders real prose via WebFetch"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/1afacc53a8b77214e10000000a174cb4/3.6/en-US/d4f8cc53a8b77214e10000000a174cb4.html",
+      "result": "OK - Availability Control Actions (Funds Management): actions 1/2/3"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/7c7bd0531d8b4208e10000000a174cb4/2.6/en-US/be7ad0531d8b4208e10000000a174cb4.html",
+      "result": "OK - Budget Availability iView page, low value"
+    },
+    {
+      "query_or_url": "https://help.sap.com/erp_hcm_ias2_2014_03/helpdata/en/4f/19b19f070e4c40a2a893882eb63f08/content.htm?no_cache=true",
+      "result": "FAIL - empty body returned, no content"
+    },
+    {
+      "query_or_url": "https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/da11d553088f4308e10000000a174cb4.html (WebFetch)",
+      "result": "JS-GATED - returns only 'SAP Help Portal | SAP Online Help' title"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/saphelp_erp60_sp/6.0/en-US/da/11d553088f4308e10000000a174cb4/content.htm?no_cache=true",
+      "result": "JS-GATED - title only. Legacy saphelp_<product> route is DEAD for these GUIDs"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/saphelp_nw75/7.5.5/en-US/00/12d553088f4308e10000000a174cb4/content.htm?no_cache=true",
+      "result": "JS-GATED - title only"
+    },
+    {
+      "query_or_url": "https://help.sap.com/saphelp_erp60_sp/helpdata/en/00/12d553088f4308e10000000a174cb4/content.htm",
+      "result": "JS-GATED - title only"
+    },
+    {
+      "query_or_url": "http://saphelp.ucc.ovgu.de/NW750/EN/00/12d553088f4308e10000000a174cb4/content.htm",
+      "result": "BLOCKED - DNS getaddrinfo ENOTFOUND. Mirror unreachable, but its URLs in SERPs were the source of every GUID used"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/4dd8cb7b1c484b4b93af84d00f60fdb8/1909.000/en-US/0012d553088f4308e10000000a174cb4.html",
+      "result": "JS-GATED - title only"
+    },
+    {
+      "query_or_url": "BROWSER preview_start https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/0012d553088f4308e10000000a174cb4.html",
+      "result": "OK - real browser fully renders the help.sap.com/docs SPA. Activating Availability Control, verbatim"
+    },
+    {
+      "query_or_url": "BROWSER https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/4dd8cb7b1c484b4b93af84d00f60fdb8/f711d553088f4308e10000000a174cb4.html",
+      "result": "OK - Assigned Values for Projects, FULL VERBATIM. Anchor source for the assigned-value formula"
+    },
+    {
+      "query_or_url": "BROWSER https://help.sap.com/docs/SAP_S4HANA_CLOUD/c56f622a2edf491b9f1b596b55587009/183ab1f86115419da31288fe18dcbbd0.html",
+      "result": "OK - Maintain Budget Availability Control Profile for Projects, FULL VERBATIM. Richest modern tolerance/usage source"
+    },
+    {
+      "query_or_url": "BROWSER https://help.sap.com/docs/SAP_S4HANA_CLOUD/f369b2eff700401494ba6e7c9a573288/9ab379f49ca04540a73aca752e284506.html",
+      "result": "OK - Budget Availability Control for Projects, verbatim lifecycle sentence"
+    },
+    {
+      "query_or_url": "BROWSER https://help.sap.com/docs/SAP_S4HANA_CLOUD/c56f622a2edf491b9f1b596b55587009/30cb8deab95e4d8c9420aeabb2ae496f.html",
+      "result": "FAIL - SPA race condition served an unrelated cached page (Retention, then Project Coding Mask). Not captured"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5513d553088f4308e10000000a174cb4.html",
+      "result": "OK - Basic Settings for Availability Control in Budget Profile"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/9111d553088f4308e10000000a174cb4.html",
+      "result": "OK - Activating Availability Control in the Background, usage level"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5911d553088f4308e10000000a174cb4.html",
+      "result": "OK - Activating Availability Control Online"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/0213d553088f4308e10000000a174cb4.html",
+      "result": "OK - Budget Value Display, FULL VERBATIM. Gives assigned/current/distributed/distributable/cumulated/remaining/release/plan total"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/2013d553088f4308e10000000a174cb4.html",
+      "result": "OK - Totaling up Budget Values"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5b13d553088f4308e10000000a174cb4.html",
+      "result": "OK - Excluding WBS Elements From Availability Control, FULL VERBATIM"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/9913d553088f4308e10000000a174cb4.html",
+      "result": "OK - Making Budget Supplements to Projects, FULL VERBATIM procedure"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/da11d553088f4308e10000000a174cb4.html",
+      "result": "OK - Making Budget Returns from Projects"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/9f13d553088f4308e10000000a174cb4.html",
+      "result": "OK - Transferring Budgets"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/2313d553088f4308e10000000a174cb4.html",
+      "result": "OK - Budget Allocation Prerequisites"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/a213d553088f4308e10000000a174cb4.html",
+      "result": "OK - Transferring Values From Cost Planning as Budget"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/5311d553088f4308e10000000a174cb4.html",
+      "result": "OK - Budget Carryforward, FULL VERBATIM. Highest-value carry-forward source"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/a911d553088f4308e10000000a174cb4.html",
+      "result": "OK - Business Transaction Group"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/1113d553088f4308e10000000a174cb4.html",
+      "result": "OK - Notes for Problems with Availability Control"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/9814c753b1081d4be10000000a174cb4.html",
+      "result": "OK - Controlling Availability Control, tolerance limit grammar and precedence"
+    },
+    {
+      "query_or_url": "https://help.sap.com/docs/SAP_ERP/0101f6d95e7246ba9f877f2c7b216bba/7e14c753b1081d4be10000000a174cb4.html",
+      "result": "JS-GATED - title only; same content obtained via /doc/ route above"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/ee11d553088f4308e10000000a174cb4.html",
+      "result": "OK - Checking Budgets"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/1e12d553088f4308e10000000a174cb4.html",
+      "result": "OK - Manual Distribution of Budgets"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/fd11d553088f4308e10000000a174cb4.html",
+      "result": "OK - System Status: Budgeted"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/eb11d553088f4308e10000000a174cb4.html",
+      "result": "OK - Displaying Budget Line Items"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/8113d553088f4308e10000000a174cb4.html",
+      "result": "OK - Distributing Annual Budgets"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/7c11d553088f4308e10000000a174cb4.html",
+      "result": "OK - Budgeting in More Than One Currency"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/fd3dde531ed3424de10000000a174cb4.html",
+      "result": "OK - Budget Monitoring Using Statistical Orders or WBS Elements"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/79bddae7e93646b38e73d9ba1fb780ed.html",
+      "result": "OK - Monitor Availability Control for WBS Elements, transaction IM_AVCHANA_WBS"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/c812d553088f4308e10000000a174cb4.html",
+      "result": "OK - Overall Plan and Budget Reports, low value"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/33eacc53a8b77214e10000000a174cb4.html",
+      "result": "OK - Budget Releases. NOTE: Funds Management/BCS scope, not PS"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/7ef7cc53a8b77214e10000000a174cb4.html",
+      "result": "OK - Budgeting and Availability Control (Funds Management overview)"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/cda5a86357ca4a0fabc34fc48800c46a.html",
+      "result": "OK - Overall Planning, FULL VERBATIM"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/4e37432d879d5103e10000000a42189e.html",
+      "result": "OK - Planning Costs, version 0 creation"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/4c01cf53c6744608e10000000a174cb4.html",
+      "result": "OK - Easy Cost Planning in Multiple CO Versions"
+    },
+    {
+      "query_or_url": "https://help.sap.com/doc/acd8b65334e6b54ce10000000a174cb4/3.6/en-US/a1e600518c19c557e10000000a44176d.html",
+      "result": "OK - Manual Cost Planning in the Work Breakdown Structure"
+    },
+    {
+      "query_or_url": "https://learning.sap.com/courses/project-financials-control-in-sap-s-4hana/performing-budgeting-functions",
+      "result": "OK - renders fully, but WebFetch mostly paraphrased; only the lesson objective was safely verbatim so no record was built from it"
+    },
+    {
+      "query_or_url": "https://learning.sap.com/courses/exploring-investment-projects-in-sap-s-4hana/budgeting-projects",
+      "result": "OK - budget vs cost plan binding distinction"
+    },
+    {
+      "query_or_url": "https://learning.sap.com/courses/project-financials-control-in-sap-s-4hana/performing-direct-cost-planning-using-wbs-elements",
+      "result": "OK - structure-oriented overall planning"
+    },
+    {
+      "query_or_url": "https://learning.sap.com/courses/project-financials-control-in-sap-s-4hana/performing-configuration-settings-for-cost-planning",
+      "result": "OK - planning profile / versions, but output was largely paraphrase; no record built"
+    },
+    {
+      "query_or_url": "https://learning.sap.com/courses/project-financials-control-in-sap-s-4hana/project-cost-controlling",
+      "result": "OK - generic product costing content, off-scope for budgeting; no record built"
+    },
+    {
+      "query_or_url": "WebSearch: help.sap.com \"Available Budget\" \"Assigned Value\" project budget report formula",
+      "result": "PARTIAL - only SAP Community forum hits asserted 'available = release - assigned'. NOT fetched, NOT cited. Recorded as INFERENCE R03-113 instead"
+    }
+  ],
+  "gaps": [
+    "NEGATIVE RESULT: no single SAP page printing an explicit 'Available Budget = X - Y' formula was found, despite 6 targeted searches across help.sap.com/docs, help.sap.com/doc legacy, and learning.sap.com on 2026-08-05. The formula is assembled from two pages (assigned value definition + what availability control checks against) and is recorded as INFERENCE R03-113, not as SAP-STANDARD.",
+    "NEGATIVE RESULT: no dedicated PS 'Budget Release' / 'Releasing Budget' help page was located in the Project System doc set. Release is only evidenced indirectly: the Release column definition (R03-020) and the budget-profile option to check against released budget (R03-115). The Budget Releases page that WAS fetched (R03-109, R03-110) belongs to Funds Management / Budget Control System, NOT PS - do not present it as PS behaviour.",
+    "Transaction codes CJ30/CJ32/CJ33/CJ35/CJ36/CJ37/CJ38 appear only in SAP Community forum snippets, which were never fetched. They are deliberately NOT recorded. Only IM_AVCHANA_WBS, CJ31/CJ33 (from the Monitor AVC page) and FMMPRELEN (Funds Management) came from fetched first-party pages.",
+    "The exact numeric semantics of the budget profile 'usage level' field (e.g. whether it is a percentage and its default) were not found on any fetched page; only that a usage level exists in the budget profile and that exceeding it activates availability control in background mode.",
+    "The S/4HANA Cloud 'Budget Availability Control' root page (30cb8deab95e4d8c9420aeabb2ae496f) could not be captured - the browser SPA raced and served unrelated cached pages on two attempts. Its child pages were captured instead.",
+    "SAP's 'Define Tolerance Limits' IMG activity page for Project System specifically was not reached; tolerance grammar is evidenced from the Controlling Availability Control page and the Funds Management actions page, plus the modern S/4HANA Cloud BAC profile page.",
+    "Budget versions (as distinct from CO planning versions) are not evidenced. Only planning/CO versions are covered (R03-101, R03-102). Do not assume SAP PS supports multiple parallel BUDGET versions on the strength of this lane.",
+    "saphelp.ucc.ovgu.de (SAP University Competence Center mirror) is DNS-unreachable from this environment. Its URLs in search results were used only as a GUID index to construct official help.sap.com URLs; no content was ever taken from the mirror."
+  ]
+}

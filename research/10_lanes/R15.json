@@ -1,0 +1,1761 @@
+{
+  "lane_id": "R15",
+  "generated_at": "2026-08-05",
+  "records": [
+    {
+      "claim_id": "R15-001",
+      "lane_id": "R15",
+      "topic": "Ind AS 16 recognition",
+      "claim_text": "Ind AS 16 recognises PPE cost as an asset only if future economic benefits are probable and the cost is reliably measurable.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/46263indas36370.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "it is probable that future economic benefits associated with the item will flow to the entity",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-002",
+      "lane_id": "R15",
+      "topic": "Ind AS 16 elements of cost",
+      "claim_text": "Purchase price including import duties and non-refundable purchase taxes, net of trade discounts and rebates, forms part of PPE cost.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/46263indas36370.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "its purchase price, including import duties and non-refundable purchase taxes, after deducting trade discounts and rebates",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "wbs-cost-capture",
+        "gst-tax-treatment"
+      ]
+    },
+    {
+      "claim_id": "R15-003",
+      "lane_id": "R15",
+      "topic": "Ind AS 16 directly attributable cost",
+      "claim_text": "Costs directly attributable to bringing the asset to the location and condition necessary to operate as management intends are capitalised.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/46263indas36370.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "any costs directly attributable to bringing the asset to the location and condition necessary for it to be capable of operating",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-004",
+      "lane_id": "R15",
+      "topic": "Ind AS 16 decommissioning cost",
+      "claim_text": "The initial estimate of dismantling, removal and site restoration costs forms part of the initial cost of an item of PPE.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/46263indas36370.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "the initial estimate of the costs of dismantling and removing the item and restoring the site on which it is located",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-005",
+      "lane_id": "R15",
+      "topic": "Ind AS 16 capitalisable cost example",
+      "claim_text": "Employee benefit costs arising directly from construction or acquisition of the PPE item are directly attributable and capitalisable.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/46263indas36370.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Costs of employee benefits arising directly from the construction or acquisition of the item of property, plant and equipment.",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-006",
+      "lane_id": "R15",
+      "topic": "Ind AS 16 testing cost",
+      "claim_text": "Testing costs are capitalisable net of proceeds from selling items produced while bringing the asset to that location and condition.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/46263indas36370.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "costs of testing whether the asset is functioning properly, after deducting the net proceeds from selling any items produced",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-007",
+      "lane_id": "R15",
+      "topic": "Ind AS 16 non-capitalisable cost",
+      "claim_text": "Costs of opening a new facility are expressly not costs of an item of property, plant and equipment.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/46263indas36370.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Examples of costs that are not costs of an item of property, plant and equipment are: (a) Costs of opening a new facility.",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-008",
+      "lane_id": "R15",
+      "topic": "Ind AS 16 non-capitalisable cost",
+      "claim_text": "Administration and other general overhead costs are not costs of an item of property, plant and equipment.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/46263indas36370.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "(d) Administration and other general overhead costs.",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-009",
+      "lane_id": "R15",
+      "topic": "Ind AS 16 cessation of capitalisation",
+      "claim_text": "Capitalisation into PPE carrying amount ceases when the item is in the location and condition necessary to operate as management intends.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/46263indas36370.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "ceases when the item is in the location and condition necessary for it to be capable of operating in the manner intended by management",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "wbs-cost-capture",
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-010",
+      "lane_id": "R15",
+      "topic": "Ind AS 16 subsequent costs",
+      "claim_text": "Day-to-day servicing costs of an item of PPE are expensed and not added to its carrying amount.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/46263indas36370.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "An entity does not recognise in the carrying amount of an item of property, plant and equipment the costs of the day-to-day servicing",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "wbs-cost-capture",
+        "asset-capitalisation-and-depreciation"
+      ]
+    },
+    {
+      "claim_id": "R15-011",
+      "lane_id": "R15",
+      "topic": "Ind AS 16 replacement",
+      "claim_text": "The cost of replacing a part of an item of PPE is capitalised when incurred if the recognition criteria are met.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/46263indas36370.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "An entity recognises in the carrying amount of an item of property, plant and equipment the cost of replacing part of such an item",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "wbs-cost-capture",
+        "asset-capitalisation-and-depreciation"
+      ]
+    },
+    {
+      "claim_id": "R15-012",
+      "lane_id": "R15",
+      "topic": "Ind AS 16 major inspection",
+      "claim_text": "The cost of each major inspection is capitalised as a replacement into the PPE carrying amount if recognition criteria are satisfied.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/46263indas36370.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "When each major inspection is performed, its cost is recognised in the carrying amount of the item of property, plant and equipment",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "wbs-cost-capture",
+        "asset-capitalisation-and-depreciation"
+      ]
+    },
+    {
+      "claim_id": "R15-013",
+      "lane_id": "R15",
+      "topic": "Ind AS 16 componentisation",
+      "claim_text": "Each part of a PPE item whose cost is significant relative to the item's total cost must be depreciated separately.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/46263indas36370.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Each part of an item of property, plant and equipment with a cost that is significant in relation to the total cost",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "asset-capitalisation-and-depreciation"
+      ]
+    },
+    {
+      "claim_id": "R15-014",
+      "lane_id": "R15",
+      "topic": "Ind AS 16 componentisation",
+      "claim_text": "The amount initially recognised for a PPE item is allocated to its significant parts, each depreciated separately.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/46263indas36370.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "An entity allocates the amount initially recognised in respect of an item of property, plant and equipment to its significant parts",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "asset-capitalisation-and-depreciation"
+      ]
+    },
+    {
+      "claim_id": "R15-015",
+      "lane_id": "R15",
+      "topic": "Ind AS 16 depreciation start",
+      "claim_text": "Depreciation begins when the asset is available for use, i.e. in the location and condition management intends.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/46263indas36370.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Depreciation of an asset begins when it is available for use, i.e. when it is in the location and condition necessary",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "asset-capitalisation-and-depreciation",
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-016",
+      "lane_id": "R15",
+      "topic": "Ind AS 16 trial run",
+      "claim_text": "ICAI concludes production costs incurred during a trial run to prove the plant is ready should be capitalised.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/46263indas36370.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "the Company should capitalise the production costs incurred as a directly attributable cost.",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "wbs-cost-capture",
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-017",
+      "lane_id": "R15",
+      "topic": "Ind AS 16 trial run",
+      "claim_text": "Costs incurred after the point at which the asset is ready for its intended use must not be capitalised.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/46263indas36370.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The costs incurred after the point when asset is ready for its intended use should not be capitalised.",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "wbs-cost-capture",
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-018",
+      "lane_id": "R15",
+      "topic": "Ind AS 23 core principle",
+      "claim_text": "Borrowing costs directly attributable to acquisition, construction or production of a qualifying asset form part of that asset's cost.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/62864asb50858.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Borrowing costs that are directly attributable to the acquisition, construction or production of a qualifying asset form part of the cost",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "borrowing-cost-capitalisation"
+      ]
+    },
+    {
+      "claim_id": "R15-019",
+      "lane_id": "R15",
+      "topic": "Ind AS 23 qualifying asset",
+      "claim_text": "A qualifying asset is one that necessarily takes a substantial period of time to get ready for intended use or sale.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/62864asb50858.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "A qualifying asset is an asset that necessarily takes a substantial period of time to get ready for its intended use or sale.",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "borrowing-cost-capitalisation"
+      ]
+    },
+    {
+      "claim_id": "R15-020",
+      "lane_id": "R15",
+      "topic": "Ind AS 23 specific borrowings",
+      "claim_text": "For specific borrowings, eligible borrowing costs are actual costs incurred less investment income on temporary investment of those borrowings.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/62864asb50858.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "the actual borrowing costs incurred on that borrowing during the period less any investment income on the temporary investment of those borrowings",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "borrowing-cost-capitalisation"
+      ]
+    },
+    {
+      "claim_id": "R15-021",
+      "lane_id": "R15",
+      "topic": "Ind AS 23 general borrowings",
+      "claim_text": "For general borrowings the capitalisation rate is the weighted average of borrowing costs on all outstanding borrowings of the entity.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/62864asb50858.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The capitalisation rate shall be the weighted average of the borrowing costs applicable to all borrowings of the entity that are outstanding",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "borrowing-cost-capitalisation"
+      ]
+    },
+    {
+      "claim_id": "R15-022",
+      "lane_id": "R15",
+      "topic": "Ind AS 23 capitalisation cap",
+      "claim_text": "Borrowing costs capitalised in a period must not exceed the borrowing costs actually incurred in that period.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/62864asb50858.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The amount of borrowing costs that an entity capitalises during a period should not exceed the amount of borrowing costs it incurred",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "borrowing-cost-capitalisation"
+      ]
+    },
+    {
+      "claim_id": "R15-023",
+      "lane_id": "R15",
+      "topic": "Ind AS 23 commencement",
+      "claim_text": "Paragraph 17 requires capitalisation of borrowing costs to begin on the commencement date for a qualifying asset.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/62864asb50858.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "An entity shall begin capitalising borrowing costs as part of the cost of a qualifying asset on the commencement date.",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "borrowing-cost-capitalisation"
+      ]
+    },
+    {
+      "claim_id": "R15-024",
+      "lane_id": "R15",
+      "topic": "Ind AS 23 commencement",
+      "claim_text": "The commencement date is when expenditures are incurred, borrowing costs are incurred, and preparatory activities are undertaken.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/62864asb50858.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "(a) it incurs expenditures for the asset; (b) it incurs borrowing costs; and (c) it undertakes activities that are necessary",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "borrowing-cost-capitalisation"
+      ]
+    },
+    {
+      "claim_id": "R15-025",
+      "lane_id": "R15",
+      "topic": "Ind AS 23 commencement",
+      "claim_text": "Qualifying activities include technical and administrative work before physical construction, such as obtaining permits.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/62864asb50858.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "They include technical and administrative work prior to the commencement of physical construction, such as the activities associated with obtaining permits",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "borrowing-cost-capitalisation"
+      ]
+    },
+    {
+      "claim_id": "R15-026",
+      "lane_id": "R15",
+      "topic": "Ind AS 23 suspension",
+      "claim_text": "Paragraph 20 requires suspension of capitalisation during extended periods in which active development of a qualifying asset is suspended.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/62864asb50858.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "An entity shall suspend capitalisation of borrowing costs during extended periods in which it suspends active development of a qualifying",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "borrowing-cost-capitalisation",
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-027",
+      "lane_id": "R15",
+      "topic": "Ind AS 23 suspension",
+      "claim_text": "Borrowing costs during suspended development are holding costs of partially completed assets and do not qualify for capitalisation.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/62864asb50858.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Such costs are costs of holding partially completed assets and do not qualify for capitalisation.",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "borrowing-cost-capitalisation",
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-028",
+      "lane_id": "R15",
+      "topic": "Ind AS 23 suspension",
+      "claim_text": "Capitalisation is not suspended when a temporary delay is a necessary part of getting the asset ready for use.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/62864asb50858.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Borrowing costs are not suspended when a temporary delay is a necessary part of the process of getting an asset ready",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "borrowing-cost-capitalisation",
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-029",
+      "lane_id": "R15",
+      "topic": "Ind AS 23 cessation",
+      "claim_text": "Capitalisation ceases when substantially all activities necessary to prepare the qualifying asset for intended use or sale are complete.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/62864asb50858.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Capitalisation should cease when substantially all the activities necessary to prepare the qualifying asset for its intended use or sale are complete.",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "borrowing-cost-capitalisation",
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-030",
+      "lane_id": "R15",
+      "topic": "Ind AS 23 cessation by part",
+      "claim_text": "Where a qualifying asset is completed in usable parts, capitalisation ceases part by part as each part is substantially complete.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/62864asb50858.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "the entity should cease capitalising borrowing costs when it completes substantially all the activities necessary to prepare that part",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "capex-accounting-policy",
+        "borrowing-cost-capitalisation",
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-031",
+      "lane_id": "R15",
+      "topic": "Schedule III amendment",
+      "claim_text": "Schedule III was amended by MCA notification dated 24 March 2021 adding presentation and disclosure requirements.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Schedule III has been further amended vide the Government Notification dated 24 March, 2021 to include certain additional presentation and disclosures requirements",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-032",
+      "lane_id": "R15",
+      "topic": "Schedule III amendment",
+      "claim_text": "The amended Schedule III requirements apply to financial statements for financial years commencing on or after 1 April 2021.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "These changes need to be applied in preparation of financial statements for the financial year commencing on or after 1 April, 2021.",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-033",
+      "lane_id": "R15",
+      "topic": "Schedule III amendment",
+      "claim_text": "The amending instrument is identified in the ICAI Guidance Note as MCA Notification G.S.R. 207(E) dated 24 March 2021.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Amended pursuant to MCA Notification G.S.R. 207(E) dated 24th March 2021",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-034",
+      "lane_id": "R15",
+      "topic": "CWIP ageing schedule",
+      "claim_text": "Schedule III requires a CWIP ageing schedule to be given for capital work-in-progress.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "For capital-work-in progress, following ageing schedule shall be given",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-035",
+      "lane_id": "R15",
+      "topic": "CWIP ageing buckets",
+      "claim_text": "The CWIP ageing schedule uses four buckets: less than 1 year, 1-2 years, 2-3 years and more than 3 years.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Less than 1 year 1-2 years 2-3 years More than 3 years",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-036",
+      "lane_id": "R15",
+      "topic": "CWIP ageing categories",
+      "claim_text": "The CWIP ageing schedule splits amounts between projects in progress and projects temporarily suspended.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Projects in progress Projects temporarily suspended",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-037",
+      "lane_id": "R15",
+      "topic": "CWIP ageing reconciliation",
+      "claim_text": "The CWIP ageing schedule total must tally with the CWIP amount presented in the balance sheet.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Total shall tally with CWIP amount in the balance sheet.",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-038",
+      "lane_id": "R15",
+      "topic": "CWIP ageing measurement",
+      "claim_text": "CWIP ageing runs from the date of initial recognition of each item of CWIP to the balance sheet date.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "the ageing for an item of CWIP shall be determined from the date of its initial recognition to the date of balance sheet",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-039",
+      "lane_id": "R15",
+      "topic": "CWIP ageing granularity",
+      "claim_text": "The CWIP ageing disclosure is not required to be presented at an asset or project level.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The disclosure is not required to be presented at an asset/project level",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-040",
+      "lane_id": "R15",
+      "topic": "CWIP ageing granularity",
+      "claim_text": "A single CWIP project's balance can fall into several different ageing buckets at one balance sheet date.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "the ageing for the total amount of CWIP shall fall into different ageing buckets as at a particular balance sheet date",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-041",
+      "lane_id": "R15",
+      "topic": "CWIP completion schedule",
+      "claim_text": "Schedule III requires a CWIP completion schedule for projects whose completion is overdue or whose cost exceeded the original plan.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "For capital-work-in progress, whose completion is overdue or has exceeded its cost compared to its original plan, following CWIP completion schedule shall be given",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-042",
+      "lane_id": "R15",
+      "topic": "CWIP completion schedule",
+      "claim_text": "Details of projects where activity has been suspended must be given separately in the CWIP completion schedule.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Details of projects where activity has been suspended shall be given separately.",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-043",
+      "lane_id": "R15",
+      "topic": "CWIP completion schedule",
+      "claim_text": "The overdue or cost-overrun disclosure is made at project level and separately for the two project categories.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "This disclosure is required to be made at project level and separately for the two categories",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-044",
+      "lane_id": "R15",
+      "topic": "CWIP completion schedule",
+      "claim_text": "Disclosure is triggered only where actual cost has already exceeded the original plan estimate, not on forecast overrun.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Disclosure is required only in those cases where the actual cost of an asset/project has already exceeded the estimated cost as per original plan",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-045",
+      "lane_id": "R15",
+      "topic": "CWIP completion schedule",
+      "claim_text": "The overdue and cost-overrun assessment must be performed at each reporting date.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Such assessment needs to be done at each reporting date.",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-046",
+      "lane_id": "R15",
+      "topic": "CWIP original plan",
+      "claim_text": "The original plan is the plan approved by the relevant approving authority against which implementation progress is evaluated.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "that plan which is approved by the relevant approving authority and on the basis of which implementation progress is evaluated",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-047",
+      "lane_id": "R15",
+      "topic": "CWIP original plan",
+      "claim_text": "Subsequently revised plans are not used to determine variation for the CWIP overdue and cost-overrun disclosures.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "When plans are subsequently revisited and revised, same should not be considered for determining variation when making above disclosures.",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-048",
+      "lane_id": "R15",
+      "topic": "CWIP project definition",
+      "claim_text": "Neither Schedule III nor Ind AS 16 defines project; ICAI suggests the smallest group of assets with a common intended use.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Project may be construed as smallest group of assets having a common intended use.",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-049",
+      "lane_id": "R15",
+      "topic": "CWIP suspension classification",
+      "claim_text": "A project is not treated as temporarily suspended where the suspension is a necessary part of readying the asset.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "When temporary suspension is a necessary part of the process of getting an asset ready for its intended use",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-050",
+      "lane_id": "R15",
+      "topic": "CWIP scope extension",
+      "claim_text": "The CWIP ageing and completion requirements also apply to investment property under development.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The requirements mentioned above in respect of CWIP shall be applicable for investment property under development.",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-051",
+      "lane_id": "R15",
+      "topic": "Capital advances classification",
+      "claim_text": "Capital advances must sit in other non-current assets and must not be included within capital work-in-progress.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "capital advances / advances for purchase of capital assets should be included under other non-current assets and hence, should not be included",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure",
+        "capex-accounting-policy",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-052",
+      "lane_id": "R15",
+      "topic": "Schedule III PPE reconciliation",
+      "claim_text": "Schedule III requires a gross and net carrying amount reconciliation for each class of PPE showing additions, disposals and adjustments.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "A reconciliation of the gross and net carrying amounts of each class of assets at the beginning and end of the reporting period",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "asset-capitalisation-and-depreciation",
+        "audit-and-controls",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-053",
+      "lane_id": "R15",
+      "topic": "Schedule III balance sheet line",
+      "claim_text": "Schedule III Division II presents Capital work-in-progress as a separate non-current asset line item after Property, Plant and Equipment.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://upload.indiacode.nic.in/schedulefile?aid=AC_CEN_22_29_00008_201318_1517807327856&rid=10",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "(a) Property, Plant and Equipment (b) Capital work-in-progress (c) Investment Property (d) Goodwill",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-054",
+      "lane_id": "R15",
+      "topic": "Schedule II component accounting",
+      "claim_text": "Schedule II requires separate useful life where a part's cost is significant to total asset cost and its life differs.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://upload.indiacode.nic.in/schedulefile?aid=AC_CEN_22_29_00008_201318_1517807327856&rid=9",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "where cost of a part of the asset is significant to total cost of the asset and useful life of that part is different",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "asset-capitalisation-and-depreciation"
+      ]
+    },
+    {
+      "claim_id": "R15-055",
+      "lane_id": "R15",
+      "topic": "Schedule II component accounting",
+      "claim_text": "Schedule II states the useful life of such a significant part shall be determined separately.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://upload.indiacode.nic.in/schedulefile?aid=AC_CEN_22_29_00008_201318_1517807327856&rid=9",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "useful life of that significant part shall be determined separately",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "asset-capitalisation-and-depreciation"
+      ]
+    },
+    {
+      "claim_id": "R15-056",
+      "lane_id": "R15",
+      "topic": "Schedule II component accounting",
+      "claim_text": "Component-wise useful lives became mandatory for financial years commencing on or after 1 April 2015.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://upload.indiacode.nic.in/schedulefile?aid=AC_CEN_22_29_00008_201318_1517807327856&rid=9",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "mandatory for financial statements in respect of financial years commencing on or after the 1st April, 2015",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "asset-capitalisation-and-depreciation"
+      ]
+    },
+    {
+      "claim_id": "R15-057",
+      "lane_id": "R15",
+      "topic": "CARO 2020 clause 3(i)(a)(A)",
+      "claim_text": "CARO 2020 requires the auditor to report whether proper records with full particulars and situation of PPE are maintained.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/60117aasb48979-a.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Whether the company is maintaining proper records showing full particulars, including quantitative details and situation of Property, Plant and Equipment",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "audit-and-controls",
+        "reporting-and-disclosure",
+        "asset-register"
+      ]
+    },
+    {
+      "claim_id": "R15-058",
+      "lane_id": "R15",
+      "topic": "CARO 2020 clause 3(i)(b)",
+      "claim_text": "CARO 2020 requires reporting on physical verification of PPE by management at reasonable intervals and material discrepancies.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/60117aasb48979-a.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Whether these Property, Plant and Equipment have been physically verified by the management at reasonable intervals",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "audit-and-controls",
+        "reporting-and-disclosure",
+        "asset-register"
+      ]
+    },
+    {
+      "claim_id": "R15-059",
+      "lane_id": "R15",
+      "topic": "CARO 2020 clause 3(ix)(c)",
+      "claim_text": "CARO 2020 requires reporting whether term loans were applied for the purpose for which they were obtained.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/60117aasb48979-a.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Whether term loans were applied for the purpose for which the loans were obtained; if not, the amount of loan so diverted",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "audit-and-controls",
+        "reporting-and-disclosure",
+        "capex-accounting-policy",
+        "borrowing-cost-capitalisation"
+      ]
+    },
+    {
+      "claim_id": "R15-060",
+      "lane_id": "R15",
+      "topic": "CARO 2020 scope negative",
+      "claim_text": "CARO 2020's twenty-one clauses contain no CWIP ageing or overdue-project requirement; that requirement sits in Schedule III instead.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://resource.cdn.icai.org/60117aasb48979-a.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Paragraph 3 has twenty one clauses in all.",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "audit-and-controls",
+        "reporting-and-disclosure",
+        "cwip-ageing-reporting",
+        "reporting-and-disclosure"
+      ]
+    },
+    {
+      "claim_id": "R15-061",
+      "lane_id": "R15",
+      "topic": "CGST capital goods definition",
+      "claim_text": "CGST section 2(19) defines capital goods by reference to whether the value is capitalised in the claimant's books of account.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.indiacode.nic.in/show-data?abv=CEN&statehandle=123456789/1362&actid=AC_CEN_2_2_00042_201712_1517807328102&orgactid=AC_CEN_2_2_00042_201712_1517807328102&sectionId=5117&sectionno=2&orderno=2",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "capital goods means goods, the value of which is capitalised in the books of account of the person claiming the input tax credit",
+      "fetch_status": "200 OK (rendered in in-app browser, text extracted)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "gst-tax-treatment",
+        "capex-accounting-policy"
+      ]
+    },
+    {
+      "claim_id": "R15-062",
+      "lane_id": "R15",
+      "topic": "CGST section 16(1)",
+      "claim_text": "Section 16(1) entitles a registered person to credit of input tax on supplies used or intended for business.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.indiacode.nic.in/show-data?abv=CEN&statehandle=123456789/1362&actid=AC_CEN_2_2_00042_201712_1517807328102&orgactid=AC_CEN_2_2_00042_201712_1517807328102&sectionId=5131&sectionno=16&orderno=17",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "entitled to take credit of input tax charged on any supply of goods or services or both to him",
+      "fetch_status": "200 OK (rendered in in-app browser, text extracted)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "gst-tax-treatment",
+        "capex-accounting-policy"
+      ]
+    },
+    {
+      "claim_id": "R15-063",
+      "lane_id": "R15",
+      "topic": "CGST section 16(3) capitalisation link",
+      "claim_text": "Where depreciation is claimed on the tax component of capital goods cost under the Income-tax Act, credit on that component is disallowed.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.indiacode.nic.in/show-data?abv=CEN&statehandle=123456789/1362&actid=AC_CEN_2_2_00042_201712_1517807328102&orgactid=AC_CEN_2_2_00042_201712_1517807328102&sectionId=5131&sectionno=16&orderno=17",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Where the registered person has claimed depreciation on the tax component of the cost of capital goods and plant and machinery",
+      "fetch_status": "200 OK (rendered in in-app browser, text extracted)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "gst-tax-treatment",
+        "capex-accounting-policy",
+        "capex-accounting-policy",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-064",
+      "lane_id": "R15",
+      "topic": "CGST section 16(3) consequence",
+      "claim_text": "Section 16(3) states the input tax credit on that tax component shall not be allowed.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.indiacode.nic.in/show-data?abv=CEN&statehandle=123456789/1362&actid=AC_CEN_2_2_00042_201712_1517807328102&orgactid=AC_CEN_2_2_00042_201712_1517807328102&sectionId=5131&sectionno=16&orderno=17",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "the input tax credit on the said tax component shall not be allowed",
+      "fetch_status": "200 OK (rendered in in-app browser, text extracted)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "gst-tax-treatment",
+        "capex-accounting-policy",
+        "capex-accounting-policy",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-065",
+      "lane_id": "R15",
+      "topic": "CGST section 17(5)(c) blocked credit",
+      "claim_text": "Works contract services for construction of immovable property other than plant and machinery are blocked credits.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.indiacode.nic.in/show-data?abv=CEN&statehandle=123456789/1362&actid=AC_CEN_2_2_00042_201712_1517807328102&orgactid=AC_CEN_2_2_00042_201712_1517807328102&sectionId=5132&sectionno=17&orderno=18",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "works contract services when supplied for construction of an immovable property (other than plant and machinery)",
+      "fetch_status": "200 OK (rendered in in-app browser, text extracted)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "gst-tax-treatment",
+        "capex-accounting-policy",
+        "capex-accounting-policy",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-066",
+      "lane_id": "R15",
+      "topic": "CGST section 17(5)(d) blocked credit",
+      "claim_text": "Goods or services received for construction of immovable property other than plant and machinery on own account are blocked.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.indiacode.nic.in/show-data?abv=CEN&statehandle=123456789/1362&actid=AC_CEN_2_2_00042_201712_1517807328102&orgactid=AC_CEN_2_2_00042_201712_1517807328102&sectionId=5132&sectionno=17&orderno=18",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "goods or services or both received by a taxable person for construction of an immovable property (other than plant and machinery) on his own account",
+      "fetch_status": "200 OK (rendered in in-app browser, text extracted)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "gst-tax-treatment",
+        "capex-accounting-policy",
+        "capex-accounting-policy",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-067",
+      "lane_id": "R15",
+      "topic": "CGST construction explanation",
+      "claim_text": "For clauses (c) and (d) construction includes reconstruction, renovation, additions, alterations or repairs to the extent of capitalisation.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.indiacode.nic.in/show-data?abv=CEN&statehandle=123456789/1362&actid=AC_CEN_2_2_00042_201712_1517807328102&orgactid=AC_CEN_2_2_00042_201712_1517807328102&sectionId=5132&sectionno=17&orderno=18",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "the expression construction includes re-construction, renovation, additions or alterations or repairs, to the extent of capitalisation",
+      "fetch_status": "200 OK (rendered in in-app browser, text extracted)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "gst-tax-treatment",
+        "capex-accounting-policy",
+        "capex-accounting-policy",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-068",
+      "lane_id": "R15",
+      "topic": "CGST plant and machinery definition",
+      "claim_text": "Plant and machinery means apparatus, equipment and machinery fixed to earth by foundation or structural support used for outward supply.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.indiacode.nic.in/show-data?abv=CEN&statehandle=123456789/1362&actid=AC_CEN_2_2_00042_201712_1517807328102&orgactid=AC_CEN_2_2_00042_201712_1517807328102&sectionId=5132&sectionno=17&orderno=18",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "apparatus, equipment, and machinery fixed to earth by foundation or structural support that are used for making outward supply",
+      "fetch_status": "200 OK (rendered in in-app browser, text extracted)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "gst-tax-treatment",
+        "capex-accounting-policy",
+        "capex-accounting-policy",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-069",
+      "lane_id": "R15",
+      "topic": "CGST plant and machinery exclusions",
+      "claim_text": "Land, buildings, other civil structures, telecommunication towers and pipelines outside factory premises are excluded from plant and machinery.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.indiacode.nic.in/show-data?abv=CEN&statehandle=123456789/1362&actid=AC_CEN_2_2_00042_201712_1517807328102&orgactid=AC_CEN_2_2_00042_201712_1517807328102&sectionId=5132&sectionno=17&orderno=18",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "(i) land, building or any other civil structures; (ii) telecommunication towers; and (iii) pipelines laid outside the factory premises",
+      "fetch_status": "200 OK (rendered in in-app browser, text extracted)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "gst-tax-treatment",
+        "capex-accounting-policy",
+        "capex-accounting-policy",
+        "wbs-cost-capture"
+      ]
+    },
+    {
+      "claim_id": "R15-070",
+      "lane_id": "R15",
+      "topic": "DPDP Act section 4",
+      "claim_text": "Personal data may be processed only for a lawful purpose with consent or for certain legitimate uses.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.meity.gov.in/static/uploads/2024/06/2bf1f0e9f04e6fb4f8fef35e82c42aa5.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "A person may process the personal data of a Data Principal only in accordance with the provisions of this Act and for a lawful purpose",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "data-privacy-and-security",
+        "non-functional-requirements"
+      ]
+    },
+    {
+      "claim_id": "R15-071",
+      "lane_id": "R15",
+      "topic": "DPDP Act section 5 notice",
+      "claim_text": "Every consent request must be accompanied or preceded by a notice stating the personal data and the processing purpose.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.meity.gov.in/static/uploads/2024/06/2bf1f0e9f04e6fb4f8fef35e82c42aa5.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "the personal data and the purpose for which the same is proposed to be processed",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "data-privacy-and-security",
+        "non-functional-requirements"
+      ]
+    },
+    {
+      "claim_id": "R15-072",
+      "lane_id": "R15",
+      "topic": "DPDP Act purpose limitation",
+      "claim_text": "Consent is limited to such personal data as is necessary for the specified purpose.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.meity.gov.in/static/uploads/2024/06/2bf1f0e9f04e6fb4f8fef35e82c42aa5.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "be limited to such personal data as is necessary for such specified purpose",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "data-privacy-and-security",
+        "non-functional-requirements"
+      ]
+    },
+    {
+      "claim_id": "R15-073",
+      "lane_id": "R15",
+      "topic": "DPDP Act section 8(1)",
+      "claim_text": "The Data Fiduciary remains responsible for compliance in respect of processing undertaken by it or by its Data Processor.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.meity.gov.in/static/uploads/2024/06/2bf1f0e9f04e6fb4f8fef35e82c42aa5.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "be responsible for complying with the provisions of this Act and the rules made thereunder in respect of any processing undertaken by it",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "data-privacy-and-security",
+        "non-functional-requirements"
+      ]
+    },
+    {
+      "claim_id": "R15-074",
+      "lane_id": "R15",
+      "topic": "DPDP Act section 8(4)",
+      "claim_text": "The Data Fiduciary must implement appropriate technical and organisational measures to ensure effective observance of the Act.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.meity.gov.in/static/uploads/2024/06/2bf1f0e9f04e6fb4f8fef35e82c42aa5.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "A Data Fiduciary shall implement appropriate technical and organisational measures to ensure effective observance of the provisions of this Act",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "data-privacy-and-security",
+        "non-functional-requirements"
+      ]
+    },
+    {
+      "claim_id": "R15-075",
+      "lane_id": "R15",
+      "topic": "DPDP Act section 8(5)",
+      "claim_text": "The Data Fiduciary must protect personal data by taking reasonable security safeguards to prevent a personal data breach.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.meity.gov.in/static/uploads/2024/06/2bf1f0e9f04e6fb4f8fef35e82c42aa5.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "by taking reasonable security safeguards to prevent personal data breach",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "data-privacy-and-security",
+        "non-functional-requirements"
+      ]
+    },
+    {
+      "claim_id": "R15-076",
+      "lane_id": "R15",
+      "topic": "DPDP Act section 8(6)",
+      "claim_text": "On a personal data breach the Data Fiduciary must intimate the Board and each affected Data Principal.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.meity.gov.in/static/uploads/2024/06/2bf1f0e9f04e6fb4f8fef35e82c42aa5.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "In the event of a personal data breach, the Data Fiduciary shall give the Board and each affected Data Principal, intimation of such breach",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "data-privacy-and-security",
+        "non-functional-requirements"
+      ]
+    },
+    {
+      "claim_id": "R15-077",
+      "lane_id": "R15",
+      "topic": "DPDP Act section 8(7) retention",
+      "claim_text": "Personal data must be erased on withdrawal of consent or once the specified purpose is no longer served, whichever is earlier.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.meity.gov.in/static/uploads/2024/06/2bf1f0e9f04e6fb4f8fef35e82c42aa5.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "erase personal data, upon the Data Principal withdrawing her consent",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "data-privacy-and-security",
+        "non-functional-requirements"
+      ]
+    },
+    {
+      "claim_id": "R15-078",
+      "lane_id": "R15",
+      "topic": "DPDP Act section 8(7) retention",
+      "claim_text": "The erasure obligation is subject to retention being necessary for compliance with any law in force.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.meity.gov.in/static/uploads/2024/06/2bf1f0e9f04e6fb4f8fef35e82c42aa5.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "unless retention is necessary for compliance with any law for the time being in force",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "data-privacy-and-security",
+        "non-functional-requirements"
+      ]
+    },
+    {
+      "claim_id": "R15-079",
+      "lane_id": "R15",
+      "topic": "DPDP Act section 10",
+      "claim_text": "A Significant Data Fiduciary must appoint a Data Protection Officer who represents it and is based in India.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.meity.gov.in/static/uploads/2024/06/2bf1f0e9f04e6fb4f8fef35e82c42aa5.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "appoint a Data Protection Officer who shall (i) represent the Significant Data Fiduciary under the provisions of this Act; (ii) be based in India",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "data-privacy-and-security",
+        "non-functional-requirements"
+      ]
+    },
+    {
+      "claim_id": "R15-080",
+      "lane_id": "R15",
+      "topic": "DPDP Act section 16",
+      "claim_text": "The Central Government may by notification restrict transfer of personal data to a notified country or territory outside India.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.meity.gov.in/static/uploads/2024/06/2bf1f0e9f04e6fb4f8fef35e82c42aa5.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "The Central Government may, by notification, restrict the transfer of personal data by a Data Fiduciary for processing to such country",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "data-privacy-and-security",
+        "non-functional-requirements",
+        "vendor-and-hosting"
+      ]
+    },
+    {
+      "claim_id": "R15-081",
+      "lane_id": "R15",
+      "topic": "DPDP Rules 2025 notification",
+      "claim_text": "The Digital Personal Data Protection Rules, 2025 were notified by MeitY as G.S.R. 846(E) dated 13 November 2025.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.meity.gov.in/static/uploads/2025/11/53450e6e5dc0bfa85ebd78686cadad39.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "New Delhi, the 13th November, 2025",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "data-privacy-and-security",
+        "non-functional-requirements"
+      ]
+    },
+    {
+      "claim_id": "R15-082",
+      "lane_id": "R15",
+      "topic": "DPDP Rules 2025 commencement",
+      "claim_text": "Rules 3 and 5 to 16, 22 and 23 come into force eighteen months after publication of the Gazette.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.meity.gov.in/static/uploads/2025/11/53450e6e5dc0bfa85ebd78686cadad39.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "Rules 3, 5 to 16, 22 and 23 shall come into force eighteen months after the date of publication of this Gazette.",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "data-privacy-and-security",
+        "non-functional-requirements",
+        "programme-timeline"
+      ]
+    },
+    {
+      "claim_id": "R15-083",
+      "lane_id": "R15",
+      "topic": "DPDP Rules 2025 rule 6 safeguards",
+      "claim_text": "Minimum safeguards include encryption, obfuscation, masking or virtual tokens mapped to the personal data.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.meity.gov.in/static/uploads/2025/11/53450e6e5dc0bfa85ebd78686cadad39.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "securing of personal data through encryption, obfuscation, masking or the use of virtual tokens mapped to that personal data",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "data-privacy-and-security",
+        "non-functional-requirements"
+      ]
+    },
+    {
+      "claim_id": "R15-084",
+      "lane_id": "R15",
+      "topic": "DPDP Rules 2025 rule 6 safeguards",
+      "claim_text": "Minimum safeguards include visibility on access to personal data through appropriate logs, monitoring and review.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.meity.gov.in/static/uploads/2025/11/53450e6e5dc0bfa85ebd78686cadad39.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "visibility on the accessing of such personal data, through appropriate logs, monitoring and review",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "data-privacy-and-security",
+        "non-functional-requirements",
+        "audit-and-controls"
+      ]
+    },
+    {
+      "claim_id": "R15-085",
+      "lane_id": "R15",
+      "topic": "DPDP Rules 2025 rule 6 log retention",
+      "claim_text": "Logs and personal data must be retained for one year for detection and investigation unless another law requires otherwise.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.meity.gov.in/static/uploads/2025/11/53450e6e5dc0bfa85ebd78686cadad39.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "retain such logs and personal data for a period of one year, unless compliance with any law for the time being in force requires otherwise",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "data-privacy-and-security",
+        "non-functional-requirements",
+        "audit-and-controls"
+      ]
+    },
+    {
+      "claim_id": "R15-086",
+      "lane_id": "R15",
+      "topic": "DPDP Rules 2025 rule 6 processor contract",
+      "claim_text": "The contract with a Data Processor must contain appropriate provision for taking reasonable security safeguards.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.meity.gov.in/static/uploads/2025/11/53450e6e5dc0bfa85ebd78686cadad39.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "appropriate provision in the contract entered into between such Data Fiduciary and such a Data Processor",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "data-privacy-and-security",
+        "non-functional-requirements",
+        "vendor-and-hosting"
+      ]
+    },
+    {
+      "claim_id": "R15-087",
+      "lane_id": "R15",
+      "topic": "DPDP Rules 2025 rule 7 breach",
+      "claim_text": "Affected Data Principals must be intimated of a breach in a concise, clear and plain manner and without delay.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.meity.gov.in/static/uploads/2025/11/53450e6e5dc0bfa85ebd78686cadad39.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "intimate to each affected Data Principal, in a concise, clear and plain manner and without delay",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "data-privacy-and-security",
+        "non-functional-requirements"
+      ]
+    },
+    {
+      "claim_id": "R15-088",
+      "lane_id": "R15",
+      "topic": "DPDP Rules 2025 rule 7 breach",
+      "claim_text": "Detailed breach information must reach the Board within seventy-two hours of becoming aware, absent an allowed extension.",
+      "claim_class": "ACCOUNTING-PRINCIPLE",
+      "requires_validation": "CLIENT AND AUDITOR VALIDATION REQUIRED - no legal or tax conclusion is given",
+      "source_url": "https://www.meity.gov.in/static/uploads/2025/11/53450e6e5dc0bfa85ebd78686cadad39.pdf",
+      "source_tier": "1-OFFICIAL",
+      "evidence_quote": "within seventy-two hours of becoming aware of the breach, or within such longer period as the Board may allow",
+      "fetch_status": "200 OK (curl + local PDF text extraction)",
+      "fetched_at": "2026-08-05",
+      "verdict": "PENDING",
+      "feeds_sections": [
+        "data-privacy-and-security",
+        "non-functional-requirements"
+      ]
+    }
+  ],
+  "search_log": [
+    {
+      "query_or_url": "WebSearch: Ind AS 16 Property Plant and Equipment MCA pdf site:mca.gov.in",
+      "result": "Returned https://www.mca.gov.in/Ministry/pdf/INDAS16.pdf as top hit"
+    },
+    {
+      "query_or_url": "https://www.mca.gov.in/Ministry/pdf/INDAS16.pdf",
+      "result": "FAILED - WebFetch HTTP 403 Forbidden; curl with browser headers also 403 (406-byte WAF page)"
+    },
+    {
+      "query_or_url": "https://www.mca.gov.in/Ministry/pdf/IndAS23_2019.pdf",
+      "result": "FAILED - HTTP 403 Forbidden"
+    },
+    {
+      "query_or_url": "https://www.mca.gov.in/Ministry/pdf/INDAS16.pdf (in-app Chrome browser)",
+      "result": "FAILED - redirected to mca.gov.in homepage; legacy /Ministry/pdf/ paths no longer serve documents"
+    },
+    {
+      "query_or_url": "WebSearch: Schedule III Companies Act 2013 amendment CWIP ageing overdue exceeded cost MCA notification",
+      "result": "No official MCA/eGazette PDF reachable; ICAI Guidance Note identified as the reproducing official source"
+    },
+    {
+      "query_or_url": "https://www.icai.org/post/13754",
+      "result": "200 OK - ICAI Ind AS 16 page; yielded PDF link resource.cdn.icai.org/46263indas36370.pdf"
+    },
+    {
+      "query_or_url": "https://resource.cdn.icai.org/46263indas36370.pdf",
+      "result": "200 OK, 1.33 MB - ICAI Educational Material on Ind AS 16; 145k chars of text extracted"
+    },
+    {
+      "query_or_url": "https://www.icai.org/post/release-of-educational-material-on-ind-as-23-borrowing-costs",
+      "result": "200 OK - yielded resource.cdn.icai.org/62864asb50858.pdf"
+    },
+    {
+      "query_or_url": "https://resource.cdn.icai.org/62864asb50858.pdf",
+      "result": "200 OK, 908 KB - ICAI Educational Material on Ind AS 23; text extracted"
+    },
+    {
+      "query_or_url": "https://resource.cdn.icai.org/68982clcgc55147-gnd2.pdf",
+      "result": "200 OK, 2.46 MB - ICAI Guidance Note on Division II Ind AS Schedule III (Revised January 2022); 570k chars extracted; contains verbatim amended Schedule III CWIP ageing and completion schedules"
+    },
+    {
+      "query_or_url": "https://resource.cdn.icai.org/67208bos54111-cp7u2.pdf",
+      "result": "FAILED - WebFetch returned undecoded PDF binary; abandoned in favour of the Educational Material"
+    },
+    {
+      "query_or_url": "https://cag.gov.in/uploads/media/Guidance-note-on-CARO-2020-064e84867178ba9-47322653.pdf",
+      "result": "FAILED - 200 OK but PDF streams are image/CID-encoded; no usable text extracted"
+    },
+    {
+      "query_or_url": "https://www.icsi.edu/media/webmodules/Companies_Auditors_Report_Order2020.pdf",
+      "result": "200 OK but content is an ICSI Student Company Secretary summary article, not the order text; not used as evidence"
+    },
+    {
+      "query_or_url": "https://resource.cdn.icai.org/60117aasb48979-a.pdf",
+      "result": "200 OK, 2.38 MB - ICAI Guidance Note on CARO 2020 (2020 edition); 786k chars extracted"
+    },
+    {
+      "query_or_url": "grep of ICAI CARO 2020 Guidance Note for 'capital work', 'CWIP'",
+      "result": "ZERO hits - documented negative: CARO 2020 contains no CWIP ageing or overdue-project clause"
+    },
+    {
+      "query_or_url": "https://cbic-gst.gov.in/pdf/CGST-Act-Updated-01102024.pdf and /pdf/cgst-act.pdf and /cgst-act.html",
+      "result": "FAILED - HTTP 404 on all guessed CBIC paths"
+    },
+    {
+      "query_or_url": "https://cbic-gst.gov.in/gst-acts.html",
+      "result": "200 OK but page carries only rules/rates PDFs; no CGST Act bare-act PDF linked"
+    },
+    {
+      "query_or_url": "https://taxinformation.cbic.gov.in/",
+      "result": "FAILED for text - TLS handshake needed --tlsv1.2 --http1.1; then returns a 3 KB JavaScript shell only"
+    },
+    {
+      "query_or_url": "https://www.indiacode.nic.in/simple-search?query=Central+Goods+and+Services+Tax+Act+2017",
+      "result": "200 OK - located CGST Act 2017 at handle 123456789/15689"
+    },
+    {
+      "query_or_url": "India Code show-data CGST section 2, 16 and 17 (rendered in in-app browser)",
+      "result": "200 OK - full statutory text of definitions 2(19), section 16 and section 17 including 17(5)(c)/(d) and plant and machinery Explanation"
+    },
+    {
+      "query_or_url": "https://www.indiacode.nic.in/handle/123456789/2114",
+      "result": "200 OK - Companies Act 2013; schedule PDFs exposed at upload.indiacode.nic.in/schedulefile"
+    },
+    {
+      "query_or_url": "https://upload.indiacode.nic.in/schedulefile?aid=AC_CEN_22_29_00008_201318_1517807327856&rid=9",
+      "result": "200 OK - Schedule II (useful lives); note 4(a) component depreciation text obtained"
+    },
+    {
+      "query_or_url": "https://upload.indiacode.nic.in/schedulefile?aid=AC_CEN_22_29_00008_201318_1517807327856&rid=10",
+      "result": "200 OK - Schedule III; CWIP balance-sheet line items obtained, but this hosted text PRE-DATES the 24 March 2021 amendment (zero hits for 'ageing' or 'overdue')"
+    },
+    {
+      "query_or_url": "https://www.meity.gov.in/static/uploads/2024/06/2bf1f0e9f04e6fb4f8fef35e82c42aa5.pdf",
+      "result": "200 OK, 182 KB - DPDP Act 2023 gazette text; sections 2-17 and Schedule of penalties extracted"
+    },
+    {
+      "query_or_url": "WebSearch (meity.gov.in only): Digital Personal Data Protection Rules 2025 G.S.R. 846(E)",
+      "result": "Located https://www.meity.gov.in/static/uploads/2025/11/53450e6e5dc0bfa85ebd78686cadad39.pdf"
+    },
+    {
+      "query_or_url": "https://www.meity.gov.in/static/uploads/2025/11/53450e6e5dc0bfa85ebd78686cadad39.pdf",
+      "result": "200 OK, 2.49 MB - DPDP Rules 2025 gazette; rules 1-8 and Schedules extracted including 72-hour breach rule"
+    },
+    {
+      "query_or_url": "https://www.meity.gov.in/static/uploads/2025/12/3c7ebbae0e5456f493f486e6845df86b.pdf",
+      "result": "200 OK but only 24k chars of mostly font data; superseded by the November gazette file"
+    }
+  ],
+  "gaps": [
+    "MCA (mca.gov.in) blocks both WebFetch and curl with HTTP 403, and its legacy /Ministry/pdf/ document paths now redirect to the portal homepage in a real browser. The primary MCA texts of Ind AS 16, Ind AS 23, Schedule III as amended, and the CARO 2020 order itself could NOT be fetched. Every record here is sourced from ICAI (the statutory accounting body) or from India Code (NIC/Government of India), never inferred.",
+    "The MCA notification G.S.R. 207(E) dated 24 March 2021, which is the instrument that inserted the CWIP ageing and CWIP completion schedules into Schedule III, was NOT fetched from MCA or eGazette. Its number and date are evidenced only from the ICAI Guidance Note footnotes. Obtain the gazette copy before the notification number is quoted in any client deliverable.",
+    "The India Code hosted text of Schedule III to the Companies Act 2013 is pre-2021: it contains zero occurrences of 'ageing' or 'overdue'. The amended Schedule III text used in these records is the verbatim reproduction inside the ICAI Guidance Note on Division II (Revised January 2022). Treat any wording difference against the gazette as authoritative to the gazette.",
+    "The ICAI Guidance Note on CARO 2020 fetched is the 2020 edition (resource.cdn.icai.org/60117aasb48979-a.pdf). ICAI issued a Revised 2022 Edition that was not fetched; the documented negative that CARO contains no CWIP ageing clause is therefore verified against the 2020 edition only.",
+    "The ICAI Guidance Note on Division I (non-Ind AS Schedule III) was not fetched. If Atha Group entities report under AS rather than Ind AS, the Division I equivalents of the CWIP ageing and completion schedules must be confirmed separately, along with AS 10 (Revised) and AS 16 rather than Ind AS 16 and Ind AS 23.",
+    "GST: only the bare statutory provisions (CGST sections 2(19), 16, 17) were evidenced. CGST Rules 42 and 43 (proportionate reversal on capital goods over sixty months), section 18(6), and the state SGST equivalents were NOT fetched. No conclusion is offered on whether any specific tax on any specific Atha CAPEX line is creditable or must be capitalised - that is a determination for the client's tax advisers and statutory auditor.",
+    "Ind AS 16 and Ind AS 23 paragraph numbering is quoted only where the ICAI Educational Material itself printed the number (Ind AS 23 paragraphs 5, 12, 17, 20, 21, 24 and Ind AS 16 paragraphs 16, 17, 19, 20, 22). Elsewhere the Educational Material paraphrases into narrative form, so paragraph references have deliberately not been asserted.",
+    "The DPDP Rules 2025 substantive obligations (rules 3 and 5 to 16) come into force eighteen months after 13 November 2025, i.e. around mid-May 2027. Whether they bind at the go-live date of this application is a timing question the client must confirm; the Act's own section 8 obligations are separate and their commencement notification was not fetched.",
+    "Whether Atha Group is a Significant Data Fiduciary (triggering the Data Protection Officer, data auditor and DPIA obligations under section 10) depends on a Central Government notification that was not fetched and on facts about data volume the client must supply.",
+    "No record in this lane is a legal, tax or accounting conclusion. Every record is marked claim_class ACCOUNTING-PRINCIPLE with requires_validation set, and verdict PENDING. Client management and the statutory auditor must validate applicability before any of this drives a posting rule, a capitalisation cut-off, a tax code or a retention policy in the build."
+  ]
+}

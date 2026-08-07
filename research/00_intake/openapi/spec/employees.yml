@@ -1,0 +1,2059 @@
+openapi: 3.0.0
+info:
+  title: Employees
+  description: The Employees module in Zoho ERP allows you to add and manage employees' personal and salary details, assign deductions to them, upload their investment declaration and so much more.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v1
+    description: API Endpoint
+tags:
+  - name: employees
+    description: Employees Module
+paths:
+  /employees:
+    x-mcp-group:
+      - Employees
+    post:
+      tags:
+        - employees
+      operationId: create_employee
+      summary: Create an employee
+      description: Create an employee with the given information.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-an-employee-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-an-employee-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.CREATE
+    get:
+      tags:
+        - employees
+      operationId: list_employees
+      summary: List employees
+      description: List all employees with pagination.
+      parameters:
+        - name: filter_by
+          in: query
+          description: 'Filter employees by status. Allowed Values: <code>Status.All</code>, <code>Status.Active</code>, <code>Status.Terminated</code>, <code>Status.InComplete</code>, <code> Status.PortalEnabled</code>, <code>Status.PortalDisabled</code>, <code>Status.PortalInvitationNotAccepted</code> and <code>Status.WithoutPAN</code>'
+          required: false
+          schema:
+            type: string
+          example: Status.All
+        - name: sort_column
+          in: query
+          description: 'Sort employees. Allowed Value: <code>full_name</code>, <code>date_of_joining</code> and <code>created_time</code>'
+          required: false
+          schema:
+            type: string
+          example: created_time
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-employees-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /employees/{employee_id}:
+    x-mcp-group:
+      - Employees
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/employee_id'
+    put:
+      tags:
+        - employees
+      operationId: update_employee
+      summary: Update employee
+      description: Update existing employee details.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-an-employee-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-an-employee-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.UPDATE
+    get:
+      tags:
+        - employees
+      operationId: get_employee
+      summary: Get employee details
+      description: Fetch existing employee details.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-employee-details'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.READ
+    delete:
+      tags:
+        - employees
+      operationId: delete_employee
+      summary: Delete employee
+      description: Delete an existing employee.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-an-employee-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.DELETE
+  /employees/portal/enable:
+    x-mcp-group:
+      - Employees
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/employee_id'
+    post:
+      tags:
+        - employees
+      operationId: bulk_enable_portal_for_employees
+      summary: Bulk enable portal
+      description: Bulk enable portal for the employees.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/emp-bulk-portal-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/emp-bulk-portal-enable-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.CREATE
+  /employees/portal/disable:
+    x-mcp-group:
+      - Employees
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/employee_id'
+    post:
+      tags:
+        - employees
+      operationId: bulk_disable_portal_for_employees
+      summary: Bulk disable portal
+      description: Bulk disable portal for the employees.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/emp-bulk-portal-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/emp-bulk-portal-disable-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.CREATE
+  /employees/{employee_id}/invite:
+    x-mcp-group:
+      - Employees
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/employee_id'
+    post:
+      tags:
+        - employees
+      operationId: send_employee_portal_invitation
+      summary: Send portal invitation
+      description: Send portal invitation to the employee.
+      responses:
+        '201':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/send-employee-portal-invitation'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.CREATE
+  /employees/{employee_id}/dismiss:
+    x-mcp-group:
+      - Employees
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/employee_id'
+    post:
+      tags:
+        - employees
+      operationId: initiate_employee_exit
+      summary: Initiate employee exit
+      description: Inititate employee exit.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/employee-exit-request'
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/employee-exit-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.CREATE
+    put:
+      tags:
+        - employees
+      operationId: update_employee_exit
+      summary: Update exit details
+      description: Update exit details of the employee.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/employee-exit-request'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/employee-exit-update-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.UPDATE
+  /employees/{employee_id}/terminations:
+    x-mcp-group:
+      - Employees
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/employee_id'
+    get:
+      tags:
+        - employees
+      operationId: get_employee_exit_history
+      summary: Get Exit History
+      description: Get Employee Exit History Details.
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-emp-exit-history-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.READ
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: Unique identifier for the organization.
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+    employee_id:
+      name: employee_id
+      in: path
+      description: Unique identifier for the employee.
+      schema:
+        $ref: '#/components/schemas/employee_id'
+      required: true
+    payrollrun_id:
+      name: payrollrun_id
+      in: path
+      description: Unique identifier for the pay run.
+      schema:
+        $ref: '#/components/schemas/payrollrun_id'
+      required: true
+    deduction_id:
+      name: deduction_id
+      in: path
+      description: Id of deduction.
+      required: true
+      schema:
+        type: string
+        example: '49774000000257078'
+    benefit_id:
+      name: benefit_id
+      in: path
+      description: Unique identifier for the benefit.
+      required: true
+      schema:
+        type: string
+        example: '49774000000095189'
+    pay_date:
+      name: pay_date
+      in: path
+      description: Pay date.
+      required: true
+      schema:
+        $ref: '#/components/schemas/pay_date'
+    ifsc_code:
+      name: ifsc_code
+      in: path
+      description: IFSC code.
+      required: true
+      schema:
+        $ref: '#/components/schemas/ifsc_code'
+    type:
+      name: type
+      in: path
+      description: Type of prerequisite.
+      required: true
+      schema:
+        type: string
+        example: cars
+    reimbursement_id:
+      name: reimbursement_id
+      in: path
+      description: Unique identifier for the reimbursement.
+      required: true
+      schema:
+        $ref: '#/components/schemas/reimbursement_id'
+    filter_by:
+      name: filter_by
+      in: path
+      description: Filterinf criteria.
+      required: true
+      schema:
+        type: string
+        example: PayPeriod.FiscalYear
+    fiscal_year:
+      name: fiscal_year
+      in: path
+      description: Fiscal year.
+      required: true
+      schema:
+        type: string
+        example: '2021'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/employee-response'
+    employee-response:
+      type: object
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/employee_id'
+        first_name:
+          $ref: '#/components/schemas/first_name'
+        middle_name:
+          $ref: '#/components/schemas/middle_name'
+        last_name:
+          $ref: '#/components/schemas/last_name'
+        employee_number:
+          $ref: '#/components/schemas/employee_number'
+        date_of_joining:
+          $ref: '#/components/schemas/date_of_joining'
+        work_mail:
+          $ref: '#/components/schemas/work_mail'
+        mobile:
+          $ref: '#/components/schemas/mobile'
+        gender:
+          $ref: '#/components/schemas/gender'
+        designation_id:
+          $ref: '#/components/schemas/designation_id'
+        designation_name:
+          $ref: '#/components/schemas/designation_name'
+        department_id:
+          $ref: '#/components/schemas/department_id'
+        department_name:
+          $ref: '#/components/schemas/department_name'
+        work_location_id:
+          $ref: '#/components/schemas/work_location_id'
+        work_location_name:
+          $ref: '#/components/schemas/work_location_name'
+        last_working_day:
+          $ref: '#/components/schemas/last_working_day'
+          example: ''
+        termination_type:
+          $ref: '#/components/schemas/termination_type'
+          example: ''
+        is_portal_enabled:
+          $ref: '#/components/schemas/is_portal_enabled'
+        employee_status:
+          $ref: '#/components/schemas/employee_status'
+        is_invitation_accepted:
+          $ref: '#/components/schemas/is_invitation_accepted'
+        email_ids:
+          type: array
+          items:
+            type: string
+          example:
+            - anandmaya@zylker.in
+        is_director:
+          $ref: '#/components/schemas/is_director'
+        personal_details:
+          $ref: '#/components/schemas/personal_details_response'
+        present_residential_address:
+          $ref: '#/components/schemas/present_residential_address'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+    code:
+      type: integer
+      example: 0
+      readOnly: true
+    message:
+      type: string
+      example: success
+      readOnly: true
+    first_name:
+      description: First Name of the Employee.
+      type: string
+      example: Anand
+    middle_name:
+      description: Middle Name of the Employee.
+      type: string
+      example: ''
+    last_name:
+      description: Last Name of the Employee.
+      type: string
+      example: Maya
+    full_name:
+      description: Full name of the employee.
+      type: string
+      example: Anand Maya
+    employee_name:
+      type: string
+      example: Anand Maya
+    date_of_joining:
+      description: Date of Joining.
+      type: string
+      example: '2022-01-03'
+    designation_name:
+      description: Designation.
+      type: string
+      example: Developer
+    department_name:
+      description: Department.
+      type: string
+      example: Payroll
+    designation_id:
+      description: Unique identifier for the designation.
+      type: string
+      example: '29774000000095436'
+    department_id:
+      description: Unique identifier for the department.
+      type: string
+      example: '28774000000095446'
+    work_mail:
+      description: Work Email.
+      type: string
+      example: anandmaya@zylker.in
+    mobile:
+      description: Work Mobile.
+      type: string
+      example: ''
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    work_location_id:
+      description: Unique identifier for the worklocation.
+      type: string
+      example: '49774000000095438'
+    work_location_name:
+      description: Name of the Work Location.
+      type: string
+      example: Chennai
+    is_portal_enabled:
+      description: Enter Portal Status.
+      type: boolean
+      example: true
+    pf_account_number:
+      description: Enter PF account number, if the employee is eligible for EPF.
+      type: string
+      example: AA/AAA/4567890/OIU/4454545
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    uan:
+      description: Enter UAN, if the employee is eligible for EPF.
+      type: string
+      example: '123456789098'
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    esi_number:
+      description: Enter ESI number, if the employee is eligible for ESI.
+      type: string
+      example: '1234567890'
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    employee_number:
+      description: Employee Number.
+      type: string
+      example: '2404'
+    employee_status:
+      description: Status of the employee.<br/> Allowed values are <code>active</code>, <code>terminated</code>
+      type: string
+      example: active
+    last_working_day:
+      description: Enter last working date of the employee.
+      type: string
+      example: '2021-03-31'
+    termination_type:
+      description: Allowed values are </br><code>resigned_by_employee</code>, <code>terminated_by_employer</code>, <code>by_death</code> and <code>by_disability</code>
+      type: string
+      example: resigned_by_employee
+    termination_payroll_date:
+      description: Enter processing date of the final settlement payroll.
+      type: string
+      example: '2021-03-31'
+    gender:
+      description: Allowed values are <code>male</code>, <code>female</code>, <code>other</code>
+      type: string
+      example: male
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    is_director:
+      description: If the employee is director of the organization, set it as true.
+      type: boolean
+      example: false
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    is_tax_deductor:
+      type: boolean
+      example: false
+    is_invitation_accepted:
+      description: Shows whether portal invitation accepted or note.
+      type: boolean
+      example: true
+    pay_joinee_arrear_later:
+      description: Enter true, if the joining month salary has to be paid as arrear in the upcoming payrun.
+      type: boolean
+      example: false
+    is_employee_synced_from_people:
+      type: boolean
+      example: false
+    pan:
+      description: Enter PAN Number.
+      type: string
+      example: AAAAA0000K
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    date_of_birth:
+      description: Enter Date of Birth.
+      type: string
+      example: '1994-08-09'
+    differently_abled_type:
+      description: Allowed values are <code>none</code>, <code>visual</code>, <code>hearing</code>, <code>speech</code>, <code>mobility</code> and <code>other</code>.
+      type: string
+      example: none
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    personal_mail:
+      description: Employee's personal Email.
+      type: string
+      example: anandmaya@sendwizard.in
+    email:
+      type: string
+      example: anandmaya@zylker.in
+    address_line_1:
+      description: Indicates the first address line of the employee's personal residential area.
+      type: string
+      example: SRT Avenue
+    address_line_2:
+      description: Indicates the Second Address line of the employee's personal residential area (optional).
+      type: string
+      example: Guduvancheri
+    city:
+      description: Indicates the City of the employee's current residential address.
+      type: string
+      example: Chennai
+    state_code:
+      description: The code of the State where the employee currently resides.
+      type: string
+      example: TN
+    zip_code:
+      description: The Postal or ZIP code of the employee's current address.
+      type: string
+      example: '636308'
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    permanent_address_line_1:
+      description: Indicates the first Address Line of the employee's permanent residential area.
+      type: string
+      example: 2045 Haster St
+    permanent_address_line_2:
+      description: Indicates the Second Address Line of the employee's permanent residential area (optional).
+      type: string
+      example: Garden Grove
+    permanent_city:
+      description: Indicates the City of the employee's permanent residential address.
+      type: string
+      example: Anaheim
+    permanent_state:
+      description: The State where the employee permanently resides.
+      type: string
+      example: California
+    permanent_country_code:
+      description: The code of the Country where the employee permanently resides.
+      type: string
+      example: US
+    permanent_zip_code:
+      description: The postal or ZIP code of the employee's permanent address.
+      type: string
+      example: '92802'
+    father_name:
+      description: Employee's Father Name.
+      type: string
+      example: Ram Thakur
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    employee_id:
+      description: Unique identifier for the employee.
+      type: string
+      example: '36000000012849'
+    payrollrun_id:
+      description: Unique identifier for the pay run.
+      type: string
+      example: '20000000045697'
+    customfield_id:
+      description: Custom Field ID.
+      type: string
+      example: '46000000012845'
+    value:
+      description: Value of the Custom Field.
+      type: string
+      example: Developer
+    created_time:
+      description: The time of creation of the employee.
+      type: string
+      example: '2019-10-09'
+    ctc:
+      description: Yearly ctc of the employee.
+      type: number
+      example: 650000
+    onboarding_status:
+      type: string
+      example: ''
+    employee_onboarding_status:
+      type: string
+      example: completed
+    portal_status:
+      type: string
+      example: ''
+    page:
+      type: string
+      example: 1
+    per_page:
+      type: string
+      example: 10
+    has_more_page:
+      type: boolean
+      example: false
+    applied_filter:
+      type: string
+      example: Status.Active
+    sort_column:
+      type: string
+      example: created_time
+    sort_order:
+      type: string
+      example: A
+    id:
+      type: string
+      example: '49774000000236001'
+    amount:
+      type: number
+      example: 25000
+    is_enabled:
+      type: boolean
+      example: true
+    is_amount_in_percentage:
+      type: boolean
+      example: false
+    amount_in_percentage:
+      type: number
+      example: 50
+    type:
+      type: string
+      example: basic
+    name:
+      type: string
+      example: Basic
+    max_limit:
+      type: number
+      example: 12000
+    is_opt_in:
+      type: boolean
+      example: false
+    revision_id:
+      type: string
+      example: '49774000000241001'
+    monthly_salary:
+      type: number
+      example: 50000
+    payment_mode:
+      type: string
+      description: Allowed values are <code>check</code>, <code>banktransfer</code>, <code>directdeposit</code>.
+      example: banktransfer
+    account_holder_name:
+      type: string
+      example: Anand Maya
+    bank_account_type:
+      type: string
+      example: savings
+    bank_name:
+      type: string
+      example: HDFC
+    ifsc_code:
+      type: string
+      example: AAAA0123456
+    masked_bank_account_number:
+      type: string
+      example: '0123'
+    bank_account_number:
+      type: string
+      example: '1234567890'
+    deduction_id:
+      type: string
+      example: '49774000000257078'
+    deduction_name:
+      type: string
+      example: Cab Deduction
+    benefit_id:
+      type: string
+      example: '49774000000095189'
+    is_active:
+      type: boolean
+      example: true
+    employee_ids:
+      type: string
+      description: Employee IDs separated by comma.
+      example: 40712000000092001,40712000000101001
+    engine_capacity:
+      description: Engine capacity of the vehicle. Allowed values are <code>upto_1600cc</code> and <code>above_1600cc</code>
+      type: string
+      example: above_1600cc
+    expense_met_by:
+      description: Allowed values are <code>employee</code> and <code>employer</code>
+      type: string
+      example: employer
+    is_driver_provided:
+      description: Set it true if the driver is provided by the company.
+      type: boolean
+      example: false
+    payroll_run_id:
+      type: string
+      example: '49774000000257017'
+    branch:
+      type: string
+      example: KODAMBAKKAM
+    contact:
+      type: string
+      example: '919999999999'
+    district:
+      type: string
+      example: VELLORE
+    state:
+      description: State.
+      type: string
+      example: TAMIL NADU
+    micr_code:
+      type: string
+      example: '600240031'
+    perquisite_amount:
+      type: number
+      example: '2500'
+    amount_recovered_from_employee:
+      type: number
+      example: '0'
+    taxable_perquisite_amount:
+      type: number
+      example: '2500'
+    perquisite_id:
+      type: string
+      example: '38018000000341565'
+    perquisite_item_id:
+      type: string
+      example: '38018000000341569'
+    from_date:
+      type: string
+      example: '2024-04-01'
+    to_date:
+      type: string
+      example: '2025-03-31'
+    total_perquisite_amount:
+      type: number
+      example: 2500
+    month:
+      type: string
+      example: April-2024
+    is_ctc_update_in_percentage:
+      type: boolean
+      example: true
+    change_in_percent:
+      type: number
+      example: 20
+    effective_from:
+      type: string
+      example: 2024-03
+    payment_month:
+      type: string
+      example: 2024-04
+    reimbursement_type:
+      type: string
+      example: telephone
+    reimbursement_id:
+      type: string
+      example: '40992000000092150'
+    reimbursement_name:
+      type: string
+      example: Telephone Reimbursement
+    eligible_amount:
+      type: number
+      example: 500
+    unclaimed_amount:
+      type: number
+      example: 500
+    pending_for_approval_amount:
+      type: number
+      example: 0
+    paid_amount:
+      type: number
+      example: 0
+    approved_and_unpaid_amount:
+      type: number
+      example: 0
+    claimed_amount:
+      type: number
+      example: 0
+    excess_claim:
+      type: number
+      example: 0
+    balance_amount:
+      type: number
+      example: 5500
+    approved_amount:
+      type: number
+      example: 0
+    carryforward_type:
+      type: string
+      example: disabled
+    tax_year_end:
+      type: string
+      example: March 2019
+    tax_year_start:
+      type: string
+      example: April 2018
+    work_history_id:
+      type: string
+      example: '43723000000374109'
+    final_payrollrun_id:
+      type: string
+      example: '43723000000374532'
+    final_settlement_date:
+      type: string
+      example: '2021-03-31'
+    loan_id:
+      type: string
+      example: '38018000000383063'
+    loan_number:
+      type: string
+      example: LOAN-00004
+    status:
+      type: string
+      example: open
+    reason:
+      type: string
+      example: Medical reason
+      description: Reason for providing loan.
+    disable_perquisite_calculation:
+      type: boolean
+      example: false
+      description: Set it to <code>true</code> if you want to disable perquisite calculation for this loan.
+    perquisite_interest_rate:
+      type: number
+      example: 4
+      description: Enter perquisite interest rate for this loan.
+    payment_date:
+      type: string
+      example: '2021-01-01'
+      description: Loan payment date.
+    installment_amount:
+      type: number
+      example: 1000
+      description: Installment amount of this loan.
+    no_of_installments:
+      type: number
+      example: 10
+      description: Number of installments of this loan.
+    total_paid_amount:
+      type: number
+      example: 2000
+      description: Total repaid amount of this loan.
+    completed_installments:
+      type: number
+      example: 2
+      description: No of installments completed for this loan.
+    loan_repayment_id:
+      type: string
+      example: '38018000000518077'
+      description: Loan repayment id.
+    repayment_type:
+      type: string
+      example: recurring_loan_repayment
+      description: Loan repayment type.
+    repayment_date:
+      type: string
+      example: '2021-02-26'
+      description: Latest repayment date.
+    repayment_amount:
+      type: number
+      example: 1000
+      description: Latest repaid amount.
+    repayment_start_date:
+      type: string
+      example: '2021-01-01'
+      description: Repayment start date.
+    repayment_end_date:
+      type: string
+      example: '2021-10-31'
+      description: Repayment end date calculated based on installment details.
+    next_repayment_date:
+      type: string
+      example: '2021-03-26'
+      description: Next repayment date.
+    is_repayment_amount_overridden:
+      type: boolean
+      example: false
+      description: Shows whether the latest repayment is overridden or not.
+    override_reason:
+      type: string
+      example: ''
+      description: Reason for skipping the loan repayment.
+    remaining_installments:
+      type: number
+      example: 8
+      description: No of installments remaining to complete the loan.
+    is_repayment_skipped:
+      type: boolean
+      example: false
+      description: Shows whether repayment is skipped or not.
+    is_loan_paused:
+      type: boolean
+      example: false
+      description: Shows whether loan is paused or not.
+    pause_at:
+      type: string
+      example: ''
+      description: Shows month at which the loan is paused.
+    pause_reason:
+      type: string
+      example: ''
+      description: Reason for pausing the loan if any.
+    resume_at:
+      type: string
+      example: ''
+      description: Shows month at which the loan to be resumed.
+    batch_id:
+      type: string
+      example: '49774000000159207'
+      description: Batch id.
+    form_id:
+      type: string
+      example: '49774000000159209'
+    created_date:
+      type: string
+      example: '2021-03-03'
+    fiscal_year_start:
+      type: string
+      example: '2019'
+    fiscal_year_end:
+      type: string
+      example: '2024'
+    payroll_type:
+      type: string
+      example: regular
+    pay_period:
+      type: string
+      example: 2024-06
+    pay_date:
+      type: string
+      example: '2022-06-30'
+    net_pay:
+      type: number
+      example: 50000
+    net_pay_ytd:
+      type: number
+      example: 50000
+    gross_earnings:
+      type: number
+      example: 50000
+    gross_earnings_ytd:
+      type: number
+      example: 50000
+    gross_deductions:
+      type: number
+      example: 200
+    gross_deductions_ytd:
+      type: number
+      example: 200
+    gross_reimbursements:
+      type: number
+      example: 200
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    gross_reimbursements_ytd:
+      type: number
+      example: 200
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    gross_pay:
+      type: number
+      example: 50200
+    pay_month:
+      type: string
+      example: June 2022
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    invitation_type:
+      type: string
+      example: email
+    paid_days:
+      description: Number of paid days in the payrun.
+      type: number
+      example: 30
+    lop_days:
+      description: Number of LOP days in the payrun.
+      type: number
+      example: 1
+    lop_reversal_days:
+      description: Number of LOP days reversed in the payrun.
+      type: number
+      example: 0
+    new_joinee_arrear_days:
+      description: Number of new joinee arrear days in the payrun.
+      type: number
+      example: 0
+    custom_fields:
+      description: Custom fields.
+      type: array
+      items:
+        type: object
+        properties:
+          customfield_id:
+            $ref: '#/components/schemas/customfield_id'
+          value:
+            $ref: '#/components/schemas/value'
+    employee_payment_details:
+      type: object
+      description: Employee payment details.
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/employee_id'
+        first_name:
+          $ref: '#/components/schemas/first_name'
+        full_name:
+          $ref: '#/components/schemas/full_name'
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        bank_account:
+          type: object
+          properties:
+            account_holder_name:
+              $ref: '#/components/schemas/account_holder_name'
+            bank_account_type:
+              $ref: '#/components/schemas/bank_account_type'
+            bank_name:
+              $ref: '#/components/schemas/bank_name'
+            first_name:
+              $ref: '#/components/schemas/first_name'
+            ifsc_code:
+              $ref: '#/components/schemas/ifsc_code'
+            masked_bank_account_number:
+              $ref: '#/components/schemas/masked_bank_account_number'
+    employee_vehicle_details:
+      type: object
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/employee_id'
+        full_name:
+          $ref: '#/components/schemas/full_name'
+        expense_met_by:
+          $ref: '#/components/schemas/expense_met_by'
+        engine_capacity:
+          $ref: '#/components/schemas/engine_capacity'
+        is_driver_provided:
+          $ref: '#/components/schemas/is_driver_provided'
+    personal_details:
+      type: object
+      required:
+        - date_of_birth
+        - father_name
+      properties:
+        date_of_birth:
+          $ref: '#/components/schemas/date_of_birth'
+        personal_mail:
+          $ref: '#/components/schemas/personal_mail'
+        father_name:
+          $ref: '#/components/schemas/father_name'
+        pan:
+          $ref: '#/components/schemas/pan'
+        differently_abled_type:
+          $ref: '#/components/schemas/differently_abled_type'
+    personal_details_response:
+      type: object
+      properties:
+        date_of_birth:
+          $ref: '#/components/schemas/date_of_birth'
+        personal_mail:
+          $ref: '#/components/schemas/personal_mail'
+        father_name:
+          $ref: '#/components/schemas/father_name'
+        pan:
+          $ref: '#/components/schemas/pan'
+        differently_abled_type:
+          $ref: '#/components/schemas/differently_abled_type'
+    present_residential_address:
+      type: object
+      properties:
+        address_line_1:
+          $ref: '#/components/schemas/address_line_1'
+        address_line_2:
+          $ref: '#/components/schemas/address_line_2'
+        city:
+          $ref: '#/components/schemas/city'
+        state_code:
+          $ref: '#/components/schemas/state_code'
+        zip_code:
+          $ref: '#/components/schemas/zip_code'
+    create-an-employee-request:
+      required:
+        - first_name
+        - employee_number
+        - date_of_joining
+        - designation_id
+        - department_id
+        - work_location_id
+        - gender
+        - work_mail
+        - employee_status
+      type: object
+      properties:
+        first_name:
+          $ref: '#/components/schemas/first_name'
+        middle_name:
+          $ref: '#/components/schemas/middle_name'
+        last_name:
+          $ref: '#/components/schemas/last_name'
+        employee_number:
+          $ref: '#/components/schemas/employee_number'
+        date_of_joining:
+          $ref: '#/components/schemas/date_of_joining'
+        work_mail:
+          $ref: '#/components/schemas/work_mail'
+        mobile:
+          $ref: '#/components/schemas/mobile'
+        gender:
+          $ref: '#/components/schemas/gender'
+        designation_id:
+          $ref: '#/components/schemas/designation_id'
+        department_id:
+          $ref: '#/components/schemas/department_id'
+        work_location_id:
+          $ref: '#/components/schemas/work_location_id'
+        is_portal_enabled:
+          $ref: '#/components/schemas/is_portal_enabled'
+        employee_status:
+          $ref: '#/components/schemas/employee_status'
+        last_working_day:
+          $ref: '#/components/schemas/last_working_day'
+          example: ''
+        termination_type:
+          $ref: '#/components/schemas/termination_type'
+          example: ''
+        is_director:
+          $ref: '#/components/schemas/is_director'
+        personal_details:
+          $ref: '#/components/schemas/personal_details'
+        present_residential_address:
+          $ref: '#/components/schemas/present_residential_address'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+    create-an-employee-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Anand Maya details saved successfully.
+        employee:
+          $ref: '#/components/schemas/employee-response'
+    get-employee-details:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        employee:
+          type: object
+          properties:
+            employee_id:
+              $ref: '#/components/schemas/employee_id'
+            first_name:
+              $ref: '#/components/schemas/first_name'
+            middle_name:
+              $ref: '#/components/schemas/middle_name'
+            last_name:
+              $ref: '#/components/schemas/last_name'
+            employee_number:
+              $ref: '#/components/schemas/employee_number'
+            date_of_joining:
+              $ref: '#/components/schemas/date_of_joining'
+            designation_id:
+              $ref: '#/components/schemas/designation_id'
+            designation_name:
+              $ref: '#/components/schemas/designation_name'
+            department_id:
+              $ref: '#/components/schemas/department_id'
+            department_name:
+              $ref: '#/components/schemas/department_name'
+            work_mail:
+              $ref: '#/components/schemas/work_mail'
+            mobile:
+              $ref: '#/components/schemas/mobile'
+            gender:
+              $ref: '#/components/schemas/gender'
+            employee_status:
+              $ref: '#/components/schemas/employee_status'
+            last_working_day:
+              $ref: '#/components/schemas/last_working_day'
+            work_location_details:
+              type: object
+              properties:
+                work_location_id:
+                  $ref: '#/components/schemas/work_location_id'
+                work_location_name:
+                  $ref: '#/components/schemas/work_location_name'
+                state_code:
+                  $ref: '#/components/schemas/state_code'
+            is_director:
+              $ref: '#/components/schemas/is_director'
+            is_tax_deductor:
+              $ref: '#/components/schemas/is_tax_deductor'
+            termination_type:
+              $ref: '#/components/schemas/termination_type'
+              example: ''
+            personal_details:
+              $ref: '#/components/schemas/personal_details_response'
+            present_residential_address:
+              $ref: '#/components/schemas/present_residential_address'
+            email_ids:
+              type: array
+              items:
+                type: string
+              example:
+                - anandmaya@zylker.in
+            custom_fields:
+              $ref: '#/components/schemas/custom_fields'
+    list-employees-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        employees:
+          type: array
+          items:
+            type: object
+            properties:
+              employee_id:
+                $ref: '#/components/schemas/employee_id'
+              first_name:
+                $ref: '#/components/schemas/first_name'
+              middle_name:
+                $ref: '#/components/schemas/middle_name'
+              last_name:
+                $ref: '#/components/schemas/last_name'
+              employee_number:
+                $ref: '#/components/schemas/employee_number'
+              work_location_name:
+                $ref: '#/components/schemas/work_location_name'
+              designation_name:
+                $ref: '#/components/schemas/designation_name'
+              department_name:
+                $ref: '#/components/schemas/department_name'
+              work_mail:
+                $ref: '#/components/schemas/work_mail'
+              employee_status:
+                $ref: '#/components/schemas/employee_status'
+              last_working_day:
+                $ref: '#/components/schemas/last_working_day'
+                example: ''
+              termination_type:
+                $ref: '#/components/schemas/termination_type'
+                example: ''
+              ctc:
+                $ref: '#/components/schemas/ctc'
+              date_of_joining:
+                $ref: '#/components/schemas/date_of_joining'
+              gender:
+                $ref: '#/components/schemas/gender'
+              mobile:
+                $ref: '#/components/schemas/mobile'
+              father_name:
+                $ref: '#/components/schemas/father_name'
+              date_of_birth:
+                $ref: '#/components/schemas/date_of_birth'
+              pan:
+                $ref: '#/components/schemas/pan'
+        page_context:
+          description: The context of a particular page.
+          type: array
+          items:
+            type: object
+            properties:
+              page:
+                $ref: '#/components/schemas/page'
+              per_page:
+                $ref: '#/components/schemas/per_page'
+              has_more_page:
+                $ref: '#/components/schemas/has_more_page'
+              applied_filter:
+                $ref: '#/components/schemas/applied_filter'
+              sort_column:
+                $ref: '#/components/schemas/sort_column'
+              sort_order:
+                $ref: '#/components/schemas/sort_order'
+              custom_fields:
+                type: array
+                items:
+                  type: string
+                example: []
+    get-emp-payslips-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        payslips:
+          type: array
+          items:
+            type: object
+            properties:
+              employee_id:
+                $ref: '#/components/schemas/employee_id'
+              payroll_run_id:
+                $ref: '#/components/schemas/payroll_run_id'
+              payroll_type:
+                $ref: '#/components/schemas/payroll_type'
+              pay_period:
+                $ref: '#/components/schemas/pay_period'
+              pay_date:
+                $ref: '#/components/schemas/pay_date'
+    get-employee-payslip:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        payslip:
+          type: object
+          properties:
+            payment_mode:
+              $ref: '#/components/schemas/payment_mode'
+            employee_summary:
+              type: object
+              properties:
+                first_name:
+                  $ref: '#/components/schemas/first_name'
+                middle_name:
+                  $ref: '#/components/schemas/middle_name'
+                last_name:
+                  $ref: '#/components/schemas/last_name'
+                paid_days:
+                  $ref: '#/components/schemas/paid_days'
+                lop_days:
+                  $ref: '#/components/schemas/lop_days'
+                lop_reversal_days:
+                  $ref: '#/components/schemas/lop_reversal_days'
+                new_joinee_arrear_days:
+                  $ref: '#/components/schemas/new_joinee_arrear_days'
+                pay_date:
+                  $ref: '#/components/schemas/pay_date'
+                employee_number:
+                  $ref: '#/components/schemas/employee_number'
+                date_of_joining:
+                  $ref: '#/components/schemas/date_of_joining'
+                designation:
+                  $ref: '#/components/schemas/designation_name'
+                last_working_day:
+                  $ref: '#/components/schemas/last_working_day'
+                pf_number:
+                  $ref: '#/components/schemas/pf_account_number'
+                uan:
+                  $ref: '#/components/schemas/uan'
+                esi_number:
+                  $ref: '#/components/schemas/esi_number'
+                pan:
+                  $ref: '#/components/schemas/pan'
+                work_location_name:
+                  $ref: '#/components/schemas/work_location_name'
+                department_name:
+                  $ref: '#/components/schemas/department_name'
+                work_mail:
+                  $ref: '#/components/schemas/work_mail'
+                mobile:
+                  $ref: '#/components/schemas/mobile'
+            payroll_summary:
+              type: object
+              properties:
+                gross_earnings:
+                  $ref: '#/components/schemas/gross_earnings'
+                gross_earnings_ytd:
+                  $ref: '#/components/schemas/gross_earnings_ytd'
+                net_pay:
+                  $ref: '#/components/schemas/net_pay'
+                net_pay_ytd:
+                  $ref: '#/components/schemas/net_pay_ytd'
+                gross_deductions:
+                  $ref: '#/components/schemas/gross_deductions'
+                gross_deductions_ytd:
+                  $ref: '#/components/schemas/gross_deductions_ytd'
+                gross_reimbursements:
+                  $ref: '#/components/schemas/gross_reimbursements'
+                gross_reimbursements_ytd:
+                  $ref: '#/components/schemas/gross_reimbursements_ytd'
+                gross_pay:
+                  $ref: '#/components/schemas/gross_pay'
+                pay_month:
+                  $ref: '#/components/schemas/pay_month'
+                payroll_type:
+                  $ref: '#/components/schemas/payroll_type'
+                pay_period:
+                  $ref: '#/components/schemas/pay_period'
+                pay_date:
+                  $ref: '#/components/schemas/pay_date'
+            earnings:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    $ref: '#/components/schemas/name'
+                    example: Basic Pay
+                  amount:
+                    $ref: '#/components/schemas/amount'
+                    example: 3000
+                  ytd_amount:
+                    $ref: '#/components/schemas/amount'
+                    example: 3000
+            deductions:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    $ref: '#/components/schemas/name'
+                    example: Deduction
+                  amount:
+                    $ref: '#/components/schemas/amount'
+                    example: 200
+                  ytd_amount:
+                    $ref: '#/components/schemas/amount'
+                    example: 200
+            benefits:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    $ref: '#/components/schemas/name'
+                    example: Benefit
+                  amount:
+                    $ref: '#/components/schemas/amount'
+                    example: 200
+                  ytd_amount:
+                    $ref: '#/components/schemas/amount'
+                    example: 200
+            taxes:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    $ref: '#/components/schemas/name'
+                    example: Tax
+                  amount:
+                    $ref: '#/components/schemas/amount'
+                    example: 200
+                  ytd_amount:
+                    $ref: '#/components/schemas/amount'
+                    example: 200
+            reimbursements:
+              type: array
+              x-node_available_in:
+                - in
+              x-node_unavailable_in: []
+              items:
+                type: object
+                properties:
+                  name:
+                    $ref: '#/components/schemas/name'
+                    example: Reimbursement
+                  amount:
+                    $ref: '#/components/schemas/amount'
+                    example: 200
+                  ytd_amount:
+                    $ref: '#/components/schemas/amount'
+                    example: 200
+                  remaining_ytd_amount:
+                    $ref: '#/components/schemas/amount'
+                    example: 0
+    get-emp-exit-history-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        employee:
+          type: object
+          properties:
+            employee_id:
+              $ref: '#/components/schemas/employee_id'
+            first_name:
+              $ref: '#/components/schemas/first_name'
+            middle_name:
+              $ref: '#/components/schemas/middle_name'
+            last_name:
+              $ref: '#/components/schemas/last_name'
+            employee_work_history:
+              type: array
+              items:
+                properties:
+                  work_history_id:
+                    $ref: '#/components/schemas/work_history_id'
+                  date_of_joining:
+                    $ref: '#/components/schemas/date_of_joining'
+                  last_working_day:
+                    $ref: '#/components/schemas/last_working_day'
+                  termination_type:
+                    $ref: '#/components/schemas/termination_type'
+                  final_payrollrun_id:
+                    $ref: '#/components/schemas/final_payrollrun_id'
+                  final_settlement_date:
+                    $ref: '#/components/schemas/final_settlement_date'
+    delete-an-employee-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Employee has been deleted from the organization.
+    employee-payment-details-request:
+      type: object
+      properties:
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        bank_account:
+          type: object
+          description: No need to send this details, if the payment mode is cheque type.
+          properties:
+            account_holder_name:
+              $ref: '#/components/schemas/account_holder_name'
+            bank_name:
+              $ref: '#/components/schemas/bank_name'
+            ifsc_code:
+              $ref: '#/components/schemas/ifsc_code'
+            bank_account_type:
+              $ref: '#/components/schemas/bank_account_type'
+    employee-payment-details-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Anand Maya details saved successfully.
+        payment_details:
+          $ref: '#/components/schemas/employee_payment_details'
+    get-emp-payment-details-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        payment_details:
+          $ref: '#/components/schemas/employee_payment_details'
+    get-bank-account-number-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        employee_bank_account_details:
+          type: object
+          properties:
+            employee_id:
+              $ref: '#/components/schemas/employee_id'
+            employee_bank_account_number:
+              $ref: '#/components/schemas/bank_account_number'
+    send-employee-portal-invitation:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Your invitation has been sent.
+    emp-bulk-portal-request:
+      type: object
+      properties:
+        employee_ids:
+          $ref: '#/components/schemas/employee_ids'
+    emp-bulk-portal-enable-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Employee Portal enabled for the selected active employees
+          readOnly: true
+    emp-bulk-portal-disable-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Employee Portal disabled for the selected employees
+          readOnly: true
+    employee-vehicle-details-request:
+      type: object
+      properties:
+        engine_capacity:
+          $ref: '#/components/schemas/engine_capacity'
+        expense_met_by:
+          $ref: '#/components/schemas/expense_met_by'
+        is_driver_provided:
+          $ref: '#/components/schemas/is_driver_provided'
+    employee-vehicle-details-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Employee Vehicle details saved successfully.
+        employee_vehicle_details:
+          $ref: '#/components/schemas/employee_vehicle_details'
+    get-emp-vehicle-details-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        employee_vehicle_details:
+          $ref: '#/components/schemas/employee_vehicle_details'
+    delete-emp-vehicle-details-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Vehicle dissociated for employee.
+    employee-exit-request:
+      type: object
+      properties:
+        last_working_day:
+          $ref: '#/components/schemas/last_working_day'
+        termination_type:
+          $ref: '#/components/schemas/termination_type'
+        personal_mail:
+          $ref: '#/components/schemas/personal_mail'
+        termination_payroll_date:
+          $ref: '#/components/schemas/termination_payroll_date'
+    employee-exit-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Exit Processed
+        termination_payroll_run:
+          type: object
+          properties:
+            payroll_run_id:
+              $ref: '#/components/schemas/payroll_run_id'
+    employee-exit-update-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Employee exit details updated.
+    employee-rehire-request:
+      type: object
+      properties:
+        date_of_joining:
+          $ref: '#/components/schemas/date_of_joining'
+    employee-rehire-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Employee has been rehired successfully.
+    employee-resettlement-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Resettlement Payroll has been created.
+        data:
+          type: object
+          properties:
+            payroll_run_id:
+              $ref: '#/components/schemas/code'
+    employee-ifsc-validate-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        data:
+          type: object
+          properties:
+            address:
+              $ref: '#/components/schemas/code'
+            bank_name:
+              $ref: '#/components/schemas/bank_name'
+            branch:
+              $ref: '#/components/schemas/branch'
+            city:
+              $ref: '#/components/schemas/city'
+              example: ARCOT
+            contact:
+              $ref: '#/components/schemas/contact'
+            district:
+              $ref: '#/components/schemas/district'
+            ifsc_code:
+              $ref: '#/components/schemas/ifsc_code'
+            micr_code:
+              $ref: '#/components/schemas/micr_code'
+            state:
+              $ref: '#/components/schemas/state'
+    employee-perquisite-request:
+      type: object
+      properties:
+        perquisites:
+          type: array
+          items:
+            type: object
+            properties:
+              perquisite_amount:
+                $ref: '#/components/schemas/perquisite_amount'
+              amount_recovered_from_employee:
+                $ref: '#/components/schemas/amount_recovered_from_employee'
+              type:
+                $ref: '#/components/schemas/type'
+                example: free_meals
+    employee-perquisite-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Kowsalya J's Perquisites details have been saved successfully.
+    get-emp-perquisite-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        perquisite_details:
+          type: object
+          properties:
+            employee_id:
+              $ref: '#/components/schemas/employee_id'
+            perquisites:
+              type: array
+              items:
+                type: object
+                properties:
+                  taxable_perquisite_amount:
+                    $ref: '#/components/schemas/taxable_perquisite_amount'
+                  amount_recovered_from_employee:
+                    $ref: '#/components/schemas/amount_recovered_from_employee'
+                  name:
+                    $ref: '#/components/schemas/name'
+                  type:
+                    $ref: '#/components/schemas/type'
+                    example: free_meals
+                  perquisite_amount:
+                    $ref: '#/components/schemas/perquisite_amount'
+    get-emp-perquisite-details-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        perquisite_details:
+          type: object
+          properties:
+            from_date:
+              $ref: '#/components/schemas/from_date'
+            perquisite_id:
+              $ref: '#/components/schemas/perquisite_id'
+            to_date:
+              $ref: '#/components/schemas/to_date'
+            total_perquisite_amount:
+              $ref: '#/components/schemas/total_perquisite_amount'
+            type:
+              $ref: '#/components/schemas/type'
+              example: cars
+            perquisite_items:
+              type: array
+              items:
+                type: object
+                properties:
+                  amount:
+                    $ref: '#/components/schemas/amount'
+                  month:
+                    $ref: '#/components/schemas/month'
+                  perquisite_item_id:
+                    $ref: '#/components/schemas/perquisite_item_id'
+    get-emp-loans-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              employee_id:
+                $ref: '#/components/schemas/employee_id'
+              employee_number:
+                $ref: '#/components/schemas/employee_number'
+              employee_name:
+                $ref: '#/components/schemas/employee_name'
+              deduction_id:
+                $ref: '#/components/schemas/deduction_id'
+              deduction_name:
+                $ref: '#/components/schemas/deduction_name'
+                example: Medical loan
+              loan_id:
+                $ref: '#/components/schemas/loan_id'
+              loan_number:
+                $ref: '#/components/schemas/loan_number'
+              reason:
+                $ref: '#/components/schemas/reason'
+              amount:
+                $ref: '#/components/schemas/amount'
+                example: 10000
+              status:
+                $ref: '#/components/schemas/status'
+                example: open
+              disable_perquisite_calculation:
+                $ref: '#/components/schemas/disable_perquisite_calculation'
+              perquisite_interest_rate:
+                $ref: '#/components/schemas/perquisite_interest_rate'
+              payment_date:
+                $ref: '#/components/schemas/payment_date'
+              installment_amount:
+                $ref: '#/components/schemas/installment_amount'
+              no_of_installments:
+                $ref: '#/components/schemas/no_of_installments'
+              total_paid_amount:
+                $ref: '#/components/schemas/total_paid_amount'
+              completed_installments:
+                $ref: '#/components/schemas/completed_installments'
+              repayment_start_date:
+                $ref: '#/components/schemas/repayment_start_date'
+              repayment_end_date:
+                $ref: '#/components/schemas/repayment_end_date'
+              next_repayment_date:
+                $ref: '#/components/schemas/next_repayment_date'
+              loan_repayment_id:
+                $ref: '#/components/schemas/loan_repayment_id'
+              repayment_type:
+                $ref: '#/components/schemas/repayment_type'
+              repayment_date:
+                $ref: '#/components/schemas/repayment_date'
+              repayment_amount:
+                $ref: '#/components/schemas/repayment_amount'
+              is_repayment_amount_overridden:
+                $ref: '#/components/schemas/is_repayment_amount_overridden'
+              override_reason:
+                $ref: '#/components/schemas/override_reason'
+              remaining_installments:
+                $ref: '#/components/schemas/remaining_installments'
+              is_repayment_skipped:
+                $ref: '#/components/schemas/is_repayment_skipped'
+              balance_amount:
+                $ref: '#/components/schemas/balance_amount'
+                example: 8000
+                description: Balance amount to be paid.
+              is_loan_paused:
+                $ref: '#/components/schemas/is_loan_paused'
+              pause_at:
+                $ref: '#/components/schemas/pause_at'
+              pause_reason:
+                $ref: '#/components/schemas/pause_reason'
+              resume_at:
+                $ref: '#/components/schemas/resume_at'
+              loan_repayment_summary:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    total_paid_amount:
+                      $ref: '#/components/schemas/total_paid_amount'
+                    loan_repayment_id:
+                      $ref: '#/components/schemas/loan_repayment_id'
+                    is_repayment_amount_overridden:
+                      $ref: '#/components/schemas/is_repayment_amount_overridden'
+                    repayment_type:
+                      $ref: '#/components/schemas/repayment_type'
+                    repayment_date:
+                      $ref: '#/components/schemas/repayment_date'
+                    balance_amount:
+                      $ref: '#/components/schemas/balance_amount'
+                      example: 8000
+                      description: Balance amount to be paid.
+                    repayment_amount:
+                      $ref: '#/components/schemas/repayment_amount'
+                    is_repayment_skipped:
+                      $ref: '#/components/schemas/is_repayment_skipped'
+                    override_reason:
+                      $ref: '#/components/schemas/override_reason'
+    get-emp-form16-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        form16_list:
+          type: array
+          items:
+            type: object
+            properties:
+              employee_name:
+                $ref: '#/components/schemas/employee_name'
+              employee_id:
+                $ref: '#/components/schemas/employee_id'
+              employee_number:
+                $ref: '#/components/schemas/employee_number'
+              email:
+                $ref: '#/components/schemas/email'
+              batch_id:
+                $ref: '#/components/schemas/batch_id'
+              form_id:
+                $ref: '#/components/schemas/form_id'
+              created_date:
+                $ref: '#/components/schemas/created_date'
+              fiscal_year_start:
+                $ref: '#/components/schemas/fiscal_year_start'
+              fiscal_year_end:
+                $ref: '#/components/schemas/fiscal_year_end'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.employee.CREATE: Create Employee
+            ERP.employee.UPDATE: Update Employee
+            ERP.employee.READ: Read Employee
+            ERP.employee.DELETE: Delete Employee

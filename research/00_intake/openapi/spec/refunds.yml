@@ -1,0 +1,508 @@
+openapi: 3.0.0
+info:
+  title: Refunds
+  description: A refund object enables you to manage your refunds. Refunds can be made by direct payment to the respective customer or through credits.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: refunds
+    description: Refunds Module
+paths:
+  /creditnotes/{creditnote_id}/refunds:
+    x-mcp-group:
+      - Refunds
+    post:
+      operationId: refund_credit_note
+      tags:
+        - refunds
+      summary: Refund a credit note
+      description: Refund is made on the credit note.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/refund-a-credit-note-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/refund-a-credit-note-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.creditnotes.CREATE
+    parameters:
+      - name: creditnote_id
+        in: path
+        required: true
+        description: Unique identifier of the credit note.
+        schema:
+          type: string
+        example: '90300000081375'
+      - $ref: '#/components/parameters/organization_id'
+  /payments/{payment_id}/refunds:
+    x-mcp-group:
+      - Refunds
+    post:
+      operationId: refund_payment
+      tags:
+        - refunds
+      summary: Refund a payment
+      description: A new credit note is created for the amount to be refund. Refund is then made for the credit note.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/refund-a-payment-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/refund-a-payment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.payments.CREATE
+    parameters:
+      - name: payment_id
+        in: path
+        required: true
+        description: Unique identifier of the payment.
+        schema:
+          type: string
+        example: '90300000081385'
+      - $ref: '#/components/parameters/organization_id'
+  /creditnotes/refunds/{refund_id}:
+    x-mcp-group:
+      - Refunds
+    get:
+      operationId: get_refund
+      tags:
+        - refunds
+      summary: Retrieve refund details
+      description: Details of an existing refund.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/retrieve-refund-details-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.creditnotes.READ
+    parameters:
+      - name: refund_id
+        in: path
+        required: true
+        description: Unique identifier of the refund.
+        schema:
+          type: string
+        example: '90300000081385'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/refund-response'
+    refund-response:
+      type: object
+      properties:
+        refund_id:
+          $ref: '#/components/schemas/refund_id'
+        date:
+          $ref: '#/components/schemas/date'
+        amount:
+          $ref: '#/components/schemas/amount'
+        description:
+          $ref: '#/components/schemas/description'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        refund_mode:
+          $ref: '#/components/schemas/refund_mode'
+        status:
+          $ref: '#/components/schemas/status'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        email:
+          $ref: '#/components/schemas/email'
+        creditnote:
+          description: It contains details of the credit note for which the refund has to made. Each object contains <code>creditnote_id</code>, <code>creditnote_number</code>, <code>date</code>, <code>amount</code>, <code>refund_amount</code> and <code>balance_amount</code>.
+          type: object
+          properties:
+            creditnote_id:
+              $ref: '#/components/schemas/creditnote_id'
+            creditnote_number:
+              $ref: '#/components/schemas/creditnote_number'
+            date:
+              description: The date on which the credit note is raised.
+              example: '2016-06-05'
+            amount:
+              description: The total amount for which the credit note is raised.
+              example: 20
+            refund_amount:
+              $ref: '#/components/schemas/refund_amount'
+            balance_amount:
+              $ref: '#/components/schemas/balance_amount'
+        autotransaction:
+          description: If the refund mode is <code>autotransaction</code>, autotransaction information will be displayed in the autotransaction object. It contains <code>autotransaction_id</code>, <code>payment_gateway</code>, <code>gateway_transaction_id</code>, <code>card_id</code>, <code>last_four_digits</code>, <code>expiry_month</code> and <code>expiry_year</code>.
+          type: object
+          properties:
+            autotransaction_id:
+              $ref: '#/components/schemas/autotransaction_id'
+            payment_gateway:
+              $ref: '#/components/schemas/payment_gateway'
+            gateway_transaction_id:
+              $ref: '#/components/schemas/gateway_transaction_id'
+            gateway_error_message:
+              $ref: '#/components/schemas/gateway_error_message'
+            card_id:
+              $ref: '#/components/schemas/card_id'
+            last_four_digits:
+              $ref: '#/components/schemas/last_four_digits'
+            expiry_month:
+              $ref: '#/components/schemas/expiry_month'
+            expiry_year:
+              $ref: '#/components/schemas/expiry_year'
+        currency_code:
+          $ref: '#/components/schemas/currency_code'
+        currency_symbol:
+          $ref: '#/components/schemas/currency_symbol'
+    refund_id:
+      description: Unique ID generated for a refund made.
+      type: string
+      example: '90300000081385'
+    date:
+      description: The date on which refund is made.
+      type: string
+      example: '2016-06-05'
+    amount:
+      description: The amount to be refund.
+      type: number
+      format: double
+      example: '20'
+    description:
+      description: A small description about the refund.
+      type: string
+      example: Refund for discount Offer
+    reference_number:
+      description: Reference number for the refund made. A custom string can also be set as the reference number.
+      type: string
+      example: INV-384
+    refund_mode:
+      description: Mode through which refund is made. This can be <code>check</code>, <code>cash</code>, <code>creditcard</code>, <code>banktransfer</code>, <code>bankremittance</code>, <code>autotransaction</code> or <code>others</code>.
+      type: string
+      example: autotransaction
+    status:
+      description: Status of the refund made. This can be either <code>success</code> or <code>failure</code>.
+      type: string
+      example: success
+    customer_id:
+      description: Customer ID of the customer to whom the refund is to be made.
+      type: string
+      example: '903000000000099'
+    email:
+      description: Email address of the customer.
+      type: string
+      example: benjamin.george@zylker.org
+    creditnote:
+      description: It contains details of the credit note for which the refund has to made. Each object contains <code>creditnote_id</code>, <code>creditnote_number</code>, <code>date</code>, <code>amount</code>, <code>refund_amount</code> and <code>balance_amount</code>.
+      type: object
+      properties:
+        creditnote_id:
+          $ref: '#/components/schemas/creditnote_id'
+        creditnote_number:
+          $ref: '#/components/schemas/creditnote_number'
+        date:
+          description: The date on which the credit note is raised.
+          example: '2016-06-05'
+        amount:
+          description: The total amount for which the credit note is raised.
+          example: 20
+        refund_amount:
+          $ref: '#/components/schemas/refund_amount'
+        balance_amount:
+          $ref: '#/components/schemas/balance_amount'
+    creditnote_id:
+      description: Credit note ID of the credit note involved in this refund.
+      type: string
+      example: '90300000081375'
+    creditnote_number:
+      description: Credit note number (starts with CN) of the credit note.
+      type: string
+      example: CN-26
+    refund_amount:
+      description: The amount for which the refund is to be made.
+      type: number
+      format: double
+      example: 20
+    balance_amount:
+      description: Unused credits.
+      type: number
+      format: double
+      example: 0
+    autotransaction:
+      description: If the refund mode is <code>autotransaction</code>, autotransaction information will be displayed in the autotransaction object. It contains <code>autotransaction_id</code>, <code>payment_gateway</code>, <code>gateway_transaction_id</code>, <code>card_id</code>, <code>last_four_digits</code>, <code>expiry_month</code> and <code>expiry_year</code>.
+      type: object
+      properties:
+        autotransaction_id:
+          $ref: '#/components/schemas/autotransaction_id'
+        payment_gateway:
+          $ref: '#/components/schemas/payment_gateway'
+        gateway_transaction_id:
+          $ref: '#/components/schemas/gateway_transaction_id'
+        gateway_error_message:
+          $ref: '#/components/schemas/gateway_error_message'
+        card_id:
+          $ref: '#/components/schemas/card_id'
+        last_four_digits:
+          $ref: '#/components/schemas/last_four_digits'
+        expiry_month:
+          $ref: '#/components/schemas/expiry_month'
+        expiry_year:
+          $ref: '#/components/schemas/expiry_year'
+    autotransaction_id:
+      description: Auto-transaction ID generated for the payment made.
+      type: string
+      example: '9030000081373'
+    payment_gateway:
+      description: Name of the payment gateway associated with payment.
+      type: string
+      example: Stripe
+    gateway_transaction_id:
+      description: Transaction ID of the gateway associated with payment.
+      type: string
+      example: B70E6CCF288D
+    gateway_error_message:
+      description: Gateway error for a failed transaction.
+      type: string
+      example: Gateway error for a failed transaction.
+    card_id:
+      description: Card ID of the card.
+      type: string
+      example: '903000079226'
+    last_four_digits:
+      description: Last four digits of the card.
+      type: integer
+      example: 1111
+    expiry_month:
+      description: Expiry month of the card.
+      type: integer
+      example: 9
+    expiry_year:
+      description: Expiry year of the card.
+      type: integer
+      example: 2030
+    currency_code:
+      description: Customer's currency code. Refunds will be made in the customer's currency.
+      type: string
+      example: USD
+    currency_symbol:
+      description: The currency symbol of the currency chosen for the customer.
+      type: string
+      example: $
+    refund-a-credit-note-request:
+      required:
+        - amount
+      type: object
+      properties:
+        amount:
+          $ref: '#/components/schemas/amount'
+        description:
+          $ref: '#/components/schemas/description'
+    refund-a-credit-note-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The refund information has been saved.
+          readOnly: true
+        refund:
+          $ref: '#/components/schemas/refund-response'
+    refund-a-payment-request:
+      required:
+        - amount
+      type: object
+      properties:
+        amount:
+          $ref: '#/components/schemas/amount'
+        description:
+          $ref: '#/components/schemas/description'
+    refund-a-payment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The refund information has been saved.
+          readOnly: true
+        refund:
+          type: object
+          properties:
+            refund_id:
+              $ref: '#/components/schemas/refund_id'
+            date:
+              $ref: '#/components/schemas/date'
+            amount:
+              $ref: '#/components/schemas/amount'
+            description:
+              $ref: '#/components/schemas/description'
+            reference_number:
+              $ref: '#/components/schemas/reference_number'
+            refund_mode:
+              $ref: '#/components/schemas/refund_mode'
+            status:
+              $ref: '#/components/schemas/status'
+            customer_id:
+              $ref: '#/components/schemas/customer_id'
+            email:
+              $ref: '#/components/schemas/email'
+            creditnote:
+              description: It contains details of the credit note for which the refund has to made. Each object contains <code>creditnote_id</code>, <code>creditnote_number</code>, <code>date</code>, <code>amount</code>, <code>refund_amount</code> and <code>balance_amount</code>.
+              type: object
+              properties:
+                creditnote_id:
+                  $ref: '#/components/schemas/creditnote_id'
+                creditnote_number:
+                  $ref: '#/components/schemas/creditnote_number'
+                date:
+                  description: The date on which the credit note is raised.
+                  example: '2016-06-05'
+                amount:
+                  description: The total amount for which the credit note is raised.
+                  example: 20
+                refund_amount:
+                  $ref: '#/components/schemas/refund_amount'
+                balance_amount:
+                  $ref: '#/components/schemas/balance_amount'
+            autotransaction:
+              description: If the refund mode is <code>autotransaction</code>, autotransaction information will be displayed in the autotransaction object. It contains <code>autotransaction_id</code>, <code>payment_gateway</code>, <code>gateway_transaction_id</code>, <code>card_id</code>, <code>last_four_digits</code>, <code>expiry_month</code> and <code>expiry_year</code>.
+              type: object
+              properties:
+                autotransaction_id:
+                  $ref: '#/components/schemas/autotransaction_id'
+                payment_gateway:
+                  $ref: '#/components/schemas/payment_gateway'
+                gateway_transaction_id:
+                  $ref: '#/components/schemas/gateway_transaction_id'
+                gateway_error_message:
+                  $ref: '#/components/schemas/gateway_error_message'
+                card_id:
+                  $ref: '#/components/schemas/card_id'
+                last_four_digits:
+                  $ref: '#/components/schemas/last_four_digits'
+                expiry_month:
+                  $ref: '#/components/schemas/expiry_month'
+                expiry_year:
+                  $ref: '#/components/schemas/expiry_year'
+            currency_code:
+              $ref: '#/components/schemas/currency_code'
+            currency_symbol:
+              $ref: '#/components/schemas/currency_symbol'
+    retrieve-refund-details-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        refund:
+          type: object
+          properties:
+            refund_id:
+              $ref: '#/components/schemas/refund_id'
+            date:
+              $ref: '#/components/schemas/date'
+            amount:
+              $ref: '#/components/schemas/amount'
+            description:
+              $ref: '#/components/schemas/description'
+            reference_number:
+              $ref: '#/components/schemas/reference_number'
+            refund_mode:
+              $ref: '#/components/schemas/refund_mode'
+            status:
+              $ref: '#/components/schemas/status'
+            customer_id:
+              $ref: '#/components/schemas/customer_id'
+            email:
+              $ref: '#/components/schemas/email'
+            creditnote:
+              description: It contains details of the credit note for which the refund has to made. Each object contains <code>creditnote_id</code>, <code>creditnote_number</code>, <code>date</code>, <code>amount</code>, <code>refund_amount</code> and <code>balance_amount</code>.
+              type: object
+              properties:
+                creditnote_id:
+                  $ref: '#/components/schemas/creditnote_id'
+                creditnote_number:
+                  $ref: '#/components/schemas/creditnote_number'
+                date:
+                  description: The date on which the credit note is raised.
+                  example: '2016-06-05'
+                amount:
+                  description: The total amount for which the credit note is raised.
+                  example: 20
+                refund_amount:
+                  $ref: '#/components/schemas/refund_amount'
+                balance_amount:
+                  $ref: '#/components/schemas/balance_amount'
+            autotransaction:
+              description: If the refund mode is <code>autotransaction</code>, autotransaction information will be displayed in the autotransaction object. It contains <code>autotransaction_id</code>, <code>payment_gateway</code>, <code>gateway_transaction_id</code>, <code>card_id</code>, <code>last_four_digits</code>, <code>expiry_month</code> and <code>expiry_year</code>.
+              type: object
+              properties:
+                autotransaction_id:
+                  $ref: '#/components/schemas/autotransaction_id'
+                payment_gateway:
+                  $ref: '#/components/schemas/payment_gateway'
+                gateway_transaction_id:
+                  $ref: '#/components/schemas/gateway_transaction_id'
+                gateway_error_message:
+                  $ref: '#/components/schemas/gateway_error_message'
+                card_id:
+                  $ref: '#/components/schemas/card_id'
+                last_four_digits:
+                  $ref: '#/components/schemas/last_four_digits'
+                expiry_month:
+                  $ref: '#/components/schemas/expiry_month'
+                expiry_year:
+                  $ref: '#/components/schemas/expiry_year'
+            currency_code:
+              $ref: '#/components/schemas/currency_code'
+            currency_symbol:
+              $ref: '#/components/schemas/currency_symbol'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.creditnotes.CREATE: Create Creditnotes
+            ERP.payments.CREATE: Create Payments
+            ERP.creditnotes.READ: Read Creditnotes

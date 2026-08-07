@@ -1,0 +1,21 @@
+# One-click deploy to Render. Push this repository to GitHub, then in Render:
+#   New  ->  Blueprint  ->  select the repository.
+# Set DEMO_USER and DEMO_PASSWORD in the dashboard before sharing the URL.
+services:
+  - type: web
+    name: capex-wbs-control-hub
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app/run.py
+    healthCheckPath: /api/health
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: CAPEX_DB_PATH
+        value: /tmp/capex.db      # free tier has no persistent disk; the demo
+                                  # dataset reseeds automatically on restart
+      - key: DEMO_USER
+        sync: false               # set in the dashboard, never committed
+      - key: DEMO_PASSWORD
+        sync: false

@@ -1,0 +1,1319 @@
+openapi: 3.0.0
+info:
+  title: Custom Modules
+  description: 'In Zoho ERP, you can create a custom module to record other data when the predefined modules are not sufficient to manage all your business requirements <br/>(<span style="font-style: italic">Note</span> : cf_ attribute is placeholder of the created custom field)'
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: custom-modules
+    description: Custom Module Configuration.
+  - name: custom-module-records
+    description: Custom Module Records.
+paths:
+  /settings/modules:
+    x-mcp-group:
+      - Custom Modules
+    get:
+      tags:
+        - custom-modules
+      operationId: list_custom_modules
+      summary: List custom modules
+      description: List all custom module configurations in the organization. This returns the module definitions including field configurations, permissions, and portal settings.
+      parameters:
+        - name: portal_type
+          in: query
+          description: 'Filter by portal type. Allowed values: <code>customer</code>, <code>vendor</code> and <code>employee</code>.'
+          required: false
+          schema:
+            type: string
+        - name: sort_order
+          in: query
+          description: 'Sort order. Allowed values: <code>ascending</code> and <code>descending</code>.'
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number for pagination.
+          required: false
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          description: Number of records per page.
+          required: false
+          schema:
+            type: integer
+          example: 10
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-module-configurations-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.READ
+    post:
+      tags:
+        - custom-modules
+      operationId: create_custom_module
+      summary: Create a custom module
+      description: Create a new custom module configuration. Define the module name, fields, permissions, and other settings.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-module-configuration-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-module-configuration-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.CREATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /settings/modules/{module_api_name}:
+    x-mcp-group:
+      - Custom Modules
+    get:
+      tags:
+        - custom-modules
+      operationId: get_custom_module
+      summary: Get a custom module
+      description: Get the configuration details of a specific custom module.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-module-configuration-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.READ
+    put:
+      tags:
+        - custom-modules
+      operationId: update_custom_module
+      summary: Update a custom module
+      description: Update the configuration of an existing custom module.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-module-configuration-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-module-configuration-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.UPDATE
+    delete:
+      tags:
+        - custom-modules
+      operationId: delete_custom_module
+      summary: Delete a custom module
+      description: Delete an existing custom module configuration and all its records.
+      parameters:
+        - name: force_delete
+          in: query
+          description: Force delete even if the module has existing records.
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-module-configuration-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.DELETE
+    parameters:
+      - name: module_api_name
+        in: path
+        required: true
+        description: API name of the custom module (e.g., <code>cm_debtor</code>).
+        schema:
+          type: string
+        example: cm_debtor
+      - $ref: '#/components/parameters/organization_id'
+  /{module_name}:
+    x-mcp-group:
+      - Custom Modules
+    get:
+      tags:
+        - custom-module-records
+      operationId: list_custom_module_records
+      summary: List custom module records
+      description: Get the list of records of a custom module.
+      parameters:
+        - $ref: '#/components/parameters/module_name'
+        - name: customview_id
+          in: query
+          description: Filter records based on a custom view.
+          required: false
+          schema:
+            type: string
+        - name: filter_by
+          in: query
+          description: 'Filter records by status. Allowed Values: <code>Status.All</code>, <code>Status.Active</code>, <code>Status.Inactive</code>'
+          required: false
+          schema:
+            type: string
+        - name: search_text
+          in: query
+          description: Search records by text.
+          required: false
+          schema:
+            type: string
+        - name: sort_column
+          in: query
+          description: 'Sort records by column. Allowed Values: <code>record_name</code>, <code>created_time</code>, <code>last_modified_time</code> or any custom field API name (<code>cf_*</code>).'
+          required: false
+          schema:
+            type: string
+        - name: sort_order
+          in: query
+          description: 'Sort order. Allowed Values: <code>A</code> (Ascending), <code>D</code> (Descending)'
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number for pagination.
+          required: false
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          description: Number of records per page.
+          required: false
+          schema:
+            type: integer
+          example: 10
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-record-list-of-a-custom-module-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.custommodules.ALL
+    put:
+      tags:
+        - custom-module-records
+      operationId: bulk_update_custom_module_records
+      summary: Bulk update custom module records
+      description: Update existing custom module records in bulk.
+      parameters:
+        - $ref: '#/components/parameters/module_name'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/bulk-update-custom-module-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/bulk-update-custom-module-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.custommodules.ALL
+    post:
+      tags:
+        - custom-module-records
+      operationId: create_custom_module_record
+      summary: Create a custom module record
+      description: Create a new record in a custom module.
+      parameters:
+        - $ref: '#/components/parameters/module_name'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-custom-modules-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-custom-modules-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.custommodules.ALL
+    delete:
+      tags:
+        - custom-module-records
+      operationId: delete_custom_module_records
+      summary: Delete custom module records
+      description: Delete records from a custom module.
+      parameters:
+        - name: record_ids
+          in: query
+          description: Comma-separated list of record IDs to delete. Maximum 200 IDs.
+          required: false
+          schema:
+            type: string
+          example: 460000000639128,460000000639129
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-custom-modules-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.custommodules.ALL
+    parameters:
+      - name: module_name
+        in: path
+        description: Module Name.
+        required: true
+        schema:
+          type: string
+        example: cm_debtor
+      - $ref: '#/components/parameters/organization_id'
+  /{module_name}/{module_id}:
+    x-mcp-group:
+      - Custom Modules
+    get:
+      tags:
+        - custom-module-records
+      operationId: get_custom_module_record
+      summary: Get a custom module record
+      description: Get the details of an individual record in a custom module.
+      parameters:
+        - $ref: '#/components/parameters/module_name'
+        - $ref: '#/components/parameters/module_id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-individual-record-details-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.custommodules.ALL
+    put:
+      tags:
+        - custom-module-records
+      operationId: update_custom_module_record
+      summary: Update a custom module record
+      description: Update an existing record in a custom module.
+      parameters:
+        - $ref: '#/components/parameters/module_name'
+        - $ref: '#/components/parameters/module_id'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-custom-module-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-custom-module-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.custommodules.ALL
+    delete:
+      tags:
+        - custom-module-records
+      operationId: delete_custom_module_record
+      summary: Delete a custom module record
+      description: Delete an individual record from a custom module.
+      parameters:
+        - name: module_id
+          in: path
+          description: Custom Module ID.
+          required: true
+          schema:
+            type: string
+          example: 2112155000000652000
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-individual-records-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.custommodules.ALL
+    parameters:
+      - name: module_name
+        in: path
+        description: Module Name.
+        required: true
+        schema:
+          type: string
+        example: cm_debtor
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    module_name:
+      name: module_name
+      in: path
+      description: Module Name.
+      required: true
+      schema:
+        type: string
+        example: cm_debtor
+    module_id:
+      name: module_id
+      in: path
+      description: Custom Module ID.
+      required: true
+      schema:
+        type: string
+        example: 2112155000000652000
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+        example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/module_record-response'
+    module_record-response:
+      type: object
+      properties:
+        module_record_id:
+          $ref: '#/components/schemas/record_id'
+        module_api_name:
+          $ref: '#/components/schemas/module_api_name'
+        last_modified_time:
+          $ref: '#/components/schemas/last_modified_time'
+        last_modified_time_formatted:
+          $ref: '#/components/schemas/last_modified_time_formatted'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        created_time_formatted:
+          $ref: '#/components/schemas/created_time'
+        created_by_id:
+          $ref: '#/components/schemas/created_time_formatted'
+        last_modified_by_id:
+          $ref: '#/components/schemas/last_modified_by_id'
+        record_name:
+          $ref: '#/components/schemas/record_name'
+        record_name_formatted:
+          $ref: '#/components/schemas/record_name_formatted'
+        cf_debt_amount:
+          $ref: '#/components/schemas/cf_debt_amount'
+        cf_debt_amount_formatted:
+          $ref: '#/components/schemas/cf_debt_amount_formatted'
+    record_name:
+      description: Name of the record.
+      type: string
+      example: Alice
+    shared_to:
+      description: The users ID to whom it should be shared.
+      type: array
+      items:
+        type: string
+      example:
+        - 460000000639128
+        - 460000000639129
+    record_id:
+      description: ID of the Custom Module Record.
+      type: string
+      example: '460000000639129'
+    module_api_name:
+      description: Module API Name.
+      type: string
+      example: cm_debtor
+    last_modified_time:
+      description: Last modified time of the custom module record.
+      type: string
+      example: 2022-02-18T11:00:45+0530
+    created_time:
+      description: Creation time of the custom module record.
+      type: string
+      example: 2022-02-18T11:00:45+0530
+    created_by_id:
+      description: Created by User ID.
+      type: string
+      example: '2112155000000069001'
+    last_modified_by_id:
+      description: Last modified by User ID.
+      type: string
+      example: '2112155000000069001'
+    last_modified_time_formatted:
+      description: Formatted value of modified Time.
+      type: string
+      example: 18/02/2022 11:00 AM
+    created_time_formatted:
+      description: Formatted value of created time.
+      type: string
+      example: 2022-02-18T11:00:45+0530
+    record_name_formatted:
+      description: Name of the Record Formatted.
+      type: string
+      example: Alice
+    date:
+      description: The date of the comment added.
+      type: string
+      example: '2022-02-17'
+    commented_by:
+      description: The user who commented.
+      type: string
+      example: Staff Bob
+    operation_type:
+      description: Type of the operation.
+      type: string
+      example: Added
+    comment_type:
+      description: Type of the comment.
+      type: string
+      example: system
+    date_formatted:
+      description: Date of the comment.
+      type: string
+      example: 17/02/2022 12:09 AM
+    description:
+      description: Description of the comment.
+      type: string
+      example: Record added.
+    time:
+      description: Time of the record added.
+      type: string
+      example: 12:09 AM
+    comment_id:
+      description: ID of the comment.
+      type: string
+      example: '3000000003061'
+    commented_by_id:
+      description: The user ID who added the comment.
+      type: string
+      example: '3000000002565'
+    shared_type:
+      description: Sharing type.
+      type: string
+      example: read_write
+    can_submit:
+      description: Whether the record can be submitted.
+      type: boolean
+      example: false
+    approvers_list:
+      description: List of approvers.
+      type: string
+      example: ''
+    can_approve:
+      description: To get whether the record can be approved.
+      type: boolean
+      example: false
+    module_name:
+      description: Name of the module.
+      type: string
+      example: debtor
+    module_record_id:
+      description: Record ID.
+      type: string
+      example: 3000000003057
+    module_record_ids:
+      description: Record IDs.
+      type: string
+      example: 460000000639128,460000000639129
+    field_id:
+      description: Field ID.
+      type: string
+      example: 1
+    is_active:
+      description: Field is active.
+      type: boolean
+      example: true
+    is_mandatory:
+      description: Field is mandatory.
+      type: boolean
+      example: true
+    label:
+      description: Label/ Field Name.
+      type: string
+      example: Debtor Name
+    api_name:
+      description: API name of the field.
+      type: string
+      example: record_name
+    data_type_formatted:
+      description: Formatted data type of the field.
+      type: string
+      example: Text Box (Single Line)
+    value_formatted:
+      description: Formatted value of the Field.
+      type: string
+      example: Alice
+    data_type:
+      description: Data Type of the Field.
+      type: string
+      example: string
+    pii_type:
+      description: PII type of the Field.
+      type: string
+      example: non_pii
+    value:
+      description: Value of the Field.
+      type: string
+      example: Alice
+    max_length:
+      description: Maximum length of the field.
+      type: number
+      example: 255
+    help_text:
+      description: Help Text.
+      type: string
+      example: ''
+    module_plural_name:
+      description: Module name in plural.
+      type: string
+      example: debtors
+    cf_debt_amount:
+      description: Value of the custom Field.
+      type: number
+      example: 10000
+    cf_debt_amount_formatted:
+      description: The formatted value of the custom Field.
+      type: string
+      example: ₹10,000.00
+    id:
+      description: User ID.
+      type: number
+      example: 2112155000000069000
+    text:
+      description: User Text.
+      type: string
+      example: Staff Bob
+    name:
+      description: User Name.
+      type: string
+      example: Staff Bob
+    email:
+      description: User Email.
+      type: string
+    photo_url:
+      description: User Photo URL.
+      type: string
+    is_current_user:
+      description: Is the User is current User.
+      type: boolean
+      example: true
+    page:
+      type: integer
+      example: 1
+    per_page:
+      type: integer
+      example: 10
+    has_more_page:
+      type: boolean
+      example: false
+    applied_filter:
+      type: string
+      example: Status.All
+    sort_order:
+      type: string
+      example: D
+    sort_column:
+      type: string
+      example: created_time
+    module_record_hash:
+      type: object
+      properties:
+        module_record_id:
+          $ref: '#/components/schemas/date'
+        module_api_name:
+          $ref: '#/components/schemas/module_api_name'
+        last_modified_time:
+          $ref: '#/components/schemas/last_modified_time'
+        last_modified_time_formatted:
+          $ref: '#/components/schemas/last_modified_time_formatted'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        created_time_formatted:
+          $ref: '#/components/schemas/created_time_formatted'
+        created_by_id:
+          $ref: '#/components/schemas/created_by_id'
+        last_modified_by_id:
+          $ref: '#/components/schemas/last_modified_by_id'
+        record_name:
+          $ref: '#/components/schemas/record_name'
+        record_name_formatted:
+          $ref: '#/components/schemas/record_name_formatted'
+    comments:
+      type: array
+      items:
+        type: object
+        properties:
+          date:
+            $ref: '#/components/schemas/date'
+          commented_by:
+            $ref: '#/components/schemas/commented_by'
+          operation_type:
+            $ref: '#/components/schemas/operation_type'
+          comment_type:
+            $ref: '#/components/schemas/comment_type'
+          date_formatted:
+            $ref: '#/components/schemas/date_formatted'
+          description:
+            $ref: '#/components/schemas/description'
+          time:
+            $ref: '#/components/schemas/time'
+          comment_id:
+            $ref: '#/components/schemas/comment_id'
+          commented_by_id:
+            $ref: '#/components/schemas/commented_by_id'
+    module_fields:
+      type: array
+      items:
+        type: object
+        properties:
+          field_id:
+            $ref: '#/components/schemas/field_id'
+          is_active:
+            $ref: '#/components/schemas/is_active'
+          is_mandatory:
+            $ref: '#/components/schemas/is_mandatory'
+          label:
+            $ref: '#/components/schemas/label'
+          api_name:
+            $ref: '#/components/schemas/api_name'
+          data_type_formatted:
+            $ref: '#/components/schemas/data_type_formatted'
+          value_formatted:
+            $ref: '#/components/schemas/value_formatted'
+          data_type:
+            $ref: '#/components/schemas/data_type'
+          pii_type:
+            $ref: '#/components/schemas/pii_type'
+          value:
+            $ref: '#/components/schemas/value'
+          max_length:
+            $ref: '#/components/schemas/max_length'
+          help_text:
+            $ref: '#/components/schemas/help_text'
+    module_record:
+      type: array
+      items:
+        $ref: '#/components/schemas/module_record-response'
+    module_record_module_put:
+      type: array
+      items:
+        type: object
+        properties:
+          module_record_id:
+            $ref: '#/components/schemas/record_id'
+          module_api_name:
+            $ref: '#/components/schemas/module_api_name'
+          last_modified_time:
+            $ref: '#/components/schemas/last_modified_time'
+          last_modified_time_formatted:
+            $ref: '#/components/schemas/last_modified_time_formatted'
+          created_time:
+            $ref: '#/components/schemas/created_time'
+          created_time_formatted:
+            $ref: '#/components/schemas/created_time'
+          created_by_id:
+            $ref: '#/components/schemas/created_time_formatted'
+          last_modified_by_id:
+            $ref: '#/components/schemas/last_modified_by_id'
+          record_name:
+            $ref: '#/components/schemas/record_name'
+          record_name_formatted:
+            $ref: '#/components/schemas/record_name_formatted'
+          cf_debt_amount:
+            $ref: '#/components/schemas/cf_debt_amount'
+          cf_debt_amount_formatted:
+            $ref: '#/components/schemas/cf_debt_amount_formatted'
+          code:
+            type: integer
+            example: 0
+          message:
+            type: string
+            example: success
+    module_record_get:
+      type: object
+      properties:
+        module_plural_name:
+          $ref: '#/components/schemas/module_plural_name'
+        comments:
+          $ref: '#/components/schemas/comments'
+        module_api_name:
+          $ref: '#/components/schemas/module_api_name'
+        shared_type:
+          $ref: '#/components/schemas/shared_type'
+        can_submit:
+          $ref: '#/components/schemas/can_submit'
+        approvers_list:
+          $ref: '#/components/schemas/approvers_list'
+        can_approve:
+          $ref: '#/components/schemas/can_approve'
+        module_name:
+          $ref: '#/components/schemas/module_name'
+        module_fields:
+          $ref: '#/components/schemas/module_fields'
+        module_record_id:
+          $ref: '#/components/schemas/module_record_id'
+        shared_to:
+          $ref: '#/components/schemas/shared_to'
+    page_context:
+      type: object
+      properties:
+        page:
+          $ref: '#/components/schemas/page'
+        per_page:
+          $ref: '#/components/schemas/per_page'
+        has_more_page:
+          $ref: '#/components/schemas/has_more_page'
+        applied_filter:
+          $ref: '#/components/schemas/applied_filter'
+        sort_column:
+          $ref: '#/components/schemas/sort_column'
+        sort_order:
+          $ref: '#/components/schemas/sort_order'
+    users:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            $ref: '#/components/schemas/id'
+          text:
+            $ref: '#/components/schemas/text'
+          name:
+            $ref: '#/components/schemas/name'
+          email:
+            $ref: '#/components/schemas/email'
+          photo_url:
+            $ref: '#/components/schemas/photo_url'
+          is_current_user:
+            $ref: '#/components/schemas/is_current_user'
+    get-record-list-of-a-custom-module-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        module_record:
+          $ref: '#/components/schemas/module_record'
+        page_context:
+          $ref: '#/components/schemas/page_context'
+    bulk-update-custom-module-request:
+      required:
+        - record_name
+      type: object
+      properties:
+        cf_debt_amount:
+          $ref: '#/components/schemas/cf_debt_amount'
+        module_record_id:
+          $ref: '#/components/schemas/module_record_ids'
+        record_name:
+          description: Name of the record.
+          type: string
+          example: Alice
+    bulk-update-custom-module-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Bulk update successful
+          readOnly: true
+        module_record:
+          $ref: '#/components/schemas/module_record_module_put'
+    create-custom-modules-request:
+      required:
+        - record_name
+      type: object
+      properties:
+        record_name:
+          $ref: '#/components/schemas/record_name'
+        cf_debt_amount:
+          $ref: '#/components/schemas/cf_debt_amount'
+    create-custom-modules-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: debtor is created successfully
+          readOnly: true
+        module_record:
+          $ref: '#/components/schemas/module_record'
+    delete-custom-modules-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Module record deleted
+          readOnly: true
+    get-individual-record-details-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        module_record:
+          $ref: '#/components/schemas/module_record_get'
+        module_record_hash:
+          $ref: '#/components/schemas/module_record_hash'
+        users:
+          $ref: '#/components/schemas/users'
+    update-custom-module-request:
+      required:
+        - record_name
+      type: object
+      properties:
+        record_name:
+          $ref: '#/components/schemas/record_name'
+        cf_debt_amount:
+          $ref: '#/components/schemas/cf_debt_amount'
+    update-custom-module-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: debtor is updated successfully.
+          readOnly: true
+        module_record:
+          $ref: '#/components/schemas/module_record'
+    delete-individual-records-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+    module_configuration:
+      type: object
+      properties:
+        module_id:
+          type: string
+          description: Unique identifier of the module.
+          example: '982000000567001'
+        module_name:
+          type: string
+          description: Display name of the custom module.
+          example: Debtors
+        module_api_name:
+          type: string
+          description: API name of the custom module (starts with cm_).
+          example: cm_debtor
+        is_active:
+          type: boolean
+          description: Whether the module is active.
+          example: true
+        singular_name:
+          type: string
+          description: Singular form of the module name.
+          example: Debtor
+        plural_name:
+          type: string
+          description: Plural form of the module name.
+          example: Debtors
+    create-module-configuration-request:
+      type: object
+      required:
+        - module_name
+        - plural_name
+      properties:
+        module_name:
+          type: string
+          description: Display name of the custom module. <code>Max-length [25]</code>
+          example: Debtor
+        plural_name:
+          type: string
+          description: Plural form of the module name. <code>Max-length [30]</code>
+          example: Debtors
+        parent_module_id:
+          type: string
+          description: ID of the parent module, if this is a sub-module.
+        record_name:
+          type: string
+          description: Label for the record name field. <code>Max-length [30]</code>
+          example: Debtor Name
+        description:
+          type: string
+          description: Description of the custom module. <code>Max-length [150]</code>
+          example: Module to track debtors
+        shared_type:
+          type: string
+          description: 'Sharing type for the module. Allowed Values: <code>private</code>, <code>read_only</code>, <code>read_write</code> and <code>public</code>.'
+          example: private
+        is_reporting_tags_supported:
+          type: boolean
+          description: Whether reporting tags are supported for this module.
+          example: false
+        can_edit_module:
+          type: boolean
+          description: Whether records in this module can be edited.
+          example: true
+        can_create_module:
+          type: boolean
+          description: Whether records can be created in this module.
+          example: true
+        can_delete_module:
+          type: boolean
+          description: Whether records can be deleted from this module.
+          example: true
+        can_bulk_update_module:
+          type: boolean
+          description: Whether bulk update is supported.
+          example: false
+        can_send_mail:
+          type: boolean
+          description: Whether sending mail is supported from this module.
+          example: false
+        can_bulk_send_mail:
+          type: boolean
+          description: Whether bulk mail sending is supported.
+          example: false
+        can_attach_documents:
+          type: boolean
+          description: Whether document attachment is supported.
+          example: true
+        can_show_pdf_view:
+          type: boolean
+          description: Whether PDF view is available.
+          example: false
+        can_allow_pdf_print:
+          type: boolean
+          description: Whether PDF print is allowed.
+          example: false
+        allow_forclone:
+          type: boolean
+          description: Whether cloning records is allowed.
+          example: false
+        can_lock_record:
+          type: boolean
+          description: Whether record locking is supported.
+          example: false
+        can_use_widget_for_custommodule:
+          type: boolean
+          description: Whether widgets can be used in this module.
+          example: false
+        can_show_custommodule_lhs:
+          type: boolean
+          description: Whether to show the module in the left-hand side navigation.
+          example: true
+        show_custommodule_in:
+          type: array
+          description: Where to show the custom module. Each item has a <code>show_in</code> value.
+          items:
+            type: object
+            properties:
+              show_in:
+                type: string
+                description: 'Allowed Values: <code>settings</code>, <code>webui</code>, <code>extension</code> and <code>lhs</code>.'
+                example: webui
+        module_permission:
+          type: array
+          description: Role-based permissions for the module.
+          items:
+            type: object
+            properties:
+              role_id:
+                type: string
+                description: ID of the role.
+              can_create:
+                type: boolean
+                description: Permission to create records.
+              can_edit:
+                type: boolean
+                description: Permission to edit records.
+              can_view:
+                type: boolean
+                description: Permission to view records.
+              can_delete:
+                type: boolean
+                description: Permission to delete records.
+              can_approve:
+                type: boolean
+                description: Permission to approve records.
+              full_access:
+                type: boolean
+                description: Full access permission.
+        module_visibility:
+          type: array
+          description: Visibility settings for the module in different contexts.
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                description: Context type.
+              is_hidden:
+                type: boolean
+                description: Whether the module is hidden in this context.
+        allowed_apps:
+          type: array
+          description: List of apps where this module is available.
+          items:
+            type: string
+          example:
+            - books
+        default_customview_api_name:
+          type: string
+          description: API name of the default custom view for this module.
+    update-module-configuration-request:
+      type: object
+      required:
+        - module_name
+        - plural_name
+      properties:
+        module_name:
+          type: string
+          description: Display name of the custom module. <code>Max-length [25]</code>
+          example: Debtor
+        plural_name:
+          type: string
+          description: Plural form of the module name. <code>Max-length [30]</code>
+          example: Debtors
+        parent_module_id:
+          type: string
+          description: ID of the parent module, if this is a sub-module.
+        record_name:
+          type: string
+          description: Label for the record name field. <code>Max-length [30]</code>
+          example: Debtor Name
+        description:
+          type: string
+          description: Description of the custom module. <code>Max-length [150]</code>
+          example: Module to track debtors
+        shared_type:
+          type: string
+          description: 'Sharing type for the module. Allowed Values: <code>private</code>, <code>read_only</code>, <code>read_write</code> and <code>public</code>.'
+          example: private
+        is_reporting_tags_supported:
+          type: boolean
+          description: Whether reporting tags are supported for this module.
+          example: false
+        can_edit_module:
+          type: boolean
+          description: Whether records in this module can be edited.
+          example: true
+        can_bulk_update_module:
+          type: boolean
+          description: Whether bulk update is supported.
+          example: false
+        can_send_mail:
+          type: boolean
+          description: Whether sending mail is supported from this module.
+          example: false
+        can_bulk_send_mail:
+          type: boolean
+          description: Whether bulk mail sending is supported.
+          example: false
+        can_attach_documents:
+          type: boolean
+          description: Whether document attachment is supported.
+          example: true
+        can_show_pdf_view:
+          type: boolean
+          description: Whether PDF view is available.
+          example: false
+        can_allow_pdf_print:
+          type: boolean
+          description: Whether PDF print is allowed.
+          example: false
+        allow_forclone:
+          type: boolean
+          description: Whether cloning records is allowed.
+          example: false
+        can_lock_record:
+          type: boolean
+          description: Whether record locking is supported.
+          example: false
+        can_use_widget_for_custommodule:
+          type: boolean
+          description: Whether widgets can be used in this module.
+          example: false
+        can_show_custommodule_lhs:
+          type: boolean
+          description: Whether to show the module in the left-hand side navigation.
+          example: true
+        show_custommodule_in:
+          type: array
+          description: Where to show the custom module. Each item has a <code>show_in</code> value.
+          items:
+            type: object
+            properties:
+              show_in:
+                type: string
+                description: 'Allowed Values: <code>settings</code>, <code>webui</code>, <code>extension</code> and <code>lhs</code>.'
+                example: webui
+        module_permission:
+          type: array
+          description: Role-based permissions for the module.
+          items:
+            type: object
+            properties:
+              role_id:
+                type: string
+                description: ID of the role.
+              can_create:
+                type: boolean
+                description: Permission to create records.
+              can_edit:
+                type: boolean
+                description: Permission to edit records.
+              can_view:
+                type: boolean
+                description: Permission to view records.
+              can_delete:
+                type: boolean
+                description: Permission to delete records.
+              can_approve:
+                type: boolean
+                description: Permission to approve records.
+              full_access:
+                type: boolean
+                description: Full access permission.
+        module_visibility:
+          type: array
+          description: Visibility settings for the module in different contexts.
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                description: Context type.
+              is_hidden:
+                type: boolean
+                description: Whether the module is hidden in this context.
+        default_customview_api_name:
+          type: string
+          description: API name of the default custom view for this module.
+    list-module-configurations-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+        message:
+          type: string
+          example: success
+        modules:
+          type: array
+          items:
+            $ref: '#/components/schemas/module_configuration'
+    get-module-configuration-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+        message:
+          type: string
+          example: success
+        module:
+          $ref: '#/components/schemas/module_configuration'
+    create-module-configuration-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+        message:
+          type: string
+          example: The custom module has been created.
+        module:
+          $ref: '#/components/schemas/module_configuration'
+    update-module-configuration-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+        message:
+          type: string
+          example: The custom module has been updated.
+        module:
+          $ref: '#/components/schemas/module_configuration'
+    delete-module-configuration-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+        message:
+          type: string
+          example: The custom module has been deleted.
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.custommodules.ALL: All permissions for custom module
+            ERP.settings.CREATE: Create Settings
+            ERP.settings.UPDATE: Update Settings
+            ERP.settings.READ: Read Settings
+            ERP.settings.DELETE: Delete Settings

@@ -1,0 +1,1489 @@
+openapi: 3.0.0
+info:
+  title: Customer Payments
+  description: Payments from Customers towards Invoices.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: customer-payments
+    description: Customer-Payments Module
+paths:
+  /customerpayments:
+    x-mcp-group:
+      - Customer Payments
+    post:
+      tags:
+        - customer-payments
+      operationId: create_customer_payment
+      summary: Create a payment
+      description: Create a new payment.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-payment-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-payment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customerpayments.CREATE
+    get:
+      tags:
+        - customer-payments
+      operationId: list_customer_payments
+      summary: List Customer Payments
+      description: List all the payments made by your customer.
+      parameters:
+        - name: customer_name
+          in: query
+          description: 'Search payments by customer name. Variants: <code>customer_name_startswith</code> and <code>customer_name_contains</code>. Max-len [100]'
+          required: false
+          schema:
+            type: string
+          example: Zylker Inc
+        - name: reference_number
+          in: query
+          description: 'Search payments by reference number. Variants: <code>reference_number_startswith</code> and <code>reference_number_contains</code>. Max-len [100]'
+          required: false
+          schema:
+            type: string
+          example: INV-384
+        - name: date
+          in: query
+          description: Search payments by payment date.
+          required: false
+          schema:
+            type: string
+          example: '2016-06-05'
+        - name: amount
+          in: query
+          description: 'Search payments by payment amount. Variants: <code>amount_less_than</code>, <code>amount_less_equals</code>, <code>amount_greater_than</code> and <code>amount_greater_equals</code>'
+          required: false
+          schema:
+            type: number
+            format: double
+          example: 450
+        - name: notes
+          in: query
+          description: 'Search payments by customer notes. Variants: <code>notes_startswith</code> and <code>notes_contains</code>'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: payment_mode
+          in: query
+          description: 'Search payments by payment mode. Variants: <code>payment_mode_startswith</code> and <code>payment_mode_contains</code>'
+          required: false
+          schema:
+            type: string
+          example: cash
+        - name: filter_by
+          in: query
+          description: 'Filter payments by mode. Allowed Values: <code>PaymentMode.All</code>, <code>PaymentMode.Check</code>, <code>PaymentMode.Cash</code>, <code>PaymentMode.BankTransfer</code>, <code>PaymentMode.CreditCard</code>, <code>PaymentMode.Credit</code>, <code>PaymentMode.BankRemittance</code>, <code>PaymentMode.Stripe</code> and <code>PaymentMode.Others</code>.'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: sort_column
+          in: query
+          description: Sort the list of payments by the specified column.
+          required: false
+          schema:
+            type: string
+          example: created_time
+        - name: search_text
+          in: query
+          description: Search payments by reference number or customer name or payment description. Max-length [100]
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: customer_id
+          in: query
+          description: 'Customer ID of the customer involved in the payment. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: '903000000000099'
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-customer-payments-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customerpayments.READ
+    delete:
+      tags:
+        - customer-payments
+      operationId: bulk_delete_customer_payments
+      summary: Bulk delete Customer payments
+      description: Delete multiple customer payments.
+      parameters:
+        - name: payment_ids
+          in: query
+          description: 'Comma-separated list of payment IDs to be deleted. Note: This value is a set of numeric characters separated by comma.'
+          required: true
+          schema:
+            type: string
+          example: 9030000079467,9030000079468,9030000079469
+        - name: bulk_delete
+          in: query
+          description: Flag to indicate bulk delete operation.
+          required: true
+          schema:
+            type: boolean
+          example: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/bulk-delete-customer-payments-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customerpayments.DELETE
+    put:
+      tags:
+        - customer-payments
+      operationId: update_customer_payment_using_custom_field
+      summary: Update a payment using a custom field's unique value
+      description: A custom field will have unique values if it's configured to not accept duplicate values. Now, you can use that custom field's value to update a payment by providing its API name in the X-Unique-Identifier-Key header and its value in the X-Unique-Identifier-Value header. Based on this value, the corresponding payment will be retrieved and updated. Additionally, there is an optional X-Upsert header. If the X-Upsert header is true and the custom field's unique value is not found in any of the existing payments, a new payment will be created if the necessary payload details are available.
+      parameters:
+        - name: X-Unique-Identifier-Key
+          in: header
+          description: Unique CustomField Api Name.
+          required: true
+          schema:
+            type: string
+            example: cf_unique_cf
+        - name: X-Unique-Identifier-Value
+          in: header
+          description: Unique CustomField Value.
+          required: true
+          schema:
+            type: string
+            example: unique Value
+        - name: X-Upsert
+          in: header
+          description: If there is no record is found unique custom field value , will create new invoice.
+          required: false
+          schema:
+            type: boolean
+            example: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-payment-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-payment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customerpayments.UPDATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /customerpayments/{payment_id}:
+    x-mcp-group:
+      - Customer Payments
+    put:
+      tags:
+        - customer-payments
+      operationId: update_customer_payment
+      summary: Update a payment
+      description: Update an existing payment information.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-payment-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-payment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customerpayments.UPDATE
+    get:
+      tags:
+        - customer-payments
+      operationId: get_customer_payment
+      summary: Retrieve a payment
+      description: Details of an existing payment.
+      parameters:
+        - name: accept
+          in: query
+          description: Format of the response. Allowed values are <code>json</code> and <code>pdf</code>. Default is <code>json</code>.
+          required: false
+          schema:
+            type: string
+            enum:
+              - json
+              - pdf
+            default: json
+          example: json
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/retrieve-a-payment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customerpayments.READ
+    delete:
+      tags:
+        - customer-payments
+      operationId: delete_customer_payment
+      summary: Delete a payment
+      description: Delete an existing payment.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-payment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customerpayments.DELETE
+    parameters:
+      - name: payment_id
+        in: path
+        required: true
+        description: 'Unique identifier of the payment. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '9030000079467'
+      - $ref: '#/components/parameters/organization_id'
+  /customerpayments/{customer_payment_id}/refunds:
+    x-mcp-group:
+      - Customer Payments
+    get:
+      tags:
+        - customer-payments
+      operationId: list_customer_payment_refunds
+      summary: List refunds of a customer payment
+      description: List all the refunds pertaining to an existing customer payment.
+      parameters:
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-refunds-of-a-customer-payment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customerpayments.READ
+    post:
+      tags:
+        - customer-payments
+      operationId: create_customer_payment_refund
+      summary: Refund an excess customer payment
+      description: Refund the excess amount paid by the customer.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/refund-an-excess-customer-payment-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/refund-an-excess-customer-payment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customerpayments.CREATE
+    parameters:
+      - name: customer_payment_id
+        in: path
+        required: true
+        description: 'Unique identifier of the customer payment. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '9030000079467'
+      - $ref: '#/components/parameters/organization_id'
+  /customerpayment/{customer_payment_id}/customfields:
+    x-mcp-group:
+      - Customer Payments
+    put:
+      tags:
+        - customer-payments
+      operationId: update_custom_fields_in_customer_payment
+      summary: Update custom field in existing customerpayments
+      description: Update the value of the custom field in existing customerpayments.
+      parameters:
+        - name: customer_payment_id
+          in: path
+          required: true
+          description: 'Unique identifier of the customer payment. Note: This value is a set of numeric characters.'
+          schema:
+            type: string
+          example: '9030000079467'
+        - $ref: '#/components/parameters/organization_id'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/custom_fields_update'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-an-customerpayment-customfield-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customerpayments.UPDATE
+  /customerpayments/{customer_payment_id}/refunds/{refund_id}:
+    x-mcp-group:
+      - Customer Payments
+    get:
+      tags:
+        - customer-payments
+      operationId: get_customer_payment_refund
+      summary: Details of a refund
+      description: Obtain details of a particular refund of a customer payment.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/details-of-a-refund-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customerpayments.READ
+    put:
+      tags:
+        - customer-payments
+      operationId: update_customer_payment_refund
+      summary: Update a refund
+      description: Update the refunded transaction.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-refund-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-refund-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customerpayments.UPDATE
+    delete:
+      tags:
+        - customer-payments
+      operationId: delete_customer_payment_refund
+      summary: Delete a Refund
+      description: Delete refund pertaining to an existing customer payment.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-refund-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.customerpayments.DELETE
+    parameters:
+      - name: customer_payment_id
+        in: path
+        required: true
+        description: 'Unique identifier of the customer payment. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '9030000079467'
+      - name: refund_id
+        in: path
+        required: true
+        description: 'Unique identifier of the refund. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '3000000003017'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: 'ID of the organization. Note: This value is a set of numeric characters.'
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/payment-response'
+    payment-response:
+      type: object
+      properties:
+        payment_id:
+          $ref: '#/components/schemas/payment_id'
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        amount:
+          $ref: '#/components/schemas/amount'
+        amount_refunded:
+          $ref: '#/components/schemas/amount_refunded'
+        bank_charges:
+          $ref: '#/components/schemas/bank_charges'
+        date:
+          $ref: '#/components/schemas/date'
+        status:
+          $ref: '#/components/schemas/status'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        description:
+          $ref: '#/components/schemas/description'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        customer_name:
+          $ref: '#/components/schemas/customer_name'
+        email:
+          $ref: '#/components/schemas/email'
+        tags:
+          $ref: '#/components/schemas/tags_response'
+        invoices:
+          description: List of invoices associated with the payment. Each invoice object contains <code>invoice_id</code>, <code>invoice_number</code>, <code>date</code>, <code>invoice_amount</code>, <code>amount_applied</code> and <code>balance_amount</code>.
+          type: array
+          items:
+            type: object
+            properties:
+              invoice_id:
+                $ref: '#/components/schemas/invoice_id'
+              invoice_number:
+                $ref: '#/components/schemas/invoice_number'
+              date:
+                description: Date on which the invoice was raised.
+                example: '2016-06-05'
+              invoice_amount:
+                $ref: '#/components/schemas/invoice_amount'
+              amount_applied:
+                $ref: '#/components/schemas/amount_applied'
+              balance_amount:
+                $ref: '#/components/schemas/balance_amount'
+        currency_code:
+          $ref: '#/components/schemas/currency_code'
+        currency_symbol:
+          $ref: '#/components/schemas/currency_symbol'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        location_name:
+          $ref: '#/components/schemas/location_name'
+        custom_fields:
+          description: Additional fields for the payments.
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                $ref: '#/components/schemas/index'
+              value:
+                $ref: '#/components/schemas/value'
+              label:
+                $ref: '#/components/schemas/label'
+              data_type:
+                $ref: '#/components/schemas/data_type'
+    payment_id:
+      description: 'Unique ID of the payment generated by the server. Max-length [2000]. Note: This value is a set of numeric characters.'
+      type: string
+      example: '9030000079467'
+    payment_mode:
+      description: Mode through which payment is made. This can be <code>check</code>, <code>cash</code>, <code>creditcard</code>, <code>banktransfer</code>, <code>bankremittance</code>, <code>autotransaction</code> or <code>others</code>. Max-length [100]
+      type: string
+      example: cash
+    amount:
+      description: Amount paid in the respective payment.
+      type: number
+      format: double
+      example: 450
+    amount_refunded:
+      description: Amount that is refund. Refunds are applicable only for payments whose payment_mode is <code>autotransaction</code>. Refunds would be made to the respective card provided by the customer.
+      type: number
+      format: double
+      example: 50
+    date:
+      description: Date on which payment is made. Format [yyyy-mm-dd]
+      type: string
+      example: '2016-06-05'
+    status:
+      description: Status of the payment. It can either be <code>success</code> or <code>failure</code>.
+      type: string
+      example: success
+    reference_number:
+      description: Reference number generated for the payment. A string of your choice can also be used as the reference number. Max-length [100]
+      type: string
+      example: INV-384
+    description:
+      description: Description about the payment.
+      type: string
+      example: Payment has been added to INV-384
+    customer_id:
+      description: 'Customer ID of the customer involved in the payment. Note: This value is a set of numeric characters.'
+      type: string
+      example: '903000000000099'
+    customer_name:
+      description: Name of the customer to whom the invoice is raised. Max-length [100]
+      type: string
+      example: Zylker Inc
+    email:
+      description: Email address of the customer involved in the payment.
+      type: string
+      example: benjamin.george@zylker.org
+    autotransaction:
+      description: If the payment mode is <code>autotransaction</code>, autotransaction information will be displayed in the autotransaction object. It contains <code>autotransaction_id</code>, <code>payment_gateway</code>, <code>gateway_transaction_id</code>, <code>card_id</code>, <code>last_four_digits</code>, <code>expiry_month</code> and <code>expiry_year</code>.
+      type: object
+      properties:
+        autotransaction_id:
+          $ref: '#/components/schemas/autotransaction_id'
+        payment_gateway:
+          $ref: '#/components/schemas/payment_gateway'
+        gateway_transaction_id:
+          $ref: '#/components/schemas/gateway_transaction_id'
+        gateway_error_message:
+          $ref: '#/components/schemas/gateway_error_message'
+        card_id:
+          $ref: '#/components/schemas/card_id'
+        last_four_digits:
+          $ref: '#/components/schemas/last_four_digits'
+        expiry_month:
+          $ref: '#/components/schemas/expiry_month'
+        expiry_year:
+          $ref: '#/components/schemas/expiry_year'
+    autotransaction_id:
+      description: 'Auto-transaction ID generated for the payment made. Note: This value is a set of numeric characters.'
+      type: string
+      example: '90300000079465'
+    payment_gateway:
+      description: Name of the payment gateway associated with payment.
+      type: string
+      example: stripe
+    gateway_transaction_id:
+      description: 'Transaction ID provided by the gateway for the transaction. Note: This value is a set of numeric characters.'
+      type: string
+      example: B10E6E0F31BD
+    gateway_error_message:
+      description: Gateway error message for a failed transaction.
+      type: string
+      example: Gateway error message for a failed transaction.
+    card_id:
+      description: 'Card ID of the card associated with the transaction. Note: This value is a set of numeric characters.'
+      type: string
+      example: '90300000079226'
+    last_four_digits:
+      description: Last four digits of the card.
+      type: integer
+      example: 1111
+    expiry_month:
+      description: Expiry month of the card.
+      type: integer
+      example: 9
+    expiry_year:
+      description: Expiry year of the card.
+      type: integer
+      example: 2030
+    account_id:
+      description: 'ID of the cash/bank account the payment has to be deposited. Note: This value is a set of numeric characters.'
+      type: string
+      example: ' '
+    contact_persons:
+      description: IDs of the contact personsthe thank you mail has to be triggered.
+      type: array
+      items:
+        type: string
+      example:
+        - '982000000870911'
+        - '982000000870915'
+    invoices:
+      description: List of invoices associated with the payment. Each invoice object contains <code>invoice_id</code>, <code>invoice_number</code>, <code>date</code>, <code>invoice_amount</code>, <code>amount_applied</code> and <code>balance_amount</code>.
+      type: array
+      items:
+        type: object
+        properties:
+          invoice_id:
+            $ref: '#/components/schemas/invoice_id'
+          invoice_number:
+            $ref: '#/components/schemas/invoice_number'
+          date:
+            description: Date on which the invoice was raised.
+            example: '2016-06-05'
+          invoice_amount:
+            $ref: '#/components/schemas/invoice_amount'
+          amount_applied:
+            $ref: '#/components/schemas/amount_applied'
+          balance_amount:
+            $ref: '#/components/schemas/balance_amount'
+    tax_amount_withheld:
+      description: Amount withheld for tax.
+      type: number
+      format: double
+      example: 0
+    from_account_id:
+      description: 'The account from which payment is refunded. Note: This value is a set of numeric characters.'
+      type: string
+      example: ' '
+    location_id:
+      description: 'Location ID. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000038080'
+    location_name:
+      description: Name of the location.
+      type: string
+    invoice_id:
+      description: 'Invoice ID of the required invoice. Note: This value is a set of numeric characters.'
+      type: string
+      example: '90300000079426'
+    invoice_number:
+      description: Unique ID (starts with INV) of an invoice.
+      type: string
+      example: INV-384
+    invoice_amount:
+      description: Total amount raised for the invoice.
+      type: number
+      format: double
+      example: 450
+    amount_applied:
+      description: Amount paid for the invoice.
+      type: number
+      format: double
+      example: 450
+    balance_amount:
+      description: Unpaid amount of the invoice.
+      type: number
+      format: double
+      example: 0
+    currency_code:
+      description: Currency code in which the payment is made.
+      type: string
+      example: USD
+    currency_symbol:
+      description: Customer's currency symbol.
+      type: string
+      example: $
+    exchange_rate:
+      description: Exchange rate for the currency used in the invoices and customer's currency. The payment amount would be the multiplicative product of the original amount and the exchange rate.
+      type: number
+      format: double
+      example: 1
+      default: 1
+    payment_form:
+      description: Mode of Vendor Payment.
+      type: string
+      example: cash
+    bank_charges:
+      description: Denotes any additional bank charges.
+      type: number
+      format: double
+      example: 10
+    created_time:
+      description: Time when the payment was created.
+      type: string
+      example: 2016-06-05T02:15:20+0530
+    updated_time:
+      description: Time when the payment details were last updated.
+      type: string
+      example: 2016-06-05T02:15:20+0530
+    custom_fields:
+      description: Additional fields for the payments.
+      type: array
+      items:
+        type: object
+        properties:
+          value:
+            $ref: '#/components/schemas/value'
+          label:
+            $ref: '#/components/schemas/label'
+          data_type:
+            $ref: '#/components/schemas/data_type'
+    custom_fields_update:
+      description: Custom fields for an invoice.
+      type: array
+      items:
+        type: object
+        properties:
+          customfield_id:
+            type: string
+            description: 'Unique identifier for the custom field. Note: This value is a set of numeric characters.'
+            example: '46000000012845'
+          value:
+            $ref: '#/components/schemas/value'
+    update-an-customerpayment-customfield-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Custom Fields Updated Successfully
+          readOnly: true
+    index:
+      description: Index of the custom field. It can hold any value from 1 to 10.
+      type: integer
+      example: 1
+    label:
+      description: Label of the custom field.
+      type: string
+      example: label
+    value:
+      description: Value of the custom field.
+      type: string
+      example: 129890
+    data_type:
+      description: Data type of the custom field.
+      type: string
+      example: text
+    payment_refund_id:
+      description: 'An unique ID for the payment refund generated by the server. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3000000003017'
+    refund_mode:
+      description: The method of refund. Max-length [50]
+      type: string
+      example: cash
+    payment_number:
+      description: The number for the payment.
+      type: string
+      example: '2'
+    amount_bcy:
+      type: integer
+      example: 10
+    amount_fcy:
+      type: integer
+      example: 10
+    page:
+      type: integer
+      example: 1
+    per_page:
+      type: integer
+      example: 10
+    report_name:
+      type: string
+      example: Customer Payments Refund
+    has_more_page:
+      type: boolean
+      example: false
+    sort_order:
+      type: string
+      example: D
+    sort_column:
+      type: string
+      example: created_time
+    notes:
+      description: 'Search payments by customer notes. Variants: <code>notes_startswith</code> and <code>notes_contains</code>'
+      type: string
+    search_text:
+      description: Search payments by reference number or customer name or payment description. Max-length [100]
+      type: string
+    filter_by:
+      description: 'Filter payments by mode. Allowed Values: <code>PaymentMode.All</code>, <code>PaymentMode.Check</code>, <code>PaymentMode.Cash</code>, <code>PaymentMode.BankTransfer</code>, <code>PaymentMode.CreditCard</code>, <code>PaymentMode.Credit</code>, <code>PaymentMode.BankRemittance</code>, <code>PaymentMode.Stripe</code> and <code>PaymentMode.Others</code>.'
+      type: string
+    bcy_amount:
+      type: string
+      example: 450
+    retainerinvoice_id:
+      description: 'ID of the retainer invoice associated with the payment. Note: This value is a set of numeric characters.'
+      type: string
+      example: '982000000567114'
+    create-a-payment-request:
+      required:
+        - customer_id
+        - payment_mode
+        - amount
+        - invoices
+        - date
+        - invoice_id
+        - amount_applied
+      type: object
+      properties:
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        amount:
+          $ref: '#/components/schemas/amount'
+        date:
+          $ref: '#/components/schemas/date'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        description:
+          $ref: '#/components/schemas/description'
+        invoices:
+          description: List of invoices associated with the payment. Each invoice object contains <code>invoice_id</code>, <code>invoice_number</code>, <code>date</code>, <code>invoice_amount</code>, <code>amount_applied</code> and <code>balance_amount</code>.
+          type: array
+          items:
+            type: object
+            properties:
+              invoice_id:
+                $ref: '#/components/schemas/invoice_id'
+              amount_applied:
+                $ref: '#/components/schemas/amount_applied'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        payment_form:
+          $ref: '#/components/schemas/payment_form'
+        bank_charges:
+          $ref: '#/components/schemas/bank_charges'
+        custom_fields:
+          description: Additional fields for the payments.
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                $ref: '#/components/schemas/label'
+              value:
+                $ref: '#/components/schemas/value'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        invoice_id:
+          $ref: '#/components/schemas/invoice_id'
+        amount_applied:
+          $ref: '#/components/schemas/amount_applied'
+        tax_amount_withheld:
+          $ref: '#/components/schemas/tax_amount_withheld'
+        account_id:
+          $ref: '#/components/schemas/account_id'
+        contact_persons:
+          $ref: '#/components/schemas/contact_persons'
+        retainerinvoice_id:
+          $ref: '#/components/schemas/retainerinvoice_id'
+        tags:
+          $ref: '#/components/schemas/tags'
+    create-a-payment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The payment has been created.
+          readOnly: true
+        payment:
+          $ref: '#/components/schemas/payment-response'
+    list-customer-payments-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        customer_payments:
+          type: array
+          items:
+            type: object
+            properties:
+              payment_id:
+                $ref: '#/components/schemas/payment_id'
+              payment_number:
+                $ref: '#/components/schemas/payment_number'
+              invoice_number:
+                $ref: '#/components/schemas/invoice_number'
+              date:
+                $ref: '#/components/schemas/date'
+              payment_mode:
+                $ref: '#/components/schemas/payment_mode'
+              amount:
+                $ref: '#/components/schemas/amount'
+              bcy_amount:
+                $ref: '#/components/schemas/bcy_amount'
+              location_id:
+                $ref: '#/components/schemas/location_id'
+              location_name:
+                $ref: '#/components/schemas/location_name'
+              tags:
+                $ref: '#/components/schemas/tags_response'
+        page_context: {}
+    update-a-payment-request:
+      required:
+        - customer_id
+        - payment_mode
+        - amount
+        - invoices
+        - invoice_id
+        - amount_applied
+      type: object
+      properties:
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        amount:
+          $ref: '#/components/schemas/amount'
+        date:
+          $ref: '#/components/schemas/date'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        description:
+          $ref: '#/components/schemas/description'
+        invoices:
+          description: List of invoices associated with the payment. Each invoice object contains <code>invoice_id</code>, <code>invoice_number</code>, <code>date</code>, <code>invoice_amount</code>, <code>amount_applied</code> and <code>balance_amount</code>.
+          type: array
+          items:
+            type: object
+            properties:
+              invoice_id:
+                $ref: '#/components/schemas/invoice_id'
+              amount_applied:
+                $ref: '#/components/schemas/amount_applied'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        payment_form:
+          $ref: '#/components/schemas/payment_form'
+        bank_charges:
+          $ref: '#/components/schemas/bank_charges'
+        custom_fields:
+          description: Additional fields for the payments.
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                $ref: '#/components/schemas/label'
+              value:
+                $ref: '#/components/schemas/value'
+        invoice_id:
+          $ref: '#/components/schemas/invoice_id'
+        amount_applied:
+          $ref: '#/components/schemas/amount_applied'
+        tax_amount_withheld:
+          $ref: '#/components/schemas/tax_amount_withheld'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        account_id:
+          $ref: '#/components/schemas/account_id'
+        retainerinvoice_id:
+          $ref: '#/components/schemas/retainerinvoice_id'
+        tags:
+          $ref: '#/components/schemas/tags'
+    update-a-payment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The payment details have been updated.
+          readOnly: true
+        payment:
+          type: object
+          properties:
+            payment_id:
+              $ref: '#/components/schemas/payment_id'
+            payment_mode:
+              $ref: '#/components/schemas/payment_mode'
+            amount:
+              $ref: '#/components/schemas/amount'
+            amount_refunded:
+              $ref: '#/components/schemas/amount_refunded'
+            bank_charges:
+              $ref: '#/components/schemas/bank_charges'
+            date:
+              $ref: '#/components/schemas/date'
+            status:
+              $ref: '#/components/schemas/status'
+            reference_number:
+              $ref: '#/components/schemas/reference_number'
+            description:
+              $ref: '#/components/schemas/description'
+            customer_id:
+              $ref: '#/components/schemas/customer_id'
+            customer_name:
+              $ref: '#/components/schemas/customer_name'
+            email:
+              $ref: '#/components/schemas/email'
+            invoices:
+              description: List of invoices associated with the payment. Each invoice object contains <code>invoice_id</code>, <code>invoice_number</code>, <code>date</code>, <code>invoice_amount</code>, <code>amount_applied</code> and <code>balance_amount</code>.
+              type: array
+              items:
+                type: object
+                properties:
+                  invoice_id:
+                    $ref: '#/components/schemas/invoice_id'
+                  invoice_number:
+                    $ref: '#/components/schemas/invoice_number'
+                  date:
+                    description: Date on which the invoice was raised.
+                    example: '2016-06-05'
+                  invoice_amount:
+                    $ref: '#/components/schemas/invoice_amount'
+                  amount_applied:
+                    $ref: '#/components/schemas/amount_applied'
+                  balance_amount:
+                    $ref: '#/components/schemas/balance_amount'
+            currency_code:
+              $ref: '#/components/schemas/currency_code'
+            currency_symbol:
+              $ref: '#/components/schemas/currency_symbol'
+            location_id:
+              $ref: '#/components/schemas/location_id'
+            location_name:
+              $ref: '#/components/schemas/location_name'
+            tags:
+              $ref: '#/components/schemas/tags_response'
+            custom_fields:
+              description: Additional fields for the payments.
+              type: array
+              items:
+                type: object
+                properties:
+                  index:
+                    $ref: '#/components/schemas/index'
+                  value:
+                    $ref: '#/components/schemas/value'
+                  label:
+                    $ref: '#/components/schemas/label'
+                  data_type:
+                    $ref: '#/components/schemas/data_type'
+    retrieve-a-payment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        payment:
+          type: object
+          properties:
+            payment_id:
+              $ref: '#/components/schemas/payment_id'
+            payment_mode:
+              $ref: '#/components/schemas/payment_mode'
+            amount:
+              $ref: '#/components/schemas/amount'
+            amount_refunded:
+              $ref: '#/components/schemas/amount_refunded'
+            bank_charges:
+              $ref: '#/components/schemas/bank_charges'
+            date:
+              $ref: '#/components/schemas/date'
+            status:
+              $ref: '#/components/schemas/status'
+            reference_number:
+              $ref: '#/components/schemas/reference_number'
+            description:
+              $ref: '#/components/schemas/description'
+            customer_id:
+              $ref: '#/components/schemas/customer_id'
+            customer_name:
+              $ref: '#/components/schemas/customer_name'
+            email:
+              $ref: '#/components/schemas/email'
+            invoices:
+              description: List of invoices associated with the payment. Each invoice object contains <code>invoice_id</code>, <code>invoice_number</code>, <code>date</code>, <code>invoice_amount</code>, <code>amount_applied</code> and <code>balance_amount</code>.
+              type: array
+              items:
+                type: object
+                properties:
+                  invoice_id:
+                    $ref: '#/components/schemas/invoice_id'
+                  invoice_number:
+                    $ref: '#/components/schemas/invoice_number'
+                  date:
+                    description: Date on which the invoice was raised.
+                    example: '2016-06-05'
+                  invoice_amount:
+                    $ref: '#/components/schemas/invoice_amount'
+                  amount_applied:
+                    $ref: '#/components/schemas/amount_applied'
+                  balance_amount:
+                    $ref: '#/components/schemas/balance_amount'
+            currency_code:
+              $ref: '#/components/schemas/currency_code'
+            currency_symbol:
+              $ref: '#/components/schemas/currency_symbol'
+            location_id:
+              $ref: '#/components/schemas/location_id'
+            location_name:
+              $ref: '#/components/schemas/location_name'
+            tags:
+              $ref: '#/components/schemas/tags_response'
+            custom_fields:
+              description: Additional fields for the payments.
+              type: array
+              items:
+                type: object
+                properties:
+                  index:
+                    $ref: '#/components/schemas/index'
+                  value:
+                    $ref: '#/components/schemas/value'
+                  label:
+                    $ref: '#/components/schemas/label'
+                  data_type:
+                    $ref: '#/components/schemas/data_type'
+    delete-a-payment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The payment has been deleted.
+          readOnly: true
+    list-refunds-of-a-customer-payment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The list of refunds of the customer is displayed successfully.
+          readOnly: true
+        payment_refunds:
+          type: array
+          items:
+            type: object
+            properties:
+              payment_refund_id:
+                $ref: '#/components/schemas/payment_refund_id'
+              payment_id:
+                $ref: '#/components/schemas/payment_id'
+              date:
+                $ref: '#/components/schemas/date'
+              refund_mode:
+                $ref: '#/components/schemas/refund_mode'
+              reference_number:
+                $ref: '#/components/schemas/reference_number'
+              payment_number:
+                $ref: '#/components/schemas/payment_number'
+              customer_name:
+                $ref: '#/components/schemas/customer_name'
+              amount_bcy:
+                $ref: '#/components/schemas/amount_bcy'
+              amount_fcy:
+                $ref: '#/components/schemas/amount_fcy'
+        page_context:
+          type: object
+          properties:
+            page:
+              $ref: '#/components/schemas/page'
+            per_page:
+              $ref: '#/components/schemas/per_page'
+            has_more_page:
+              $ref: '#/components/schemas/has_more_page'
+            report_name:
+              $ref: '#/components/schemas/report_name'
+            sort_column:
+              $ref: '#/components/schemas/sort_column'
+            sort_order:
+              $ref: '#/components/schemas/sort_order'
+    refund-an-excess-customer-payment-request:
+      required:
+        - date
+        - amount
+        - from_account_id
+      type: object
+      properties:
+        date:
+          $ref: '#/components/schemas/date'
+        refund_mode:
+          $ref: '#/components/schemas/refund_mode'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        amount:
+          $ref: '#/components/schemas/amount'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        payment_form:
+          $ref: '#/components/schemas/payment_form'
+        from_account_id:
+          $ref: '#/components/schemas/from_account_id'
+        description:
+          $ref: '#/components/schemas/description'
+    refund-an-excess-customer-payment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The refund information for this payment has been saved.
+          readOnly: true
+        payment_refunds:
+          type: array
+          items:
+            type: object
+            properties:
+              payment_refund_id:
+                $ref: '#/components/schemas/payment_refund_id'
+              payment_id:
+                $ref: '#/components/schemas/payment_id'
+              date:
+                $ref: '#/components/schemas/date'
+              refund_mode:
+                $ref: '#/components/schemas/refund_mode'
+              reference_number:
+                $ref: '#/components/schemas/reference_number'
+              amount:
+                $ref: '#/components/schemas/amount'
+              exchange_rate:
+                $ref: '#/components/schemas/exchange_rate'
+              payment_form:
+                $ref: '#/components/schemas/payment_form'
+              description:
+                $ref: '#/components/schemas/description'
+    details-of-a-refund-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The details of the refund are displayed successfully.
+          readOnly: true
+        payment_refunds:
+          type: array
+          items:
+            type: object
+            properties:
+              payment_refund_id:
+                $ref: '#/components/schemas/payment_refund_id'
+              payment_id:
+                $ref: '#/components/schemas/payment_id'
+              date:
+                $ref: '#/components/schemas/date'
+              refund_mode:
+                $ref: '#/components/schemas/refund_mode'
+              reference_number:
+                $ref: '#/components/schemas/reference_number'
+              amount:
+                $ref: '#/components/schemas/amount'
+              exchange_rate:
+                $ref: '#/components/schemas/exchange_rate'
+              payment_form:
+                $ref: '#/components/schemas/payment_form'
+              description:
+                $ref: '#/components/schemas/description'
+    update-a-refund-request:
+      required:
+        - date
+        - amount
+        - from_account_id
+      type: object
+      properties:
+        date:
+          $ref: '#/components/schemas/date'
+        refund_mode:
+          $ref: '#/components/schemas/refund_mode'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        amount:
+          $ref: '#/components/schemas/amount'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        payment_form:
+          $ref: '#/components/schemas/payment_form'
+        description:
+          $ref: '#/components/schemas/description'
+        from_account_id:
+          $ref: '#/components/schemas/from_account_id'
+    update-a-refund-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The refund information has been saved.
+          readOnly: true
+        payment_refunds:
+          type: array
+          items:
+            type: object
+            properties:
+              payment_refund_id:
+                $ref: '#/components/schemas/payment_refund_id'
+              payment_id:
+                $ref: '#/components/schemas/payment_id'
+              date:
+                $ref: '#/components/schemas/date'
+              refund_mode:
+                $ref: '#/components/schemas/refund_mode'
+              reference_number:
+                $ref: '#/components/schemas/reference_number'
+              amount:
+                $ref: '#/components/schemas/amount'
+              exchange_rate:
+                $ref: '#/components/schemas/exchange_rate'
+              payment_form:
+                $ref: '#/components/schemas/payment_form'
+              description:
+                $ref: '#/components/schemas/description'
+    delete-a-refund-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The refund has been deleted.
+          readOnly: true
+    bulk-delete-customer-payments-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The selected customer payments have been deleted.
+          readOnly: true
+    tag_id:
+      description: 'Tag''s ID. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000000567'
+    tag_name:
+      description: Name of the tag.
+      type: string
+      example: Business Unit
+    tag_option_id:
+      description: 'Tag Option''s ID. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000014044'
+    tag_option_name:
+      description: Name of the tag option.
+      type: string
+      example: Sales
+    is_tag_mandatory:
+      description: Used to check if the tag is mandatory.
+      type: boolean
+      example: false
+    tags:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+    tags_response:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_name:
+            $ref: '#/components/schemas/tag_name'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+          tag_option_name:
+            $ref: '#/components/schemas/tag_option_name'
+          is_tag_mandatory:
+            $ref: '#/components/schemas/is_tag_mandatory'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.customerpayments.UPDATE: Update Customerpayments
+            ERP.customerpayments.READ: Read Customerpayments
+            ERP.customerpayments.DELETE: Delete Customerpayments
+            ERP.customerpayments.CREATE: Create Customerpayments

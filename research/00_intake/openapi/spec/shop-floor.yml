@@ -1,0 +1,588 @@
+openapi: 3.0.0
+info:
+  title: Shop Floor
+  description: The Shop Floor module provides a simplified interface for production workers to manage assigned job cards, update operation status, record production details, and track manufacturing activities directly from the factory floor.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: shop-floor
+    description: Shop Floor Module
+paths:
+  /shopfloor/jobcards:
+    x-mcp-group:
+      - Shop Floor
+    get:
+      tags:
+        - shop-floor
+      operationId: list_shopfloor_jobcards
+      summary: List shop floor job cards
+      description: List all shop floor job cards.
+      parameters:
+        - name: sort_column
+          in: query
+          description: 'Specify the column field for sorting results. Allowed Values: <code>created_time</code> and <code>jobcard_number</code>.'
+          required: false
+          schema:
+            type: string
+          example: jobcard_number
+        - name: sort_order
+          in: query
+          description: 'Sort order for results. Allowed Values: <code>A</code> (ascending) and <code>D</code> (descending).'
+          required: false
+          schema:
+            type: string
+          example: D
+        - name: filter_by
+          in: query
+          description: 'Filter shop floor job cards by status. Allowed Values: <code>Status.All</code>, <code>Status.Draft</code>, <code>Status.NotStarted</code>, <code>Status.InProgress</code>, <code>Status.Paused</code> and <code>Status.UnAssigned</code>.'
+          required: false
+          schema:
+            type: string
+          example: Status.All
+        - name: status
+          in: query
+          description: 'Filter job cards by status. Allowed Values: <code>not_started</code>, <code>in_progress</code>, <code>paused</code>, <code>completed</code>, <code>blocked</code> and <code>quality_pending</code>.'
+          required: false
+          schema:
+            type: string
+          example: in_progress
+        - name: search_text
+          in: query
+          description: Search across job card name, job card number, and manufacturing order number.
+          required: false
+          schema:
+            type: string
+          example: JOB-00001
+        - name: workcenter_id
+          in: query
+          description: 'Filter job cards by the workcenter they are executed at. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: '340832000000171109'
+        - name: manufacturingorder_id
+          in: query
+          description: 'Filter job cards by the manufacturing order they belong to. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: '3863095000000039205'
+        - name: manufacturingorder_number
+          in: query
+          description: Filter by manufacturing order number. Available variants include <code>manufacturingorder_number_startswith</code> and <code>manufacturingorder_number_contains</code>.
+          required: false
+          schema:
+            type: string
+          example: MFG-00001
+        - name: job_card_name
+          in: query
+          description: Filter by job card name. Available variants include <code>job_card_name_startswith</code> and <code>job_card_name_contains</code>.
+          required: false
+          schema:
+            type: string
+          example: Testing OPR
+        - name: job_card_number
+          in: query
+          description: Filter by job card number. Available variants include <code>job_card_number_startswith</code> and <code>job_card_number_contains</code>.
+          required: false
+          schema:
+            type: string
+          example: JOB-00010
+        - name: location_id
+          in: query
+          description: Filter job cards by the location identifier.
+          required: false
+          schema:
+            type: string
+          example: '982000000040001'
+        - name: quantity_to_be_produced
+          in: query
+          description: Filter by planned production quantity. Available variants include <code>quantity_to_be_produced_start</code>, <code>quantity_to_be_produced_end</code>, <code>quantity_to_be_produced_less_than</code>, <code>quantity_to_be_produced_less_equals</code>, <code>quantity_to_be_produced_greater_than</code> and <code>quantity_to_be_produced_greater_equals</code>.
+          required: false
+          schema:
+            type: number
+            format: double
+          example: 1000
+        - name: quantity_produced
+          in: query
+          description: Filter by produced quantity. Available variants include <code>quantity_produced_start</code>, <code>quantity_produced_end</code>, <code>quantity_produced_less_than</code>, <code>quantity_produced_less_equals</code>, <code>quantity_produced_greater_than</code> and <code>quantity_produced_greater_equals</code>.
+          required: false
+          schema:
+            type: number
+            format: double
+          example: 50
+        - name: posted_date
+          in: query
+          description: 'Filter by posted date. Available variants include <code>posted_date_start</code>, <code>posted_date_end</code>, <code>posted_date_before</code> and <code>posted_date_after</code>. Format: <code>yyyy-MM-dd HH:mm</code>.'
+          required: false
+          schema:
+            type: string
+          example: 2026-05-06 16:32
+        - name: planned_start_time
+          in: query
+          description: 'Filter by planned start time. Available variants include <code>planned_start_time_start</code>, <code>planned_start_time_end</code>, <code>planned_start_time_before</code> and <code>planned_start_time_after</code>. Format: <code>yyyy-MM-dd HH:mm</code>.'
+          required: false
+          schema:
+            type: string
+          example: 2026-05-07 14:39
+        - name: planned_end_time
+          in: query
+          description: 'Filter by planned end time. Available variants include <code>planned_end_time_start</code>, <code>planned_end_time_end</code>, <code>planned_end_time_before</code> and <code>planned_end_time_after</code>. Format: <code>yyyy-MM-dd HH:mm</code>.'
+          required: false
+          schema:
+            type: string
+          example: 2026-05-07 15:49
+        - name: actual_start_time
+          in: query
+          description: 'Filter by actual start time. Available variants include <code>actual_start_time_start</code>, <code>actual_start_time_end</code>, <code>actual_start_time_before</code> and <code>actual_start_time_after</code>. Format: <code>yyyy-MM-dd HH:mm</code>.'
+          required: false
+          schema:
+            type: string
+          example: 2026-05-07 14:39
+        - name: actual_end_time
+          in: query
+          description: 'Filter by actual end time. Available variants include <code>actual_end_time_start</code>, <code>actual_end_time_end</code>, <code>actual_end_time_before</code> and <code>actual_end_time_after</code>. Format: <code>yyyy-MM-dd HH:mm</code>.'
+          required: false
+          schema:
+            type: string
+          example: 2026-05-07 15:49
+        - name: page
+          in: query
+          description: Page number for pagination. Default is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-shopfloor-jobcards-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /shopfloor/jobcards/{jobcard_id}:
+    x-mcp-group:
+      - Shop Floor
+    get:
+      tags:
+        - shop-floor
+      operationId: get_shopfloor_jobcard
+      summary: Get a shop floor job card
+      description: Get the details of a shop floor job card.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-shopfloor-jobcard-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.READ
+    parameters:
+      - name: jobcard_id
+        in: path
+        required: true
+        description: 'ID of the job card. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '3863095000000039809'
+      - $ref: '#/components/parameters/organization_id'
+  /shopfloor/jobcards/{jobcard_id}/status:
+    x-mcp-group:
+      - Shop Floor
+    put:
+      tags:
+        - shop-floor
+      operationId: update_shopfloor_jobcard_status
+      summary: Update job card status
+      description: Update the status of a shop floor job card.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-shopfloor-jobcard-status-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-shopfloor-jobcard-status-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.UPDATE
+    parameters:
+      - name: jobcard_id
+        in: path
+        required: true
+        description: 'ID of the job card. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '3863095000000039809'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization.
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/shopfloor_jobcard'
+    shopfloor_jobcard:
+      type: object
+      properties:
+        jobcard_id:
+          description: 'ID of the Job Card. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000039809'
+        manufacturingorder_id:
+          description: 'ID of the manufacturing order this job card belongs to. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000039205'
+        manufacturingorder_number:
+          description: Number of the manufacturing order this job card belongs to.
+          type: string
+          example: MFG-00001
+        finished_product:
+          description: Name of the finished product being manufactured.
+          type: string
+          example: Pencil
+        workcenter_type_id:
+          description: 'ID of the workcenter type for this job card. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000039053'
+        workcenter_id:
+          description: 'ID of the workcenter where this job card is executed. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000039078'
+        workcenter_name:
+          description: Name of the workcenter where this job card is executed.
+          type: string
+          example: TMC Testing WC
+        jobcard_number:
+          description: Auto-generated unique number assigned to the job card.
+          type: string
+          example: JOB-00010
+        jobcard_name:
+          description: Name of the job card, typically the operation name.
+          type: string
+          example: Testing OPR
+        workers:
+          description: List of workers assigned to this job card.
+          type: array
+          items:
+            type: object
+            properties:
+              jobcard_worker_id:
+                type: string
+                example: '982000000045201'
+              worker_id:
+                type: string
+                example: '982000000000097'
+              worker_name:
+                type: string
+                example: John Smith
+        status:
+          description: 'Current status of the job card. Allowed Values: <code>not_started</code>, <code>in_progress</code>, <code>paused</code>, <code>completed</code>, <code>blocked</code>, <code>quality_pending</code> and <code>cancelled</code>.'
+          type: string
+          example: not_started
+        quantity_to_be_produced:
+          description: Total quantity scheduled to be produced by this job card.
+          type: number
+          format: double
+          example: 1000
+        quantity_produced:
+          description: Quantity that has been produced so far.
+          type: number
+          format: double
+          example: 0
+        posted_date:
+          description: Date and time when the job card was posted.
+          type: string
+          example: '2026-05-06 16:32:16'
+        planned_start_time:
+          description: 'Planned start time for this job card. Format: <code>yyyy-MM-dd HH:mm</code>.'
+          type: string
+          example: 2026-05-07 14:39
+        planned_end_time:
+          description: 'Planned end time for this job card. Format: <code>yyyy-MM-dd HH:mm</code>.'
+          type: string
+          example: 2026-05-07 15:49
+        actual_start_time:
+          description: Actual time when production started.
+          type: string
+          example: ''
+        actual_end_time:
+          description: Actual time when production ended.
+          type: string
+          example: ''
+        planned_duration:
+          description: 'Planned total duration for completing this job card. Format: <code>MM:SS</code>.'
+          type: string
+          example: '70:00'
+        planned_working_duration:
+          description: 'Effective planned working duration factoring in calendar and breaks. Format: <code>MM:SS</code>.'
+          type: string
+          example: '70:00'
+        actual_duration:
+          description: 'Actual time spent on this job card. Format: <code>MM:SS</code>.'
+          type: string
+          example: ''
+        elapsed_time_since_start:
+          description: Time elapsed since the job card was started.
+          type: string
+          example: ''
+        description:
+          description: Operation instructions or notes for this job card.
+          type: string
+          example: ''
+        operation_id:
+          description: 'ID of the operation being performed. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000039107'
+        comments:
+          description: List of comments on this job card.
+          type: array
+          items:
+            type: object
+        blocked_by_jobcards:
+          description: List of job cards that must be completed before this job card can begin.
+          type: array
+          items:
+            type: object
+            properties:
+              jobcard_id:
+                type: string
+                example: '3863095000000039807'
+              jobcard_number:
+                type: string
+                example: JOB-00009
+              jobcard_name:
+                type: string
+                example: Manufacturing OPR
+              status:
+                type: string
+                example: completed
+        schedules:
+          description: List of workcenter schedule slots assigned to this job card.
+          type: array
+          items:
+            type: object
+            properties:
+              schedule_id:
+                description: 'ID of the schedule entry. Note: This value is a set of numeric characters.'
+                type: string
+                example: '3863095000000039817'
+              start_time:
+                description: Epoch timestamp of the scheduled start time.
+                type: integer
+                example: 1778144975000
+              end_time:
+                description: Epoch timestamp of the scheduled end time.
+                type: integer
+                example: 1778149175000
+              duration:
+                type: string
+                example: 1h 10m
+        quality_queue_status:
+          description: 'Quality queue status. Allowed Values: <code>not_applicable</code>, <code>pending</code> and <code>completed</code>.'
+          type: string
+          example: not_applicable
+    update-shopfloor-jobcard-status-request:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          description: 'Action to perform on the job card status. Allowed Values: <code>start</code>, <code>pause</code>, <code>resume</code> and <code>complete</code>.'
+          type: string
+          maxLength: 50
+          example: start
+        quantity_completed:
+          description: Quantity completed at the time of status update. Required when action is <code>complete</code>. Must be greater than or equal to 0.
+          type: number
+          format: double
+          minimum: 0
+          example: 20
+        actual_start_time:
+          description: 'Actual time when production started. Format: <code>yyyy-MM-dd HH:mm</code>.'
+          type: string
+          example: 2026-05-07 14:39
+        actual_end_time:
+          description: 'Actual time when production ended. Required when action is <code>complete</code>. Format: <code>yyyy-MM-dd HH:mm</code>.'
+          type: string
+          example: 2026-05-07 15:49
+    list-shopfloor-jobcards-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        jobcards:
+          type: array
+          items:
+            type: object
+            properties:
+              jobcard_id:
+                description: 'ID of the job card. Note: This value is a set of numeric characters.'
+                type: string
+                example: '3863095000000039809'
+              manufacturingorder_id:
+                description: 'ID of the manufacturing order this job card belongs to. Note: This value is a set of numeric characters.'
+                type: string
+                example: '3863095000000039205'
+              workcenter_id:
+                description: 'ID of the workcenter where this job card is executed. Note: This value is a set of numeric characters.'
+                type: string
+                example: '3863095000000039078'
+              workcenter_name:
+                description: Name of the workcenter where this job card is executed.
+                type: string
+                example: TMC Testing WC
+              jobcard_number:
+                description: Auto-generated unique number assigned to the job card.
+                type: string
+                example: JOB-00010
+              jobcard_name:
+                description: Name of the job card, typically the operation name.
+                type: string
+                example: Testing OPR
+              manufacturingorder_number:
+                description: Number of the manufacturing order this job card belongs to.
+                type: string
+                example: MFG-00001
+              status:
+                description: 'Current status of the job card. Allowed Values: <code>not_started</code>, <code>in_progress</code>, <code>paused</code>, <code>completed</code>, <code>blocked</code>, <code>quality_pending</code> and <code>cancelled</code>.'
+                type: string
+                example: not_started
+              posted_date:
+                description: Date and time when the job card was posted.
+                type: string
+                example: '2026-04-24 07:38:19'
+              planned_start_time:
+                description: 'Planned start time for this job card. Format: <code>yyyy-MM-dd HH:mm</code>.'
+                type: string
+                example: 2026-04-24 09:00
+              planned_end_time:
+                description: 'Planned end time for this job card. Format: <code>yyyy-MM-dd HH:mm</code>.'
+                type: string
+                example: 2026-04-24 09:10
+              actual_start_time:
+                description: Actual time when production started on this job card.
+                type: string
+                example: ''
+              actual_end_time:
+                description: Actual time when production ended on this job card.
+                type: string
+                example: ''
+              planned_duration:
+                description: 'Planned total duration for completing this job card. Format: <code>MM:SS</code>.'
+                type: string
+                example: '10:07'
+              planned_working_duration:
+                description: 'Effective planned working duration factoring in calendar and breaks. Format: <code>MM:SS</code>.'
+                type: string
+                example: '10:07'
+              actual_duration:
+                description: 'Actual time spent on this job card. Format: <code>MM:SS</code>.'
+                type: string
+                example: ''
+              created_time:
+                description: Timestamp when the job card was created.
+                type: string
+                example: ''
+        page_context:
+          type: object
+          readOnly: true
+          properties:
+            page:
+              type: integer
+              description: Current page number.
+              example: 1
+            per_page:
+              type: integer
+              description: Number of records per page.
+              example: 200
+            has_more_page:
+              type: boolean
+              description: Indicates if there are more pages.
+              example: false
+            report_name:
+              type: string
+              example: Job Cards
+            applied_filter:
+              type: string
+              example: Status.All
+            sort_column:
+              type: string
+              example: jobcard_number
+            sort_order:
+              type: string
+              example: D
+    get-shopfloor-jobcard-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        jobcard:
+          $ref: '#/components/schemas/shopfloor_jobcard'
+    update-shopfloor-jobcard-status-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Job Card status updated.
+          readOnly: true
+        jobcard:
+          $ref: '#/components/schemas/shopfloor_jobcard'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.manufacturing.READ: Read Shop Floor Job Cards
+            ERP.manufacturing.UPDATE: Update Shop Floor Job Cards
+            ERP.manufacturing.ALL: All permissions for Manufacturing

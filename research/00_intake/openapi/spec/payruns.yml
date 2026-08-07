@@ -1,0 +1,1075 @@
+openapi: 3.0.0
+info:
+  title: Pay Runs
+  description: The Pay Runs module in Zoho ERP allows you to manage employee salaries and process payments efficiently.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v1
+    description: API Endpoint
+tags:
+  - name: payruns
+    description: Pay Run Module
+paths:
+  /payrollruns:
+    x-mcp-group:
+      - Payruns
+    post:
+      tags:
+        - payruns
+      operationId: create_payrun
+      summary: Create a Pay Run
+      description: Create a new pay run for the current pay period.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-payrun-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.payrollrun.CREATE
+    get:
+      tags:
+        - payruns
+      operationId: list_payruns
+      summary: Get Pay Runs List
+      description: Retrieve a list of all pay runs.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-payruns-list-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.payrollrun.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /payrollruns/{payroll_run_id}:
+    x-mcp-group:
+      - Payruns
+    get:
+      tags:
+        - payruns
+      operationId: get_payrun
+      summary: Get Pay Run Details
+      description: Retrieve details of an existing pay run.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-payrun-details'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.payrollrun.READ
+    delete:
+      tags:
+        - payruns
+      operationId: delete_payrun
+      summary: Delete a Pay Run
+      description: Delete an existing pay run.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-payrun'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.payrollrun.DELETE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/payroll_run_id'
+  /payrollruns/{payroll_run_id}/employees:
+    x-mcp-group:
+      - Payruns
+    get:
+      tags:
+        - payruns
+      operationId: list_payrun_employees
+      summary: List Employees
+      description: Get a list of employees associated with the pay run.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-payrun-employees-list'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.payrollrun.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/payroll_run_id'
+  /payrollruns/{payroll_run_id}/employees/{employee_id}:
+    x-mcp-group:
+      - Payruns
+    get:
+      tags:
+        - payruns
+      operationId: get_payrun_employee
+      summary: Get Employee Pay Details
+      description: Retrieve the pay details for a specific employee within a pay run.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-employee-pay-details'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.payrollrun.READ
+    put:
+      tags:
+        - payruns
+      operationId: update_payrun_employee
+      summary: Update Employee Pay Details
+      description: Update the pay details for an employee associated to a pay run.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-employee-pay-details-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-employee-pay-details-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.payrollrun.UPDATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/payroll_run_id'
+      - $ref: '#/components/parameters/employee_id'
+  /payrollruns/{payroll_run_id}/recompute:
+    x-mcp-group:
+      - Payruns
+    post:
+      tags:
+        - payruns
+      operationId: employee_pay_details_recompute
+      summary: Recompute Pay Details
+      description: Recompute the pay run if changes have been made at the employee level that affect pay.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/recompute-payrun-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.payrollrun.UPDATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/payroll_run_id'
+  /payrollruns/{payroll_run_id}/submit:
+    x-mcp-group:
+      - Payruns
+    post:
+      tags:
+        - payruns
+      operationId: submit_payrun
+      summary: Submit a Pay Run
+      description: Submit a pay run for approval.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/submit-payrun-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.payrollrun.CREATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/payroll_run_id'
+  /payrollruns/{payroll_run_id}/recall:
+    x-mcp-group:
+      - Payruns
+    post:
+      tags:
+        - payruns
+      operationId: recall_payrun
+      summary: Recall a Pay Run
+      description: Recall a submitted pay run to make changes.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/recall-payrun-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.payrollrun.CREATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/payroll_run_id'
+  /payrollruns/{payroll_run_id}/approve:
+    x-mcp-group:
+      - Payruns
+    post:
+      tags:
+        - payruns
+      operationId: approve_payrun
+      summary: Approve a Pay Run
+      description: Approve the pay run after checking all employee pay details.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/approve-payrun-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/approve-payrun-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.payrollrun.CREATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/payroll_run_id'
+  /payrollruns/{payroll_run_id}/reject:
+    x-mcp-group:
+      - Payruns
+    post:
+      tags:
+        - payruns
+      operationId: reject_payrun
+      summary: Reject a Pay Run
+      description: Reject an approved pay run to make changes.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/reject-payrun-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/reject-payrun-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.payrollrun.CREATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/payroll_run_id'
+  /payrollruns/{payroll_run_id}/payments:
+    x-mcp-group:
+      - Payruns
+    post:
+      tags:
+        - payruns
+      operationId: mark_payrun_as_paid
+      summary: Mark as Paid
+      description: Mark the pay run as paid.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mark-as-paid-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-as-paid-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.payrollrun.CREATE
+    delete:
+      tags:
+        - payruns
+      operationId: mark_payrun_as_unpaid
+      summary: Mark as Unpaid
+      description: Mark an existing paid pay run as unpaid.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-as-unpaid-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.payrollrun.DELETE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/payroll_run_id'
+  /payrollruns/{payroll_run_id}/draft:
+    x-mcp-group:
+      - Payruns
+    post:
+      tags:
+        - payruns
+      operationId: mark_payrun_as_draft
+      summary: Mark as Draft
+      description: Mark an existing pay run as a draft.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-as-draft-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.payrollrun.CREATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/payroll_run_id'
+  /payrollruns/{payroll_run_id}/payslip/send:
+    x-mcp-group:
+      - Payruns
+    post:
+      tags:
+        - payruns
+      operationId: send_payslips
+      summary: Send Payslips
+      description: Send payslips to all employees associated with the pay run.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/send-payslip-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.payrollrun.CREATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/payroll_run_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: Unique identifier for the organization.
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+    payroll_run_id:
+      name: payroll_run_id
+      in: path
+      description: Payrollrun id.
+      schema:
+        $ref: '#/components/schemas/payroll_run_id'
+      required: true
+    employee_id:
+      name: employee_id
+      in: path
+      description: The unique identifier for the employee.
+      schema:
+        $ref: '#/components/schemas/employee_id'
+      required: true
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/payroll_run-response'
+    payroll_run-response:
+      type: object
+      properties:
+        payroll_run_id:
+          $ref: '#/components/schemas/payroll_run_id'
+        status:
+          $ref: '#/components/schemas/status'
+        type:
+          $ref: '#/components/schemas/type'
+        pay_date:
+          $ref: '#/components/schemas/pay_date'
+        pay_period_start_date:
+          $ref: '#/components/schemas/pay_period_start_date'
+        pay_period_end_date:
+          $ref: '#/components/schemas/pay_period_end_date'
+    code:
+      type: integer
+      example: 0
+      readOnly: true
+    message:
+      type: string
+      example: success
+      readOnly: true
+    payroll_run_id:
+      type: string
+      example: '31058000000927631'
+      description: The unique identifier for the payroll.
+    status:
+      description: The current status of the payroll (e.g., Draft, Paid).
+      type: string
+      example: draft
+    type:
+      description: The type of payroll (e.g., Regular, Final Settlement)
+      type: string
+      example: regular
+    pay_date:
+      description: The date on which the payroll payments are scheduled to be made.
+      type: string
+      example: '2024-03-31'
+    pay_period_start_date:
+      description: The start date of the pay period covered by the payroll.
+      type: string
+      example: '2024-03-01'
+    pay_period_end_date:
+      description: The end date of the pay period covered by the payroll.
+      type: string
+      example: '2024-03-31'
+    processing_period:
+      description: Processing month.
+      type: string
+      example: March 2024
+    no_of_employees:
+      description: Number of employees associated in the payrun.
+      type: number
+      example: 40
+    base_days:
+      type: number
+      example: 31
+      description: The number of days in the processing period.
+    no_of_skipped_employees:
+      description: Number of employees skipped in the payrun.
+      type: number
+      example: 0
+    total_net_pay:
+      type: number
+      example: 1258653
+    total_taxes:
+      type: number
+      example: 450726
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    total_benefits:
+      type: number
+      example: 225390.62
+    total_donations:
+      type: number
+      example: 0
+    total_deductions:
+      type: number
+      example: 2000
+    total_payroll_cost:
+      type: number
+      example: 1936769.62
+    payment_status:
+      type: string
+      example: ''
+    approved_date:
+      type: string
+      example: '2024-03-26'
+    employee_id:
+      description: Employee id.
+      type: string
+      example: '1752935000000067531'
+    employee_number:
+      description: Employee number.
+      type: string
+      example: '1234'
+    employee_name:
+      description: Employee name.
+      type: string
+      example: Anand Maya
+    payment_mode:
+      type: string
+      example: banktransfer
+    total_earnings:
+      type: number
+      example: 119459
+    total_reimbursements:
+      type: number
+      example: 0
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    net_pay:
+      type: number
+      example: 96069
+    gross_pay:
+      type: number
+      example: 13542
+    paid_days:
+      description: Paid days.
+      type: number
+      example: 31
+    employee_status:
+      type: string
+      example: active
+    working_days:
+      description: The number of working days for the employee in the processing period.
+      type: number
+      example: 31
+    lop_days:
+      description: The number of loss of pay (LOP) days for the employee.
+      type: number
+      example: 0
+    name:
+      type: string
+      example: Basic
+    earning_type:
+      type: string
+      example: basic
+      description: Earning type.
+    earning_id:
+      type: string
+      example: '1752935000000067154'
+      description: The unique identifier for the earning type.
+    amount:
+      type: number
+      description: The total amount.
+      example: 20000
+    can_edit:
+      type: boolean
+      example: false
+      description: Editable if it is true.
+    tax_type:
+      type: string
+      example: income_tax
+    tax_id:
+      type: string
+      example: '1752935000000067360'
+      description: The unique identifier for the tax type.
+    plan:
+      type: string
+      example: Other Non-Taxable Deduction
+      description: Plan type of the benefit.
+    benefit_id:
+      type: string
+      example: '1752935000000084005'
+    employer_amount:
+      type: number
+      example: 1500
+      description: Employer contribution amount of the benefit.
+    deduction_type:
+      type: string
+      example: others
+    deduction_id:
+      type: string
+      example: '1752935000000079339'
+      description: The unique identifier for the deduction type.
+    is_amount_in_percentage:
+      type: boolean
+      example: false
+    reimbursement_id:
+      type: string
+      example: '1752935000000079332'
+      description: The unique identifier for the reimbursement type.
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    donation_id:
+      type: string
+      example: '1752935000000094007'
+      description: The unique identifier for the donation.
+    notes:
+      description: Additional notes or reasons for overriding the existing amounts.
+      type: string
+      example: Override notes
+    send_payslip:
+      description: Set this value to true if you want to send payslips to all associated employees.
+      type: boolean
+      example: false
+    payment_date:
+      description: The date when the payment was made for the pay run.
+      type: string
+      example: '2024-03-31'
+    payment_mode_for_unpaid_dd_payments:
+      description: The alternate payment mode for any unpaid direct deposit payments present in the pay run.
+      type: string
+      example: banktransfer
+    can_post_payrun_transactions:
+      description: Mandatory if Zoho Books integration is enabled. Set this value to true if pay run transactions can be added to Zoho Books.
+      type: boolean
+      example: false
+    reason:
+      description: The reason for rejecting the pay run.
+      type: string
+      example: Reject reason
+    create-payrun-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Pay run has been created.
+        payroll_run:
+          $ref: '#/components/schemas/payroll_run-response'
+    get-payruns-list-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        payroll_runs:
+          type: array
+          items:
+            type: object
+            properties:
+              payroll_run_id:
+                $ref: '#/components/schemas/payroll_run_id'
+              status:
+                $ref: '#/components/schemas/status'
+              type:
+                $ref: '#/components/schemas/type'
+              pay_date:
+                $ref: '#/components/schemas/pay_date'
+              pay_period_start_date:
+                $ref: '#/components/schemas/pay_period_start_date'
+              pay_period_end_date:
+                $ref: '#/components/schemas/pay_period_end_date'
+              processing_period:
+                $ref: '#/components/schemas/processing_period'
+    get-payrun-details:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        payroll_run:
+          type: object
+          properties:
+            payroll_run_id:
+              $ref: '#/components/schemas/payroll_run_id'
+            status:
+              $ref: '#/components/schemas/status'
+              example: Approved
+            type:
+              $ref: '#/components/schemas/type'
+            pay_date:
+              $ref: '#/components/schemas/pay_date'
+            pay_period_start_date:
+              $ref: '#/components/schemas/pay_period_start_date'
+            pay_period_end_date:
+              $ref: '#/components/schemas/pay_period_end_date'
+            processing_period:
+              $ref: '#/components/schemas/processing_period'
+            base_days:
+              $ref: '#/components/schemas/base_days'
+            no_of_employees:
+              $ref: '#/components/schemas/no_of_employees'
+            no_of_skipped_employees:
+              $ref: '#/components/schemas/no_of_skipped_employees'
+            total_net_pay:
+              $ref: '#/components/schemas/total_net_pay'
+            total_taxes:
+              $ref: '#/components/schemas/total_taxes'
+            total_benefits:
+              $ref: '#/components/schemas/total_benefits'
+            total_donations:
+              $ref: '#/components/schemas/total_donations'
+            total_deductions:
+              $ref: '#/components/schemas/total_deductions'
+            total_payroll_cost:
+              $ref: '#/components/schemas/total_payroll_cost'
+            payment_status:
+              $ref: '#/components/schemas/payment_status'
+            approved_date:
+              $ref: '#/components/schemas/approved_date'
+    delete-payrun:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Pay run has been deleted.
+    get-payrun-employees-list:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        employees:
+          type: array
+          items:
+            type: object
+            properties:
+              employee_id:
+                $ref: '#/components/schemas/employee_id'
+              employee_number:
+                $ref: '#/components/schemas/employee_number'
+              employee_name:
+                $ref: '#/components/schemas/employee_name'
+              payment_status:
+                $ref: '#/components/schemas/payment_status'
+                example: yet_to_pay
+              payment_mode:
+                $ref: '#/components/schemas/payment_mode'
+              total_earnings:
+                $ref: '#/components/schemas/total_earnings'
+              total_benefits:
+                $ref: '#/components/schemas/total_benefits'
+                example: 7241
+              total_deductions:
+                $ref: '#/components/schemas/total_deductions'
+              total_donations:
+                $ref: '#/components/schemas/total_donations'
+              total_taxes:
+                $ref: '#/components/schemas/total_taxes'
+                example: 16149
+              total_reimbursements:
+                $ref: '#/components/schemas/total_reimbursements'
+              net_pay:
+                $ref: '#/components/schemas/net_pay'
+              paid_days:
+                $ref: '#/components/schemas/paid_days'
+    employee-pay-details:
+      type: object
+      properties:
+        employee_name:
+          $ref: '#/components/schemas/employee_name'
+        employee_id:
+          $ref: '#/components/schemas/employee_id'
+        employee_number:
+          $ref: '#/components/schemas/employee_number'
+        employee_status:
+          $ref: '#/components/schemas/employee_status'
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        working_days:
+          $ref: '#/components/schemas/working_days'
+        base_days:
+          $ref: '#/components/schemas/base_days'
+        lop_days:
+          $ref: '#/components/schemas/lop_days'
+        paid_days:
+          $ref: '#/components/schemas/paid_days'
+        total_benefits:
+          $ref: '#/components/schemas/total_benefits'
+        total_donations:
+          $ref: '#/components/schemas/total_donations'
+        total_deductions:
+          $ref: '#/components/schemas/total_deductions'
+        total_reimbursements:
+          $ref: '#/components/schemas/total_reimbursements'
+        gross_pay:
+          $ref: '#/components/schemas/gross_pay'
+        net_pay:
+          $ref: '#/components/schemas/net_pay'
+        payment_status:
+          $ref: '#/components/schemas/payment_status'
+          example: yet_to_pay
+        earnings:
+          type: array
+          description: List of earnings.
+          items:
+            type: object
+            properties:
+              name:
+                $ref: '#/components/schemas/name'
+              earning_type:
+                $ref: '#/components/schemas/earning_type'
+              earning_id:
+                $ref: '#/components/schemas/earning_id'
+              amount:
+                $ref: '#/components/schemas/amount'
+              can_edit:
+                $ref: '#/components/schemas/can_edit'
+        taxes:
+          type: array
+          description: List of taxes.
+          x-node_available_in:
+            - in
+          x-node_unavailable_in: []
+          items:
+            type: object
+            properties:
+              name:
+                $ref: '#/components/schemas/name'
+                example: Income Tax
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              tax_type:
+                $ref: '#/components/schemas/tax_type'
+              amount:
+                $ref: '#/components/schemas/amount'
+                example: 500
+        donations:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                $ref: '#/components/schemas/name'
+                example: Social Activities
+              donation_id:
+                $ref: '#/components/schemas/donation_id'
+              amount:
+                $ref: '#/components/schemas/amount'
+                example: 2000
+        benefits:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                $ref: '#/components/schemas/name'
+                example: Benefit
+              plan:
+                $ref: '#/components/schemas/plan'
+              benefit_id:
+                $ref: '#/components/schemas/benefit_id'
+              amount:
+                $ref: '#/components/schemas/amount'
+                example: 1500
+              employer_amount:
+                $ref: '#/components/schemas/employer_amount'
+        deductions:
+          type: array
+          description: List of deductions.
+          items:
+            type: object
+            properties:
+              name:
+                $ref: '#/components/schemas/name'
+                example: Other deduction
+              deduction_type:
+                $ref: '#/components/schemas/deduction_type'
+              deduction_id:
+                $ref: '#/components/schemas/deduction_id'
+              amount:
+                $ref: '#/components/schemas/amount'
+                example: 200
+              is_amount_in_percentage:
+                $ref: '#/components/schemas/name'
+        reimbursements:
+          type: array
+          x-node_available_in:
+            - in
+          x-node_unavailable_in: []
+          items:
+            type: object
+            properties:
+              name:
+                $ref: '#/components/schemas/name'
+                example: Fuel Reimbursement
+              reimbursement_id:
+                $ref: '#/components/schemas/reimbursement_id'
+              amount:
+                $ref: '#/components/schemas/amount'
+                example: 1800
+    get-employee-pay-details:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        employee:
+          $ref: '#/components/schemas/employee-pay-details'
+    update-employee-pay-details-request:
+      type: object
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/employee_id'
+        base_days:
+          $ref: '#/components/schemas/base_days'
+        working_days:
+          $ref: '#/components/schemas/working_days'
+        lop_days:
+          $ref: '#/components/schemas/lop_days'
+        earnings:
+          type: array
+          description: List of earnings to be updated.
+          items:
+            type: object
+            properties:
+              earning_id:
+                $ref: '#/components/schemas/earning_id'
+              amount:
+                $ref: '#/components/schemas/amount'
+        deductions:
+          type: array
+          description: List of deductions.
+          items:
+            type: object
+            properties:
+              deduction_id:
+                $ref: '#/components/schemas/deduction_id'
+              amount:
+                $ref: '#/components/schemas/amount'
+              notes:
+                $ref: '#/components/schemas/notes'
+        taxes:
+          type: array
+          description: List of taxes.
+          x-node_available_in:
+            - in
+          x-node_unavailable_in: []
+          items:
+            type: object
+            properties:
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              amount:
+                $ref: '#/components/schemas/amount'
+              notes:
+                $ref: '#/components/schemas/notes'
+    update-employee-pay-details-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: The pay run details of the employee has been updated.
+        employee:
+          $ref: '#/components/schemas/employee-pay-details'
+    mark-as-paid-request:
+      type: object
+      required:
+        - send_payslip
+        - payment_date
+      properties:
+        send_payslip:
+          $ref: '#/components/schemas/send_payslip'
+        payment_date:
+          $ref: '#/components/schemas/payment_date'
+        payment_mode_for_unpaid_dd_payments:
+          $ref: '#/components/schemas/payment_mode_for_unpaid_dd_payments'
+    mark-as-paid-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Pay run has been marked as paid.
+    mark-as-unpaid-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Pay run has been marked as unpaid.
+    mark-as-draft-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Pay run is now in Draft status.
+    submit-payrun-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Pay run has been submitted for approval.
+    recall-payrun-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Pay run has been recalled.
+    approve-payrun-request:
+      type: object
+      properties:
+        can_post_payrun_transactions:
+          $ref: '#/components/schemas/can_post_payrun_transactions'
+    approve-payrun-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Pay run has been approved.
+    reject-payrun-request:
+      type: object
+      properties:
+        reason:
+          $ref: '#/components/schemas/reason'
+    reject-payrun-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Pay run has been rejected.
+    send-payslip-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Pay slips notification has been sent successfully.
+    recompute-payrun-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Recent changes have been applied to this pay run.
+        payroll_run:
+          type: object
+          properties:
+            payroll_run_id:
+              $ref: '#/components/schemas/payroll_run_id'
+            status:
+              $ref: '#/components/schemas/status'
+            type:
+              $ref: '#/components/schemas/type'
+            pay_date:
+              $ref: '#/components/schemas/pay_date'
+            pay_period_start_date:
+              $ref: '#/components/schemas/pay_period_start_date'
+            pay_period_end_date:
+              $ref: '#/components/schemas/pay_period_end_date'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.payrollrun.CREATE: Create Pay Run
+            ERP.payrollrun.UPDATE: Update Pay Run
+            ERP.payrollrun.READ: Read Pay Run
+            ERP.payrollrun.DELETE: Delete Pay Run

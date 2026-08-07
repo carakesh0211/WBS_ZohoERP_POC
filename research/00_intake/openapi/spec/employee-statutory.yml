@@ -1,0 +1,578 @@
+openapi: 3.0.0
+info:
+  title: Employee Statutory
+  description: The Employee Statutory Components module in Zoho ERP allows you to manage EPF, ESI, PT and LWF for employees (For Indian edition only)
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v1
+    description: API Endpoint
+tags:
+  - name: employee-statutory
+    description: Employee Statutory Components Module
+paths:
+  /employees/{employee_id}/statutory:
+    x-mcp-group:
+      - Employees
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/employee_id'
+    get:
+      tags:
+        - statutory-components
+      operationId: get_employee_statutory
+      summary: Get Statutory Details
+      description: Fetch statutory configuration details of an employee.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-employee-statutory-reponse'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.READ
+    put:
+      tags:
+        - statutory-components
+      operationId: update_employee_statutory
+      summary: Update Statutory Details
+      description: Update statutory configuration details of an employee.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-employee-statutory-request'
+      responses:
+        '201':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-employee-statutory-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.UPDATE
+  /employees/{employee_id}/epf/enable:
+    x-mcp-group:
+      - Employees
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/employee_id'
+    post:
+      tags:
+        - statutory-components
+      operationId: enable_employee_epf
+      summary: Enable EPF
+      description: Enable EPF configuration of an employee.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/enable-epf-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/enable-epf-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.CREATE
+  /employees/{employee_id}/epf/disable:
+    x-mcp-group:
+      - Employees
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/employee_id'
+    post:
+      tags:
+        - statutory-components
+      operationId: disable_employee_epf
+      summary: Disable EPF
+      description: Disable EPF configuration of an employee.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/disable-epf-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.CREATE
+  /employees/{employee_id}/esi/enable:
+    x-mcp-group:
+      - Employees
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/employee_id'
+    post:
+      tags:
+        - statutory-components
+      operationId: enable_employee_esi
+      summary: Enable ESI
+      description: Enable ESI configuration of an employee.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/enable-esi-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/enable-esi-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.CREATE
+  /employees/{employee_id}/esi/disable:
+    x-mcp-group:
+      - Employees
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/employee_id'
+    post:
+      tags:
+        - statutory-components
+      operationId: disable_employee_esi
+      summary: Disable ESI
+      description: Disable ESI configuration of an employee.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/disable-esi-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.CREATE
+  /employees/{employee_id}/lwf/enable:
+    x-mcp-group:
+      - Employees
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/employee_id'
+    post:
+      tags:
+        - statutory-components
+      operationId: enable_employee_lwf
+      summary: Enable LWF
+      description: Enable LWF configuration of an employee.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/enable-lwf-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.CREATE
+  /employees/{employee_id}/lwf/disable:
+    x-mcp-group:
+      - Employees
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/employee_id'
+    post:
+      tags:
+        - statutory-components
+      operationId: disable_employee_lwf
+      summary: Disable LWF
+      description: Disable LWF configuration of an employee.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/disable-lwf-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.CREATE
+  /employees/{employee_id}/pt/enable:
+    x-mcp-group:
+      - Employees
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/employee_id'
+    post:
+      tags:
+        - statutory-components
+      operationId: enable_employee_pt
+      summary: Enable PT
+      description: Enable PT configuration of an employee.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/enable-pt-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.CREATE
+  /employees/{employee_id}/pt/disable:
+    x-mcp-group:
+      - Employees
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+      - $ref: '#/components/parameters/employee_id'
+    post:
+      tags:
+        - statutory-components
+      operationId: disable_employee_pt
+      summary: Disable PT
+      description: Disable PT configuration of an employee.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/disable-pt-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.employee.CREATE
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: Unique identifier for the organization.
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+    employee_id:
+      name: employee_id
+      description: Unique identifier denoting the employee.
+      in: path
+      required: true
+      schema:
+        type: string
+      example: '5000000004494'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/employee-response'
+    code:
+      type: integer
+      example: 0
+      readOnly: true
+    message:
+      type: string
+      example: success
+      readOnly: true
+    employee_id:
+      type: string
+      example: '5000000004494'
+      description: Unique identifier for the employee.
+    employee_name:
+      description: Full name of the employee.
+      type: string
+      example: Anand Maya
+    is_lwf_applicable:
+      type: boolean
+      example: true
+      description: Indicates whether LWF is applicable for this work location.
+    is_employer_contribution_included_ctc:
+      type: boolean
+      example: true
+      description: Indicates whether employer contribution is included in CTC.
+    is_lwf_enabled:
+      type: boolean
+      example: true
+      description: Determines whether LWF is enabled for this employee.
+    work_location_id:
+      type: string
+      example: '5000000004402'
+      description: Unique identifier for the worklocation.
+    work_location_name:
+      description: Name of the work location.
+      type: string
+      example: Chennai
+    state_code:
+      type: string
+      example: TN
+    is_pt_applicable:
+      type: boolean
+      example: true
+      description: Indicates whether PT is applicable for this work location.
+    can_contribute_to_eps_on_higher_wages:
+      type: boolean
+      example: false
+      description: Indicates whether there is a wage limit on the amount considered for EPS contribution. If true, the full Basic + DA amount will be considered for EPS contribution, else only up to Rs.15,0000 (Basic + DA) will be considered for EPS contribution.
+    is_eligible_for_eps:
+      type: boolean
+      example: true
+      description: Indicates whether the employee is eligible for Employee Pension Scheme.
+    is_eligible_for_pf:
+      type: boolean
+      example: true
+      description: Indicates whether the employee is eligible for Employees' Provident Fund.
+    is_eligible_for_esi:
+      type: boolean
+      example: true
+      description: Indicates whether the employee is eligible for Employees' State Insurance.
+    is_eligible_for_lwf:
+      type: boolean
+      example: true
+      description: Indicates whether the employee is eligible for Labour Welfare Fund.
+    is_eligible_for_pt:
+      type: boolean
+      example: true
+      description: Indicates whether the employee is eligible for Professional Tax.
+    pf_account_number:
+      description: Enter PF account number, if the employee is eligible for EPF.
+      type: string
+      example: AA/AAA/4567890/OIU/4454545
+    esi_number:
+      description: Enter ESI number, if the employee is eligible for ESI.
+      type: string
+      example: '1234567890'
+    uan:
+      type: string
+      example: '123456789098'
+      description: Enter UAN, if the employee is eligible for EPF.
+    employee-response:
+      type: object
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/employee_id'
+        employee_name:
+          $ref: '#/components/schemas/employee_name'
+        is_eligible_for_pf:
+          $ref: '#/components/schemas/is_eligible_for_pf'
+        is_eligible_for_eps:
+          $ref: '#/components/schemas/is_eligible_for_eps'
+        can_contribute_to_eps_on_higher_wages:
+          $ref: '#/components/schemas/can_contribute_to_eps_on_higher_wages'
+        is_eligible_for_esi:
+          $ref: '#/components/schemas/is_eligible_for_esi'
+        is_eligible_for_lwf:
+          $ref: '#/components/schemas/is_eligible_for_lwf'
+        is_eligible_for_pt:
+          $ref: '#/components/schemas/is_eligible_for_pt'
+        pf_account_number:
+          $ref: '#/components/schemas/pf_account_number'
+        uan:
+          $ref: '#/components/schemas/uan'
+        esi_number:
+          $ref: '#/components/schemas/esi_number'
+          description: Enter ESI number, if the employee is eligible for ESI.
+        work_location_details:
+          $ref: '#/components/schemas/work_location_details'
+    work_location_details:
+      type: object
+      properties:
+        work_location_id:
+          $ref: '#/components/schemas/work_location_id'
+        work_location_name:
+          $ref: '#/components/schemas/work_location_name'
+        state_code:
+          $ref: '#/components/schemas/state_code'
+        is_pt_applicable:
+          $ref: '#/components/schemas/is_pt_applicable'
+        is_lwf_applicable:
+          $ref: '#/components/schemas/is_lwf_applicable'
+    get-employee-statutory-reponse:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: success
+        employee:
+          $ref: '#/components/schemas/employee-response'
+    update-employee-statutory-request:
+      type: object
+      properties:
+        can_contribute_to_eps_on_higher_wages:
+          $ref: '#/components/schemas/can_contribute_to_eps_on_higher_wages'
+        is_eligible_for_eps:
+          $ref: '#/components/schemas/is_eligible_for_eps'
+        is_eligible_for_esi:
+          $ref: '#/components/schemas/is_eligible_for_esi'
+        is_eligible_for_lwf:
+          $ref: '#/components/schemas/is_eligible_for_lwf'
+        is_eligible_for_pf:
+          $ref: '#/components/schemas/is_eligible_for_pf'
+        is_eligible_for_pt:
+          $ref: '#/components/schemas/is_eligible_for_pt'
+        pf_account_number:
+          $ref: '#/components/schemas/pf_account_number'
+        esi_number:
+          $ref: '#/components/schemas/esi_number'
+          description: Enter ESI number, if the employee is eligible for ESI.
+        uan:
+          $ref: '#/components/schemas/uan'
+    update-employee-statutory-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Employee statutory details have been updated successfully
+        employee:
+          type: object
+          properties:
+            employee_id:
+              $ref: '#/components/schemas/employee_id'
+            employee_name:
+              $ref: '#/components/schemas/employee_name'
+            is_eligible_for_pf:
+              $ref: '#/components/schemas/is_eligible_for_pf'
+            is_eligible_for_eps:
+              $ref: '#/components/schemas/is_eligible_for_eps'
+            can_contribute_to_eps_on_higher_wages:
+              $ref: '#/components/schemas/can_contribute_to_eps_on_higher_wages'
+            is_eligible_for_esi:
+              $ref: '#/components/schemas/is_eligible_for_esi'
+            is_eligible_for_lwf:
+              $ref: '#/components/schemas/is_eligible_for_lwf'
+            is_eligible_for_pt:
+              $ref: '#/components/schemas/is_eligible_for_pt'
+            pf_account_number:
+              $ref: '#/components/schemas/pf_account_number'
+            uan:
+              $ref: '#/components/schemas/uan'
+            esi_number:
+              $ref: '#/components/schemas/esi_number'
+    enable-epf-request:
+      type: object
+      properties:
+        is_eligible_for_eps:
+          $ref: '#/components/schemas/is_eligible_for_eps'
+        can_contribute_to_eps_on_higher_wages:
+          $ref: '#/components/schemas/can_contribute_to_eps_on_higher_wages'
+        pf_account_number:
+          $ref: '#/components/schemas/pf_account_number'
+        uan:
+          $ref: '#/components/schemas/uan'
+    enable-epf-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: EPF has been enabled for this employee.
+        employee_epf_details:
+          type: object
+          properties:
+            employee_id:
+              $ref: '#/components/schemas/employee_id'
+            employee_name:
+              $ref: '#/components/schemas/employee_name'
+            is_eligible_for_eps:
+              $ref: '#/components/schemas/is_eligible_for_eps'
+            can_contribute_to_eps_on_higher_wages:
+              $ref: '#/components/schemas/can_contribute_to_eps_on_higher_wages'
+            pf_account_number:
+              $ref: '#/components/schemas/pf_account_number'
+            uan:
+              $ref: '#/components/schemas/uan'
+            is_eligible_for_pf:
+              $ref: '#/components/schemas/is_eligible_for_pf'
+    disable-epf-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: EPF has been disabled for this employee.
+    enable-esi-request:
+      type: object
+      properties:
+        esi_number:
+          $ref: '#/components/schemas/esi_number'
+          description: Enter ESI number, if the employee is eligible for ESI.
+    enable-esi-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: ESI has been enabled for this employee.
+        employee_esi_details:
+          type: object
+          properties:
+            employee_id:
+              $ref: '#/components/schemas/employee_id'
+            employee_name:
+              $ref: '#/components/schemas/employee_name'
+            esi_number:
+              $ref: '#/components/schemas/esi_number'
+            is_eligible_for_esi:
+              $ref: '#/components/schemas/is_eligible_for_esi'
+    disable-esi-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: ESI has been disabled for this employee.
+    enable-lwf-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: LWF has been enabled for this employee.
+    disable-lwf-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: LWF has been disabled for this employee.
+    enable-pt-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Professional Tax has been enabled for this employee.
+    disable-pt-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Professional Tax has been disabled for this employee.
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.employee.CREATE: Create Employee
+            ERP.employee.UPDATE: Update Employee
+            ERP.employee.READ: Read Employee
+            ERP.employee.DELETE: Delete Employee

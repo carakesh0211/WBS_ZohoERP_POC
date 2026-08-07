@@ -1,0 +1,638 @@
+openapi: 3.0.0
+info:
+  title: Users
+  description: Users are various individuals/entities that are a part of an organization. Each user will have a different role to play, like admin, staff etc., .
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: users
+    description: Users Module
+paths:
+  /users:
+    x-mcp-group:
+      - Users
+    post:
+      tags:
+        - users
+      operationId: create_user
+      summary: Create a user
+      description: Create a user for your organization.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-user-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-user-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.CREATE
+    get:
+      tags:
+        - users
+      operationId: list_users
+      summary: List Users
+      description: Get the list of all users in the organization.
+      parameters:
+        - name: filter_by
+          in: query
+          description: 'Allowed Values: <code>Status.All, Status.Active, Status.Inactive, Status.Invited and Status.Deleted</code>'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: sort_column
+          in: query
+          description: 'Sort users. Allowed Values: <code>name, email, user_role and status</code>'
+          required: false
+          schema:
+            type: string
+          example: name
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-users-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /users/{user_id}:
+    x-mcp-group:
+      - Users
+    put:
+      tags:
+        - users
+      operationId: update_user
+      summary: Update a user
+      description: Update the details of a user.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-user-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-user-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.UPDATE
+    get:
+      tags:
+        - users
+      operationId: get_user
+      summary: Get an user details
+      description: Get the details of a user.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-user-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.READ
+    delete:
+      tags:
+        - users
+      operationId: delete_user
+      summary: Delete a user
+      description: Delete a user associated to the organization.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-user-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.DELETE
+    parameters:
+      - name: user_id
+        in: path
+        schema:
+          type: string
+        required: true
+        description: 'Unique identifier of the user. Note: This value is a set of numeric characters.'
+        example: '982000000554041'
+      - $ref: '#/components/parameters/organization_id'
+  /users/me:
+    x-mcp-group:
+      - Users
+    get:
+      tags:
+        - users
+      operationId: get_current_user
+      summary: Get current user
+      description: Get the details of the current user.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-current-user-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /users/{user_id}/invite:
+    x-mcp-group:
+      - Users
+    post:
+      tags:
+        - users
+      operationId: invite_user
+      summary: Invite a user
+      description: Send invitation email to a user.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/invite-a-user-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.CREATE
+    parameters:
+      - name: user_id
+        in: path
+        schema:
+          type: string
+        required: true
+        description: 'Unique identifier of the user. Note: This value is a set of numeric characters.'
+        example: '982000000554041'
+      - $ref: '#/components/parameters/organization_id'
+  /users/{user_id}/active:
+    x-mcp-group:
+      - Users
+    post:
+      tags:
+        - users
+      operationId: mark_user_active
+      summary: Mark user as active
+      description: Mark an inactive user as active.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-user-as-active-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.CREATE
+    parameters:
+      - name: user_id
+        in: path
+        schema:
+          type: string
+        required: true
+        description: 'Unique identifier of the user. Note: This value is a set of numeric characters.'
+        example: '982000000554041'
+      - $ref: '#/components/parameters/organization_id'
+  /users/{user_id}/inactive:
+    x-mcp-group:
+      - Users
+    post:
+      tags:
+        - users
+      operationId: mark_user_inactive
+      summary: Mark user as inactive
+      description: Mark an active user as inactive.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-user-as-inactive-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.CREATE
+    parameters:
+      - name: user_id
+        in: path
+        schema:
+          type: string
+        required: true
+        description: 'Unique identifier of the user. Note: This value is a set of numeric characters.'
+        example: '982000000554041'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: 'ID of the organization. Note: This value is a set of numeric characters.'
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    name:
+      description: name of the user.
+      type: string
+      example: John Smith
+    email:
+      description: email address of the user.
+      type: string
+      example: johndavid@zylker.org
+    user_id:
+      type: string
+      description: 'Unique identifier of the user. Note: This value is a set of numeric characters.'
+      example: '982000000554041'
+    user_name:
+      description: Name of the user.
+      type: string
+      example: ' '
+    rate:
+      description: Hourly rate for a task.
+      type: number
+      format: double
+      example: 0
+    budget_hours:
+      description: Task budget hours.
+      type: integer
+      example: 0
+    role_id:
+      type: string
+      description: 'Unique identifier of the role assigned to the user. Note: This value is a set of numeric characters.'
+      example: '982000000006005'
+    user_role:
+      description: 'Role to be assigned. Allowed Values: <code>staff</code>, <code>admin</code> and <code>timesheetstaff</code>.'
+      type: string
+      example: admin
+    photo_url:
+      type: string
+      description: URL of the user's photo.
+      example: https://contacts.zoho.in/file?ID=d27344a22bad8bb83a03722b4aa5bc6967c3135f24307fe40db8572782432fd6aae0110f8bb9c4c79e8e0f0cca5904aecfacbf079f13b48c295bacc89ae91fca&fs=thumb
+    status:
+      type: string
+      description: Status of the user.
+      example: active
+    is_current_user:
+      type: boolean
+      description: Indicates whether the user is the current user.
+      example: true
+    per_page:
+      type: number
+      description: Number of records to be fetched per page.
+      format: double
+      example: 10
+    page:
+      type: number
+      description: Number of pages to be fetched.
+      format: double
+      example: 1
+    report_name:
+      type: string
+      description: Name of the report.
+      example: Users
+    has_more_page:
+      type: boolean
+      description: Indicates whether there are more pages to be fetched or not.
+      example: false
+    sort_order:
+      type: string
+      description: Order in which the records has to be sorted.
+      example: A
+    sort_column:
+      type: string
+      description: The column name on which the sorting has to be done.
+      example: name
+    is_selected:
+      type: boolean
+      description: Indicates whether the email is selected as primary email or not.
+      example: true
+    email_ids:
+      type: array
+      items:
+        type: string
+    filter_by:
+      description: 'Allowed Values: <code>Status.All, Status.Active, Status.Inactive, Status.Invited and Status.Deleted</code>'
+      type: string
+    is_customer_segmented:
+      type: boolean
+      description: Indicates whether the user is segmented as customer.
+      example: false
+    is_vendor_segmented:
+      type: boolean
+      description: Indicates whether the user is segmented as vendor.
+      example: false
+    user_type:
+      type: string
+      description: Type of the user.
+      example: zoho
+    is_employee:
+      type: boolean
+      description: Indicates whether the user is an employee.
+      example: true
+    created_time:
+      type: string
+      description: Time at which the user is created.
+      example: 2016-06-05T02:30:08+0530
+    custom_fields:
+      type: string
+      description: Custom fields added for the user.
+      example: ''
+    cost_rate:
+      description: Hourly cost rate.
+      type: number
+      format: double
+      example: 0
+    create-a-user-request:
+      required:
+        - name
+        - email
+      type: object
+      properties:
+        name:
+          $ref: '#/components/schemas/name'
+        email:
+          $ref: '#/components/schemas/email'
+        role_id:
+          $ref: '#/components/schemas/role_id'
+        cost_rate:
+          $ref: '#/components/schemas/cost_rate'
+    create-a-user-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Your invitation has been sent.
+          readOnly: true
+    list-users-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        users:
+          type: array
+          description: List of users in the organization.
+          items:
+            type: object
+            properties:
+              user_id:
+                $ref: '#/components/schemas/user_id'
+              role_id:
+                $ref: '#/components/schemas/role_id'
+              name:
+                $ref: '#/components/schemas/name'
+              email:
+                $ref: '#/components/schemas/email'
+              user_role:
+                $ref: '#/components/schemas/user_role'
+              status:
+                $ref: '#/components/schemas/status'
+              is_current_user:
+                $ref: '#/components/schemas/is_current_user'
+              photo_url:
+                $ref: '#/components/schemas/photo_url'
+              is_customer_segmented:
+                $ref: '#/components/schemas/is_customer_segmented'
+              is_vendor_segmented:
+                $ref: '#/components/schemas/is_vendor_segmented'
+              user_type:
+                $ref: '#/components/schemas/user_type'
+        page_context:
+          type: object
+          properties:
+            page:
+              $ref: '#/components/schemas/page'
+            per_page:
+              $ref: '#/components/schemas/per_page'
+            has_more_page:
+              $ref: '#/components/schemas/has_more_page'
+            report_name:
+              $ref: '#/components/schemas/report_name'
+            sort_column:
+              $ref: '#/components/schemas/sort_column'
+            sort_order:
+              $ref: '#/components/schemas/sort_order'
+    update-a-user-request:
+      required:
+        - name
+        - email
+      type: object
+      properties:
+        name:
+          $ref: '#/components/schemas/name'
+        email:
+          $ref: '#/components/schemas/email'
+        role_id:
+          $ref: '#/components/schemas/role_id'
+        cost_rate:
+          $ref: '#/components/schemas/cost_rate'
+    update-a-user-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The user information has been updated.
+          readOnly: true
+    get-a-user-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        user:
+          type: object
+          properties:
+            user_id:
+              $ref: '#/components/schemas/user_id'
+            name:
+              $ref: '#/components/schemas/name'
+            email_ids:
+              description: EmailIDs of an user.
+              type: array
+              items:
+                type: object
+                properties:
+                  email:
+                    $ref: '#/components/schemas/email'
+                  is_selected:
+                    $ref: '#/components/schemas/is_selected'
+            status:
+              $ref: '#/components/schemas/status'
+            user_role:
+              $ref: '#/components/schemas/user_role'
+            user_type:
+              $ref: '#/components/schemas/user_type'
+            role_id:
+              $ref: '#/components/schemas/role_id'
+            cost_rate:
+              $ref: '#/components/schemas/cost_rate'
+            photo_url:
+              $ref: '#/components/schemas/photo_url'
+            is_employee:
+              $ref: '#/components/schemas/is_employee'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            custom_fields:
+              $ref: '#/components/schemas/custom_fields'
+    delete-a-user-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The user has been removed from your organization.
+          readOnly: true
+    get-current-user-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        user:
+          type: object
+          properties:
+            user_id:
+              $ref: '#/components/schemas/user_id'
+            name:
+              $ref: '#/components/schemas/name'
+            email_ids:
+              description: EmailIDs of an user.
+              type: array
+              items:
+                type: object
+                properties:
+                  email:
+                    $ref: '#/components/schemas/email'
+                  is_selected:
+                    $ref: '#/components/schemas/is_selected'
+            status:
+              $ref: '#/components/schemas/status'
+            user_role:
+              $ref: '#/components/schemas/user_role'
+            user_type:
+              $ref: '#/components/schemas/user_type'
+            role_id:
+              $ref: '#/components/schemas/role_id'
+            cost_rate:
+              $ref: '#/components/schemas/cost_rate'
+            photo_url:
+              $ref: '#/components/schemas/photo_url'
+            is_employee:
+              $ref: '#/components/schemas/is_employee'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            custom_fields:
+              $ref: '#/components/schemas/custom_fields'
+    invite-a-user-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Your invitation has been sent.
+          readOnly: true
+    mark-user-as-active-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The user has been marked as active.
+          readOnly: true
+    mark-user-as-inactive-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The user has been marked as inactive.
+          readOnly: true
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.settings.CREATE: Create Settings
+            ERP.settings.UPDATE: Update Settings
+            ERP.settings.READ: Read Settings
+            ERP.settings.DELETE: Delete Settings

@@ -1,0 +1,846 @@
+openapi: 3.0.0
+info:
+  title: Coupons
+  description: Coupons are used to provide discounts and special offers to customers. These coupons can be applied to a subscription at any time.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: coupons
+    description: Coupons Module
+paths:
+  /coupons:
+    x-mcp-group:
+      - Coupons
+    post:
+      tags:
+        - coupons
+      operationId: create_coupon
+      summary: Create a coupon
+      description: Create a new coupon.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-coupon-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-coupon-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.coupons.CREATE
+    get:
+      tags:
+        - coupons
+      operationId: list_coupons
+      summary: List all coupons
+      description: List of all coupons.
+      parameters:
+        - name: filter_by
+          in: query
+          description: To list plans based on the Status, use the parameter <code>filter_by</code>. The allowed values for filter_by are CouponStatus.(<code>All</code>, <code>ACTIVE</code>, <code>INACTIVE</code> and <code>EXPIRED</code>).
+          required: false
+          schema:
+            type: string
+          example: CouponStatus.EXPIRED
+        - name: product_id
+          in: query
+          description: To list Coupons of a particular product use the parameter <code>product_id</code>.
+          required: false
+          schema:
+            type: string
+          example: '903000000045027'
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-all-coupons-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.coupons.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /coupons/{coupon_code}:
+    x-mcp-group:
+      - Coupons
+    get:
+      tags:
+        - coupons
+      operationId: get_coupon
+      summary: Retrieve a coupon
+      description: Details of an existing coupon.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/retrieve-a-coupon-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.coupons.READ
+    put:
+      tags:
+        - coupons
+      operationId: update_coupon
+      summary: Update a coupon
+      description: Update details of an existing coupon.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-coupon-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-coupon-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.coupons.UPDATE
+    delete:
+      tags:
+        - coupons
+      operationId: delete_coupon
+      summary: Delete a coupon
+      description: Delete an existing coupon.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-coupon-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.coupons.DELETE
+    parameters:
+      - name: coupon_code
+        in: path
+        required: true
+        description: Unique code of a coupon.
+        schema:
+          type: string
+        example: THANKSGIVING20
+      - $ref: '#/components/parameters/organization_id'
+  /coupons/{coupon_code}/markasactive:
+    x-mcp-group:
+      - Coupons
+    post:
+      tags:
+        - coupons
+      operationId: mark_coupon_as_active
+      summary: Mark as active
+      description: Status of the coupon will be changed to <strong>active</strong>.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-as-active-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.coupons.CREATE
+    parameters:
+      - name: coupon_code
+        in: path
+        required: true
+        description: Unique code of a coupon.
+        schema:
+          type: string
+        example: THANKSGIVING20
+      - $ref: '#/components/parameters/organization_id'
+  /coupons/{coupon_code}/markasinactive:
+    x-mcp-group:
+      - Coupons
+    post:
+      tags:
+        - coupons
+      operationId: mark_coupon_as_inactive
+      summary: Mark as inactive
+      description: Status of the coupon will be changed to <strong>inactive</strong>.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-as-inactive-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.coupons.CREATE
+    parameters:
+      - name: coupon_code
+        in: path
+        required: true
+        description: Unique code of a coupon.
+        schema:
+          type: string
+        example: THANKSGIVING20
+      - $ref: '#/components/parameters/organization_id'
+  /couponset/{coupon_set_id}/markasactive:
+    x-mcp-group:
+      - Coupons
+    post:
+      tags:
+        - coupons
+      operationId: mark_coupon_set_as_active
+      summary: Mark coupon set as active
+      description: Change the status of a coupon set to active.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-coupon-set-as-active-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.coupons.CREATE
+    parameters:
+      - name: coupon_set_id
+        in: path
+        required: true
+        description: ID of the coupon set.
+        schema:
+          type: string
+        example: '903000000067001'
+      - $ref: '#/components/parameters/organization_id'
+  /couponset/{coupon_set_id}/markasinactive:
+    x-mcp-group:
+      - Coupons
+    post:
+      tags:
+        - coupons
+      operationId: mark_coupon_set_as_inactive
+      summary: Mark coupon set as inactive
+      description: Change the status of a coupon set to inactive.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-coupon-set-as-inactive-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.coupons.CREATE
+    parameters:
+      - name: coupon_set_id
+        in: path
+        required: true
+        description: ID of the coupon set.
+        schema:
+          type: string
+        example: '903000000067001'
+      - $ref: '#/components/parameters/organization_id'
+  /couponset/status/markasactive:
+    x-mcp-group:
+      - Coupons
+    post:
+      tags:
+        - coupons
+      operationId: bulk_mark_coupon_sets_as_active
+      summary: Bulk mark coupon sets as active
+      description: Change the status of multiple coupon sets to active.
+      parameters:
+        - name: coupon_ids
+          in: query
+          required: true
+          description: Comma-separated IDs of the coupon sets to mark as active. Maximum 200 IDs allowed.
+          schema:
+            type: string
+          example: 903000000067001,903000000067002
+        - $ref: '#/components/parameters/organization_id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/bulk-mark-coupon-sets-as-active-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.coupons.CREATE
+  /couponset/status/markasinactive:
+    x-mcp-group:
+      - Coupons
+    post:
+      tags:
+        - coupons
+      operationId: bulk_mark_coupon_sets_as_inactive
+      summary: Bulk mark coupon sets as inactive
+      description: Change the status of multiple coupon sets to inactive.
+      parameters:
+        - name: coupon_ids
+          in: query
+          required: true
+          description: Comma-separated IDs of the coupon sets to mark as inactive. Maximum 200 IDs allowed.
+          schema:
+            type: string
+          example: 903000000067001,903000000067002
+        - $ref: '#/components/parameters/organization_id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/bulk-mark-coupon-sets-as-inactive-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.coupons.CREATE
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization.
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/coupon-response'
+    coupon-response:
+      type: object
+      properties:
+        coupon_code:
+          $ref: '#/components/schemas/coupon_code'
+        name:
+          $ref: '#/components/schemas/name'
+        description:
+          $ref: '#/components/schemas/description'
+        type:
+          $ref: '#/components/schemas/type'
+        duration:
+          $ref: '#/components/schemas/duration'
+        status:
+          $ref: '#/components/schemas/status'
+        discount_by:
+          $ref: '#/components/schemas/discount_by'
+        discount_value:
+          $ref: '#/components/schemas/discount_value'
+        product_id:
+          $ref: '#/components/schemas/product_id'
+        max_redemption:
+          $ref: '#/components/schemas/max_redemption'
+        redemption_count:
+          $ref: '#/components/schemas/redemption_count'
+        expiry_at:
+          $ref: '#/components/schemas/expiry_at'
+        apply_to_plans:
+          $ref: '#/components/schemas/apply_to_plans'
+        plans:
+          description: List of plans that the coupon needs to be associated with. If a coupon is to be associated with only two plans - "basic" and "professional", then <code>apply_to_plans</code> is set to be selected. Only the plan codes of the plans that need to be associated with the coupon are required.
+          type: array
+          items:
+            type: object
+            properties:
+              plan_code:
+                $ref: '#/components/schemas/plan_code'
+              name:
+                description: Plan to which the coupon is to be applied.
+                example: Basic
+        apply_to_addons:
+          $ref: '#/components/schemas/apply_to_addons'
+        addons:
+          description: List of addons that the coupon needs to be associated with. If a coupon is to be associated with only two addons - "Email Basic" and "Email Professional", then <code>apply_to_addons</code> is set to be selected. Only the addon codes of the addons that need to be associated with the coupon are required.
+          type: array
+          items:
+            type: object
+            properties:
+              addon_code:
+                $ref: '#/components/schemas/addon_code'
+              name:
+                description: Name of the addon.
+                example: Email Basic
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        updated_time:
+          $ref: '#/components/schemas/updated_time'
+    coupon_code:
+      description: Unique string of your choice which lets you identify this coupon.
+      type: string
+      example: THANKSGIVING20
+    name:
+      description: Name of the coupon to be displayed in the interface and invoices.
+      type: string
+      example: Thanksgiving 20 percent offer
+    description:
+      description: A small description about the coupon.
+      type: string
+      example: Twenty percent offer for thanks giving.
+    type:
+      description: This indicates whether the coupon is to be applied only once, particular number of times or every time an invoice is raised for the subscription. It can either be <code>one_time</code>, <code>duration</code>, <code>forever</code>.
+      type: string
+      example: duration
+    duration:
+      description: This indicates the number of times the coupon has to applied to the invoices generated for a particular subscription.
+      type: integer
+      example: 2
+      x-required_info: for duration type coupon.
+    status:
+      description: Status of the coupon. It can either be <code>active</code>, <code>inactive</code>, <code>expired</code> or <code>maxed_out</code>
+      type: string
+      example: active
+    discount_by:
+      description: Percentage off or Flat rate discounts can be offered. The value can either be <code>flat</code> or <code>percentage</code>.
+      type: string
+      example: percentage
+    discount_value:
+      description: Represents the coupon discount value, applied as either a percentage or a flat amount based on discount_by, and deducted from the total price of applicable plans/addons. For percentage discounts, the value should include the % symbol (e.g., 10%). For example,on Rs.1000,a 10% discount results in Rs.900,while a flat Rs.200 discount results in Rs.800.
+      type: number
+      format: double
+      example: 20
+    product_id:
+      description: The Product ID of the product for which the coupon has to be created.
+      type: string
+      example: '903000000045027'
+    max_redemption:
+      description: Maximum number of subscriptions the coupon can be used for. The status of the coupon will be changed to <code>maxed_out</code> once this limit is reached.
+      type: integer
+      example: 50
+    redemption_count:
+      description: Number of subscriptions the coupon has been used for at present.
+      type: integer
+      example: 10
+    expiry_at:
+      description: Date on which the coupon expires. The coupon cannot be applied to new subscriptions after this date. However, coupons with <code>type</code>=<code>forever</code> already applied to subscriptions can still be redeemed.
+      type: string
+      example: '2016-08-28'
+    apply_to_plans:
+      description: The coupon can be applied to all existing plans, selected plans or none of the existing plans. The values can be <code>all</code>, <code>none</code> or <code>select</code>.
+      type: string
+      example: select
+    plans:
+      description: List of plans that the coupon needs to be associated with. If a coupon is to be associated with only two plans - "basic" and "professional", then <code>apply_to_plans</code> is set to be selected. Only the plan codes of the plans that need to be associated with the coupon are required.
+      type: array
+      items:
+        type: object
+        properties:
+          plan_code:
+            $ref: '#/components/schemas/plan_code'
+          name:
+            description: Plan to which the coupon is to be applied.
+            example: Basic
+    plan_code:
+      description: The plan code of the plan to which the coupon is to be applied.
+      type: string
+      example: basic-monthly
+    apply_to_addons:
+      description: The coupon can be applied to all one-time addons,all recurring addons,all addons, selected addons or none of the existing addons. The values can be <code>all_addons</code>, <code>all_recurring</code>,<code>all_onetime</code>, <code>none</code> or <code>select</code>.
+      type: string
+      example: select
+    addons:
+      description: List of addons that the coupon needs to be associated with. If a coupon is to be associated with only two addons - "Email Basic" and "Email Professional", then <code>apply_to_addons</code> is set to be selected. Only the addon codes of the addons that need to be associated with the coupon are required.
+      type: array
+      items:
+        type: object
+        properties:
+          addon_code:
+            $ref: '#/components/schemas/addon_code'
+          name:
+            description: Name of the addon.
+            example: Email Basic
+    addon_code:
+      description: The addon code of the addon to which the coupon is to be applied.
+      type: string
+      example: Email-basic
+    created_time:
+      description: Time at which the coupon was created.
+      type: string
+      example: 2016-06-05T18:02:26+0530
+    updated_time:
+      description: Time at which the coupon details were last updated.
+      type: string
+      example: 2016-06-05T18:02:26+0530
+    create-a-coupon-request:
+      required:
+        - coupon_code
+        - name
+        - type
+        - duration
+        - discount_by
+        - product_id
+        - addons
+        - plans
+      type: object
+      properties:
+        coupon_code:
+          $ref: '#/components/schemas/coupon_code'
+        name:
+          $ref: '#/components/schemas/name'
+        description:
+          $ref: '#/components/schemas/description'
+        type:
+          $ref: '#/components/schemas/type'
+        duration:
+          $ref: '#/components/schemas/duration'
+        discount_by:
+          $ref: '#/components/schemas/discount_by'
+        discount_value:
+          $ref: '#/components/schemas/discount_value'
+        product_id:
+          $ref: '#/components/schemas/product_id'
+        max_redemption:
+          $ref: '#/components/schemas/max_redemption'
+        expiry_at:
+          $ref: '#/components/schemas/expiry_at'
+        apply_to_plans:
+          $ref: '#/components/schemas/apply_to_plans'
+        plans:
+          description: List of plans that the coupon needs to be associated with. If a coupon is to be associated with only two plans - "basic" and "professional", then <code>apply_to_plans</code> is set to be selected. Only the plan codes of the plans that need to be associated with the coupon are required.
+          x-required_info: if <code> apply_to_plans </code> is selected
+          type: array
+          items:
+            type: object
+            required:
+              - plan_code
+            properties:
+              plan_code:
+                $ref: '#/components/schemas/plan_code'
+        apply_to_addons:
+          $ref: '#/components/schemas/apply_to_addons'
+        addons:
+          description: List of addons that the coupon needs to be associated with. If a coupon is to be associated with only two addons - "Email Basic" and "Email Professional", then <code>apply_to_addons</code> is set to be selected. Only the addon codes of the addons that need to be associated with the coupon are required.
+          x-required_info: if <code> apply_to_addons </code> is selected
+          type: array
+          items:
+            type: object
+            required:
+              - addon_code
+            properties:
+              addon_code:
+                $ref: '#/components/schemas/addon_code'
+    create-a-coupon-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The coupon has been created.
+          readOnly: true
+        coupon:
+          $ref: '#/components/schemas/coupon-response'
+    list-all-coupons-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        coupons:
+          type: array
+          items:
+            type: object
+            properties:
+              coupon_code:
+                $ref: '#/components/schemas/coupon_code'
+              name:
+                $ref: '#/components/schemas/name'
+              description:
+                $ref: '#/components/schemas/description'
+              type:
+                $ref: '#/components/schemas/type'
+              status:
+                $ref: '#/components/schemas/status'
+              discount_by:
+                $ref: '#/components/schemas/discount_by'
+              discount_value:
+                $ref: '#/components/schemas/discount_value'
+              product_id:
+                $ref: '#/components/schemas/product_id'
+              max_redemption:
+                $ref: '#/components/schemas/max_redemption'
+              redemption_count:
+                $ref: '#/components/schemas/redemption_count'
+              expiry_at:
+                $ref: '#/components/schemas/expiry_at'
+              created_time:
+                $ref: '#/components/schemas/created_time'
+              updated_time:
+                $ref: '#/components/schemas/updated_time'
+    retrieve-a-coupon-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        coupon:
+          type: object
+          properties:
+            coupon_code:
+              $ref: '#/components/schemas/coupon_code'
+            name:
+              $ref: '#/components/schemas/name'
+            description:
+              $ref: '#/components/schemas/description'
+            type:
+              $ref: '#/components/schemas/type'
+            duration:
+              $ref: '#/components/schemas/duration'
+            status:
+              $ref: '#/components/schemas/status'
+            discount_by:
+              $ref: '#/components/schemas/discount_by'
+            discount_value:
+              $ref: '#/components/schemas/discount_value'
+            product_id:
+              $ref: '#/components/schemas/product_id'
+            max_redemption:
+              $ref: '#/components/schemas/max_redemption'
+            redemption_count:
+              $ref: '#/components/schemas/redemption_count'
+            expiry_at:
+              $ref: '#/components/schemas/expiry_at'
+            apply_to_plans:
+              $ref: '#/components/schemas/apply_to_plans'
+            plans:
+              description: List of plans that the coupon needs to be associated with. If a coupon is to be associated with only two plans - "basic" and "professional", then <code>apply_to_plans</code> is set to be selected. Only the plan codes of the plans that need to be associated with the coupon are required.
+              type: array
+              items:
+                type: object
+                properties:
+                  plan_code:
+                    $ref: '#/components/schemas/plan_code'
+                  name:
+                    description: Plan to which the coupon is to be applied.
+                    example: Basic
+            apply_to_addons:
+              $ref: '#/components/schemas/apply_to_addons'
+            addons:
+              description: List of addons that the coupon needs to be associated with. If a coupon is to be associated with only two addons - "Email Basic" and "Email Professional", then <code>apply_to_addons</code> is set to be selected. Only the addon codes of the addons that need to be associated with the coupon are required.
+              type: array
+              items:
+                type: object
+                properties:
+                  addon_code:
+                    $ref: '#/components/schemas/addon_code'
+                  name:
+                    description: Name of the addon.
+                    example: Email Basic
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            updated_time:
+              $ref: '#/components/schemas/updated_time'
+    update-a-coupon-request:
+      required:
+        - name
+      type: object
+      properties:
+        name:
+          $ref: '#/components/schemas/name'
+        description:
+          $ref: '#/components/schemas/description'
+        max_redemption:
+          $ref: '#/components/schemas/max_redemption'
+        expiry_at:
+          $ref: '#/components/schemas/expiry_at'
+    update-a-coupon-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The coupon details have been updated.
+          readOnly: true
+        coupon:
+          type: object
+          properties:
+            coupon_code:
+              $ref: '#/components/schemas/coupon_code'
+            name:
+              $ref: '#/components/schemas/name'
+            description:
+              $ref: '#/components/schemas/description'
+            type:
+              $ref: '#/components/schemas/type'
+            duration:
+              $ref: '#/components/schemas/duration'
+            status:
+              $ref: '#/components/schemas/status'
+            discount_by:
+              $ref: '#/components/schemas/discount_by'
+            discount_value:
+              $ref: '#/components/schemas/discount_value'
+            product_id:
+              $ref: '#/components/schemas/product_id'
+            max_redemption:
+              $ref: '#/components/schemas/max_redemption'
+            redemption_count:
+              $ref: '#/components/schemas/redemption_count'
+            expiry_at:
+              $ref: '#/components/schemas/expiry_at'
+            apply_to_plans:
+              $ref: '#/components/schemas/apply_to_plans'
+            plans:
+              description: List of plans that the coupon needs to be associated with. If a coupon is to be associated with only two plans - "basic" and "professional", then <code>apply_to_plans</code> is set to be selected. Only the plan codes of the plans that need to be associated with the coupon are required.
+              type: array
+              items:
+                type: object
+                properties:
+                  plan_code:
+                    $ref: '#/components/schemas/plan_code'
+                  name:
+                    description: Plan to which the coupon is to be applied.
+                    example: Basic
+            apply_to_addons:
+              $ref: '#/components/schemas/apply_to_addons'
+            addons:
+              description: List of addons that the coupon needs to be associated with. If a coupon is to be associated with only two addons - "Email Basic" and "Email Professional", then <code>apply_to_addons</code> is set to be selected. Only the addon codes of the addons that need to be associated with the coupon are required.
+              type: array
+              items:
+                type: object
+                properties:
+                  addon_code:
+                    $ref: '#/components/schemas/addon_code'
+                  name:
+                    description: Name of the addon.
+                    example: Email Basic
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            updated_time:
+              $ref: '#/components/schemas/updated_time'
+    delete-a-coupon-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The coupon has been deleted.
+          readOnly: true
+    mark-as-active-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The coupon has been marked as active.
+          readOnly: true
+    mark-as-inactive-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The coupon has been marked as inactive.
+          readOnly: true
+    mark-coupon-set-as-active-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The coupon set has been marked as active.
+          readOnly: true
+    mark-coupon-set-as-inactive-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The coupon set has been marked as inactive.
+          readOnly: true
+    bulk-mark-coupon-sets-as-active-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The coupon sets have been marked as active.
+          readOnly: true
+    bulk-mark-coupon-sets-as-inactive-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The coupon sets have been marked as inactive.
+          readOnly: true
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.coupons.CREATE: Create Coupons
+            ERP.coupons.READ: Read Coupons
+            ERP.coupons.UPDATE: Update Coupons
+            ERP.coupons.DELETE: Delete Coupons

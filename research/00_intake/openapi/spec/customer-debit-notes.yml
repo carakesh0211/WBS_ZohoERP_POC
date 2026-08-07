@@ -1,0 +1,792 @@
+openapi: 3.0.0
+info:
+  title: Customer Debit Notes
+  description: Customer Debit Note is a document sent to your client that indicates additional charges or adjustments to be made to the original invoice.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: customer-debit-notes
+    description: Customer Debit Notes Module
+paths:
+  /invoices:
+    x-mcp-group:
+      - Customer Debit Notes
+    post:
+      tags:
+        - customer-debit-notes
+      operationId: create_customer_debit_note
+      summary: Create a customer debit note
+      description: Create a customer debit note for additional charges or adjustments to be made to the original invoice.
+      parameters:
+        - name: send
+          in: query
+          description: Send the debit note to the contact person(s) associated with the debit note. Allowed values <code>true</code> and <code>false</code>.
+          required: false
+          schema:
+            type: boolean
+        - name: ignore_auto_number_generation
+          in: query
+          description: Ignore auto debit note number generation for this debit note. This mandates the debit note number. Allowed values <code>true</code> and <code>false</code>
+          required: false
+          schema:
+            type: boolean
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-customer-debit-note-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-customer-debit-note-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.invoices.CREATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+    get:
+      tags:
+        - customer-debit-notes
+      operationId: list_customer_debit_notes
+      summary: List customer debit notes
+      description: Get a list of customer debit notes with helpful pagination, filtering, search, and sorting features. Perfect for viewing your debit note data in organized ways, whether you need to find specific debit notes or browse through your records.
+      parameters:
+        - name: item_name
+          in: query
+          description: Search debit notes by item name. Filters debit notes based on product or service names in debit note line items. Supports <code>item_name_startswith</code> and <code>item_name_contains</code> variants. Maximum length is 100 characters. Useful for finding debit notes with specific products or services.
+          required: false
+          schema:
+            type: string
+          example: Desktop Units
+        - name: item_id
+          in: query
+          description: Search debit notes by item ID. Filters debit notes based on the unique identifier of specific products or services in line items. Use the GET `/items` API to find available item IDs. Useful for finding all debit notes containing a specific product or service.
+          required: false
+          schema:
+            type: string
+          example: 982000000030049
+        - name: item_description
+          in: query
+          description: Search debit notes by item description. Filters debit notes based on detailed descriptions of products or services in line items. Supports <code>item_description_startswith</code> and <code>item_description_contains</code> variants. Maximum length is 100 characters. Useful for finding debit notes with specific item descriptions or technical specifications.
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: customer_name
+          in: query
+          description: Search debit notes by customer name. Filters debit notes based on the business or individual name associated with the debit note. Maximum length is 100 characters. Useful for finding all debit notes for a specific customer or generating customer reports.
+          required: false
+          schema:
+            type: string
+          example: Zylker Inc
+        - name: email
+          in: query
+          description: Search debit notes by customer email address. Filters debit notes based on the email address of the customer or contact person. Maximum length is 100 characters. Useful for finding debit notes for specific customers or generating customer segment reports.
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: total
+          in: query
+          description: Search debit notes by total amount. Filters debit notes based on the final debit note amount including taxes, discounts, and adjustments. Useful for finding debit notes within specific price ranges or identifying high-value transactions.
+          required: false
+          schema:
+            type: string
+          example: 40.6
+        - name: balance
+          in: query
+          description: Search debit notes by outstanding balance. Filters debit notes based on the remaining unpaid amount owed by the customer. Useful for finding overdue debit notes, tracking receivables, or generating aging reports.
+          required: false
+          schema:
+            type: string
+          example: 40.6
+        - name: custom_field
+          in: query
+          description: 'Search debit notes by custom fields. Variants: <code>custom_field_startswith</code> and <code>custom_field_contains</code>'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: date
+          in: query
+          description: 'Search debit notes by debit note date. Filters debit notes based on the date they were created. Use yyyy-mm-dd format. Supports variants: <code>date_start</code>, <code>date_end</code>, <code>date_before</code> and <code>date_after</code>. Useful for finding debit notes within date ranges or specific time periods.'
+          required: false
+          schema:
+            type: string
+          example: '2013-11-17'
+        - name: due_date
+          in: query
+          description: 'Search debit notes by due date. Filters debit notes based on the payment due date. Use yyyy-mm-dd format. Supports variants: <code>due_date_start</code>, <code>due_date_end</code>, <code>due_date_before</code> and <code>due_date_after</code>. Useful for finding overdue debit notes or debit notes due within specific periods.'
+          required: false
+          schema:
+            type: string
+          example: '2013-12-03'
+        - name: created_date
+          in: query
+          description: 'Search debit notes by creation date. Filters debit notes based on the date they were created. Use yyyy-mm-dd format. Supports variants: <code>created_date_start</code>, <code>created_date_end</code>, <code>created_date_before</code> and <code>created_date_after</code>. Useful for finding debit notes created within specific time periods or date ranges.'
+          required: false
+          schema:
+            type: string
+          example: '2013-11-17'
+        - name: last_modified_time
+          in: query
+          required: false
+          description: 'Search debit notes modified after a specific time. Filters debit notes based on their last modification timestamp. Use YYYY-MM-DDTHH:MM:SS-UTC format. Useful for finding recently updated debit notes or syncing data changes. Example : 2023-11-18T02:02:51-0800, 2025-19-19T02:02:51%2B0800.'
+          schema:
+            type: string
+          example: 2013-11-18T02:02:51-0800
+        - name: status
+          in: query
+          description: 'Search debit notes by status. Filters debit notes based on their current state in the billing workflow. Allowed values: <code>sent</code>, <code>draft</code>, <code>overdue</code>, <code>paid</code>, <code>void</code>, <code>unpaid</code>, <code>partially_paid</code> and <code>viewed</code>. Useful for finding debit notes in specific stages of the billing process.'
+          required: false
+          schema:
+            type: string
+          example: draft
+        - name: customer_id
+          in: query
+          description: Search debit notes by customer ID. Filters debit notes based on the unique identifier of the customer for whom the debit note was created. Use the customer ID returned by the Contacts API to find all debit notes for a specific customer.
+          required: false
+          schema:
+            type: string
+          example: 982000000567001
+        - name: filter_by
+          in: query
+          description: Filter needs to be  <code>Type.DebitNote</code>.
+          required: false
+          schema:
+            type: string
+          example: Type.DebitNote
+        - name: search_text
+          in: query
+          description: Search debit notes by debit note number, purchase order, or customer name. This parameter performs a general search across multiple debit note fields. Maximum length is 100 characters. Useful for quick searches when you know part of the debit note information but are unsure which specific field to search.
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: sort_column
+          in: query
+          description: 'Sort debit notes by specific column. Allowed values: <code>customer_name</code>, <code>debit_note_number</code>, <code>date</code>, <code>due_date</code>, <code>total</code>, <code>balance</code> and <code>created_time</code>. Use this parameter to organize debit note results in a specific order for better data analysis and reporting.'
+          required: false
+          schema:
+            type: string
+          example: created_time
+        - name: page
+          in: query
+          description: Page number to be fetched from the paginated results. Default value is 1. Use this parameter along with per_page to navigate through large sets of debit note data. Useful for implementing pagination in your application.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-customer-debit-notes-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.invoices.READ
+  /invoices/{debit_note_id}:
+    x-mcp-group:
+      - Customer Debit Notes
+    parameters:
+      - $ref: '#/components/parameters/invoice_id'
+      - $ref: '#/components/parameters/organization_id'
+    put:
+      tags:
+        - customer-debit-notes
+      operationId: update_customer_debit_note
+      summary: Update a customer debit note
+      description: Update an existing customer debit note. To delete a line item just remove it from the line_items list.
+      parameters:
+        - name: ignore_auto_number_generation
+          in: query
+          description: Ignore auto debit note number generation for this debit note. This mandates the debit note number. Allowed values <code>true</code> and <code>false</code>
+          required: false
+          schema:
+            type: boolean
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-customer-debit-note-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-customer-debit-note-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.invoices.UPDATE
+    get:
+      tags:
+        - customer-debit-notes
+      operationId: get_customer_debit_note
+      summary: Get a customer debit note
+      description: Get the details of a customer debit note.
+      parameters:
+        - name: print
+          in: query
+          description: Print the exported pdf.
+          required: false
+          schema:
+            type: boolean
+        - name: accept
+          in: query
+          description: Get the details of a particular debit note in formats such as json/ pdf/ html. Default format is json. Allowed values <code>json</code> <code>pdf</code> and <code>html</code>
+          required: false
+          schema:
+            type: string
+          example: ''
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-customer-debit-note-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.invoices.READ
+    delete:
+      tags:
+        - customer-debit-notes
+      operationId: delete_customer_debit_note
+      summary: Delete a customer debit note
+      description: Delete an existing customer debit note. Debit notes which have payment or credits note applied cannot be deleted.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-customer-debit-note-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.invoices.DELETE
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      in: query
+      description: Organization ID for the request
+      required: true
+      schema:
+        type: string
+        example: '10234695'
+    invoice_id:
+      name: debit_note_id
+      in: path
+      description: Unique identifier for the debit note.
+      required: true
+      schema:
+        type: string
+        example: '982000000567114'
+  schemas:
+    create-a-customer-debit-note-request:
+      required:
+        - customer_id
+        - line_items
+        - type
+        - reference_invoice_id
+      type: object
+      properties:
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        type:
+          type: string
+          description: Type of the document. For customer debit notes, this should be <code>debit_note</code>
+          example: debit_note
+          enum:
+            - debit_note
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        contact_persons:
+          $ref: '#/components/schemas/contact_persons'
+        invoice_number:
+          $ref: '#/components/schemas/invoice_number'
+        date:
+          $ref: '#/components/schemas/date'
+        payment_terms:
+          $ref: '#/components/schemas/payment_terms'
+        payment_terms_label:
+          $ref: '#/components/schemas/payment_terms_label'
+        due_date:
+          $ref: '#/components/schemas/due_date'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        reference_invoice_id:
+          $ref: '#/components/schemas/reference_invoice_id'
+        reference_invoice_type:
+          $ref: '#/components/schemas/reference_invoice_type'
+        tags:
+          $ref: '#/components/schemas/tags'
+        line_items:
+          description: List of line items in the debit note.
+          type: array
+          items:
+            type: object
+            required:
+              - item_id
+            properties:
+              item_id:
+                $ref: '#/components/schemas/item_id'
+              hsn_or_sac:
+                $ref: '#/components/schemas/hsn_or_sac'
+              location_id:
+                $ref: '#/components/schemas/location_id'
+              description:
+                $ref: '#/components/schemas/description'
+              rate:
+                $ref: '#/components/schemas/rate'
+              quantity:
+                $ref: '#/components/schemas/quantity'
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              tags:
+                $ref: '#/components/schemas/tags'
+    update-a-customer-debit-note-request:
+      required:
+        - customer_id
+        - line_items
+      type: object
+      properties:
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        type:
+          type: string
+          description: Type of the document. For customer debit notes, this should be debit_note.
+          example: debit_note
+          enum:
+            - debit_note
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        invoice_number:
+          $ref: '#/components/schemas/invoice_number'
+        template_id:
+          $ref: '#/components/schemas/template_id'
+        date:
+          $ref: '#/components/schemas/date'
+        payment_terms:
+          $ref: '#/components/schemas/payment_terms'
+        payment_terms_label:
+          $ref: '#/components/schemas/payment_terms_label'
+        due_date:
+          $ref: '#/components/schemas/due_date'
+        discount:
+          $ref: '#/components/schemas/discount'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        tags:
+          $ref: '#/components/schemas/tags'
+        line_items:
+          description: List of line items in the debit note.
+          type: array
+          items:
+            type: object
+            required:
+              - item_id
+            properties:
+              item_id:
+                $ref: '#/components/schemas/item_id'
+              product_type:
+                $ref: '#/components/schemas/product_type'
+              hsn_or_sac:
+                $ref: '#/components/schemas/hsn_or_sac'
+              location_id:
+                $ref: '#/components/schemas/location_id'
+              description:
+                $ref: '#/components/schemas/description'
+              rate:
+                $ref: '#/components/schemas/rate'
+              quantity:
+                $ref: '#/components/schemas/quantity'
+              unit:
+                $ref: '#/components/schemas/unit'
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              item_total:
+                $ref: '#/components/schemas/item_total'
+              tags:
+                $ref: '#/components/schemas/tags'
+    create-a-customer-debit-note-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+        message:
+          type: string
+          example: The debit note has been created.
+        invoice:
+          $ref: '#/components/schemas/debit_note'
+    update-a-customer-debit-note-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+        message:
+          type: string
+          example: The debit note has been updated.
+        invoice:
+          $ref: '#/components/schemas/debit_note'
+    get-a-customer-debit-note-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+        message:
+          type: string
+          example: success
+        invoice:
+          $ref: '#/components/schemas/debit_note'
+    list-customer-debit-notes-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+        message:
+          type: string
+          example: success
+        debit_notes:
+          type: array
+          items:
+            $ref: '#/components/schemas/debit_note'
+        page_context:
+          $ref: '#/components/schemas/page_context'
+    delete-a-customer-debit-note-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+        message:
+          type: string
+          example: The invoice has been deleted.
+    debit_note:
+      type: object
+      properties:
+        invoice_id:
+          type: string
+          example: '982000000567114'
+        invoice_number:
+          type: string
+          example: DN-00001
+        date:
+          type: string
+          example: '2013-11-17'
+        status:
+          type: string
+          example: draft
+        customer_id:
+          type: string
+          example: '982000000567001'
+        customer_name:
+          type: string
+          example: Zylker Inc
+        total:
+          type: number
+          example: 40.6
+        balance:
+          type: number
+          example: 40.6
+        created_time:
+          type: string
+          example: 2013-11-17T17:09:00+0530
+        last_modified_time:
+          type: string
+          example: 2013-11-17T17:09:00+0530
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/line_item'
+        reference_invoice:
+          $ref: '#/components/schemas/reference_invoice_data'
+        tags:
+          $ref: '#/components/schemas/tags_response'
+    reference_invoice_data:
+      type: object
+      properties:
+        reference_invoice_number:
+          type: string
+          example: INV-000887
+        reference_invoice_status:
+          type: string
+          example: draft
+        reference_invoice_amount:
+          type: number
+          example: 3.52
+        reference_invoice_id:
+          type: string
+          example: '982000000567005'
+    line_item:
+      type: object
+      properties:
+        line_item_id:
+          type: string
+          example: '982000000567115'
+        item_id:
+          type: string
+          example: '982000000030049'
+        item_name:
+          type: string
+          example: Desktop Units
+        description:
+          type: string
+          example: Desktop Units
+        rate:
+          type: number
+          example: 20
+        quantity:
+          type: number
+          example: 2
+        unit:
+          type: string
+          example: Nos
+        item_total:
+          type: number
+          example: 40
+        tags:
+          $ref: '#/components/schemas/tags_response'
+    page_context:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        per_page:
+          type: integer
+          example: 10
+        has_more_page:
+          type: boolean
+          example: false
+        report_name:
+          type: string
+          example: debit_notes
+        sort_column:
+          type: string
+          example: created_time
+        sort_order:
+          type: string
+          example: D
+    customer_id:
+      type: string
+      description: Unique identifier for the customer.
+      example: '982000000567001'
+    currency_id:
+      type: string
+      description: Unique identifier for the currency.
+      example: '982000000000001'
+    contact_persons:
+      type: array
+      items:
+        type: string
+      description: List of contact person IDs.
+    template_id:
+      type: string
+      description: Template ID.
+      example: '982000000000143'
+    date:
+      type: string
+      description: Debit note date.
+      example: '2013-11-17'
+    payment_terms:
+      type: integer
+      description: Payment terms in days.
+      example: 15
+    payment_terms_label:
+      type: string
+      description: Payment terms label.
+      example: Net 15
+    due_date:
+      type: string
+      description: Due date.
+      example: '2013-12-02'
+    discount:
+      type: number
+      description: Discount applied to the debit note, which can be either a percentage or a flat amount. For percentage discounts, the value should include the % symbol (e.g., 10%). For example, on Rs.1000, a 10% discount results in Rs.900, while a flat Rs.200 discount results in Rs.800.
+      example: 0
+    exchange_rate:
+      type: number
+      description: Exchange rate.
+      example: 1
+    location_id:
+      type: string
+      description: Location ID.
+      example: '460000000038080'
+    custom_fields:
+      description: List of custom fields for the debit note.
+      type: array
+      items:
+        type: object
+        properties:
+          customfield_id:
+            description: ID of the custom field.
+            type: string
+          value:
+            description: Value of the custom field.
+            type: string
+    send:
+      type: boolean
+      description: Whether to send the debit note.
+      example: false
+    item_id:
+      type: string
+      description: Item ID.
+      example: '982000000030049'
+    product_type:
+      type: string
+      description: Product type.
+      example: goods
+    hsn_or_sac:
+      type: string
+      description: HSN or SAC code.
+      example: '80540'
+    description:
+      type: string
+      description: Description.
+      example: Desktop Units
+    rate:
+      type: number
+      description: Rate.
+      example: 20
+    quantity:
+      type: number
+      description: Quantity.
+      example: 2
+    unit:
+      type: string
+      description: Unit.
+      example: Nos
+    tax_id:
+      type: string
+      description: Tax ID.
+      example: '982000000567104'
+    item_total:
+      type: number
+      description: Item total.
+      example: 40
+    header_name:
+      type: string
+      description: Header name.
+      example: Header 1
+    header_id:
+      type: string
+      description: Header ID.
+      example: '982000000567105'
+    reference_invoice_id:
+      type: string
+      description: Invoice ID.
+      example: '982000000567005'
+    reference_invoice_type:
+      type: string
+      description: Invoice type description.
+      example: registered
+    reference_invoice_number:
+      type: string
+      example: INV-000887
+    reference_invoice_status:
+      type: string
+      example: draft
+    reference_invoice_amount:
+      type: number
+      example: 3.52
+    debit_note_number:
+      type: string
+      description: Debit note number.
+      example: DN-00001
+    invoice_number:
+      type: string
+      description: Debit note number.
+      example: DN-00001
+    tag_id:
+      description: ID of the tag.
+      type: string
+      example: '460000000000567'
+    tag_name:
+      description: Name of the tag.
+      type: string
+      example: Business Unit
+    tag_option_id:
+      description: ID of the tag option.
+      type: string
+      example: '460000000014044'
+    tag_option_name:
+      description: Name of the tag option.
+      type: string
+      example: Sales
+    is_tag_mandatory:
+      description: Used to check if the tag is mandatory.
+      type: boolean
+      example: false
+    tags:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+    tags_response:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_name:
+            $ref: '#/components/schemas/tag_name'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+          tag_option_name:
+            $ref: '#/components/schemas/tag_option_name'
+          is_tag_mandatory:
+            $ref: '#/components/schemas/is_tag_mandatory'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.invoices.CREATE: Create Customer Debit Notes
+            ERP.invoices.UPDATE: Update Customer Debit Notes
+            ERP.invoices.READ: Read Customer Debit Notes
+            ERP.invoices.DELETE: Delete Customer Debit Notes

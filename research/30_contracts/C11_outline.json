@@ -1,0 +1,718 @@
+{
+ "frozen_at": "2026-08-06",
+ "rule": "FROZEN. Authoring agents may not invent values outside these registries. A needed value that is absent must be returned as a contract_gap, never improvised.",
+ "section_count": 51,
+ "sections": [
+  {
+   "number": 1,
+   "heading_verbatim": "Document Control"
+  },
+  {
+   "number": 2,
+   "heading_verbatim": "Executive Summary"
+  },
+  {
+   "number": 3,
+   "heading_verbatim": "Client Requirement Summary"
+  },
+  {
+   "number": 4,
+   "heading_verbatim": "Requirement Traceability Matrix"
+  },
+  {
+   "number": 5,
+   "heading_verbatim": "SAP PS and WBS Research"
+  },
+  {
+   "number": 6,
+   "heading_verbatim": "SAP Capability Catalogue"
+  },
+  {
+   "number": 7,
+   "heading_verbatim": "Manufacturing Plant CAPEX Use Cases"
+  },
+  {
+   "number": 8,
+   "heading_verbatim": "Current Requirement versus SAP WBS Mapping"
+  },
+  {
+   "number": 9,
+   "heading_verbatim": "Gap Analysis"
+  },
+  {
+   "number": 10,
+   "heading_verbatim": "Target Operating Model"
+  },
+  {
+   "number": 11,
+   "heading_verbatim": "Architecture Options"
+  },
+  {
+   "number": 12,
+   "heading_verbatim": "Recommended Architecture"
+  },
+  {
+   "number": 13,
+   "heading_verbatim": "Source-of-Truth Matrix"
+  },
+  {
+   "number": 14,
+   "heading_verbatim": "Zoho ERP Connector Setup Module"
+  },
+  {
+   "number": 15,
+   "heading_verbatim": "OAuth, Credential and Scope Management"
+  },
+  {
+   "number": 16,
+   "heading_verbatim": "Zoho ERP API Capability Matrix"
+  },
+  {
+   "number": 17,
+   "heading_verbatim": "Zoho ERP Endpoint Inventory"
+  },
+  {
+   "number": 18,
+   "heading_verbatim": "Bidirectional Data-Flow Matrix"
+  },
+  {
+   "number": 19,
+   "heading_verbatim": "Field, Custom-Field and Reporting-Tag Mapping"
+  },
+  {
+   "number": 20,
+   "heading_verbatim": "Functional Modules"
+  },
+  {
+   "number": 21,
+   "heading_verbatim": "Detailed Business Rules"
+  },
+  {
+   "number": 22,
+   "heading_verbatim": "Budget and Commitment Calculation Logic"
+  },
+  {
+   "number": 23,
+   "heading_verbatim": "Accounting Design"
+  },
+  {
+   "number": 24,
+   "heading_verbatim": "Zoho ERP Integration Assessment"
+  },
+  {
+   "number": 25,
+   "heading_verbatim": "API and Event Architecture"
+  },
+  {
+   "number": 26,
+   "heading_verbatim": "Integration Security and Secret Management"
+  },
+  {
+   "number": 27,
+   "heading_verbatim": "Integration Reconciliation Design"
+  },
+  {
+   "number": 28,
+   "heading_verbatim": "Data Model"
+  },
+  {
+   "number": 29,
+   "heading_verbatim": "ER Diagram"
+  },
+  {
+   "number": 30,
+   "heading_verbatim": "State Diagrams"
+  },
+  {
+   "number": 31,
+   "heading_verbatim": "Role and Approval Matrix"
+  },
+  {
+   "number": 32,
+   "heading_verbatim": "Security and Internal Controls"
+  },
+  {
+   "number": 33,
+   "heading_verbatim": "Non-Functional Requirements"
+  },
+  {
+   "number": 34,
+   "heading_verbatim": "Reporting and Dashboard Catalogue"
+  },
+  {
+   "number": 35,
+   "heading_verbatim": "POC Scope"
+  },
+  {
+   "number": 36,
+   "heading_verbatim": "User Stories"
+  },
+  {
+   "number": 37,
+   "heading_verbatim": "Acceptance Criteria"
+  },
+  {
+   "number": 38,
+   "heading_verbatim": "Sample Data"
+  },
+  {
+   "number": 39,
+   "heading_verbatim": "Test Scenarios"
+  },
+  {
+   "number": 40,
+   "heading_verbatim": "Deployment Recommendation"
+  },
+  {
+   "number": 41,
+   "heading_verbatim": "Implementation Roadmap"
+  },
+  {
+   "number": 42,
+   "heading_verbatim": "Risk Register"
+  },
+  {
+   "number": 43,
+   "heading_verbatim": "Assumptions"
+  },
+  {
+   "number": 44,
+   "heading_verbatim": "Open Questions"
+  },
+  {
+   "number": 45,
+   "heading_verbatim": "Client Clarification Questionnaire"
+  },
+  {
+   "number": 46,
+   "heading_verbatim": "Source References"
+  },
+  {
+   "number": 47,
+   "heading_verbatim": "SAP-Familiar UI/UX Design Blueprint"
+  },
+  {
+   "number": 48,
+   "heading_verbatim": "Screen Catalogue and Navigation Map"
+  },
+  {
+   "number": 49,
+   "heading_verbatim": "Design Tokens and Component Catalogue"
+  },
+  {
+   "number": 50,
+   "heading_verbatim": "UI Acceptance Criteria"
+  },
+  {
+   "number": 51,
+   "heading_verbatim": "Handover Instructions for the Coding Agent"
+  }
+ ],
+ "navigation_nodes": [
+  "Home",
+  "My Work",
+  "Approvals",
+  "CAPEX Projects",
+  "WBS Structures",
+  "Budgets",
+  "Budget Revisions",
+  "Purchase Requests",
+  "Commitments",
+  "GRN and Receipts",
+  "Vendor Bills and Actuals",
+  "CWIP",
+  "Capitalisation",
+  "Reconciliation",
+  "Reports",
+  "Alerts and Exceptions",
+  "Master Data",
+  "Integration Monitor",
+  "Zoho ERP Setup",
+  "Connection Profiles",
+  "Organisation Mapping",
+  "Field and Dimension Mapping",
+  "Sync Configuration",
+  "API Health and Usage",
+  "Audit Trail",
+  "Administration"
+ ],
+ "state_machines": [
+  "Project lifecycle",
+  "WBS lifecycle",
+  "Budget lifecycle",
+  "Budget revision lifecycle",
+  "Purchase commitment lifecycle",
+  "Capitalisation lifecycle",
+  "Integration event lifecycle"
+ ],
+ "poc_steps": [
+  {
+   "number": 1,
+   "step_verbatim": "Create a manufacturing CAPEX project."
+  },
+  {
+   "number": 2,
+   "step_verbatim": "Create a three-level WBS."
+  },
+  {
+   "number": 3,
+   "step_verbatim": "Define budget heads and approved budgets."
+  },
+  {
+   "number": 4,
+   "step_verbatim": "Upload or create an original budget."
+  },
+  {
+   "number": 5,
+   "step_verbatim": "Submit a Purchase Request."
+  },
+  {
+   "number": 6,
+   "step_verbatim": "Perform a budget availability check."
+  },
+  {
+   "number": 7,
+   "step_verbatim": "Approve a within-budget transaction."
+  },
+  {
+   "number": 8,
+   "step_verbatim": "Route an over-budget transaction for exception or revision."
+  },
+  {
+   "number": 9,
+   "step_verbatim": "Create or simulate a Zoho ERP Purchase Order."
+  },
+  {
+   "number": 10,
+   "step_verbatim": "Record PO commitment."
+  },
+  {
+   "number": 11,
+   "step_verbatim": "Process partial GRN."
+  },
+  {
+   "number": 12,
+   "step_verbatim": "Process partial vendor bill."
+  },
+  {
+   "number": 13,
+   "step_verbatim": "Reduce commitment and increase actual without double counting."
+  },
+  {
+   "number": 14,
+   "step_verbatim": "Amend a PO upward and revalidate budget."
+  },
+  {
+   "number": 15,
+   "step_verbatim": "Cancel or close a PO and release unused commitment."
+  },
+  {
+   "number": 16,
+   "step_verbatim": "Process a budget revision with version history."
+  },
+  {
+   "number": 17,
+   "step_verbatim": "Show project, WBS and budget-head dashboards."
+  },
+  {
+   "number": 18,
+   "step_verbatim": "Demonstrate project completion review."
+  },
+  {
+   "number": 19,
+   "step_verbatim": "Create a capitalisation request."
+  },
+  {
+   "number": 20,
+   "step_verbatim": "Allocate CWIP to one or more fixed assets."
+  },
+  {
+   "number": 21,
+   "step_verbatim": "Show the audit trail."
+  },
+  {
+   "number": 22,
+   "step_verbatim": "Show Zoho integration and reconciliation logs."
+  },
+  {
+   "number": 23,
+   "step_verbatim": "Configure a Zoho ERP connection profile through the setup wizard."
+  },
+  {
+   "number": 24,
+   "step_verbatim": "Complete OAuth authorisation or demonstrate the full flow using a controlled mock where live credentials are unavailable."
+  },
+  {
+   "number": 25,
+   "step_verbatim": "Discover and select a Zoho ERP organisation."
+  },
+  {
+   "number": 26,
+   "step_verbatim": "Validate required scopes and display missing scopes."
+  },
+  {
+   "number": 27,
+   "step_verbatim": "Run module-level connectivity tests."
+  },
+  {
+   "number": 28,
+   "step_verbatim": "Configure at least one master-data mapping and one transaction-line mapping."
+  },
+  {
+   "number": 29,
+   "step_verbatim": "Perform an initial vendor, item, location and Chart of Accounts sync."
+  },
+  {
+   "number": 30,
+   "step_verbatim": "Pull or simulate an approved Purchase Order from Zoho ERP."
+  },
+  {
+   "number": 31,
+   "step_verbatim": "Pull or simulate a Purchase Receive and Vendor Bill."
+  },
+  {
+   "number": 32,
+   "step_verbatim": "Push or simulate a controlled outbound CAPEX/WBS reference."
+  },
+  {
+   "number": 33,
+   "step_verbatim": "Demonstrate token refresh."
+  },
+  {
+   "number": 34,
+   "step_verbatim": "Demonstrate rate-limit handling."
+  },
+  {
+   "number": 35,
+   "step_verbatim": "Demonstrate retry and dead-letter processing."
+  },
+  {
+   "number": 36,
+   "step_verbatim": "Demonstrate line-level reconciliation between PO, receipt and bill."
+  }
+ ],
+ "poc_dataset_requirements": {
+  "illustrative_project_verbatim": "New Manufacturing Plant - Phase 1",
+  "illustrative_wbs_verbatim": [
+   "Land and site development",
+   "Civil and structural work",
+   "Plant and machinery",
+   "Electrical",
+   "Utilities",
+   "Instrumentation and automation",
+   "Installation",
+   "Testing and commissioning",
+   "Consultancy and project management",
+   "Pre-operative expenses",
+   "Contingency"
+  ],
+  "currency_instruction_verbatim": "Use realistic Indian currency examples and at least:",
+  "minimum_volumes": [
+   {
+    "item_verbatim": "2 entities",
+    "quantity": 2,
+    "unit": "entities"
+   },
+   {
+    "item_verbatim": "2 plants",
+    "quantity": 2,
+    "unit": "plants"
+   },
+   {
+    "item_verbatim": "3 projects",
+    "quantity": 3,
+    "unit": "projects"
+   },
+   {
+    "item_verbatim": "3 WBS levels",
+    "quantity": 3,
+    "unit": "WBS levels"
+   },
+   {
+    "item_verbatim": "10 budget heads",
+    "quantity": 10,
+    "unit": "budget heads"
+   },
+   {
+    "item_verbatim": "20 Purchase Requests",
+    "quantity": 20,
+    "unit": "Purchase Requests"
+   },
+   {
+    "item_verbatim": "15 Purchase Orders",
+    "quantity": 15,
+    "unit": "Purchase Orders"
+   },
+   {
+    "item_verbatim": "Partial GRNs",
+    "quantity": null,
+    "unit": "not quantified in source"
+   },
+   {
+    "item_verbatim": "Partial bills",
+    "quantity": null,
+    "unit": "not quantified in source"
+   },
+   {
+    "item_verbatim": "PO amendment",
+    "quantity": null,
+    "unit": "not quantified in source"
+   },
+   {
+    "item_verbatim": "PO cancellation",
+    "quantity": null,
+    "unit": "not quantified in source"
+   },
+   {
+    "item_verbatim": "Budget supplement",
+    "quantity": null,
+    "unit": "not quantified in source"
+   },
+   {
+    "item_verbatim": "Budget transfer",
+    "quantity": null,
+    "unit": "not quantified in source"
+   },
+   {
+    "item_verbatim": "One overrun",
+    "quantity": 1,
+    "unit": "overrun case"
+   },
+   {
+    "item_verbatim": "One capitalisation case",
+    "quantity": 1,
+    "unit": "capitalisation case"
+   },
+   {
+    "item_verbatim": "One abandoned or cancelled WBS case",
+    "quantity": 1,
+    "unit": "abandoned or cancelled WBS case"
+   }
+  ]
+ },
+ "endpoint_inventory_columns": [
+  "Business object",
+  "Zoho ERP module",
+  "Official documentation reference",
+  "API base path",
+  "Endpoint",
+  "HTTP method",
+  "Required OAuth scope",
+  "Required parameters",
+  "Required body fields",
+  "Response identifiers",
+  "Pagination support",
+  "Filter support",
+  "Custom-field support",
+  "Approval action support",
+  "Attachment support",
+  "Last-modified field",
+  "Status field",
+  "Direction",
+  "Trigger",
+  "Sync frequency",
+  "Idempotency method",
+  "Reconciliation method",
+  "POC usage",
+  "Production usage",
+  "Verified date",
+  "Verification status",
+  "Limitation"
+ ],
+ "ui_handover_items": [
+  "Design principles",
+  "Design tokens",
+  "Colour palette",
+  "Typography",
+  "Spacing scale",
+  "Component list",
+  "Navigation map",
+  "Screen specifications",
+  "Table specifications",
+  "Form specifications",
+  "Status system",
+  "Message catalogue",
+  "Role-based dashboards",
+  "Wireframe guidance",
+  "Responsive rules",
+  "Accessibility checklist",
+  "Frontend architecture recommendation",
+  "Component-library recommendation",
+  "Licensing notes",
+  "UI test cases",
+  "Visual regression testing approach",
+  "Screenshot-based acceptance checklist"
+ ],
+ "api_documentation_deliverables": [
+  {
+   "number": 1,
+   "item_verbatim": "Zoho ERP API capability matrix"
+  },
+  {
+   "number": 2,
+   "item_verbatim": "OAuth and scope matrix"
+  },
+  {
+   "number": 3,
+   "item_verbatim": "Data-centre matrix"
+  },
+  {
+   "number": 4,
+   "item_verbatim": "Endpoint inventory"
+  },
+  {
+   "number": 5,
+   "item_verbatim": "Request and response field mapping"
+  },
+  {
+   "number": 6,
+   "item_verbatim": "Master-data flow matrix"
+  },
+  {
+   "number": 7,
+   "item_verbatim": "Transaction flow matrix"
+  },
+  {
+   "number": 8,
+   "item_verbatim": "Custom-field and reporting-tag matrix"
+  },
+  {
+   "number": 9,
+   "item_verbatim": "Rate-limit and pagination strategy"
+  },
+  {
+   "number": 10,
+   "item_verbatim": "Error-code handling matrix"
+  },
+  {
+   "number": 11,
+   "item_verbatim": "Retry and dead-letter design"
+  },
+  {
+   "number": 12,
+   "item_verbatim": "Reconciliation matrix"
+  },
+  {
+   "number": 13,
+   "item_verbatim": "Sequence diagrams"
+  },
+  {
+   "number": 14,
+   "item_verbatim": "Sample payloads"
+  },
+  {
+   "number": 15,
+   "item_verbatim": "Setup wizard specification"
+  },
+  {
+   "number": 16,
+   "item_verbatim": "Connector security specification"
+  },
+  {
+   "number": 17,
+   "item_verbatim": "POC mock strategy"
+  },
+  {
+   "number": 18,
+   "item_verbatim": "API test checklist"
+  },
+  {
+   "number": 19,
+   "item_verbatim": "Verified limitations"
+  },
+  {
+   "number": 20,
+   "item_verbatim": "Open questions for Zoho"
+  }
+ ],
+ "definition_of_done": [
+  {
+   "number": 1,
+   "criterion_verbatim": "The attached requirement document has been fully analysed."
+  },
+  {
+   "number": 2,
+   "criterion_verbatim": "SAP WBS and SAP Project System have been researched from authoritative sources."
+  },
+  {
+   "number": 3,
+   "criterion_verbatim": "Every requirement has been mapped to SAP capability, target application capability and Zoho ERP integration."
+  },
+  {
+   "number": 4,
+   "criterion_verbatim": "Budget, commitment, actual and available-budget logic is unambiguous."
+  },
+  {
+   "number": 5,
+   "criterion_verbatim": "Double counting is prevented in all identified transaction states."
+  },
+  {
+   "number": 6,
+   "criterion_verbatim": "The data model and integration design are implementation-ready."
+  },
+  {
+   "number": 7,
+   "criterion_verbatim": "The POC scope demonstrates the full business control cycle."
+  },
+  {
+   "number": 8,
+   "criterion_verbatim": "User stories and acceptance criteria are complete."
+  },
+  {
+   "number": 9,
+   "criterion_verbatim": "Risks, assumptions and open questions are clearly identified."
+  },
+  {
+   "number": 10,
+   "criterion_verbatim": "The Markdown report can be handed directly to Codex or Claude Code for POC development."
+  },
+  {
+   "number": 11,
+   "criterion_verbatim": "The UI/UX blueprint is sufficiently detailed to produce a consistent SAP-familiar interface."
+  },
+  {
+   "number": 12,
+   "criterion_verbatim": "The recommended frontend library and all SAP-oriented resources have been reviewed for current licensing suitability."
+  },
+  {
+   "number": 13,
+   "criterion_verbatim": "The design does not copy SAP branding, logos, proprietary assets or exact copyrighted screens."
+  },
+  {
+   "number": 14,
+   "criterion_verbatim": "UI acceptance criteria, accessibility requirements and visual regression expectations are complete."
+  },
+  {
+   "number": 15,
+   "criterion_verbatim": "A dedicated Zoho ERP setup module has been completely specified."
+  },
+  {
+   "number": 16,
+   "criterion_verbatim": "OAuth, data-centre, organisation-discovery and credential-management requirements are implementation-ready."
+  },
+  {
+   "number": 17,
+   "criterion_verbatim": "Every required Zoho ERP object has an endpoint and scope assessment."
+  },
+  {
+   "number": 18,
+   "criterion_verbatim": "Bidirectional data flows are defined at header and line-item levels."
+  },
+  {
+   "number": 19,
+   "criterion_verbatim": "Purchase Request API availability has been explicitly verified or a controlled fallback has been designed."
+  },
+  {
+   "number": 20,
+   "criterion_verbatim": "Token refresh, pagination, rate limits, retries, dead-letter handling and reconciliation are fully specified."
+  },
+  {
+   "number": 21,
+   "criterion_verbatim": "Custom fields and reporting tags required for CAPEX, WBS and Budget Head references have been verified."
+  },
+  {
+   "number": 22,
+   "criterion_verbatim": "The POC can demonstrate connection setup, initial sync, incremental sync, failure recovery and reconciliation."
+  }
+ ]
+}

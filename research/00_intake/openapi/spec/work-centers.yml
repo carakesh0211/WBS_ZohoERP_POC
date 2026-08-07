@@ -1,0 +1,565 @@
+openapi: 3.0.0
+info:
+  title: Work Centers
+  description: A work center represents a physical location where a specific manufacturing operation is performed. Each work center is linked to a work center type, which determines the cost template used during production. It lets you specify the setup time, cleanup time, and capacity for components at the work center.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: work-centers
+    description: Work Centers Module
+paths:
+  /workcenters:
+    x-mcp-group:
+      - Work Centers
+    post:
+      tags:
+        - work-centers
+      operationId: create_workcenter
+      summary: Create a work center
+      description: Create a work center.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-workcenter-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-workcenter-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.CREATE
+    get:
+      tags:
+        - work-centers
+      operationId: list_workcenters
+      summary: List work centers
+      description: List all work centers.
+      parameters:
+        - name: sort_column
+          in: query
+          description: 'Specify the column field for sorting results. Allowed Values: <code>workcenter_name</code> and <code>capacity</code>.'
+          required: false
+          schema:
+            type: string
+          example: workcenter_name
+        - name: sort_order
+          in: query
+          description: 'Sort order for results. Allowed Values: <code>A</code> (ascending) and <code>D</code> (descending).'
+          required: false
+          schema:
+            type: string
+          example: A
+        - name: filter_by
+          in: query
+          description: 'Filter work centers by status. Allowed Values: <code>Status.All</code>, <code>Status.Active</code> and <code>Status.Inactive</code>.'
+          required: false
+          schema:
+            type: string
+          example: Status.All
+        - name: search_text
+          in: query
+          description: Search across work center name.
+          required: false
+          schema:
+            type: string
+          example: Assembly
+        - name: customview_id
+          in: query
+          description: Filter work centers using a saved custom view identifier.
+          required: false
+          schema:
+            type: string
+          example: '982000000084001'
+        - name: page
+          in: query
+          description: Page number for pagination. Default is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-workcenters-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /workcenters/{workcenter_id}:
+    x-mcp-group:
+      - Work Centers
+    get:
+      tags:
+        - work-centers
+      operationId: get_workcenter
+      summary: Get a work center
+      description: Get the details of a work center.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-workcenter-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.READ
+    put:
+      tags:
+        - work-centers
+      operationId: update_workcenter
+      summary: Update a work center
+      description: Update an existing work center.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-workcenter-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-workcenter-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.UPDATE
+    delete:
+      tags:
+        - work-centers
+      operationId: delete_workcenter
+      summary: Delete a work center
+      description: Delete an existing work center.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-workcenter-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.DELETE
+    parameters:
+      - name: workcenter_id
+        in: path
+        required: true
+        description: 'ID of the work center. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '3863095000000039063'
+      - $ref: '#/components/parameters/organization_id'
+  /workcenters/{workcenter_id}/active:
+    x-mcp-group:
+      - Work Centers
+    put:
+      tags:
+        - work-centers
+      operationId: mark_workcenter_active
+      summary: Mark a work center as active
+      description: Mark a work center as active.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-workcenter-status-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.UPDATE
+    parameters:
+      - name: workcenter_id
+        in: path
+        required: true
+        description: 'ID of the work center. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '3863095000000039063'
+      - $ref: '#/components/parameters/organization_id'
+  /workcenters/{workcenter_id}/inactive:
+    x-mcp-group:
+      - Work Centers
+    put:
+      tags:
+        - work-centers
+      operationId: mark_workcenter_inactive
+      summary: Mark a work center as inactive
+      description: Mark a work center as inactive.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-workcenter-status-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.UPDATE
+    parameters:
+      - name: workcenter_id
+        in: path
+        required: true
+        description: 'ID of the work center. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '3863095000000039063'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization.
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '60071204492'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/workcenter'
+    wc_workcenter_id:
+      description: 'ID of the Work Center. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000039063'
+    workcenter_name:
+      description: 'Name of the work center. Maximum length: 200 characters.'
+      type: string
+      maxLength: 200
+      example: TMC Assembly WC
+    wc_workcenter_type_id:
+      description: 'ID of the work center type this work center belongs to. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000039029'
+    wc_cost_template_id:
+      description: 'ID of the cost template applied to this work center. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000038083'
+    wc_workcalendar_id:
+      description: 'ID of the work calendar assigned to this work center. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000040001'
+    wc_capacity:
+      description: Number of units this work center can process simultaneously. Must be a positive integer.
+      type: integer
+      minimum: 1
+      example: 1
+    wc_setup_time:
+      description: 'Time required to set up the work center before production begins. Format: <code>MM:SS</code>.'
+      type: string
+      example: '20:00'
+    wc_cleanup_time:
+      description: 'Time required to clean up the work center after production ends. Format: <code>MM:SS</code>.'
+      type: string
+      example: '20:00'
+    product_item_id:
+      description: 'ID of the product item associated with this work center. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000046004'
+    product_setup_time:
+      description: 'Product-specific setup time override for this work center. Format: <code>MM:SS</code>.'
+      type: string
+      example: '10:00'
+    product_cleanup_time:
+      description: 'Product-specific cleanup time override for this work center. Format: <code>MM:SS</code>.'
+      type: string
+      example: '10:00'
+    product_capacity:
+      description: Product-specific capacity override for this work center. Must be greater than 0.
+      type: number
+      format: double
+      minimum: 0.000001
+      example: 1
+    product_detail_request:
+      type: object
+      required:
+        - item_id
+        - capacity
+      properties:
+        item_id:
+          $ref: '#/components/schemas/product_item_id'
+        setup_time:
+          $ref: '#/components/schemas/product_setup_time'
+        cleanup_time:
+          $ref: '#/components/schemas/product_cleanup_time'
+        capacity:
+          $ref: '#/components/schemas/product_capacity'
+    product_detail:
+      type: object
+      properties:
+        workcenter_product_id:
+          description: 'ID of the work center-product mapping. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000058360'
+        item_id:
+          $ref: '#/components/schemas/product_item_id'
+        name:
+          description: Name of the product item.
+          type: string
+          example: Pencil
+        setup_time:
+          $ref: '#/components/schemas/product_setup_time'
+        cleanup_time:
+          $ref: '#/components/schemas/product_cleanup_time'
+        capacity:
+          $ref: '#/components/schemas/product_capacity'
+    workcenter:
+      type: object
+      properties:
+        workcenter_id:
+          $ref: '#/components/schemas/wc_workcenter_id'
+        workcenter_name:
+          $ref: '#/components/schemas/workcenter_name'
+        workcenter_type_id:
+          $ref: '#/components/schemas/wc_workcenter_type_id'
+        workcenter_type_name:
+          description: Name of the work center type.
+          type: string
+          example: Assembly WCT
+        cost_template_id:
+          $ref: '#/components/schemas/wc_cost_template_id'
+        cost_template_name:
+          description: Name of the cost template applied to this work center.
+          type: string
+          example: Assembly CT
+        workcalendar_id:
+          $ref: '#/components/schemas/wc_workcalendar_id'
+        workcalendar_name:
+          description: Name of the work calendar assigned to this work center.
+          type: string
+          example: Work Calendar
+        status:
+          description: 'Status of the work center. Allowed Values: <code>active</code> and <code>inactive</code>.'
+          type: string
+          example: active
+        capacity:
+          $ref: '#/components/schemas/wc_capacity'
+        setup_time:
+          $ref: '#/components/schemas/wc_setup_time'
+        cleanup_time:
+          $ref: '#/components/schemas/wc_cleanup_time'
+        product_details:
+          description: List of product-specific configuration overrides for this work center.
+          type: array
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/product_detail'
+    create-a-workcenter-request:
+      type: object
+      required:
+        - workcenter_name
+        - workcenter_type_id
+        - cost_template_id
+        - workcalendar_id
+        - capacity
+      properties:
+        workcenter_name:
+          $ref: '#/components/schemas/workcenter_name'
+        workcenter_type_id:
+          $ref: '#/components/schemas/wc_workcenter_type_id'
+        cost_template_id:
+          $ref: '#/components/schemas/wc_cost_template_id'
+        workcalendar_id:
+          $ref: '#/components/schemas/wc_workcalendar_id'
+        capacity:
+          $ref: '#/components/schemas/wc_capacity'
+        setup_time:
+          $ref: '#/components/schemas/wc_setup_time'
+        cleanup_time:
+          $ref: '#/components/schemas/wc_cleanup_time'
+        product_details:
+          description: List of product-specific configuration overrides for this work center.
+          type: array
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/product_detail_request'
+    update-a-workcenter-request:
+      type: object
+      properties:
+        workcenter_name:
+          $ref: '#/components/schemas/workcenter_name'
+        workcenter_type_id:
+          $ref: '#/components/schemas/wc_workcenter_type_id'
+        cost_template_id:
+          $ref: '#/components/schemas/wc_cost_template_id'
+        workcalendar_id:
+          $ref: '#/components/schemas/wc_workcalendar_id'
+        capacity:
+          $ref: '#/components/schemas/wc_capacity'
+        setup_time:
+          $ref: '#/components/schemas/wc_setup_time'
+        cleanup_time:
+          $ref: '#/components/schemas/wc_cleanup_time'
+        product_details:
+          description: List of product-specific configuration overrides for this work center.
+          type: array
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/product_detail_request'
+    create-a-workcenter-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Work center created
+          readOnly: true
+        workcenter:
+          $ref: '#/components/schemas/workcenter'
+    update-a-workcenter-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Work center updated
+          readOnly: true
+        workcenter:
+          $ref: '#/components/schemas/workcenter'
+    get-a-workcenter-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        workcenter:
+          $ref: '#/components/schemas/workcenter'
+    list-workcenters-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        workcenters:
+          type: array
+          items:
+            type: object
+            properties:
+              workcenter_id:
+                $ref: '#/components/schemas/wc_workcenter_id'
+              workcenter_name:
+                $ref: '#/components/schemas/workcenter_name'
+              workcenter_type_id:
+                $ref: '#/components/schemas/wc_workcenter_type_id'
+              workcenter_type_name:
+                description: Name of the work center type.
+                type: string
+                example: Assembly WCT
+              status:
+                description: 'Status of the work center. Allowed Values: <code>active</code> and <code>inactive</code>.'
+                type: string
+                example: active
+              capacity:
+                $ref: '#/components/schemas/wc_capacity'
+              setup_time:
+                $ref: '#/components/schemas/wc_setup_time'
+              cleanup_time:
+                $ref: '#/components/schemas/wc_cleanup_time'
+        page_context:
+          type: object
+          readOnly: true
+          properties:
+            page:
+              type: integer
+              description: Current page number.
+              example: 1
+            per_page:
+              type: integer
+              description: Number of records per page.
+              example: 200
+            has_more_page:
+              type: boolean
+              description: Indicates if there are more pages.
+              example: false
+            report_name:
+              type: string
+              example: Work Centers
+            applied_filter:
+              type: string
+              example: Status.All
+            sort_column:
+              type: string
+              example: workcenter_name
+            sort_order:
+              type: string
+              example: A
+    delete-a-workcenter-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The work center has been deleted.
+          readOnly: true
+    update-workcenter-status-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Work center status updated.
+          readOnly: true
+        workcenter:
+          $ref: '#/components/schemas/workcenter'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.manufacturing.CREATE: Create Work Centers
+            ERP.manufacturing.UPDATE: Update Work Centers
+            ERP.manufacturing.READ: Read Work Centers
+            ERP.manufacturing.DELETE: Delete Work Centers
+            ERP.manufacturing.ALL: All permissions for Manufacturing

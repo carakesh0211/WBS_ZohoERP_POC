@@ -1,0 +1,1324 @@
+openapi: 3.0.0
+info:
+  title: Taxes
+  description: Manage GST and direct tax settings for your organization in the India Edition.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: taxes
+    description: Taxes Module
+paths:
+  /settings/taxes:
+    x-mcp-group:
+      - Taxes
+    x-node_available_in:
+      - in
+    post:
+      tags:
+        - taxes
+      operationId: Create_Tax
+      summary: Create a tax
+      description: Create a GST tax rate that can be associated with items and transactions.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-tax-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-tax-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.CREATE
+    get:
+      tags:
+        - taxes
+      operationId: List_Taxes
+      summary: List taxes
+      description: List simple, compound, and group taxes with pagination and filters.
+      parameters:
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 10.
+          required: false
+          schema:
+            type: integer
+            default: 10
+          example: 10
+        - name: filter_by
+          in: query
+          description: Filter taxes. Allowed values include <code>Taxes.All</code>, <code>Taxes.Active</code>, <code>Taxes.Inactive</code>, <code>Taxes.Isexpired</code>, <code>Type.Tax</code>, <code>Type.Compoundtax</code>, <code>Type.Taxgroup</code>, <code>Type.Tds</code>, and <code>Type.Tdsgroup</code>. Default value is <code>Taxes.Active</code>.
+          required: false
+          schema:
+            type: string
+          example: Taxes.Active
+        - name: tax_type
+          in: query
+          description: Filter by tax type.
+          required: false
+          schema:
+            type: string
+          example: tax
+        - name: is_tds_request
+          in: query
+          description: Set to <code>true</code> to list TDS taxes.
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: is_tcs_request
+          in: query
+          description: Set to <code>true</code> to list TCS taxes.
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: last_modified_time
+          in: query
+          description: Fetch taxes modified after this time.
+          required: false
+          schema:
+            type: string
+          example: '2024-04-01'
+        - name: tax_ids
+          in: query
+          description: Comma-separated tax IDs to filter the list.
+          required: false
+          schema:
+            type: string
+          example: 982000000566009,982000000566010
+        - name: include_tax_group_details
+          in: query
+          description: Set to <code>true</code> to include tax group details in the response.
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: sort_column
+          in: query
+          description: 'Sort column. Allowed values: <code>tax_name</code>.'
+          required: false
+          schema:
+            type: string
+          example: tax_name
+        - name: sort_order
+          in: query
+          description: 'Sort order. Allowed values: <code>A</code> for ascending and <code>D</code> for descending.'
+          required: false
+          schema:
+            type: string
+          example: A
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-taxes-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.READ
+    delete:
+      tags:
+        - taxes
+      operationId: Bulk_Delete_Taxes
+      summary: Bulk delete taxes
+      description: Delete multiple taxes by ID.
+      parameters:
+        - name: tax_ids
+          in: query
+          description: Comma-separated tax IDs to delete.
+          required: true
+          schema:
+            type: string
+          example: 982000000566009,982000000566010
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-tax-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.DELETE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /settings/taxes/{tax_id}:
+    x-mcp-group:
+      - Taxes
+    x-node_available_in:
+      - in
+    put:
+      tags:
+        - taxes
+      operationId: Update_Tax
+      summary: Update a tax
+      description: Update the details of a simple or compound tax.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-tax-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-tax-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.UPDATE
+    get:
+      tags:
+        - taxes
+      operationId: Get_Tax
+      summary: Get a tax
+      description: Get the details of a simple or compound tax.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-tax-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.READ
+    delete:
+      tags:
+        - taxes
+      operationId: Delete_Tax
+      summary: Delete a tax
+      description: Delete a simple or compound tax.
+      parameters:
+        - name: is_force_delete
+          in: query
+          description: Set to <code>true</code> to force delete the tax. Default value is <code>false</code>.
+          required: false
+          schema:
+            type: boolean
+            default: false
+          example: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-tax-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.DELETE
+    parameters:
+      - name: tax_id
+        in: path
+        required: true
+        description: 'Unique identifier of the tax. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '982000000566009'
+      - $ref: '#/components/parameters/organization_id'
+  /settings/taxes/{tax_id}/active:
+    x-mcp-group:
+      - Taxes
+    x-node_available_in:
+      - in
+    post:
+      tags:
+        - taxes
+      operationId: Mark_Tax_Active
+      summary: Mark a tax as active
+      description: Mark an inactive tax as active.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-tax-active-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.CREATE
+    parameters:
+      - name: tax_id
+        in: path
+        required: true
+        description: 'Unique identifier of the tax. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '982000000566009'
+      - $ref: '#/components/parameters/organization_id'
+  /settings/taxes/{tax_id}/inactive:
+    x-mcp-group:
+      - Taxes
+    x-node_available_in:
+      - in
+    post:
+      tags:
+        - taxes
+      operationId: Mark_Tax_Inactive
+      summary: Mark a tax as inactive
+      description: Mark an active tax as inactive.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-tax-inactive-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.CREATE
+    parameters:
+      - name: tax_id
+        in: path
+        required: true
+        description: 'Unique identifier of the tax. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '982000000566009'
+      - $ref: '#/components/parameters/organization_id'
+  /settings/taxes/taxtransactions:
+    x-mcp-group:
+      - Taxes
+    x-node_available_in:
+      - in
+    get:
+      tags:
+        - taxes
+      operationId: List_Tax_Transactions
+      summary: List transactions associated with a tax
+      description: List the transactions that are associated with a specific tax.
+      parameters:
+        - name: tax_id
+          in: query
+          description: 'ID of the tax for which associated transactions are listed. Note: This value is a set of numeric characters.'
+          required: true
+          schema:
+            type: string
+          example: '982000000566009'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-tax-transactions-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /settings/taxgroups:
+    x-mcp-group:
+      - Taxes
+    x-node_available_in:
+      - in
+    post:
+      tags:
+        - taxes
+      operationId: Create_Tax_Group
+      summary: Create a tax group
+      description: Create a tax group by associating multiple GST taxes.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-tax-group-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-tax-group-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.CREATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /settings/taxgroups/{tax_group_id}:
+    x-mcp-group:
+      - Taxes
+    x-node_available_in:
+      - in
+    get:
+      tags:
+        - taxes
+      operationId: Get_Tax_Group
+      summary: Get a tax group
+      description: Get the details of a tax group.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-tax-group-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.READ
+    put:
+      tags:
+        - taxes
+      operationId: Update_Tax_Group
+      summary: Update a tax group
+      description: Update the details of a tax group.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-tax-group-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-tax-group-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.UPDATE
+    delete:
+      tags:
+        - taxes
+      operationId: Delete_Tax_Group
+      summary: Delete a tax group
+      description: Delete a tax group. Tax groups associated with transactions cannot be deleted.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-tax-group-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.DELETE
+    parameters:
+      - name: tax_group_id
+        in: path
+        required: true
+        description: 'Unique identifier of the tax group. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '982000000566010'
+      - $ref: '#/components/parameters/organization_id'
+  /settings/directtaxes:
+    x-mcp-group:
+      - Taxes
+    x-node_available_in:
+      - in
+    get:
+      tags:
+        - taxes
+      operationId: Get_Direct_Tax_Settings
+      summary: Get direct tax settings
+      description: Fetch direct tax (TDS) settings for the organization.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-direct-tax-settings-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.READ
+    put:
+      tags:
+        - taxes
+      operationId: Update_Direct_Tax_Settings
+      summary: Update direct tax settings
+      description: Update direct tax (TDS) settings for the organization.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-direct-tax-settings-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-direct-tax-settings-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.UPDATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: 'ID of the organization. Note: This value is a set of numeric characters.'
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/tax-response'
+    tax-list-item:
+      type: object
+      properties:
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        tax_display_name:
+          $ref: '#/components/schemas/tax_display_name'
+        tax_name:
+          $ref: '#/components/schemas/tax_name'
+        tax_percentage:
+          $ref: '#/components/schemas/tax_percentage'
+        tax_type:
+          $ref: '#/components/schemas/tax_type'
+        tax_specific_type:
+          $ref: '#/components/schemas/tax_specific_type'
+        tax_authority_id:
+          $ref: '#/components/schemas/tax_authority_id'
+        tax_authority_name:
+          $ref: '#/components/schemas/tax_authority_name'
+        tax_account_id:
+          $ref: '#/components/schemas/tax_account_id'
+        purchase_tax_account_id:
+          $ref: '#/components/schemas/purchase_tax_account_id'
+        is_inactive:
+          $ref: '#/components/schemas/is_inactive'
+        is_default_tax:
+          $ref: '#/components/schemas/is_default_tax'
+        is_editable:
+          $ref: '#/components/schemas/is_editable'
+        diff_rate_reason:
+          $ref: '#/components/schemas/diff_rate_reason'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        is_value_added:
+          $ref: '#/components/schemas/is_value_added'
+        is_non_advol_tax:
+          $ref: '#/components/schemas/is_non_advol_tax'
+        tax_factor:
+          $ref: '#/components/schemas/tax_factor'
+        output_tax_account_name:
+          $ref: '#/components/schemas/output_tax_account_name'
+        purchase_tax_account_name:
+          $ref: '#/components/schemas/purchase_tax_account_name'
+        associated_tax_ids:
+          $ref: '#/components/schemas/associated_tax_ids'
+        accounting_app_name:
+          $ref: '#/components/schemas/accounting_app_name'
+        accounting_reference_id:
+          $ref: '#/components/schemas/accounting_reference_id'
+        status:
+          $ref: '#/components/schemas/status'
+        last_modified_time:
+          $ref: '#/components/schemas/last_modified_time'
+        description:
+          $ref: '#/components/schemas/description'
+        reference_id:
+          $ref: '#/components/schemas/reference_id'
+    tax-response:
+      type: object
+      properties:
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        tax_display_name:
+          $ref: '#/components/schemas/tax_display_name'
+        tax_name:
+          $ref: '#/components/schemas/tax_name'
+        tax_name_formatted:
+          $ref: '#/components/schemas/tax_name_formatted'
+        tax_percentage:
+          $ref: '#/components/schemas/tax_percentage'
+        is_editable:
+          $ref: '#/components/schemas/is_editable'
+        tax_type:
+          $ref: '#/components/schemas/tax_type'
+        tax_account_id:
+          $ref: '#/components/schemas/tax_account_id'
+        purchase_tax_account_id:
+          $ref: '#/components/schemas/purchase_tax_account_id'
+        tds_payable_account_id:
+          $ref: '#/components/schemas/tds_payable_account_id'
+        tcs_receivable_account_id:
+          $ref: '#/components/schemas/tcs_receivable_account_id'
+        tcs_payable_account_id:
+          $ref: '#/components/schemas/tcs_payable_account_id'
+        tax_specific_type:
+          $ref: '#/components/schemas/tax_specific_type'
+        tax_specific_type_desc:
+          $ref: '#/components/schemas/tax_specific_type_desc'
+        tax_specific_type_version:
+          $ref: '#/components/schemas/tax_specific_type_version'
+        tax_authority_id:
+          $ref: '#/components/schemas/tax_authority_id'
+        tax_authority_name:
+          $ref: '#/components/schemas/tax_authority_name'
+        is_state_cess:
+          $ref: '#/components/schemas/is_state_cess'
+        is_value_added:
+          $ref: '#/components/schemas/is_value_added'
+        tax_factor:
+          $ref: '#/components/schemas/tax_factor'
+        tax_account_tracking:
+          $ref: '#/components/schemas/tax_account_tracking'
+        output_tax_account_name:
+          $ref: '#/components/schemas/output_tax_account_name'
+        purchase_tax_account_name:
+          $ref: '#/components/schemas/purchase_tax_account_name'
+        purchase_tax_expense_account_id:
+          $ref: '#/components/schemas/purchase_tax_expense_account_id'
+        accounting_app_name:
+          $ref: '#/components/schemas/accounting_app_name'
+        accounting_reference_id:
+          $ref: '#/components/schemas/accounting_reference_id'
+        diff_rate_reason:
+          $ref: '#/components/schemas/diff_rate_reason'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        status:
+          $ref: '#/components/schemas/status'
+        description:
+          $ref: '#/components/schemas/description'
+        reference_id:
+          $ref: '#/components/schemas/reference_id'
+    tax-group-member:
+      type: object
+      properties:
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        tax_display_name:
+          $ref: '#/components/schemas/tax_display_name'
+        tax_name:
+          $ref: '#/components/schemas/tax_name'
+        tax_percentage:
+          $ref: '#/components/schemas/tax_percentage'
+        tax_type:
+          $ref: '#/components/schemas/tax_type'
+        tax_specific_type:
+          $ref: '#/components/schemas/tax_specific_type'
+        tax_authority_id:
+          $ref: '#/components/schemas/tax_authority_id'
+        tax_authority_name:
+          $ref: '#/components/schemas/tax_authority_name'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        status:
+          $ref: '#/components/schemas/status'
+    tax_id:
+      description: 'ID of the tax. Note: This value is a set of numeric characters.'
+      type: string
+      example: '982000000566009'
+    tax_name:
+      description: Name of the tax.
+      type: string
+      example: IGST18
+    tax_name_formatted:
+      description: Formatted name of the tax.
+      type: string
+      example: IGST 18%
+    tax_display_name:
+      description: Display name of the tax.
+      type: string
+      example: IGST 18%
+    tax_percentage:
+      description: Tax percentage.
+      type: number
+      format: double
+      example: 18
+    tax_type:
+      description: 'Type of tax. Allowed values: <code>tax</code>, <code>compound_tax</code>, <code>tds_tax</code>, <code>tcs_tax</code>, <code>tax_on_tax</code>, and <code>gst_tds_tax</code>.'
+      type: string
+      example: tax
+    tax_factor:
+      description: 'Type of Tax Factor. Allowed values: <code>rate</code>, <code>share</code>'
+      type: string
+      example: rate
+    tax_specific_type:
+      description: Type of tax for the India Edition. Allowed values include <code>tax</code>, <code>igst</code>, <code>cgst</code>, <code>sgst</code>, <code>utgst</code>, <code>nil</code>, and <code>cess</code>.
+      type: string
+      example: igst
+    tax_specific_type_desc:
+      description: Description of the tax specific type.
+      type: string
+      example: IGST
+    tax_specific_type_version:
+      description: Version of the tax specific type.
+      type: string
+      example: '1'
+    tax_authority_id:
+      description: 'ID of the tax authority. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000066001'
+    tax_authority_name:
+      description: Name of the Tax Authority
+      type: string
+      example: Central Board of Indirect Taxes and Customs
+    is_value_added:
+      description: Check if Tax is Value Added
+      type: boolean
+      example: false
+    tax_account_id:
+      description: 'Account ID in which output tax will be computed. Note: This value is a set of numeric characters.'
+      type: string
+      example: '132086000000107333'
+    purchase_tax_account_id:
+      description: 'Account ID in which input tax will be computed. Note: This value is a set of numeric characters.'
+      type: string
+      example: '132086000000107337'
+    purchase_tax_expense_account_id:
+      description: 'Account ID in which purchase tax expense will be computed. Note: This value is a set of numeric characters.'
+      type: string
+      example: '132086000000107337'
+    tds_payable_account_id:
+      description: 'TDS payable account ID. Note: This value is a set of numeric characters.'
+      type: string
+      example: '132086000000107338'
+    tcs_receivable_account_id:
+      description: 'TCS receivable account ID. Note: This value is a set of numeric characters.'
+      type: string
+      example: '132086000000107339'
+    tcs_payable_account_id:
+      description: 'TCS payable account ID. Note: This value is a set of numeric characters.'
+      type: string
+      example: '132086000000107340'
+    tax_account_tracking:
+      description: 'Tax account tracking mode. Allowed values: <code>split</code> and <code>single</code>.'
+      type: string
+      example: single
+    output_tax_account_name:
+      description: Name of the account in which output tax is computed.
+      type: string
+      example: Output CGST
+    purchase_tax_account_name:
+      description: Name of the account in which input tax is computed.
+      type: string
+      example: Input CGST
+    accounting_app_name:
+      description: Name of the third-party accounting application associated with the tax.
+      type: string
+      example: Zoho Books
+    accounting_reference_id:
+      description: 'Reference ID of the tax in the third-party accounting application. Note: This value is a set of numeric characters.'
+      type: string
+      example: '132086000000107350'
+    associated_tax_ids:
+      description: Comma-separated IDs of the taxes associated with a compound tax.
+      type: string
+      example: 982000000566009,982000000566010
+    is_non_advol_tax:
+      description: 'Whether the tax is a non-advalorem tax. Allowed values: <code>true</code> and <code>false</code>.'
+      type: boolean
+      example: false
+    is_state_cess:
+      description: 'Whether the tax is a state cess. Allowed values: <code>true</code> and <code>false</code>.'
+      type: boolean
+      example: false
+    diff_rate_reason:
+      description: 'Reason for a different tax rate. Allowed values: <code>tds_non_pan</code>, <code>tds_non_filing</code>, <code>tcs_non_pan</code>, and <code>tcs_non_filing</code>.'
+      type: string
+      example: tds_non_pan
+    is_inactive:
+      description: 'Whether the tax is inactive. Allowed values: <code>true</code> and <code>false</code>.'
+      type: boolean
+      example: false
+    is_default_tax:
+      description: 'Whether the tax is the default tax. Allowed values: <code>true</code> and <code>false</code>.'
+      type: boolean
+      example: false
+    is_editable:
+      description: 'Whether the tax is editable. Allowed values: <code>true</code> and <code>false</code>.'
+      type: boolean
+      example: true
+    status:
+      description: Status of the tax.
+      type: string
+      example: active
+    start_date:
+      description: Start date of the tax in <code>yyyy-mm-dd</code> format.
+      type: string
+      example: '2024-04-01'
+    end_date:
+      description: End date of the tax in <code>yyyy-mm-dd</code> format.
+      type: string
+      example: '2025-03-31'
+    description:
+      description: Description of the tax.
+      type: string
+      example: Standard IGST rate
+    reference_id:
+      description: Reference ID of the tax.
+      type: string
+      example: REF-001
+    last_modified_time:
+      description: Last modified time of the tax.
+      type: string
+      example: 2024-04-01T10:30:00+0530
+    taxes:
+      description: Comma-separated list of tax IDs that are to be associated to the tax group.
+      type: string
+      example: 982000000566009,982000000566010
+    tax_group_id:
+      description: 'ID of the tax group. Note: This value is a set of numeric characters.'
+      type: string
+      example: '982000000566010'
+    tax_group_name:
+      description: Name of the tax group.
+      type: string
+      example: GST 18% Group
+    tax_group_percentage:
+      description: Total percentage of the tax group.
+      type: number
+      format: double
+      example: 18
+    page:
+      description: Page number.
+      type: integer
+      example: 1
+    per_page:
+      description: Number of records per page.
+      type: integer
+      example: 10
+    report_name:
+      description: Report name.
+      type: string
+      example: Taxes
+    has_more_page:
+      description: 'Whether more pages are available. Allowed values: <code>true</code> and <code>false</code>.'
+      type: boolean
+      example: false
+    sort_order:
+      description: Sort order.
+      type: string
+      example: A
+    sort_column:
+      description: Sort column.
+      type: string
+      example: tax_name
+    applied_filter:
+      description: Applied filter.
+      type: string
+      example: Taxes.Active
+    update_recurring_invoice:
+      description: 'Update recurring invoices when the tax is changed. Allowed values: <code>true</code> and <code>false</code>.'
+      type: boolean
+      example: false
+    update_recurring_expense:
+      description: 'Update recurring expenses when the tax is changed. Allowed values: <code>true</code> and <code>false</code>.'
+      type: boolean
+      example: false
+    update_draft_invoice:
+      description: 'Update draft invoices when the tax is changed. Allowed values: <code>true</code> and <code>false</code>.'
+      type: boolean
+      example: false
+    update_recurring_bills:
+      description: 'Update recurring bills when the tax is changed. Allowed values: <code>true</code> and <code>false</code>.'
+      type: boolean
+      example: false
+    update_draft_so:
+      description: 'Update draft sales orders when the tax is changed. Allowed values: <code>true</code> and <code>false</code>.'
+      type: boolean
+      example: false
+    update_subscription:
+      description: 'Update subscriptions when the tax is changed. Allowed values: <code>true</code> and <code>false</code>.'
+      type: boolean
+      example: false
+    update_project:
+      description: 'Update projects when the tax is changed. Allowed values: <code>true</code> and <code>false</code>.'
+      type: boolean
+      example: false
+    tds_calculation_type:
+      description: 'TDS calculation type for direct tax settings. Allowed values: <code>tds_item_level</code> and <code>tds_entity_level</code>.'
+      type: string
+      example: tds_item_level
+    track_tds_liability_from:
+      description: Month and year from which TDS liability is tracked in <code>mm-yyyy</code> format.
+      type: string
+      example: 04-2024
+    default_penalty_account_id:
+      description: 'Default penalty account ID for TDS. Note: This value is a set of numeric characters.'
+      type: string
+      example: '132086000000107341'
+    default_interest_account_id:
+      description: 'Default interest account ID for TDS. Note: This value is a set of numeric characters.'
+      type: string
+      example: '132086000000107342'
+    default_penalty_account_name:
+      description: Default penalty account name for TDS.
+      type: string
+      example: TDS Penalty
+    default_interest_account_name:
+      description: Default interest account name for TDS.
+      type: string
+      example: TDS Interest
+    registration-details-response:
+      description: TDS registration details for the organization.
+      type: array
+      items:
+        type: object
+        properties:
+          type:
+            description: 'Registration type. Allowed values: <code>pan</code> and <code>tan</code>.'
+            type: string
+            example: pan
+          type_formatted:
+            description: Formatted registration type label.
+            type: string
+            example: PAN
+          value:
+            description: Registration value.
+            type: string
+            example: ABCDE1234F
+    compliance-registration-details:
+      description: Compliance registration detail.
+      type: object
+      properties:
+        type:
+          description: 'Registration type. Allowed values: <code>pan</code> and <code>tan</code>.'
+          type: string
+          example: pan
+        value:
+          description: Registration value.
+          type: string
+          example: ABCDE1234F
+    direct-tax-settings:
+      type: object
+      properties:
+        tds_calculation_type:
+          $ref: '#/components/schemas/tds_calculation_type'
+        track_tds_liability_from:
+          $ref: '#/components/schemas/track_tds_liability_from'
+        default_penalty_account_id:
+          $ref: '#/components/schemas/default_penalty_account_id'
+        default_interest_account_id:
+          $ref: '#/components/schemas/default_interest_account_id'
+        default_penalty_account_name:
+          $ref: '#/components/schemas/default_penalty_account_name'
+        default_interest_account_name:
+          $ref: '#/components/schemas/default_interest_account_name'
+        registration_details:
+          $ref: '#/components/schemas/registration-details-response'
+    create-a-tax-request:
+      type: object
+      required:
+        - tax_name
+        - tax_percentage
+      properties:
+        tax_name:
+          $ref: '#/components/schemas/tax_name'
+        tax_display_name:
+          $ref: '#/components/schemas/tax_display_name'
+        tax_percentage:
+          $ref: '#/components/schemas/tax_percentage'
+        tax_type:
+          $ref: '#/components/schemas/tax_type'
+        tax_factor:
+          $ref: '#/components/schemas/tax_factor'
+        tax_specific_type:
+          $ref: '#/components/schemas/tax_specific_type'
+        tax_authority_name:
+          $ref: '#/components/schemas/tax_authority_name'
+        tax_authority_id:
+          $ref: '#/components/schemas/tax_authority_id'
+        is_value_added:
+          $ref: '#/components/schemas/is_value_added'
+        tax_account_id:
+          $ref: '#/components/schemas/tax_account_id'
+        purchase_tax_account_id:
+          $ref: '#/components/schemas/purchase_tax_account_id'
+        purchase_tax_expense_account_id:
+          $ref: '#/components/schemas/purchase_tax_expense_account_id'
+        tds_payable_account_id:
+          $ref: '#/components/schemas/tds_payable_account_id'
+        tcs_receivable_account_id:
+          $ref: '#/components/schemas/tcs_receivable_account_id'
+        tcs_payable_account_id:
+          $ref: '#/components/schemas/tcs_payable_account_id'
+        tax_account_tracking:
+          $ref: '#/components/schemas/tax_account_tracking'
+        is_non_advol_tax:
+          $ref: '#/components/schemas/is_non_advol_tax'
+        is_state_cess:
+          $ref: '#/components/schemas/is_state_cess'
+        diff_rate_reason:
+          $ref: '#/components/schemas/diff_rate_reason'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        description:
+          $ref: '#/components/schemas/description'
+        update_recurring_invoice:
+          $ref: '#/components/schemas/update_recurring_invoice'
+        update_recurring_expense:
+          $ref: '#/components/schemas/update_recurring_expense'
+        update_draft_invoice:
+          $ref: '#/components/schemas/update_draft_invoice'
+        update_recurring_bills:
+          $ref: '#/components/schemas/update_recurring_bills'
+        update_draft_so:
+          $ref: '#/components/schemas/update_draft_so'
+        update_subscription:
+          $ref: '#/components/schemas/update_subscription'
+        update_project:
+          $ref: '#/components/schemas/update_project'
+    create-a-tax-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The tax has been added.
+          readOnly: true
+        tax:
+          $ref: '#/components/schemas/tax-response'
+    list-taxes-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        taxes:
+          description: List of taxes.
+          type: array
+          items:
+            $ref: '#/components/schemas/tax-list-item'
+        page_context:
+          type: object
+          properties:
+            page:
+              $ref: '#/components/schemas/page'
+            per_page:
+              $ref: '#/components/schemas/per_page'
+            has_more_page:
+              $ref: '#/components/schemas/has_more_page'
+            report_name:
+              $ref: '#/components/schemas/report_name'
+            applied_filter:
+              $ref: '#/components/schemas/applied_filter'
+            sort_column:
+              $ref: '#/components/schemas/sort_column'
+            sort_order:
+              $ref: '#/components/schemas/sort_order'
+    tax-transaction:
+      type: object
+      properties:
+        entity_type:
+          description: Type of transaction associated with the tax (for example, <code>invoice</code> or <code>bill</code>).
+          type: string
+          example: invoice
+        entity_type_formatted:
+          description: Display label for the transaction type.
+          type: string
+          example: Invoice
+        count:
+          description: Number of transactions of this type that are associated with the tax.
+          type: integer
+          example: 5
+    list-tax-transactions-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        transaction_list:
+          description: Transactions associated with the tax.
+          type: array
+          items:
+            $ref: '#/components/schemas/tax-transaction'
+    update-a-tax-request:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/create-a-tax-request'
+      properties:
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+    update-a-tax-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Tax information has been saved.
+          readOnly: true
+        tax:
+          $ref: '#/components/schemas/tax-response'
+    get-a-tax-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        tax:
+          $ref: '#/components/schemas/tax-response'
+    delete-a-tax-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The record has been deleted.
+          readOnly: true
+    mark-tax-active-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The tax has been marked as active.
+          readOnly: true
+    mark-tax-inactive-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The tax has been marked as inactive.
+          readOnly: true
+    create-a-tax-group-request:
+      type: object
+      required:
+        - tax_group_name
+        - taxes
+      properties:
+        tax_group_name:
+          $ref: '#/components/schemas/tax_group_name'
+        taxes:
+          $ref: '#/components/schemas/taxes'
+        tax_type:
+          $ref: '#/components/schemas/tax_type'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        update_recurring_invoice:
+          $ref: '#/components/schemas/update_recurring_invoice'
+        update_recurring_expense:
+          $ref: '#/components/schemas/update_recurring_expense'
+        update_draft_invoice:
+          $ref: '#/components/schemas/update_draft_invoice'
+        update_recurring_bills:
+          $ref: '#/components/schemas/update_recurring_bills'
+        update_draft_so:
+          $ref: '#/components/schemas/update_draft_so'
+        update_subscription:
+          $ref: '#/components/schemas/update_subscription'
+    create-a-tax-group-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        tax_group:
+          $ref: '#/components/schemas/tax-group-response'
+    tax-group-response:
+      type: object
+      properties:
+        tax_group_id:
+          $ref: '#/components/schemas/tax_group_id'
+        tax_group_name:
+          $ref: '#/components/schemas/tax_group_name'
+        tax_group_percentage:
+          $ref: '#/components/schemas/tax_group_percentage'
+        tax_type:
+          $ref: '#/components/schemas/tax_type'
+        status:
+          $ref: '#/components/schemas/status'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        taxes:
+          description: Taxes associated with the tax group.
+          type: array
+          items:
+            $ref: '#/components/schemas/tax-group-member'
+    get-a-tax-group-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        tax_group:
+          $ref: '#/components/schemas/tax-group-response'
+    update-a-tax-group-request:
+      type: object
+      properties:
+        tax_group_name:
+          $ref: '#/components/schemas/tax_group_name'
+        taxes:
+          $ref: '#/components/schemas/taxes'
+        tax_type:
+          $ref: '#/components/schemas/tax_type'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        update_recurring_invoice:
+          $ref: '#/components/schemas/update_recurring_invoice'
+        update_recurring_expense:
+          $ref: '#/components/schemas/update_recurring_expense'
+        update_draft_invoice:
+          $ref: '#/components/schemas/update_draft_invoice'
+        update_recurring_bills:
+          $ref: '#/components/schemas/update_recurring_bills'
+        update_draft_so:
+          $ref: '#/components/schemas/update_draft_so'
+        update_subscription:
+          $ref: '#/components/schemas/update_subscription'
+    update-a-tax-group-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        tax_group:
+          $ref: '#/components/schemas/tax-group-response'
+    delete-a-tax-group-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The tax group has been deleted.
+          readOnly: true
+    update-direct-tax-settings-request:
+      type: object
+      properties:
+        tds_calculation_type:
+          $ref: '#/components/schemas/tds_calculation_type'
+        track_tds_liability_from:
+          $ref: '#/components/schemas/track_tds_liability_from'
+        default_penalty_account_id:
+          $ref: '#/components/schemas/default_penalty_account_id'
+        default_interest_account_id:
+          $ref: '#/components/schemas/default_interest_account_id'
+        registration_details:
+          description: TDS registration details to update.
+          type: array
+          items:
+            $ref: '#/components/schemas/compliance-registration-details'
+    get-direct-tax-settings-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        direct_tax_settings:
+          $ref: '#/components/schemas/direct-tax-settings'
+    update-direct-tax-settings-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Direct tax settings have been updated.
+          readOnly: true
+        direct_tax_settings:
+          $ref: '#/components/schemas/direct-tax-settings'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.settings.CREATE: Create Settings
+            ERP.settings.UPDATE: Update Settings
+            ERP.settings.READ: Read Settings
+            ERP.settings.DELETE: Delete Settings

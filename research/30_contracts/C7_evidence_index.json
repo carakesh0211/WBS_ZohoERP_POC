@@ -1,0 +1,33 @@
+{
+ "frozen_at": "2026-08-06",
+ "rule": "Cite ONLY claims with citable=true. Every Zoho endpoint, path, method and OAuth scope must come from zoho_endpoint_inventory.json, which is machine-generated from the vendor's own OpenAPI bundle. Anything not in these files must be written as 'UNVERIFIED - REQUIRES ZOHO CONFIRMATION'.",
+ "cite_only_registry": "research/20_verified/claims.verified.json",
+ "canonical_zoho_endpoint_inventory": "research/20_verified/zoho_endpoint_inventory.json",
+ "openapi_findings": "research/20_verified/openapi_findings.json",
+ "totals": {
+  "claims": 1527,
+  "citable": 1112,
+  "not_citable": 415,
+  "confirmed_by_vendor_spec": 204
+ },
+ "verdict_counts": {
+  "CONFIRMED": 894,
+  "OVERSTATED": 45,
+  "UNVERIFIED - REQUIRES CONFIRMATION": 22,
+  "CONFIRMED-REPLACED-QUOTE": 14,
+  "CONTRADICTED": 3,
+  "NOT-YET-VERIFIED": 345,
+  "CONFIRMED-BY-VENDOR-SPECIFICATION": 204
+ },
+ "zoho_inventory_rows": 869,
+ "zoho_api_version_split": {
+  "v3": 776,
+  "v1": 93
+ },
+ "hard_negatives": [
+  "Purchase Request does not exist anywhere in the official ERP API specification",
+  "The GRN leg of line-level matching is broken; the PO-to-bill leg is intact",
+  "There is no API to CREATE a custom field definition; only to set values on a record",
+  "Fixed assets cannot be linked to a source project, PO or bill, and cannot be incrementally synced"
+ ]
+}

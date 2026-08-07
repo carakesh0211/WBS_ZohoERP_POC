@@ -1,0 +1,2877 @@
+openapi: 3.0.0
+info:
+  title: Contacts
+  description: The list of contacts created.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: contacts
+    description: Contacts Module
+paths:
+  /contacts:
+    x-mcp-group:
+      - Contacts
+    post:
+      tags:
+        - contacts
+      operationId: create_contact
+      summary: Create a Contact
+      description: Create a new contact with comprehensive business information. This operation allows you to create a customer or vendor by providing details such as contact name, company information, addresses, contact persons, payment terms, tax settings, and custom fields. The created contact can be used for generating invoices, bills, estimates, and other business transactions. The system automatically assigns a unique contact ID.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-contact-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-contact-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.CREATE
+    get:
+      tags:
+        - contacts
+      operationId: list_contacts
+      summary: List Contacts
+      description: Retrieve a comprehensive list of all contacts with advanced filters. This operation supports multiple search criteria including contact name, company name, address, email, phone, and general text search. You can filter contacts by status (active, inactive, duplicate, CRM) and sort by various fields. The response includes essential contact information, financial data including outstanding amounts and credit limits, and pagination details for efficient data retrieval.
+      parameters:
+        - name: contact_type
+          in: query
+          description: 'Search contacts by contact type. Allowed Values: <code>customer</code>, <code>vendor</code>.'
+          required: false
+          schema:
+            type: string
+          example: customer
+        - name: contact_name
+          in: query
+          description: 'Search contacts by contact name. Max-length [100]. Variants: <code>contact_name_startswith</code> and <code>contact_name_contains</code>.'
+          required: false
+          schema:
+            type: string
+          example: Zylker Inc
+        - name: company_name
+          in: query
+          description: 'Search contacts by company name. Max-length [100] Variants: <code>company_name_startswith</code> and <code>company_name_contains</code>'
+          required: false
+          schema:
+            type: string
+          example: Zylker Inc
+        - name: first_name
+          in: query
+          description: 'Search contacts by first name of the primary contact person. Max-length [100] Variants: <code>first_name_startswith</code> and <code>first_name_contains</code>'
+          required: false
+          schema:
+            type: string
+          example: Will
+        - name: last_name
+          in: query
+          description: 'Search contacts by last name of the primary contact person. Max-length [100] Variants: <code>last_name_startswith</code> and <code>last_name_contains</code>'
+          required: false
+          schema:
+            type: string
+          example: Smith
+        - name: address
+          in: query
+          description: 'Search contacts by any of the address fields. Max-length [100] Variants: <code>address_startswith</code> and <code>address_contains</code>'
+          required: false
+          schema:
+            type: string
+          example: 4/53, Mount Road
+        - name: email
+          in: query
+          description: 'Search contacts by email of the primary contact person. Max-length [100] Variants: <code>email_startswith</code> and <code>email_contains</code>'
+          required: false
+          schema:
+            type: string
+          example: willsmith@zylker.org
+        - name: phone
+          in: query
+          description: 'Search contacts by phone number of the primary contact person. Max-length [100] Variants: <code>phone_startswith</code> and <code>phone_contains</code>'
+          required: false
+          schema:
+            type: string
+          example: +91-44-4567-8900
+        - name: filter_by
+          in: query
+          description: 'Filter contacts by status. Allowed Values: <code>Status.All, Status.Active, Status.Inactive, Status.Duplicate, Status.PortalEnabled, Status.PortalDisabled, Invoice.OverDue, Invoice.Unpaid, Status.CreditLimitExceed and Status.Crm</code>'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: search_text
+          in: query
+          description: Search contacts by contact name or notes. Max-length [100].
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: sort_column
+          in: query
+          description: 'Sort contacts. Allowed Values: <code>contact_name, first_name, last_name, email, outstanding_receivable_amount, created_time and last_modified_time</code>'
+          required: false
+          schema:
+            type: string
+          example: contact_name
+        - name: zcrm_contact_id
+          in: query
+          description: 'CRM Contact ID for the contact. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: 460000000026049
+        - name: zcrm_account_id
+          in: query
+          description: 'CRM Account ID for the contact. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: 460000000026049
+        - name: zcrm_vendor_id
+          in: query
+          description: 'CRM Vendor ID for the contact. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: 460000000026049
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-contacts-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.READ
+    put:
+      tags:
+        - contacts
+      operationId: update_contact_using_custom_field
+      summary: Update a contact using a custom field's unique value
+      description: A custom field will have unique values if it's configured to not accept duplicate values. Now, you can use that custom field's value to update a contact by providing its API name in the X-Unique-Identifier-Key header and its value in the X-Unique-Identifier-Value header. Based on this value, the corresponding contact will be retrieved and updated. Additionally, there is an optional X-Upsert header. If the X-Upsert header is true and the custom field's unique value is not found in any of the existing contacts, a new contact will be created if the necessary payload details are available.
+      parameters:
+        - name: X-Unique-Identifier-Key
+          in: header
+          description: Unique custom field API name.
+          required: true
+          schema:
+            type: string
+            example: cf_unique_cf
+        - name: X-Unique-Identifier-Value
+          in: header
+          description: Unique custom field value.
+          required: true
+          schema:
+            type: string
+            example: unique Value
+        - name: X-Upsert
+          in: header
+          description: If no record is found for the unique custom field value, a new invoice will be created.
+          required: false
+          schema:
+            type: boolean
+            example: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-contact-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-contact-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.UPDATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /contacts/{contact_id}:
+    x-mcp-group:
+      - Contacts
+    parameters:
+      - name: contact_id
+        in: path
+        required: true
+        description: 'Unique identifier of the contact. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: 460000000026049
+      - $ref: '#/components/parameters/organization_id'
+    put:
+      tags:
+        - contacts
+      operationId: update_contact
+      summary: Update a Contact
+      description: Update an existing contact with comprehensive business information. This operation allows you to modify all contact details including basic information, addresses, contact persons, payment terms, tax settings, and custom fields. For contact person, you can add new contact persons, update existing ones, or remove them by excluding them from the contact_persons list.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-contact-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-contact-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.UPDATE
+    get:
+      tags:
+        - contacts
+      operationId: get_contact
+      summary: Get Contact
+      description: Retrieve comprehensive details of a specific contact. This operation provides complete contact details such as basic information, addresses, contact persons, payment terms, tax settings, custom fields, and financial data including outstanding amounts, credit limits, and transaction history.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-contact-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.READ
+    delete:
+      tags:
+        - contacts
+      operationId: delete_contact
+      summary: Delete a Contact
+      description: Delete an existing contact.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-contact-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.DELETE
+  /contacts/{contact_id}/active:
+    x-mcp-group:
+      - Contacts
+    post:
+      tags:
+        - contacts
+      operationId: mark_contact_active
+      summary: Mark as Active
+      description: Mark a contact as active.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-as-active-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.CREATE
+    parameters:
+      - name: contact_id
+        in: path
+        required: true
+        description: 'Unique identifier of the contact. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: 460000000026049
+      - $ref: '#/components/parameters/organization_id'
+  /contacts/{contact_id}/inactive:
+    x-mcp-group:
+      - Contacts
+    post:
+      tags:
+        - contacts
+      operationId: mark_contact_inactive
+      summary: Mark as Inactive
+      description: Mark a contact as inactive.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-as-inactive-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.CREATE
+    parameters:
+      - name: contact_id
+        in: path
+        required: true
+        description: 'Unique identifier of the contact. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: 460000000026049
+      - $ref: '#/components/parameters/organization_id'
+  /contacts/{contact_id}/portal/enable:
+    x-mcp-group:
+      - Contacts
+    post:
+      tags:
+        - contacts
+      operationId: enable_contact_portal
+      summary: Enable Portal Access
+      description: Enable portal access for a contact.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/enable-portal-access-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/enable-portal-access-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.CREATE
+    parameters:
+      - name: contact_id
+        in: path
+        required: true
+        description: 'Unique identifier of the contact. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: 460000000026049
+      - $ref: '#/components/parameters/organization_id'
+  /contacts/{contact_id}/paymentreminder/enable:
+    x-mcp-group:
+      - Contacts
+    post:
+      tags:
+        - contacts
+      operationId: enable_contact_payment_reminder
+      summary: Enable Payment Reminders
+      description: Enable automated payment reminders for a contact.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/enable-payment-reminders-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.CREATE
+    parameters:
+      - name: contact_id
+        in: path
+        required: true
+        description: 'Unique identifier of the contact. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: 460000000026049
+      - $ref: '#/components/parameters/organization_id'
+  /contacts/{contact_id}/paymentreminder/disable:
+    x-mcp-group:
+      - Contacts
+    post:
+      tags:
+        - contacts
+      operationId: disable_contact_payment_reminder
+      summary: Disable Payment Reminders
+      description: Disable automated payment reminders for a contact.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/disable-payment-reminders-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.CREATE
+    parameters:
+      - name: contact_id
+        in: path
+        required: true
+        description: 'Unique identifier of the contact. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: 460000000026049
+      - $ref: '#/components/parameters/organization_id'
+  /contacts/{contact_id}/statements/email:
+    x-mcp-group:
+      - Contacts
+    post:
+      tags:
+        - contacts
+      operationId: email_contact_statement
+      summary: Email Statement
+      description: Email statement to the contact. If JSONString is not inputted, mail will be sent with the default mail content.
+      parameters:
+        - name: start_date
+          in: query
+          description: If start_date and end_date are not given, current month's statement will be sent to contact. Date format [yyyy-mm-dd]
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: end_date
+          in: query
+          description: End date for the statement. Date format [yyyy-mm-dd].
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: multipart_or_formdata
+          in: query
+          description: Files to be attached along with the statement.
+          required: false
+          schema:
+            type: string
+          example: file
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/email-statement-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/email-statement-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.CREATE
+    get:
+      tags:
+        - contacts
+      operationId: get_contact_statement_mail
+      summary: Get Statement Mail Content
+      description: Get the statement mail content.
+      parameters:
+        - name: start_date
+          in: query
+          description: If start_date and end_date are not given, current month's statement will be sent to contact. Date format [yyyy-mm-dd]
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: end_date
+          in: query
+          description: End date for the statement. Date format [yyyy-mm-dd].
+          required: false
+          schema:
+            type: string
+          example: ''
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-statement-mail-content-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.READ
+    parameters:
+      - name: contact_id
+        in: path
+        required: true
+        description: 'Unique identifier of the contact. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: 460000000026049
+      - $ref: '#/components/parameters/organization_id'
+  /contacts/{contact_id}/email:
+    x-mcp-group:
+      - Contacts
+    post:
+      tags:
+        - contacts
+      operationId: email_contact
+      summary: Email Contact
+      description: Send email to contact.
+      parameters:
+        - name: send_customer_statement
+          in: query
+          description: Send customer statement pdf with email.
+          required: false
+          schema:
+            type: boolean
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/email-contact-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/email-contact-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.CREATE
+    parameters:
+      - name: contact_id
+        in: path
+        required: true
+        description: 'Unique identifier of the contact. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: 460000000026049
+      - $ref: '#/components/parameters/organization_id'
+  /contacts/{contact_id}/comments:
+    x-mcp-group:
+      - Contacts
+    get:
+      tags:
+        - contacts
+      operationId: list_contact_comments
+      summary: List Comments
+      description: List recent activities of a contact.
+      parameters:
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-comments-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.READ
+    parameters:
+      - name: contact_id
+        in: path
+        required: true
+        description: 'Unique identifier of the contact. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: 460000000026049
+      - $ref: '#/components/parameters/organization_id'
+  /contacts/{contact_id}/address:
+    x-mcp-group:
+      - Contacts
+    get:
+      tags:
+        - contacts
+      operationId: get_contact_address
+      summary: Get Contact Addresses
+      description: Get addresses of a contact including its Shipping Address, Billing Address and other additional addresses.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-contact-addresses-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.READ
+    post:
+      tags:
+        - contacts
+      operationId: add_contact_address
+      summary: Add Additional Address
+      description: Add an additional address for a contact using the arguments below.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/add-additional-address-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/add-additional-address-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.CREATE
+    parameters:
+      - name: contact_id
+        in: path
+        required: true
+        description: 'Unique identifier of the contact. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: 460000000026049
+      - $ref: '#/components/parameters/organization_id'
+  /contacts/{contact_id}/address/{address_id}:
+    x-mcp-group:
+      - Contacts
+    put:
+      tags:
+        - contacts
+      operationId: update_contact_address
+      summary: Edit Additional Address
+      description: Edit the additional address of a contact using the arguments below.
+      parameters:
+        - name: address_id
+          in: path
+          required: true
+          description: 'Unique identifier of the address. Note: This value is a set of numeric characters.'
+          schema:
+            type: string
+          example: 1053791000000186000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/edit-additional-address-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/edit-additional-address-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.UPDATE
+    delete:
+      tags:
+        - contacts
+      operationId: delete_contact_address
+      summary: Delete Additional Address
+      description: Delete the additional address of a contact.
+      parameters:
+        - name: address_id
+          in: path
+          required: true
+          description: 'Unique identifier of the address. Note: This value is a set of numeric characters.'
+          schema:
+            type: string
+          example: 1053791000000186000
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-additional-address-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.DELETE
+    parameters:
+      - name: contact_id
+        in: path
+        required: true
+        description: 'Unique identifier of the contact. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: 460000000026049
+      - $ref: '#/components/parameters/organization_id'
+  /contacts/{contact_id}/refunds:
+    x-mcp-group:
+      - Contacts
+    get:
+      tags:
+        - contacts
+      operationId: list_contact_refunds
+      summary: List Refunds
+      description: List the refund history of a contact.
+      parameters:
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-refunds-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.READ
+    parameters:
+      - name: contact_id
+        in: path
+        required: true
+        description: 'Unique identifier of the contact. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: 460000000026049
+      - $ref: '#/components/parameters/organization_id'
+  /contacts/{contact_id}/receivables/unusedretainerpayments:
+    x-mcp-group:
+      - Contacts
+    get:
+      tags:
+        - contacts
+      operationId: get_unused_retainer_payments
+      summary: Get Unused Retainer Payments
+      description: Retrieve information about unused retainer payments for a specific contact. This endpoint returns details of retainer payments that have been made but not yet applied to invoices, providing insight into available credit balances from retainer payments.
+      parameters:
+        - name: currency_id
+          in: query
+          description: 'Currency ID to filter unused retainer payments by specific currency. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: '460000000000097'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-unused-retainer-payments-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.contacts.READ
+    parameters:
+      - name: contact_id
+        in: path
+        required: true
+        description: 'Unique identifier of the contact. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: 460000000026049
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: 'ID of the organization. Note: This value is a set of numeric characters.'
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/contact-response'
+    contact-response:
+      type: object
+      properties:
+        contact_id:
+          $ref: '#/components/schemas/contact_id'
+        contact_name:
+          $ref: '#/components/schemas/contact_name'
+        company_name:
+          $ref: '#/components/schemas/company_name'
+        has_transaction:
+          $ref: '#/components/schemas/has_transaction'
+        contact_type:
+          $ref: '#/components/schemas/contact_type'
+        customer_sub_type:
+          $ref: '#/components/schemas/customer_sub_type'
+        credit_limit:
+          $ref: '#/components/schemas/credit_limit'
+        is_portal_enabled:
+          $ref: '#/components/schemas/is_portal_enabled'
+        language_code:
+          $ref: '#/components/schemas/language_code'
+        is_taxable:
+          $ref: '#/components/schemas/is_taxable'
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        tds_tax_id:
+          $ref: '#/components/schemas/tds_tax_id'
+        tax_name:
+          $ref: '#/components/schemas/tax_name'
+        tax_percentage:
+          $ref: '#/components/schemas/tax_percentage'
+        tax_exemption_id:
+          $ref: '#/components/schemas/tax_exemption_id'
+        tax_exemption_code:
+          $ref: '#/components/schemas/tax_exemption_code'
+        place_of_contact:
+          $ref: '#/components/schemas/place_of_contact'
+        gst_no:
+          $ref: '#/components/schemas/gst_no'
+        legal_name:
+          $ref: '#/components/schemas/legal_name'
+        is_tds_registered:
+          $ref: '#/components/schemas/is_tds_registered'
+        gst_treatment:
+          $ref: '#/components/schemas/gst_treatment'
+        is_linked_with_zohocrm:
+          $ref: '#/components/schemas/is_linked_with_zohocrm'
+        website:
+          $ref: '#/components/schemas/website'
+        owner_id:
+          $ref: '#/components/schemas/owner_id'
+        primary_contact_id:
+          $ref: '#/components/schemas/primary_contact_id'
+        pricebook_id:
+          $ref: '#/components/schemas/pricebook_id'
+        contact_number:
+          $ref: '#/components/schemas/contact_number'
+        ignore_auto_number_generation:
+          $ref: '#/components/schemas/ignore_auto_number_generation'
+        payment_terms:
+          $ref: '#/components/schemas/payment_terms'
+        payment_terms_label:
+          $ref: '#/components/schemas/payment_terms_label'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        currency_code:
+          $ref: '#/components/schemas/currency_code'
+        currency_symbol:
+          $ref: '#/components/schemas/currency_symbol'
+        opening_balances:
+          $ref: '#/components/schemas/opening_balances'
+        outstanding_receivable_amount:
+          $ref: '#/components/schemas/outstanding_receivable_amount'
+        outstanding_receivable_amount_bcy:
+          $ref: '#/components/schemas/outstanding_receivable_amount_bcy'
+        unused_credits_receivable_amount:
+          $ref: '#/components/schemas/unused_credits_receivable_amount'
+        unused_credits_receivable_amount_bcy:
+          $ref: '#/components/schemas/unused_credits_receivable_amount_bcy'
+        status:
+          $ref: '#/components/schemas/status'
+        payment_reminder_enabled:
+          $ref: '#/components/schemas/payment_reminder_enabled'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        billing_address:
+          $ref: '#/components/schemas/billing_address'
+        shipping_address:
+          $ref: '#/components/schemas/shipping_address'
+        facebook:
+          $ref: '#/components/schemas/facebook'
+        twitter:
+          $ref: '#/components/schemas/twitter'
+        contact_persons:
+          type: array
+          description: The list of contact persons associated with the contact.
+          items:
+            type: object
+            properties:
+              contact_person_id:
+                $ref: '#/components/schemas/contact_person_id'
+              salutation:
+                $ref: '#/components/schemas/salutation'
+              first_name:
+                $ref: '#/components/schemas/first_name'
+              last_name:
+                $ref: '#/components/schemas/last_name'
+              email:
+                $ref: '#/components/schemas/email'
+              phone:
+                $ref: '#/components/schemas/phone'
+              mobile:
+                $ref: '#/components/schemas/mobile'
+              designation:
+                $ref: '#/components/schemas/designation'
+              department:
+                $ref: '#/components/schemas/department'
+              skype:
+                $ref: '#/components/schemas/skype'
+              is_primary_contact:
+                $ref: '#/components/schemas/is_primary_contact'
+              communication_preference:
+                $ref: '#/components/schemas/communication_preference'
+              enable_portal:
+                $ref: '#/components/schemas/enable_portal'
+        default_templates:
+          $ref: '#/components/schemas/default_templates'
+        notes:
+          $ref: '#/components/schemas/notes'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        last_modified_time:
+          $ref: '#/components/schemas/last_modified_time'
+    contacts:
+      description: The list of all contacts.
+      type: array
+      items:
+        type: string
+    creditnote_refunds:
+      type: array
+      items:
+        type: string
+    creditnote_refund_id:
+      type: string
+      description: 'Unique identifier of the credit note refund. Note: This value is a set of numeric characters.'
+      example: 982000000567158
+    creditnote_id:
+      type: string
+      description: 'Unique identifier of the credit note associated with the refund. Note: This value is a set of numeric characters.'
+      example: 982000000567134
+    date:
+      type: string
+      example: '2013-11-19'
+    refund_mode:
+      type: string
+      example: cash
+    reference_number:
+      type: string
+      example: 782364
+    creditnote_number:
+      type: string
+      example: CN-00001
+    customer_name:
+      type: string
+      example: Zylker Inc
+    description:
+      type: string
+      example: ''
+    amount_bcy:
+      type: string
+      example: 57.15
+    amount_fcy:
+      type: string
+      example: 57.15
+    page:
+      description: Number of pages.
+      type: integer
+      example: 1
+    per_page:
+      description: Number of items per page.
+      type: integer
+      example: 10
+    has_more_page:
+      description: Indicates if there are more pages.
+      type: boolean
+      example: false
+    sort_order:
+      description: The order used for sorting.
+      type: string
+      example: D
+    applied_filter:
+      description: The filter applied.
+      type: string
+      example: Status.All
+    report_name:
+      description: The displayed report name.
+      type: string
+      example: Credit Notes Refund
+    sort_column:
+      description: 'Column to sort by. Allowed Values: <code>contact_person_id</code>.'
+      type: string
+      example: contact_name
+    comment_id:
+      description: 'ID of the comment. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000053131
+    commented_by_id:
+      description: 'ID of the commented by individual. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000024003
+    date_description:
+      description: Specifies in days when the comment was made.
+      type: string
+      example: 4 days ago
+    commented_by:
+      description: Name of the individual to whom the comment belongs.
+      type: string
+      example: John David
+    time:
+      description: Time when the comment was made.
+      type: string
+      example: 6:03 PM
+    transaction_id:
+      description: 'ID of the transaction made. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000053123
+    transaction_type:
+      description: Type of the transaction made.
+      type: string
+      example: customer_payment
+    is_entity_deleted:
+      description: Indicates if the entity has been deleted.
+      type: boolean
+      example: false
+    operation_type:
+      description: Type of operation carried out.
+      type: string
+      example: added
+    credit_limit:
+      description: <b>For Customer Only :</b> The maximum credit amount that can be allowed for the customer. Once the customer's outstanding receivables reach this limit, the system will restrict the customer from creating any further transactions.
+      type: number
+      format: double
+      example: 1000
+    customer_sub_type:
+      description: '<b>For Customer Only :</b> Additional classification for customers. Allowed values: <code>individual</code>, <code>business</code>.'
+      type: string
+      example: business
+    send_customer_statement:
+      description: Indicates whether the customer statement should be attached when sending the email.
+      type: boolean
+      example: true
+    attachments:
+      description: Files to be attached to the email. They must be sent in multipart/form-data.
+      type: string
+      format: binary
+    file_name:
+      description: Name of the file.
+      type: string
+      example: statement_ZylkerInc.pdf
+    data:
+      description: Data of the email content.
+      type: object
+    user_name:
+      description: Name of the user.
+      type: string
+      example: John Smith
+    error_list:
+      description: List of errors encountered.
+      type: array
+      items:
+        type: string
+      example: []
+    is_primary_contact:
+      description: 'Indicates whether this contact person is the primary contact. Only one per contact. Allowed values: <code>true</code> and <code>false</code>.'
+      type: boolean
+      example: true
+    enable_portal:
+      description: 'Indicates whether the contact person should have access to the client portal. Allowed values: <code>true</code> and <code>false</code>.'
+      type: boolean
+      example: true
+    is_portal_enabled:
+      description: 'Indicates whether portal access is enabled for the primary contact person. Allowed value: <code>true</code> and <code>false</code>.'
+      type: boolean
+      example: true
+    department:
+      description: Department of the contact person within the contact's company. Max-length [50].
+      type: string
+      example: Sales and Marketing
+    designation:
+      description: Designation of the contact person within the contact's company. Max-length [100].
+      type: string
+      example: Sales Executive
+    skype:
+      description: Skype username of the contact person. Max-length [50].
+      type: string
+      example: Zoho
+    invoice_template_id:
+      description: 'Default invoice template id used for this customer while creating invoice. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000052069
+    estimate_template_id:
+      description: 'Default estimate template id used for this customer while creating estimate. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000000179
+    creditnote_template_id:
+      description: 'Default credit note template id used for this customer while creating credit note. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000000211
+    invoice_email_template_id:
+      description: 'Default invoice email template id used for this customer while sending invoices. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000052071
+    estimate_email_template_id:
+      description: 'Default estimate email template id used for this customer while sending estimates. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000052073
+    creditnote_email_template_id:
+      description: 'Default credit note email template id used for this customer while sending credit notes. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000052075
+    send_from_org_email_id:
+      description: Indicates whether to send the email from the organization's email address.
+      type: boolean
+      example: true
+    to_mail_ids:
+      description: Array of email address of the recipients.
+      type: array
+      items:
+        type: string
+      example:
+        - willsmith@zylker.org
+    cc_mail_ids:
+      description: Array of email address of the recipients to be cced.
+      type: array
+      items:
+        type: string
+      example:
+        - peterparker@zylker.org
+    subject:
+      description: Subject of the email to be sent. Max-length [1000].
+      type: string
+      example: Statement of transactions with Zylker Inc
+    email:
+      description: Email address of the contact person for business communications. Max-length [100].
+      type: string
+      example: willsmith@zylker.org
+    body:
+      description: Body of the email to be sent. Max-length [5000].
+      type: string
+      example: Dear Customer,     <br/>We have attached with this email a list of all your transactions with us for the period 01 Sep 2013 to 30 Sep 2013. You can write to us or call us if you need any assistance or clarifications.     <br/>Thanks for your business.<br/>Regards<br/>Zylker Inc
+    contact_id:
+      description: 'Unique identifier for the contact. System-generated ID used for API operations. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000026049
+    address_id:
+      description: 'Address id of the address. Note: This value is a set of numeric characters.'
+      type: string
+      example: 1053791000000186000
+    contact_type:
+      description: 'Determines how the contact is treated in the system. Allowed values: <code>customer</code>, <code>vendor</code>.'
+      type: string
+      example: customer
+    status:
+      description: 'Indicates whether the contact is active or inactive. Allowed values: active, inactive.'
+      type: string
+      example: active
+    contact_person_id:
+      description: 'Unique identifier for the contact person. System-generated ID for API operations. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000026051
+    payment_terms:
+      description: Number of days allowed for payment after the invoice date.
+      type: integer
+      example: 15
+    payment_terms_label:
+      description: Human-readable label of payment terms displayed on invoices and other transactions. Max-length [200].
+      type: string
+      example: Net 15
+    currency_id:
+      description: 'Unique identifier for the currency assigned to this contact. The currency_id must correspond to a valid currency configuration in the system. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000000097
+    selected:
+      description: Indicates whether the item is selected.
+      type: boolean
+      example: true
+    currency_code:
+      description: Three-letter ISO currency code for the currency assigned to this contact. If not specified, the organization's default currency will be used.
+      type: string
+      example: USD
+    currency_symbol:
+      description: Currency symbol that represents the currency assigned to this contact.
+      type: string
+      example: $
+    notes:
+      description: Additional comments or notes about the contact.
+      type: string
+      example: 'Payment option : Through check'
+    facebook:
+      description: Facebook profile URL for the contact. Max-length [100].
+      type: string
+      example: zoho
+    twitter:
+      description: X profile URL for the contact. Max-length [100].
+      type: string
+      example: zoho
+    invoice_template_name:
+      type: string
+      example: Custom Classic
+    estimate_template_name:
+      type: string
+      example: Service - Professional
+    creditnote_template_name:
+      type: string
+      example: Fixed Cost - Professional
+    invoice_email_template_name:
+      type: string
+      example: Custom Invoice Notification
+    estimate_email_template_name:
+      type: string
+      example: Custom Estimate Notification
+    creditnote_email_template_name:
+      type: string
+      example: Custom Credit Note Notification
+    has_transaction:
+      description: Indicates whether the contact has any transaction history in the system.
+      type: boolean
+      example: true
+    is_linked_with_zohocrm:
+      description: Indicates whether this contact is linked with Zoho CRM.
+      type: boolean
+      example: false
+    primary_contact_id:
+      description: 'Unique identifier for the primary contact person of the contact. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000026051
+    pricebook_id:
+      description: 'Pricebook id which is associated with the contact. Max-length [200]. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000000123
+    contact_number:
+      description: Contact number associated with the contact for internal tracking and identification purposes. Max-length [200].
+      type: string
+      example: CNT-001234
+    ignore_auto_number_generation:
+      description: 'Indicates whether the auto generation contact_number is ignored or not for the contact. Allowed values: <code>true</code>, <code>false</code>.'
+      type: boolean
+      example: false
+    outstanding_receivable_amount:
+      description: Total amount owed by the customer for all outstanding invoices and transactions.
+      type: integer
+      example: 250
+    outstanding_receivable_amount_bcy:
+      description: Total amount owed by the customer in the organization's base currency.
+      type: integer
+      example: 250
+    unused_credits_receivable_amount:
+      description: Total amount of unused credits available for the customer.
+      type: integer
+      example: 1369.66
+    unused_credits_receivable_amount_bcy:
+      description: Total amount of unused credits available for the customer in base currency.
+      type: integer
+      example: 1369.66
+    payment_reminder_enabled:
+      description: Indicates whether automated payment reminders are enabled for this contact.
+      type: boolean
+      example: true
+    created_time:
+      description: Timestamp when the contact was initially created in the system.
+      type: string
+      example: 2013-08-05T12:06:10+0530
+    last_modified_time:
+      description: Timestamp when the contact was last updated or modified in the system.
+      type: string
+      example: 2013-10-07T18:24:51+0530
+    contact_name:
+      description: Display name for the contact. It is used for searching and displaying contacts.
+      type: string
+      example: Zylker Inc
+    owner_id:
+      description: '<b>For Customer Only :</b> Unique identifier for the user assigned as the owner of the contact. This field specifies which user in the organization is responsible for managing the business relationship with this contact. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000016051
+    company_name:
+      description: Legal or registered contact's company name. Used for legal documents and formal communications. Max-length [200].
+      type: string
+      example: Zylker Inc
+    first_name:
+      description: First name of the contact person. Max-length [100].
+      type: string
+      example: Will
+    last_name:
+      description: Last name of the contact person. Max-length [100].
+      type: string
+      example: Smith
+    address:
+      description: Street 1 address for the contact. Max-length [500].
+      type: string
+      example: 4/53, Mount Road
+    phone:
+      description: Phone number of the contact person. Max-length [50].
+      type: string
+      example: +91-44-4567-8900
+    mobile:
+      description: Mobile number of the contact person. Max-length [50].
+      type: string
+      example: +91-9876543210
+    filter_by:
+      description: 'Filter contacts by status. Allowed Values: <code>Status.All</code>, <code>Status.Active</code>, <code>Status.Inactive</code>, <code>Status.Duplicate</code> and <code>Status.Crm</code>'
+      type: string
+    search_text:
+      description: Search contacts by contact name or notes.
+      type: string
+    website:
+      description: Official website URL of the contact.
+      type: string
+      example: www.zylker.in
+    index:
+      description: Index of the custom field. It can hold any value from 1 to 10.
+      type: integer
+      example: 1
+    label:
+      description: Label of the custom field.
+      type: string
+      example: VAT ID
+    value:
+      description: Value of the custom field.
+      type: string
+      example: GBGD078
+    communication_preference:
+      description: Preferred modes of communication for the contact person.
+      type: object
+      properties:
+        is_sms_enabled:
+          description: Whether SMS text messages are allowed for the contact person.
+          type: boolean
+          example: false
+        is_whatsapp_enabled:
+          description: Whether WhatsApp messaging is allowed for the contact person.
+          type: boolean
+          example: false
+    statement_template_id:
+      description: 'Default statement template id used for this contact while creating statement. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000000101
+    payment_remittance_email_template_id:
+      description: 'Default payment remittance email template id used for this contact while sending payment remittances. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000000102
+    bill_template_id:
+      description: 'Default bill template id used for this vendor while creating bill. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000000103
+    is_taxable:
+      description: 'Indicates whether the customer is subject to tax collection. Tax-related fields are only available when this field is set to true. Allowed values: <code>true</code> and <code>false</code>.'
+      type: boolean
+      example: true
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    tax_id:
+      description: 'Unique identifier for the tax or tax group assigned to the contact. Available only when <code>is_taxable</code> is <code>true</code>. Note: This value is a set of numeric characters.'
+      type: string
+      example: 11149000000061058
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    tds_tax_id:
+      description: 'Unique identifier for the Tax Deducted at Source (TDS) tax configuration assigned to the contact. Note: This value is a set of numeric characters.'
+      type: string
+      example: '982000000557012'
+    tax_exemption_id:
+      description: 'Unique identifier for the tax exemption configuration assigned to this contact. Note: This value is a set of numeric characters.'
+      type: string
+      example: '11149000000061054'
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    legal_name:
+      description: Legal registered name of the contact as per GST registration.
+      type: string
+      example: Zylker Technologies Private Limited
+    is_tds_registered:
+      description: Indicates whether the contact is registered for TDS.
+      type: boolean
+      example: true
+    country_code:
+      description: Two-letter ISO 3166-1 alpha-2 country code for the contact (e.g. <code>IN</code> for India).
+      type: string
+      example: IN
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    vat_reg_no:
+      description: '15 digit GSTIN for India GST registered businesses, or as applicable to your organization. Note: This value is a set of characters as per GST rules.'
+      type: string
+      example: 22AAAAA0000A1Z5
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    tax_reg_no:
+      description: Tax registration or identifier for the contact when required for reporting (e.g. state/union territory registration used with GST in India, depending on your setup).
+      type: string
+      example: 22AAAAA0000A1Z5
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    purchaseorder_template_id:
+      description: 'Default purchase order template id used for this vendor while creating purchase order. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000000213
+    salesorder_template_id:
+      description: 'Default sales order template id used for this customer while creating sales order. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000000214
+    retainerinvoice_template_id:
+      description: 'Default retainer invoice template id used for this customer while creating retainer invoice. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000000215
+    paymentthankyou_template_id:
+      description: 'Default payment thank you template id used for this contact while sending payment acknowledgment. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000000216
+    retainerinvoice_paymentthankyou_template_id:
+      description: 'Default retainer invoice payment thank you template id used for this customer while sending payment acknowledgment for retainer invoices. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000000217
+    purchaseorder_email_template_id:
+      description: 'Default purchase order email template id used for this vendor while sending purchase order. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000000218
+    salesorder_email_template_id:
+      description: 'Default sales order email template id used for this customer while sending sales order. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000000219
+    retainerinvoice_email_template_id:
+      description: 'Default retainer invoice email template id used for this contact while sending retainer invoice. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000000220
+    paymentthankyou_email_template_id:
+      description: 'Default payment thank you email template id used for this contact while sending payment acknowledgment. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000000221
+    retainerinvoice_paymentthankyou_email_template_id:
+      description: 'Default retainer invoice payment thank you email template id used for this customer while sending payment acknowledgment for retainer invoices. Note: This value is a set of numeric characters.'
+      type: string
+      example: 460000000000222
+    place_of_contact:
+      description: State or union territory code where the contact is located for Indian tax purposes. (This node identifies the place of supply and source of supply when invoices/bills are raised for the customer/vendor respectively. This is not applicable for Overseas contacts)
+      type: string
+      example: TN
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    gst_no:
+      description: 15-digit GST identification number of the contact as issued by the Indian tax authorities.
+      type: string
+      example: 22AAAAA0000A1Z5
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    gst_treatment:
+      description: Choose whether the contact is GST registered/unregistered/consumer/overseas. Allowed values are <code> business_gst </code> , <code> business_none </code> , <code> overseas </code> , <code> consumer </code>.
+      type: string
+      example: business_gst
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    tax_exemption_code:
+      description: Code identifier for the tax exemption assigned to the contact.
+      type: string
+      example: EXEMPT123
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    tax_name:
+      description: Display name of the tax assigned to the contact.
+      type: string
+      example: CGST
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    tax_percentage:
+      description: Tax percentage assigned to the contact.
+      type: number
+      format: double
+      example: 12
+    end_date:
+      description: End date for statement.
+      type: string
+    start_date:
+      description: If start_date and end_date are not given, current month's statement will be sent to contact.
+      type: string
+    multipart_or_formdata:
+      description: Files to be attached along with the statement.
+      type: string
+      example: file
+    salutation:
+      description: Salutation for the contact. Max-length [25].
+      type: string
+      example: Mr
+    city:
+      description: City name for the address. Max-length [100].
+      type: string
+      example: Chennai
+    state:
+      description: State for the address. Max-length [100].
+      type: string
+      example: TN
+    zip:
+      description: Postal or PIN code for the address. Max-length [50].
+      type: string
+      example: '600002'
+    country:
+      description: Country name for the address. Max-length [100].
+      type: string
+      example: India
+    fax:
+      description: Fax number for the address. Max-length [50].
+      type: string
+      example: +91-44-4567-8901
+    location_id:
+      description: 'Unique identifier for the business location associated with this opening balance. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000038080'
+    opening_balance_amount:
+      description: Initial balance amount for the contact at the time of creation.
+      type: number
+      format: double
+      example: 1200
+    exchange_rate:
+      description: Currency exchange rate used to convert opening balance to organization's base currency.
+      type: number
+      format: double
+      example: 1
+    opening_balances:
+      type: array
+      description: List of opening balances for the contact.
+      items:
+        type: object
+        properties:
+          location_id:
+            $ref: '#/components/schemas/location_id'
+          exchange_rate:
+            $ref: '#/components/schemas/exchange_rate'
+          opening_balance_amount:
+            $ref: '#/components/schemas/opening_balance_amount'
+    custom_fields:
+      type: array
+      description: List of custom fields for the contact.
+      items:
+        type: object
+        properties:
+          index:
+            $ref: '#/components/schemas/index'
+          value:
+            $ref: '#/components/schemas/value'
+          label:
+            $ref: '#/components/schemas/label'
+    attention:
+      description: Attention for proper delivery and routing of business correspondence. Max-length [100].
+      type: string
+      example: Mr.John
+    street2:
+      description: Street 2 address for the contact. Max-length [255].
+      type: string
+      example: Suite 310
+    state_code:
+      description: State or province code for the address. Max-length [100].
+      type: string
+      example: CA
+    billing_address:
+      description: Billing address information for the contact.
+      type: object
+      properties:
+        attention:
+          $ref: '#/components/schemas/attention'
+        address:
+          $ref: '#/components/schemas/address'
+        street2:
+          $ref: '#/components/schemas/street2'
+        state_code:
+          $ref: '#/components/schemas/state_code'
+        city:
+          $ref: '#/components/schemas/city'
+        state:
+          $ref: '#/components/schemas/state'
+        zip:
+          $ref: '#/components/schemas/zip'
+        country:
+          $ref: '#/components/schemas/country'
+        fax:
+          $ref: '#/components/schemas/fax'
+        phone:
+          description: The contact phone number associated with the address. Max-length [50].
+          type: string
+          example: +91-44-4567-8900
+    shipping_address:
+      description: Shipping address information for the contact.
+      type: object
+      properties:
+        attention:
+          $ref: '#/components/schemas/attention'
+        address:
+          $ref: '#/components/schemas/address'
+        street2:
+          $ref: '#/components/schemas/street2'
+        state_code:
+          $ref: '#/components/schemas/state_code'
+        city:
+          $ref: '#/components/schemas/city'
+        state:
+          $ref: '#/components/schemas/state'
+        zip:
+          $ref: '#/components/schemas/zip'
+        country:
+          $ref: '#/components/schemas/country'
+        fax:
+          $ref: '#/components/schemas/fax'
+        phone:
+          description: The contact phone number associated with the address. Max-length [50].
+          type: string
+          example: +91-44-4567-8900
+    address_info:
+      description: Additional address information for the contact.
+      type: object
+      properties:
+        address_id:
+          $ref: '#/components/schemas/address_id'
+        attention:
+          $ref: '#/components/schemas/attention'
+        address:
+          $ref: '#/components/schemas/address'
+        street2:
+          $ref: '#/components/schemas/street2'
+        city:
+          $ref: '#/components/schemas/city'
+        state:
+          $ref: '#/components/schemas/state'
+        zip:
+          $ref: '#/components/schemas/zip'
+        country:
+          $ref: '#/components/schemas/country'
+        fax:
+          $ref: '#/components/schemas/fax'
+        phone:
+          description: The contact phone number associated with the address. Max-length [50].
+          type: string
+          example: +91-44-4567-8900
+    contact_persons:
+      type: array
+      description: The list of contact persons associated with the contact.
+      items:
+        type: object
+        properties:
+          salutation:
+            $ref: '#/components/schemas/salutation'
+          first_name:
+            $ref: '#/components/schemas/first_name'
+          last_name:
+            $ref: '#/components/schemas/last_name'
+          email:
+            $ref: '#/components/schemas/email'
+          phone:
+            $ref: '#/components/schemas/phone'
+          mobile:
+            $ref: '#/components/schemas/mobile'
+          designation:
+            $ref: '#/components/schemas/designation'
+          department:
+            $ref: '#/components/schemas/department'
+          skype:
+            $ref: '#/components/schemas/skype'
+          is_primary_contact:
+            $ref: '#/components/schemas/is_primary_contact'
+          communication_preference:
+            $ref: '#/components/schemas/communication_preference'
+          enable_portal:
+            $ref: '#/components/schemas/enable_portal'
+    default_templates:
+      type: object
+      properties:
+        invoice_template_id:
+          $ref: '#/components/schemas/invoice_template_id'
+        estimate_template_id:
+          $ref: '#/components/schemas/estimate_template_id'
+        creditnote_template_id:
+          $ref: '#/components/schemas/creditnote_template_id'
+        purchaseorder_template_id:
+          $ref: '#/components/schemas/purchaseorder_template_id'
+        salesorder_template_id:
+          $ref: '#/components/schemas/salesorder_template_id'
+        retainerinvoice_template_id:
+          $ref: '#/components/schemas/retainerinvoice_template_id'
+        paymentthankyou_template_id:
+          $ref: '#/components/schemas/paymentthankyou_template_id'
+        retainerinvoice_paymentthankyou_template_id:
+          $ref: '#/components/schemas/retainerinvoice_paymentthankyou_template_id'
+        invoice_email_template_id:
+          $ref: '#/components/schemas/invoice_email_template_id'
+        estimate_email_template_id:
+          $ref: '#/components/schemas/estimate_email_template_id'
+        creditnote_email_template_id:
+          $ref: '#/components/schemas/creditnote_email_template_id'
+        purchaseorder_email_template_id:
+          $ref: '#/components/schemas/purchaseorder_email_template_id'
+        salesorder_email_template_id:
+          $ref: '#/components/schemas/salesorder_email_template_id'
+        retainerinvoice_email_template_id:
+          $ref: '#/components/schemas/retainerinvoice_email_template_id'
+        paymentthankyou_email_template_id:
+          $ref: '#/components/schemas/paymentthankyou_email_template_id'
+        retainerinvoice_paymentthankyou_email_template_id:
+          $ref: '#/components/schemas/retainerinvoice_paymentthankyou_email_template_id'
+        statement_template_id:
+          $ref: '#/components/schemas/statement_template_id'
+        payment_remittance_email_template_id:
+          $ref: '#/components/schemas/payment_remittance_email_template_id'
+        bill_template_id:
+          $ref: '#/components/schemas/bill_template_id'
+    from_emails:
+      type: array
+      items:
+        type: object
+        properties:
+          user_name:
+            $ref: '#/components/schemas/user_name'
+          selected:
+            $ref: '#/components/schemas/selected'
+          email:
+            $ref: '#/components/schemas/email'
+    page_context:
+      type: object
+      properties:
+        page:
+          $ref: '#/components/schemas/page'
+        per_page:
+          $ref: '#/components/schemas/per_page'
+        has_more_page:
+          $ref: '#/components/schemas/has_more_page'
+        applied_filter:
+          $ref: '#/components/schemas/applied_filter'
+        sort_column:
+          $ref: '#/components/schemas/sort_column'
+        sort_order:
+          $ref: '#/components/schemas/sort_order'
+    to_contacts:
+      type: array
+      items:
+        type: object
+        properties:
+          first_name:
+            $ref: '#/components/schemas/first_name'
+          selected:
+            $ref: '#/components/schemas/selected'
+          phone:
+            $ref: '#/components/schemas/phone'
+          email:
+            $ref: '#/components/schemas/email'
+          contact_person_id:
+            $ref: '#/components/schemas/contact_person_id'
+          last_name:
+            $ref: '#/components/schemas/last_name'
+          salutation:
+            $ref: '#/components/schemas/salutation'
+          mobile:
+            $ref: '#/components/schemas/mobile'
+    contact_comments:
+      type: array
+      items:
+        type: object
+        properties:
+          comment_id:
+            $ref: '#/components/schemas/comment_id'
+          contact_id:
+            $ref: '#/components/schemas/contact_id'
+          contact_name:
+            $ref: '#/components/schemas/contact_name'
+          description:
+            $ref: '#/components/schemas/description'
+          commented_by_id:
+            $ref: '#/components/schemas/commented_by_id'
+          commented_by:
+            $ref: '#/components/schemas/commented_by'
+          date:
+            $ref: '#/components/schemas/date'
+          date_description:
+            $ref: '#/components/schemas/date_description'
+          time:
+            $ref: '#/components/schemas/time'
+          transaction_id:
+            $ref: '#/components/schemas/transaction_id'
+          transaction_type:
+            $ref: '#/components/schemas/transaction_type'
+          is_entity_deleted:
+            $ref: '#/components/schemas/is_entity_deleted'
+          operation_type:
+            $ref: '#/components/schemas/operation_type'
+    language_code:
+      description: 'Preferred language for the contact. Determines portal language. Allowed values: <code>de,en,es,fr,it,ja,nl,pt,pt_br,sv,zh,en_gb</code>'
+      type: string
+      example: en
+    create-a-contact-request:
+      required:
+        - contact_name
+      type: object
+      properties:
+        contact_name:
+          $ref: '#/components/schemas/contact_name'
+        company_name:
+          $ref: '#/components/schemas/company_name'
+        website:
+          $ref: '#/components/schemas/website'
+        language_code:
+          $ref: '#/components/schemas/language_code'
+        contact_type:
+          $ref: '#/components/schemas/contact_type'
+        customer_sub_type:
+          $ref: '#/components/schemas/customer_sub_type'
+        credit_limit:
+          $ref: '#/components/schemas/credit_limit'
+        pricebook_id:
+          $ref: '#/components/schemas/pricebook_id'
+        contact_number:
+          $ref: '#/components/schemas/contact_number'
+        ignore_auto_number_generation:
+          $ref: '#/components/schemas/ignore_auto_number_generation'
+        tags:
+          $ref: '#/components/schemas/tags'
+        is_portal_enabled:
+          $ref: '#/components/schemas/is_portal_enabled'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        payment_terms:
+          $ref: '#/components/schemas/payment_terms'
+        payment_terms_label:
+          $ref: '#/components/schemas/payment_terms_label'
+        notes:
+          $ref: '#/components/schemas/notes'
+        billing_address:
+          $ref: '#/components/schemas/billing_address'
+        shipping_address:
+          $ref: '#/components/schemas/shipping_address'
+        contact_persons:
+          $ref: '#/components/schemas/contact_persons'
+        default_templates:
+          $ref: '#/components/schemas/default_templates'
+        custom_fields:
+          description: Custom fields of the contact.
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                $ref: '#/components/schemas/index'
+              value:
+                $ref: '#/components/schemas/value'
+        opening_balances:
+          $ref: '#/components/schemas/opening_balances'
+        vat_reg_no:
+          $ref: '#/components/schemas/vat_reg_no'
+        owner_id:
+          $ref: '#/components/schemas/owner_id'
+        tax_reg_no:
+          $ref: '#/components/schemas/tax_reg_no'
+        country_code:
+          $ref: '#/components/schemas/country_code'
+        legal_name:
+          $ref: '#/components/schemas/legal_name'
+        is_tds_registered:
+          $ref: '#/components/schemas/is_tds_registered'
+        place_of_contact:
+          $ref: '#/components/schemas/place_of_contact'
+        gst_no:
+          $ref: '#/components/schemas/gst_no'
+        gst_treatment:
+          $ref: '#/components/schemas/gst_treatment'
+        tax_exemption_id:
+          $ref: '#/components/schemas/tax_exemption_id'
+        tax_exemption_code:
+          $ref: '#/components/schemas/tax_exemption_code'
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        tds_tax_id:
+          $ref: '#/components/schemas/tds_tax_id'
+        is_taxable:
+          $ref: '#/components/schemas/is_taxable'
+        facebook:
+          $ref: '#/components/schemas/facebook'
+        twitter:
+          $ref: '#/components/schemas/twitter'
+    create-a-contact-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The contact has been created
+          readOnly: true
+        contact:
+          $ref: '#/components/schemas/contact-response'
+    list-contacts-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        contacts:
+          description: The list of all contacts.
+          type: array
+          items:
+            type: object
+            properties:
+              contact_id:
+                $ref: '#/components/schemas/contact_id'
+              contact_name:
+                $ref: '#/components/schemas/contact_name'
+              company_name:
+                $ref: '#/components/schemas/company_name'
+              contact_type:
+                $ref: '#/components/schemas/contact_type'
+              status:
+                $ref: '#/components/schemas/status'
+              payment_terms:
+                $ref: '#/components/schemas/payment_terms'
+              payment_terms_label:
+                $ref: '#/components/schemas/payment_terms_label'
+              currency_id:
+                $ref: '#/components/schemas/currency_id'
+              currency_code:
+                $ref: '#/components/schemas/currency_code'
+              outstanding_receivable_amount:
+                $ref: '#/components/schemas/outstanding_receivable_amount'
+              unused_credits_receivable_amount:
+                $ref: '#/components/schemas/unused_credits_receivable_amount'
+              first_name:
+                $ref: '#/components/schemas/first_name'
+              last_name:
+                $ref: '#/components/schemas/last_name'
+              email:
+                $ref: '#/components/schemas/email'
+              phone:
+                $ref: '#/components/schemas/phone'
+              mobile:
+                $ref: '#/components/schemas/mobile'
+              created_time:
+                $ref: '#/components/schemas/created_time'
+              last_modified_time:
+                $ref: '#/components/schemas/last_modified_time'
+        page_context:
+          type: object
+          properties:
+            page:
+              $ref: '#/components/schemas/page'
+            per_page:
+              $ref: '#/components/schemas/per_page'
+            has_more_page:
+              $ref: '#/components/schemas/has_more_page'
+            applied_filter:
+              $ref: '#/components/schemas/applied_filter'
+            sort_column:
+              $ref: '#/components/schemas/sort_column'
+            sort_order:
+              $ref: '#/components/schemas/sort_order'
+    update-a-contact-request:
+      required:
+        - contact_name
+      type: object
+      properties:
+        contact_name:
+          $ref: '#/components/schemas/contact_name'
+        company_name:
+          $ref: '#/components/schemas/company_name'
+        payment_terms:
+          $ref: '#/components/schemas/payment_terms'
+        payment_terms_label:
+          $ref: '#/components/schemas/payment_terms_label'
+        contact_type:
+          $ref: '#/components/schemas/contact_type'
+        customer_sub_type:
+          $ref: '#/components/schemas/customer_sub_type'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        opening_balances:
+          $ref: '#/components/schemas/opening_balances'
+        credit_limit:
+          $ref: '#/components/schemas/credit_limit'
+        pricebook_id:
+          $ref: '#/components/schemas/pricebook_id'
+        contact_number:
+          $ref: '#/components/schemas/contact_number'
+        ignore_auto_number_generation:
+          $ref: '#/components/schemas/ignore_auto_number_generation'
+        tags:
+          $ref: '#/components/schemas/tags'
+        website:
+          $ref: '#/components/schemas/website'
+        owner_id:
+          $ref: '#/components/schemas/owner_id'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        billing_address:
+          $ref: '#/components/schemas/billing_address'
+        shipping_address:
+          $ref: '#/components/schemas/shipping_address'
+        contact_persons:
+          type: array
+          description: The list of contact persons associated with the contact.
+          items:
+            type: object
+            properties:
+              contact_person_id:
+                description: 'ID of the contact person. For an existing contact person, pass the <code>contact_person_id</code>. Note: This value is a set of numeric characters.'
+                type: string
+                example: 460000000026051
+              salutation:
+                $ref: '#/components/schemas/salutation'
+              first_name:
+                $ref: '#/components/schemas/first_name'
+              last_name:
+                $ref: '#/components/schemas/last_name'
+              email:
+                $ref: '#/components/schemas/email'
+              phone:
+                $ref: '#/components/schemas/phone'
+              mobile:
+                $ref: '#/components/schemas/mobile'
+              designation:
+                $ref: '#/components/schemas/designation'
+              department:
+                $ref: '#/components/schemas/department'
+              skype:
+                $ref: '#/components/schemas/skype'
+              is_primary_contact:
+                $ref: '#/components/schemas/is_primary_contact'
+              enable_portal:
+                $ref: '#/components/schemas/enable_portal'
+              communication_preference:
+                $ref: '#/components/schemas/communication_preference'
+        default_templates:
+          $ref: '#/components/schemas/default_templates'
+        notes:
+          $ref: '#/components/schemas/notes'
+        vat_reg_no:
+          $ref: '#/components/schemas/vat_reg_no'
+        tax_reg_no:
+          $ref: '#/components/schemas/tax_reg_no'
+        country_code:
+          $ref: '#/components/schemas/country_code'
+        legal_name:
+          $ref: '#/components/schemas/legal_name'
+        is_tds_registered:
+          $ref: '#/components/schemas/is_tds_registered'
+        place_of_contact:
+          $ref: '#/components/schemas/place_of_contact'
+        gst_no:
+          $ref: '#/components/schemas/gst_no'
+        gst_treatment:
+          $ref: '#/components/schemas/gst_treatment'
+        tax_exemption_id:
+          $ref: '#/components/schemas/tax_exemption_id'
+        tax_exemption_code:
+          $ref: '#/components/schemas/tax_exemption_code'
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        is_taxable:
+          $ref: '#/components/schemas/is_taxable'
+        facebook:
+          $ref: '#/components/schemas/facebook'
+        twitter:
+          $ref: '#/components/schemas/twitter'
+    update-a-contact-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Contact has been updated successfully
+          readOnly: true
+        contact:
+          type: object
+          properties:
+            contact_id:
+              $ref: '#/components/schemas/contact_id'
+            contact_name:
+              $ref: '#/components/schemas/contact_name'
+            company_name:
+              $ref: '#/components/schemas/company_name'
+            has_transaction:
+              $ref: '#/components/schemas/has_transaction'
+            contact_type:
+              $ref: '#/components/schemas/contact_type'
+            customer_sub_type:
+              $ref: '#/components/schemas/customer_sub_type'
+            credit_limit:
+              $ref: '#/components/schemas/credit_limit'
+            pricebook_id:
+              $ref: '#/components/schemas/pricebook_id'
+            contact_number:
+              $ref: '#/components/schemas/contact_number'
+            ignore_auto_number_generation:
+              $ref: '#/components/schemas/ignore_auto_number_generation'
+            is_taxable:
+              $ref: '#/components/schemas/is_taxable'
+            tax_id:
+              $ref: '#/components/schemas/tax_id'
+            tax_name:
+              $ref: '#/components/schemas/tax_name'
+            tax_percentage:
+              $ref: '#/components/schemas/tax_percentage'
+            tax_exemption_id:
+              $ref: '#/components/schemas/tax_exemption_id'
+            tax_exemption_code:
+              $ref: '#/components/schemas/tax_exemption_code'
+            place_of_contact:
+              $ref: '#/components/schemas/place_of_contact'
+            gst_no:
+              $ref: '#/components/schemas/gst_no'
+            legal_name:
+              $ref: '#/components/schemas/legal_name'
+            is_tds_registered:
+              $ref: '#/components/schemas/is_tds_registered'
+            gst_treatment:
+              $ref: '#/components/schemas/gst_treatment'
+            is_linked_with_zohocrm:
+              $ref: '#/components/schemas/is_linked_with_zohocrm'
+            website:
+              $ref: '#/components/schemas/website'
+            owner_id:
+              $ref: '#/components/schemas/owner_id'
+            primary_contact_id:
+              $ref: '#/components/schemas/primary_contact_id'
+            payment_terms:
+              $ref: '#/components/schemas/payment_terms'
+            payment_terms_label:
+              $ref: '#/components/schemas/payment_terms_label'
+            currency_id:
+              $ref: '#/components/schemas/currency_id'
+            currency_code:
+              $ref: '#/components/schemas/currency_code'
+            currency_symbol:
+              $ref: '#/components/schemas/currency_symbol'
+            opening_balances:
+              $ref: '#/components/schemas/opening_balances'
+            outstanding_receivable_amount:
+              $ref: '#/components/schemas/outstanding_receivable_amount'
+            outstanding_receivable_amount_bcy:
+              $ref: '#/components/schemas/outstanding_receivable_amount_bcy'
+            unused_credits_receivable_amount:
+              $ref: '#/components/schemas/unused_credits_receivable_amount'
+            unused_credits_receivable_amount_bcy:
+              $ref: '#/components/schemas/unused_credits_receivable_amount_bcy'
+            status:
+              $ref: '#/components/schemas/status'
+            payment_reminder_enabled:
+              $ref: '#/components/schemas/payment_reminder_enabled'
+            custom_fields:
+              $ref: '#/components/schemas/custom_fields'
+            billing_address:
+              $ref: '#/components/schemas/billing_address'
+            shipping_address:
+              $ref: '#/components/schemas/shipping_address'
+            facebook:
+              $ref: '#/components/schemas/facebook'
+            twitter:
+              $ref: '#/components/schemas/twitter'
+            contact_persons:
+              type: array
+              description: The list of contact persons associated with the contact.
+              items:
+                type: object
+                properties:
+                  contact_person_id:
+                    $ref: '#/components/schemas/contact_person_id'
+                  salutation:
+                    $ref: '#/components/schemas/salutation'
+                  first_name:
+                    $ref: '#/components/schemas/first_name'
+                  last_name:
+                    $ref: '#/components/schemas/last_name'
+                  email:
+                    $ref: '#/components/schemas/email'
+                  phone:
+                    $ref: '#/components/schemas/phone'
+                  mobile:
+                    $ref: '#/components/schemas/mobile'
+                  designation:
+                    $ref: '#/components/schemas/designation'
+                  department:
+                    $ref: '#/components/schemas/department'
+                  skype:
+                    $ref: '#/components/schemas/skype'
+                  is_primary_contact:
+                    $ref: '#/components/schemas/is_primary_contact'
+                  enable_portal:
+                    $ref: '#/components/schemas/enable_portal'
+                  communication_preference:
+                    $ref: '#/components/schemas/communication_preference'
+            default_templates:
+              $ref: '#/components/schemas/default_templates'
+            notes:
+              $ref: '#/components/schemas/notes'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            last_modified_time:
+              $ref: '#/components/schemas/last_modified_time'
+    get-contact-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        contact:
+          type: object
+          properties:
+            contact_id:
+              $ref: '#/components/schemas/contact_id'
+            contact_name:
+              $ref: '#/components/schemas/contact_name'
+            company_name:
+              $ref: '#/components/schemas/company_name'
+            has_transaction:
+              $ref: '#/components/schemas/has_transaction'
+            contact_type:
+              $ref: '#/components/schemas/contact_type'
+            customer_sub_type:
+              $ref: '#/components/schemas/customer_sub_type'
+            credit_limit:
+              $ref: '#/components/schemas/credit_limit'
+            pricebook_id:
+              $ref: '#/components/schemas/pricebook_id'
+            contact_number:
+              $ref: '#/components/schemas/contact_number'
+            ignore_auto_number_generation:
+              $ref: '#/components/schemas/ignore_auto_number_generation'
+            is_taxable:
+              $ref: '#/components/schemas/is_taxable'
+            tax_id:
+              $ref: '#/components/schemas/tax_id'
+            tax_name:
+              $ref: '#/components/schemas/tax_name'
+            tax_percentage:
+              $ref: '#/components/schemas/tax_percentage'
+            tax_exemption_id:
+              $ref: '#/components/schemas/tax_exemption_id'
+            tax_exemption_code:
+              $ref: '#/components/schemas/tax_exemption_code'
+            place_of_contact:
+              $ref: '#/components/schemas/place_of_contact'
+            gst_no:
+              $ref: '#/components/schemas/gst_no'
+            legal_name:
+              $ref: '#/components/schemas/legal_name'
+            is_tds_registered:
+              $ref: '#/components/schemas/is_tds_registered'
+            gst_treatment:
+              $ref: '#/components/schemas/gst_treatment'
+            is_linked_with_zohocrm:
+              $ref: '#/components/schemas/is_linked_with_zohocrm'
+            website:
+              $ref: '#/components/schemas/website'
+            owner_id:
+              $ref: '#/components/schemas/owner_id'
+            primary_contact_id:
+              $ref: '#/components/schemas/primary_contact_id'
+            payment_terms:
+              $ref: '#/components/schemas/payment_terms'
+            payment_terms_label:
+              $ref: '#/components/schemas/payment_terms_label'
+            currency_id:
+              $ref: '#/components/schemas/currency_id'
+            currency_code:
+              $ref: '#/components/schemas/currency_code'
+            currency_symbol:
+              $ref: '#/components/schemas/currency_symbol'
+            opening_balances:
+              $ref: '#/components/schemas/opening_balances'
+            outstanding_receivable_amount:
+              $ref: '#/components/schemas/outstanding_receivable_amount'
+            outstanding_receivable_amount_bcy:
+              $ref: '#/components/schemas/outstanding_receivable_amount_bcy'
+            unused_credits_receivable_amount:
+              $ref: '#/components/schemas/unused_credits_receivable_amount'
+            unused_credits_receivable_amount_bcy:
+              $ref: '#/components/schemas/unused_credits_receivable_amount_bcy'
+            status:
+              $ref: '#/components/schemas/status'
+            facebook:
+              $ref: '#/components/schemas/facebook'
+            twitter:
+              $ref: '#/components/schemas/twitter'
+            payment_reminder_enabled:
+              $ref: '#/components/schemas/payment_reminder_enabled'
+            custom_fields:
+              $ref: '#/components/schemas/custom_fields'
+            billing_address:
+              $ref: '#/components/schemas/billing_address'
+            shipping_address:
+              $ref: '#/components/schemas/shipping_address'
+            contact_persons:
+              type: array
+              description: The list of contact persons associated with the contact.
+              items:
+                type: object
+                properties:
+                  contact_person_id:
+                    $ref: '#/components/schemas/contact_person_id'
+                  salutation:
+                    $ref: '#/components/schemas/salutation'
+                  first_name:
+                    $ref: '#/components/schemas/first_name'
+                  last_name:
+                    $ref: '#/components/schemas/last_name'
+                  email:
+                    $ref: '#/components/schemas/email'
+                  phone:
+                    $ref: '#/components/schemas/phone'
+                  mobile:
+                    $ref: '#/components/schemas/mobile'
+                  designation:
+                    $ref: '#/components/schemas/designation'
+                  department:
+                    $ref: '#/components/schemas/department'
+                  skype:
+                    $ref: '#/components/schemas/skype'
+                  is_primary_contact:
+                    $ref: '#/components/schemas/is_primary_contact'
+                  communication_preference:
+                    $ref: '#/components/schemas/communication_preference'
+                  enable_portal:
+                    $ref: '#/components/schemas/enable_portal'
+            default_templates:
+              $ref: '#/components/schemas/default_templates'
+            notes:
+              $ref: '#/components/schemas/notes'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            last_modified_time:
+              $ref: '#/components/schemas/last_modified_time'
+    delete-a-contact-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The contact has been deleted.
+          readOnly: true
+    mark-as-active-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The contact has been marked as active.
+          readOnly: true
+    mark-as-inactive-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The contact has been marked as inactive.
+          readOnly: true
+    enable-portal-access-request:
+      required:
+        - contact_persons
+      type: object
+      properties:
+        contact_persons:
+          type: array
+          description: The list of contact persons associated with the contact.
+          items:
+            type: object
+            properties:
+              contact_person_id:
+                $ref: '#/components/schemas/contact_person_id'
+    enable-portal-access-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Client Portal preferences have been updated
+          readOnly: true
+    enable-payment-reminders-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: All reminders associated with this contact have been enabled.
+          readOnly: true
+    disable-payment-reminders-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: All reminders associated with this contact have been stopped.
+          readOnly: true
+    email-statement-request:
+      required:
+        - to_mail_ids
+        - subject
+        - body
+      type: object
+      properties:
+        send_from_org_email_id:
+          $ref: '#/components/schemas/send_from_org_email_id'
+        to_mail_ids:
+          $ref: '#/components/schemas/to_mail_ids'
+        cc_mail_ids:
+          $ref: '#/components/schemas/cc_mail_ids'
+        subject:
+          $ref: '#/components/schemas/subject'
+        body:
+          $ref: '#/components/schemas/body'
+    email-statement-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Statement has been sent to the Customer.
+          readOnly: true
+    get-statement-mail-content-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        data:
+          type: object
+          properties:
+            body:
+              $ref: '#/components/schemas/body'
+            subject:
+              $ref: '#/components/schemas/subject'
+            to_contacts:
+              $ref: '#/components/schemas/to_contacts'
+            file_name:
+              $ref: '#/components/schemas/file_name'
+            from_emails:
+              $ref: '#/components/schemas/from_emails'
+            contact_id:
+              $ref: '#/components/schemas/contact_id'
+    email-contact-request:
+      required:
+        - to_mail_ids
+        - subject
+        - body
+      type: object
+      properties:
+        to_mail_ids:
+          $ref: '#/components/schemas/to_mail_ids'
+        subject:
+          description: Subject of the email to be sent. Max-length [1000].
+          type: string
+          example: Welcome to Zylker Inc .
+        body:
+          $ref: '#/components/schemas/body'
+        attachments:
+          $ref: '#/components/schemas/attachments'
+    email-contact-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Email has been sent.
+          readOnly: true
+    list-comments-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        contact_comments:
+          $ref: '#/components/schemas/contact_comments'
+        page_context:
+          $ref: '#/components/schemas/page_context'
+    get-contact-addresses-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        addresses:
+          type: array
+          items:
+            type: object
+            properties:
+              address_id:
+                $ref: '#/components/schemas/address_id'
+              attention:
+                $ref: '#/components/schemas/attention'
+              address:
+                $ref: '#/components/schemas/address'
+              street2:
+                $ref: '#/components/schemas/street2'
+              city:
+                $ref: '#/components/schemas/city'
+              state:
+                $ref: '#/components/schemas/state'
+              zip:
+                $ref: '#/components/schemas/zip'
+              country:
+                $ref: '#/components/schemas/country'
+              fax:
+                $ref: '#/components/schemas/fax'
+              phone:
+                description: The contact phone number associated with the address. Max-length [50].
+                type: string
+                example: +91-44-4567-8900
+    add-additional-address-request:
+      type: object
+      properties:
+        attention:
+          $ref: '#/components/schemas/attention'
+        address:
+          $ref: '#/components/schemas/address'
+        street2:
+          $ref: '#/components/schemas/street2'
+        city:
+          $ref: '#/components/schemas/city'
+        state:
+          $ref: '#/components/schemas/state'
+        zip:
+          $ref: '#/components/schemas/zip'
+        country:
+          $ref: '#/components/schemas/country'
+        fax:
+          $ref: '#/components/schemas/fax'
+        phone:
+          description: The contact phone number associated with the address. Max-length [50].
+          type: string
+          example: +91-44-4567-8900
+    add-additional-address-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The address has been created.
+          readOnly: true
+        address_info:
+          $ref: '#/components/schemas/address_info'
+    edit-additional-address-request:
+      required:
+        - address_id
+      type: object
+      properties:
+        attention:
+          $ref: '#/components/schemas/attention'
+        address:
+          $ref: '#/components/schemas/address'
+        street2:
+          $ref: '#/components/schemas/street2'
+        city:
+          $ref: '#/components/schemas/city'
+        state:
+          $ref: '#/components/schemas/state'
+        zip:
+          $ref: '#/components/schemas/zip'
+        country:
+          $ref: '#/components/schemas/country'
+        fax:
+          $ref: '#/components/schemas/fax'
+        phone:
+          description: The contact phone number associated with the address. Max-length [50].
+          type: string
+          example: +91-44-4567-8900
+        address_id:
+          description: 'Address id of the address. Note: This value is a set of numeric characters.'
+          type: string
+          example: 1053791000000186000
+    edit-additional-address-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The address has been updated.
+          readOnly: true
+        address_info:
+          $ref: '#/components/schemas/address_info'
+    delete-additional-address-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The address has been deleted.
+          readOnly: true
+    list-refunds-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        creditnote_refunds:
+          type: array
+          items:
+            type: object
+            properties:
+              creditnote_refund_id:
+                type: string
+                description: 'Unique identifier for the credit note refund. Note: This value is a set of numeric characters.'
+                example: 982000000567158
+              creditnote_id:
+                type: string
+                description: 'Unique identifier for the credit note associated with the refund. Note: This value is a set of numeric characters.'
+                example: 982000000567134
+              date:
+                type: string
+                example: '2013-11-19'
+              refund_mode:
+                type: string
+                example: cash
+              reference_number:
+                type: string
+                example: 782364
+              creditnote_number:
+                type: string
+                example: CN-00001
+              customer_name:
+                type: string
+                example: Zylker Inc
+              description:
+                type: string
+                example: gf
+              amount_bcy:
+                type: string
+                example: 57.15
+              amount_fcy:
+                type: string
+                example: 57.15
+        page_context:
+          description: The context of a particular page.
+          type: object
+          properties:
+            page:
+              description: Number of pages.
+              type: integer
+              example: 1
+            per_page:
+              description: Number of items per page.
+              type: integer
+              example: 10
+            has_more_page:
+              description: Indicates if there are more pages.
+              type: boolean
+              example: false
+            report_name:
+              description: The displayed report name.
+              type: string
+              example: Credit Notes Refund
+            sort_column:
+              description: Column to sort by.
+              type: string
+              example: date
+            sort_order:
+              description: 'Sort order of the results. Allowed Values: <code>A</code> (ascending) and <code>D</code> (descending).'
+              type: string
+              example: D
+    get-unused-retainer-payments-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        unused_credits_receivable:
+          type: array
+          items:
+            type: object
+            properties:
+              payment_id:
+                description: 'Unique identifier for the retainer payment. Note: This value is a set of numeric characters.'
+                type: string
+                example: '460000000056789'
+              payment_number:
+                description: Payment reference number.
+                type: string
+                example: PAY-00001
+              date:
+                description: Date when the retainer payment was made.
+                type: string
+                example: '2023-12-01'
+              amount:
+                description: Total amount of the retainer payment.
+                type: number
+                format: double
+                example: 1000
+              unused_amount:
+                description: Amount that remains unused from the retainer payment.
+                type: number
+                format: double
+                example: 750
+              currency_id:
+                description: 'Currency ID of the payment. Note: This value is a set of numeric characters.'
+                type: string
+                example: '460000000000097'
+              currency_code:
+                description: Currency code of the payment.
+                type: string
+                example: USD
+              currency_symbol:
+                description: Currency symbol of the payment.
+                type: string
+                example: $
+              reference_number:
+                description: External reference number for the payment.
+                type: string
+                example: REF-12345
+              payment_mode:
+                description: Mode of payment used.
+                type: string
+                example: bank_transfer
+              description:
+                description: Additional notes or description for the payment.
+                type: string
+                example: Retainer payment for project services
+    tag_id:
+      description: 'Tag''s ID. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000000567'
+    tag_name:
+      description: Name of the tag.
+      type: string
+      example: Business Unit
+    tag_option_id:
+      description: 'Tag Option''s ID. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000014044'
+    tag_option_name:
+      description: Name of the tag option.
+      type: string
+      example: Sales
+    is_tag_mandatory:
+      description: Indicates if the tag is mandatory.
+      type: boolean
+      example: false
+    tags:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+    tags_response:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_name:
+            $ref: '#/components/schemas/tag_name'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+          tag_option_name:
+            $ref: '#/components/schemas/tag_option_name'
+          is_tag_mandatory:
+            $ref: '#/components/schemas/is_tag_mandatory'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.contacts.CREATE: Create Contacts
+            ERP.contacts.UPDATE: Update Contacts
+            ERP.contacts.READ: Read Contacts
+            ERP.contacts.DELETE: Delete Contacts

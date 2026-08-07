@@ -1,0 +1,648 @@
+openapi: 3.0.0
+info:
+  title: Unbilled-Charges
+  description: These are charges to be converted into an invoice at a later point of time, either by manual intervention or during renewal.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: unbilled-charges
+    description: Unbilled-Charges Module
+paths:
+  /unbilledcharges/{unbilled_charge_id}:
+    x-mcp-group:
+      - Unbilled Charges
+    get:
+      operationId: get_unbilled_charge
+      tags:
+        - unbilled-charges
+      summary: Retrieve an unbilled charge
+      description: Details of an unbilled charge.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/retrieve-an-unbilled-charge-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.invoices.READ
+    delete:
+      operationId: delete_unbilled_charge
+      tags:
+        - unbilled-charges
+      summary: Delete unbilled charge
+      description: Delete the unbilled charge.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-unbilled-charge-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.invoices.DELETE
+    parameters:
+      - name: unbilled_charge_id
+        in: path
+        required: true
+        description: Unique identifier of the unbilled charge.
+        schema:
+          type: string
+        example: '90300000079200'
+      - $ref: '#/components/parameters/organization_id'
+  /unbilledcharges/{unbilled_charge_id}/createinvoice:
+    x-mcp-group:
+      - Unbilled Charges
+    post:
+      operationId: convert_unbilled_charge_to_invoice
+      tags:
+        - unbilled-charges
+      summary: Convert unbilled charge to invoice
+      description: Convert unbilled charges to an invoice by manual intervention instead of waiting for next renewal.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/convert-unbilled-charge-to-invoice-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.invoices.CREATE
+    parameters:
+      - name: unbilled_charge_id
+        in: path
+        required: true
+        description: Unique identifier of the unbilled charge.
+        schema:
+          type: string
+        example: '90300000079200'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/unbilled_charge-response'
+    unbilled_charge-response:
+      type: object
+      properties:
+        unbilled_charge_id:
+          description: Unique ID generated for an unbilled charge.
+          type: string
+          example: '90300000079200'
+        number:
+          $ref: '#/components/schemas/number'
+        status:
+          $ref: '#/components/schemas/status'
+        unbilled_charge_date:
+          $ref: '#/components/schemas/unbilled_charge_date'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        customer_name:
+          $ref: '#/components/schemas/customer_name'
+        email:
+          $ref: '#/components/schemas/email'
+        unbilled_charge_items:
+          $ref: '#/components/schemas/unbilled_charge_items'
+        coupons:
+          $ref: '#/components/schemas/coupons'
+        total:
+          $ref: '#/components/schemas/total'
+        currency_code:
+          $ref: '#/components/schemas/currency_code'
+        currency_symbol:
+          $ref: '#/components/schemas/currency_symbol'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        updated_time:
+          $ref: '#/components/schemas/updated_time'
+        billing_address:
+          $ref: '#/components/schemas/billing_address'
+        shipping_address:
+          $ref: '#/components/schemas/shipping_address'
+    unbilled_charge_id:
+      description: Unique ID generated for an unbilled charge.
+      type: string
+      example: '90300000079200'
+    unbilled_charge_item_id:
+      description: Unique ID generated for an item in the unbilled charge.
+      type: string
+      example: '90300000079201'
+    number:
+      description: Unique number (starts with UNBILL) generated for display in interface.
+      type: string
+      example: UNBILL-000004
+    status:
+      description: Status of the unbilled charge. It can be <code>invoiced</code>, <code>open</code>
+      type: string
+      example: open
+    unbilled_charge_date:
+      description: The date on which the unbilled charge was raised.
+      type: string
+      example: '2016-06-05'
+    customer_id:
+      description: Customer ID of the customer to whom the unbilled charge was raised.
+      type: array
+      items:
+        type: string
+      example: '903000000000099'
+    customer_name:
+      description: Name of the customer to whom the unbilled charge was raised.
+      type: string
+      example: Zylker Inc
+    email:
+      description: Email address of the customer.
+      type: string
+      example: benjamin.george@zylker.org
+    coupons:
+      description: The array of objects which contains the details of the added coupon. <code>coupon_code</code> and <code>discount_amount</code> are applied to the total.
+      type: array
+      items:
+        type: object
+        properties:
+          coupon_code:
+            $ref: '#/components/schemas/coupon_code'
+          coupon_name:
+            $ref: '#/components/schemas/coupon_name'
+          discount_amount:
+            $ref: '#/components/schemas/discount_amount'
+    coupon_code:
+      description: The coupon code of the coupon applied.
+      type: string
+      example: THANKSGIVING20
+    coupon_name:
+      description: Name of the coupon applied to the subscription.
+      type: string
+      example: Flat 10
+    discount_amount:
+      description: The discount amount included on applying a coupon.
+      type: number
+      format: double
+      example: 80
+    currency_code:
+      description: Currency code in which the payment is made.
+      type: string
+      example: USD
+    currency_symbol:
+      description: Customer's currency symbol.
+      type: string
+      example: $
+    shipping_address:
+      description: Customer's shipping address object. It contains <code>street</code>, <code>city</code>, <code>state</code>,<code>zip</code> and <code>country</code>.
+      type: object
+      properties:
+        street:
+          $ref: '#/components/schemas/street'
+        city:
+          $ref: '#/components/schemas/city'
+        state:
+          $ref: '#/components/schemas/state'
+        zip:
+          $ref: '#/components/schemas/zip'
+        country:
+          $ref: '#/components/schemas/country'
+        fax:
+          $ref: '#/components/schemas/fax'
+    created_time:
+      description: Time when the unbilled charge was created.
+      type: string
+      example: 2016-06-05T02:15:15+0530
+    updated_time:
+      description: Time when the unbilled charge details were last updated.
+      type: string
+      example: 2016-06-05T02:15:15+0530
+    billing_address:
+      description: Customer's billing address object. It contains <code>street</code>, <code>city</code>, <code>state</code>,<code>zip</code> and <code>country</code>.
+      type: object
+      properties:
+        street:
+          $ref: '#/components/schemas/street'
+        city:
+          $ref: '#/components/schemas/city'
+        state:
+          $ref: '#/components/schemas/state'
+        zip:
+          $ref: '#/components/schemas/zip'
+        country:
+          $ref: '#/components/schemas/country'
+        fax:
+          $ref: '#/components/schemas/fax'
+    street:
+      description: Name of the street.
+      type: string
+      example: Harrington Bay Street
+    city:
+      description: Name of the city.
+      type: string
+      example: Salt Lake City
+    state:
+      description: Name of the state.
+      type: string
+      example: CA
+    zip:
+      description: Zip code of the customer's address.
+      type: string
+      example: 92612
+    country:
+      description: Name of the country.
+      type: string
+      example: U.S.A
+    fax:
+      description: Customer's fax number.
+      type: string
+      example: 4527389
+    total:
+      description: Total amount to be paid. This would be the sum of individual costs of all items.
+      type: number
+      format: double
+      example: 370
+    product_id:
+      description: The ID of the product included in the unbilled charge.
+      type: string
+      example: '7000000079434'
+    name:
+      description: Name of the item.
+      type: string
+      example: Basic
+    code:
+      description: Item code of the item.
+      type: string
+      example: basic-monthly
+    price:
+      description: Price of the item included in the invoice.
+      type: string
+      example: 50
+    quantity:
+      description: Quantity of the item.
+      type: integer
+      example: 1
+    hsn_or_sac:
+      description: HSN or SAC code for Goods/Services.
+      type: string
+      example: '74191010'
+    item_total:
+      description: This would be the product of quantity of the item included and the price of that item.
+      type: integer
+      example: 400
+    description:
+      description: Description for the item.
+      example: Usage charges for last month
+    tax_exemption_id:
+      description: Unique Tax Exemption ID if you dont want to associate a tax to the plan.
+      example: '90300000079226'
+    tax_exemption_code:
+      description: Unique code to denote the tax exemption.
+      type: string
+      example: NGO
+    tax_id:
+      description: Unique ID of Tax or Tax Group that must be associated with the item.
+      example: '90300000079226'
+    unbilled_charge_items:
+      description: 'Multiple items can be added as unbilled charges for a subscription : buy one time addon, add charge.'
+      type: array
+      items:
+        type: object
+        properties:
+          unbilled_charge_item_id:
+            $ref: '#/components/schemas/unbilled_charge_item_id'
+          product_id:
+            $ref: '#/components/schemas/product_id'
+          name:
+            $ref: '#/components/schemas/name'
+          description:
+            $ref: '#/components/schemas/description'
+          code:
+            $ref: '#/components/schemas/code'
+          price:
+            $ref: '#/components/schemas/price'
+          quantity:
+            $ref: '#/components/schemas/quantity'
+          discount_amount:
+            $ref: '#/components/schemas/discount_amount'
+          item_total:
+            $ref: '#/components/schemas/item_total'
+          tax_id:
+            $ref: '#/components/schemas/tax_id'
+          hsn_or_sac:
+            $ref: '#/components/schemas/hsn_or_sac'
+          tax_exemption_id:
+            $ref: '#/components/schemas/tax_exemption_id'
+          tax_exemption_code:
+            $ref: '#/components/schemas/tax_exemption_code'
+    invoice_id:
+      description: Unique ID generated for an invoice.
+      type: string
+      example: '903000000079426'
+    item_id:
+      description: The ID of the item included in the invoice.
+      type: string
+      example: '7000000079434'
+    invoice_items:
+      type: array
+      items:
+        type: object
+        properties:
+          item_id:
+            $ref: '#/components/schemas/item_id'
+          name:
+            $ref: '#/components/schemas/name'
+          description:
+            $ref: '#/components/schemas/description'
+          code:
+            $ref: '#/components/schemas/code'
+          price:
+            $ref: '#/components/schemas/price'
+          quantity:
+            $ref: '#/components/schemas/quantity'
+          discount_amount:
+            $ref: '#/components/schemas/discount_amount'
+          item_total:
+            $ref: '#/components/schemas/item_total'
+          tax_id:
+            $ref: '#/components/schemas/tax_id'
+          tax_exemption_id:
+            $ref: '#/components/schemas/tax_exemption_id'
+          tax_exemption_code:
+            $ref: '#/components/schemas/tax_exemption_code'
+    payment_id:
+      description: The payment ID of the payment made for the invoice.
+      type: string
+      example: '90300000079467'
+    payment_mode:
+      description: The mode in which payment is made for the invoice. This can be <code>check</code>, <code>cash</code>, <code>creditcard</code>, <code>banktransfer</code>, <code>bankremittance</code>, <code>autotransaction</code> or <code>others</code>.
+      type: string
+      example: autotransaction
+    invoice_payment_id:
+      description: Unique ID generated for an instalment of payment made for a particular invoice.
+      type: string
+      example: '90300000079469'
+    gateway_transaction_id:
+      description: Gateway transaction ID provided for the payment made to the invoice. This is applicable only if <code>payment_mode</code> is autotransaction.
+      type: string
+      example: B10E6E0F31BD
+    amount_refunded:
+      description: Amount that is refund. Refunds are applicable only for payments whose payment_mode is <code>autotransaction</code>. Refunds would be made to the respective card provided by the customer.
+      type: number
+      format: double
+      example: 50
+    amount_due:
+      description: Balance amount that is due for the invoice.
+      type: number
+      format: double
+      example: 10
+    amount:
+      description: Amount paid for the invoice.
+      type: number
+      format: double
+      example: 370
+    date:
+      description: Date on which payment is made.
+      type: string
+      example: '2016-06-05'
+    reference_number:
+      description: Reference number generated for the payment. A string of your choice can also be used as the reference number.
+      type: string
+      example: INV-384
+    exchange_rate:
+      description: Exchange rate for the currency used in the invoices and customer's currency. The payment amount would be the multiplicative product of the original amount and the exchange rate.
+      type: number
+      format: double
+      example: 1
+      default: 1
+    bank_charges:
+      description: Denotes any additional bank charges.
+      type: number
+      format: double
+      example: 10
+    invoice_date:
+      description: The date on which the invoice is raised.
+      type: string
+      example: '2016-06-05'
+    due_date:
+      description: Date on which the invoice is due. If the invoice is not fully paid on or before this date, the status of the invoice will be changed to <code>overdue</code>. If the invoice is only partially paid, its status will be <code>partially_paid</code>.
+      type: string
+      example: '2016-06-05'
+    payment_expected_date:
+      description: A date to specify the expected payment date.
+      type: string
+      example: 10-05-2013
+    ach_payment_initiated:
+      description: Set to true if ACH payment is initiated.
+      type: boolean
+      example: true
+    transaction_type:
+      description: Type of the transaction made.
+      type: string
+      example: renewal
+    credits:
+      type: array
+      items:
+        type: object
+        properties:
+          creditnote_id:
+            $ref: '#/components/schemas/creditnote_id'
+          creditnotes_number:
+            $ref: '#/components/schemas/creditnotes_number'
+          credited_date:
+            $ref: '#/components/schemas/credited_date'
+          credited_amount:
+            $ref: '#/components/schemas/credited_amount'
+    creditnote_id:
+      description: Unique ID denoting the credit note.
+      type: string
+      example: '9030000079876'
+    creditnotes_number:
+      description: Reference number for the credit note.
+      type: string
+      example: CN-26
+    credited_date:
+      description: Date on which the credit were applied.
+      type: string
+      example: '2016-06-15'
+    credited_amount:
+      description: Credited amount for the invoice.
+      type: string
+      example: 15
+    payment_made:
+      description: Payments can be made in multiple instalments. payment_made refers to the amount paid for the invoice in the respective instalment.
+      type: number
+      format: double
+      example: 370
+    payments:
+      type: array
+      items:
+        type: object
+        properties:
+          payment_id:
+            $ref: '#/components/schemas/payment_id'
+          payment_mode:
+            $ref: '#/components/schemas/payment_mode'
+          invoice_payment_id:
+            $ref: '#/components/schemas/invoice_payment_id'
+          amount_refunded:
+            $ref: '#/components/schemas/amount_refunded'
+          gateway_transaction_id:
+            $ref: '#/components/schemas/gateway_transaction_id'
+          description:
+            $ref: '#/components/schemas/description'
+          date:
+            $ref: '#/components/schemas/date'
+          reference_number:
+            $ref: '#/components/schemas/reference_number'
+          amount:
+            $ref: '#/components/schemas/amount'
+          bank_charges:
+            $ref: '#/components/schemas/bank_charges'
+          exchange_rate:
+            $ref: '#/components/schemas/exchange_rate'
+    balance:
+      description: The unpaid amount of an invoice.
+      type: number
+      format: double
+      example: 0
+    credits_applied:
+      description: Credits applied for the invoice.
+      type: number
+      format: double
+      example: 0
+    write_off_amount:
+      description: The unpaid amount of an invoice that is written off.
+      type: number
+      format: double
+      example: 0
+    salesperson_id:
+      description: Unique Id to denote the sales person.
+      type: string
+      example: '90300023000043'
+    salesperson_name:
+      description: Name of the sales person associated with the invoice for offline payments.
+      type: string
+      example: Will
+    invoice_url:
+      description: Url which corresponds to the invoice.
+      type: string
+      example: ''
+    retrieve-an-unbilled-charge-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        unbilled_charge:
+          $ref: '#/components/schemas/unbilled_charge-response'
+    delete-unbilled-charge-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The unbilled charges have been deleted.
+          readOnly: true
+    convert-unbilled-charge-to-invoice-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Unbilled Charges have been invoiced.
+          readOnly: true
+        invoice:
+          type: object
+          properties:
+            invoice_id:
+              $ref: '#/components/schemas/invoice_id'
+            number:
+              description: Unique number (starts with INV) generated for display in interface.
+              type: string
+              example: INV-000004
+            status:
+              $ref: '#/components/schemas/status'
+            invoice_date:
+              $ref: '#/components/schemas/invoice_date'
+            due_date:
+              $ref: '#/components/schemas/due_date'
+            payment_expected_date:
+              $ref: '#/components/schemas/payment_expected_date'
+            ach_payment_initiated:
+              $ref: '#/components/schemas/ach_payment_initiated'
+            transaction_type:
+              $ref: '#/components/schemas/transaction_type'
+            customer_id:
+              $ref: '#/components/schemas/customer_id'
+            customer_name:
+              $ref: '#/components/schemas/customer_name'
+            email:
+              $ref: '#/components/schemas/email'
+            invoice_items:
+              $ref: '#/components/schemas/invoice_items'
+            coupons:
+              $ref: '#/components/schemas/coupons'
+            credits:
+              $ref: '#/components/schemas/credits'
+            total:
+              $ref: '#/components/schemas/total'
+            payment_made:
+              $ref: '#/components/schemas/payment_made'
+            balance:
+              $ref: '#/components/schemas/balance'
+            credits_applied:
+              $ref: '#/components/schemas/credits_applied'
+            write_off_amount:
+              $ref: '#/components/schemas/write_off_amount'
+            payments:
+              $ref: '#/components/schemas/payments'
+            currency_code:
+              $ref: '#/components/schemas/currency_code'
+            currency_symbol:
+              $ref: '#/components/schemas/currency_symbol'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            updated_time:
+              $ref: '#/components/schemas/updated_time'
+            salesperson_id:
+              $ref: '#/components/schemas/salesperson_id'
+            salesperson_name:
+              $ref: '#/components/schemas/salesperson_name'
+            invoice_url:
+              $ref: '#/components/schemas/invoice_url'
+            billing_address:
+              $ref: '#/components/schemas/billing_address'
+            shipping_address:
+              $ref: '#/components/schemas/shipping_address'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.invoices.READ: Read Invoices
+            ERP.invoices.CREATE: Create Invoices
+            ERP.invoices.DELETE: Delete Invoices

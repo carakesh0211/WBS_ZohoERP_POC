@@ -1,0 +1,1128 @@
+openapi: 3.0.0
+info:
+  title: Bill of Materials
+  description: A Bill of Materials (BOM) defines the structured recipe of components and operations required to manufacture a finished product. Each BOM supports multiple versioned configurations, enabling engineering changes to be managed while tracking which version drives active manufacturing orders.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: bill-of-materials
+    description: Bill of Materials Module
+paths:
+  /billofmaterials:
+    x-mcp-group:
+      - Bill of Materials
+    post:
+      tags:
+        - bill-of-materials
+      operationId: create_bill_of_materials
+      summary: Create a bill of materials
+      description: Create a bill of materials.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-bom-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-bom-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.CREATE
+    get:
+      tags:
+        - bill-of-materials
+      operationId: list_bill_of_materials
+      summary: List bill of materials
+      description: List all bills of materials.
+      parameters:
+        - name: sort_column
+          in: query
+          description: 'Specify the column field for sorting results. Allowed Values: <code>created_time</code>, <code>billofmaterials_name</code>, <code>status</code>, <code>quantity</code>, <code>billofmaterials_number</code>, <code>finished_product_name</code> and <code>finished_product_quantity</code>.'
+          required: false
+          schema:
+            type: string
+          example: created_time
+        - name: sort_order
+          in: query
+          description: 'Sort order for results. Allowed Values: <code>A</code> (ascending) and <code>D</code> (descending).'
+          required: false
+          schema:
+            type: string
+          example: D
+        - name: search_text
+          in: query
+          description: Search by BOM name, BOM number, or finished product name.
+          required: false
+          schema:
+            type: string
+          example: Pencil
+        - name: filter_by
+          in: query
+          description: 'Filter by status group. Allowed Values: <code>Status.All</code>, <code>Status.Active</code> and <code>Status.Inactive</code>.'
+          required: false
+          schema:
+            type: string
+          example: Status.Active
+        - name: status
+          in: query
+          description: 'Filter by BOM status. Allowed Values: <code>active</code> and <code>inactive</code>.'
+          required: false
+          schema:
+            type: string
+          example: active
+        - name: item_id
+          in: query
+          description: Filter by the finished product item identifier.
+          required: false
+          schema:
+            type: string
+          example: '3863095000000046004'
+        - name: finished_product_id
+          in: query
+          description: Filter by the finished product item identifier.
+          required: false
+          schema:
+            type: string
+          example: '3863095000000046004'
+        - name: billofmaterials_name
+          in: query
+          description: 'Filter bills of materials by BOM name using various matching operators. Available variants include <code>billofmaterials_name_startswith</code> and <code>billofmaterials_name_contains</code>. Maximum search length: 100 characters.'
+          required: false
+          schema:
+            type: string
+          example: Pencil BOM 4
+        - name: billofmaterials_number
+          in: query
+          description: 'Filter bills of materials by BOM number using various matching operators. Available variants include <code>billofmaterials_number_startswith</code> and <code>billofmaterials_number_contains</code>. Maximum search length: 100 characters.'
+          required: false
+          schema:
+            type: string
+          example: BOM-00004
+        - name: description
+          in: query
+          description: 'Filter bills of materials by description using various matching operators. Available variants include <code>description_startswith</code> and <code>description_contains</code>. Maximum search length: 500 characters.'
+          required: false
+          schema:
+            type: string
+          example: standard
+        - name: finished_product_quantity
+          in: query
+          description: Filter bills of materials by finished product quantity using various range operators. Available variants include <code>finished_product_quantity_start</code>, <code>finished_product_quantity_end</code>, <code>finished_product_quantity_less_than</code>, <code>finished_product_quantity_less_equals</code>, <code>finished_product_quantity_greater_than</code>, and <code>finished_product_quantity_greater_equals</code>.
+          required: false
+          schema:
+            type: number
+            format: double
+          example: 100
+        - name: finished_product_unit
+          in: query
+          description: 'Filter bills of materials by finished product unit using various matching operators. Available variants include <code>finished_product_unit_startswith</code> and <code>finished_product_unit_contains</code>. Maximum search length: 120 characters.'
+          required: false
+          schema:
+            type: string
+          example: pcs
+        - name: created_by
+          in: query
+          description: 'Filter bills of materials by the user who created them. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: '3863095000000032003'
+        - name: customview_id
+          in: query
+          description: 'ID of the customview. Note: This value is a set of numeric characters.'
+          required: false
+          schema:
+            type: string
+          example: '982000000084001'
+        - name: page
+          in: query
+          description: Page number for pagination. Default is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+            minimum: 1
+            maximum: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-bom-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /billofmaterials/{billofmaterials_id}:
+    x-mcp-group:
+      - Bill of Materials
+    get:
+      tags:
+        - bill-of-materials
+      operationId: get_bill_of_materials
+      summary: Get a bill of materials
+      description: Get the details of a bill of materials.
+      parameters:
+        - name: planned_start_date
+          in: query
+          description: 'Planned start date used to compute BOM cost overview and scheduling. Date format: <code>yyyy-MM-dd</code>.'
+          required: false
+          schema:
+            type: string
+          example: '2026-05-08'
+        - name: print
+          in: query
+          description: Print the exported pdf.
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: accept
+          in: query
+          description: 'Get the details of a particular bill of materials in formats such as json/ pdf. Default format is json. Allowed Values: <code>json</code> and <code>pdf</code>.'
+          required: false
+          schema:
+            type: string
+          example: ''
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-bom-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.READ
+    put:
+      tags:
+        - bill-of-materials
+      operationId: update_bill_of_materials
+      summary: Update a bill of materials
+      description: Update an existing bill of materials. Changes are applied to the active version.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-bom-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-bom-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.UPDATE
+    delete:
+      tags:
+        - bill-of-materials
+      operationId: delete_bill_of_materials
+      summary: Delete a bill of materials
+      description: Delete an existing bill of materials. A bill of materials linked to a manufacturing order cannot be deleted.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-bom-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.DELETE
+    parameters:
+      - name: billofmaterials_id
+        in: path
+        required: true
+        description: 'ID of the Bill of Materials. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '3863095000000039881'
+      - $ref: '#/components/parameters/organization_id'
+  /billofmaterials/{billofmaterials_id}/status:
+    x-mcp-group:
+      - Bill of Materials
+    put:
+      tags:
+        - bill-of-materials
+      operationId: update_bom_status
+      summary: Update bill of materials status
+      description: Update the status of a bill of materials.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-bom-status-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-bom-status-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.UPDATE
+    parameters:
+      - name: billofmaterials_id
+        in: path
+        required: true
+        description: 'ID of the Bill of Materials. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '3863095000000039881'
+      - $ref: '#/components/parameters/organization_id'
+  /billofmaterials/{billofmaterials_id}/comments:
+    x-mcp-group:
+      - Bill of Materials
+    post:
+      tags:
+        - bill-of-materials
+      operationId: add_bom_comment
+      summary: Add a comment
+      description: Add a comment to a bill of materials.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/add-comment-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/add-comment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.CREATE
+    parameters:
+      - name: billofmaterials_id
+        in: path
+        required: true
+        description: 'ID of the Bill of Materials. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '3863095000000039881'
+      - $ref: '#/components/parameters/organization_id'
+  /billofmaterials/{billofmaterials_id}/comments/{comment_id}:
+    x-mcp-group:
+      - Bill of Materials
+    delete:
+      tags:
+        - bill-of-materials
+      operationId: delete_bom_comment
+      summary: Delete a comment
+      description: Delete a comment from a bill of materials.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-comment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.DELETE
+    parameters:
+      - name: billofmaterials_id
+        in: path
+        required: true
+        description: 'ID of the Bill of Materials. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '3863095000000039881'
+      - name: comment_id
+        in: path
+        required: true
+        description: 'ID of the comment. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '3863095000000057297'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization.
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/bill_of_material'
+    bom_component_id:
+      description: 'ID of the BOM component. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000039902'
+    component_item_id:
+      description: 'ID of the component item. Must reference an inventory item; service / non-inventory items are rejected. Components cannot recursively include the finished product, and the overall BOM depth is capped at 10 levels. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000046015'
+    component_quantity:
+      description: Required quantity of this component per BOM execution. Must be greater than 0.
+      type: number
+      format: double
+      minimum: 0.000001
+      example: 1
+    component_unit:
+      description: 'Unit of measurement for the component quantity. Maximum length: 120 characters.'
+      type: string
+      maxLength: 120
+      example: kg
+    subassembly_bom_id:
+      description: 'ID of the sub-assembly Bill of Materials, when this component is itself produced from another BOM. Note: This value is a set of numeric characters.'
+      type: string
+      example: ''
+    bom_operation_id:
+      description: 'ID of the BOM operation. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000039890'
+    master_operation_id:
+      description: 'ID of the master operation record. Must reference an active master operation. The same operation cannot appear twice in the operations array. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000039095'
+    lead_time:
+      description: Estimated lead time for this operation, expressed as <code>mm:ss</code> (minutes:seconds).
+      type: string
+      example: '60:00'
+    instructions:
+      description: 'Instructions or notes for this operation. Maximum length: 500 characters.'
+      type: string
+      maxLength: 500
+      example: ''
+    blocked_by_operations:
+      description: 'List of operation IDs that must be completed before this operation can start. Each ID must reference an operation present in the same BOM payload. Cyclic dependencies (operation A blocked by B and B blocked by A) are rejected. Note: Each value is a set of numeric characters.'
+      type: array
+      maxItems: 500
+      items:
+        type: string
+      example: []
+    billofmaterials_id:
+      description: 'ID of the Bill of Materials. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000039881'
+    billofmaterials_name:
+      description: Name of the Bill of Materials.
+      type: string
+      example: Pencil New-BOM
+    billofmaterials_number:
+      description: 'BOM number. Auto-generated if not provided. Must be unique across all Bills of Materials in the organization. Required when auto-number generation is disabled. Maximum length: 50 characters.'
+      type: string
+      maxLength: 50
+      example: BOM-00005
+    finished_product_id:
+      description: 'ID of the finished product this BOM produces. Must reference an active item in the organization. The same item cannot also appear in the components array (no self-reference); transitive cycles up to depth 10 are also rejected. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000046004'
+    finished_product_group_id:
+      description: 'Group ID of the finished product. Must equal the group ID of the finished product item; supplying a mismatched group rejects the request. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000046007'
+    finished_product_quantity:
+      description: Standard output quantity produced per BOM execution. Must be greater than 0.
+      type: number
+      format: double
+      minimum: 0.000001
+      example: 1000
+    finished_product_unit:
+      description: 'Unit of measurement for the finished product quantity. Maximum length: 120 characters.'
+      type: string
+      maxLength: 120
+      example: pcs
+    bom_description:
+      description: 'Optional description of this BOM. Maximum length: 500 characters.'
+      type: string
+      maxLength: 500
+      example: ''
+    bom_component_request:
+      type: object
+      required:
+        - item_id
+        - quantity
+      properties:
+        item_id:
+          $ref: '#/components/schemas/component_item_id'
+        quantity:
+          $ref: '#/components/schemas/component_quantity'
+        unit:
+          $ref: '#/components/schemas/component_unit'
+        subassembly_bom_id:
+          $ref: '#/components/schemas/subassembly_bom_id'
+    bom_operation_request:
+      type: object
+      required:
+        - operation_id
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/master_operation_id'
+        lead_time:
+          $ref: '#/components/schemas/lead_time'
+        instructions:
+          $ref: '#/components/schemas/instructions'
+        blocked_by_operations:
+          $ref: '#/components/schemas/blocked_by_operations'
+    custom_field:
+      type: object
+      properties:
+        customfield_id:
+          description: 'ID of the custom field. Note: This value is a set of numeric characters.'
+          type: string
+          example: '982000000000183'
+        value:
+          description: Value of the custom field.
+          type: string
+          example: Batch-A
+    create-a-bom-request:
+      type: object
+      required:
+        - billofmaterials_name
+        - finished_product_id
+        - finished_product_group_id
+        - finished_product_quantity
+        - components
+        - operations
+      properties:
+        billofmaterials_name:
+          $ref: '#/components/schemas/billofmaterials_name'
+        billofmaterials_number:
+          $ref: '#/components/schemas/billofmaterials_number'
+        finished_product_id:
+          $ref: '#/components/schemas/finished_product_id'
+        finished_product_group_id:
+          $ref: '#/components/schemas/finished_product_group_id'
+        finished_product_quantity:
+          $ref: '#/components/schemas/finished_product_quantity'
+        unit:
+          $ref: '#/components/schemas/finished_product_unit'
+        components:
+          description: List of components required to produce the finished product. At least 1 and at most 500 components are allowed.
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/bom_component_request'
+        operations:
+          description: List of manufacturing operations defined in this BOM. At least 1 and at most 500 operations are allowed.
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/bom_operation_request'
+        custom_fields:
+          description: Custom field values to associate with this BOM.
+          type: array
+          maxItems: 250
+          items:
+            $ref: '#/components/schemas/custom_field'
+    update-a-bom-request:
+      type: object
+      description: Update payload for a Bill of Materials. To <b>add</b> a component or operation, include it in the <code>components</code> / <code>operations</code> array without <code>bom_component_id</code> / <code>bom_operation_id</code>. To <b>modify</b> an existing row, include it with the corresponding <code>bom_component_id</code> / <code>bom_operation_id</code>. Rows <b>omitted</b> from the array are removed from the BOM. To leave the components or operations list unchanged, omit the field entirely from the payload.
+      properties:
+        billofmaterials_name:
+          $ref: '#/components/schemas/billofmaterials_name'
+        billofmaterials_number:
+          $ref: '#/components/schemas/billofmaterials_number'
+        finished_product_id:
+          $ref: '#/components/schemas/finished_product_id'
+        finished_product_group_id:
+          $ref: '#/components/schemas/finished_product_group_id'
+        finished_product_quantity:
+          $ref: '#/components/schemas/finished_product_quantity'
+        unit:
+          $ref: '#/components/schemas/finished_product_unit'
+        components:
+          description: List of components required to produce the finished product. At least 1 and at most 500 components are allowed.
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/bom_component_request'
+        operations:
+          description: List of manufacturing operations defined in this BOM. At least 1 and at most 500 operations are allowed.
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/bom_operation_request'
+        custom_fields:
+          description: Custom field values to associate with this BOM.
+          type: array
+          maxItems: 250
+          items:
+            $ref: '#/components/schemas/custom_field'
+    update-bom-status-request:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          description: 'New status to apply to the BOM. Allowed Values: <code>active</code> and <code>inactive</code>. The new status must differ from the current status; sending the same value as the existing status is rejected.'
+          type: string
+          example: inactive
+    add-comment-request:
+      type: object
+      required:
+        - description
+      properties:
+        description:
+          description: Content of the comment.
+          type: string
+          example: Component quantities revised for Q2 production.
+    bom_component:
+      type: object
+      properties:
+        bom_component_id:
+          $ref: '#/components/schemas/bom_component_id'
+        item_id:
+          $ref: '#/components/schemas/component_item_id'
+        name:
+          description: Name of the component item.
+          type: string
+          example: Wood
+        item_sku:
+          description: SKU of the component item.
+          type: string
+          example: ''
+        description:
+          description: Description of the component.
+          type: string
+          example: ''
+        quantity:
+          $ref: '#/components/schemas/component_quantity'
+        bom_quantity:
+          description: Quantity as defined in the BOM configuration.
+          type: number
+          format: double
+          example: 1
+        has_bom:
+          description: Indicates whether this component itself has an associated BOM (sub-assembly).
+          type: boolean
+          example: false
+        item_type:
+          description: 'Type of the item. Allowed Values: <code>inventory</code> and <code>service</code>.'
+          type: string
+          example: inventory
+        unit:
+          $ref: '#/components/schemas/component_unit'
+        quantity_decimal_place:
+          description: Decimal precision for the quantity field.
+          type: string
+          example: ''
+        subassembly_bom_id:
+          $ref: '#/components/schemas/subassembly_bom_id'
+        subassembly_bom_version_id:
+          description: Version identifier of the sub-assembly BOM.
+          type: string
+          example: ''
+        subassembly_bom_name:
+          description: Name of the sub-assembly BOM.
+          type: string
+          example: ''
+        stock_on_hand:
+          description: Current stock on hand for this item.
+          type: string
+          example: -21.01
+        available_stock:
+          description: Available stock after accounting for commitments.
+          type: string
+          example: -21.01
+        actual_available_stock:
+          description: Actual available stock quantity.
+          type: string
+          example: -21.01
+        committed_stock:
+          description: Quantity committed to pending orders.
+          type: string
+          example: 1.01
+        actual_committed_stock:
+          description: Actual committed stock quantity.
+          type: string
+          example: 1.01
+        available_for_sale_stock:
+          description: Stock available to be sold or consumed.
+          type: string
+          example: -22.02
+        actual_available_for_sale_stock:
+          description: Actual quantity available for sale.
+          type: string
+          example: -22.02
+    bom_operation:
+      type: object
+      properties:
+        bom_operation_id:
+          $ref: '#/components/schemas/bom_operation_id'
+        operation_id:
+          $ref: '#/components/schemas/master_operation_id'
+        operation_name:
+          description: Name of the operation.
+          type: string
+          example: Manufacturing OPR
+        workcenter_type_id:
+          description: 'ID of the work center type assigned to this operation. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000039041'
+        workcenter_type_name:
+          description: Name of the assigned work center type.
+          type: string
+          example: Manufacturing WCT
+        lead_time:
+          $ref: '#/components/schemas/lead_time'
+        instructions:
+          $ref: '#/components/schemas/instructions'
+        documents:
+          description: Documents attached to this operation.
+          type: array
+          items:
+            type: object
+        blocked_by_operations:
+          $ref: '#/components/schemas/blocked_by_operations'
+        cost_template:
+          description: Cost template assigned to this operation, if any.
+          type: object
+          properties:
+            cost_template_id:
+              description: 'ID of the cost template. Note: This value is a set of numeric characters.'
+              type: string
+              example: ''
+            cost_template_name:
+              description: Name of the cost template.
+              type: string
+              example: ''
+            cost_items:
+              description: List of cost items in the cost template.
+              type: array
+              items:
+                type: object
+    bom_version:
+      type: object
+      properties:
+        version_id:
+          description: 'ID of the BOM version. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000039884'
+        version_name:
+          description: Name of the BOM version.
+          type: string
+          example: Pencil BOM 4 V1
+        version_status:
+          description: 'Status of this version. Allowed Values: <code>active</code> and <code>inactive</code>.'
+          type: string
+          example: active
+        version_start_date:
+          description: 'Date from which this version is effective. Date format: <code>yyyy-MM-dd</code>.'
+          type: string
+          example: '2026-05-08'
+        version_end_date:
+          description: 'Date until which this version is effective. Date format: <code>yyyy-MM-dd</code>.'
+          type: string
+          example: ''
+        created_time:
+          description: ISO 8601 timestamp of when this version was created.
+          type: string
+          example: 2026-05-08T16:05:45+0530
+        last_modified_time:
+          description: ISO 8601 timestamp of the last modification.
+          type: string
+          example: 2026-05-08T16:05:45+0530
+        created_by_id:
+          description: 'ID of the user who created this version. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000032003'
+        created_by_name:
+          description: Name of the user who created this version.
+          type: string
+          example: Suganthan Gnanvelan
+        last_modified_by_id:
+          description: 'ID of the user who last modified this version. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000032003'
+    comment:
+      type: object
+      properties:
+        comment_id:
+          description: 'ID of the comment. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000057297'
+        description:
+          description: Content of the comment.
+          type: string
+          example: Bill of materials updated
+        commented_by_id:
+          description: 'ID of the user who posted the comment. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000032003'
+        commented_by:
+          description: Name of the user who posted the comment.
+          type: string
+          example: Suganthan Gnanvelan
+        comment_type:
+          description: 'Type of comment. Allowed Values: <code>system</code> and <code>user</code>.'
+          type: string
+          example: system
+        date:
+          description: 'Date the comment was posted. Date format: <code>yyyy-MM-dd</code>.'
+          type: string
+          example: '2026-05-11'
+        date_description:
+          description: Relative time description (e.g., "few seconds ago").
+          type: string
+          example: few seconds ago
+        time:
+          description: Time the comment was posted.
+          type: string
+          example: 10:13 AM
+        operation_type:
+          description: Operation type that triggered this comment (e.g., Added, Updated).
+          type: string
+          example: Updated
+        transaction_type:
+          description: Entity type this comment belongs to.
+          type: string
+          example: bill_of_materials
+    bill_of_material_summary:
+      type: object
+      properties:
+        billofmaterials_id:
+          description: 'ID of the Bill of Materials. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000039881'
+        billofmaterials_name:
+          description: Name of the Bill of Materials.
+          type: string
+          example: Pencil BOM 4
+        billofmaterials_number:
+          description: Auto-generated or manually assigned BOM number.
+          type: string
+          example: BOM-00004
+        status:
+          description: 'Overall status of the BOM. Allowed Values: <code>active</code> and <code>inactive</code>.'
+          type: string
+          example: active
+        description:
+          description: Description of this BOM.
+          type: string
+          example: ''
+        finished_product_id:
+          description: 'ID of the finished product this BOM produces. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000046004'
+        finished_product_name:
+          description: Name of the finished product.
+          type: string
+          example: Pencil
+        finished_product_group_id:
+          description: Group identifier of the finished product.
+          type: string
+          example: '3863095000000046007'
+        finished_product_group_name:
+          description: Group name of the finished product.
+          type: string
+          example: Stationery
+        finished_product_quantity:
+          description: Standard output quantity produced per BOM execution.
+          type: string
+          example: '100'
+        finished_product_unit:
+          description: Unit of measurement of the finished product.
+          type: string
+          example: pcs
+        created_time:
+          description: Creation Time of the Bill of Materials.
+          type: string
+          example: 2026-05-08T16:05:45+0530
+        last_modified_time:
+          description: Last Modified time of the Bill of Materials.
+          type: string
+          example: 2026-05-08T16:05:45+0530
+        created_by_id:
+          description: 'Unique identifier for the user who created the Bill of Materials. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000032003'
+        last_modified_by_id:
+          description: 'Unique identifier for the user who last modified the Bill of Materials. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000032003'
+    bill_of_material:
+      type: object
+      properties:
+        billofmaterials_id:
+          $ref: '#/components/schemas/billofmaterials_id'
+        billofmaterials_name:
+          $ref: '#/components/schemas/billofmaterials_name'
+        billofmaterials_number:
+          $ref: '#/components/schemas/billofmaterials_number'
+        version_id:
+          description: 'ID of the currently active BOM version. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000039884'
+        version_name:
+          description: Name of the active BOM version.
+          type: string
+          example: Pencil BOM 4 V1
+        version_start_date:
+          description: 'Effective start date of the active version. Date format: <code>yyyy-MM-dd</code>.'
+          type: string
+          example: '2026-05-08'
+        version_end_date:
+          description: 'Effective end date of the active version. Date format: <code>yyyy-MM-dd</code>.'
+          type: string
+          example: ''
+        version_status:
+          description: 'Status of the active version. Allowed Values: <code>active</code> and <code>inactive</code>.'
+          type: string
+          example: active
+        status:
+          description: 'Overall status of the BOM. Allowed Values: <code>active</code> and <code>inactive</code>.'
+          type: string
+          example: active
+        finished_product_id:
+          $ref: '#/components/schemas/finished_product_id'
+        finished_product_group_id:
+          $ref: '#/components/schemas/finished_product_group_id'
+        finished_product_name:
+          description: Name of the finished product.
+          type: string
+          example: Pencil
+        finished_product_sku:
+          description: SKU of the finished product.
+          type: string
+          example: ''
+        finished_product_quantity:
+          $ref: '#/components/schemas/finished_product_quantity'
+        unit:
+          $ref: '#/components/schemas/finished_product_unit'
+        quantity_decimal_place:
+          description: Decimal precision for the quantity field.
+          type: string
+          example: ''
+        description:
+          $ref: '#/components/schemas/bom_description'
+        associated_mo_count:
+          description: Number of manufacturing orders currently using this BOM.
+          type: integer
+          example: 0
+        is_effective_version:
+          description: Indicates whether the active version is currently in effect.
+          type: boolean
+          example: true
+        custom_fields:
+          description: Custom field values for this BOM.
+          type: array
+          items:
+            $ref: '#/components/schemas/custom_field'
+        custom_fields_hash:
+          description: Key-value map of custom field labels and values.
+          type: object
+          example: {}
+        components:
+          description: List of components required to produce the finished product.
+          type: array
+          items:
+            $ref: '#/components/schemas/bom_component'
+        operations:
+          description: List of manufacturing operations defined in this BOM.
+          type: array
+          items:
+            $ref: '#/components/schemas/bom_operation'
+        comments:
+          description: Audit trail and user comments for this BOM.
+          type: array
+          items:
+            $ref: '#/components/schemas/comment'
+        versions:
+          description: All versions associated with this BOM.
+          type: array
+          items:
+            $ref: '#/components/schemas/bom_version'
+        created_time:
+          description: ISO 8601 timestamp of when the BOM was created.
+          type: string
+          example: 2026-05-08T16:05:45+0530
+        last_modified_time:
+          description: ISO 8601 timestamp of the last modification.
+          type: string
+          example: 2026-05-08T16:05:45+0530
+        created_by_id:
+          description: 'ID of the user who created this BOM. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000032003'
+        last_modified_by_id:
+          description: 'ID of the user who last modified this BOM. Note: This value is a set of numeric characters.'
+          type: string
+          example: '3863095000000032003'
+    create-a-bom-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Bill of materials created
+          readOnly: true
+        bill_of_material:
+          $ref: '#/components/schemas/bill_of_material'
+    update-a-bom-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Bill of materials updated
+          readOnly: true
+        bill_of_material:
+          $ref: '#/components/schemas/bill_of_material'
+    get-a-bom-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        bill_of_material:
+          $ref: '#/components/schemas/bill_of_material'
+    list-bom-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        bill_of_materials:
+          type: array
+          readOnly: true
+          items:
+            $ref: '#/components/schemas/bill_of_material_summary'
+        page_context:
+          type: object
+          readOnly: true
+          properties:
+            page:
+              type: integer
+              description: Current page number.
+              example: 1
+            per_page:
+              type: integer
+              description: Number of records per page.
+              example: 200
+            has_more_page:
+              type: boolean
+              description: Indicates whether more pages of results are available.
+              example: false
+            report_name:
+              type: string
+              description: Name of the report associated with this list view.
+              example: Bill of Materials
+            applied_filter:
+              type: string
+              description: Status filter applied to the current result set.
+              example: Status.Active
+            sort_column:
+              type: string
+              description: Column used for sorting the current result set.
+              example: created_time
+            sort_order:
+              type: string
+              description: Sort order applied to the result set. <code>A</code> for ascending, <code>D</code> for descending.
+              example: D
+    delete-a-bom-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Bill of materials deleted
+          readOnly: true
+    update-bom-status-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Status updated
+          readOnly: true
+    add-comment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Comment added
+          readOnly: true
+        comment:
+          $ref: '#/components/schemas/comment'
+    delete-a-comment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Comment deleted
+          readOnly: true
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.manufacturing.CREATE: Create Bill of Materials
+            ERP.manufacturing.UPDATE: Update Bill of Materials
+            ERP.manufacturing.READ: Read Bill of Materials
+            ERP.manufacturing.DELETE: Delete Bill of Materials
+            ERP.manufacturing.ALL: All permissions for Manufacturing

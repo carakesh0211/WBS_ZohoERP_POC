@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CAPEX &amp; WBS Control Hub</title>
+<link rel="stylesheet" href="/static/styles.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231B5762'/%3E%3Cpath d='M12 5v4M6 19v-4h12v4M12 9v6' stroke='%23fff' stroke-width='2' fill='none'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<a class="skip-link" href="#content">Skip to main content</a>
+
+<!-- ============================ sign-in ============================ -->
+<div class="auth" id="authScreen" hidden>
+  <form class="auth-card" id="loginForm" novalidate>
+    <div class="auth-brand">
+      <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 4v5M5 20v-5h14v5M12 9v6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </svg>
+      <h1>CAPEX &amp; WBS Control Hub</h1>
+    </div>
+    <p class="muted">Every screen in this application is authenticated. Sign in to continue.</p>
+
+    <div class="field">
+      <label for="loginUser">User ID</label>
+      <input id="loginUser" name="user_id" autocomplete="username" autocapitalize="characters"
+             spellcheck="false" required aria-describedby="loginHint">
+    </div>
+    <div class="field">
+      <label for="loginPass">Password</label>
+      <input id="loginPass" name="password" type="password" autocomplete="current-password" required>
+    </div>
+
+    <div id="loginMsg" role="alert" aria-live="assertive"></div>
+
+    <button class="btn-primary btn-block" type="submit" id="loginBtn">Sign in</button>
+
+    <p class="muted small" id="loginHint">
+      Demo identities: <code>U-REQ</code>, <code>U-PM</code>, <code>U-PLH</code>, <code>U-PROC</code>,
+      <code>U-FIN</code>, <code>U-PFC</code>, <code>U-CFO</code>, <code>U-AUD</code>, <code>U-ADM</code>.
+      The password is the user id followed by <code>!demo</code>. These are seeded development
+      credentials, not an enterprise identity provider.
+    </p>
+  </form>
+</div>
+
+<!-- ============================ application shell ============================ -->
+<div class="shell" id="shell" hidden>
+
+  <header class="shellbar">
+    <button class="icon-btn" id="navToggle" type="button"
+            aria-controls="nav" aria-expanded="true">
+      <span aria-hidden="true">☰</span><span class="sr-only">Toggle navigation</span>
+    </button>
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 4v5M5 20v-5h14v5M12 9v6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </svg>
+      <span class="brand-text">CAPEX &amp; WBS Control Hub</span>
+    </div>
+    <div class="ctx">
+      <label class="sr-only" for="entitySel">Legal entity</label>
+      <select id="entitySel"></select>
+      <label class="sr-only" for="plantSel">Plant</label>
+      <select id="plantSel"></select>
+    </div>
+    <div class="spacer"></div>
+    <button class="icon-btn" id="densityBtn" type="button" aria-pressed="false">
+      <span aria-hidden="true">▤</span> <span id="densityLabel">Compact</span>
+    </button>
+    <button class="icon-btn" type="button" data-nav="approvals">
+      <span aria-hidden="true">✔</span> Approvals
+      <span class="badge-count" id="approvalCount">0</span>
+      <span class="sr-only">items awaiting approval</span>
+    </button>
+    <button class="icon-btn" type="button" data-nav="alerts">
+      <span aria-hidden="true">⚠</span> Alerts
+      <span class="badge-count" id="alertCount">0</span>
+      <span class="sr-only">open alerts and exceptions</span>
+    </button>
+    <div class="user-block">
+      <span class="avatar" id="userAvatar" aria-hidden="true">··</span>
+      <span class="user-meta">
+        <span class="user-name" id="userName">—</span>
+        <span class="user-roles" id="userRoles">—</span>
+      </span>
+      <button class="icon-btn" id="signOutBtn" type="button">Sign out</button>
+    </div>
+  </header>
+
+  <div class="body">
+    <button class="nav-scrim" id="navScrim" type="button" tabindex="-1" aria-hidden="true" hidden></button>
+    <nav class="nav" id="nav" aria-label="Primary"></nav>
+    <main class="main" id="main">
+      <div class="page-header">
+        <div class="breadcrumb" id="breadcrumb"></div>
+        <div class="page-title-row">
+          <h1 class="page-title" id="pageTitle">Home</h1>
+          <div class="page-actions" id="pageActions"></div>
+        </div>
+        <div class="header-facts" id="headerFacts"></div>
+      </div>
+      <div class="content" id="content" tabindex="-1">
+        <div class="loading">Loading…</div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<dialog id="dlg" aria-labelledby="dlgTitle">
+  <div class="dlg-head">
+    <h2 id="dlgTitle">Dialog</h2>
+    <button class="icon-btn dlg-close" id="dlgClose" type="button">
+      <span aria-hidden="true">✕</span><span class="sr-only">Close dialog</span>
+    </button>
+  </div>
+  <div class="dlg-msg" id="dlgMsg" role="alert" aria-live="assertive"></div>
+  <div class="dlg-body" id="dlgBody"></div>
+  <div class="dlg-foot" id="dlgFoot"></div>
+</dialog>
+
+<div id="liveRegion" class="sr-only" role="status" aria-live="polite"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

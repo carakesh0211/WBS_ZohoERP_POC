@@ -1,0 +1,326 @@
+"""AUD-C-006 - No role authorization or maker-checker enforcement.
+
+The audited build accepted an arbitrary bearer token and let the request body
+nominate the acting user, so any caller could approve their own request. These
+tests assert the corrected contract:
+
+  * every mutating route refuses an unauthenticated caller with 401;
+  * every mutating route refuses a role that lacks the permission with 403;
+  * the acting user is derived from the server-side session and can never be
+    supplied by the caller;
+  * no approval route permits self-approval (PR, budget revision, capitalisation).
+
+The route table below is checked against the live FastAPI route list, so a new
+mutating endpoint cannot be added without also being authorised here.
+"""
+from __future__ import annotations
+
+import pytest
+
+from app.backend import auth, main
+from conftest import code_of, detail
+
+# ---------------------------------------------------------------- route matrix
+# Each entry: the concrete request to make, the permission the route enforces, and
+# a role that does NOT hold that permission. A synthetic user is created holding
+# exactly that role, so the assertion does not depend on the demo dataset happening
+# to contain a suitably narrow account.
+MUTATING_ROUTES = [
+    # (template, method, url, json body, permission, denied_role)
+    ("/api/auth/logout", "POST", "/api/auth/logout", {}, None, None),
+    ("/api/budget-check", "POST", "/api/budget-check",
+     {"wbs_id": "W-03-01", "amount_rupees": "1000", "budget_head_id": "BH-PM"},
+     "budget.check", "CapitalisationApprover"),
+    ("/api/purchase-requests", "POST", "/api/purchase-requests",
+     {"project_id": "PRJ-01", "wbs_id": "W-03-01", "budget_head_id": "BH-PM",
+      "description": "unauthorised attempt", "amount_rupees": "1000"},
+     "pr.create", "ProcurementApprover"),
+    ("/api/purchase-requests/{pr_id}/approve", "POST", "/api/purchase-requests/PR-015/approve",
+     {"reason": "unauthorised attempt"}, "pr.approve", "Requestor"),
+    ("/api/purchase-requests/convert", "POST", "/api/purchase-requests/convert",
+     {"pr_id": "PR-015", "po_id": "PO-004"}, "po.amend", "Requestor"),
+    ("/api/purchase-orders/{po_id}/amend", "POST", "/api/purchase-orders/PO-004/amend",
+     {"po_line_id": "POL-0004", "new_amount_rupees": "2200000"}, "po.amend", "Requestor"),
+    ("/api/purchase-orders/{po_id}/cancel", "POST", "/api/purchase-orders/PO-004/cancel",
+     {"reason": "unauthorised attempt"}, "po.cancel", "Requestor"),
+    ("/api/purchase-orders/{po_id}/close", "POST", "/api/purchase-orders/PO-004/close",
+     {"reason": "unauthorised attempt"}, "po.close", "Requestor"),
+    ("/api/bills/{bill_id}/void", "POST", "/api/bills/BILL-001/void",
+     {"reason": "unauthorised attempt"}, "bill.void", "Requestor"),
+    ("/api/budget-revisions", "POST", "/api/budget-revisions",
+     {"project_id": "PRJ-01", "wbs_id": "W-03", "budget_head_id": "BH-PM",
+      "kind": "SUPPLEMENT", "amount_rupees": "1000", "reason": "unauthorised attempt"},
+     "revision.create", "ProcurementApprover"),
+    ("/api/budget-revisions/{rev_id}/approve", "POST", "/api/budget-revisions/REV-003/approve",
+     {}, "revision.approve", "Requestor"),
+    ("/api/capitalisation/{cap_id}/allocate", "POST", "/api/capitalisation/CAP-001/allocate",
+     {"wbs_id": "W-01", "asset_name": "Site", "amount_rupees": "1000"},
+     "capitalisation.allocate", "Requestor"),
+    ("/api/capitalisation/{cap_id}/approve", "POST", "/api/capitalisation/CAP-001/approve",
+     {}, "capitalisation.approve", "Requestor"),
+    ("/api/zoho/{connection_id}/authorise", "POST", "/api/zoho/CONN-01/authorise",
+     {}, "connector.manage", "Auditor"),
+    ("/api/zoho/{connection_id}/refresh", "POST", "/api/zoho/CONN-01/refresh",
+     {}, "connector.manage", "Auditor"),
+    ("/api/zoho/{connection_id}/test", "POST", "/api/zoho/CONN-01/test",
+     {}, "connector.manage", "Auditor"),
+    ("/api/zoho/{connection_id}/sync/{module}", "POST", "/api/zoho/CONN-01/sync/bills",
+     {}, "connector.manage", "Auditor"),
+    ("/api/admin/reset", "POST", "/api/admin/reset", {}, "admin.reset", "Auditor"),
+]
+
+PUBLIC_MUTATING_ROUTES = {"/api/auth/login"}
+
+READ_ROUTES = [
+    "/api/auth/me", "/api/bootstrap", "/api/dashboard", "/api/projects/PRJ-01/wbs",
+    "/api/projects/PRJ-01/budget-grid", "/api/purchase-requests", "/api/purchase-orders",
+    "/api/grns", "/api/bills", "/api/reconciliation", "/api/budget-revisions",
+    "/api/capitalisation", "/api/audit", "/api/audit/verify",
+    "/api/reconciliation/exceptions", "/api/zoho/connections", "/api/zoho/inventory",
+    "/api/zoho/scopes", "/api/zoho/CONN-01/health",
+]
+
+
+def _ids(entries):
+    return [f"{e[1]} {e[0]}" for e in entries]
+
+
+# ========================================================= completeness of the matrix
+def test_aud_c_006_every_mutating_route_is_covered_by_the_authorisation_matrix():
+    """A new mutating endpoint must be added to MUTATING_ROUTES to pass this."""
+    live = set()
+    for route in main.app.routes:
+        methods = getattr(route, "methods", None) or set()
+        if not route.path.startswith("/api/"):
+            continue
+        for method in methods:
+            if method in ("POST", "PUT", "PATCH", "DELETE"):
+                live.add(route.path)
+    covered = {entry[0] for entry in MUTATING_ROUTES} | PUBLIC_MUTATING_ROUTES
+    assert live == covered, (
+        f"uncovered mutating routes: {sorted(live - covered)}; "
+        f"stale entries: {sorted(covered - live)}")
+
+
+def test_aud_c_006_public_paths_are_only_health_and_login():
+    assert main.PUBLIC_PATHS == {"/api/health", "/api/auth/login"}
+
+
+# =============================================================== authentication
+@pytest.mark.parametrize("entry", MUTATING_ROUTES, ids=_ids(MUTATING_ROUTES))
+def test_aud_c_006_mutating_route_rejects_an_unauthenticated_caller(client, entry):
+    _template, method, url, body, _perm, _denied = entry
+    resp = client.request(method, url, json=body)
+    assert resp.status_code == 401, f"{method} {url} -> {resp.status_code}"
+    assert detail(resp)["code"] == "NOT_AUTHENTICATED"
+
+
+@pytest.mark.parametrize("url", READ_ROUTES)
+def test_aud_c_006_read_route_rejects_an_unauthenticated_caller(client, url):
+    resp = client.get(url)
+    assert resp.status_code == 401, f"GET {url} -> {resp.status_code}"
+
+
+def test_aud_c_006_health_is_reachable_without_a_session(client):
+    resp = client.get("/api/health")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "ok"
+
+
+def test_aud_c_006_an_arbitrary_bearer_token_is_not_an_identity(client):
+    """The audited build accepted any bearer token at all."""
+    resp = client.get("/api/auth/me", headers={"Authorization": "Bearer let-me-in"})
+    assert resp.status_code == 401
+    assert detail(resp)["code"] == "SESSION_INVALID"
+
+
+def test_aud_c_006_an_unknown_session_header_is_rejected(client):
+    resp = client.get("/api/auth/me", headers={"X-Session": "not-a-session"})
+    assert resp.status_code == 401
+    assert detail(resp)["code"] == "SESSION_INVALID"
+
+
+def test_aud_c_006_a_revoked_session_is_rejected(requestor):
+    assert requestor.get("/api/auth/me").status_code == 200
+    assert requestor.post("/api/auth/logout").status_code == 200
+    after = requestor.get("/api/auth/me")
+    assert after.status_code == 401
+    assert detail(after)["code"] == "SESSION_INVALID"
+
+
+def test_aud_c_006_an_expired_session_is_rejected(requestor, raw_con):
+    raw_con.execute("UPDATE app_session SET expires_at='2000-01-01T00:00:00' WHERE session_id=?",
+                    (requestor.session_id,))
+    raw_con.commit()
+    resp = requestor.get("/api/auth/me")
+    assert resp.status_code == 401
+    assert detail(resp)["code"] == "SESSION_EXPIRED"
+
+
+def test_aud_c_006_bad_password_is_refused(client):
+    resp = client.post("/api/auth/login", json={"user_id": "U-CFO", "password": "wrong"})
+    assert resp.status_code == 401
+
+
+def test_aud_c_006_login_does_not_disclose_which_accounts_exist(client):
+    unknown = client.post("/api/auth/login", json={"user_id": "U-NOBODY", "password": "x"})
+    wrong = client.post("/api/auth/login", json={"user_id": "U-CFO", "password": "x"})
+    assert unknown.status_code == wrong.status_code == 401
+    assert unknown.json() == wrong.json()
+
+
+def test_aud_c_006_a_disabled_account_cannot_log_in(client, raw_con):
+    raw_con.execute("UPDATE app_credential SET disabled=1 WHERE user_id='U-CFO'")
+    raw_con.commit()
+    assert client.post("/api/auth/login",
+                       json={"user_id": "U-CFO", "password": "U-CFO!demo"}).status_code == 401
+
+
+# ================================================================ authorisation
+@pytest.mark.parametrize(
+    "entry", [e for e in MUTATING_ROUTES if e[4]],
+    ids=_ids([e for e in MUTATING_ROUTES if e[4]]))
+def test_aud_c_006_mutating_route_rejects_a_role_without_the_permission(make_user, entry):
+    _template, method, url, body, permission, denied_role = entry
+    assert denied_role not in auth.PERMISSIONS[permission], \
+        f"{denied_role} actually holds {permission}; the matrix is wrong"
+    caller = make_user([denied_role])
+    resp = caller.request(method, url, json=body)
+    assert resp.status_code == 403, f"{method} {url} as {denied_role} -> {resp.status_code}: {resp.text}"
+    assert code_of(resp) == "FORBIDDEN"
+
+
+def test_aud_c_006_a_caller_with_no_role_at_all_can_mutate_nothing(make_user):
+    caller = make_user([])
+    for _template, method, url, body, permission, _denied in MUTATING_ROUTES:
+        if permission is None:
+            continue
+        resp = caller.request(method, url, json=body)
+        assert resp.status_code == 403, f"{method} {url} -> {resp.status_code}"
+
+
+def test_aud_c_006_every_permission_maps_to_known_roles():
+    for permission, roles in auth.PERMISSIONS.items():
+        assert roles, f"{permission} grants nothing"
+        for role in roles:
+            assert role in auth.ROLES, f"{permission} references unknown role {role}"
+
+
+def test_aud_c_006_maker_checker_covers_every_approval_permission():
+    approvals = {p for p in auth.PERMISSIONS if p.endswith(".approve")
+                 or p.endswith(".approve_exception") or p == "bill.void"}
+    assert approvals <= auth.MAKER_CHECKER, \
+        f"approval permissions outside maker-checker: {sorted(approvals - auth.MAKER_CHECKER)}"
+
+
+def test_aud_c_006_administrator_holds_no_financial_approval():
+    """Administration must not be a route to approving spend."""
+    financial = ("pr.approve", "pr.approve_exception", "revision.approve",
+                 "capitalisation.approve", "capitalisation.allocate", "bill.void",
+                 "po.amend", "po.cancel", "po.close", "pr.create", "revision.create")
+    for permission in financial:
+        assert "Administrator" not in auth.PERMISSIONS[permission], permission
+
+
+def test_aud_c_006_auditor_is_read_only():
+    for permission, roles in auth.PERMISSIONS.items():
+        if "Auditor" in roles:
+            assert permission in ("budget.read", "budget.check", "audit.read", "connector.read"), \
+                f"Auditor holds mutating permission {permission}"
+
+
+def test_aud_c_006_bootstrap_reports_only_the_callers_own_permissions(requestor, capitalisation):
+    req_perms = set(requestor.get("/api/bootstrap").json()["permissions"])
+    cfo_perms = set(capitalisation.get("/api/bootstrap").json()["permissions"])
+    assert "pr.create" in req_perms and "pr.create" not in cfo_perms
+    assert "capitalisation.approve" in cfo_perms and "capitalisation.approve" not in req_perms
+
+
+# ============================================ identity cannot be chosen by the caller
+def test_aud_c_006_request_body_cannot_nominate_the_acting_user(requestor, raw_con):
+    resp = requestor.post("/api/purchase-requests", json={
+        "project_id": "PRJ-01", "wbs_id": "W-03-01", "budget_head_id": "BH-PM",
+        "description": "impersonation attempt", "amount_rupees": "1000",
+        # all of these are attempts to name somebody else as the actor
+        "actor": "U-CFO", "user_id": "U-CFO", "requested_by": "U-CFO", "approver": "U-CFO"})
+    assert resp.status_code == 201, resp.text
+    stored = raw_con.execute("SELECT requested_by, approver FROM purchase_request WHERE pr_id=?",
+                             (resp.json()["pr_id"],)).fetchone()
+    assert stored["requested_by"] == "U-REQ"
+    assert stored["approver"] is None
+
+
+def test_aud_c_006_audit_records_the_session_identity_not_a_supplied_one(requestor, auditor):
+    created = requestor.post("/api/purchase-requests", json={
+        "project_id": "PRJ-01", "wbs_id": "W-03-01", "budget_head_id": "BH-PM",
+        "description": "audit actor check", "amount_rupees": "1000",
+        "actor": "U-CFO"}).json()
+    entries = auditor.get("/api/audit").json()
+    match = [e for e in entries if e["object_id"] == created["pr_id"]]
+    assert match and all(e["actor"] == "U-REQ" for e in match)
+
+
+# ================================================================ maker-checker
+def test_aud_c_006_a_purchase_request_cannot_be_self_approved(controller):
+    """U-PFC holds BudgetController (may raise) and FinanceApprover (may approve
+    exceptions), so it is the one identity that can attempt self-approval."""
+    created = controller.post("/api/purchase-requests", json={
+        "project_id": "PRJ-01", "wbs_id": "W-03-01", "budget_head_id": "BH-PM",
+        "description": "self approval attempt", "amount_rupees": "90000000"})
+    assert created.status_code == 201, created.text
+    assert created.json()["status"] == "Exception Pending"
+
+    resp = controller.post(f"/api/purchase-requests/{created.json()['pr_id']}/approve",
+                           json={"reason": "I approve my own request"})
+    assert resp.status_code == 403
+    assert code_of(resp) == "SELF_APPROVAL"
+
+
+def test_aud_c_006_an_independent_approver_may_approve_the_same_request(controller, finance,
+                                                                       raw_con):
+    created = controller.post("/api/purchase-requests", json={
+        "project_id": "PRJ-01", "wbs_id": "W-03-01", "budget_head_id": "BH-PM",
+        "description": "independent approval", "amount_rupees": "90000000"}).json()
+    resp = finance.post(f"/api/purchase-requests/{created['pr_id']}/approve",
+                        json={"reason": "Board-approved overrun, ref CAPEX-COMM/2026/031"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["exception"] is True
+    assert raw_con.execute("SELECT approver FROM purchase_request WHERE pr_id=?",
+                           (created["pr_id"],)).fetchone()[0] == "U-FIN"
+
+
+def test_aud_c_006_an_exception_approval_requires_a_recorded_reason(controller, finance):
+    created = controller.post("/api/purchase-requests", json={
+        "project_id": "PRJ-01", "wbs_id": "W-03-01", "budget_head_id": "BH-PM",
+        "description": "no reason given", "amount_rupees": "90000000"}).json()
+    resp = finance.post(f"/api/purchase-requests/{created['pr_id']}/approve", json={"reason": "  "})
+    assert resp.status_code == 422
+    assert code_of(resp) == "REASON_REQUIRED"
+
+
+def test_aud_c_006_a_budget_revision_cannot_be_self_approved(controller):
+    created = controller.post("/api/budget-revisions", json={
+        "project_id": "PRJ-01", "wbs_id": "W-03", "budget_head_id": "BH-PM",
+        "kind": "SUPPLEMENT", "amount_rupees": "500000",
+        "reason": "self approval attempt"}).json()
+    resp = controller.post(f"/api/budget-revisions/{created['revision_id']}/approve", json={})
+    assert resp.status_code == 403
+    assert code_of(resp) == "SELF_APPROVAL"
+
+
+def test_aud_c_006_a_capitalisation_cannot_be_self_approved(capitalisation, raw_con):
+    """Capitalisation requests have no creation route, so the maker is seeded here."""
+    raw_con.execute("""INSERT INTO capitalisation_request
+        (cap_id, cap_number, project_id, requested_by, requested_at, status, approver,
+         approved_at, cap_date, total_paise, version_no)
+        VALUES ('CAP-SELF','CAP-2026-9999','PRJ-02','U-CFO','2026-08-05T00:00:00','Submitted',
+                NULL,NULL,'2026-08-31',0,1)""")
+    raw_con.commit()
+    resp = capitalisation.post("/api/capitalisation/CAP-SELF/approve", json={})
+    assert resp.status_code == 403
+    assert code_of(resp) == "SELF_APPROVAL"
+
+
+def test_aud_c_006_a_bill_void_is_subject_to_segregation_of_duties():
+    """bill.void is registered as a maker-checker permission."""
+    assert "bill.void" in auth.MAKER_CHECKER

@@ -1,0 +1,1514 @@
+openapi: 3.0.0
+info:
+  title: Addons
+  description: An addon contains additional features that are not part of the subscribed plan, but are made available to customers on purchase of the addon. There are two kinds of addons - one-time and recurring. For a one-time addon, customers pay only once at the time of subscription, whereas for a recurring addon, customers have to pay for the addon each time they pay for the plan's subscription. An addon can be associated with one or more plans of a product.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: addons
+    description: Addons Module
+paths:
+  /addons:
+    x-mcp-group:
+      - Addons
+    post:
+      tags:
+        - addons
+      operationId: create_addon
+      summary: Create an addon
+      description: Create a new addon.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-an-addon-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-an-addon-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.addons.CREATE
+    get:
+      tags:
+        - addons
+      operationId: list_addons
+      summary: List all addons
+      description: List of all addons.
+      parameters:
+        - name: filter_by
+          in: query
+          description: To list addons based on the status, use the parameter <code>filter_by</code>. The allowed values for filter_by are AddonStatus.(<code>All</code>, <code>ACTIVE</code>, <code>INACTIVE</code>,<code>ONETIME</code> and <code>RECURRING</code>)
+          required: false
+          schema:
+            type: string
+          example: AddonStatus.All
+        - name: product_id
+          in: query
+          description: To list addons of a particular product use the parameter <code>product_id</code>.
+          required: false
+          schema:
+            type: string
+          example: '903000000045027'
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-all-addons-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.addons.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /addons/{addon_code}:
+    x-mcp-group:
+      - Addons
+    get:
+      tags:
+        - addons
+      operationId: get_addon
+      summary: Retrieve an addon
+      description: Details for an existing Addon.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/retrieve-an-addon-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.addons.READ
+    put:
+      tags:
+        - addons
+      operationId: update_addon
+      summary: Update an addon
+      description: Update details of an existing addon.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-an-addon-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-an-addon-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.addons.UPDATE
+    delete:
+      tags:
+        - addons
+      operationId: delete_addon
+      summary: Delete an addon
+      description: Delete an existing addon.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-an-addon-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.addons.DELETE
+    parameters:
+      - name: addon_code
+        in: path
+        required: true
+        description: Unique code of the addon.
+        schema:
+          type: string
+        example: Email-basic
+      - $ref: '#/components/parameters/organization_id'
+  /addons/{addon_code}/markasactive:
+    x-mcp-group:
+      - Addons
+    post:
+      tags:
+        - addons
+      operationId: mark_addon_as_active
+      summary: Mark as active
+      description: Change status of the addon to <strong>active</strong>.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-as-active-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.addons.CREATE
+    parameters:
+      - name: addon_code
+        in: path
+        required: true
+        description: Unique code of the addon.
+        schema:
+          type: string
+        example: Email-basic
+      - $ref: '#/components/parameters/organization_id'
+  /addons/{addon_code}/markasinactive:
+    x-mcp-group:
+      - Addons
+    post:
+      tags:
+        - addons
+      operationId: mark_addon_as_inactive
+      summary: Mark as inactive
+      description: Change status of the addon to <strong>inactive</strong>.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mark-as-inactive-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.addons.CREATE
+    parameters:
+      - name: addon_code
+        in: path
+        required: true
+        description: Unique code of the addon.
+        schema:
+          type: string
+        example: Email-basic
+      - $ref: '#/components/parameters/organization_id'
+  /addons/{addon_id}/comments:
+    x-mcp-group:
+      - Addons
+    get:
+      tags:
+        - addons
+      operationId: list_addon_comments
+      summary: List addon comments
+      description: List all comments for an addon.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-addon-comments-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.addons.READ
+    post:
+      tags:
+        - addons
+      operationId: add_addon_comment
+      summary: Add a comment
+      description: Add a comment to an addon.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/add-addon-comment-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/add-addon-comment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.addons.CREATE
+    parameters:
+      - name: addon_id
+        in: path
+        required: true
+        description: Unique numeric ID of the addon.
+        schema:
+          type: string
+        example: '903000000045027'
+      - $ref: '#/components/parameters/organization_id'
+  /addons/{addon_id}/comments/{comment_id}:
+    x-mcp-group:
+      - Addons
+    delete:
+      tags:
+        - addons
+      operationId: delete_addon_comment
+      summary: Delete a comment
+      description: Delete a comment from an addon.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-addon-comment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.addons.DELETE
+    parameters:
+      - name: addon_id
+        in: path
+        required: true
+        description: Unique numeric ID of the addon.
+        schema:
+          type: string
+        example: '903000000045027'
+      - name: comment_id
+        in: path
+        required: true
+        description: Unique numeric ID of the comment.
+        schema:
+          type: string
+        example: '903000000067001'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/addon-response'
+    addon-response:
+      type: object
+      properties:
+        addon_code:
+          $ref: '#/components/schemas/addon_code'
+        name:
+          $ref: '#/components/schemas/name'
+        unit:
+          $ref: '#/components/schemas/unit'
+        unit_name:
+          $ref: '#/components/schemas/unit_name'
+        pricing_scheme:
+          description: Pricing type of the addon can be changed and the values are <code>unit</code>, <code>volume</code>, <code>tier</code> or <code>package</code>.
+          example: package
+        price_brackets:
+          description: Array of objects which contain the start quantity, end quantity, and price.
+          type: array
+          items:
+            type: object
+            properties:
+              start_quantity:
+                $ref: '#/components/schemas/start_quantity'
+              end_quantity:
+                $ref: '#/components/schemas/end_quantity'
+              price:
+                $ref: '#/components/schemas/price'
+        type:
+          $ref: '#/components/schemas/type'
+        interval_unit:
+          $ref: '#/components/schemas/interval_unit'
+        tags:
+          type: array
+          items:
+            type: object
+            properties:
+              tag_option_id:
+                description: ID of the Tag Option.
+                type: string
+                example: '460000000054280'
+              is_tag_mandatory:
+                type: string
+                example: false
+              tag_name:
+                type: string
+                example: Colors
+              tag_id:
+                description: ID of the Tag.
+                type: string
+                example: '460000000054182'
+              tag_option_name:
+                type: string
+                example: Black
+        custom_fields:
+          description: Custom fields for an addon.
+          type: array
+          items:
+            type: object
+            properties:
+              customfield_id:
+                type: string
+                example: '2000000029001'
+              is_active:
+                type: string
+                example: 'true'
+              show_in_all_pdf:
+                type: string
+                example: 'true'
+              value_formatted:
+                type: string
+                example: test
+              data_type:
+                type: string
+                example: string
+              index:
+                type: integer
+                example: 1
+              label:
+                description: Label of the Custom Field.
+                type: string
+                example: cfitem
+              show_on_pdf:
+                type: string
+                example: false
+              placeholder:
+                type: string
+                example: cf_cfitem
+              value:
+                description: Value of the Custom Field.
+                type: string
+                example: test
+        applicable_to_all_plans:
+          $ref: '#/components/schemas/applicable_to_all_plans'
+        plans:
+          description: List of plans that the addon needs to be associated with. If an addon is to be associated with only two plans - "basic" and "professional", then <code>applicable_to_all_plans</code> is set to false. Only the plan codes of the plans that need to be associated with are required.
+          type: array
+          items:
+            type: object
+            properties:
+              plan_code:
+                $ref: '#/components/schemas/plan_code'
+              name:
+                description: The name of the plan.
+                example: Basic
+        status:
+          $ref: '#/components/schemas/status'
+        product_id:
+          $ref: '#/components/schemas/product_id'
+        description:
+          $ref: '#/components/schemas/description'
+        store_markup_description:
+          $ref: '#/components/schemas/store_markup_description'
+        hsn_or_sac:
+          $ref: '#/components/schemas/hsn_or_sac'
+        item_tax_preferences:
+          $ref: '#/components/schemas/item_tax_preferences'
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        updated_time:
+          $ref: '#/components/schemas/updated_time'
+    addon_code:
+      description: Unique string of your choice which lets you identify this addon.
+      type: string
+      example: Email-basic
+    name:
+      description: Name of your choice to be displayed in the interface and invoices.
+      type: string
+      example: Email addon
+    unit:
+      description: Unit of measurement for the addon.
+      type: string
+      example: emails
+    unit_name:
+      description: A name of your choice to refer to one unit of the addon.
+      type: string
+      example: Email
+    pricing_scheme:
+      description: Pricing type of the addon can be changed and the values are <code>unit</code>, <code>volume</code>, <code>tier</code> or <code>package</code>.
+      type: string
+      example: unit
+      default: unit
+    price_brackets:
+      description: Array of objects which contain the start quantity, end quantity, and price.
+      type: array
+      items:
+        type: object
+        properties:
+          start_quantity:
+            $ref: '#/components/schemas/start_quantity'
+          end_quantity:
+            $ref: '#/components/schemas/end_quantity'
+          price:
+            $ref: '#/components/schemas/price'
+    start_quantity:
+      description: Lower limit of the addon range.
+      type: integer
+      example: 1
+      x-required_info: for "volume" and "tier" pricing schemes.
+    end_quantity:
+      description: Upper limit of the addon range.
+      type: integer
+      example: 50
+      x-required_info: for "volume", "tier" and "package" pricing schemes.
+    price:
+      description: Per unit cost of the addon for the selected range. For the "package" pricing scheme, this would be the price of the specified quantity of addons.
+      type: number
+      format: double
+      example: 10
+    type:
+      description: Indicates type of the addon. This could be either <code>recurring</code> or <code>one_time</code>.
+      type: string
+      example: recurring
+      default: recurring
+    interval_unit:
+      description: The billing frequency of the addon only if type is recurring and the values can be <code>monthly</code> or <code>yearly</code>.
+      type: string
+      example: monthly
+      default: monthly
+    tags:
+      type: array
+      description: List of tags to be associated with the addon. You can create your own tags and associate them with the addon. This will help you to easily identify and filter addons based on the tags associated with them.
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+    tag_id:
+      description: ID of the Tag.
+      type: string
+      example: '460000000054182'
+    tag_option_id:
+      description: ID of the Tag Option.
+      type: string
+      example: '460000000054280'
+    label:
+      description: Label of the Custom Field.
+      type: string
+      example: cfitem
+    value:
+      description: Value of the Custom Field.
+      type: string
+      example: test
+    custom_fields:
+      description: Custom fields for an addon.
+      type: array
+      items:
+        type: object
+        properties:
+          label:
+            $ref: '#/components/schemas/label'
+          value:
+            $ref: '#/components/schemas/value'
+    applicable_to_all_plans:
+      description: If the addon is to be associated with all plans, applicable_to_all_plans is set to <code>true</code>; otherwise, it is set to <code>false</code>.
+      type: boolean
+      example: false
+      default: true
+    plans:
+      description: List of plans that the addon needs to be associated with. If an addon is to be associated with only two plans - "basic" and "professional", then <code>applicable_to_all_plans</code> is set to false. Only the plan codes of the plans that need to be associated with are required.
+      type: array
+      items:
+        type: object
+        properties:
+          plan_code:
+            $ref: '#/components/schemas/plan_code'
+          name:
+            description: The name of the plan.
+            example: Basic
+    plan_code:
+      description: The plan code of the plan to which the addon is to be applied.
+      type: string
+      example: basic-monthly
+    status:
+      description: Status of the addon. It can either be <code>active</code> or <code>inactive</code>.
+      type: string
+      example: active
+    product_id:
+      description: Product ID with which you want to associate this addon.
+      type: string
+      example: '903000000045027'
+    description:
+      description: Short description regarding the addon.
+      type: string
+      example: The addon for additional email support
+    store_markup_description:
+      description: Long description regarding the addon.
+      type: string
+      example: Mailbox Storage-100GB | User & Docs Storage-500GB | User
+    tax_id:
+      description: Tax ID to which you would like to associate with this addon.
+      type: string
+      example: '903000000065300'
+      default: no tax will be associated
+    tax_exemption_id:
+      description: Unique ID of the tax exemption.
+      type: string
+      example: '903000006345'
+    tax_exemption_code:
+      description: Unique code of the tax exemption.
+      type: string
+      example: GST FREE
+    is_taxable:
+      description: Set to true if addon must be tax inclusive.
+      type: string
+      example: true
+    hsn_or_sac:
+      description: HSN or SAC code for the Goods/Services addon.
+      type: string
+      example: '74191010'
+    item_tax_preferences:
+      description: Tax preference for addon
+      x-node_available_in:
+        - India GST
+      x-node_unavailable_in: []
+      type: array
+      items:
+        type: object
+        properties:
+          tax_specification:
+            $ref: '#/components/schemas/tax_specification'
+          tax_name:
+            $ref: '#/components/schemas/tax_name'
+          tax_percentage:
+            $ref: '#/components/schemas/tax_percentage'
+          tax_id:
+            $ref: '#/components/schemas/tax_id'
+    tax_specification:
+      description: Tax specification for the addon. It can be either <code>inter</code> or <code>intra</code>.
+      type: string
+      example: intra
+    tax_name:
+      description: Name of the tax associated with this addon.
+      type: string
+      example: GST
+    tax_percentage:
+      description: Percentage of tax applied to the plan/addon.
+      type: number
+      example: 10
+    stock_on_hand:
+      description: Stock available for the addon.
+      type: string
+      example: 20
+    created_time:
+      description: Time at which the addon was created.
+      type: string
+      example: 2016-06-05T18:02:26+0530
+    updated_time:
+      description: Time at which the addon details were last updated.
+      type: string
+      example: 2016-06-05T18:02:26+0530
+    create-an-addon-request:
+      oneOf:
+        - type: object
+          required:
+            - addon_code
+            - name
+            - unit_name
+            - price_brackets
+            - product_id
+            - plans
+          properties:
+            addon_code:
+              $ref: '#/components/schemas/addon_code'
+            name:
+              $ref: '#/components/schemas/name'
+            unit_name:
+              $ref: '#/components/schemas/unit_name'
+            pricing_scheme:
+              description: Pricing type of the addon can be changed and the values are <code>unit</code>, <code>volume</code>, <code>tier</code> or <code>package</code>.
+              type: string
+              example: tier
+            price_brackets:
+              description: Array of objects which contain the start quantity, end quantity, and price.
+              type: array
+              items:
+                type: object
+                required:
+                  - start_quantity
+                  - end_quantity
+                  - price
+                properties:
+                  start_quantity:
+                    $ref: '#/components/schemas/start_quantity'
+                  end_quantity:
+                    $ref: '#/components/schemas/end_quantity'
+                  price:
+                    $ref: '#/components/schemas/price'
+            type:
+              $ref: '#/components/schemas/type'
+            interval_unit:
+              $ref: '#/components/schemas/interval_unit'
+            tags:
+              $ref: '#/components/schemas/tags'
+            custom_fields:
+              $ref: '#/components/schemas/custom_fields'
+            applicable_to_all_plans:
+              $ref: '#/components/schemas/applicable_to_all_plans'
+            plans:
+              description: List of plans that the addon needs to be associated with. If an addon is to be associated with only two plans - "basic" and "professional", then <code>applicable_to_all_plans</code> is set to false. Only the plan codes of the plans that need to be associated with are required.
+              type: array
+              items:
+                type: object
+                required:
+                  - plan_code
+                properties:
+                  plan_code:
+                    $ref: '#/components/schemas/plan_code'
+            product_id:
+              $ref: '#/components/schemas/product_id'
+            description:
+              $ref: '#/components/schemas/description'
+            store_markup_description:
+              $ref: '#/components/schemas/store_markup_description'
+            tax_id:
+              $ref: '#/components/schemas/tax_id'
+            hsn_or_sac:
+              $ref: '#/components/schemas/hsn_or_sac'
+            item_tax_preferences:
+              $ref: '#/components/schemas/item_tax_preferences'
+            tax_exemption_id:
+              $ref: '#/components/schemas/tax_exemption_id'
+            tax_exemption_code:
+              $ref: '#/components/schemas/tax_exemption_code'
+        - type: object
+          required:
+            - addon_code
+            - name
+            - unit_name
+            - price_brackets
+            - product_id
+            - plans
+          properties:
+            addon_code:
+              $ref: '#/components/schemas/addon_code'
+            name:
+              $ref: '#/components/schemas/name'
+            unit_name:
+              $ref: '#/components/schemas/unit_name'
+            pricing_scheme:
+              description: Pricing type of the addon can be changed and the values are <code>unit</code>, <code>volume</code>, <code>tier</code> or <code>package</code>.
+              type: string
+              example: package
+            price_brackets:
+              description: Array of objects which contain the start quantity, end quantity, and price.
+              type: array
+              items:
+                type: object
+                required:
+                  - end_quantity
+                  - price
+                properties:
+                  end_quantity:
+                    $ref: '#/components/schemas/end_quantity'
+                  price:
+                    $ref: '#/components/schemas/price'
+            type:
+              $ref: '#/components/schemas/type'
+            interval_unit:
+              $ref: '#/components/schemas/interval_unit'
+            tags:
+              $ref: '#/components/schemas/tags'
+            custom_fields:
+              $ref: '#/components/schemas/custom_fields'
+            applicable_to_all_plans:
+              $ref: '#/components/schemas/applicable_to_all_plans'
+            plans:
+              description: List of plans that the addon needs to be associated with. If an addon is to be associated with only two plans - "basic" and "professional", then <code>applicable_to_all_plans</code> is set to false. Only the plan codes of the plans that need to be associated with are required.
+              type: array
+              items:
+                type: object
+                required:
+                  - plan_code
+                properties:
+                  plan_code:
+                    $ref: '#/components/schemas/plan_code'
+            product_id:
+              $ref: '#/components/schemas/product_id'
+            description:
+              $ref: '#/components/schemas/description'
+            store_markup_description:
+              $ref: '#/components/schemas/store_markup_description'
+            hsn_or_sac:
+              $ref: '#/components/schemas/hsn_or_sac'
+            item_tax_preferences:
+              $ref: '#/components/schemas/item_tax_preferences'
+            tax_id:
+              $ref: '#/components/schemas/tax_id'
+            tax_exemption_id:
+              $ref: '#/components/schemas/tax_exemption_id'
+            tax_exemption_code:
+              $ref: '#/components/schemas/tax_exemption_code'
+        - type: object
+          required:
+            - addon_code
+            - name
+            - unit_name
+            - price_brackets
+            - product_id
+            - plans
+          properties:
+            addon_code:
+              $ref: '#/components/schemas/addon_code'
+            name:
+              $ref: '#/components/schemas/name'
+            unit_name:
+              $ref: '#/components/schemas/unit_name'
+            pricing_scheme:
+              description: Pricing type of the addon can be changed and the values are <code>unit</code>, <code>volume</code>, <code>tier</code> or <code>package</code>.
+              type: string
+              example: unit
+            price_brackets:
+              description: Array of objects which contain the start quantity, end quantity, and price.
+              type: array
+              items:
+                type: object
+                required:
+                  - price
+                properties:
+                  price:
+                    $ref: '#/components/schemas/price'
+            type:
+              $ref: '#/components/schemas/type'
+            interval_unit:
+              $ref: '#/components/schemas/interval_unit'
+            tags:
+              $ref: '#/components/schemas/tags'
+            custom_fields:
+              $ref: '#/components/schemas/custom_fields'
+            applicable_to_all_plans:
+              $ref: '#/components/schemas/applicable_to_all_plans'
+            plans:
+              description: List of plans that the addon needs to be associated with. If an addon is to be associated with only two plans - "basic" and "professional", then <code>applicable_to_all_plans</code> is set to false. Only the plan codes of the plans that need to be associated with are required.
+              type: array
+              items:
+                type: object
+                required:
+                  - plan_code
+                properties:
+                  plan_code:
+                    $ref: '#/components/schemas/plan_code'
+            product_id:
+              $ref: '#/components/schemas/product_id'
+            description:
+              $ref: '#/components/schemas/description'
+            store_markup_description:
+              $ref: '#/components/schemas/store_markup_description'
+            hsn_or_sac:
+              $ref: '#/components/schemas/hsn_or_sac'
+            item_tax_preferences:
+              $ref: '#/components/schemas/item_tax_preferences'
+            tax_id:
+              $ref: '#/components/schemas/tax_id'
+            tax_exemption_id:
+              $ref: '#/components/schemas/tax_exemption_id'
+            tax_exemption_code:
+              $ref: '#/components/schemas/tax_exemption_code'
+        - type: object
+          required:
+            - addon_code
+            - name
+            - unit_name
+            - price_brackets
+            - product_id
+            - plans
+          properties:
+            addon_code:
+              $ref: '#/components/schemas/addon_code'
+            name:
+              $ref: '#/components/schemas/name'
+            unit_name:
+              $ref: '#/components/schemas/unit_name'
+            pricing_scheme:
+              description: Pricing type of the addon can be changed and the values are <code>unit</code>, <code>volume</code>, <code>tier</code> or <code>package</code>.
+              type: string
+              example: volume
+            price_brackets:
+              description: Array of objects which contain the start quantity, end quantity, and price.
+              type: array
+              items:
+                type: object
+                required:
+                  - start_quantity
+                  - end_quantity
+                  - price
+                properties:
+                  start_quantity:
+                    $ref: '#/components/schemas/start_quantity'
+                  end_quantity:
+                    $ref: '#/components/schemas/end_quantity'
+                  price:
+                    $ref: '#/components/schemas/price'
+            type:
+              $ref: '#/components/schemas/type'
+            interval_unit:
+              $ref: '#/components/schemas/interval_unit'
+            tags:
+              $ref: '#/components/schemas/tags'
+            custom_fields:
+              $ref: '#/components/schemas/custom_fields'
+            applicable_to_all_plans:
+              $ref: '#/components/schemas/applicable_to_all_plans'
+            plans:
+              description: List of plans that the addon needs to be associated with. If an addon is to be associated with only two plans - "basic" and "professional", then <code>applicable_to_all_plans</code> is set to false. Only the plan codes of the plans that need to be associated with are required.
+              type: array
+              items:
+                type: object
+                required:
+                  - plan_code
+                properties:
+                  plan_code:
+                    $ref: '#/components/schemas/plan_code'
+            product_id:
+              $ref: '#/components/schemas/product_id'
+            description:
+              $ref: '#/components/schemas/description'
+            store_markup_description:
+              $ref: '#/components/schemas/store_markup_description'
+            hsn_or_sac:
+              $ref: '#/components/schemas/hsn_or_sac'
+            item_tax_preferences:
+              $ref: '#/components/schemas/item_tax_preferences'
+            tax_id:
+              $ref: '#/components/schemas/tax_id'
+            tax_exemption_id:
+              $ref: '#/components/schemas/tax_exemption_id'
+            tax_exemption_code:
+              $ref: '#/components/schemas/tax_exemption_code'
+    create-an-addon-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The addon has been created
+          readOnly: true
+        addon:
+          $ref: '#/components/schemas/addon-response'
+    list-all-addons-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        addons:
+          type: array
+          items:
+            type: object
+            properties:
+              addon_code:
+                $ref: '#/components/schemas/addon_code'
+              name:
+                $ref: '#/components/schemas/name'
+              unit:
+                $ref: '#/components/schemas/unit'
+              unit_name:
+                $ref: '#/components/schemas/unit_name'
+              pricing_scheme:
+                $ref: '#/components/schemas/pricing_scheme'
+              price_brackets:
+                description: Array of objects which contain the start quantity, end quantity, and price.
+                type: array
+                items:
+                  type: object
+                  properties:
+                    start_quantity:
+                      $ref: '#/components/schemas/start_quantity'
+                    end_quantity:
+                      $ref: '#/components/schemas/end_quantity'
+                    price:
+                      $ref: '#/components/schemas/price'
+              type:
+                $ref: '#/components/schemas/type'
+              interval_unit:
+                $ref: '#/components/schemas/interval_unit'
+              tags:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    tag_option_id:
+                      description: ID of the Tag Option.
+                      type: string
+                      example: '460000000054278'
+                    is_tag_mandatory:
+                      type: string
+                      example: false
+                    tag_name:
+                      type: string
+                      example: Colors
+                    tag_id:
+                      description: ID of the Tag.
+                      type: string
+                      example: '460000000054182'
+                    tag_option_name:
+                      type: string
+                      example: Green
+              custom_fields:
+                description: Custom fields for an addon.
+                type: array
+                items:
+                  type: object
+                  properties:
+                    customfield_id:
+                      type: string
+                      example: '2000000029001'
+                    is_active:
+                      type: string
+                      example: 'true'
+                    show_in_all_pdf:
+                      type: string
+                      example: 'true'
+                    value_formatted:
+                      type: string
+                      example: test
+                    data_type:
+                      type: string
+                      example: string
+                    index:
+                      type: integer
+                      example: 1
+                    label:
+                      description: Label of the Custom Field.
+                      type: string
+                      example: cfitem
+                    show_on_pdf:
+                      type: string
+                      example: false
+                    placeholder:
+                      type: string
+                      example: cf_cfitem
+                    value:
+                      description: Value of the Custom Field.
+                      type: string
+                      example: test
+              applicable_to_all_plans:
+                $ref: '#/components/schemas/applicable_to_all_plans'
+              status:
+                $ref: '#/components/schemas/status'
+              product_id:
+                $ref: '#/components/schemas/product_id'
+              description:
+                $ref: '#/components/schemas/description'
+              store_markup_description:
+                $ref: '#/components/schemas/store_markup_description'
+              hsn_or_sac:
+                $ref: '#/components/schemas/hsn_or_sac'
+              item_tax_preferences:
+                $ref: '#/components/schemas/item_tax_preferences'
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              created_time:
+                $ref: '#/components/schemas/created_time'
+              updated_time:
+                $ref: '#/components/schemas/updated_time'
+    retrieve-an-addon-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        addon:
+          type: object
+          properties:
+            addon_code:
+              $ref: '#/components/schemas/addon_code'
+            name:
+              $ref: '#/components/schemas/name'
+            unit:
+              $ref: '#/components/schemas/unit'
+            unit_name:
+              $ref: '#/components/schemas/unit_name'
+            pricing_scheme:
+              $ref: '#/components/schemas/pricing_scheme'
+            price_brackets:
+              description: Array of objects which contain the start quantity, end quantity, and price.
+              type: array
+              items:
+                type: object
+                properties:
+                  start_quantity:
+                    $ref: '#/components/schemas/start_quantity'
+                  end_quantity:
+                    $ref: '#/components/schemas/end_quantity'
+                  price:
+                    $ref: '#/components/schemas/price'
+            type:
+              $ref: '#/components/schemas/type'
+            interval_unit:
+              $ref: '#/components/schemas/interval_unit'
+            tags:
+              type: array
+              items:
+                type: object
+                properties:
+                  tag_option_id:
+                    description: ID of the Tag Option.
+                    type: string
+                    example: '460000000054280'
+                  is_tag_mandatory:
+                    type: string
+                    example: false
+                  tag_name:
+                    type: string
+                    example: Colors
+                  tag_id:
+                    description: ID of the Tag.
+                    type: string
+                    example: '460000000054182'
+                  tag_option_name:
+                    type: string
+                    example: Black
+            custom_fields:
+              description: Custom fields for an addon.
+              type: array
+              items:
+                type: object
+                properties:
+                  customfield_id:
+                    type: string
+                    example: '2000000029001'
+                  is_active:
+                    type: string
+                    example: 'true'
+                  show_in_all_pdf:
+                    type: string
+                    example: 'true'
+                  value_formatted:
+                    type: string
+                    example: test
+                  data_type:
+                    type: string
+                    example: string
+                  index:
+                    type: integer
+                    example: 1
+                  label:
+                    description: Label of the Custom Field.
+                    type: string
+                    example: cfitem
+                  show_on_pdf:
+                    type: string
+                    example: false
+                  placeholder:
+                    type: string
+                    example: cf_cfitem
+                  value:
+                    description: Value of the Custom Field.
+                    type: string
+                    example: test
+            applicable_to_all_plans:
+              $ref: '#/components/schemas/applicable_to_all_plans'
+            plans:
+              description: List of plans that the addon needs to be associated with. If an addon is to be associated with only two plans - "basic" and "professional", then <code>applicable_to_all_plans</code> is set to false. Only the plan codes of the plans that need to be associated with are required.
+              type: array
+              items:
+                type: object
+                properties:
+                  plan_code:
+                    $ref: '#/components/schemas/plan_code'
+                  name:
+                    description: The name of the plan.
+                    example: Basic
+            status:
+              $ref: '#/components/schemas/status'
+            product_id:
+              $ref: '#/components/schemas/product_id'
+            description:
+              $ref: '#/components/schemas/description'
+            store_markup_description:
+              $ref: '#/components/schemas/store_markup_description'
+            hsn_or_sac:
+              $ref: '#/components/schemas/hsn_or_sac'
+            item_tax_preferences:
+              $ref: '#/components/schemas/item_tax_preferences'
+            tax_id:
+              $ref: '#/components/schemas/tax_id'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            updated_time:
+              $ref: '#/components/schemas/updated_time'
+    update-an-addon-request:
+      required:
+        - addon_code
+        - name
+        - unit_name
+        - price_brackets
+        - plans
+        - product_id
+      type: object
+      properties:
+        addon_code:
+          $ref: '#/components/schemas/addon_code'
+        name:
+          $ref: '#/components/schemas/name'
+        unit_name:
+          $ref: '#/components/schemas/unit_name'
+        pricing_scheme:
+          $ref: '#/components/schemas/pricing_scheme'
+        price_brackets:
+          description: Array of objects which contain the start quantity, end quantity, and price.
+          type: array
+          items:
+            type: object
+            required:
+              - start_quantity
+              - end_quantity
+              - price
+            properties:
+              start_quantity:
+                $ref: '#/components/schemas/start_quantity'
+              end_quantity:
+                $ref: '#/components/schemas/end_quantity'
+              price:
+                $ref: '#/components/schemas/price'
+        type:
+          $ref: '#/components/schemas/type'
+        interval_unit:
+          $ref: '#/components/schemas/interval_unit'
+        tags:
+          type: array
+          description: List of tags to be associated with the addon. If you want to associate a tag, you need to provide both the tag_id and tag_option_id.
+          items:
+            type: object
+            properties:
+              tag_id:
+                description: ID of the Tag.
+                type: string
+                example: '460000000054182'
+              tag_option_id:
+                description: ID of the Tag Option.
+                type: string
+                example: '460000000054278'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        applicable_to_all_plans:
+          $ref: '#/components/schemas/applicable_to_all_plans'
+        plans:
+          description: List of plans that the addon needs to be associated with. If an addon is to be associated with only two plans - "basic" and "professional", then <code>applicable_to_all_plans</code> is set to false. Only the plan codes of the plans that need to be associated with are required.
+          type: array
+          items:
+            type: object
+            required:
+              - plan_code
+            properties:
+              plan_code:
+                $ref: '#/components/schemas/plan_code'
+              name:
+                description: The name of the plan.
+                type: string
+                example: Basic
+        product_id:
+          $ref: '#/components/schemas/product_id'
+        description:
+          $ref: '#/components/schemas/description'
+        store_markup_description:
+          $ref: '#/components/schemas/store_markup_description'
+        hsn_or_sac:
+          $ref: '#/components/schemas/hsn_or_sac'
+        item_tax_preferences:
+          $ref: '#/components/schemas/item_tax_preferences'
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        tax_exemption_id:
+          $ref: '#/components/schemas/tax_exemption_id'
+        tax_exemption_code:
+          $ref: '#/components/schemas/tax_exemption_code'
+    update-an-addon-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The addon details have been updated.
+          readOnly: true
+        addon:
+          type: object
+          properties:
+            addon_code:
+              $ref: '#/components/schemas/addon_code'
+            name:
+              $ref: '#/components/schemas/name'
+            unit:
+              $ref: '#/components/schemas/unit'
+            unit_name:
+              $ref: '#/components/schemas/unit_name'
+            pricing_scheme:
+              $ref: '#/components/schemas/pricing_scheme'
+            price_brackets:
+              description: Array of objects which contain the start quantity, end quantity, and price.
+              type: array
+              items:
+                type: object
+                properties:
+                  start_quantity:
+                    $ref: '#/components/schemas/start_quantity'
+                  end_quantity:
+                    $ref: '#/components/schemas/end_quantity'
+                  price:
+                    $ref: '#/components/schemas/price'
+            type:
+              $ref: '#/components/schemas/type'
+            interval_unit:
+              $ref: '#/components/schemas/interval_unit'
+            tags:
+              type: array
+              items:
+                type: object
+                properties:
+                  tag_option_id:
+                    description: ID of the Tag Option.
+                    type: string
+                    example: '460000000054278'
+                  is_tag_mandatory:
+                    type: string
+                    example: false
+                  tag_name:
+                    type: string
+                    example: Colors
+                  tag_id:
+                    description: ID of the Tag.
+                    type: string
+                    example: '460000000054182'
+                  tag_option_name:
+                    type: string
+                    example: Green
+            custom_fields:
+              description: Custom fields for an addon.
+              type: array
+              items:
+                type: object
+                properties:
+                  customfield_id:
+                    type: string
+                    example: '2000000029001'
+                  is_active:
+                    type: string
+                    example: 'true'
+                  show_in_all_pdf:
+                    type: string
+                    example: 'true'
+                  value_formatted:
+                    type: string
+                    example: test
+                  data_type:
+                    type: string
+                    example: string
+                  index:
+                    type: integer
+                    example: 1
+                  label:
+                    description: Label of the Custom Field.
+                    type: string
+                    example: cfitem
+                  show_on_pdf:
+                    type: string
+                    example: false
+                  placeholder:
+                    type: string
+                    example: cf_cfitem
+                  value:
+                    description: Value of the Custom Field.
+                    type: string
+                    example: test
+            applicable_to_all_plans:
+              $ref: '#/components/schemas/applicable_to_all_plans'
+            plans:
+              description: List of plans that the addon needs to be associated with. If an addon is to be associated with only two plans - "basic" and "professional", then <code>applicable_to_all_plans</code> is set to false. Only the plan codes of the plans that need to be associated with are required.
+              type: array
+              items:
+                type: object
+                properties:
+                  plan_code:
+                    $ref: '#/components/schemas/plan_code'
+                  name:
+                    description: The name of the plan.
+                    example: Basic
+            status:
+              $ref: '#/components/schemas/status'
+            product_id:
+              $ref: '#/components/schemas/product_id'
+            description:
+              $ref: '#/components/schemas/description'
+            store_markup_description:
+              $ref: '#/components/schemas/store_markup_description'
+            hsn_or_sac:
+              $ref: '#/components/schemas/hsn_or_sac'
+            item_tax_preferences:
+              $ref: '#/components/schemas/item_tax_preferences'
+            tax_id:
+              $ref: '#/components/schemas/tax_id'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            updated_time:
+              $ref: '#/components/schemas/updated_time'
+    delete-an-addon-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The addon has been deleted.
+          readOnly: true
+    mark-as-active-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The addon has been marked as active.
+          readOnly: true
+    mark-as-inactive-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The addon has been marked as inactive.
+          readOnly: true
+    comment-response:
+      type: object
+      properties:
+        comment_id:
+          description: Unique ID of the comment.
+          type: string
+          example: '903000000067001'
+        product_id:
+          description: ID of the addon to which the comment belongs.
+          type: string
+          example: '903000000045027'
+        description:
+          description: Content of the comment.
+          type: string
+          example: Changing the addon type to recurring.
+        commented_by_id:
+          description: ID of the user who added the comment.
+          type: string
+          example: '903000000015003'
+        commented_by:
+          description: Name of the user who added the comment.
+          type: string
+          example: John Smith
+        date:
+          description: Date on which the comment was added.
+          type: string
+          example: '2016-06-05'
+        time:
+          description: Time at which the comment was added.
+          type: string
+          example: 5:38 PM
+        is_customer_note:
+          description: Whether the comment is a customer-facing note.
+          type: boolean
+          example: false
+    list-addon-comments-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/comment-response'
+    add-addon-comment-request:
+      required:
+        - description
+      type: object
+      properties:
+        description:
+          description: Content of the comment.
+          type: string
+          example: Changing the addon type to recurring.
+    add-addon-comment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Comment added.
+          readOnly: true
+        comment:
+          $ref: '#/components/schemas/comment-response'
+    delete-addon-comment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The comment has been deleted.
+          readOnly: true
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.addons.CREATE: Create Addons
+            ERP.addons.READ: Read Addons
+            ERP.addons.UPDATE: Update Addons
+            ERP.addons.DELETE: Delete Addons

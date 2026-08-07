@@ -1,0 +1,1534 @@
+openapi: 3.0.0
+info:
+  title: Recurring Expenses
+  description: Recurring expenses are those expenses that repeat itself after a fixed interval of time.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: recurring-expenses
+    description: Recurring-Expenses Module
+paths:
+  /recurringexpenses:
+    x-mcp-group:
+      - Recurring Expenses
+    post:
+      tags:
+        - recurring-expenses
+      operationId: create_recurring_expense
+      summary: Create a recurring expense
+      description: Create a recurring expense.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-recurring-expense-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-recurring-expense-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expenses.CREATE
+    get:
+      tags:
+        - recurring-expenses
+      operationId: list_recurring_expenses
+      summary: List recurring expenses
+      description: List all the Expenses with pagination.
+      parameters:
+        - name: recurrence_name
+          in: query
+          description: 'Search recurring expenses by recurring expense name. Variants: <code>recurrence_name_startswith</code> and <code>recurrence_name_contains</code>. Max-length [100]'
+          required: false
+          schema:
+            type: string
+          example: Monthly Rental
+        - name: last_created_date
+          in: query
+          description: 'Search recurring expenses by date on when last expense was generated. Variants: <code>last_created_date_start</code>, <code>last_created_date_end</code>, <code>last_created_date_before</code> and <code>last_created_date_after</code> . Format [yyyy-mm-dd]'
+          required: false
+          schema:
+            type: string
+          example: 2013-11-18T00:00:00.000Z
+        - name: next_expense_date
+          in: query
+          description: 'Search recurring expenses by date on which next expense will be generated. Variants: <code>next_expense_date_start</code>, <code>next_expense_date_end</code>, <code>next_expense_date_before</code> and <code>next_expense_date_after</code> . Format [yyyy-mm-dd]'
+          required: false
+          schema:
+            type: string
+          example: 2013-12-18T00:00:00.000Z
+        - name: status
+          in: query
+          description: Search expenses by expense status. Allowed Values <code>active</code>, <code>stopped</code> and <code>expired</code>
+          required: false
+          schema:
+            type: string
+          example: active
+        - name: account_id
+          in: query
+          description: Unique identifier of the expense account for the line item.
+          required: false
+          schema:
+            type: string
+          example: 982000000561057
+        - name: account_name
+          in: query
+          description: Search expenses by expense account name. Variants <code>account_name_startswith</code> and <code>account_name_contains</code> . Max-length [100]
+          required: false
+          schema:
+            type: string
+          example: Rent
+        - name: amount
+          in: query
+          description: 'Search expenses by amount. Variants: <code>amount_less_than</code>, <code>amount_less_equals</code>, <code>amount_greater_than</code> and <code>amount_greater_than</code>'
+          required: false
+          schema:
+            type: number
+            format: double
+          example: 112.5
+        - name: customer_name
+          in: query
+          description: 'Search expenses by customer name. Variants: <code>customer_name_startswith</code> and <code>customer_name_contains</code> . Max-length [100]'
+          required: false
+          schema:
+            type: string
+          example: Zylker Inc
+        - name: customer_id
+          in: query
+          description: Search expenses by customer id.
+          required: false
+          schema:
+            type: string
+          example: 982000000567001
+        - name: paid_through_account_id
+          in: query
+          description: Search expenses by paid through account id.
+          required: false
+          schema:
+            type: string
+          example: 982000000567250
+        - name: filter_by
+          in: query
+          description: Filter expenses by expense status. Allowed Values <code>Status.All</code>, <code>Status.Active</code>, <code>Status.Expired</code> and <code>Status.Stopped</code>
+          required: false
+          schema:
+            type: string
+          example: Status.Billable
+        - name: search_text
+          in: query
+          description: Search expenses by account name or description or <code>customer name</code>  or <code>vendor name</code>. Max-length [100] .
+          required: false
+          schema:
+            type: string
+          example: Rent
+        - name: sort_column
+          in: query
+          description: Sort expenses. Allowed Values <code>next_expense_date</code>, <code>account_name</code>, <code>total</code>, <code>last_created_date</code>, <code>recurrence_name</code>, <code>customer_name</code> and <code>created_time</code>
+          required: false
+          schema:
+            type: string
+          example: account_name
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-recurring-expenses-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expenses.READ
+    put:
+      tags:
+        - recurring-expenses
+      operationId: update_recurring_expense_using_custom_field
+      summary: Update an recurring expense using a custom field's unique value
+      description: A custom field will have unique values if it's configured to not accept duplicate values. Now, you can use that custom field's value to update a recurring expense by providing its API name in the X-Unique-Identifier-Key header and its value in the X-Unique-Identifier-Value header. Based on this value, the corresponding recurring expense will be retrieved and updated. Additionally, there is an optional X-Upsert header. If the X-Upsert header is true and the custom field's unique value is not found in any of the existing recurring expenses, a new recurring expense will be created if the necessary payload details are available.
+      parameters:
+        - name: X-Unique-Identifier-Key
+          in: header
+          description: Unique CustomField Api Name.
+          required: true
+          schema:
+            type: string
+            example: cf_unique_cf
+        - name: X-Unique-Identifier-Value
+          in: header
+          description: Unique CustomField Value.
+          required: true
+          schema:
+            type: string
+            example: unique Value
+        - name: X-Upsert
+          in: header
+          description: If there is no record is found unique custom field value , will create new invoice.
+          required: false
+          schema:
+            type: boolean
+            example: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-recurring-expense-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-recurring-expense-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expenses.UPDATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /recurringexpenses/{recurring_expense_id}:
+    x-mcp-group:
+      - Recurring Expenses
+    put:
+      tags:
+        - recurring-expenses
+      operationId: update_recurring_expense
+      summary: Update a recurring expense
+      description: Update a recurring expense.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-recurring-expense-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-recurring-expense-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expenses.UPDATE
+    get:
+      tags:
+        - recurring-expenses
+      operationId: get_recurring_expense
+      summary: Get a recurring expense
+      description: Get the details of the recurring expense.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-recurring-expense-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expenses.READ
+    delete:
+      tags:
+        - recurring-expenses
+      operationId: delete_recurring_expense
+      summary: Delete a recurring expense
+      description: Deleting an existing recurring expense.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-recurring-expense-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expenses.DELETE
+    parameters:
+      - name: recurring_expense_id
+        in: path
+        required: true
+        description: Unique identifier of the recurring expense.
+        schema:
+          type: string
+        example: 982000000567240
+      - $ref: '#/components/parameters/organization_id'
+  /recurringexpenses/{recurring_expense_id}/status/stop:
+    x-mcp-group:
+      - Recurring Expenses
+    post:
+      tags:
+        - recurring-expenses
+      operationId: stop_recurring_expense
+      summary: Stop a recurring expense
+      description: Stop an active recurring expense.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/stop-a-recurring-expense-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expenses.CREATE
+    parameters:
+      - name: recurring_expense_id
+        in: path
+        required: true
+        description: Unique identifier of the recurring expense.
+        schema:
+          type: string
+        example: 982000000567240
+      - $ref: '#/components/parameters/organization_id'
+  /recurringexpenses/{recurring_expense_id}/status/resume:
+    x-mcp-group:
+      - Recurring Expenses
+    post:
+      tags:
+        - recurring-expenses
+      operationId: resume_recurring_expense
+      summary: Resume a recurring Expense
+      description: Resume a stopped recurring expense.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/resume-a-recurring-expense-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expenses.CREATE
+    parameters:
+      - name: recurring_expense_id
+        in: path
+        required: true
+        description: Unique identifier of the recurring expense.
+        schema:
+          type: string
+        example: 982000000567240
+      - $ref: '#/components/parameters/organization_id'
+  /recurringexpenses/{recurring_expense_id}/expenses:
+    x-mcp-group:
+      - Recurring Expenses
+    get:
+      tags:
+        - recurring-expenses
+      operationId: list_child_expenses_of_recurring_expense
+      summary: List child expenses created
+      description: List child expenses created from recurring expense.
+      parameters:
+        - name: sort_column
+          in: query
+          description: Sort expenses. Allowed Values <code>next_expense_date</code>, <code>account_name</code>, <code>total</code>, <code>last_created_date</code>, <code>recurrence_name</code>, <code>customer_name</code> and <code>created_time</code>
+          required: false
+          schema:
+            type: string
+          example: account_name
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-child-expenses-created-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expenses.READ
+    parameters:
+      - name: recurring_expense_id
+        in: path
+        required: true
+        description: Unique identifier of the recurring expense.
+        schema:
+          type: string
+        example: 982000000567240
+      - $ref: '#/components/parameters/organization_id'
+  /recurringexpenses/{recurring_expense_id}/comments:
+    x-mcp-group:
+      - Recurring Expenses
+    get:
+      tags:
+        - recurring-expenses
+      operationId: list_recurring_expense_history
+      summary: List recurring expense history
+      description: Get history and comments of a recurring expense.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-recurring-expense-history-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.expenses.READ
+    parameters:
+      - name: recurring_expense_id
+        in: path
+        required: true
+        description: Unique identifier of the recurring expense.
+        schema:
+          type: string
+        example: 982000000567240
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/recurring_expense-response'
+    recurring_expense-response:
+      type: object
+      properties:
+        account_id:
+          $ref: '#/components/schemas/account_id'
+        recurrence_name:
+          $ref: '#/components/schemas/recurrence_name'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        is_pre_gst:
+          $ref: '#/components/schemas/is_pre_gst'
+        source_of_supply:
+          $ref: '#/components/schemas/source_of_supply'
+        destination_of_supply:
+          $ref: '#/components/schemas/destination_of_supply'
+        place_of_supply:
+          $ref: '#/components/schemas/place_of_supply'
+        gst_no:
+          $ref: '#/components/schemas/gst_no'
+        gst_treatment:
+          $ref: '#/components/schemas/gst_treatment'
+        destination_of_supply_state:
+          $ref: '#/components/schemas/destination_of_supply_state'
+        hsn_or_sac:
+          $ref: '#/components/schemas/hsn_or_sac'
+        reverse_charge_tax_id:
+          $ref: '#/components/schemas/reverse_charge_tax_id'
+        reverse_charge_tax_name:
+          $ref: '#/components/schemas/reverse_charge_tax_name'
+        reverse_charge_tax_percentage:
+          $ref: '#/components/schemas/reverse_charge_tax_percentage'
+        reverse_charge_tax_amount:
+          $ref: '#/components/schemas/reverse_charge_tax_amount'
+        is_reverse_charge_applied:
+          $ref: '#/components/schemas/is_reverse_charge_applied'
+        reverse_charge_vat_total:
+          $ref: '#/components/schemas/reverse_charge_vat_total'
+        recurrence_frequency:
+          $ref: '#/components/schemas/recurrence_frequency'
+        repeat_every:
+          $ref: '#/components/schemas/repeat_every'
+        amount:
+          $ref: '#/components/schemas/amount'
+        total:
+          $ref: '#/components/schemas/total'
+        sub_total:
+          $ref: '#/components/schemas/sub_total'
+        bcy_total:
+          $ref: '#/components/schemas/bcy_total'
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        tax_name:
+          $ref: '#/components/schemas/tax_name'
+        tax_percentage:
+          $ref: '#/components/schemas/tax_percentage'
+        created_time:
+          $ref: '#/components/schemas/created_time'
+        last_modified_time:
+          $ref: '#/components/schemas/last_modified_time'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        is_billable:
+          $ref: '#/components/schemas/is_billable'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        project_id:
+          $ref: '#/components/schemas/project_id'
+        project_name:
+          $ref: '#/components/schemas/project_name'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        location_name:
+          $ref: '#/components/schemas/location_name'
+        tags:
+          $ref: '#/components/schemas/tags_response'
+        line_item:
+          type: object
+          properties:
+            line_item_id:
+              $ref: '#/components/schemas/line_item_id'
+            account_id:
+              $ref: '#/components/schemas/account_id'
+            account_name:
+              $ref: '#/components/schemas/account_name'
+            description:
+              $ref: '#/components/schemas/description'
+            tax_amount:
+              $ref: '#/components/schemas/tax_amount'
+            tax_id:
+              $ref: '#/components/schemas/tax_id'
+            tax_name:
+              $ref: '#/components/schemas/tax_name'
+            tax_type:
+              $ref: '#/components/schemas/tax_type'
+            tax_percentage:
+              $ref: '#/components/schemas/tax_percentage'
+            item_total:
+              $ref: '#/components/schemas/item_total'
+            item_order:
+              $ref: '#/components/schemas/item_order'
+            hsn_or_sac:
+              $ref: '#/components/schemas/hsn_or_sac'
+            reverse_charge_tax_id:
+              $ref: '#/components/schemas/reverse_charge_tax_id'
+            reverse_charge_tax_name:
+              $ref: '#/components/schemas/reverse_charge_tax_name'
+            reverse_charge_tax_percentage:
+              $ref: '#/components/schemas/reverse_charge_tax_percentage'
+            reverse_charge_tax_amount:
+              $ref: '#/components/schemas/reverse_charge_tax_amount'
+            tags:
+              $ref: '#/components/schemas/tags_response'
+    recurring_expense_id:
+      type: string
+      example: 982000000567240
+    recurrence_name:
+      description: Name of the Recurring Expense. Max-length [100]
+      type: string
+      example: Monthly Rental
+    last_created_date:
+      description: 'Search recurring expenses by date on when last expense was generated. Variants: <code>last_created_date_start</code>, <code>last_created_date_end</code>, <code>last_created_date_before</code> and <code>last_created_date_after</code> . Format [yyyy-mm-dd]'
+      type: string
+      example: 2013-11-18T00:00:00.000Z
+    next_expense_date:
+      description: 'Search recurring expenses by date on which next expense will be generated. Variants: <code>next_expense_date_start</code>, <code>next_expense_date_end</code>, <code>next_expense_date_before</code> and <code>next_expense_date_after</code> . Format [yyyy-mm-dd]'
+      type: string
+      example: 2013-12-18T00:00:00.000Z
+    gst_no:
+      description: 15 digit GST identification number of the vendor.
+      type: string
+      example: 22AAAAA0000A1Z5
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    source_of_supply:
+      description: Place from where the goods/services are supplied. (If not given, <code>place of contact</code> given for the contact will be taken)
+      type: string
+      example: AP
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    destination_of_supply:
+      description: Place where the goods/services are supplied to. (If not given, organization's home state will be taken)
+      type: string
+      example: TN
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    place_of_supply:
+      description: 'Place of supply for GST (Indian state/UT code where the expense is treated as supplied). If omitted, contact or organization defaults may apply. Example: <code>TN</code> (Tamil Nadu).'
+      type: string
+      example: TN
+    reverse_charge_tax_id:
+      description: 'ID of the reverse charge tax when the transaction is under reverse charge in GST. Note: This value is a set of numeric characters.'
+      type: string
+      example: 982000000567254
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    tax_exemption_code:
+      description: Enter the code for tax exemption.
+      type: string
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    tax_exemption_id:
+      description: Enter ID of the tax exemption.
+      type: string
+      example: 982000000567267
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    hsn_or_sac:
+      description: Add HSN/SAC code for your goods/services.
+      type: string
+      example: 80540
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    reverse_charge_tax_name:
+      description: Enter reverse charge tax name.
+      type: string
+      example: inter
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    reverse_charge_tax_percentage:
+      description: Tax percentage of the reverse charge.
+      type: number
+      format: double
+      example: 10
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    reverse_charge_tax_amount:
+      description: Tax amount of the reverse charge.
+      type: number
+      format: double
+      example: 10
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    is_pre_gst:
+      description: Applicable for transactions that fall before july 1, 2017.
+      type: boolean
+      example: false
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    gst_treatment:
+      description: Choose whether the contact is GST registered/unregistered/consumer/overseas. Allowed values are <code> business_gst </code> , <code> business_none </code> , <code> overseas </code> , <code> consumer </code>.
+      type: string
+      example: business_gst
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    destination_of_supply_state:
+      description: Place to where the goods/services are supplied.
+      type: string
+      example: AP
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    is_reverse_charge_applied:
+      description: Applicable for transactions where you pay reverse charge.
+      type: boolean
+      example: false
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    reverse_charge_vat_total:
+      description: Total reverse charge tax amount where applicable (for example under reverse charge in GST).
+      type: number
+      format: double
+      example: 10
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    status:
+      description: Status of the recurring expense.
+      type: string
+      example: active
+    account_id:
+      type: string
+      description: Unique identifier of the expense account for the line item.
+      example: 982000000561057
+    account_name:
+      description: For which Account the Expense is raised. Max-length [100]
+      type: string
+      example: Rent
+    amount:
+      description: Recurring Expense amount.
+      type: number
+      format: double
+      example: 112.5
+    customer_name:
+      description: Name of the Custome for which expense is raised. Max-length [100]
+      type: string
+      example: Zylker Inc
+    customer_id:
+      description: Search expenses by customer id.
+      type: string
+      example: 982000000567001
+    paid_through_account_id:
+      description: Search expenses by paid through account id.
+      type: string
+      example: 982000000567250
+    filter_by:
+      description: Filter expenses by expense status. Allowed Values <code>Status.All</code>, <code>Status.Active</code>, <code>Status.Expired</code> and <code>Status.Stopped</code>
+      type: string
+      example: Status.Billable
+    search_text:
+      description: Search expenses by account name or description or <code>customer name</code>  or <code>vendor name</code>. Max-length [100] .
+      type: string
+      example: Rent
+    sort_column:
+      description: Sort expenses. Allowed Values <code>next_expense_date</code>, <code>account_name</code>, <code>total</code>, <code>last_created_date</code>, <code>recurrence_name</code>, <code>customer_name</code> and <code>created_time</code>
+      type: string
+      example: account_name
+    currency_id:
+      type: string
+      description: Unique identifier of the currency used for the recurring expense.
+      example: 982000000567001
+    currency_code:
+      type: string
+      example: USD
+    is_billable:
+      type: boolean
+      description: Indicates whether the expense is billable to a customer.
+      example: true
+    created_time:
+      type: string
+      example: 2013-11-18T02:17:40.080Z
+    last_modified_time:
+      type: string
+      example: ' '
+    description:
+      description: Search recurring expenses by description. Max-length [100]
+      type: string
+      example: ' '
+    recurrence_frequency:
+      type: string
+      description: Frequency at which the recurring expense is generated.
+      example: months
+    repeat_every:
+      type: string
+      description: Interval at which the recurring expense should repeat.
+      example: 1
+    total:
+      type: number
+      format: double
+      example: 128.25
+    tax_id:
+      type: string
+      description: ID of the tax.
+      example: 982000000566007
+    tax_name:
+      type: string
+      example: SalesTax
+    tax_percentage:
+      type: number
+      format: double
+      example: 10.5
+    tax_amount:
+      type: number
+      format: double
+      example: 11.85
+    project_id:
+      type: string
+      description: Unique identifier of the project associated with the recurring expense.
+      example: ' '
+    project_name:
+      type: string
+      example: ' '
+    sub_total:
+      type: number
+      format: double
+      example: 90
+    bcy_total:
+      type: number
+      format: double
+      example: 100
+    is_inclusive_tax:
+      type: boolean
+      description: Indicates whether the tax amount is inclusive in the expense amount.
+      example: false
+    exchange_rate:
+      type: number
+      description: Exchange rate applied for the recurring expense currency.
+      format: double
+      example: 1
+    customfield_id:
+      type: string
+      description: Unique identifier of the custom field.
+      example: '46000000012845'
+    value:
+      description: Value of the Custom Field.
+      type: string
+      example: Normal
+    custom_fields:
+      description: Custom fields for a recurring-expense.
+      type: array
+      items:
+        type: object
+        properties:
+          customfield_id:
+            $ref: '#/components/schemas/customfield_id'
+          value:
+            $ref: '#/components/schemas/value'
+    start_date:
+      description: Start date of the recurring expense. Expenses will not be generated for dates prior to the current date. Format [yyyy-mm-dd].
+      type: string
+      example: 2016-11-19T00:00:00.000Z
+    end_date:
+      description: Date on which recurring expense has to expire. Can be left as empty to run forever. Format [yyyy-mm-dd].
+      type: string
+      example: ' '
+    expense_id:
+      type: string
+      example: 982000000567250
+    date:
+      type: string
+    comment_id:
+      type: string
+      example: 982000000567272
+    commented_by_id:
+      type: string
+      example: 982000000554041
+    commented_by:
+      type: string
+      example: John David
+    operation_type:
+      type: string
+      example: Added
+    transaction_id:
+      type: string
+      example: ' '
+    transaction_type:
+      type: string
+      example: expense
+    time:
+      type: string
+      example: 2.41 AM
+    expense_type:
+      type: string
+      example: non-mileage
+    is_personal:
+      type: boolean
+      example: false
+    line_item_id:
+      type: string
+      description: ID of the line item.
+      example: 10763000000140068
+    tax_type:
+      type: string
+      example: tax
+    item_total:
+      type: string
+      example: 100
+    item_order:
+      type: string
+      description: Order in which the line item appears in the recurring expense.
+      example: 1
+    vendor_name:
+      type: string
+      example: ' '
+    paid_through_account_name:
+      type: string
+      example: Undeposited Funds
+    location_id:
+      description: Location ID.
+      type: string
+      example: '460000000038080'
+    location_name:
+      description: Name of the location.
+      type: string
+    line_items:
+      type: array
+      description: Unique identifier of the line item.
+      items:
+        type: object
+        properties:
+          line_item_id:
+            $ref: '#/components/schemas/line_item_id'
+          account_id:
+            $ref: '#/components/schemas/account_id'
+          description:
+            $ref: '#/components/schemas/description'
+          amount:
+            $ref: '#/components/schemas/amount'
+          tax_id:
+            $ref: '#/components/schemas/tax_id'
+          item_order:
+            $ref: '#/components/schemas/item_order'
+          reverse_charge_tax_id:
+            $ref: '#/components/schemas/reverse_charge_tax_id'
+          tax_exemption_code:
+            $ref: '#/components/schemas/tax_exemption_code'
+          tax_exemption_id:
+            $ref: '#/components/schemas/tax_exemption_id'
+          tags:
+            $ref: '#/components/schemas/tags_response'
+    create-a-recurring-expense-request:
+      required:
+        - account_id
+        - recurrence_name
+        - start_date
+        - recurrence_frequency
+        - repeat_every
+        - amount
+      type: object
+      properties:
+        account_id:
+          $ref: '#/components/schemas/account_id'
+        recurrence_name:
+          $ref: '#/components/schemas/recurrence_name'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        recurrence_frequency:
+          $ref: '#/components/schemas/recurrence_frequency'
+        repeat_every:
+          $ref: '#/components/schemas/repeat_every'
+        gst_no:
+          $ref: '#/components/schemas/gst_no'
+        source_of_supply:
+          $ref: '#/components/schemas/source_of_supply'
+        destination_of_supply:
+          $ref: '#/components/schemas/destination_of_supply'
+        place_of_supply:
+          $ref: '#/components/schemas/place_of_supply'
+        reverse_charge_tax_id:
+          $ref: '#/components/schemas/reverse_charge_tax_id'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        line_items:
+          $ref: '#/components/schemas/line_items'
+        amount:
+          $ref: '#/components/schemas/amount'
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        is_billable:
+          $ref: '#/components/schemas/is_billable'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        project_id:
+          $ref: '#/components/schemas/project_id'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        tags:
+          $ref: '#/components/schemas/tags'
+    create-a-recurring-expense-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The recurring expense has been created
+          readOnly: true
+        recurring_expense:
+          $ref: '#/components/schemas/recurring_expense-response'
+    list-recurring-expenses-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        recurring_expenses:
+          type: array
+          items:
+            type: object
+            properties:
+              recurring_expense_id:
+                $ref: '#/components/schemas/recurring_expense_id'
+              recurrence_name:
+                $ref: '#/components/schemas/recurrence_name'
+              recurrence_frequency:
+                $ref: '#/components/schemas/recurrence_frequency'
+              repeat_every:
+                $ref: '#/components/schemas/repeat_every'
+              last_created_date:
+                $ref: '#/components/schemas/last_created_date'
+              next_expense_date:
+                $ref: '#/components/schemas/next_expense_date'
+              account_name:
+                $ref: '#/components/schemas/account_name'
+              description:
+                $ref: '#/components/schemas/description'
+              currency_id:
+                $ref: '#/components/schemas/currency_id'
+              currency_code:
+                $ref: '#/components/schemas/currency_code'
+              total:
+                $ref: '#/components/schemas/total'
+              is_billable:
+                $ref: '#/components/schemas/is_billable'
+              customer_name:
+                $ref: '#/components/schemas/customer_name'
+              custom_fields:
+                $ref: '#/components/schemas/custom_fields'
+              status:
+                $ref: '#/components/schemas/status'
+              created_time:
+                $ref: '#/components/schemas/created_time'
+              last_modified_time:
+                $ref: '#/components/schemas/last_modified_time'
+              tags:
+                $ref: '#/components/schemas/tags_response'
+        page_context:
+          type: array
+          items:
+            type: object
+            properties:
+              sort_column:
+                $ref: '#/components/schemas/sort_column'
+              filter_by:
+                $ref: '#/components/schemas/filter_by'
+              search_text:
+                $ref: '#/components/schemas/search_text'
+    update-a-recurring-expense-request:
+      required:
+        - account_id
+        - recurrence_name
+        - start_date
+        - recurrence_frequency
+        - repeat_every
+        - amount
+      type: object
+      properties:
+        account_id:
+          $ref: '#/components/schemas/account_id'
+        recurrence_name:
+          $ref: '#/components/schemas/recurrence_name'
+        start_date:
+          $ref: '#/components/schemas/start_date'
+        end_date:
+          $ref: '#/components/schemas/end_date'
+        recurrence_frequency:
+          $ref: '#/components/schemas/recurrence_frequency'
+        repeat_every:
+          $ref: '#/components/schemas/repeat_every'
+        gst_no:
+          $ref: '#/components/schemas/gst_no'
+        source_of_supply:
+          $ref: '#/components/schemas/source_of_supply'
+        destination_of_supply:
+          $ref: '#/components/schemas/destination_of_supply'
+        place_of_supply:
+          $ref: '#/components/schemas/place_of_supply'
+        reverse_charge_tax_id:
+          $ref: '#/components/schemas/reverse_charge_tax_id'
+        location_id:
+          $ref: '#/components/schemas/location_id'
+        line_items:
+          $ref: '#/components/schemas/line_items'
+        amount:
+          $ref: '#/components/schemas/amount'
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        is_billable:
+          $ref: '#/components/schemas/is_billable'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        project_id:
+          $ref: '#/components/schemas/project_id'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        tags:
+          $ref: '#/components/schemas/tags'
+    update-a-recurring-expense-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Recurring expense information has been updated
+          readOnly: true
+        recurring_expense:
+          type: object
+          properties:
+            account_id:
+              $ref: '#/components/schemas/account_id'
+            recurrence_name:
+              $ref: '#/components/schemas/recurrence_name'
+            start_date:
+              $ref: '#/components/schemas/start_date'
+            end_date:
+              $ref: '#/components/schemas/end_date'
+            is_pre_gst:
+              $ref: '#/components/schemas/is_pre_gst'
+            source_of_supply:
+              $ref: '#/components/schemas/source_of_supply'
+            destination_of_supply:
+              $ref: '#/components/schemas/destination_of_supply'
+            place_of_supply:
+              $ref: '#/components/schemas/place_of_supply'
+            gst_no:
+              $ref: '#/components/schemas/gst_no'
+            gst_treatment:
+              $ref: '#/components/schemas/gst_treatment'
+            destination_of_supply_state:
+              $ref: '#/components/schemas/destination_of_supply_state'
+            hsn_or_sac:
+              $ref: '#/components/schemas/hsn_or_sac'
+            reverse_charge_tax_id:
+              $ref: '#/components/schemas/reverse_charge_tax_id'
+            reverse_charge_tax_name:
+              $ref: '#/components/schemas/reverse_charge_tax_name'
+            reverse_charge_tax_percentage:
+              $ref: '#/components/schemas/reverse_charge_tax_percentage'
+            reverse_charge_tax_amount:
+              $ref: '#/components/schemas/reverse_charge_tax_amount'
+            is_reverse_charge_applied:
+              $ref: '#/components/schemas/is_reverse_charge_applied'
+            reverse_charge_vat_total:
+              $ref: '#/components/schemas/reverse_charge_vat_total'
+            recurrence_frequency:
+              $ref: '#/components/schemas/recurrence_frequency'
+            repeat_every:
+              $ref: '#/components/schemas/repeat_every'
+            amount:
+              description: Recurring Expense amount.
+              type: string
+              example: 120.5
+            total:
+              $ref: '#/components/schemas/total'
+            sub_total:
+              $ref: '#/components/schemas/sub_total'
+            bcy_total:
+              $ref: '#/components/schemas/bcy_total'
+            tax_id:
+              $ref: '#/components/schemas/tax_id'
+            tax_name:
+              $ref: '#/components/schemas/tax_name'
+            tax_percentage:
+              $ref: '#/components/schemas/tax_percentage'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            last_modified_time:
+              $ref: '#/components/schemas/last_modified_time'
+            is_inclusive_tax:
+              $ref: '#/components/schemas/is_inclusive_tax'
+            is_billable:
+              $ref: '#/components/schemas/is_billable'
+            customer_id:
+              $ref: '#/components/schemas/customer_id'
+            currency_id:
+              $ref: '#/components/schemas/currency_id'
+            exchange_rate:
+              $ref: '#/components/schemas/exchange_rate'
+            project_id:
+              $ref: '#/components/schemas/project_id'
+            project_name:
+              $ref: '#/components/schemas/project_name'
+            location_id:
+              $ref: '#/components/schemas/location_id'
+            location_name:
+              $ref: '#/components/schemas/location_name'
+            tags:
+              $ref: '#/components/schemas/tags_response'
+            line_item:
+              type: object
+              properties:
+                line_item_id:
+                  $ref: '#/components/schemas/line_item_id'
+                account_id:
+                  $ref: '#/components/schemas/account_id'
+                account_name:
+                  $ref: '#/components/schemas/account_name'
+                description:
+                  $ref: '#/components/schemas/description'
+                tax_amount:
+                  $ref: '#/components/schemas/tax_amount'
+                tax_id:
+                  $ref: '#/components/schemas/tax_id'
+                tax_name:
+                  $ref: '#/components/schemas/tax_name'
+                tax_type:
+                  $ref: '#/components/schemas/tax_type'
+                tax_percentage:
+                  $ref: '#/components/schemas/tax_percentage'
+                item_total:
+                  $ref: '#/components/schemas/item_total'
+                item_order:
+                  $ref: '#/components/schemas/item_order'
+                hsn_or_sac:
+                  $ref: '#/components/schemas/hsn_or_sac'
+                reverse_charge_tax_id:
+                  $ref: '#/components/schemas/reverse_charge_tax_id'
+                reverse_charge_tax_name:
+                  $ref: '#/components/schemas/reverse_charge_tax_name'
+                reverse_charge_tax_percentage:
+                  $ref: '#/components/schemas/reverse_charge_tax_percentage'
+                reverse_charge_tax_amount:
+                  $ref: '#/components/schemas/reverse_charge_tax_amount'
+                tags:
+                  $ref: '#/components/schemas/tags_response'
+    get-a-recurring-expense-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        recurring_expense:
+          type: object
+          properties:
+            recurring_expense_id:
+              $ref: '#/components/schemas/recurring_expense_id'
+            recurrence_name:
+              $ref: '#/components/schemas/recurrence_name'
+            start_date:
+              $ref: '#/components/schemas/start_date'
+            end_date:
+              $ref: '#/components/schemas/end_date'
+            is_pre_gst:
+              $ref: '#/components/schemas/is_pre_gst'
+            source_of_supply:
+              $ref: '#/components/schemas/source_of_supply'
+            destination_of_supply:
+              $ref: '#/components/schemas/destination_of_supply'
+            place_of_supply:
+              $ref: '#/components/schemas/place_of_supply'
+            gst_no:
+              $ref: '#/components/schemas/gst_no'
+            gst_treatment:
+              $ref: '#/components/schemas/gst_treatment'
+            destination_of_supply_state:
+              $ref: '#/components/schemas/destination_of_supply_state'
+            hsn_or_sac:
+              $ref: '#/components/schemas/hsn_or_sac'
+            reverse_charge_tax_id:
+              $ref: '#/components/schemas/reverse_charge_tax_id'
+            reverse_charge_tax_name:
+              $ref: '#/components/schemas/reverse_charge_tax_name'
+            reverse_charge_tax_percentage:
+              $ref: '#/components/schemas/reverse_charge_tax_percentage'
+            reverse_charge_tax_amount:
+              $ref: '#/components/schemas/reverse_charge_tax_amount'
+            is_reverse_charge_applied:
+              $ref: '#/components/schemas/is_reverse_charge_applied'
+            reverse_charge_vat_total:
+              $ref: '#/components/schemas/reverse_charge_vat_total'
+            recurrence_frequency:
+              $ref: '#/components/schemas/recurrence_frequency'
+            repeat_every:
+              $ref: '#/components/schemas/repeat_every'
+            last_created_date:
+              $ref: '#/components/schemas/last_created_date'
+            next_expense_date:
+              $ref: '#/components/schemas/next_expense_date'
+            account_id:
+              $ref: '#/components/schemas/account_id'
+            account_name:
+              $ref: '#/components/schemas/account_name'
+            currency_id:
+              $ref: '#/components/schemas/currency_id'
+            currency_code:
+              $ref: '#/components/schemas/currency_code'
+            exchange_rate:
+              $ref: '#/components/schemas/exchange_rate'
+            tax_id:
+              $ref: '#/components/schemas/tax_id'
+            tax_name:
+              $ref: '#/components/schemas/tax_name'
+            tax_percentage:
+              $ref: '#/components/schemas/tax_percentage'
+            tax_amount:
+              $ref: '#/components/schemas/tax_amount'
+            sub_total:
+              $ref: '#/components/schemas/sub_total'
+            total:
+              $ref: '#/components/schemas/total'
+            bcy_total:
+              $ref: '#/components/schemas/bcy_total'
+            amount:
+              $ref: '#/components/schemas/amount'
+            description:
+              $ref: '#/components/schemas/description'
+            is_inclusive_tax:
+              $ref: '#/components/schemas/is_inclusive_tax'
+            is_billable:
+              $ref: '#/components/schemas/is_billable'
+            customer_id:
+              $ref: '#/components/schemas/customer_id'
+            customer_name:
+              $ref: '#/components/schemas/customer_name'
+            status:
+              $ref: '#/components/schemas/status'
+            created_time:
+              $ref: '#/components/schemas/created_time'
+            last_modified_time:
+              $ref: '#/components/schemas/last_modified_time'
+            project_id:
+              $ref: '#/components/schemas/project_id'
+            project_name:
+              $ref: '#/components/schemas/project_name'
+            location_id:
+              $ref: '#/components/schemas/location_id'
+            location_name:
+              $ref: '#/components/schemas/location_name'
+            tags:
+              $ref: '#/components/schemas/tags_response'
+            line_item:
+              type: object
+              properties:
+                line_item_id:
+                  $ref: '#/components/schemas/line_item_id'
+                account_id:
+                  $ref: '#/components/schemas/account_id'
+                account_name:
+                  $ref: '#/components/schemas/account_name'
+                description:
+                  $ref: '#/components/schemas/description'
+                tax_amount:
+                  $ref: '#/components/schemas/tax_amount'
+                tax_id:
+                  $ref: '#/components/schemas/tax_id'
+                tax_name:
+                  $ref: '#/components/schemas/tax_name'
+                tax_type:
+                  $ref: '#/components/schemas/tax_type'
+                tax_percentage:
+                  $ref: '#/components/schemas/tax_percentage'
+                item_total:
+                  $ref: '#/components/schemas/item_total'
+                item_order:
+                  $ref: '#/components/schemas/item_order'
+                hsn_or_sac:
+                  $ref: '#/components/schemas/hsn_or_sac'
+                reverse_charge_tax_id:
+                  $ref: '#/components/schemas/reverse_charge_tax_id'
+                reverse_charge_tax_name:
+                  $ref: '#/components/schemas/reverse_charge_tax_name'
+                reverse_charge_tax_percentage:
+                  $ref: '#/components/schemas/reverse_charge_tax_percentage'
+                reverse_charge_tax_amount:
+                  $ref: '#/components/schemas/reverse_charge_tax_amount'
+                tags:
+                  $ref: '#/components/schemas/tags_response'
+    delete-a-recurring-expense-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The recurring expense has been deleted.
+          readOnly: true
+    stop-a-recurring-expense-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The recurring expense has been stopped.
+          readOnly: true
+    resume-a-recurring-expense-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The recurring expense has been activated.
+          readOnly: true
+    list-child-expenses-created-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        expensehistory:
+          type: array
+          items:
+            type: object
+            properties:
+              expense_id:
+                $ref: '#/components/schemas/expense_id'
+              date:
+                $ref: '#/components/schemas/date'
+              account_name:
+                $ref: '#/components/schemas/account_name'
+              customer_name:
+                $ref: '#/components/schemas/customer_name'
+              total:
+                $ref: '#/components/schemas/total'
+              status:
+                $ref: '#/components/schemas/status'
+              vendor_name:
+                $ref: '#/components/schemas/vendor_name'
+              paid_through_account_name:
+                $ref: '#/components/schemas/paid_through_account_name'
+        page_context:
+          type: array
+          items:
+            type: object
+            properties:
+              sort_column:
+                $ref: '#/components/schemas/sort_column'
+              filter_by:
+                $ref: '#/components/schemas/filter_by'
+              search_text:
+                $ref: '#/components/schemas/search_text'
+    list-recurring-expense-history-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        comments:
+          type: object
+          properties:
+            comment_id:
+              $ref: '#/components/schemas/comment_id'
+            recurring_expense_id:
+              $ref: '#/components/schemas/recurring_expense_id'
+            description:
+              $ref: '#/components/schemas/description'
+            commented_by_id:
+              $ref: '#/components/schemas/commented_by_id'
+            commented_by:
+              $ref: '#/components/schemas/commented_by'
+            date:
+              $ref: '#/components/schemas/date'
+            time:
+              $ref: '#/components/schemas/time'
+            operation_type:
+              $ref: '#/components/schemas/operation_type'
+            transaction_id:
+              $ref: '#/components/schemas/transaction_id'
+            transaction_type:
+              $ref: '#/components/schemas/transaction_type'
+    tag_id:
+      description: ID of the tag.
+      type: string
+      example: '460000000000567'
+    tag_name:
+      description: Name of the tag.
+      type: string
+      example: Business Unit
+    tag_option_id:
+      description: ID of the tag option.
+      type: string
+      example: '460000000014044'
+    tag_option_name:
+      description: Name of the tag option.
+      type: string
+      example: Sales
+    is_tag_mandatory:
+      description: Used to check if the tag is mandatory.
+      type: boolean
+      example: false
+    tags:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+    tags_response:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_name:
+            $ref: '#/components/schemas/tag_name'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+          tag_option_name:
+            $ref: '#/components/schemas/tag_option_name'
+          is_tag_mandatory:
+            $ref: '#/components/schemas/is_tag_mandatory'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.expenses.CREATE: Create Expenses
+            ERP.expenses.UPDATE: Update Expenses
+            ERP.expenses.READ: Read Expenses
+            ERP.expenses.DELETE: Delete Expenses

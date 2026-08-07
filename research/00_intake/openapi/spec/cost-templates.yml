@@ -1,0 +1,421 @@
+openapi: 3.0.0
+info:
+  title: Cost Templates
+  description: A cost template defines how the manufacturing cost of an item is calculated by grouping different cost components. It acts as a predefined costing structure for each work center type and is automatically applied when jobs are in progress, helping ensure consistent cost calculation and better visibility into manufacturing expenses.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: cost-templates
+    description: Cost Templates Module
+paths:
+  /costtemplates:
+    x-mcp-group:
+      - Cost Templates
+    post:
+      tags:
+        - cost-templates
+      operationId: create_cost_template
+      summary: Create a cost template
+      description: Create a cost template.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-cost-template-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-cost-template-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.CREATE
+    get:
+      tags:
+        - cost-templates
+      operationId: list_cost_templates
+      summary: List cost templates
+      description: List all cost templates.
+      parameters:
+        - name: sort_column
+          in: query
+          description: 'Specify the column field for sorting cost template results. Allowed Values: <code>created_time</code> and <code>last_modified_time</code>.'
+          required: false
+          schema:
+            type: string
+          example: created_time
+        - name: sort_order
+          in: query
+          description: 'Sort order for results. Allowed Values: <code>A</code> (ascending) and <code>D</code> (descending).'
+          required: false
+          schema:
+            type: string
+          example: D
+        - name: search_text
+          in: query
+          description: Search across cost template name.
+          required: false
+          schema:
+            type: string
+          example: Manufacturing
+        - name: page
+          in: query
+          description: Page number for pagination. Default is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+            minimum: 1
+            maximum: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-cost-templates-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /costtemplates/{cost_template_id}:
+    x-mcp-group:
+      - Cost Templates
+    get:
+      tags:
+        - cost-templates
+      operationId: get_cost_template
+      summary: Get a cost template
+      description: Get the details of a cost template.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-cost-template-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.READ
+    put:
+      tags:
+        - cost-templates
+      operationId: update_cost_template
+      summary: Update a cost template
+      description: Update an existing cost template.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-cost-template-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-cost-template-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.UPDATE
+    delete:
+      tags:
+        - cost-templates
+      operationId: delete_cost_template
+      summary: Delete a cost template
+      description: Delete an existing cost template. Cost templates linked to a work center, work center type, or job card cannot be deleted.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-cost-template-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.DELETE
+    parameters:
+      - name: cost_template_id
+        in: path
+        required: true
+        description: 'ID of the cost template. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '982000000011001'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization.
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/cost_template'
+    cost_template_id:
+      description: 'ID of the Cost Template. Note: This value is a set of numeric characters.'
+      type: string
+      example: '982000000011001'
+    cost_template_name:
+      description: 'Name of the cost template. Maximum length: 500 characters.'
+      type: string
+      maxLength: 500
+      example: Manufacturing
+    created_time:
+      description: Creation Time of the Cost Template.
+      type: string
+      example: 2026-05-12T14:05:10+0530
+    last_modified_time:
+      description: Last Modified time of the Cost Template.
+      type: string
+      example: 2026-05-12T14:30:22+0530
+    created_by_id:
+      description: 'Unique identifier for the user who created the cost template. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000053001'
+    last_modified_by_id:
+      description: 'Unique identifier for the user who last modified the cost template. Note: This value is a set of numeric characters.'
+      type: string
+      example: '460000000053001'
+    cost_id:
+      description: 'ID of the cost item. Note: This value is a set of numeric characters.'
+      type: string
+      example: '982000000011101'
+    cost_name:
+      description: 'Name of the cost item (e.g. Labour, Electricity, Equipment Depreciation). Must be <b>unique within the cost template</b> &mdash; two cost items in the same template cannot share a name. Maximum length: 100 characters.'
+      type: string
+      maxLength: 100
+      example: Labour
+    cost_amount:
+      description: Amount for this cost item. Must be greater than 0.
+      type: number
+      format: double
+      minimum: 0.000001
+      example: 100
+    is_fixed:
+      description: Indicates whether this cost is fixed irrespective of the job card duration (<code>true</code>) or scales with it (<code>false</code>). When <code>true</code>, the <code>cost_amount</code> is applied once per job card regardless of how long it runs. When <code>false</code>, the effective cost is <code>cost_amount</code> multiplied by the job card duration.
+      type: boolean
+      example: false
+    cost_account_id:
+      description: Unique identifier of the ledger account to which this cost is posted. Only <b>Liability</b> accounts are accepted; <b>Credit Card</b> and <b>Accounts Payable</b> accounts (both sub-types of Liability) are not allowed. The account must be <b>active</b> and must exist in the organization's Chart of Accounts.
+      type: string
+      example: '3863095000000000474'
+    cost_account_name:
+      description: Name of the ledger account to which this cost is posted.
+      type: string
+      example: Tax Payable
+    cost_item_request:
+      type: object
+      required:
+        - cost_name
+        - cost_amount
+        - is_fixed
+        - cost_account_id
+      properties:
+        cost_name:
+          $ref: '#/components/schemas/cost_name'
+        is_fixed:
+          $ref: '#/components/schemas/is_fixed'
+        cost_amount:
+          $ref: '#/components/schemas/cost_amount'
+        cost_account_id:
+          $ref: '#/components/schemas/cost_account_id'
+    cost_items_request:
+      description: List of individual cost components included in this cost template.
+      type: array
+      minItems: 1
+      maxItems: 100
+      items:
+        $ref: '#/components/schemas/cost_item_request'
+    cost_item:
+      type: object
+      properties:
+        cost_id:
+          $ref: '#/components/schemas/cost_id'
+        cost_name:
+          $ref: '#/components/schemas/cost_name'
+        cost_amount:
+          $ref: '#/components/schemas/cost_amount'
+        is_fixed:
+          $ref: '#/components/schemas/is_fixed'
+        cost_account_id:
+          $ref: '#/components/schemas/cost_account_id'
+        cost_account_name:
+          $ref: '#/components/schemas/cost_account_name'
+    cost_items:
+      description: List of individual cost components included in this cost template.
+      type: array
+      minItems: 1
+      maxItems: 100
+      items:
+        $ref: '#/components/schemas/cost_item'
+    cost_template:
+      type: object
+      properties:
+        cost_template_id:
+          $ref: '#/components/schemas/cost_template_id'
+        cost_template_name:
+          $ref: '#/components/schemas/cost_template_name'
+        cost_items:
+          $ref: '#/components/schemas/cost_items'
+    create-a-cost-template-request:
+      type: object
+      required:
+        - cost_template_name
+        - cost_items
+      properties:
+        cost_template_name:
+          $ref: '#/components/schemas/cost_template_name'
+        cost_items:
+          $ref: '#/components/schemas/cost_items_request'
+    update-a-cost-template-request:
+      type: object
+      description: Update payload for a cost template. To <b>add</b> a cost item, include it in <code>cost_items</code> without a <code>cost_id</code>. To <b>modify</b> an existing cost item, include its <code>cost_id</code>. Cost items <b>omitted</b> from the array are removed from the template. Omit the <code>cost_items</code> field entirely to leave the existing cost items unchanged.
+      properties:
+        cost_template_name:
+          $ref: '#/components/schemas/cost_template_name'
+        cost_items:
+          $ref: '#/components/schemas/cost_items_request'
+    create-a-cost-template-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Cost Template created
+          readOnly: true
+        cost_template:
+          $ref: '#/components/schemas/cost_template'
+    update-a-cost-template-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Cost Template updated
+          readOnly: true
+        cost_template:
+          $ref: '#/components/schemas/cost_template'
+    get-a-cost-template-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        cost_template:
+          $ref: '#/components/schemas/cost_template'
+    list-cost-templates-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        cost_templates:
+          type: array
+          items:
+            type: object
+            properties:
+              cost_template_id:
+                $ref: '#/components/schemas/cost_template_id'
+              cost_template_name:
+                $ref: '#/components/schemas/cost_template_name'
+              created_time:
+                $ref: '#/components/schemas/created_time'
+              last_modified_time:
+                $ref: '#/components/schemas/last_modified_time'
+              created_by_id:
+                $ref: '#/components/schemas/created_by_id'
+              last_modified_by_id:
+                $ref: '#/components/schemas/last_modified_by_id'
+        page_context:
+          type: object
+          readOnly: true
+          properties:
+            page:
+              type: integer
+              description: Current page number.
+              example: 1
+            per_page:
+              type: integer
+              description: Number of records per page.
+              example: 200
+            has_more_page:
+              type: boolean
+              description: Indicates whether more pages of results are available.
+              example: false
+            report_name:
+              type: string
+              description: Name of the report associated with this list view.
+              example: Cost Templates
+            sort_column:
+              type: string
+              description: Column used for sorting the current result set.
+              example: created_time
+            sort_order:
+              type: string
+              description: Sort order applied to the result set. <code>A</code> for ascending, <code>D</code> for descending.
+              example: D
+    delete-a-cost-template-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Cost Template deleted
+          readOnly: true
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.manufacturing.CREATE: Create Cost Templates
+            ERP.manufacturing.UPDATE: Update Cost Templates
+            ERP.manufacturing.READ: Read Cost Templates
+            ERP.manufacturing.DELETE: Delete Cost Templates
+            ERP.manufacturing.ALL: All permissions for Manufacturing

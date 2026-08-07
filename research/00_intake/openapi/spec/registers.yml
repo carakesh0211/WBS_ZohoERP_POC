@@ -1,0 +1,906 @@
+openapi: 3.0.0
+info:
+  title: Registers
+  description: 'Account register APIs for chart of accounts in Zoho ERP: list register transactions, bulk update or delete transactions, bulk action history, budget vs actuals, and bulk update field metadata.'
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: registers
+    description: Registers Module
+paths:
+  /registers/{account_id}/transactions:
+    x-mcp-group:
+      - Registers
+    get:
+      tags:
+        - registers
+      operationId: list_register_transactions
+      summary: List register transactions
+      description: Retrieve transactions for a chart of accounts register (account) as a report view with optional grouping, column selection, and print preferences.
+      parameters:
+        - name: filter_by
+          in: query
+          description: 'Filter transactions by date. Allowed Values: <code>TransactionDate.Today</code>, <code>TransactionDate.ThisWeek</code>, <code>TransactionDate.ThisMonth</code>, <code>TransactionDate.ThisQuarter</code>, <code>TransactionDate.ThisYear</code>, <code>TransactionDate.PreviousDay</code>, <code>TransactionDate.PreviousWeek</code>, <code>TransactionDate.PreviousMonth</code>, <code>TransactionDate.PreviousQuarter</code>, <code>TransactionDate.PreviousYear</code>, and <code>TransactionDate.CustomDate</code>.'
+          required: false
+          schema:
+            type: string
+          example: TransactionDate.ThisMonth
+        - name: from_date
+          in: query
+          description: Start date when using a custom date range. Format <code>yyyy-mm-dd</code>.
+          required: false
+          schema:
+            type: string
+            format: date
+          example: '2026-05-01'
+        - name: to_date
+          in: query
+          description: End date when using a custom date range. Format <code>yyyy-mm-dd</code>.
+          required: false
+          schema:
+            type: string
+            format: date
+          example: '2026-05-31'
+        - name: cash_based
+          in: query
+          description: When <code>true</code>, returns cash-based amounts.
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: account_id
+          in: query
+          description: Comma-separated account IDs to include (max 50).
+          required: false
+          schema:
+            type: string
+          example: '460000000038079'
+        - name: group_by
+          in: query
+          description: JSONArray of report select columns for grouping.
+          required: false
+          schema:
+            type: string
+        - name: sort_column
+          in: query
+          description: 'Sort column. Allowed Values: <code>date</code>, <code>transaction_type</code>, <code>account_type</code>, <code>account_name</code>, and <code>account_code</code>.'
+          required: false
+          schema:
+            type: string
+          example: date
+        - name: optional_columns
+          in: query
+          description: 'Optional columns to include. Allowed Values: <code>account_code</code>, <code>running_balance</code>, and <code>net_amount</code> (comma-separated).'
+          required: false
+          schema:
+            type: string
+          example: running_balance
+        - name: show_fcy
+          in: query
+          description: When <code>true</code>, includes foreign currency amounts.
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: is_select_column_enabled
+          in: query
+          description: When <code>true</code>, enables select-column report flow.
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: is_new_flow
+          in: query
+          description: When <code>true</code>, uses the new report pipeline.
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: is_account_code_column_enabled
+          in: query
+          description: When <code>true</code>, includes the account code column.
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 10.
+          required: false
+          schema:
+            type: integer
+            default: 10
+          example: 10
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-register-transactions-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    parameters:
+      - name: account_id
+        in: path
+        required: true
+        description: Unique identifier of the chart of accounts register (general ledger account).
+        schema:
+          type: string
+        example: '460000000038079'
+      - $ref: '#/components/parameters/organization_id'
+  /registers/{account_id}/bulkhistory:
+    x-mcp-group:
+      - Registers
+    get:
+      tags:
+        - registers
+      operationId: list_register_bulk_action_history
+      summary: List register bulk action history
+      description: List bulk update and bulk delete history for the given account register.
+      parameters:
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 10.
+          required: false
+          schema:
+            type: integer
+            default: 10
+          example: 10
+        - name: sort_column
+          in: query
+          description: 'Sort column. Allowed Values: <code>created_time</code>.'
+          required: false
+          schema:
+            type: string
+          example: created_time
+        - name: sort_order
+          in: query
+          description: 'Sort order. Allowed Values: <code>A</code> and <code>D</code>.'
+          required: false
+          schema:
+            type: string
+          example: D
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-register-bulk-action-history-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    parameters:
+      - name: account_id
+        in: path
+        required: true
+        description: Unique identifier of the chart of accounts register (general ledger account).
+        schema:
+          type: string
+        example: '460000000038079'
+      - $ref: '#/components/parameters/organization_id'
+  /registers/{account_id}/bulkhistory/{comment_id}:
+    x-mcp-group:
+      - Registers
+    get:
+      tags:
+        - registers
+      operationId: get_register_bulk_action_history
+      summary: Get register bulk action history details
+      description: Retrieve details of a single bulk action on the account register, including affected transactions.
+      parameters:
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 10.
+          required: false
+          schema:
+            type: integer
+            default: 10
+          example: 10
+        - name: sort_column
+          in: query
+          description: 'Sort column. Allowed Values: <code>created_time</code>.'
+          required: false
+          schema:
+            type: string
+          example: created_time
+        - name: sort_order
+          in: query
+          description: 'Sort order. Allowed Values: <code>A</code> and <code>D</code>.'
+          required: false
+          schema:
+            type: string
+          example: D
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-register-bulk-action-history-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    parameters:
+      - name: account_id
+        in: path
+        required: true
+        description: Unique identifier of the chart of accounts register (general ledger account).
+        schema:
+          type: string
+        example: '460000000038079'
+      - name: comment_id
+        in: path
+        required: true
+        description: Unique identifier of the bulk action history comment.
+        schema:
+          type: string
+        example: '460000000050041'
+      - $ref: '#/components/parameters/organization_id'
+  /registers/{account_id}/bulkupdate/editpage:
+    x-mcp-group:
+      - Registers
+    get:
+      tags:
+        - registers
+      operationId: get_register_bulk_update_editpage
+      summary: Get register bulk update edit page
+      description: Returns metadata for fields supported when bulk updating transactions on an account register.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-register-bulk-update-editpage-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    parameters:
+      - name: account_id
+        in: path
+        required: true
+        description: Unique identifier of the chart of accounts register (general ledger account).
+        schema:
+          type: string
+        example: '460000000038079'
+      - $ref: '#/components/parameters/organization_id'
+  /registers/{account_id}/budgetvsactuals:
+    x-mcp-group:
+      - Registers
+    get:
+      tags:
+        - registers
+      operationId: get_register_budget_vs_actuals
+      summary: Get register budget vs actuals
+      description: Retrieve budget versus actuals for an account register. When <code>budget_id</code> is provided, returns detailed period breakdown.
+      parameters:
+        - name: budget_id
+          in: query
+          description: ID of the budget. When provided, returns detailed <code>budget_vs_actuals</code> for that budget.
+          required: false
+          schema:
+            type: string
+          example: '460000000991001'
+        - name: filter_by
+          in: query
+          description: 'Filter by transaction date. Allowed Values: <code>TransactionDate.Today</code>, <code>TransactionDate.ThisWeek</code>, <code>TransactionDate.ThisMonth</code>, <code>TransactionDate.ThisQuarter</code>, <code>TransactionDate.ThisYear</code>, <code>TransactionDate.PreviousDay</code>, <code>TransactionDate.PreviousWeek</code>, <code>TransactionDate.PreviousMonth</code>, <code>TransactionDate.PreviousQuarter</code>, <code>TransactionDate.PreviousYear</code>, and <code>TransactionDate.CustomDate</code>.'
+          required: false
+          schema:
+            type: string
+          example: TransactionDate.ThisMonth
+        - name: cash_based
+          in: query
+          description: When <code>true</code>, uses cash-based accounting.
+          required: false
+          schema:
+            type: boolean
+          example: false
+        - name: from_date
+          in: query
+          description: Start date for the comparison period. Format <code>yyyy-mm-dd</code>.
+          required: false
+          schema:
+            type: string
+            format: date
+          example: '2026-05-01'
+        - name: to_date
+          in: query
+          description: End date for the comparison period. Format <code>yyyy-mm-dd</code>.
+          required: false
+          schema:
+            type: string
+            format: date
+          example: '2026-05-31'
+        - name: period
+          in: query
+          description: 'Period granularity. Allowed Values: <code>monthly</code>, <code>half-yearly</code>, <code>yearly</code>, and <code>quarterly</code>. Default value is <code>monthly</code>.'
+          required: false
+          schema:
+            type: string
+          example: monthly
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-register-budget-vs-actuals-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.READ
+    parameters:
+      - name: account_id
+        in: path
+        required: true
+        description: Unique identifier of the chart of accounts register (general ledger account).
+        schema:
+          type: string
+        example: '460000000038079'
+      - $ref: '#/components/parameters/organization_id'
+  /registers/{account_id}/transactions/bulkupdate:
+    x-mcp-group:
+      - Registers
+    put:
+      tags:
+        - registers
+      operationId: bulk_update_register_transactions
+      summary: Bulk update register transactions
+      description: Bulk update transactions on the account register (for example, change account, branch, or date on selected entities).
+      parameters:
+        - name: from_account_id
+          in: query
+          description: When <code>true</code>, indicates the update is initiated from another account context.
+          required: false
+          schema:
+            type: boolean
+          example: false
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/bulk-update-register-transactions-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/bulk-update-register-transactions-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.UPDATE
+    parameters:
+      - name: account_id
+        in: path
+        required: true
+        description: Unique identifier of the chart of accounts register (general ledger account).
+        schema:
+          type: string
+        example: '460000000038079'
+      - $ref: '#/components/parameters/organization_id'
+  /registers/{account_id}/transactions/bulkdelete:
+    x-mcp-group:
+      - Registers
+    put:
+      tags:
+        - registers
+      operationId: bulk_delete_register_transactions
+      summary: Bulk delete register transactions
+      description: Bulk delete selected transactions on the account register.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/bulk-delete-register-transactions-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/bulk-delete-register-transactions-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.accountants.UPDATE
+    parameters:
+      - name: account_id
+        in: path
+        required: true
+        description: Unique identifier of the chart of accounts register (general ledger account).
+        schema:
+          type: string
+        example: '460000000038079'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: 'ID of the organization. Note: This value is a set of numeric characters.'
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/register-bulk-action'
+    account_id:
+      description: ID of the chart of accounts account.
+      type: string
+      example: '460000000038079'
+    bulk_action_id:
+      description: ID of the bulk action history record.
+      type: string
+      example: '460000000050041'
+    comment_id:
+      description: ID of the bulk action history comment.
+      type: string
+      example: '460000000050041'
+    action_type:
+      description: Type of bulk action performed.
+      type: string
+      example: bulk_update
+    status:
+      description: Status of the bulk action or entity update.
+      type: string
+      example: completed
+    description:
+      description: Description of the bulk action.
+      type: string
+      example: Bulk update on register transactions
+    date:
+      description: Date and time of the bulk action.
+      type: string
+      example: 2026-05-22T10:30:00+0530
+    user_id:
+      description: ID of the user who performed the bulk action.
+      type: string
+      example: '460000000000026'
+    user_name:
+      description: Name of the user who performed the bulk action.
+      type: string
+      example: John Smith
+    txn_count:
+      description: Number of transactions affected.
+      type: string
+      example: '5'
+    updated_field:
+      description: Field that was updated in the bulk action.
+      type: string
+      example: account_id
+    updated_value:
+      description: Value applied in the bulk update.
+      type: string
+      example: '460000000038080'
+    updated_reason:
+      description: Reason provided for the bulk update.
+      type: string
+      example: Correction
+    account_name:
+      description: Name of the account.
+      type: string
+      example: Petty Cash
+    entity_id:
+      description: ID of the entity (transaction source record).
+      type: string
+      example: '460000000050163'
+    entity_type:
+      description: Type of entity. Examples include <code>invoice</code>, <code>bill</code>, <code>journal</code>, and <code>expense</code>.
+      type: string
+      example: invoice
+    transaction_number:
+      description: Transaction or document number.
+      type: string
+      example: INV-00042
+    transaction_type:
+      description: Type of transaction.
+      type: string
+      example: invoice
+    entity_status:
+      description: Status of the entity update in the bulk action.
+      type: string
+      example: success
+    branch_id:
+      description: ID of the branch or location.
+      type: string
+      example: '460000000000364'
+    bulk_update_reason:
+      description: Reason for the bulk update.
+      type: string
+      example: Correction
+    budget_id:
+      description: ID of the budget.
+      type: string
+      example: '460000000991001'
+    budget_name:
+      description: Name of the budget.
+      type: string
+      example: FY 2026 Operating Budget
+    generalledger_id:
+      description: ID of the general ledger account.
+      type: string
+      example: '460000000038079'
+    generalledger_name:
+      description: Name of the general ledger account.
+      type: string
+      example: Office Supplies
+    account_type:
+      description: Account type of the register.
+      type: string
+      example: expense
+    entities:
+      description: list of json object with contains entity id and Type of entity.
+      type: array
+      items:
+        $ref: '#/components/schemas/bulk-update-register-entity'
+    page:
+      description: Current page number.
+      type: integer
+      example: 1
+    per_page:
+      description: Records per page.
+      type: integer
+      example: 10
+    has_more_page:
+      description: Whether more pages are available.
+      type: boolean
+      example: false
+    sort_column:
+      description: Column used for sorting.
+      type: string
+      example: created_time
+    sort_order:
+      description: Sort order applied.
+      type: string
+      example: D
+    report_name:
+      description: Internal report name.
+      type: string
+      example: zb.reports.bulkaction.history.list
+    applied_filter:
+      description: Filter applied to the list.
+      type: string
+      example: ''
+    page_context:
+      type: object
+      properties:
+        page:
+          $ref: '#/components/schemas/page'
+        per_page:
+          $ref: '#/components/schemas/per_page'
+        has_more_page:
+          $ref: '#/components/schemas/has_more_page'
+        report_name:
+          $ref: '#/components/schemas/report_name'
+        applied_filter:
+          $ref: '#/components/schemas/applied_filter'
+        sort_column:
+          $ref: '#/components/schemas/sort_column'
+        sort_order:
+          $ref: '#/components/schemas/sort_order'
+    register-bulk-action:
+      type: object
+      properties:
+        bulk_action_id:
+          $ref: '#/components/schemas/bulk_action_id'
+        account_id:
+          $ref: '#/components/schemas/account_id'
+        description:
+          $ref: '#/components/schemas/description'
+        action_type:
+          $ref: '#/components/schemas/action_type'
+        status:
+          $ref: '#/components/schemas/status'
+        date:
+          $ref: '#/components/schemas/date'
+        user_id:
+          $ref: '#/components/schemas/user_id'
+        user_name:
+          $ref: '#/components/schemas/user_name'
+        txn_count:
+          $ref: '#/components/schemas/txn_count'
+        updated_field:
+          $ref: '#/components/schemas/updated_field'
+        updated_value:
+          $ref: '#/components/schemas/updated_value'
+        updated_reason:
+          $ref: '#/components/schemas/updated_reason'
+    register-bulk-action-entity-transaction:
+      type: object
+      properties:
+        entity_id:
+          $ref: '#/components/schemas/entity_id'
+        transaction_number:
+          $ref: '#/components/schemas/transaction_number'
+        transaction_type:
+          $ref: '#/components/schemas/transaction_type'
+        entity_status:
+          $ref: '#/components/schemas/entity_status'
+    register-bulk-action-details:
+      type: object
+      properties:
+        bulk_action_id:
+          $ref: '#/components/schemas/bulk_action_id'
+        action_type:
+          $ref: '#/components/schemas/action_type'
+        account_id:
+          $ref: '#/components/schemas/account_id'
+        account_name:
+          $ref: '#/components/schemas/account_name'
+        description:
+          $ref: '#/components/schemas/description'
+        status:
+          $ref: '#/components/schemas/status'
+        date:
+          $ref: '#/components/schemas/date'
+        updated_field:
+          $ref: '#/components/schemas/updated_field'
+        updated_value:
+          $ref: '#/components/schemas/updated_value'
+        updated_reason:
+          $ref: '#/components/schemas/updated_reason'
+        transactions:
+          type: array
+          description: list of Type of entity. Examples include <code>invoice</code>, <code>bill</code>, <code>journal</code>, and <code>expense</code>.
+          items:
+            $ref: '#/components/schemas/register-bulk-action-entity-transaction'
+    register-bulk-update-field:
+      type: object
+      properties:
+        can_show_field:
+          type: boolean
+          example: true
+        data_type:
+          type: string
+          example: date
+        field:
+          type: string
+          example: date
+        label:
+          type: string
+          example: Date
+        option_label:
+          type: string
+          example: name
+        option_value:
+          type: string
+          example: id
+        values:
+          type: array
+          items:
+            type: object
+    register-transaction:
+      type: object
+      description: A transaction line in the account register report.
+      properties:
+        transaction_id:
+          type: string
+          example: '460000000050163'
+        transaction_date:
+          type: string
+          format: date
+          example: '2026-05-15'
+        transaction_type:
+          $ref: '#/components/schemas/transaction_type'
+        transaction_type_formatted:
+          type: string
+          example: Invoice
+        account_id:
+          $ref: '#/components/schemas/account_id'
+        debit_amount:
+          type: number
+          format: double
+          example: 100
+        credit_amount:
+          type: number
+          format: double
+          example: 0
+    register-transactions:
+      type: object
+      properties:
+        account_transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/register-transaction'
+        account_type:
+          $ref: '#/components/schemas/account_type'
+        gl_closing_balance:
+          type: number
+          format: double
+          example: 12500
+    bulk-update-register-entity:
+      type: object
+      properties:
+        entity_id:
+          $ref: '#/components/schemas/entity_id'
+        entity_type:
+          $ref: '#/components/schemas/entity_type'
+    bulk-update-register-transactions-request:
+      type: object
+      properties:
+        account_id:
+          $ref: '#/components/schemas/account_id'
+        branch_id:
+          $ref: '#/components/schemas/branch_id'
+        date:
+          $ref: '#/components/schemas/date'
+        bulk_update_reason:
+          $ref: '#/components/schemas/bulk_update_reason'
+        entities:
+          $ref: '#/components/schemas/entities'
+    bulk-delete-register-transactions-request:
+      allOf:
+        - $ref: '#/components/schemas/bulk-update-register-transactions-request'
+    list-register-transactions-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        register_transactions:
+          $ref: '#/components/schemas/register-transactions'
+        page_context:
+          $ref: '#/components/schemas/page_context'
+    list-register-bulk-action-history-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        bulk_actions_history:
+          type: array
+          items:
+            $ref: '#/components/schemas/register-bulk-action'
+        page_context:
+          $ref: '#/components/schemas/page_context'
+    get-register-bulk-action-history-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        bulk_action_details:
+          $ref: '#/components/schemas/register-bulk-action-details'
+        page_context:
+          $ref: '#/components/schemas/page_context'
+    get-register-bulk-update-editpage-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/register-bulk-update-field'
+    register-budget-info:
+      type: object
+      properties:
+        budget_id:
+          $ref: '#/components/schemas/budget_id'
+        budget_name:
+          $ref: '#/components/schemas/budget_name'
+    register-budget-vs-actuals-detail:
+      type: object
+      properties:
+        generalledger_info:
+          type: object
+          properties:
+            generalledger_id:
+              $ref: '#/components/schemas/generalledger_id'
+            generalledger_name:
+              $ref: '#/components/schemas/generalledger_name'
+        budget_info:
+          $ref: '#/components/schemas/register-budget-info'
+        detailed_budget_vs_actual:
+          type: array
+          items:
+            type: object
+    get-register-budget-vs-actuals-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        register_budget_vs_actual:
+          type: object
+          properties:
+            budget_info_list:
+              type: array
+              items:
+                $ref: '#/components/schemas/register-budget-info'
+            budget_vs_actuals:
+              $ref: '#/components/schemas/register-budget-vs-actuals-detail'
+    bulk-update-register-transactions-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Bulk update completed.
+          readOnly: true
+    bulk-delete-register-transactions-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Bulk delete completed.
+          readOnly: true
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.com/oauth/v2/auth
+          scopes:
+            ERP.accountants.READ: Read Accountants
+            ERP.accountants.UPDATE: Update Accountants

@@ -1,0 +1,332 @@
+openapi: 3.0.0
+info:
+  title: Work Center Types
+  description: A work center type groups work centers based on how their production costs, capacity, and operations are managed. It acts as a common setup that defines the cost template, which can then be applied to multiple work centers, making cost setup consistent and reusable.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: work-center-types
+    description: Work Center Types Module
+paths:
+  /workcentertypes:
+    x-mcp-group:
+      - Work Center Types
+    post:
+      tags:
+        - work-center-types
+      operationId: create_workcenter_type
+      summary: Create a work center type
+      description: Create a work center type.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-workcenter-type-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-workcenter-type-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.CREATE
+    get:
+      tags:
+        - work-center-types
+      operationId: list_workcenter_types
+      summary: List work center types
+      description: List all work center types.
+      parameters:
+        - name: sort_column
+          in: query
+          description: 'Specify the column field for sorting results. Allowed Values: <code>created_time</code> and <code>last_modified_time</code>.'
+          required: false
+          schema:
+            type: string
+          example: created_time
+        - name: sort_order
+          in: query
+          description: 'Sort order for results. Allowed Values: <code>A</code> (ascending) and <code>D</code> (descending).'
+          required: false
+          schema:
+            type: string
+          example: A
+        - name: search_text
+          in: query
+          description: Search across work center type name.
+          required: false
+          schema:
+            type: string
+          example: Assembly
+        - name: page
+          in: query
+          description: Page number for pagination. Default is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/list-workcenter-types-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /workcentertypes/{workcenter_type_id}:
+    x-mcp-group:
+      - Work Center Types
+    get:
+      tags:
+        - work-center-types
+      operationId: get_workcenter_type
+      summary: Get a work center type
+      description: Get the details of a work center type.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-workcenter-type-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.READ
+    put:
+      tags:
+        - work-center-types
+      operationId: update_workcenter_type
+      summary: Update a work center type
+      description: Update an existing work center type.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-workcenter-type-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-workcenter-type-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.UPDATE
+    delete:
+      tags:
+        - work-center-types
+      operationId: delete_workcenter_type
+      summary: Delete a work center type
+      description: Delete an existing work center type. Work center types assigned to a work center or operation cannot be deleted.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-workcenter-type-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.manufacturing.DELETE
+    parameters:
+      - name: workcenter_type_id
+        in: path
+        required: true
+        description: 'ID of the work center type. Note: This value is a set of numeric characters.'
+        schema:
+          type: string
+        example: '3863095000000039029'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization.
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/workcenter_type'
+    workcenter_type_id:
+      description: 'ID of the Work Center Type. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000039029'
+    workcenter_type_name:
+      description: 'Name of the work center type. Maximum length: 200 characters.'
+      type: string
+      maxLength: 200
+      example: Assembly WCT
+    wct_cost_template_id:
+      description: 'ID of the cost template assigned to this work center type. The cost template is used for manufacturing order cost estimation. Note: This value is a set of numeric characters.'
+      type: string
+      example: '3863095000000038083'
+    workcenter_type_description:
+      description: 'Description of the work center type. Maximum length: 500 characters.'
+      type: string
+      maxLength: 500
+      example: All assembly and sub-component joining work centers.
+    workcenter_type:
+      type: object
+      properties:
+        workcenter_type_id:
+          $ref: '#/components/schemas/workcenter_type_id'
+        workcenter_type_name:
+          $ref: '#/components/schemas/workcenter_type_name'
+        cost_template_id:
+          $ref: '#/components/schemas/wct_cost_template_id'
+        cost_template_name:
+          description: Name of the cost template assigned to this work center type.
+          type: string
+          example: Assembly CT
+        description:
+          $ref: '#/components/schemas/workcenter_type_description'
+    create-a-workcenter-type-request:
+      type: object
+      required:
+        - workcenter_type_name
+        - cost_template_id
+      properties:
+        workcenter_type_name:
+          $ref: '#/components/schemas/workcenter_type_name'
+        cost_template_id:
+          $ref: '#/components/schemas/wct_cost_template_id'
+        description:
+          $ref: '#/components/schemas/workcenter_type_description'
+    update-a-workcenter-type-request:
+      type: object
+      properties:
+        workcenter_type_name:
+          $ref: '#/components/schemas/workcenter_type_name'
+        cost_template_id:
+          $ref: '#/components/schemas/wct_cost_template_id'
+        description:
+          $ref: '#/components/schemas/workcenter_type_description'
+    create-a-workcenter-type-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Work center type created.
+          readOnly: true
+        workcenter_type:
+          $ref: '#/components/schemas/workcenter_type'
+    update-a-workcenter-type-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Work center type updated.
+          readOnly: true
+        workcenter_type:
+          $ref: '#/components/schemas/workcenter_type'
+    get-a-workcenter-type-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        workcenter_type:
+          $ref: '#/components/schemas/workcenter_type'
+    list-workcenter-types-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        workcenter_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/workcenter_type'
+        page_context:
+          type: object
+          readOnly: true
+          properties:
+            page:
+              type: integer
+              description: Current page number.
+              example: 1
+            per_page:
+              type: integer
+              description: Number of records per page.
+              example: 200
+            has_more_page:
+              type: boolean
+              description: Indicates if there are more pages.
+              example: false
+            report_name:
+              type: string
+              example: Work Center Types
+            sort_column:
+              type: string
+              example: created_time
+            sort_order:
+              type: string
+              example: A
+    delete-a-workcenter-type-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The work center type has been deleted.
+          readOnly: true
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.manufacturing.CREATE: Create Work Center Types
+            ERP.manufacturing.UPDATE: Update Work Center Types
+            ERP.manufacturing.READ: Read Work Center Types
+            ERP.manufacturing.DELETE: Delete Work Center Types
+            ERP.manufacturing.ALL: All permissions for Manufacturing

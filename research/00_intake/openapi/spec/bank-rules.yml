@@ -1,0 +1,500 @@
+openapi: 3.0.0
+info:
+  title: Bank Rules
+  description: In Zoho ERP, you can automate the categorization of the bank feeds. The transaction rules feature in banking will help you in automatically identifying the bank transaction and categorizing it under the criteria provided by you.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: bank-rules
+    description: Bank Rules Module
+paths:
+  /bankaccounts/rules:
+    x-mcp-group:
+      - Bank Rules
+    get:
+      tags:
+        - bank-rules
+      operationId: list_bank_account_rules
+      summary: List bank rules
+      description: Fetch all the rules created for a specified bank or credit card account ID.
+      parameters:
+        - name: account_id
+          in: query
+          description: ID of the bank account.
+          required: true
+          schema:
+            type: string
+          example: 460000000000361
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-rules-list-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.READ
+    post:
+      tags:
+        - bank-rules
+      operationId: create_bank_account_rule
+      summary: Create a rule
+      description: Create a rule and apply it on deposit/withdrawal for bank accounts and on refund/charges for credit card accounts.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-rule-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-rule-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.CREATE
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /bankaccounts/rules/{rule_id}:
+    x-mcp-group:
+      - Bank Rules
+    get:
+      tags:
+        - bank-rules
+      operationId: get_bank_account_rule
+      summary: Get a rule
+      description: Get details of a specific rule.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-a-rule-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.READ
+    put:
+      tags:
+        - bank-rules
+      operationId: update_bank_account_rule
+      summary: Update a rule
+      description: Make changes to the rule, add or modify it and update.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-rule-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-rule-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.UPDATE
+    delete:
+      tags:
+        - bank-rules
+      operationId: delete_bank_account_rule
+      summary: Delete a rule
+      description: Delete a rule from your account and make it no longer applicable on the transactions.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-rule-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.DELETE
+    parameters:
+      - name: rule_id
+        in: path
+        required: true
+        description: Unique identifier of the bank account rule.
+        schema:
+          type: string
+        example: '460000000048005'
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/rules-response'
+    rules-response:
+      type: object
+      properties:
+        rule_id:
+          $ref: '#/components/schemas/rule_id'
+        rule_name:
+          $ref: '#/components/schemas/rule_name'
+        rule_order:
+          $ref: '#/components/schemas/rule_order'
+        apply_to:
+          $ref: '#/components/schemas/apply_to'
+        criteria_type:
+          $ref: '#/components/schemas/criteria_type'
+        record_as:
+          $ref: '#/components/schemas/record_as'
+        account_id:
+          $ref: '#/components/schemas/account_id'
+        account_name:
+          $ref: '#/components/schemas/account_name'
+        criterion:
+          $ref: '#/components/schemas/criterion'
+    account_id:
+      description: Account ID of the bank.
+      type: string
+      example: '460000000000361'
+    rule_id:
+      description: ID of the rule.
+      type: string
+      example: '460000000048005'
+    rule_name:
+      description: Name of the rule.
+      type: string
+      example: Minimum Deposit Rule
+    rule_order:
+      description: Order of the rule.
+      type: integer
+      example: 0
+    apply_to:
+      description: Entities to which the rule must be applied.
+      type: string
+      example: deposits
+    criteria_type:
+      description: Type of criteria.
+      type: string
+      example: and
+    record_as:
+      description: Entity as which the transaction should be recorded.
+      type: string
+      example: deposit
+    account_name:
+      description: Name of the account.
+      type: string
+      example: Petty Cash
+    criteria_id:
+      description: ID of the criteria.
+      type: string
+      example: '460000000048009'
+    field:
+      description: Field involved in the criteria.
+      type: string
+      example: amount
+    comparator:
+      description: Comparator used in the criteria.
+      type: string
+      example: greater_than_or_equals
+    value:
+      description: Value to compare against.
+      type: string
+      example: '500.00'
+    criterion:
+      type: array
+      description: List of criteria based on which the rule will be applied.
+      items:
+        type: object
+        properties:
+          criteria_id:
+            $ref: '#/components/schemas/criteria_id'
+          field:
+            $ref: '#/components/schemas/field'
+          comparator:
+            $ref: '#/components/schemas/comparator'
+          value:
+            $ref: '#/components/schemas/value'
+    tax_id:
+      description: Tax ID involved in the transaction.
+      type: string
+      example: '460000000048238'
+    customer_id:
+      description: ID of the customer associated with the rule.
+      type: string
+      example: '46000000000111'
+    customer_name:
+      description: Name of the customer associated with the rule.
+      type: string
+      example: Trendz
+    reference_number:
+      description: Specifies whether the reference number is manual or generated from the statement.
+      type: string
+      example: from_statement
+    payment_mode:
+      description: Payment mode associated with the rule.
+      type: string
+      example: Cash
+    tax_exemption_id:
+      description: ID of the tax exemption associated with the rule.
+      type: string
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    tax_exemption_code:
+      description: Code of the tax exemption associated with the rule.
+      type: string
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    rule:
+      type: object
+      properties:
+        rule_id:
+          $ref: '#/components/schemas/rule_id'
+        rule_name:
+          $ref: '#/components/schemas/rule_name'
+        rule_order:
+          $ref: '#/components/schemas/rule_order'
+        apply_to:
+          $ref: '#/components/schemas/apply_to'
+        criteria_type:
+          $ref: '#/components/schemas/criteria_type'
+        criterion:
+          $ref: '#/components/schemas/criterion'
+        record_as:
+          $ref: '#/components/schemas/record_as'
+        account_id:
+          $ref: '#/components/schemas/account_id'
+        account_name:
+          $ref: '#/components/schemas/account_name'
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        customer_name:
+          $ref: '#/components/schemas/customer_name'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        tax_exemption_code:
+          $ref: '#/components/schemas/tax_exemption_code'
+    target_account_id:
+      description: The account on which the rule has to be applied.
+      type: string
+      example: 460000000048001
+    get-rules-list-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/rules-response'
+    create-a-rule-request:
+      required:
+        - rule_name
+        - target_account_id
+        - apply_to
+        - criteria_type
+        - criterion
+        - record_as
+      type: object
+      properties:
+        rule_name:
+          $ref: '#/components/schemas/rule_name'
+        target_account_id:
+          $ref: '#/components/schemas/target_account_id'
+        apply_to:
+          description: 'Rule applies to either deposits or withdrawals for bank accounts and to refunds or charges for credit card account. Allowed Values: <code>withdrawals</code>, <code>deposits</code>, <code>refunds</code> and <code>charges</code>.'
+          type: string
+          example: deposits
+        criteria_type:
+          description: 'Specifies whether all the criteria have to be satisfied or not. Allowed Values: <code>and</code> and <code>or</code>.'
+          type: string
+          example: and
+        criterion:
+          type: array
+          description: List of criteria used to define conditions for applying the bank rule.
+          items:
+            type: object
+            properties:
+              field:
+                $ref: '#/components/schemas/field'
+              comparator:
+                $ref: '#/components/schemas/comparator'
+              value:
+                $ref: '#/components/schemas/value'
+        record_as:
+          description: 'Record transaction based on value specified in apply_to node. For bank accounts: If apply_to is deposits: sales_without_invoices, transfer_fund, interest_income, other_income, expense_refund, deposit. If apply_to is withdrawals: expense, transfer_fund, card_payment, owner_drawings. For credit_card accounts: If apply_to is refunds: card_payment, transfer_fund, expense_refund, refund. If apply_to is charges: expense, transfer_fund. Allowed Values: <code>expense</code>, <code>deposit</code>, <code>refund</code>, <code>transfer_fund</code>, <code>card_payment</code>, <code>sales_without_invoices</code>, <code>expense_refund</code>, <code>interest_income</code>, <code>other_income</code> and <code>owner_drawings</code>.'
+          type: string
+          example: deposit
+        account_id:
+          description: Account which is involved in the rule with the target account.
+          type: string
+          example: 460000000049001
+        customer_id:
+          description: ID of the customer. (Applicable for sales_without_invoices, deposit, expense.)
+          type: string
+          example: 46000000000111
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        reference_number:
+          description: 'Specifies whether the reference number is manual or generated from the statement. Allowed Values: <code>manual</code> and <code>from_statement</code>.'
+          type: string
+          example: manual
+        tax_exemption_id:
+          $ref: '#/components/schemas/tax_exemption_id'
+    create-a-rule-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The bank rule has been created.
+          readOnly: true
+        rule:
+          $ref: '#/components/schemas/rule'
+    get-a-rule-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        rule_id:
+          $ref: '#/components/schemas/rule_id'
+        rule_name:
+          $ref: '#/components/schemas/rule_name'
+        rule_order:
+          $ref: '#/components/schemas/rule_order'
+        apply_to:
+          $ref: '#/components/schemas/apply_to'
+        criteria_type:
+          $ref: '#/components/schemas/criteria_type'
+        criterion:
+          $ref: '#/components/schemas/criterion'
+        record_as:
+          $ref: '#/components/schemas/record_as'
+        account_id:
+          $ref: '#/components/schemas/account_id'
+        account_name:
+          $ref: '#/components/schemas/account_name'
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        customer_name:
+          $ref: '#/components/schemas/customer_name'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        tax_exemption_code:
+          $ref: '#/components/schemas/tax_exemption_code'
+    update-a-rule-request:
+      required:
+        - rule_name
+        - target_account_id
+        - apply_to
+        - criteria_type
+        - criterion
+        - record_as
+      type: object
+      properties:
+        rule_name:
+          $ref: '#/components/schemas/rule_name'
+        target_account_id:
+          $ref: '#/components/schemas/target_account_id'
+        apply_to:
+          description: 'Rule applies to either deposits or withdrawals for bank accounts and to refunds or charges for credit card account. Allowed Values: <code>withdrawals</code>, <code>deposits</code>, <code>refunds</code> and <code>charges</code>.'
+          type: string
+          example: deposits
+        criteria_type:
+          description: 'Specifies whether all the criteria have to be satisfied or not. Allowed Values: <code>and</code> and <code>or</code>.'
+          type: string
+          example: and
+        criterion:
+          $ref: '#/components/schemas/criterion'
+        record_as:
+          description: 'Record transaction based on value specified in apply_to node. For bank accounts: If apply_to is deposits: sales_without_invoices, transfer_fund, interest_income, other_income, expense_refund, deposit. If apply_to is withdrawals: expense, transfer_fund, card_payment, owner_drawings. For credit_card accounts: If apply_to is refunds: card_payment, transfer_fund, expense_refund, refund. If apply_to is charges: expense, transfer_fund. Allowed Values: <code>expense</code>, <code>deposit</code>, <code>refund</code>, <code>transfer_fund</code>, <code>card_payment</code>, <code>sales_without_invoices</code>, <code>expense_refund</code>, <code>interest_income</code>, <code>other_income</code> and <code>owner_drawings</code>.'
+          type: string
+          example: deposit
+        account_id:
+          description: Account which is involved in the rule with the target account.
+          type: string
+          example: 460000000049001
+        customer_id:
+          description: ID of the customer. (Applicable for sales_without_invoices, deposit, expense.)
+          type: string
+          example: 46000000000111
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        reference_number:
+          description: 'Specifies whether the reference number is manual or generated from the statement. Allowed Values: <code>manual</code> and <code>from_statement</code>.'
+          type: string
+          example: manual
+        tax_exemption_id:
+          $ref: '#/components/schemas/tax_exemption_id'
+    update-a-rule-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The bank rule has been updated.
+          readOnly: true
+        rule:
+          $ref: '#/components/schemas/rule'
+    delete-a-rule-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The rule has been deleted.
+          readOnly: true
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.banking.READ: Read Banking
+            ERP.banking.CREATE: Create Banking
+            ERP.banking.UPDATE: Update Banking
+            ERP.banking.DELETE: Delete Banking

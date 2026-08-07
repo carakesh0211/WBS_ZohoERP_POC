@@ -1,0 +1,2406 @@
+openapi: 3.0.0
+info:
+  title: Bank Transactions
+  description: In many instances, you would wish to record manual entries for your offline transactions for your bank or credit card accounts. These entries might not be a part of your bank feeds but would make an important entry for your business records.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v3
+    description: API Endpoint
+tags:
+  - name: bank-transactions
+    description: Bank Transactions Module
+paths:
+  /banktransactions:
+    x-mcp-group:
+      - Bank Transactions
+    post:
+      tags:
+        - bank-transactions
+      operationId: create_bank_transaction
+      summary: Create a transaction for an account
+      description: Create a bank transaction based on the allowed transaction types.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-a-transaction-for-an-account-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create-a-transaction-for-an-account-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.CREATE
+    get:
+      tags:
+        - bank-transactions
+      operationId: list_bank_transactions
+      summary: Get transactions list
+      description: Get all the transaction details involved in an account.
+      parameters:
+        - name: account_id
+          in: query
+          description: ID of the bank account to filter transactions.
+          required: false
+          schema:
+            type: string
+          example: '460000000048001'
+        - name: transaction_type
+          in: query
+          description: 'Type of the bank transaction. Allowed Values: <code>sales_without_invoices</code>, <code>expense_refund</code>, <code>owner_drawings</code>, <code>owner_contribution</code>, <code>interest_income</code>, <code>other_income</code>, <code>expense</code>, <code>deposit</code>'
+          required: false
+          schema:
+            type: string
+          example: deposit
+        - name: date
+          in: query
+          description: 'Start and end date, to provide a range within which the transaction date exist. Variants: <code>date_start</code> and <code>date_end</code>'
+          required: false
+          schema:
+            type: string
+          example: '2013-10-01'
+        - name: amount
+          in: query
+          description: 'Start and end amount, to provide a range within which the transaction amount exist. Variants: <code>amount_start</code> and <code>amount_end</code>'
+          required: false
+          schema:
+            type: number
+            format: double
+          example: 2000
+        - name: status
+          in: query
+          description: 'Status of the transaction. Values: All, uncategorized, manually_added, matched, excluded, categorized.'
+          required: false
+          schema:
+            type: string
+          example: categorized
+        - name: reference_number
+          in: query
+          description: Search using the reference number of the transaction.
+          required: false
+          schema:
+            type: string
+          example: Ref-121
+        - name: filter_by
+          in: query
+          description: 'Filters the transactions based on the allowed types. Allowed Values: <code>Status.All</code>, <code>Status.Uncategorized</code>, <code>Status.Categorized</code>, <code>Status.ManuallyAdded</code>, <code>Status.Excluded</code> and <code>Status.Matched</code>.'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: sort_column
+          in: query
+          description: 'Sorts the transactions based on the allowed sort types. Allowed Values: <code>date</code>.'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: transaction_status
+          in: query
+          description: 'Status of the transaction. Values: All, uncategorized, manually_added, matched, excluded, categorized.'
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: search_text
+          in: query
+          description: Search transactions by contact name or description.
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-transactions-list-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.READ
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+  /banktransactions/{bank_transaction_id}:
+    x-mcp-group:
+      - Bank Transactions
+    put:
+      tags:
+        - bank-transactions
+      operationId: update_bank_transaction
+      summary: Update a transaction
+      description: Make changes in the applicable fields of a transaction and update it.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-a-transaction-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-a-transaction-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.UPDATE
+    get:
+      tags:
+        - bank-transactions
+      operationId: get_bank_transaction
+      summary: Get transaction
+      description: Fetch the details of a transaction by specifying the transaction_id.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-transaction-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.READ
+    delete:
+      tags:
+        - bank-transactions
+      operationId: delete_bank_transaction
+      summary: Delete a transaction
+      description: Delete a transaction from an account by specifying the transaction_id.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/delete-a-transaction-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.DELETE
+    parameters:
+      - name: bank_transaction_id
+        in: path
+        required: true
+        description: Unique identifier of the bank transaction.
+        schema:
+          type: string
+        example: '460000000048017'
+      - $ref: '#/components/parameters/organization_id'
+  /banktransactions/uncategorized/{transaction_id}/match:
+    x-mcp-group:
+      - Bank Transactions
+    get:
+      tags:
+        - bank-transactions
+      operationId: get_matching_bank_transactions
+      summary: Get matching transactions
+      description: Provide criteria to search for matching uncategorised transactions. The list of transactions can also include invoices/bills/credit-notes which will not be matched directly. Instead, a new (payment/refund) transaction is recorded and matched.
+      parameters:
+        - name: transaction_id
+          in: query
+          description: ID of the transaction.
+          required: false
+          schema:
+            type: string
+          example: '460000000048017'
+        - name: transaction_type
+          in: query
+          description: 'Type of the transaction. <br/> <strong>Allowed transaction types</strong> : deposit, refund(*Supported only in Credit Card accounts), transfer_fund, card_payment, sales_without_invoices, expense_refund, owner_contribution, interest_income, other_income, owner_drawings, sales_return <br/> <strong>Note:</strong> You will not be able to create the following module-specific transaction types under Bank Transaction endpoints :<div> <a href="#Expenses">Expense</a>, <a href="#Vendor-Payments">Vendor Advance/Vendor Payment/Bill Payment</a>, <a href="#Vendor-Credits_Refund_a_vendor_credit">Vendor Credit Refund</a>, <a href="#Vendor-Payments_Refund_an_excess_vendor_payment">Vendor Payment Refund</a>, <a href="#Customer-Payments">Customer Advance/Customer Payment</a>, <a href="#Credit-Notes_Refund_credit_note">Credit Note Refund</a>, <a href="#Customer-Payments_Refund_an_excess_customer_payment">Payment Refund</a>. Hence, refer them in their respective modules.</div>'
+          required: false
+          schema:
+            type: string
+          example: deposit
+        - name: date_after
+          in: query
+          description: Date after which transactions are to be filtered.
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: date_before
+          in: query
+          description: Date before which transactions are to be filtered.
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: amount_start
+          in: query
+          description: Starting amount with which transactions are to be filtered.
+          required: false
+          schema:
+            type: number
+            format: double
+          example: ''
+        - name: amount_end
+          in: query
+          description: Ending amount with which transactions are to be filtered.
+          required: false
+          schema:
+            type: number
+            format: double
+          example: ''
+        - name: contact
+          in: query
+          description: Contact person name, involved in the transaction.
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: reference_number
+          in: query
+          description: Reference number of the transaction.
+          required: false
+          schema:
+            type: string
+          example: Ref-121
+        - name: show_all_transactions
+          in: query
+          description: Indicates if all transactions must be shown.
+          required: false
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          description: Page number to be fetched. Default value is 1.
+          required: false
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of records to be fetched per page. Default value is 200.
+          required: false
+          schema:
+            type: integer
+            default: 200
+          example: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-matching-transactions-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.READ
+    post:
+      tags:
+        - bank-transactions
+      operationId: match_bank_transaction
+      summary: Match a transaction
+      description: Match an uncategorized transaction with a corresponding invoice/bill/credit-note or directly with a transaction. When a transaction is matched with an invoice/bill/credit-note, a new payment/refund transaction will be created and matched with the selected transaction.
+      parameters:
+        - name: account_id
+          in: query
+          description: Mandatory Account ID for which transactions are to be listed.
+          required: false
+          schema:
+            type: string
+          example: '460000000048001'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/match-a-transaction-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/match-a-transaction-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.CREATE
+    parameters:
+      - name: transaction_id
+        in: path
+        required: true
+        description: Unique identifier of the bank transaction.
+        schema:
+          type: string
+        example: '460000000048017'
+      - $ref: '#/components/parameters/organization_id'
+  /banktransactions/{transaction_id}/unmatch:
+    x-mcp-group:
+      - Bank Transactions
+    post:
+      tags:
+        - bank-transactions
+      operationId: unmatch_bank_transaction
+      summary: Unmatch a matched transaction
+      description: Unmatch a transaction that was previously matched and make it uncategorized.
+      parameters:
+        - name: account_id
+          in: query
+          description: Mandatory Account ID for which transactions are to be listed.
+          required: false
+          schema:
+            type: string
+          example: '460000000048001'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/unmatch-a-matched-transaction-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.CREATE
+    parameters:
+      - name: transaction_id
+        in: path
+        required: true
+        description: Unique identifier of the bank transaction.
+        schema:
+          type: string
+        example: '460000000048017'
+      - $ref: '#/components/parameters/organization_id'
+  /banktransactions/uncategorized/{transaction_id}/exclude:
+    x-mcp-group:
+      - Bank Transactions
+    post:
+      tags:
+        - bank-transactions
+      operationId: exclude_bank_transaction
+      summary: Exclude a transaction
+      description: Exclude a transaction from your bank or credit card account.
+      parameters:
+        - name: account_id
+          in: query
+          description: Mandatory Account ID for which transactions are to be listed.
+          required: false
+          schema:
+            type: string
+          example: '460000000048001'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/exclude-a-transaction-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.CREATE
+    parameters:
+      - name: transaction_id
+        in: path
+        required: true
+        description: Unique identifier of the bank transaction.
+        schema:
+          type: string
+        example: '460000000048017'
+      - $ref: '#/components/parameters/organization_id'
+  /banktransactions/uncategorized/{transaction_id}/restore:
+    x-mcp-group:
+      - Bank Transactions
+    post:
+      tags:
+        - bank-transactions
+      operationId: restore_bank_transaction
+      summary: Restore a transaction
+      description: Restore an excluded transaction in your account.
+      parameters:
+        - name: account_id
+          in: query
+          description: Mandatory Account ID for which transactions are to be listed.
+          required: false
+          schema:
+            type: string
+          example: '460000000048001'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/restore-a-transaction-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.CREATE
+    parameters:
+      - name: transaction_id
+        in: path
+        required: true
+        description: Unique identifier of the bank transaction.
+        schema:
+          type: string
+        example: '460000000048017'
+      - $ref: '#/components/parameters/organization_id'
+  /banktransactions/uncategorized/{transaction_id}/categorize:
+    x-mcp-group:
+      - Bank Transactions
+    post:
+      tags:
+        - bank-transactions
+      operationId: categorize_bank_transaction
+      summary: Categorize an uncategorized transaction
+      description: Categorize an uncategorized transaction by creating a new transaction.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/categorize-an-uncategorized-transaction-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/categorize-an-uncategorized-transaction-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.CREATE
+    parameters:
+      - name: transaction_id
+        in: path
+        required: true
+        description: Unique identifier of the bank transaction.
+        schema:
+          type: string
+        example: '460000000048017'
+      - $ref: '#/components/parameters/organization_id'
+  /banktransactions/uncategorized/{transaction_id}/categorize/expenses:
+    x-mcp-group:
+      - Bank Transactions
+    post:
+      tags:
+        - bank-transactions
+      operationId: categorize_bank_transaction_as_expense
+      summary: Categorize as expense
+      description: Categorize an Uncategorized transaction as expense.
+      parameters:
+        - name: doc
+          in: query
+          description: Document that is to be attached.
+          required: false
+          schema:
+            type: string
+          example: ''
+        - name: totalFiles
+          in: query
+          description: Total number of files.
+          required: false
+          schema:
+            type: integer
+          example: 0
+        - name: document_ids
+          in: query
+          description: Comma-separated list of document IDs to be attached to the transaction.
+          required: false
+          schema:
+            type: string
+          example: ''
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/categorize-as-expense-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/categorize-as-expense-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.CREATE
+    parameters:
+      - name: transaction_id
+        in: path
+        required: true
+        description: Unique identifier of the bank transaction.
+        schema:
+          type: string
+        example: '460000000048017'
+      - $ref: '#/components/parameters/organization_id'
+  /banktransactions/{transaction_id}/uncategorize:
+    x-mcp-group:
+      - Bank Transactions
+    post:
+      tags:
+        - bank-transactions
+      operationId: uncategorize_bank_transaction
+      summary: Uncategorize a categorized transaction
+      description: Revert a categorized transaction as uncategorized.
+      parameters:
+        - name: account_id
+          in: query
+          description: Mandatory Account ID for which transactions are to be listed.
+          required: false
+          schema:
+            type: string
+          example: '460000000048001'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/uncategorize-a-categorized-transaction-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.CREATE
+    parameters:
+      - name: transaction_id
+        in: path
+        required: true
+        description: Unique identifier of the bank transaction.
+        schema:
+          type: string
+        example: '460000000048017'
+      - $ref: '#/components/parameters/organization_id'
+  /banktransactions/uncategorized/{transaction_id}/categorize/vendorpayments:
+    x-mcp-group:
+      - Bank Transactions
+    post:
+      tags:
+        - bank-transactions
+      operationId: categorize_bank_transaction_as_vendor_payment
+      summary: Categorize a vendor payment
+      description: Categorize an uncategorized transaction as Vendor Payment.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/categorize-a-vendor-payment-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/categorize-a-vendor-payment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.CREATE
+    parameters:
+      - name: transaction_id
+        in: path
+        required: true
+        description: Unique identifier of the bank transaction.
+        schema:
+          type: string
+        example: '460000000048017'
+      - $ref: '#/components/parameters/organization_id'
+  /banktransactions/uncategorized/{transaction_id}/categorize/customerpayments:
+    x-mcp-group:
+      - Bank Transactions
+    post:
+      tags:
+        - bank-transactions
+      operationId: categorize_bank_transaction_as_customer_payment
+      summary: Categorize as customer payment
+      description: Categorize an uncategorized transaction as Customer Payment.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/categorize-as-customer-payment-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/categorize-as-customer-payment-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.CREATE
+    parameters:
+      - name: transaction_id
+        in: path
+        required: true
+        description: Unique identifier of the bank transaction.
+        schema:
+          type: string
+        example: '460000000048017'
+      - $ref: '#/components/parameters/organization_id'
+  /banktransactions/uncategorized/{transaction_id}/categorize/creditnoterefunds:
+    x-mcp-group:
+      - Bank Transactions
+    post:
+      tags:
+        - bank-transactions
+      operationId: categorize_as_credit_note_refunds
+      summary: Categorize as credit note refunds
+      description: Categorize an Uncategorized transaction as a refund from a credit note.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/categorize-as-credit-note-refunds-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/categorize-as-credit-note-refunds-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.CREATE
+    parameters:
+      - name: transaction_id
+        in: path
+        required: true
+        description: Unique identifier of the bank transaction.
+        schema:
+          type: string
+        example: '460000000048017'
+      - $ref: '#/components/parameters/organization_id'
+  /banktransactions/uncategorized/{transaction_id}/categorize/vendorcreditrefunds:
+    x-mcp-group:
+      - Bank Transactions
+    post:
+      tags:
+        - bank-transactions
+      operationId: categorize_as_vendor_credit_refunds
+      summary: Categorize as vendor credit refunds
+      description: Categorize an uncategorized transaction as a refund from a vendor credit.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/categorize-as-vendor-credit-refunds-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/categorize-as-vendor-credit-refunds-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.CREATE
+    parameters:
+      - name: transaction_id
+        in: path
+        required: true
+        description: Unique identifier of the bank transaction.
+        schema:
+          type: string
+        example: '460000000048017'
+      - $ref: '#/components/parameters/organization_id'
+  /banktransactions/uncategorized/{statement_line_id}/categorize/paymentrefunds:
+    x-mcp-group:
+      - Bank Transactions
+    post:
+      tags:
+        - bank-transactions
+      operationId: categorize_bank_transaction_as_payment_refund
+      summary: Categorize as Customer Payment refund
+      description: Categorizing bank transactions as Payment Refund.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/categorize-as-customer-payment-refund-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/categorize-as-customer-payment-refund-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.CREATE
+    parameters:
+      - name: statement_line_id
+        in: path
+        required: true
+        description: Unique identifier of the bank statement line.
+        schema:
+          type: string
+        example: ''
+      - $ref: '#/components/parameters/organization_id'
+  /banktransactions/uncategorized/{statement_line_id}/categorize/vendorpaymentrefunds:
+    x-mcp-group:
+      - Bank Transactions
+    post:
+      tags:
+        - bank-transactions
+      operationId: categorize_as_vendor_payment_refund
+      summary: Categorize as Vendor Payment refund
+      description: Categorizing bank transactions as Vendor Payment Refund.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/categorize-as-vendor-payment-refund-request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/categorize-as-vendor-payment-refund-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.banking.CREATE
+    parameters:
+      - name: statement_line_id
+        in: path
+        required: true
+        description: Unique identifier of the bank statement line.
+        schema:
+          type: string
+        example: ''
+      - $ref: '#/components/parameters/organization_id'
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: ID of the organization
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/banktransaction'
+    account_id:
+      description: Mandatory Account ID for which transactions are to be listed.
+      type: string
+      example: '460000000048001'
+    filter_by:
+      description: 'Filters the transactions based on the allowed types. Allowed Values: <code>Status.All</code>, <code>Status.Uncategorized</code>, <code>Status.Categorized</code>, <code>Status.ManuallyAdded</code>, <code>Status.Excluded</code> and <code>Status.Matched</code>.'
+      type: string
+    transaction_type:
+      description: 'Type of the transaction. <br/> <strong>Allowed transaction types</strong> : deposit, refund(*Supported only in Credit Card accounts), transfer_fund, card_payment, sales_without_invoices, expense_refund, owner_contribution, interest_income, other_income, owner_drawings, sales_return <br/> <strong>Note:</strong> You will not be able to create the following module-specific transaction types under Bank Transaction endpoints :<div> <a href="#Expenses">Expense</a>, <a href="#Vendor-Payments">Vendor Advance/Vendor Payment/Bill Payment</a>, <a href="#Vendor-Credits_Refund_a_vendor_credit">Vendor Credit Refund</a>, <a href="#Vendor-Payments_Refund_an_excess_vendor_payment">Vendor Payment Refund</a>, <a href="#Customer-Payments">Customer Advance/Customer Payment</a>, <a href="#Credit-Notes_Refund_credit_note">Credit Note Refund</a>, <a href="#Customer-Payments_Refund_an_excess_customer_payment">Payment Refund</a>. Hence, refer them in their respective modules.</div>'
+      type: string
+      example: deposit
+    date:
+      description: Date of the transaction.
+      type: string
+      example: '2013-10-01'
+    vendorpayment_refund_id:
+      description: ID of the Vendor Payment.
+      type: string
+      example: '460000000000007'
+    amount:
+      description: Amount of the transaction.
+      type: number
+      format: double
+      example: 2000
+    status:
+      description: 'Status of the transaction. Values: All, uncategorized, manually_added, matched, excluded, categorized.'
+      type: string
+      example: categorized
+    reference_number:
+      description: Reference number of the transaction.
+      type: string
+      example: Ref-121
+    sort_column:
+      description: 'Sorts the transactions based on the allowed sort types. Allowed Values: <code>date</code>.'
+      type: string
+    transaction_id:
+      description: ID of the Transaction.
+      type: string
+      example: '460000000048017'
+    source:
+      description: Source of the transaction.
+      type: string
+      example: manually_added
+    account_name:
+      description: Name of the account.
+      type: string
+      example: Petty Cash
+    account_type:
+      description: Type of the account.
+      type: string
+      example: cash
+    price_precision:
+      description: Price precision of the values.
+      type: integer
+      example: 2
+    customer_id:
+      description: ID of the customer or vendor.
+      type: string
+      example: '460000000000111'
+    payee:
+      description: Payee involved in the transaction.
+      type: string
+      example: Smith
+    description:
+      description: A brief description about the transaction.
+      type: string
+    currency_id:
+      description: The currency ID involved in the transaction.
+      type: string
+      example: '460000000000097'
+    currency_code:
+      description: Code of the currency involved in the transaction.
+      type: string
+      example: INR
+    currency_symbol:
+      description: Symbol of the currency involved in the transaction.
+      type: string
+      example: ₹
+    debit_or_credit:
+      description: Indicates if the transaction is Credit or Debit.
+      type: string
+      example: debit
+    offset_account_name:
+      description: Name of the offset account.
+      type: string
+      example: Petty Cash
+    is_offsetaccount_matched:
+      description: Indicates if the offset account is matched.
+      type: boolean
+      example: false
+    is_rule_exist:
+      description: Indicates if a rule exists for the transaction.
+      type: boolean
+      example: false
+    rule_details:
+      description: Details of the rule.
+      type: array
+      items:
+        type: string
+    from_account_id:
+      description: 'The account ID from which money will be transferred(Mandatory for specific type of transactions). These accounts differ with respect to transaction_type. Ex: To a bank account, from-account can be: bank , card, income, refund. To a card account, from account can be: bank, card, refund.'
+      type: string
+      example: '460000000070003'
+    from_account_name:
+      description: Name of the account from which money will be transferred.
+      type: string
+      example: Sales
+    payment_mode:
+      description: Mode of payment for the transaction. (not applicable for transfer_fund, card_payment, owner_drawings). Ex:cash, cheque, etc.,.
+      type: string
+      example: Cash
+    customer_name:
+      description: Name of the customer.
+      type: string
+    vendor_id:
+      description: ID of the Vendor.
+      type: string
+      example: '460000000026049'
+    vendor_name:
+      description: Name of the vendor.
+      type: string
+      example: Bowmen and co
+    sub_total:
+      description: Subtotal of the transaction.
+      type: integer
+      example: 33
+    total:
+      description: Total of the transaction.
+      type: integer
+      example: 33
+    vendor_credit_id:
+      description: ID of the vendor credit that has to be refunded.
+      type: string
+      example: '460000000030049'
+    bcy_total:
+      description: Total in base currency of the organization.
+      type: integer
+      example: 33
+    paid_through_account_id:
+      description: ID of the credit/ bank account the payment is made.
+      type: string
+      example: '460000000000358'
+    project_id:
+      description: ID of the project associated with the expense.
+      type: string
+    start_reading:
+      description: Start reading of the odometer.
+      type: string
+    end_reading:
+      description: End reading of the odometer.
+      type: string
+    is_billable:
+      description: A boolean value to specify if the expense is billable.
+      type: boolean
+    imported_transaction_id:
+      description: ID of the imported transaction.
+      type: string
+      example: '460000000013297'
+    imported_transactions:
+      type: array
+      items:
+        type: object
+        properties:
+          imported_transaction_id:
+            $ref: '#/components/schemas/imported_transaction_id'
+          date:
+            description: Date of the imported transaction.
+            type: string
+            example: '2013-01-22'
+          amount:
+            description: Amount in the transaction.
+            type: number
+            format: double
+            example: 10
+          payee:
+            $ref: '#/components/schemas/payee'
+          description:
+            description: Description of the transaction.
+            type: string
+            example: Cheque Deposit
+          reference_number:
+            description: Reference number of the transaction.
+            type: string
+            example: Ref-1900
+          status:
+            description: Status of the transaction.
+            type: string
+            example: categorized
+          account_id:
+            description: Account ID of the transaction.
+            type: string
+            example: 460000000006294
+    to_account_id:
+      description: 'ID of the account to which the money gets transferred(Mandatory for specific type of transactions). Ex: From a bank account, to-account can be: bank, card, drawings, expense,credit notes. From a card account, to-account can be: card, bank, expense.'
+      type: string
+      example: '460000000048001'
+    to_account_name:
+      type: string
+      example: Corporate Account
+    exchange_rate:
+      description: The foreign currency exchange rate value.
+      type: integer
+      example: 1
+    bank_charges:
+      description: Bank charges applied to the transaction.
+      type: number
+      format: double
+      example: 0
+    tax_id:
+      description: ID of the tax or tax group applied.
+      type: string
+    documents:
+      description: List of files to be attached to a particular transaction.
+      type: array
+      items:
+        type: object
+        properties:
+          file_name:
+            $ref: '#/components/schemas/file_name'
+          document_id:
+            $ref: '#/components/schemas/document_id'
+    document_id:
+      description: Unique ID of the attached file.
+      type: string
+    file_name:
+      description: Name of the attached file.
+      type: string
+    is_inclusive_tax:
+      description: Indicates if the transaction is tax inclusive.
+      type: boolean
+      example: false
+    tax_name:
+      description: Name of the tax.
+      type: string
+    tax_percentage:
+      description: Percentage of the tax.
+      type: number
+      format: double
+      example: 0
+    tax_amount:
+      description: Amount of tax.
+      type: number
+      format: double
+      example: 0
+    index:
+      description: Index of the custom field.
+      type: integer
+    label:
+      description: Label of the custom field.
+      type: string
+    value:
+      description: Value of the custom field.
+      type: string
+    custom_field_id:
+      description: ID of the custom field.
+      type: string
+    custom_fields:
+      description: List of custom fields associated with the transaction.
+      type: array
+      items:
+        type: object
+        properties:
+          custom_field_id:
+            $ref: '#/components/schemas/custom_field_id'
+          index:
+            $ref: '#/components/schemas/index'
+          label:
+            $ref: '#/components/schemas/label'
+          value:
+            $ref: '#/components/schemas/value'
+    vendor_credit_refund_id:
+      type: string
+      example: '460000000078265'
+    contact:
+      description: Contact person name, involved in the transaction.
+      type: string
+    is_update_customer:
+      description: Indicates if the customer should be updated.
+      type: boolean
+      example: false
+    transaction_number:
+      description: Number of the transaction.
+      type: string
+      example: INV-000007
+    contact_name:
+      description: Name of the contact.
+      type: string
+      example: Zylker Inc
+    is_best_match:
+      description: Indicates if the transaction is the best match.
+      type: boolean
+      example: true
+    receipt:
+      description: 'Param Description. Allowed Extensions: <code>gif</code>, <code>png</code>, <code>jpeg</code>, <code>jpg</code>, <code>bmp</code> and <code>pdf</code>.'
+      type: string
+      format: binary
+    bill_payment_id:
+      description: ID of the Bill Payment.
+      type: string
+    bill_id:
+      description: ID of the Bill.
+      type: string
+      example: '460000000053199'
+    amount_applied:
+      description: Amount applied to the entity.
+      type: number
+      format: double
+      example: 150
+    matching_documents:
+      type: array
+      items:
+        type: object
+        properties:
+          document_id:
+            $ref: '#/components/schemas/document_id'
+          file_name:
+            $ref: '#/components/schemas/file_name'
+          file_type:
+            $ref: '#/components/schemas/file_type'
+          file_size:
+            $ref: '#/components/schemas/file_size'
+          file_size_formatted:
+            $ref: '#/components/schemas/file_size_formatted'
+          scanned_amount:
+            $ref: '#/components/schemas/scanned_amount'
+          vendor_name:
+            $ref: '#/components/schemas/vendor_name'
+          scanned_receipt_date:
+            $ref: '#/components/schemas/scanned_receipt_date'
+          entity_number:
+            $ref: '#/components/schemas/entity_number'
+          relevance:
+            $ref: '#/components/schemas/relevance'
+    file_type:
+      description: Type of the attached file.
+      type: string
+      example: pdf
+    file_size:
+      type: string
+      example: '5447'
+    file_size_formatted:
+      type: string
+      example: 5.3 KB
+    entity_number:
+      type: integer
+    relevance:
+      description: Says how relevant is the document to the transaction.
+      type: string
+      example: best
+    scanned_amount:
+      description: Amount scanned from the file.
+      type: string
+    scanned_receipt_date:
+      description: Receipt date that is file from the document.
+      type: string
+    payment_id:
+      description: ID of the Payment.
+      type: string
+      example: '460000000076027'
+    payment_number:
+      description: Number of the payment.
+      type: integer
+      example: 8
+    tax_account_name:
+      description: Name of the tax account.
+      type: string
+    tax_amount_withheld:
+      description: Amount of tax withheld for the transaction.
+      type: number
+      format: double
+      example: 0
+    balance:
+      description: Balance in the bank account.
+      type: number
+      format: double
+      example: 0
+    created_time:
+      description: Created time of the transaction.
+      type: string
+      example: 2013-01-24T12:03:25+0530
+    last_modified_time:
+      description: Last modified time of the transaction.
+      type: string
+      example: 2013-01-24T12:03:25+0530
+    paid_through_account_name:
+      description: Name of the paid-through account.
+      type: string
+    paid_through_account_type:
+      description: Type of the paid-through account.
+      type: string
+      example: bank
+    is_ach_payment:
+      description: Indicates if the transaction is an ACH payment.
+      type: boolean
+      example: false
+    ach_payment_status:
+      description: Status of the ACH payment.
+      type: string
+    vendorpayment_id:
+      description: Vendor Payment to which you want to record the refund.
+      type: string
+      example: '460000000012345'
+    vendorpayment_refunds:
+      type: string
+    address:
+      description: Address involved in the transaction.
+      type: string
+    city:
+      description: City of the address.
+      type: string
+    state:
+      description: State of the address.
+      type: string
+    zip:
+      description: ZIP code of the address.
+      type: string
+    country:
+      description: Country of the address.
+      type: string
+    fax:
+      description: Fax number of the contact.
+      type: string
+    attention:
+      type: string
+    check_id:
+      description: ID of the check created.
+      type: string
+    check_number:
+      description: Number of the check created.
+      type: string
+    memo:
+      description: Memo or note associated with the check.
+      type: string
+    amount_in_words:
+      description: Amount in words.
+      type: string
+    check_status:
+      description: Status of the check.
+      type: string
+    check_details:
+      description: List of check details associated with the payment.
+      type: array
+      items:
+        type: object
+        properties:
+          memo:
+            $ref: '#/components/schemas/memo'
+          check_number:
+            $ref: '#/components/schemas/check_number'
+    payment_refund_id:
+      description: ID of the Payment Refund.
+      type: string
+      example: '460000000078307'
+    creditnote_id:
+      description: ID of the credit note that has to be refunded.
+      type: string
+      example: '4000000030049'
+    refund_mode:
+      description: Mode of refund. e.g., Cash, Cheque, etc.
+      type: string
+      example: Cash
+    invoice_id:
+      description: ID of the Invoice.
+      type: string
+      example: '460000000000481'
+    invoice_payment_id:
+      description: ID of the Invoice Payment.
+      type: string
+      example: '460000000134123'
+    discount_amount:
+      description: Amount of discount in the invoice.
+      type: number
+      format: double
+      example: 20
+    invoices:
+      description: List of invoices associated with the customer payment.
+      type: array
+      items:
+        type: object
+        properties:
+          invoice_payment_id:
+            $ref: '#/components/schemas/invoice_payment_id'
+          invoice_id:
+            $ref: '#/components/schemas/invoice_id'
+          amount_applied:
+            $ref: '#/components/schemas/amount_applied'
+          tax_amount_withheld:
+            $ref: '#/components/schemas/tax_amount_withheld'
+          discount_amount:
+            $ref: '#/components/schemas/discount_amount'
+    tax_exemption_id:
+      description: ID of the tax exemption.
+      type: string
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    tax_exemption_code:
+      description: Code of the tax exemption.
+      type: string
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    reverse_charge_tax_id:
+      description: Reverse charge tax ID.
+      type: string
+      example: 982000000567254
+      x-node_available_in:
+        - in
+      x-node_unavailable_in: []
+    transactions_to_be_matched:
+      description: List of transactions to be matched with the uncategorized transaction.
+      type: array
+      items:
+        type: object
+        properties:
+          transaction_id:
+            $ref: '#/components/schemas/transaction_id'
+          transaction_type:
+            $ref: '#/components/schemas/transaction_type'
+    line_items:
+      description: List of line items for the bank transaction.
+      type: array
+      items:
+        type: object
+        properties:
+          from_account_id:
+            $ref: '#/components/schemas/from_account_id'
+          from_account_name:
+            $ref: '#/components/schemas/from_account_name'
+          payment_mode:
+            $ref: '#/components/schemas/payment_mode'
+          customer_id:
+            $ref: '#/components/schemas/customer_id'
+          customer_name:
+            $ref: '#/components/schemas/customer_name'
+          vendor_id:
+            $ref: '#/components/schemas/vendor_id'
+          vendor_name:
+            $ref: '#/components/schemas/vendor_name'
+          sub_total:
+            $ref: '#/components/schemas/sub_total'
+          total:
+            $ref: '#/components/schemas/total'
+          bcy_total:
+            $ref: '#/components/schemas/bcy_total'
+          tags:
+            $ref: '#/components/schemas/tags'
+    banktransaction:
+      type: object
+      properties:
+        transaction_id:
+          $ref: '#/components/schemas/transaction_id'
+        from_account_id:
+          $ref: '#/components/schemas/from_account_id'
+        from_account_name:
+          $ref: '#/components/schemas/from_account_name'
+        to_account_id:
+          $ref: '#/components/schemas/to_account_id'
+        to_account_name:
+          $ref: '#/components/schemas/to_account_name'
+        transaction_type:
+          $ref: '#/components/schemas/transaction_type'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        currency_code:
+          $ref: '#/components/schemas/currency_code'
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        date:
+          $ref: '#/components/schemas/date'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        customer_name:
+          $ref: '#/components/schemas/customer_name'
+        vendor_id:
+          $ref: '#/components/schemas/vendor_id'
+        vendor_name:
+          $ref: '#/components/schemas/vendor_name'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        description:
+          $ref: '#/components/schemas/description'
+        bank_charges:
+          $ref: '#/components/schemas/bank_charges'
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        documents:
+          $ref: '#/components/schemas/documents'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        tax_name:
+          $ref: '#/components/schemas/tax_name'
+        tax_percentage:
+          $ref: '#/components/schemas/tax_percentage'
+        tax_amount:
+          $ref: '#/components/schemas/tax_amount'
+        sub_total:
+          $ref: '#/components/schemas/sub_total'
+        tax_exemption_id:
+          $ref: '#/components/schemas/tax_exemption_id'
+        tax_exemption_code:
+          $ref: '#/components/schemas/tax_exemption_code'
+        total:
+          $ref: '#/components/schemas/total'
+        bcy_total:
+          $ref: '#/components/schemas/bcy_total'
+        amount:
+          $ref: '#/components/schemas/amount'
+        reverse_charge_tax_id:
+          $ref: '#/components/schemas/reverse_charge_tax_id'
+        imported_transactions:
+          $ref: '#/components/schemas/imported_transactions'
+        tags:
+          $ref: '#/components/schemas/tags_response'
+        line_items:
+          $ref: '#/components/schemas/line_items'
+    bills:
+      description: List of bills associated with the vendor payment.
+      type: array
+      items:
+        type: object
+        properties:
+          bill_payment_id:
+            $ref: '#/components/schemas/bill_payment_id'
+          bill_id:
+            $ref: '#/components/schemas/bill_id'
+          amount_applied:
+            $ref: '#/components/schemas/amount_applied'
+          tax_amount_withheld:
+            $ref: '#/components/schemas/tax_amount_withheld'
+    transaction_status:
+      description: 'Status of the transaction. Values: All, uncategorized, manually_added, matched, excluded, categorized.'
+      type: string
+    search_text:
+      description: Search transactions by contact name or description.
+      type: string
+    user_id:
+      description: ID of the user involved in the transaction.
+      type: string
+    date_after:
+      description: Date after which transactions are to be filtered.
+      type: string
+    date_before:
+      description: Date before which transactions are to be filtered.
+      type: string
+    amount_start:
+      description: Ending amount with which transactions are to be filtered.
+      type: number
+      format: double
+    amount_end:
+      description: Ending amount with which transactions are to be filtered.
+      type: number
+      format: double
+    show_all_transactions:
+      description: Indicates if all transactions must be shown.
+      type: boolean
+    line_id:
+      description: ID of the line in bank transactions.
+      type: string
+      example: '46000000001234'
+    tax_type:
+      description: Type of tax applied to the line item.
+      type: string
+      example: tax
+    item_total:
+      description: Total of the item.
+      type: number
+      format: double
+      example: 7500
+    item_total_inclusive_of_tax:
+      description: Total of the item inclusive of tax.
+      type: number
+      format: double
+      example: 7500
+    item_order:
+      description: Order of the item.
+      type: integer
+      example: 1
+    totalFiles:
+      description: Total number of files.
+      type: integer
+      example: 0
+    doc:
+      description: Document that is to be attached.
+      type: string
+    document_ids:
+      description: ID of the document to be attached to the transaction.
+      type: string
+    vehicle_id:
+      description: ID of the Vehicle.
+      type: string
+    mileage_rate:
+      description: Mileage rate to be applied.
+      type: number
+      format: double
+      example: 0
+    mileage_unit:
+      description: Unit of mileage.
+      type: string
+      example: km
+    vehicle_type:
+      description: 'Type of Vehicle. Allowed values: <code>car</code>, <code>van</code>,<code>motorcycle</code> and <code>bike</code>'
+      type: string
+      example: car
+    zp_project_id:
+      description: ID of the Project.
+      type: string
+    zp_project_name:
+      description: Name of the project.
+      type: string
+    zp_client_id:
+      description: ID of the client.
+      type: string
+    employee_id:
+      description: ID of the Employee.
+      type: string
+    mileage_type:
+      description: 'Type of Mileage. Allowed Values: <code>gmaps</code>,<code>imaps</code>,<code>gps</code>,<code>odometer</code>,<code>wmaps</code>,<code>manual</code>,<code>non_mileage</code> and <code>per_diem</code>'
+      type: string
+      example: non_mileage
+    expense_type:
+      description: Type of expense.
+      type: string
+      example: non_mileage
+    distance:
+      description: Distance covered in the trip.
+      type: number
+      format: double
+      example: 4
+    recurring_expense_id:
+      description: ID of the Recurring Expense.
+      type: string
+    taxes:
+      description: List of taxes applied to the transaction.
+      type: array
+      items:
+        type: object
+        properties:
+          tax_name:
+            $ref: '#/components/schemas/tax_name'
+          tax_amount:
+            $ref: '#/components/schemas/tax_amount'
+          tax_id:
+            $ref: '#/components/schemas/tax_id'
+    reason:
+      description: Reason for the action.
+      type: string
+    zcrm_potential_id:
+      description: ID of the CRM potential associated with the transaction.
+      type: string
+    line_item_id:
+      description: ID of the Line Item.
+      type: string
+      example: '460000000012834'
+    retainerinvoice_id:
+      description: ID of the Retainer Invoice.
+      type: string
+    template_id:
+      description: ID of the template.
+      type: string
+    contact_person_id:
+      description: ID of the Contact Person.
+      type: string
+    contact_persons:
+      description: Array of contact person(s) for whom invoice has to be sent.
+      type: array
+      items:
+        type: string
+      example:
+        - '460000000870911'
+        - '460000000870915'
+    create-a-transaction-for-an-account-request:
+      required:
+        - transaction_type
+      type: object
+      properties:
+        from_account_id:
+          $ref: '#/components/schemas/from_account_id'
+        to_account_id:
+          $ref: '#/components/schemas/to_account_id'
+        transaction_type:
+          $ref: '#/components/schemas/transaction_type'
+        amount:
+          $ref: '#/components/schemas/amount'
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        date:
+          $ref: '#/components/schemas/date'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        description:
+          $ref: '#/components/schemas/description'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        tags:
+          $ref: '#/components/schemas/tags'
+        from_account_tags:
+          $ref: '#/components/schemas/tags'
+        to_account_tags:
+          $ref: '#/components/schemas/tags'
+        documents:
+          $ref: '#/components/schemas/documents'
+        bank_charges:
+          $ref: '#/components/schemas/bank_charges'
+        user_id:
+          $ref: '#/components/schemas/user_id'
+        tax_exemption_id:
+          $ref: '#/components/schemas/tax_exemption_id'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+    create-a-transaction-for-an-account-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The bank transaction has been recorded.
+          readOnly: true
+        banktransaction:
+          $ref: '#/components/schemas/banktransaction'
+    get-transactions-list-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        banktransactions:
+          type: array
+          items:
+            type: object
+            properties:
+              transaction_id:
+                $ref: '#/components/schemas/transaction_id'
+              date:
+                $ref: '#/components/schemas/date'
+              amount:
+                $ref: '#/components/schemas/amount'
+              transaction_type:
+                $ref: '#/components/schemas/transaction_type'
+              status:
+                $ref: '#/components/schemas/status'
+              source:
+                $ref: '#/components/schemas/source'
+              account_id:
+                $ref: '#/components/schemas/account_id'
+              account_name:
+                $ref: '#/components/schemas/account_name'
+              account_type:
+                $ref: '#/components/schemas/account_type'
+              price_precision:
+                $ref: '#/components/schemas/price_precision'
+              customer_id:
+                $ref: '#/components/schemas/customer_id'
+              payee:
+                $ref: '#/components/schemas/payee'
+              description:
+                $ref: '#/components/schemas/description'
+              currency_id:
+                $ref: '#/components/schemas/currency_id'
+              currency_code:
+                $ref: '#/components/schemas/currency_code'
+              currency_symbol:
+                $ref: '#/components/schemas/currency_symbol'
+              debit_or_credit:
+                $ref: '#/components/schemas/debit_or_credit'
+              offset_account_name:
+                $ref: '#/components/schemas/offset_account_name'
+              is_offsetaccount_matched:
+                $ref: '#/components/schemas/is_offsetaccount_matched'
+              reference_number:
+                $ref: '#/components/schemas/reference_number'
+              imported_transaction_id:
+                $ref: '#/components/schemas/imported_transaction_id'
+              is_rule_exist:
+                $ref: '#/components/schemas/is_rule_exist'
+              rule_details:
+                $ref: '#/components/schemas/rule_details'
+    update-a-transaction-request:
+      required:
+        - transaction_type
+      type: object
+      properties:
+        from_account_id:
+          $ref: '#/components/schemas/from_account_id'
+        to_account_id:
+          $ref: '#/components/schemas/to_account_id'
+        transaction_type:
+          $ref: '#/components/schemas/transaction_type'
+        amount:
+          $ref: '#/components/schemas/amount'
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        date:
+          $ref: '#/components/schemas/date'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        description:
+          $ref: '#/components/schemas/description'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        tags:
+          $ref: '#/components/schemas/tags'
+        from_account_tags:
+          $ref: '#/components/schemas/tags'
+        to_account_tags:
+          $ref: '#/components/schemas/tags'
+        documents:
+          $ref: '#/components/schemas/documents'
+        bank_charges:
+          $ref: '#/components/schemas/bank_charges'
+        user_id:
+          $ref: '#/components/schemas/user_id'
+        tax_exemption_id:
+          $ref: '#/components/schemas/tax_exemption_id'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        line_items:
+          type: array
+          description: List of expense line items associated with the transaction.
+          items:
+            type: object
+            properties:
+              line_id:
+                $ref: '#/components/schemas/line_id'
+              account_id:
+                $ref: '#/components/schemas/account_id'
+              account_name:
+                $ref: '#/components/schemas/account_name'
+              description:
+                $ref: '#/components/schemas/description'
+              tax_amount:
+                $ref: '#/components/schemas/tax_amount'
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              tax_name:
+                $ref: '#/components/schemas/tax_name'
+              tax_type:
+                $ref: '#/components/schemas/tax_type'
+              tax_percentage:
+                $ref: '#/components/schemas/tax_percentage'
+              item_total:
+                $ref: '#/components/schemas/item_total'
+              item_total_inclusive_of_tax:
+                $ref: '#/components/schemas/item_total_inclusive_of_tax'
+              item_order:
+                $ref: '#/components/schemas/item_order'
+              tags:
+                $ref: '#/components/schemas/tags'
+    update-a-transaction-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The bank transaction has been updated.
+          readOnly: true
+        banktransaction:
+          $ref: '#/components/schemas/banktransaction'
+    get-transaction-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        banktransaction:
+          $ref: '#/components/schemas/banktransaction'
+    delete-a-transaction-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The transaction has been deleted.
+          readOnly: true
+    get-matching-transactions-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: success
+          readOnly: true
+        matching_transactions:
+          type: array
+          items:
+            type: object
+            properties:
+              transaction_id:
+                $ref: '#/components/schemas/transaction_id'
+              date:
+                $ref: '#/components/schemas/date'
+              transaction_type:
+                $ref: '#/components/schemas/transaction_type'
+              reference_number:
+                $ref: '#/components/schemas/reference_number'
+              amount:
+                $ref: '#/components/schemas/amount'
+              debit_or_credit:
+                $ref: '#/components/schemas/debit_or_credit'
+              transaction_number:
+                $ref: '#/components/schemas/transaction_number'
+              contact_name:
+                $ref: '#/components/schemas/contact_name'
+              is_best_match:
+                $ref: '#/components/schemas/is_best_match'
+    match-a-transaction-request:
+      type: object
+      properties:
+        transactions_to_be_matched:
+          $ref: '#/components/schemas/transactions_to_be_matched'
+    match-a-transaction-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The transaction has been matched.
+          readOnly: true
+    unmatch-a-matched-transaction-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The transaction has been unmatched.
+          readOnly: true
+    exclude-a-transaction-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The transaction has been excluded.
+          readOnly: true
+    restore-a-transaction-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The excluded transaction(s) have been restored.
+          readOnly: true
+    categorize-an-uncategorized-transaction-request:
+      required:
+        - transaction_type
+      type: object
+      properties:
+        from_account_id:
+          $ref: '#/components/schemas/from_account_id'
+        to_account_id:
+          $ref: '#/components/schemas/to_account_id'
+        transaction_type:
+          $ref: '#/components/schemas/transaction_type'
+        amount:
+          $ref: '#/components/schemas/amount'
+        date:
+          $ref: '#/components/schemas/date'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        description:
+          $ref: '#/components/schemas/description'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        tags:
+          $ref: '#/components/schemas/tags'
+        documents:
+          $ref: '#/components/schemas/documents'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        to_account_tags:
+          $ref: '#/components/schemas/tags'
+        from_account_tags:
+          $ref: '#/components/schemas/tags'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        bank_charges:
+          $ref: '#/components/schemas/bank_charges'
+        user_id:
+          $ref: '#/components/schemas/user_id'
+        tax_exemption_id:
+          $ref: '#/components/schemas/tax_exemption_id'
+        custom_fields:
+          $ref: '#/components/schemas/custom_fields'
+        line_items:
+          type: array
+          description: List of expense line items associated with the transaction.
+          items:
+            type: object
+            properties:
+              line_id:
+                $ref: '#/components/schemas/line_id'
+              account_id:
+                $ref: '#/components/schemas/account_id'
+              account_name:
+                $ref: '#/components/schemas/account_name'
+              description:
+                $ref: '#/components/schemas/description'
+              tax_amount:
+                $ref: '#/components/schemas/tax_amount'
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              tax_name:
+                $ref: '#/components/schemas/tax_name'
+              tax_type:
+                $ref: '#/components/schemas/tax_type'
+              tax_percentage:
+                $ref: '#/components/schemas/tax_percentage'
+              item_total:
+                $ref: '#/components/schemas/item_total'
+              item_total_inclusive_of_tax:
+                $ref: '#/components/schemas/item_total_inclusive_of_tax'
+              item_order:
+                $ref: '#/components/schemas/item_order'
+              tags:
+                $ref: '#/components/schemas/tags'
+    categorize-an-uncategorized-transaction-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The transaction(s) have been categorized.
+          readOnly: true
+    categorize-as-expense-request:
+      type: object
+      properties:
+        account_id:
+          $ref: '#/components/schemas/account_id'
+        paid_through_account_id:
+          $ref: '#/components/schemas/paid_through_account_id'
+        date:
+          $ref: '#/components/schemas/date'
+        tax_id:
+          $ref: '#/components/schemas/tax_id'
+        amount:
+          $ref: '#/components/schemas/amount'
+        project_id:
+          $ref: '#/components/schemas/project_id'
+        tax_exemption_code:
+          $ref: '#/components/schemas/tax_exemption_code'
+        tax_exemption_id:
+          $ref: '#/components/schemas/tax_exemption_id'
+        is_inclusive_tax:
+          $ref: '#/components/schemas/is_inclusive_tax'
+        is_billable:
+          $ref: '#/components/schemas/is_billable'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        description:
+          $ref: '#/components/schemas/description'
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        zp_project_id:
+          $ref: '#/components/schemas/zp_project_id'
+        zp_project_name:
+          $ref: '#/components/schemas/zp_project_name'
+        zp_client_id:
+          $ref: '#/components/schemas/zp_client_id'
+        vendor_id:
+          $ref: '#/components/schemas/vendor_id'
+        vehicle_id:
+          $ref: '#/components/schemas/vehicle_id'
+        mileage_unit:
+          $ref: '#/components/schemas/mileage_unit'
+        mileage_rate:
+          $ref: '#/components/schemas/mileage_rate'
+        employee_id:
+          $ref: '#/components/schemas/employee_id'
+        mileage_type:
+          $ref: '#/components/schemas/mileage_type'
+        expense_type:
+          $ref: '#/components/schemas/expense_type'
+        distance:
+          $ref: '#/components/schemas/distance'
+        start_reading:
+          $ref: '#/components/schemas/start_reading'
+        end_reading:
+          $ref: '#/components/schemas/end_reading'
+        currency_id:
+          $ref: '#/components/schemas/currency_id'
+        custom_fields:
+          type: array
+          description: List of custom fields associated with the transaction.
+          items:
+            type: object
+            properties:
+              index:
+                $ref: '#/components/schemas/index'
+              value:
+                $ref: '#/components/schemas/value'
+        tags:
+          $ref: '#/components/schemas/tags'
+        documents:
+          $ref: '#/components/schemas/documents'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        recurring_expense_id:
+          $ref: '#/components/schemas/recurring_expense_id'
+        is_update_customer:
+          $ref: '#/components/schemas/is_update_customer'
+        taxes:
+          $ref: '#/components/schemas/taxes'
+        reason:
+          $ref: '#/components/schemas/reason'
+        line_items:
+          type: array
+          description: List of expense line items associated with the transaction.
+          items:
+            type: object
+            properties:
+              line_item_id:
+                $ref: '#/components/schemas/line_item_id'
+              account_id:
+                $ref: '#/components/schemas/account_id'
+              description:
+                $ref: '#/components/schemas/description'
+              amount:
+                $ref: '#/components/schemas/amount'
+              tax_id:
+                $ref: '#/components/schemas/tax_id'
+              item_order:
+                $ref: '#/components/schemas/item_order'
+              tax_exemption_code:
+                $ref: '#/components/schemas/tax_exemption_code'
+              tax_exemption_id:
+                $ref: '#/components/schemas/tax_exemption_id'
+              tags:
+                $ref: '#/components/schemas/tags'
+        zcrm_potential_id:
+          $ref: '#/components/schemas/zcrm_potential_id'
+    categorize-as-expense-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The transaction(s) have been categorized.
+          readOnly: true
+    uncategorize-a-categorized-transaction-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: Transaction(s) have been uncategorized.
+          readOnly: true
+    categorize-a-vendor-payment-request:
+      type: object
+      properties:
+        vendor_id:
+          $ref: '#/components/schemas/vendor_id'
+        bills:
+          $ref: '#/components/schemas/bills'
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        description:
+          $ref: '#/components/schemas/description'
+        date:
+          $ref: '#/components/schemas/date'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        paid_through_account_id:
+          $ref: '#/components/schemas/paid_through_account_id'
+        amount:
+          $ref: '#/components/schemas/amount'
+        custom_fields:
+          type: array
+          description: List of custom fields associated with the transaction.
+          items:
+            type: object
+            properties:
+              index:
+                $ref: '#/components/schemas/index'
+              value:
+                $ref: '#/components/schemas/value'
+        check_details:
+          $ref: '#/components/schemas/check_details'
+    categorize-a-vendor-payment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The transaction(s) have been categorized.
+          readOnly: true
+    categorize-as-customer-payment-request:
+      type: object
+      properties:
+        customer_id:
+          $ref: '#/components/schemas/customer_id'
+        retainerinvoice_id:
+          $ref: '#/components/schemas/retainerinvoice_id'
+        invoices:
+          $ref: '#/components/schemas/invoices'
+        payment_mode:
+          $ref: '#/components/schemas/payment_mode'
+        description:
+          $ref: '#/components/schemas/description'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        amount:
+          $ref: '#/components/schemas/amount'
+        bank_charges:
+          $ref: '#/components/schemas/bank_charges'
+        account_id:
+          $ref: '#/components/schemas/account_id'
+        custom_fields:
+          type: array
+          description: List of custom fields associated with the transaction.
+          items:
+            type: object
+            properties:
+              index:
+                $ref: '#/components/schemas/index'
+              value:
+                $ref: '#/components/schemas/value'
+        documents:
+          $ref: '#/components/schemas/documents'
+        date:
+          $ref: '#/components/schemas/date'
+        template_id:
+          $ref: '#/components/schemas/template_id'
+        contact_persons:
+          $ref: '#/components/schemas/contact_persons'
+    categorize-as-customer-payment-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The transaction(s) have been categorized.
+          readOnly: true
+    categorize-as-credit-note-refunds-request:
+      required:
+        - creditnote_id
+        - date
+      type: object
+      properties:
+        creditnote_id:
+          $ref: '#/components/schemas/creditnote_id'
+        date:
+          $ref: '#/components/schemas/date'
+        refund_mode:
+          $ref: '#/components/schemas/refund_mode'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        amount:
+          $ref: '#/components/schemas/amount'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        from_account_id:
+          $ref: '#/components/schemas/from_account_id'
+        description:
+          $ref: '#/components/schemas/description'
+    categorize-as-credit-note-refunds-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The transaction(s) have been categorized.
+          readOnly: true
+    categorize-as-vendor-credit-refunds-request:
+      required:
+        - vendor_credit_id
+        - date
+      type: object
+      properties:
+        vendor_credit_id:
+          $ref: '#/components/schemas/vendor_credit_id'
+        date:
+          $ref: '#/components/schemas/date'
+        refund_mode:
+          $ref: '#/components/schemas/refund_mode'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        amount:
+          $ref: '#/components/schemas/amount'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        account_id:
+          $ref: '#/components/schemas/account_id'
+        description:
+          $ref: '#/components/schemas/description'
+    categorize-as-vendor-credit-refunds-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The transaction(s) have been categorized.
+          readOnly: true
+    categorize-as-customer-payment-refund-request:
+      required:
+        - date
+        - amount
+        - from_account_id
+      type: object
+      properties:
+        date:
+          $ref: '#/components/schemas/date'
+        refund_mode:
+          $ref: '#/components/schemas/refund_mode'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        amount:
+          $ref: '#/components/schemas/amount'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        from_account_id:
+          $ref: '#/components/schemas/from_account_id'
+        description:
+          $ref: '#/components/schemas/description'
+    categorize-as-customer-payment-refund-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The transaction(s) have been categorized.
+          readOnly: true
+    categorize-as-vendor-payment-refund-request:
+      required:
+        - date
+        - amount
+        - to_account_id
+      type: object
+      properties:
+        vendorpayment_id:
+          $ref: '#/components/schemas/vendorpayment_id'
+        date:
+          $ref: '#/components/schemas/date'
+        refund_mode:
+          $ref: '#/components/schemas/refund_mode'
+        reference_number:
+          $ref: '#/components/schemas/reference_number'
+        amount:
+          $ref: '#/components/schemas/amount'
+        exchange_rate:
+          $ref: '#/components/schemas/exchange_rate'
+        to_account_id:
+          $ref: '#/components/schemas/to_account_id'
+        description:
+          $ref: '#/components/schemas/description'
+    categorize-as-vendor-payment-refund-response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+          readOnly: true
+        message:
+          type: string
+          example: The transaction(s) have been categorized.
+          readOnly: true
+    tag_id:
+      description: ID of the tag.
+      type: string
+      example: '460000000000567'
+    tag_name:
+      description: Name of the tag.
+      type: string
+      example: Business Unit
+    tag_option_id:
+      description: Tag option ID.
+      type: string
+      example: '460000000014044'
+    tag_option_name:
+      description: Tag option name.
+      type: string
+      example: Sales
+    is_tag_mandatory:
+      description: Indicates if the tag is mandatory.
+      type: boolean
+      example: false
+    tags:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+    tags_response:
+      description: Reporting tags help organize and filter data across reports and enable detailed business intelligence analysis.
+      type: array
+      items:
+        type: object
+        properties:
+          tag_id:
+            $ref: '#/components/schemas/tag_id'
+          tag_name:
+            $ref: '#/components/schemas/tag_name'
+          tag_option_id:
+            $ref: '#/components/schemas/tag_option_id'
+          tag_option_name:
+            $ref: '#/components/schemas/tag_option_name'
+          is_tag_mandatory:
+            $ref: '#/components/schemas/is_tag_mandatory'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.banking.CREATE: Create Banking
+            ERP.banking.UPDATE: Update Banking
+            ERP.banking.READ: Read Banking
+            ERP.banking.DELETE: Delete Banking

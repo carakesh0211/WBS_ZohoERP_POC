@@ -1,0 +1,187 @@
+openapi: 3.0.0
+info:
+  title: Tax Settings (India)
+  description: The Tax Settings module in Zoho ERP allows you to fetch and update organization tax configuration.
+  contact: {}
+  version: 1.0.0
+servers:
+  - url: https://www.zohoapis.in/erp/v1
+    description: API Endpoint
+tags:
+  - name: income-tax-details
+    description: Income Tax Details Module
+paths:
+  /settings/incometaxdetails:
+    x-mcp-group:
+      - Income Tax Details
+    x-node_available_in:
+      - in
+    parameters:
+      - $ref: '#/components/parameters/organization_id'
+    get:
+      tags:
+        - income-tax-details
+      operationId: get_income_tax_details
+      summary: Get Tax Settings
+      description: Fetch the organization tax settings.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-income-tax-details-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.READ
+    put:
+      tags:
+        - income-tax-details
+      operationId: update_income_tax_details
+      summary: Update Tax Settings
+      description: Update the organization tax settings.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-income-tax-details-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-income-tax-details-response'
+      deprecated: false
+      security:
+        - Zoho_Auth:
+            - ERP.settings.UPDATE
+components:
+  parameters:
+    organization_id:
+      name: organization_id
+      description: Unique identifier for the organization.
+      in: query
+      required: true
+      schema:
+        type: string
+      example: '10234695'
+  schemas:
+    gendoc-attributes-schema:
+      $ref: '#/components/schemas/income-tax-details'
+    code:
+      type: integer
+      example: 0
+      readOnly: true
+    message:
+      type: string
+      example: success
+      readOnly: true
+    pan_number:
+      type: string
+      example: AAAAA0000K
+      description: PAN number of the organization.
+    tan_number:
+      type: string
+      example: DELH12345A
+      description: TAN number of the organization.
+    tds_circle:
+      type: string
+      example: DEL/W/123/456
+      description: TDS circle in format <code>AreaCode/AOType/RangeCode/AONumber</code>.
+    employee_id:
+      type: string
+      example: '36000000012849'
+      description: Unique identifier of the authorized person (employee).
+    authorized_person_name:
+      type: string
+      example: Anand Maya
+      description: Name of the authorized person.
+    authorized_person_parent:
+      type: string
+      example: Ram Thakur
+      description: Father's name of the authorized person.
+    authorized_person_designation:
+      type: string
+      example: Finance Manager
+      description: Designation of the authorized person.
+    deposit_schedule:
+      type: string
+      example: monthly
+      description: TDS deposit schedule frequency. Allowed values are <code>monthly</code> and <code>quarterly</code>.
+      enum:
+        - monthly
+        - quarterly
+    income-tax-details:
+      type: object
+      description: Organization income tax configuration details.
+      properties:
+        pan_number:
+          $ref: '#/components/schemas/pan_number'
+        tan_number:
+          $ref: '#/components/schemas/tan_number'
+        tds_circle:
+          $ref: '#/components/schemas/tds_circle'
+        employee_id:
+          $ref: '#/components/schemas/employee_id'
+        authorized_person_name:
+          $ref: '#/components/schemas/authorized_person_name'
+        authorized_person_parent:
+          $ref: '#/components/schemas/authorized_person_parent'
+        authorized_person_designation:
+          $ref: '#/components/schemas/authorized_person_designation'
+        deposit_schedule:
+          $ref: '#/components/schemas/deposit_schedule'
+    get-income-tax-details-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+        income_tax_details:
+          $ref: '#/components/schemas/income-tax-details'
+    update-income-tax-details-request:
+      type: object
+      description: Payload to update organization income tax configuration details.
+      required:
+        - pan_number
+        - deposit_schedule
+      properties:
+        pan_number:
+          $ref: '#/components/schemas/pan_number'
+        tan_number:
+          $ref: '#/components/schemas/tan_number'
+        tds_circle:
+          $ref: '#/components/schemas/tds_circle'
+        employee_id:
+          $ref: '#/components/schemas/employee_id'
+        authorized_person_name:
+          $ref: '#/components/schemas/authorized_person_name'
+        authorized_person_parent:
+          $ref: '#/components/schemas/authorized_person_parent'
+        authorized_person_designation:
+          $ref: '#/components/schemas/authorized_person_designation'
+        deposit_schedule:
+          $ref: '#/components/schemas/deposit_schedule'
+    update-income-tax-details-response:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/code'
+        message:
+          $ref: '#/components/schemas/message'
+          example: Your organisation tax details have been updated successfully.
+        income_tax_details:
+          $ref: '#/components/schemas/income-tax-details'
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://accounts.zoho.in/oauth/v2/auth
+          scopes:
+            ERP.settings.READ: Read Settings
+            ERP.settings.UPDATE: Update Settings
