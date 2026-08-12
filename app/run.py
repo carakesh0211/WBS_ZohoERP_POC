@@ -5,7 +5,9 @@
     python app/run.py --public   # bind 0.0.0.0 so a tunnel or host can reach it
 
 Environment:
-    PORT            listen port (default 8000)
+    X_ZOHO_CATALYST_LISTEN_PORT
+                    Catalyst AppSail listen port (takes precedence)
+    PORT            listen port outside Catalyst (default 8000)
     HOST            bind address (default 127.0.0.1, or 0.0.0.0 with --public)
     CAPEX_DB_PATH   where the SQLite file lives
     DEMO_USER       set both of these to require a username and password
@@ -25,7 +27,12 @@ if __name__ == "__main__":
         print("  ->", db.DB_PATH)
 
     host = os.environ.get("HOST") or ("0.0.0.0" if "--public" in sys.argv else "127.0.0.1")
-    port = int(os.environ.get("PORT", "8000"))
+    # AppSail assigns the listening port at runtime and verifies that the
+    # process binds to it. Keep PORT as the portable/local fallback.
+    port = int(
+        os.environ.get("X_ZOHO_CATALYST_LISTEN_PORT")
+        or os.environ.get("PORT", "8000")
+    )
 
     if host != "127.0.0.1" and not (os.environ.get("DEMO_USER") and os.environ.get("DEMO_PASSWORD")):
         print("\n  WARNING: binding to", host, "with no DEMO_USER / DEMO_PASSWORD set.")
