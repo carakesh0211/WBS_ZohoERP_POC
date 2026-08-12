@@ -19,12 +19,27 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 if __name__ == "__main__":
-    from app.backend import db
+    from app.backend import auth, db, migrate
 
     if "--reseed" in sys.argv or not os.path.exists(db.DB_PATH):
         print("Seeding demo dataset ...")
-        db.reset_and_seed()
+        # reset_and_seed() creates only the legacy v1 schema. Build through
+        # the migration runner so the authentication and financial-control
+        # tables added by later migrations are present in hosted instances.
+        migrate.fresh(db.DB_PATH, seed=True)
         print("  ->", db.DB_PATH)
+    else:
+        migrate.upgrade(db.DB_PATH, backup=False)
+
+    # POC identities are deliberately provisioned separately from business
+    # seed data. Keep this idempotent step in startup so a fresh AppSail
+    # instance always has the documented demo accounts.
+    con = db.connect()
+    try:
+        provisioned = auth.provision_dev_identities(con)
+        print(f"  -> demo identities ready: {provisioned}")
+    finally:
+        con.close()
 
     host = os.environ.get("HOST") or ("0.0.0.0" if "--public" in sys.argv else "127.0.0.1")
     # AppSail assigns the listening port at runtime and verifies that the
