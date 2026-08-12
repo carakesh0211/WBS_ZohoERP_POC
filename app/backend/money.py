@@ -62,13 +62,23 @@ def to_paise(value, *, field: str = "amount", allow_negative: bool = False) -> i
     if not dec.is_finite():
         raise MoneyError(f"{field} must be a finite amount.")
 
-    with localcontext() as ctx:
-        ctx.prec = 34                       # IEEE decimal128: ample for CAPEX values
-        paise = (dec * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    # Reject values outside the supported ledger range before multiplying or
+    # quantizing them.  Extremely large exponents (for example ``1e400``)
+    # otherwise exceed the decimal128 working context and leak an
+    # ``InvalidOperation`` as an HTTP 500 instead of a controlled MoneyError.
+    if dec < 0 and not allow_negative:
+        raise MoneyError(f"{field} must not be negative.")
+    if abs(dec) > Decimal(MAX_PAISE) / Decimal(100):
+        raise MoneyError(f"{field} exceeds the maximum supported amount.")
+
+    try:
+        with localcontext() as ctx:
+            ctx.prec = 34                   # IEEE decimal128: ample for CAPEX values
+            paise = (dec * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    except InvalidOperation as exc:
+        raise MoneyError(f"{field} is not a valid supported amount.") from exc
 
     ipaise = int(paise)
-    if not allow_negative and ipaise < 0:
-        raise MoneyError(f"{field} must not be negative.")
     if abs(ipaise) > MAX_PAISE:
         raise MoneyError(f"{field} exceeds the maximum supported amount.")
     return ipaise
