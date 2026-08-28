@@ -18,7 +18,7 @@ Phase 0A is *"work possible with no Zoho tenant"*. Nothing in it depends on the 
 | SBOM published | **Met** | `sbom.cyclonedx.json`, committed |
 | Visual baselines committed | **Met** | 54 PNGs, 3 viewports, pixel-clean on re-run |
 | Annex A committed, IDs allocated | **Met** | 15 requirements across two provenance classes |
-| Ambiguities resolved or owned | **Partly** | AMB-08 closed; AMB-01…07, 09 open with owners |
+| Ambiguities resolved or owned | **Partly** | AMB-08 closed; AMB-01…07 and AMB-09 remain open. Proposed role owners are recorded, but every named owner is `UNASSIGNED` |
 | FastAPI-on-AppSail proven | **MET** | `wbs-platform-spike` serves 200; §8 |
 
 ---

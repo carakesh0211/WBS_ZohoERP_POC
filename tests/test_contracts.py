@@ -691,3 +691,88 @@ def test_every_contract_file_is_valid_json_and_declares_its_freeze_date(filename
     doc = contract(filename)
     assert doc.get("frozen_at"), f"{filename} does not declare frozen_at"
     assert doc.get("rule"), f"{filename} does not declare its rule"
+
+
+# ===========================================================================
+# Ambiguity ownership - documentation consistency
+#
+# A stale exit-report line claimed the open ambiguities were "open with
+# owners" while every named owner in the register read UNASSIGNED. A proposed
+# ROLE is not an owner: a role cannot answer a question. Reporting unowned
+# items as owned is the specific failure this guards against, because it makes
+# a blocked dependency look attended to.
+# ===========================================================================
+AMBIGUITY_REGISTER = ROOT / "research" / "00_intake" / "client_notes_2026-08-28.md"
+PHASE_0A_EXIT = ROOT / "docs" / "PHASE_0A_EXIT.md"
+
+
+def _unassigned_ambiguities() -> list[str]:
+    text = AMBIGUITY_REGISTER.read_text(encoding="utf-8")
+    return [
+        row.split("|")[1].strip()
+        for row in text.splitlines()
+        if row.startswith("| AMB-") and "UNASSIGNED" in row
+    ]
+
+
+def test_no_document_claims_ambiguities_are_owned_while_any_is_unassigned():
+    """The assertion this correction exists to make permanent."""
+    unassigned = _unassigned_ambiguities()
+    if not unassigned:
+        return  # every ambiguity has a named owner; the claim would be fair
+
+    forbidden = ("open with owners", "owners named", "owners assigned",
+                 "all owned", "ownership assigned")
+    offenders = []
+    for doc in sorted(ROOT.glob("docs/*.md")) + sorted(ROOT.glob("research/00_intake/*.md")):
+        lowered = doc.read_text(encoding="utf-8").lower()
+        for phrase in forbidden:
+            if phrase in lowered:
+                offenders.append(f"{doc.relative_to(ROOT).as_posix()}: {phrase!r}")
+
+    assert not offenders, (
+        f"{len(unassigned)} ambiguities have no named owner ({', '.join(unassigned)}), "
+        f"but a document claims otherwise: {offenders}. A proposed role is not an owner."
+    )
+
+
+def test_the_exit_report_states_the_ambiguity_position_accurately():
+    text = PHASE_0A_EXIT.read_text(encoding="utf-8")
+    row = [ln for ln in text.splitlines() if "Ambiguities resolved or owned" in ln]
+    assert row, "exit report no longer states the ambiguity criterion"
+    line = row[0]
+    assert "AMB-08 closed" in line
+    if _unassigned_ambiguities():
+        assert "UNASSIGNED" in line, (
+            "Named owners are UNASSIGNED in the register, so the exit report must "
+            "say so rather than implying the items are owned."
+        )
+
+
+def test_every_open_ambiguity_declares_a_decision_gate_and_cost_of_delay():
+    """An unowned item still needs a gate and a stated cost, or it reads as
+    optional rather than as a dependency."""
+    text = AMBIGUITY_REGISTER.read_text(encoding="utf-8")
+    rows = [r for r in text.splitlines() if r.startswith("| AMB-") and "CLOSED" not in r]
+    assert rows, "ambiguity register has no open rows"
+    for row in rows:
+        cells = [c.strip() for c in row.strip("|").split("|")]
+        rid = cells[0]
+        assert len(cells) >= 9, f"{rid}: register row is missing columns"
+        assert cells[6], f"{rid}: no decision gate recorded"
+        assert cells[7], f"{rid}: no cost of delay recorded"
+
+
+def test_every_open_ambiguity_appears_in_the_client_questionnaire():
+    """The questionnaire is the instrument for closing these; an ambiguity
+    absent from it has no route to an answer."""
+    questionnaire = (ROOT / "research" / "00_intake"
+                     / "client_decision_questionnaire.md").read_text(encoding="utf-8")
+    text = AMBIGUITY_REGISTER.read_text(encoding="utf-8")
+    open_ids = [
+        r.split("|")[1].strip()
+        for r in text.splitlines()
+        if r.startswith("| AMB-") and "CLOSED" not in r
+    ]
+    missing = [i for i in open_ids if i not in questionnaire]
+    assert not missing, f"open ambiguities absent from the questionnaire: {missing}"

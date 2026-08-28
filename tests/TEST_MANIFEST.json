@@ -520,6 +520,22 @@
       "test_every_contract_file_is_valid_json_and_declares_its_freeze_date": {
         "assertions": 2,
         "body_sha": "cb58a4ff1582a958"
+      },
+      "test_no_document_claims_ambiguities_are_owned_while_any_is_unassigned": {
+        "assertions": 1,
+        "body_sha": "bbd48f5c0e887896"
+      },
+      "test_the_exit_report_states_the_ambiguity_position_accurately": {
+        "assertions": 3,
+        "body_sha": "039f892658be35a2"
+      },
+      "test_every_open_ambiguity_declares_a_decision_gate_and_cost_of_delay": {
+        "assertions": 4,
+        "body_sha": "08fa72d741dae555"
+      },
+      "test_every_open_ambiguity_appears_in_the_client_questionnaire": {
+        "assertions": 1,
+        "body_sha": "a8dc819a4055a4d8"
       }
     },
     "test_domain_invariants.py": {
@@ -1348,7 +1364,7 @@
     "test_audit.py": 17,
     "test_capitalisation.py": 18,
     "test_connector.py": 20,
-    "test_contracts.py": 43,
+    "test_contracts.py": 47,
     "test_domain_invariants.py": 34,
     "test_financial_controls.py": 61,
     "test_known_defects.py": 2,
@@ -1363,7 +1379,7 @@
     "test_audit.py": 39,
     "test_capitalisation.py": 58,
     "test_connector.py": 57,
-    "test_contracts.py": 64,
+    "test_contracts.py": 73,
     "test_domain_invariants.py": 94,
     "test_financial_controls.py": 159,
     "test_known_defects.py": 2,
