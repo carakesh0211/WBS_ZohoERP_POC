@@ -1,0 +1,285 @@
+# Phase 0B — AppSail to PostgreSQL connectivity gate
+
+**Status:** PLAN ONLY. Awaiting approval. **Nothing has been created** — no database, account, credential, ticket, Function or deployment.
+**Plan reference:** v1.2.1 §2.4 (the gate) and §2.5 (fallbacks).
+**Scope rule:** `wbs-capex-poc` is never accessed or modified. All work uses the existing `wbs-platform-spike` service.
+
+---
+
+## 1. What is actually unknown
+
+This gate is not "does PostgreSQL work". It is whether Catalyst AppSail can reach an external PostgreSQL **and whether that path can be secured**.
+
+| | Question |
+|---|---|
+| **Q-A** | Can an AppSail container open an outbound TCP/TLS connection to an external PostgreSQL and authenticate? |
+| **Q-B** | Can that path be secured by network controls, rather than by credentials and TLS alone? |
+
+### The epistemic position, stated precisely
+
+**No publicly documented static egress IP or CIDR was found** for Catalyst projects or data centres. Zoho's Database Connector CodeLib is documented for *Functions*, not AppSail, and no page describes an outbound egress policy.
+
+**Absence of documentation is not evidence that the capability does not exist.** Zoho may operate stable egress ranges, or a private-network path, and simply not publish them. That is precisely why §5 raises an authoritative question rather than inferring an answer from silence.
+
+### What can and cannot close Q-B
+
+**Q-B cannot be closed by observation.** Repeated cold-start sampling can *disprove* stability — a single varying address is conclusive — but no finite number of matching samples proves an address is static. Sampling produces a hypothesis, not a commitment.
+
+**Q-B passes only on one of:**
+
+1. an **authoritative Zoho commitment** to a static IP or CIDR, in writing, with its change policy stated; or
+2. a **supported private-network path** (peering, private link, or equivalent); or
+3. **another security architecture explicitly approved by the client**, accepting the residual risk in writing.
+
+Anything else leaves Q-B **unresolved**, however many green ticks the test produces.
+
+---
+
+## 2. Test design — five checks, independently attributable
+
+The lesson from the Phase 0A FastAPI spike is that AppSail reports any startup failure as one opaque message. Every step is therefore timed and recorded separately, so a DNS failure can never be mistaken for an auth failure.
+
+| # | Check | Method | Isolates |
+|---|---|---|---|
+| 1 | **DNS** | `socket.getaddrinfo(host, port)` | Resolver reachability; records address family (A / AAAA) and resolved addresses |
+| 2 | **TCP** | `socket.create_connection(..., timeout=5)` | Outbound egress permitted on the port — **this is Q-A** |
+| 3 | **TLS** | PostgreSQL `SSLRequest`, expect `S`, then wrap with a **verifying** `SSLContext` (§4) | Certificate chain, hostname, SNI, protocol, cipher |
+| 4 | **Auth** | `pg8000` connect, SCRAM-SHA-256, over a verified context | Credentials and `pg_hba` policy |
+| 5 | **Query** | `SELECT 1`, `version()`, `current_user`, `inet_client_addr()` | Round trip, and the observed source address (§3) |
+
+Each step carries its own timeout and its own recorded outcome. The full sequence must complete inside AppSail's **30-second request cap**; the budget is 5 s per step, leaving comfortable headroom.
+
+**Driver: `pg8000`.** Pure Python, so no second compiled wheel to vendor and one fewer failure mode that could masquerade as a network failure. The Phase 1 driver choice stays open — this gate tests the network path, not the driver.
+
+---
+
+## 3. Source-address observation — and its limits
+
+`inet_client_addr()` returns the address **the database server sees**. That is not necessarily the AppSail container's egress address.
+
+**When a provider proxy or connection pooler sits in the path, `inet_client_addr()` reports the pooler, not the client.** It is then evidence about the provider's internal topology and says nothing about Catalyst egress.
+
+Therefore:
+
+- **Record `inet_client_addr()` always**, but **never treat it as authoritative** for egress identity.
+- **Record the endpoint type with every observation** — one of `direct`, `session-pooled`, `transaction-pooled`. An observation without this label is uninterpretable.
+- **Obtain the true source address from the provider's own connection or firewall logs** where available. That is the authoritative observation, because it is recorded at the network boundary rather than inside a pooled session.
+- Treat every address observation as an **empirical sample**, feeding the Q-B hypothesis. It never closes Q-B by itself (§1).
+
+---
+
+## 4. TLS requirements
+
+Negotiating encryption is not sufficient. An unverified TLS session is vulnerable to interception and proves only that *something* answered.
+
+The test must construct an `ssl.SSLContext` with:
+
+- **Certificate chain validation** — `verify_mode = ssl.CERT_REQUIRED`, against the provider's CA bundle shipped in the deployment bundle.
+- **Hostname verification** — `check_hostname = True`.
+- **SNI** — the server hostname passed to `wrap_socket(server_hostname=...)`.
+- **TLS 1.2 minimum**, 1.3 preferred.
+
+**Recorded:** negotiated protocol version, cipher suite, peer certificate subject, issuer, and validity dates.
+
+**Explicitly recorded:** whether the `pg8000` connection in step 4 uses **the same verified context** as step 3, or a separate one. If pg8000 cannot be given the verified context, that is a finding in its own right and must be reported rather than glossed — a verified handshake in step 3 does not license an unverified one in step 4.
+
+---
+
+## 5. Questions for Zoho support
+
+To be raised as a single ticket. Context to include so the answer is unambiguous:
+
+| Field | Value |
+|---|---|
+| Data centre | **India (IN)** — `console.catalyst.zoho.in` |
+| Project | `WBS-ZohoERP-POC` |
+| Project ID | `4239000000062001` |
+| AppSail service ID | `4239000000096001` (`wbs-platform-spike`) |
+| Environment | Development |
+
+**Questions:**
+
+1. Is arbitrary **outbound TCP** from an AppSail container permitted, on **5432** and **6543** specifically? Any port, protocol, proxy or allowlist restriction?
+2. **Is there a static egress IP address or CIDR range** — per project, per data centre, or per account — that a customer may allowlist on a third-party service?
+3. If yes: **is that range contractual or best-effort**, and **may published CIDRs change without notice**? What notice period, if any, applies to a change?
+4. If no: is a **private-network path** (peering, private link, VPC-style connectivity, or equivalent) available or on the roadmap for outbound database access?
+5. Are the answers to 1–4 **identical for Cron and Event Functions**, or do those surfaces have a different egress policy? *(The Database Connector CodeLib is documented for Functions, not AppSail, so we cannot assume parity.)*
+6. Is outbound **TLS with full certificate and hostname verification** supported, and may a custom CA bundle be shipped inside the deployment bundle?
+7. Documented **outbound connection limits** — concurrent sockets per instance, connection lifetime, idle timeout?
+8. Does the platform **terminate long-lived outbound connections**, and after how long? *(Bears directly on connection pooling in Phase 1.)*
+
+**Question 3 is the one that determines whether Q-B can ever pass.** An IP range that may change without notice is not a basis for an allowlist in a financial control system.
+
+---
+
+## 6. Provider recommendation
+
+**Recommended for the gate: Supabase, Mumbai `ap-south-1`.**
+
+India region keeps the test consistent with the production data-residency position (§10) and avoids introducing a second variable.
+
+**Subject to verification before anything is created:** the free account's **actual network-restriction entitlement**. Network restrictions, IP allowlisting and IPv4 addressing are commonly paid or plan-gated features. If the free tier cannot restrict network access at all, that materially changes §9 and must be established first, not discovered mid-test.
+
+### Three endpoint probes
+
+Supabase exposes different endpoints with different network characteristics. Each must be probed separately, because a failure on one says nothing about the others.
+
+| Probe | Endpoint | Port | Family | Purpose |
+|---|---|---|---|---|
+| **P1** | Direct database | 5432 | **IPv6** | Does AppSail have outbound IPv6 at all? Unknown and untested |
+| **P2** | Shared **session** pooler | 5432 | **IPv4** | The realistic AppSail path if IPv6 is unavailable |
+| **P3** | **Transaction** pooler | 6543 | IPv4 | For the Stage 2 Function test — the right mode for short-lived serverless invocations |
+
+**P1 is the informative one.** If AppSail has no outbound IPv6, direct connection is impossible on a free tier without a paid IPv4 add-on — a cost and architecture finding, not merely a test result.
+
+Every observation in §3 must record which probe produced it.
+
+---
+
+## 7. Two execution surfaces — Stage 1 does not clear the gate
+
+Plan §2.2 places request handling on AppSail and **all background work on Cron/Event Functions**: polling, sweeps, outbox drain, reconciliation, audit anchoring. Both surfaces need database access. They are different execution environments and the CodeLib is documented only for Functions.
+
+| Stage | Surface | Resource | Approval |
+|---|---|---|---|
+| **1** | AppSail | New deployment on existing `wbs-platform-spike` | This plan |
+| **2** | Cron or Event Function | **Creates a Function** | **Separate approval, requested after Stage 1 reports** |
+
+**Stage 1 success is a partial pass only.** Phase 0B cannot clear until Stage 2 proves the Function path, because Phase 1's entire background-job architecture depends on it. Reporting Stage 1 as "the gate passed" would be false.
+
+---
+
+## 8. Logging and response safety
+
+**The spike is standalone.** It deliberately contains no CAPEX application code, and therefore **none of the Phase 0A observability layer** — no `StructuredFormatter`, no redaction, no protected root keys. Those protections do not apply here and must not be assumed.
+
+The spike therefore carries its own minimal rules, enforced by construction rather than by a formatter.
+
+**Never logged or returned, under any circumstance:**
+
+- environment variable **values** of any kind
+- the DSN or connection string, whole or partial
+- passwords, or any credential material
+- raw exception objects, exception messages, or tracebacks
+
+**Permitted in logs and responses:**
+
+- stage name and outcome (`dns`, `tcp`, `tls`, `auth`, `query` → `pass` / `fail`)
+- timings, in milliseconds
+- a **sanitised error classification** — exception class name and, where available, a driver error code. Never the message text, which routinely echoes host, user and connection parameters
+- endpoint type (`direct` / `session-pooled` / `transaction-pooled`) and probe id
+- non-secret host metadata — hostname, port, resolved address family
+- TLS protocol, cipher, certificate subject/issuer/validity
+- `SELECT 1` result, `version()`, `current_user`
+
+**Construction rule:** exceptions are caught per stage and reduced to `type(exc).__name__` plus an optional driver code **at the point of capture**. The raw exception is never carried forward into a variable that could reach a log or a response. This is the same class of leak the Phase 0A review found in tracebacks, and the fix is the same: never let the object travel.
+
+---
+
+## 9. Database hardening
+
+To be created only after approval, and only as an isolated throwaway.
+
+- **Dedicated, empty database.** No schema, no tables, no data, no CAPEX objects. `SELECT 1` requires none.
+- **Ephemeral login role**, created for this test alone.
+- **`CONNECT` only.** No `CREATE`, no schema creation rights, no object ownership.
+- **Revoke unnecessary `PUBLIC` privileges** — notably `REVOKE ALL ON DATABASE … FROM PUBLIC` and `REVOKE ALL ON SCHEMA public FROM PUBLIC`, so the role cannot reach anything by default inheritance.
+- **High-entropy password**, generated at creation, never reused, never committed, never logged.
+- **SSL enforced** at the server, so an unencrypted connection is refused rather than silently accepted.
+- **Short validity** — `VALID UNTIL` set to a few hours, so the credential expires even if teardown is interrupted.
+- **Immediate revocation** at the end of the test (§11), not deferred.
+
+### Network exposure requires its own approval
+
+If the verified free-tier configuration cannot restrict network access, then running this test means **temporarily allowing public connectivity to the database**.
+
+**That requires separate, explicit approval — even with an empty database and ephemeral credentials.** It will not be done silently, and `0.0.0.0/0` or `::/0` will not be applied on my own judgement. If restriction is unavailable, I will report that and ask, stating the residual risk, before proceeding.
+
+---
+
+## 10. Cost
+
+**Expected $0, if the verified free-tier configuration requires no payment method and no paid add-on.**
+
+That is a conditional, not a promise. Two things commonly break it: **IPv4 addressing** and **network restriction / IP allowlisting** are frequently paid features.
+
+**Before creating anything, the actual account and checkout screens will be captured as evidence** — showing whether a payment method is demanded and whether the needed features sit behind a paid tier. No Catalyst billing will be configured, and no payment method entered anywhere.
+
+**Data residency.** The throwaway database holds no real data, so its region is a low-risk choice for the gate. **The production database must be India-region** — the client is India-based and Zoho ERP is India-only. That is a client decision to record explicitly, not an engineering default to assume.
+
+---
+
+## 11. Cleanup
+
+1. Revoke and drop the ephemeral role; drop the throwaway database.
+2. Delete the Supabase project.
+3. Remove the temporary environment variables from `wbs-platform-spike`.
+4. Redeploy the plain FastAPI bundle, returning the spike to its Phase 0A proven state.
+5. Confirm zero live instances.
+6. Record teardown in the evidence manifest **with timestamps**, including explicit confirmation that credentials were revoked and any temporary network exposure was withdrawn.
+
+The spike service itself remains, idle. **`wbs-capex-poc` is not touched at any point.**
+
+---
+
+## 12. Evidence checklist
+
+- Service and deployment IDs; bundle SHA-256; exact vendored versions
+- Per-step results with timings, per probe (P1 / P2 / P3)
+- TLS protocol, cipher, certificate subject / issuer / validity, and **whether pg8000 used the verified context**
+- `SELECT 1`, `version()`, `current_user`
+- `inet_client_addr()` observations, **each labelled with endpoint type**, and marked non-authoritative where pooled
+- **Provider firewall/connection log extracts** giving the source address at the network boundary
+- Cold-start versus warm connection latency
+- Account/checkout screens captured before creation (§10)
+- Zoho ticket reference and **verbatim** answers
+- CI run URL
+- Teardown confirmation with timestamps
+- **Negative results recorded as fully as positive ones.** A failure at step 2 is a more valuable finding than a success at step 5
+
+---
+
+## 13. Outcome interpretation
+
+| Outcome | Status |
+|---|---|
+| Reachable; source address **sampled** stable | **Q-A passed. Q-B unresolved.** Sampling cannot establish a static address (§1) |
+| Reachable; **authoritative** allowlist commitment or supported private path | **Network-security gate passed for that execution surface** |
+| **Stage 1 (AppSail) passed, Stage 2 (Function) untested** | **Phase 0B partial.** The gate has not cleared |
+| **Both surfaces pass securely** | **Phase 0B complete.** Architecture proceeds as planned |
+| Reachable, but no restriction possible and no authoritative commitment | Q-A passed; Q-B fails. Escalates to a **client security decision** — plan §2.5 option 3, database secured by TLS and credentials alone |
+| TCP fails on AppSail, succeeds on Functions | Plan §2.5 option 1 — AppSail becomes a pure request tier, data access moves behind Functions. **Effort impact provisional** (§14) |
+| TCP fails on both surfaces | **Go/no-go failure.** Re-plan required. Catalyst Data Store remains rejected on control-semantics grounds (plan §1.1) |
+
+---
+
+## 14. Provisional effort note
+
+Plan v1.2.1 §2.5 estimates the Functions-fronted fallback at **6–12 person-weeks**. That figure is **provisional** and rests on assumptions not yet tested:
+
+- that Functions can reach PostgreSQL at all — itself the Stage 2 question
+- that the 30-second Advanced I/O limit accommodates the interactive query path
+- that splitting the codebase across two execution surfaces does not force a redesign of the transaction boundary in `services.critical`
+- that connection pooling behaves acceptably under scale-to-zero, where every cold start opens a new connection
+
+**It should not be quoted as a committed estimate.** Re-baseline it once Stage 2 has run.
+
+---
+
+## 15. Approval gate
+
+**Nothing has been created.** Approval is requested for:
+
+1. Verifying the Supabase free-tier entitlement and capturing the account/checkout evidence
+2. Creating a throwaway Mumbai `ap-south-1` database and an ephemeral role, hardened per §9
+3. Building and deploying a Stage 1 bundle to `wbs-platform-spike`
+4. Setting temporary environment variables on that service
+5. Raising the Zoho support ticket (§5)
+
+**Requested separately, after Stage 1 reports:** Stage 2, which creates a Function.
+**Requested separately if needed:** any temporary public network exposure (§9).
+
+Two decisions would help before starting:
+
+- **Provider and region** — confirm Supabase `ap-south-1`, or name an alternative.
+- **Who raises the Zoho ticket.** Their response time is outside our control and question 3 gates Q-B entirely, so it is the long pole. Worth opening first, in parallel with everything else.
