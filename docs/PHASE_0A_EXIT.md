@@ -1,7 +1,7 @@
 # Phase 0A — exit gate report
 
 **Branch:** `phase-0a/foundations` · **Date:** 2026-08-28 · **Plan:** v1.2.1 §16
-**Status:** committed and pushed as `33f4ed8`. Hosted CI **green on all four jobs**. **Not yet fully closed** — the FastAPI-on-AppSail proof remains outstanding (§4).
+**Status:** committed and pushed. Hosted CI **green on all four jobs**. **FastAPI-on-AppSail proof COMPLETE** (§8). Remaining open item: client ambiguities AMB-01…07, 09.
 
 Phase 0A is *"work possible with no Zoho tenant"*. Nothing in it depends on the outcome of the §2.4 AppSail→PostgreSQL connectivity gate, so all of it stays valid under every fallback in plan §2.5.
 
@@ -19,7 +19,7 @@ Phase 0A is *"work possible with no Zoho tenant"*. Nothing in it depends on the 
 | Visual baselines committed | **Met** | 54 PNGs, 3 viewports, pixel-clean on re-run |
 | Annex A committed, IDs allocated | **Met** | 15 requirements across two provenance classes |
 | Ambiguities resolved or owned | **Partly** | AMB-08 closed; AMB-01…07, 09 open with owners |
-| FastAPI-on-AppSail proven | **NOT MET** | No Catalyst account — §4 |
+| FastAPI-on-AppSail proven | **MET** | `wbs-platform-spike` serves 200; §8 |
 
 ---
 
@@ -139,3 +139,93 @@ Also open: **GAP-01** `Cancelled` is financially load-bearing but absent from th
 ## 7. Not done, deliberately
 
 No commit has been made. No code was changed beyond `app/backend/main.py` (correlation binding, bounded metrics, structured request logging) and the one-line `observability.configure()` call that makes the logging real rather than inert. The 220 baseline tests run unmodified, and `tests/ADAPTATIONS.md` records zero adaptations.
+
+
+---
+
+## 8. FastAPI-on-AppSail proof — COMPLETE
+
+The one Phase 0A exit item that needed a live platform. Zoho's AppSail documentation names Flask, Django, Bottle, CherryPy and Tornado and **never FastAPI**; it is permitted only by a general "no framework restrictions" clause. Plan v1.2.1 Phase 1 assumes FastAPI works, so this settles it by observation.
+
+### Service
+
+| | |
+|---|---|
+| Project | WBS-ZohoERP-POC, PID `4239000000062001`, **India DC** |
+| Service | **`wbs-platform-spike`**, id `4239000000096001` — separate; `wbs-capex-poc` untouched |
+| URL | `https://wbs-platform-spike-50044908499.development.catalystappsail.in` |
+| Environment | **Development only.** Production never deployed |
+| Runtime | Python 3.13 — reports `3.13.9`, CPython, **x86_64** |
+| Startup command | `python3 -u main.py` |
+| Port / Memory / Disk | 9000 / 512 MB / 256 MB |
+| Environment variables | **none** — no credentials, no client data |
+
+### Result
+
+```json
+{
+  "framework": "fastapi",
+  "fastapi_version": "0.133.1",
+  "pydantic_version": "2.13.4",
+  "python": "3.13.9",
+  "machine": "x86_64",
+  "listen_port_env": "9000",
+  "bound_port": 9000,
+  "seconds_from_process_start": 0.924,
+  "dependencies_vendored": true
+}
+```
+
+`GET /healthz` → `200 {"status":"ok","framework":"fastapi"}`.
+`GET /nope` → `404 {"detail":"Not Found"}` — FastAPI's own router, not a static file server.
+
+### Startup deadline
+
+**Bound and served in 0.924 s** against AppSail's documented **10-second** deadline — roughly 10x headroom. Reproduced at 0.938 s on a second cold start.
+
+`listen_port_env: "9000"` confirms the port contract. Reading `X_ZOHO_CATALYST_LISTEN_PORT` **inside Python** was necessary: AppSail executes the start command without a shell, so `--port $VAR` would not expand.
+
+### Cold start and scale-to-zero
+
+| Measurement | Value |
+|---|---|
+| Cold start (1st) | **2,224 ms** round trip, process uptime 0.924 s |
+| Cold start (2nd, after ~7 min idle) | **1,843 ms** round trip, process uptime 0.938 s |
+| Warm | 352–475 ms |
+| Instances while serving | **1** (`567e7cf5-689b-4515-ae03-12e16bb0d7a7`) |
+| Instances after ~7 min idle | **0** — *"There are no instances running..."* |
+
+**Scale-to-zero is confirmed empirically**, not merely from documentation. The second cold start returned a *fresh* process (uptime 0.938 s, not a continuation), proving the instance was genuinely reclaimed and respawned. Cold start costs roughly **1.4–1.8 s** over warm.
+
+This validates the constraint plan §2.1–2.2 is built on: AppSail is a request/response tier that cannot host a resident worker, and background work must run on Job Scheduling → Cron/Event Functions.
+
+### Why the first attempt failed — and what it teaches Phase 1
+
+The first deployment (`…096004`) built successfully but every request returned
+`503 "Execution failed. Please check the startup command or port."`
+
+Cause, confirmed at source in Zoho's managed-runtime documentation:
+
+> *"You must ensure that you add all modules and configuration files, along with the main file and native client files in the build path."*
+
+**Catalyst does not run `pip install -r requirements.txt`.** The build died on `from fastapi import FastAPI` before it could bind. The command and port were correct throughout.
+
+One hypothesis was eliminated by evidence rather than assumption: `python3` is valid on this runtime — the pre-existing `wbs-capex-poc` uses `python3 app/run.py --public`.
+
+The working deployment (`…096007`) vendors the dependency graph as **Linux x86_64 CPython 3.13 wheels from PyPI**, never copied from Windows `site-packages` — `pydantic_core` ships `_pydantic_core.cpython-313-x86_64-linux-gnu.so`, a platform-specific binary. The archive contains **zero** Windows `.pyd` files.
+
+Two resolution traps that each fail at import and are easy to miss:
+
+- **pydantic 2.13.4 pins `pydantic-core==2.46.4`** — taking the latest (2.48.0) breaks it.
+- **fastapi 0.133.1 additionally requires `annotated-doc`.**
+
+**Phase 1 consequence:** the deployment pipeline must vendor dependencies for Linux x86_64 CPython 3.13 as a build step. This is a real change to the delivery model and is not optional.
+
+### Limitations
+
+- **The console "View Logs" panel could not be opened** from the Browser pane across repeated attempts and viewport sizes — likely a blocked popup. Startup evidence comes from the application's own instrumentation instead, which is more precise than a log tail. Console logs need a normal browser session.
+- **`wbs-capex-poc` was never sent a request.** It shows *Live* with *0 instances*, exactly as this service did while broken, so "Live" means "deployed", not "healthy". Its health is unverified. Note it carries `CAPEX_DB_PATH=/tmp/capex.db` — a database file present at boot is precisely the **DEF-01** condition. Flagged, not diagnosed.
+
+### Disposition
+
+`wbs-platform-spike` is left **deployed but idle at zero instances**, for reuse in the Phase 0B PostgreSQL connectivity test. **Not deleted. No PostgreSQL test performed** — that needs separate approval.
