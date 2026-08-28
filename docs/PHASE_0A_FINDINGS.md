@@ -22,7 +22,7 @@ This document records what Phase 0A found. Every entry below was reproduced in t
 | GAP-05 | 107 CLIENT-PDF requirements carry empty traceability | High | Open by design, ratcheted | Business analysis | Phase 1 onward |
 | OBS-01 | Namespace collision between circuit-breaker `CLOSED` and business status `CLOSED` | Medium | Resolved in Phase 0A | Engineering | Closed |
 | OBS-02 | Test count reconciliation: 220 functions vs 348 collected cases | Informational | Resolved — both figures documented | Engineering | Closed |
-| OBS-03 | Environment limitations (no `pip`; no Catalyst tenant) | Medium | Partly worked around; AppSail proof outstanding | Engineering / Platform | Phase 0A exit item |
+| OBS-03 | Environment limitations (no `pip` locally) | Medium | **Resolved.** Supply-chain closure completed in CI; **AppSail FastAPI proof completed on a live deployment** | Engineering / Platform | Closed |
 
 Severity is assessed against a production deployment of this system, not against the POC as currently demonstrated.
 
@@ -277,7 +277,7 @@ Quote both figures wherever suite size is reported, and state which one a target
 ## 10. OBS-03 — Environment limitations encountered
 
 **Severity:** Medium.
-**Status:** Supply-chain work completed by an alternative route. AppSail runtime proof outstanding.
+**Status:** **Resolved.** Supply-chain closure completed in CI; the AppSail FastAPI proof was completed on a live Catalyst deployment. See `PHASE_0A_EXIT.md` §8.
 
 ### 10.1 No `pip` in the active interpreter
 
@@ -289,22 +289,44 @@ The active Python interpreter is a shared agent virtualenv with 122 packages and
 
 **Known limitation, recorded in the artefacts themselves:** the lockfile and SBOM are marked `transitive_closure_complete: false`. A trustworthy full transitive closure requires `pip freeze` from a clean project virtualenv, which this environment cannot produce. CI performs this properly. The flag is machine-readable so that a consumer of the SBOM cannot mistake a direct-dependency scan for a complete one.
 
-### 10.2 AppSail FastAPI runtime proof could not be performed
+### 10.2 AppSail FastAPI runtime proof — COMPLETED
 
-Proving the FastAPI runtime on Zoho Catalyst AppSail requires a Catalyst account and a deployment. Neither is available in this environment. **This remains an open Phase 0A exit item.**
+*Earlier drafts recorded this as blocked on Catalyst access. That is no longer true and the statement has been withdrawn.*
 
-The significance is not merely procedural. Zoho's AppSail documentation names Flask, Django, Bottle, CherryPy and Tornado, and never names FastAPI. It also states that there are no framework restrictions. FastAPI is therefore permitted by that general clause rather than by explicit support. A general permission clause is weaker evidence than a named, tested framework, and the difference only shows up at deployment time.
+Proven on a live deployment. Full evidence: **`PHASE_0A_EXIT.md` §8** and `docs/spikes/appsail-fastapi/EVIDENCE.md`.
 
-**Recommendation:** Prove a minimal FastAPI application running on AppSail before Phase 1 takes any dependency on that runtime. Until that proof exists, the runtime choice is an assumption, not a verified constraint.
+| | |
+|---|---|
+| Service | `wbs-platform-spike` (`4239000000096001`), Development, India DC |
+| Working deployment | `4239000000096007` |
+| Result | `GET /` → **200**, `fastapi 0.133.1` on **Python 3.13.9 / x86_64** |
+| Startup | **bound and served in 0.924 s** against AppSail's 10-second deadline; reproduced at 0.938 s |
+| Scale-to-zero | 1 instance while serving, **0 after ~7 min idle**, second cold start returned a *fresh* process |
+
+The concern that motivated this spike was real and is now retired: Zoho's documentation names Flask, Django, Bottle, CherryPy and Tornado and never FastAPI, permitting it only by a general "no framework restrictions" clause. **FastAPI is now verified by observation rather than inferred from a general clause.**
+
+**The spike also produced a finding that changes Phase 1.** The first deployment (`4239000000096004`) built successfully and then failed every request with `503 "Execution failed. Please check the startup command or port."` — a misleading message, because both the command and the port were correct. Catalyst's managed-runtime documentation states:
+
+> "You must ensure that you add all modules and configuration files, along with the main file and native client files in the build path."
+
+**Catalyst does not run `pip install -r requirements.txt`.** The process died on `from fastapi import FastAPI` before it could bind. The working bundle vendors the dependency graph as Linux x86_64 CPython 3.13 wheels — never copied from Windows `site-packages`, because `pydantic_core` ships a compiled `.so` and a Windows `.pyd` reproduces the identical opaque 503.
+
+Two resolution traps, each of which fails at import: **pydantic 2.13.4 pins `pydantic-core==2.46.4`** (latest 2.48.0 breaks it), and **fastapi 0.133.1 additionally requires `annotated-doc`**.
+
+**Consequence for Phase 1:** the deployment pipeline must vendor dependencies for Linux x86_64 / CPython 3.13 as a build step. Not optional. Procedure in `docs/spikes/appsail-fastapi/BUILD.md`.
+
+**Residual limitation:** the console "View Logs" panel could not be opened from the automation browser pane. Startup timings come from the application's own instrumentation, which is more precise than a log tail but is not the console log. Capture that from a normal browser session if an audit requires it.
 
 ---
 
 ## 11. What Phase 0A could not complete, and why
 
+*Two rows below are struck through: both were closed during Phase 0A. They are retained because how a gap was closed is part of the audit record.*
+
 | Item | Reason not completed | Consequence |
 |---|---|---|
-| **AppSail FastAPI runtime proof** | Requires a Zoho Catalyst account and a live deployment; neither available in this environment. | Open Phase 0A exit item. Phase 1 must not depend on the AppSail FastAPI runtime until this is proven. |
-| **Complete transitive dependency closure (lockfile and SBOM)** | The active interpreter is a shared agent virtualenv with no `pip`, so `pip freeze` from a clean project virtualenv is not possible here. | Artefacts are marked `transitive_closure_complete: false`. Direct dependencies are scanned and clean. CI produces the full closure. |
+| ~~**AppSail FastAPI runtime proof**~~ | **COMPLETED.** Proven on a live Catalyst deployment. | **Closed.** `wbs-platform-spike` serves 200 on Python 3.13.9 / x86_64, binding in 0.924 s against a 10 s deadline. Phase 1 may depend on the runtime. See §10.2 and `PHASE_0A_EXIT.md` §8. **New obligation:** the Phase 1 pipeline must vendor dependencies for Linux x86_64 / CPython 3.13. |
+| ~~**Complete transitive dependency closure**~~ | **COMPLETED in CI.** The local interpreter has no `pip`; the hosted job resolves the real closure. | **Closed.** 27 packages, `transitive_closure_complete: true`, 0 known vulnerabilities. The locally committed artefacts cover direct dependencies only and say so in machine-readable form. |
 | **DEF-01 fix** | Migration-runner changes belong with the Phase 1 PostgreSQL port; fixing twice would mean re-doing the work against a different database. | Defect is open and reproduced, held by a strict-xfail test that will fail loudly when fixed. High severity for any deployment carrying an existing database file. |
 | **GAP-01 resolution (`CANCELLED` status)** | C3 is a frozen client artefact; adding a status code is a client decision, not an engineering one. | Requires client agreement. `Cancelled` remains financially load-bearing at runtime while absent from the frozen register. |
 | **GAP-04 resolution (role reconciliation)** | Blocking decision D-12 is unresolved; the mapping between 13 business roles and 7 technical roles is a client decision. | Gates Phase 3. Any mapping written now would be an assumption. |
@@ -322,3 +344,21 @@ These are the mechanisms that keep the findings above from decaying quietly:
 - **Strict token gate** — `:root` must match `C6_tokens.json` exactly (25 of 25). Off-token colours elsewhere are held by a finite allowlist, so new ones fail.
 - **Traceability ratchet** — the pending requirement count may fall but never rise.
 - **Machine-readable supply-chain completeness flag** — `transitive_closure_complete: false` on the lockfile and SBOM prevents a direct-dependency scan being mistaken for a full closure.
+
+---
+
+## 13. Open at Phase 0A close
+
+One item, and it is not an engineering item.
+
+**Eight client ambiguities — AMB-01…07 and AMB-09 — remain open, and none has a named individual assigned.** A proposed role owner is recorded against each in `research/00_intake/client_notes_2026-08-28.md` §4, but a role cannot answer a question. Until a person is named these are unowned, and no artefact in this repository claims otherwise.
+
+Each carries a documented working assumption so delivery is not blocked. Three are expensive if the assumption is wrong:
+
+| ID | Question | Gate | Cost if wrong |
+|---|---|---|---|
+| **AMB-03** | WBS element model — depth, parent-child rules, attributes, numbering | **Phase 2** | Reworks the ledger spine: `budget_ledger_cell`, `wbs_path`, every rollup |
+| **AMB-05** | PR is raised in WBS, not the Zoho screen staff use today | **Phase 5**, sign-off at go-live | A change to how procurement staff work, not a technical detail |
+| **AMB-09** | "Custom Approval" — configurable routing, or user-written logic? | **Phase 4** | User-written logic is a different product: scripting runtime, sandboxing, safety model |
+
+The instrument for closing these is `research/00_intake/client_decision_questionnaire.md`.

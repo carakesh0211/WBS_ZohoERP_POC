@@ -104,14 +104,22 @@ Baseline before this phase: 348 collected cases, ~189 s. After: 452, ~225 s.
 
 ---
 
-## 4. What Phase 0A could NOT complete
+## 4. What Phase 0A could not complete
 
-| Item | Reason | Consequence |
+Both items recorded here in earlier drafts are now **closed**. They are retained struck through, because how a gap was closed is part of the audit record.
+
+| Item | Status |
+|---|---|
+| ~~FastAPI-on-AppSail runtime proof~~ | **CLOSED.** Proven on a live Catalyst deployment — `wbs-platform-spike` serves 200 on Python 3.13.9 / x86_64, binding in 0.924 s against a 10 s deadline. Full evidence in §8 and `docs/spikes/appsail-fastapi/EVIDENCE.md` |
+| ~~Full transitive dependency closure~~ | **CLOSED in CI.** 27 packages, `transitive_closure_complete: true`, 0 known vulnerabilities. The locally committed artefacts cover direct dependencies only and say so in machine-readable form |
+
+**One item remains open, and it is not an engineering item.**
+
+| Open item | Owner | Consequence |
 |---|---|---|
-| **FastAPI-on-AppSail runtime proof** | The Catalyst console is **not authenticated** in the available browser session — both `console.catalyst.zoho.com` and `console.catalyst.zoho.in` redirect to sign-in, and entering credentials is not something I will do | **Remains an open exit item.** It matters: Zoho's AppSail docs name Flask, Django, Bottle, CherryPy and Tornado but never FastAPI. They state there are no framework restrictions, so FastAPI is permitted *by that clause*, not by explicit support. Must be proven before Phase 1 depends on it |
-| ~~Full transitive dependency closure~~ | **RESOLVED in CI.** The local interpreter is a shared agent virtualenv with no pip, so the committed artefacts cover direct dependencies only and say so. The hosted job resolves the real closure | **27 packages, closure complete, 0 vulnerabilities.** No longer outstanding |
+| **Eight client ambiguities — AMB-01…07, AMB-09** | **Client. No named individual is assigned to any of them.** | Each has a documented working assumption so delivery is not blocked, but three carry high cost if the assumption is wrong: **AMB-03** (WBS element model, gates Phase 2), **AMB-05** (PR working-practice change, gates Phase 5), **AMB-09** (approval configurability, gates Phase 4). See `research/00_intake/client_decision_questionnaire.md` |
 
-The remaining item does not block Phase 0B. It **does** block Phase 1.
+This does **not** block Phase 0B, which is a platform gate rather than a requirements gate.
 
 ---
 
@@ -127,12 +135,13 @@ Also open: **GAP-01** `Cancelled` is financially load-bearing but absent from th
 
 ---
 
-## 6. Recommended before Phase 1
+## 6. Recommended next
 
-1. **Close D-12 and D-6** — both gate Phase 3 and neither needs a tenant.
-2. **Obtain Catalyst access** and prove FastAPI on AppSail. Phase 1 assumes it.
-3. **Decide GAP-01** at the D-10 conversation, where status vocabulary is already under review.
-4. **Run Phase 0B** — the connectivity gate (§2.4) is go/no-go for the whole architecture, and Zoho support response time is outside our control, so start it early.
+1. **Issue the client decision questionnaire** (`research/00_intake/client_decision_questionnaire.md`) and **assign a named individual per question.** Q3, Q5 and Q8 warrant a meeting; the rest can be answered in writing.
+2. **Close D-12 and D-6** — both gate Phase 3 and neither needs a Zoho tenant, so neither is waiting on anything external.
+3. **Run Phase 0B.** The AppSail→PostgreSQL connectivity gate (plan §2.4) is go/no-go for the entire data-platform decision, and Zoho support response time is outside our control. Start it early. `wbs-platform-spike` is left deployed and idle specifically so it can be reused for that test.
+4. **Decide GAP-01** (`Cancelled` absent from the frozen 21 statuses) at the D-10 approval-matrix conversation, where the status vocabulary is already open.
+5. **Build vendoring into the Phase 1 pipeline.** Catalyst does not run `pip install`; dependencies must be vendored for Linux x86_64 / CPython 3.13 as a build step. See §8 and `docs/spikes/appsail-fastapi/BUILD.md`. This is a change to the delivery model, not a detail.
 
 ---
 
