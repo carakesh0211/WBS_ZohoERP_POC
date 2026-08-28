@@ -1,0 +1,121 @@
+{
+  "frozen_at": "2026-08-28",
+  "rule": "Approval-engine statuses are INTERNAL. They are surfaced on approval screens (SCR-03, SCR-29) only, and are mapped to a C3 business status on the underlying object. An approval status must NEVER be rendered on a business screen as if it were a C3 status. A contract test enforces this.",
+  "relationship_to_C3": "Label-overlapping but NAMESPACE-disjoint. Four codes share a label with a C3 business status - APPROVED, REJECTED, RETURNED and EXCEPTION_PENDING - and that overlap is deliberate and reviewed, not accidental. They are NOT the same fact: an approval instance being APPROVED is a decision on one object version, whereas a purchase order being APPROVED is a document lifecycle state. They must never be the same identifier in code, and the engine maps one to the other explicitly via maps_to_business_status. tests/test_contracts.py asserts the overlap is EXACTLY these four, so a fifth accidental collision fails the build.",
+  "namespaces": {
+    "instance": {
+      "description": "Lifecycle of one approval instance over one object version.",
+      "statuses": [
+        {
+          "code": "OPEN",
+          "meaning": "At least one stage is PENDING. The object cannot proceed.",
+          "terminal": false
+        },
+        {
+          "code": "APPROVED",
+          "meaning": "Every applying stage met quorum. Downstream action permitted.",
+          "terminal": true,
+          "maps_to_business_status": "APPROVED"
+        },
+        {
+          "code": "REJECTED",
+          "meaning": "A stage rejected. Terminal for this object version; a new version may be raised.",
+          "terminal": true,
+          "maps_to_business_status": "REJECTED"
+        },
+        {
+          "code": "RETURNED",
+          "meaning": "Sent back to the requestor for correction.",
+          "terminal": true,
+          "maps_to_business_status": "RETURNED"
+        },
+        {
+          "code": "RECALLED",
+          "meaning": "Withdrawn by the maker before a decision.",
+          "terminal": true,
+          "maps_to_business_status": "DRAFT"
+        },
+        {
+          "code": "SUPERSEDED",
+          "meaning": "The object's content hash changed under an open instance. Auto-superseded; never a silent approval.",
+          "terminal": true,
+          "maps_to_business_status": null
+        },
+        {
+          "code": "EXCEPTION_PENDING",
+          "meaning": "Routing could not complete - no independent approver, or no matching rule. FAILS CLOSED. Requires administrator intervention.",
+          "terminal": false,
+          "maps_to_business_status": "EXCEPTION_PENDING"
+        }
+      ]
+    },
+    "stage": {
+      "description": "Lifecycle of one stage instance within an approval instance.",
+      "statuses": [
+        {
+          "code": "PENDING",
+          "meaning": "Open and awaiting decisions.",
+          "terminal": false
+        },
+        {
+          "code": "APPROVED",
+          "meaning": "Quorum met.",
+          "terminal": true
+        },
+        {
+          "code": "REJECTED",
+          "meaning": "Rejected at this stage.",
+          "terminal": true
+        },
+        {
+          "code": "RETURNED",
+          "meaning": "Returned at this stage.",
+          "terminal": true
+        },
+        {
+          "code": "SKIPPED",
+          "meaning": "The stage's applies_when predicate evaluated false. RECORDED, NEVER OMITTED - an auditor must be able to see what did not run, and why.",
+          "terminal": true,
+          "requires": "skip_reason"
+        },
+        {
+          "code": "ESCALATED",
+          "meaning": "SLA breached; assignment extended to the escalation target. The original assignees remain PENDING.",
+          "terminal": false
+        }
+      ]
+    },
+    "assignment": {
+      "description": "State of one approver's assignment to one stage instance.",
+      "statuses": [
+        {
+          "code": "PENDING",
+          "meaning": "Assigned, no action taken.",
+          "terminal": false
+        },
+        {
+          "code": "ACTED",
+          "meaning": "An approval_action row exists for this assignee on this stage.",
+          "terminal": true
+        },
+        {
+          "code": "WITHDRAWN",
+          "meaning": "Assignment removed - role revoked, delegation expired, or stage closed by quorum before this assignee acted.",
+          "terminal": true
+        }
+      ]
+    }
+  },
+  "invariants": [
+    "An instance in EXCEPTION_PENDING has never auto-approved and never will. An unroutable object is a configuration defect, not an approval.",
+    "A SKIPPED stage always carries a skip_reason and is always visible in the approval timeline.",
+    "An ESCALATED stage does not remove the original assignees - escalation adds capacity, it never removes accountability.",
+    "approval_action rows are append-only and hash-chained on stream approval:{instance_id}. No status transition may rewrite history."
+  ],
+  "reviewed_label_overlap_with_C3": [
+    "APPROVED",
+    "REJECTED",
+    "RETURNED",
+    "EXCEPTION_PENDING"
+  ]
+}

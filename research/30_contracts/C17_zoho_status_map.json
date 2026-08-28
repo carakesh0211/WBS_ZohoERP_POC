@@ -1,0 +1,97 @@
+{
+  "frozen_at": "2026-08-28",
+  "rule": "Raw Zoho status values are stored VERBATIM and NEVER overwritten, in external_status_raw, alongside the product and API version that produced them. This registry maps them to a C3 business status. An UNMAPPED raw value never guesses: the record is accepted, the raw value preserved, and a reconciliation_exception of kind UNMAPPED_EXTERNAL_STATUS is raised. Same fail-closed philosophy as domain.lifecycle_permits.",
+  "product_separation_rule": "Every mapping row names its product. A Books mapping is NOT evidence for an ERP mapping and must never be applied to one. The adapter selects the mapping set by integration_connection.product.",
+  "target_registry": "C3_statuses.json - every maps_to value in this file must exist there. Enforced by a contract test.",
+  "provisional_note": "ERP rows are marked provisional pending client decision D-14. Zoho ERP v3 is the provisional target; the client may be running Books + Inventory. Both mapping sets are maintained to the same standard.",
+  "mappings": [
+    {
+      "product": "ERP", "api_version": "v3", "provisional": true,
+      "object": "purchase_order", "field": "status",
+      "rows": [
+        {"raw": "draft", "maps_to": "DRAFT"},
+        {"raw": "open", "maps_to": "RELEASED"},
+        {"raw": "billed", "maps_to": "FULLY_ACTUALISED"},
+        {"raw": "cancelled", "maps_to": "CLOSED"},
+        {"raw": "pending_approval", "maps_to": "SUBMITTED"},
+        {"raw": "approved", "maps_to": "APPROVED"}
+      ],
+      "verification_required": "Enumerate the actual status values present in the tenant during Phase 0B-2. Zoho does not publish an exhaustive enum for purchase order status; these rows are derived from the documented status-transition endpoints and MUST be confirmed against live data."
+    },
+    {
+      "product": "BOOKS", "api_version": "v3",
+      "object": "purchase_order", "field": "status",
+      "rows": [
+        {"raw": "draft", "maps_to": "DRAFT"},
+        {"raw": "open", "maps_to": "RELEASED"},
+        {"raw": "billed", "maps_to": "FULLY_ACTUALISED"},
+        {"raw": "cancelled", "maps_to": "CLOSED"},
+        {"raw": "pending_approval", "maps_to": "SUBMITTED"},
+        {"raw": "approved", "maps_to": "APPROVED"}
+      ],
+      "verification_required": "Same caveat as ERP. Documented transitions are /status/open, /status/billed, /status/cancelled, /submit, /approve, /reject."
+    },
+    {
+      "product": "INVENTORY", "api_version": "v1",
+      "object": "purchase_receive", "field": "received_status",
+      "rows": [
+        {"raw": "draft", "maps_to": null, "note": "operational only - a draft receive has no business-status consequence"},
+        {"raw": "in_transit", "maps_to": null, "note": "operational only - shown as an integration badge, not a business status"},
+        {"raw": "received", "maps_to": null, "note": "drives the received_paise ledger component, not a document business status"}
+      ],
+      "note": "received_status intentionally maps to no C3 business status. Receipt state affects the LEDGER (received, received_not_billed), not a document lifecycle label. Mapping it to a business status would misrepresent it."
+    },
+    {
+      "product": "INVENTORY", "api_version": "v1",
+      "object": "purchase_receive", "field": "billed_status",
+      "rows": [
+        {"raw": "unbilled", "maps_to": null},
+        {"raw": "partially_billed", "maps_to": "PARTIALLY_ACTUALISED"},
+        {"raw": "billed", "maps_to": "FULLY_ACTUALISED"}
+      ]
+    },
+    {
+      "product": "ERP", "api_version": "v3", "provisional": true,
+      "object": "purchase_receive", "field": "received_status",
+      "rows": [],
+      "verification_required": "MUST be enumerated in Phase 0B-2. Zoho ERP Purchase Receives has only four endpoints and NO list endpoint, so status values cannot be surveyed by enumeration. They must be observed through PO-anchored detail reads."
+    },
+    {
+      "product": "ERP", "api_version": "v3", "provisional": true,
+      "object": "bill", "field": "status",
+      "rows": [
+        {"raw": "draft", "maps_to": null, "accounting_status": "Draft", "note": "not accounting-effective"},
+        {"raw": "open", "maps_to": null, "accounting_status": "Approved", "note": "accounting-effective; moves actual CWIP"},
+        {"raw": "paid", "maps_to": null, "accounting_status": "Approved"},
+        {"raw": "partially_paid", "maps_to": null, "accounting_status": "Approved"},
+        {"raw": "overdue", "maps_to": null, "accounting_status": "Approved"},
+        {"raw": "void", "maps_to": null, "accounting_status": "Void", "note": "excluded from actual; commitment restored"}
+      ],
+      "note": "Bill status drives accounting_status, NOT a C3 business status. accounting_status in {Approved, Reversal} is the accounting-effective set - preserved exactly from AUD-C-004. Payment state (paid, partially_paid, overdue) is out of scope: this system does not process payments."
+    },
+    {
+      "product": "BOOKS", "api_version": "v3",
+      "object": "bill", "field": "status",
+      "rows": [
+        {"raw": "draft", "maps_to": null, "accounting_status": "Draft"},
+        {"raw": "open", "maps_to": null, "accounting_status": "Approved"},
+        {"raw": "paid", "maps_to": null, "accounting_status": "Approved"},
+        {"raw": "partially_paid", "maps_to": null, "accounting_status": "Approved"},
+        {"raw": "overdue", "maps_to": null, "accounting_status": "Approved"},
+        {"raw": "void", "maps_to": null, "accounting_status": "Void"}
+      ]
+    }
+  ],
+  "unmapped_handling": {
+    "action": "accept the record, preserve external_status_raw verbatim, raise reconciliation_exception kind UNMAPPED_EXTERNAL_STATUS",
+    "never": "guess a mapping, drop the record, or default to a business status",
+    "visibility": "SCR-27 Reconciliation Exception Queue",
+    "blocks": "period close, and capitalisation, while OPEN"
+  },
+  "registry_rules": [
+    "Every mapping is data, versioned and effective-dated - never a hardcoded dict in application code.",
+    "Every maps_to value must exist in C3_statuses.json. Enforced by tests/test_contracts.py.",
+    "A null maps_to is a deliberate assertion that the raw value has no business-status meaning, not an omission. Nulls are reviewed, not defaulted.",
+    "Rows marked verification_required cannot be relied upon until Phase 0B-2 confirms them against the tenant."
+  ]
+}

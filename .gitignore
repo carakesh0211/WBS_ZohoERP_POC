@@ -5,3 +5,18 @@ app/data/
 .venv/
 .pytest_cache/
 docs/screenshots/*.png
+
+# --- Phase 0A additions ---------------------------------------------------
+# Node toolchain for visual regression (Playwright). The lockfile IS committed.
+node_modules/
+
+# Playwright run output. The BASELINE PNGs under
+# tests/vrt/*-snapshots/ are committed deliberately - they are the approved
+# design and the thing every future change is diffed against.
+test-results/
+tests/vrt/report/
+
+# sbom.cyclonedx.json and vulnerability-report.json are deliberately NOT
+# ignored: they are the AUD-M-006 evidence. A CI artifact with 90-day
+# retention is not a durable record of 'the vulnerability scan is verified'.
+tools/resolved.txt

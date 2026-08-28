@@ -1,0 +1,70 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "application",
+      "name": "capex-wbs-control-hub",
+      "description": "CAPEX & WBS Control Hub"
+    },
+    "properties": [
+      {
+        "name": "transitive_closure_complete",
+        "value": "false"
+      },
+      {
+        "name": "generation_note",
+        "value": "Direct declared dependencies only. Regenerate with --resolved from a clean virtualenv for the full set."
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "fastapi",
+      "version": "0.133.1",
+      "purl": "pkg:pypi/fastapi@0.133.1",
+      "licenses": [],
+      "description": "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
+    },
+    {
+      "type": "library",
+      "name": "httpx",
+      "version": "0.28.1",
+      "purl": "pkg:pypi/httpx@0.28.1",
+      "licenses": [
+        {
+          "license": {
+            "name": "BSD-3-Clause"
+          }
+        }
+      ],
+      "description": "The next generation HTTP client."
+    },
+    {
+      "type": "library",
+      "name": "pydantic",
+      "version": "2.13.4",
+      "purl": "pkg:pypi/pydantic@2.13.4",
+      "licenses": [],
+      "description": "Data validation using Python type hints"
+    },
+    {
+      "type": "library",
+      "name": "pytest",
+      "version": "9.1.1",
+      "purl": "pkg:pypi/pytest@9.1.1",
+      "licenses": [],
+      "description": "pytest: simple powerful testing with Python"
+    },
+    {
+      "type": "library",
+      "name": "uvicorn",
+      "version": "0.41.0",
+      "purl": "pkg:pypi/uvicorn@0.41.0",
+      "licenses": [],
+      "description": "The lightning-fast ASGI server."
+    }
+  ]
+}

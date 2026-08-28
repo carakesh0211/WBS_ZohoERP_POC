@@ -12,6 +12,7 @@ Post-audit corrections (2026-08-06):
   * Destructive administration exists only under CAPEX_PROFILE=local-demo (AUD-C-010).
 """
 import os
+import time
 import uuid
 from datetime import datetime, timezone
 
@@ -20,13 +21,19 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import auth, db, domain, services, zoho
+from . import auth, db, domain, observability, services, zoho
 from .money import MoneyError
 
 APP_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND = os.path.join(APP_ROOT, "frontend")
 
 app = FastAPI(title="CAPEX & WBS Control Hub", version="0.2.0-poc-hardened")
+
+# AUD-M-007. Without this the "capex" logger has no handler and an effective
+# level of WARNING, so every structured record - and every redaction rule that
+# lives in the formatter - is silently discarded. Installed at import so it
+# covers the AppSail entrypoint and any Function bundle that imports the app.
+observability.configure()
 
 PUBLIC_PATHS = {"/api/health", "/api/auth/login"}
 
@@ -66,19 +73,25 @@ def perm(permission: str):
 
 
 # ---------------------------------------------------------------- middleware
-@app.middleware("http")
-async def guard(request: Request, call_next):
-    cid = request.headers.get("x-correlation-id") or uuid.uuid4().hex[:12]
-    if request.url.path.startswith("/api/") and request.url.path not in PUBLIC_PATHS:
-        has_token = bool(request.headers.get("x-session") or
-                         request.headers.get("authorization"))
-        if not has_token:
-            return JSONResponse(
-                status_code=401,
-                content={"detail": {"code": "NOT_AUTHENTICATED",
-                                    "message": "Sign in to continue."}},
-                headers={"X-Correlation-Id": cid})
-    response = await call_next(request)
+def _route_label(request: Request) -> str:
+    """Metric label for a request.
+
+    Always the route TEMPLATE ("/api/projects/{project_id}/wbs"), never the
+    concrete path: one series per route, not one per project id. Unmatched
+    paths - including anything an unauthenticated caller invents - collapse
+    into a single OTHER bucket, so label cardinality can never be driven from
+    outside.
+    """
+    return getattr(request.scope.get("route"), "path", None) or "OTHER"
+
+
+def _finalise(response, cid: str):
+    """Attach the correlation id and the security headers to EVERY response.
+
+    Previously the 401 early-return bypassed this block entirely, so an
+    unauthenticated caller received no CSP, no nosniff and no frame-options.
+    Every exit path now goes through here.
+    """
     response.headers["X-Correlation-Id"] = cid
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
@@ -88,6 +101,70 @@ async def guard(request: Request, call_next):
         "default-src 'self'; img-src 'self' data:; style-src 'self'; "
         "script-src 'self'; frame-ancestors 'none'; base-uri 'none'")
     return response
+
+
+@app.middleware("http")
+async def guard(request: Request, call_next):
+    cid = request.headers.get("x-correlation-id") or uuid.uuid4().hex[:12]
+    started = time.perf_counter()
+    # AUD-M-007: bind the correlation id for the whole request so it reaches the
+    # service layer and audit_log rather than only the response header. The
+    # context manager resets on exit; a bare set() would never unwind.
+    with observability.correlation(cid):
+        if request.url.path.startswith("/api/") and request.url.path not in PUBLIC_PATHS:
+            has_token = bool(request.headers.get("x-session") or
+                             request.headers.get("authorization"))
+            if not has_token:
+                # Deliberately NOT recorded as a metric. This branch runs before
+                # authentication and before route matching, so the only label
+                # available is the raw path - which an unauthenticated caller
+                # controls. Labelling it would be an unbounded-cardinality
+                # memory vector on a public endpoint.
+                return _finalise(JSONResponse(
+                    status_code=401,
+                    content={"detail": {"code": "NOT_AUTHENTICATED",
+                                        "message": "Sign in to continue."}}), cid)
+        try:
+            response = await call_next(request)
+        except Exception:
+            # An unhandled exception is the single most important thing to
+            # observe, and it was the one path with no duration, no error
+            # metric and no structured detail. Business refusals map to
+            # controlled 4xx via the exception handlers below, so anything
+            # reaching here is a genuine 500.
+            elapsed_ms = (time.perf_counter() - started) * 1000
+            label = _route_label(request)
+            observability.metrics.observe(request.method, label, 500, elapsed_ms)
+            # exc_info=True routes the traceback through the formatter, which
+            # scrubs it. An unredacted traceback is the highest-probability
+            # credential leak in this system.
+            observability.log.error(
+                "unhandled exception", exc_info=True,
+                extra={"method": request.method, "route": label,
+                       "status": 500, "duration_ms": round(elapsed_ms, 2)})
+            # A controlled 500 rather than a re-raise. Re-raising skipped the
+            # header block, so the response carried no X-Correlation-Id and the
+            # failure could not be traced back to the request that caused it -
+            # a user reporting "it broke" had nothing to quote. This also
+            # guarantees no internal detail reaches the client: the traceback
+            # is logged server-side, redacted; the caller gets an id.
+            return _finalise(JSONResponse(
+                status_code=500,
+                content={"detail": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "The request could not be completed. Quote the "
+                               "correlation id when reporting this.",
+                    "correlation_id": cid,
+                }}), cid)
+        elapsed_ms = (time.perf_counter() - started) * 1000
+        label = _route_label(request)
+        observability.metrics.observe(
+            request.method, label, response.status_code, elapsed_ms)
+        observability.log.info(
+            "request",
+            extra={"method": request.method, "route": label,
+                   "status": response.status_code, "duration_ms": round(elapsed_ms, 2)})
+        return _finalise(response, cid)
 
 
 @app.exception_handler(services.BusinessError)

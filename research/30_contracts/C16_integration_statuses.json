@@ -1,0 +1,159 @@
+{
+  "frozen_at": "2026-08-28",
+  "rule": "Integration and job statuses are OPERATIONAL. They are visible to administrators on SCR-26, SCR-38 and SCR-39. They must NEVER be rendered on a business screen as if they were C3 business statuses. A contract test enforces this.",
+  "relationship_to_C3": "Disjoint, with one deliberate exception: C3 contains INTEGRATION_FAILED and RECONCILIATION_PENDING, which are the two business-visible consequences of integration state. Those two C3 codes are the ONLY sanctioned bridge from this namespace to a business screen.",
+  "business_visible_bridge": {
+    "note": "Objects carry a separate integration_state badge alongside their C3 business status, rather than adding a 22nd business status. This is precisely why the registries are separated.",
+    "badge_values": [
+      "QUEUED",
+      "SENT",
+      "FAILED"
+    ],
+    "derivation": {
+      "QUEUED": "an integration_outbox row exists for this object in state PENDING",
+      "SENT": "outbox row in state SENT and external_id populated",
+      "FAILED": "outbox row in state FAILED or DEAD -> also sets C3 business status INTEGRATION_FAILED"
+    }
+  },
+  "namespaces": {
+    "inbox": {
+      "description": "One received external payload.",
+      "statuses": [
+        {
+          "code": "RECEIVED",
+          "meaning": "Persisted, not yet processed.",
+          "terminal": false
+        },
+        {
+          "code": "PROCESSED",
+          "meaning": "Applied to the domain successfully.",
+          "terminal": true
+        },
+        {
+          "code": "QUARANTINED",
+          "meaning": "Could not be attributed or mapped. Raised a reconciliation_exception. NEVER guessed, never spread pro-rata, never dropped.",
+          "terminal": false
+        },
+        {
+          "code": "DISCARDED",
+          "meaning": "Duplicate payload_sha for an already-processed external_id. Idempotent no-op.",
+          "terminal": true
+        },
+        {
+          "code": "DEAD",
+          "meaning": "Exceeded max_attempts. Visible on SCR-39 with manual retry.",
+          "terminal": false
+        }
+      ]
+    },
+    "outbox": {
+      "description": "One outbound document emission.",
+      "statuses": [
+        {
+          "code": "PENDING",
+          "meaning": "Enqueued inside the business transaction. Not yet sent.",
+          "terminal": false
+        },
+        {
+          "code": "SENT",
+          "meaning": "Accepted by Zoho; external_id persisted.",
+          "terminal": true
+        },
+        {
+          "code": "FAILED",
+          "meaning": "Retryable failure. next_attempt_at set with exponential backoff and full jitter.",
+          "terminal": false
+        },
+        {
+          "code": "DEAD",
+          "meaning": "Exceeded max_attempts (8). Requires manual intervention.",
+          "terminal": false
+        }
+      ]
+    },
+    "job": {
+      "description": "One bounded, chunked, checkpointed background job. Ceiling 15 minutes on Catalyst Cron/Event Functions; soft deadline 12 minutes.",
+      "statuses": [
+        {
+          "code": "PENDING",
+          "meaning": "Awaiting claim.",
+          "terminal": false
+        },
+        {
+          "code": "CLAIMED",
+          "meaning": "Claimed via SELECT ... FOR UPDATE SKIP LOCKED. locked_until set for crash reaping.",
+          "terminal": false
+        },
+        {
+          "code": "CHECKPOINTED",
+          "meaning": "Soft deadline reached; progress committed and a resumable cursor persisted. Resumes on the next tick.",
+          "terminal": false
+        },
+        {
+          "code": "DONE",
+          "meaning": "Completed.",
+          "terminal": true
+        },
+        {
+          "code": "FAILED",
+          "meaning": "Retryable failure.",
+          "terminal": false
+        },
+        {
+          "code": "DEAD",
+          "meaning": "Exceeded max_attempts or max_resume_count. Alerts rather than looping forever.",
+          "terminal": false
+        }
+      ]
+    },
+    "circuit": {
+      "description": "Per (connection, module) circuit breaker.",
+      "statuses": [
+        {
+          "code": "CIRCUIT_CLOSED",
+          "meaning": "Normal operation.",
+          "terminal": false
+        },
+        {
+          "code": "CIRCUIT_OPEN",
+          "meaning": "5 consecutive counted failures in 60s, or daily quota exhausted. No calls attempted until next_probe_at.",
+          "terminal": false
+        },
+        {
+          "code": "CIRCUIT_HALF_OPEN",
+          "meaning": "A single probe call is permitted. Success closes; failure reopens.",
+          "terminal": false
+        }
+      ],
+      "naming_note": "Prefixed CIRCUIT_ deliberately. The bare code CLOSED collides with the C3 business status CLOSED, and the two mean opposite things - a closed circuit is healthy and passing traffic, whereas a closed project is terminal and blocks posting. The collision was caught by tests/test_contracts.py::test_integration_statuses_are_disjoint_from_business_statuses on first run."
+    }
+  },
+  "rate_limit_classification": {
+    "note": "Zoho error codes are handled distinctly. Only genuine vendor failures count toward the circuit breaker.",
+    "429_code_44_per_minute": {
+      "action": "checkpoint and resume next tick",
+      "counts_toward_circuit": false,
+      "reason": "our own throttle failed, not the vendor"
+    },
+    "429_code_45_daily_quota": {
+      "action": "open circuit until next day boundary, alert",
+      "counts_toward_circuit": false
+    },
+    "429_code_1070_concurrency": {
+      "action": "reduce parallelism by 1, retry with jitter",
+      "counts_toward_circuit": false
+    },
+    "5xx_or_timeout": {
+      "action": "exponential backoff, full jitter",
+      "counts_toward_circuit": true
+    },
+    "401_invalid_token": {
+      "action": "refresh once; second failure opens circuit and raises P1",
+      "counts_toward_circuit": true
+    },
+    "4xx_business_error": {
+      "action": "no retry; QUARANTINED or DEAD plus a reconciliation_exception",
+      "counts_toward_circuit": false
+    }
+  }
+}

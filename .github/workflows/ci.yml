@@ -1,0 +1,142 @@
+# CI for the CAPEX & WBS Control Hub.
+#
+# Closes the residual on AUD-H-010: "No CI pipeline is configured; the suite
+# must be run manually."
+#
+# The gates below are ordered cheapest-first so a contract or inventory breach
+# fails in seconds rather than after the four-minute regression suite.
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    name: Contract and inventory gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+
+      # AUD-M-001. Contracts can no longer drift without detection.
+      - name: Contract validation
+        run: python -m pytest tests/test_contracts.py -q
+
+      # Plan section 15.1. No assertion removed or weakened without approval.
+      - name: Test inventory manifest
+        run: |
+          python tools/build_test_manifest.py --check
+          python -m pytest tests/test_manifest.py -q
+
+      # AUD-M-007. Redaction is the gate that matters most here: structured
+      # logging lets a caller attach arbitrary fields, which is exactly how a
+      # regulated identifier reaches a log sink.
+      - name: Observability and redaction
+        run: python -m pytest tests/test_observability.py -q
+
+  suite:
+    name: Regression suite
+    runs-on: ubuntu-latest
+    needs: gates
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -r requirements-dev.txt
+
+      # The 220 baseline tests are named after the audit findings they close.
+      - name: Full suite
+        run: python -m pytest
+
+  supply_chain:
+    name: Supply chain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Resolve the real transitive closure in a clean environment, which is
+      # the only place the lock and SBOM are trustworthy. tools/supply_chain.py
+      # refuses to claim completeness without this.
+      - name: Resolve dependency closure
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m pip freeze > tools/resolved.txt
+
+      # AUD-M-006.
+      - name: Vulnerability scan (OSV.dev)
+        run: python tools/supply_chain.py audit --resolved tools/resolved.txt
+
+      - name: Generate SBOM
+        run: python tools/supply_chain.py sbom --resolved tools/resolved.txt
+
+      - name: Generate hash-pinned lockfile
+        run: python tools/supply_chain.py lock --resolved tools/resolved.txt
+
+      - name: Publish supply-chain artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: supply-chain
+          path: |
+            sbom.cyclonedx.json
+            vulnerability-report.json
+            requirements.lock
+
+  visual_regression:
+    name: Visual regression (approved UI)
+    # windows-latest, NOT ubuntu. The committed baselines carry a -win32
+    # suffix because they were captured on Windows, and font rasterisation
+    # differs between platforms - on Linux every snapshot would be missing,
+    # which under CI is a hard failure rather than an auto-write. If the
+    # team moves to Linux runners the baselines must be RE-CAPTURED there
+    # and re-approved, because they would be a different artefact from the
+    # one the client signed off.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - run: python -m pip install -r requirements-dev.txt
+      - run: npm ci
+      - run: npx playwright install chromium
+
+      # The webServer block in playwright.config.js points at
+      # CAPEX_DB_PATH=app/data/capex_vrt.db and app/run.py seeds it on first
+      # boot, so no separate seed step is needed here. A seed against the
+      # default path would be a no-op and misleading to read.
+
+      # styles.css is the client-approved baseline. A pixel diff is a failure.
+      - name: Visual regression
+        run: npx playwright test
+        env:
+          CAPEX_PROFILE: local-demo
+
+      - name: Publish diff report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vrt-report
+          path: tests/vrt/report

@@ -1,0 +1,95 @@
+{
+  "frozen_at": "2026-08-28",
+  "rule": "Internal DOMAIN status namespaces that are deliberately NOT client-visible business statuses. Codes here must not appear in C3_statuses.json and must never be rendered on a business screen as a status pill. They drive ledger arithmetic and operational queues, not document lifecycle labels.",
+  "why_this_file_exists": "A survey of app/backend on 2026-08-28 found four runtime status literals absent from the frozen C3 registry: 'Cancelled', 'Open', 'Reversal', 'Void'. Three of them are correct and belong to distinct namespaces recorded here. The fourth, 'Cancelled', is a genuine C3 gap and is recorded in CONTRACT_GAPS.md as GAP-01. Separating the namespaces is what makes that distinction visible instead of blurred.",
+  "namespaces": {
+    "accounting_status": {
+      "applies_to": "bill",
+      "description": "Whether a bill document is accounting-effective. Drives actual CWIP arithmetic. NOT a document lifecycle label and NOT a C3 business status.",
+      "source_of_truth": "domain.ACCOUNTING_EFFECTIVE_BILL_STATES",
+      "statuses": [
+        {
+          "code": "Draft",
+          "accounting_effective": false,
+          "meaning": "Not yet posted. Contributes nothing to actual CWIP."
+        },
+        {
+          "code": "Approved",
+          "accounting_effective": true,
+          "meaning": "Moves actual CWIP and relieves open commitment."
+        },
+        {
+          "code": "Void",
+          "accounting_effective": false,
+          "meaning": "Excluded from actual; commitment restored. AUD-C-004."
+        },
+        {
+          "code": "Reversal",
+          "accounting_effective": true,
+          "meaning": "NEGATES by flag rather than by a hand-entered negative amount. AUD-C-004."
+        }
+      ],
+      "invariant": "Only {Approved, Reversal} are accounting-effective. This set is asserted by test_aud_c_004_* and must not be widened without re-running those tests.",
+      "protected_by": [
+        "test_aud_c_004_a_non_effective_bill_does_not_move_actual_cwip",
+        "test_aud_c_004_a_reversal_bill_negates_rather_than_adds",
+        "test_aud_c_004_a_reversal_stored_with_a_negative_amount_still_negates",
+        "test_aud_c_004_voiding_a_bill_removes_actual_and_restores_commitment"
+      ]
+    },
+    "exception_status": {
+      "applies_to": "reconciliation_exception",
+      "description": "Operational queue state for a reconciliation exception. Visible on SCR-27 to administrators and finance.",
+      "statuses": [
+        {
+          "code": "Open",
+          "meaning": "Unresolved. BLOCKS capitalisation, and blocks accounting-period close.",
+          "terminal": false
+        },
+        {
+          "code": "Resolved",
+          "meaning": "The underlying mismatch was corrected.",
+          "terminal": true
+        },
+        {
+          "code": "Accepted",
+          "meaning": "Reviewed and accepted as a known difference, with a recorded reason.",
+          "terminal": true
+        },
+        {
+          "code": "Written_off",
+          "meaning": "Difference written off with an approved reason and an audit entry.",
+          "terminal": true
+        }
+      ],
+      "kinds": [
+        "GRN_LINE_UNATTRIBUTED",
+        "CONTROL_TOTAL_MISMATCH",
+        "LATE_ARRIVAL_CLOSED_PERIOD",
+        "UNSANCTIONED_COMMITMENT",
+        "UNMAPPED_EXTERNAL_STATUS"
+      ]
+    },
+    "lifecycle_state": {
+      "applies_to": "project, wbs_element",
+      "description": "The permission-bearing lifecycle table. domain.lifecycle_permits reads this and UNKNOWN STATES DENY BY DEFAULT (AUD-C-008). Its state values overlap C3 labels by design, because these ARE the business statuses of a project or WBS element - but the permission columns are domain data, not presentation.",
+      "columns": [
+        "allows_procurement",
+        "allows_posting"
+      ],
+      "invariant": "An unknown state denies both. This fail-closed behaviour is asserted by test_aud_c_008_an_unknown_lifecycle_state_denies_by_default and must never be relaxed."
+    }
+  },
+  "separation_rules": [
+    "accounting_status is NOT a business status. A bill's C3-visible status is derived from it, not equal to it. See C17_zoho_status_map.json.",
+    "exception_status is NOT a business status. Its business-visible consequence is the C3 code RECONCILIATION_PENDING on the affected object.",
+    "No code in accounting_status or exception_status may be rendered as a C3 status pill. Enforced by tests/test_contracts.py."
+  ],
+  "reviewed_case_insensitive_overlap_with_C3": {
+    "codes": [
+      "APPROVED",
+      "DRAFT"
+    ],
+    "note": "C18 uses TitleCase (Approved, Draft) and C3 uses SCREAMING_SNAKE (APPROVED, DRAFT), so a case-sensitive comparison finds no collision. That is exactly the confusion the separation exists to prevent, so the contract test folds case and asserts the overlap is EXACTLY this reviewed list. accounting_status 'Approved' means accounting-effective; the C3 APPROVED means a document was approved. Different facts."
+  }
+}
