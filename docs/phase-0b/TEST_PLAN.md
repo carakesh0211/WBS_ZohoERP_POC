@@ -3,6 +3,8 @@
 **Status:** PLAN ONLY. Awaiting approval. **Nothing has been created** — no database, account, credential, ticket, Function or deployment.
 **Plan reference:** v1.2.1 §2.4 (the gate) and §2.5 (fallbacks).
 **Scope rule:** `wbs-capex-poc` is never accessed or modified. All work uses the existing `wbs-platform-spike` service.
+**Execution branch:** on approval, work begins on a new branch **`phase-0b/connectivity-gate`**, cut from
+`phase-0a/foundations`. Phase 0A remains closed and is not reopened; no Phase 0B commit lands on it.
 
 ---
 
@@ -42,12 +44,32 @@ The lesson from the Phase 0A FastAPI spike is that AppSail reports any startup f
 | # | Check | Method | Isolates |
 |---|---|---|---|
 | 1 | **DNS** | `socket.getaddrinfo(host, port)` | Resolver reachability; records address family (A / AAAA) and resolved addresses |
-| 2 | **TCP** | `socket.create_connection(..., timeout=5)` | Outbound egress permitted on the port — **this is Q-A** |
+| 2 | **TCP** | `socket.create_connection(..., timeout=4)` | Outbound egress permitted on the port — **this is Q-A** |
 | 3 | **TLS** | PostgreSQL `SSLRequest`, expect `S`, then wrap with a **verifying** `SSLContext` (§4) | Certificate chain, hostname, SNI, protocol, cipher |
 | 4 | **Auth** | `pg8000` connect, SCRAM-SHA-256, over a verified context | Credentials and `pg_hba` policy |
 | 5 | **Query** | `SELECT 1`, `version()`, `current_user`, `inet_client_addr()` | Round trip, and the observed source address (§3) |
 
-Each step carries its own timeout and its own recorded outcome. The full sequence must complete inside AppSail's **30-second request cap**; the budget is 5 s per step, leaving comfortable headroom.
+### Timeout budget
+
+AppSail terminates a request at **30 seconds**. A test that hits the platform cap returns nothing and is
+indistinguishable from a hang, so the run must fail *itself* first and return partial results.
+
+**Hard overall deadline: 20 seconds.** Enforced against a monotonic clock, checked **before each stage
+starts**. If the remaining budget is smaller than the next stage's allowance, the run aborts immediately and
+returns everything gathered so far, marking the unrun stages `skipped_deadline`. A truncated result with a
+clear reason is evidence; a platform timeout is not.
+
+| Stage | Budget | Rationale |
+|---|---|---|
+| 1 DNS | **3 s** | Resolution succeeds in milliseconds or fails; a long wait means no resolver path |
+| 2 TCP | **4 s** | A blocked egress path typically hangs to the timeout rather than refusing |
+| 3 TLS | **4 s** | Handshake plus chain validation |
+| 4 Auth | **5 s** | SCRAM round trips; the most latency-sensitive stage, and pooler-dependent |
+| 5 Query | **3 s** | `SELECT 1` on an established connection |
+| **Sum** | **19 s** | 1 s margin inside the deadline, 10 s inside the platform cap |
+
+Socket and driver timeouts are set to the per-stage budget, so no single stage can consume another's
+allowance.
 
 **Driver: `pg8000`.** Pure Python, so no second compiled wheel to vendor and one fewer failure mode that could masquerade as a network failure. The Phase 1 driver choice stays open — this gate tests the network path, not the driver.
 
@@ -114,9 +136,11 @@ To be raised as a single ticket. Context to include so the answer is unambiguous
 
 ## 6. Provider recommendation
 
-**Recommended for the gate: Supabase, Mumbai `ap-south-1`.**
+**Decided by the client: Supabase, Mumbai `ap-south-1`.**
 
-India region keeps the test consistent with the production data-residency position (§10) and avoids introducing a second variable.
+India region keeps the test consistent with the recommended production data-residency baseline (§10) and avoids introducing a second variable.
+
+The provider is settled. What remains to verify is **entitlement**, not choice.
 
 **Subject to verification before anything is created:** the free account's **actual network-restriction entitlement**. Network restrictions, IP allowlisting and IPv4 addressing are commonly paid or plan-gated features. If the free tier cannot restrict network access at all, that materially changes §9 and must be established first, not discovered mid-test.
 
@@ -205,7 +229,13 @@ That is a conditional, not a promise. Two things commonly break it: **IPv4 addre
 
 **Before creating anything, the actual account and checkout screens will be captured as evidence** — showing whether a payment method is demanded and whether the needed features sit behind a paid tier. No Catalyst billing will be configured, and no payment method entered anywhere.
 
-**Data residency.** The throwaway database holds no real data, so its region is a low-risk choice for the gate. **The production database must be India-region** — the client is India-based and Zoho ERP is India-only. That is a client decision to record explicitly, not an engineering default to assume.
+**Data residency.** The throwaway database holds no real data, so its region is a low-risk choice for the gate.
+
+For production, an **India region is the recommended baseline** — the client is India-based and Zoho ERP is
+India-only — but that is a **recommendation pending written client and compliance confirmation**, not a
+settled requirement. Data residency obligations may be stricter than the recommendation (a specific region,
+a named provider, or on-premises), or looser. Neither is for engineering to decide. The confirmation should
+be obtained in writing and recorded against plan decision **D-16** before Phase 1 selects a provider.
 
 ---
 
@@ -236,6 +266,31 @@ The spike service itself remains, idle. **`wbs-capex-poc` is not touched at any 
 - CI run URL
 - Teardown confirmation with timestamps
 - **Negative results recorded as fully as positive ones.** A failure at step 2 is a more valuable finding than a success at step 5
+
+### Evidence sanitisation — before anything reaches Git
+
+Evidence is committed to a repository. Screenshots and vendor correspondence routinely carry material that
+must not live there.
+
+**Never committed:**
+
+- account identifiers, organisation IDs at the provider, or billing references
+- email addresses, personal names of support staff, or any personal data
+- passwords, connection strings, DSNs, API keys, tokens, or any credential fragment
+- database hostnames that embed a project reference usable to reach the instance
+- support-ticket content marked confidential, or vendor material whose licence or terms forbid redistribution
+
+**Committed instead:**
+
+- screenshots **cropped and redacted** to the specific field being evidenced, with redaction applied to the
+  image itself — never a black rectangle drawn over recoverable pixels, and never a resized original
+- Zoho answers **quoted verbatim only where the content is technical**; commercial or confidential passages
+  summarised with a note that the full text is held outside the repository
+- the ticket **reference number** rather than the ticket body, where the body cannot be sanitised
+- host metadata reduced to what the finding requires — region and endpoint *type*, not the reachable hostname
+
+**Rule of thumb:** if a screenshot would let a reader reach the resource, it is not sanitised. When in doubt,
+transcribe the finding rather than capture the screen.
 
 ---
 
@@ -270,7 +325,7 @@ Plan v1.2.1 §2.5 estimates the Functions-fronted fallback at **6–12 person-we
 
 **Nothing has been created.** Approval is requested for:
 
-1. Verifying the Supabase free-tier entitlement and capturing the account/checkout evidence
+1. Verifying the Supabase free-tier **entitlement** — specifically whether network restriction and IPv4 addressing are available without a paid add-on — and capturing the account/checkout evidence
 2. Creating a throwaway Mumbai `ap-south-1` database and an ephemeral role, hardened per §9
 3. Building and deploying a Stage 1 bundle to `wbs-platform-spike`
 4. Setting temporary environment variables on that service
@@ -281,5 +336,5 @@ Plan v1.2.1 §2.5 estimates the Functions-fronted fallback at **6–12 person-we
 
 Two decisions would help before starting:
 
-- **Provider and region** — confirm Supabase `ap-south-1`, or name an alternative.
+- ~~Provider and region~~ — **decided: Supabase Mumbai `ap-south-1`.**
 - **Who raises the Zoho ticket.** Their response time is outside our control and question 3 gates Q-B entirely, so it is the long pole. Worth opening first, in parallel with everything else.
