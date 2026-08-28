@@ -1,0 +1,4 @@
+{
+  "command": "python3 -u main.py",
+  "stack": "python3.13"
+}

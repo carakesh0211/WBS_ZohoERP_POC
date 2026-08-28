@@ -1,0 +1,2 @@
+# Dependencies are VENDORED in vendor/ - Catalyst does not pip install.
+# Exact versions: dependency-inventory.json
