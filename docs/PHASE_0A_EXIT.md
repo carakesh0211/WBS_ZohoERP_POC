@@ -1,7 +1,7 @@
 # Phase 0A — exit gate report
 
 **Branch:** `phase-0a/foundations` · **Date:** 2026-08-28 · **Plan:** v1.2.1 §16
-**Status:** complete except two items that require environments not available here (§4). **Not committed** — awaiting review.
+**Status:** committed and pushed as `33f4ed8`. Hosted CI **green on all four jobs**. **Not yet fully closed** — the FastAPI-on-AppSail proof remains outstanding (§4).
 
 Phase 0A is *"work possible with no Zoho tenant"*. Nothing in it depends on the outcome of the §2.4 AppSail→PostgreSQL connectivity gate, so all of it stays valid under every fallback in plan §2.5.
 
@@ -11,7 +11,10 @@ Phase 0A is *"work possible with no Zoho tenant"*. Nothing in it depends on the 
 
 | Criterion | Status | Evidence |
 |---|---|---|
-| Contract gate green in CI | **Met** | `tests/test_contracts.py`, 57 tests |
+| Contract gate green in CI | **Met** | hosted run 33169733611, job *Contract and inventory gates* |
+| Regression suite green in CI | **Met** | **488 passed, 1 xfailed** in 43 s on ubuntu |
+| **Hosted Windows visual regression** | **Met** | **60 passed** on `windows-latest` — the baselines' own platform |
+| **Complete transitive supply chain** | **Met** | **27 packages, `transitive_closure_complete: True`, 0 known vulnerabilities** |
 | SBOM published | **Met** | `sbom.cyclonedx.json`, committed |
 | Visual baselines committed | **Met** | 54 PNGs, 3 viewports, pixel-clean on re-run |
 | Annex A committed, IDs allocated | **Met** | 15 requirements across two provenance classes |
@@ -105,10 +108,10 @@ Baseline before this phase: 348 collected cases, ~189 s. After: 452, ~225 s.
 
 | Item | Reason | Consequence |
 |---|---|---|
-| **FastAPI-on-AppSail runtime proof** | Needs a Zoho Catalyst account and a deployment. Not available in this environment | **Remains an open exit item.** It matters: Zoho's AppSail docs name Flask, Django, Bottle, CherryPy and Tornado but never FastAPI. They state there are no framework restrictions, so FastAPI is permitted *by that clause*, not by explicit support. Must be proven before Phase 1 depends on it |
-| **Full transitive dependency closure** | The active interpreter is a shared agent virtualenv with 122 unrelated packages and **no pip**, so `pip-audit` / `pip-compile` could not be installed | Worked around by querying the PyPI and OSV APIs directly — the same sources those tools use. CI resolves the real closure. Artefacts are marked incomplete rather than overstated |
+| **FastAPI-on-AppSail runtime proof** | The Catalyst console is **not authenticated** in the available browser session — both `console.catalyst.zoho.com` and `console.catalyst.zoho.in` redirect to sign-in, and entering credentials is not something I will do | **Remains an open exit item.** It matters: Zoho's AppSail docs name Flask, Django, Bottle, CherryPy and Tornado but never FastAPI. They state there are no framework restrictions, so FastAPI is permitted *by that clause*, not by explicit support. Must be proven before Phase 1 depends on it |
+| ~~Full transitive dependency closure~~ | **RESOLVED in CI.** The local interpreter is a shared agent virtualenv with no pip, so the committed artefacts cover direct dependencies only and say so. The hosted job resolves the real closure | **27 packages, closure complete, 0 vulnerabilities.** No longer outstanding |
 
-Neither blocks Phase 0B. The first blocks **Phase 1**.
+The remaining item does not block Phase 0B. It **does** block Phase 1.
 
 ---
 
