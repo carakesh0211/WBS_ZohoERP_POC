@@ -49,6 +49,20 @@ jobs:
       - name: Observability and redaction
         run: python -m pytest tests/test_observability.py -q
 
+      # Phase 0B Stage 1. The probe is reachable on the public internet while
+      # deployed and handles a database credential, so its safety properties are
+      # gated here rather than trusted to a pre-deployment checklist. The CA
+      # tests run against committed synthetic fixtures, so this needs neither
+      # the real Supabase certificate nor a certificate-parsing dependency.
+      - name: Phase 0B probe safety and CA pinning
+        run: python -m pytest docs/phase-0b/probe -q
+
+      # Proves the sanitiser before it is ever trusted with a live response:
+      # a secret embedded in free prose survived key-name redaction on first
+      # run, which is exactly the class of bug this catches.
+      - name: Probe evidence sanitiser self-test
+        run: python docs/phase-0b/probe/probe_invoke.py --self-test
+
   suite:
     name: Regression suite
     runs-on: ubuntu-latest

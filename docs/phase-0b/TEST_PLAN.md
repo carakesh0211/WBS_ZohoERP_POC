@@ -35,6 +35,33 @@ This gate is not "does PostgreSQL work". It is whether Catalyst AppSail can reac
 
 Anything else leaves Q-B **unresolved**, however many green ticks the test produces.
 
+### The two questions have different evidence types, and different blockers
+
+This distinction was got wrong once and is recorded here so it cannot be got
+wrong again.
+
+| | **Q-A** | **Q-B** |
+|---|---|---|
+| Nature | **Empirical.** A property of the running platform | **Authoritative.** A commitment, or an accepted risk |
+| Settled by | Deploying a probe and observing five stages | A written Zoho commitment, a private path, or client sign-off |
+| Blocked by the Zoho ticket? | **No** | **Yes — question 3** |
+| Verdict if the ticket is never answered | Still answerable | **Unresolved**, permanently |
+
+**The unsent Zoho support ticket does not block Q-A, and must never be allowed
+to.** Q-A is measured, not asked. The ticket proceeds independently.
+
+**Support question 6 — may a custom CA bundle ship inside the deployment
+bundle — does not gate the Stage 1 retry.** AppSail has already accepted and
+executed from a deployment ZIP containing vendored files, in the Phase 0A spike
+and again in the first Stage 1 deployment. Whether a `.pem` file alongside
+`main.py` loads is therefore an **empirically testable deployment property**,
+and Stage 1 tests it by deploying it. A written answer to question 6 is still
+worth having, and it is still worth asking, but waiting for it would be waiting
+for permission to observe something we can simply observe.
+
+**Question 3 remains decisive for Q-B**, exactly as before. Nothing in this
+correction relaxes that.
+
 ---
 
 ## 2. Test design — five checks, independently attributable
@@ -103,6 +130,26 @@ The test must construct an `ssl.SSLContext` with:
 
 **Recorded:** negotiated protocol version, cipher suite, peer certificate subject, issuer, and validity dates.
 
+### The CA bundle is a required test artefact
+
+Supabase presents a chain rooted in **its own CA**, so a client verifying
+against the system trust store fails correctly and uninformatively. The bundle
+is therefore not an optimisation; without it the probe cannot reach the auth
+stage at all.
+
+| Requirement | Enforcement |
+|---|---|
+| `ca-bundle.pem` obtained only from an official Supabase source | `probe/CA_BUNDLE.md`, provenance recorded with SHA-256, subject, issuer, expiry |
+| Present at the archive root and byte-identical to the validated file | `build_bundle.py::verify_zip` — **the build fails otherwise** |
+| Missing, empty, malformed or expired → **fail closed** | `ca.py::CaBundleUnusable`; never a fallback to system CAs |
+| The pinned bundle is the **only** trust anchor | `test_ca_bundle.py` |
+| Verification never disabled to work around a packaging fault | source scan across `main.py`, `ca.py`, `build_bundle.py` |
+
+The first attempt shipped no bundle **and** degraded silently to system CAs when
+the file was absent, so a packaging omission presented as a live-endpoint
+verification failure — indistinguishable from an egress restriction. Both halves
+are now closed: the artefact is mandatory, and its absence is loud.
+
 **Explicitly recorded:** whether the `pg8000` connection in step 4 uses **the same verified context** as step 3, or a separate one. If pg8000 cannot be given the verified context, that is a finding in its own right and must be reported rather than glossed — a verified handshake in step 3 does not license an unverified one in step 4.
 
 ---
@@ -126,11 +173,13 @@ To be raised as a single ticket. Context to include so the answer is unambiguous
 3. If yes: **is that range contractual or best-effort**, and **may published CIDRs change without notice**? What notice period, if any, applies to a change?
 4. If no: is a **private-network path** (peering, private link, VPC-style connectivity, or equivalent) available or on the roadmap for outbound database access?
 5. Are the answers to 1–4 **identical for Cron and Event Functions**, or do those surfaces have a different egress policy? *(The Database Connector CodeLib is documented for Functions, not AppSail, so we cannot assume parity.)*
-6. Is outbound **TLS with full certificate and hostname verification** supported, and may a custom CA bundle be shipped inside the deployment bundle?
+6. Is outbound **TLS with full certificate and hostname verification** supported, and may a custom CA bundle be shipped inside the deployment bundle? *(Confirmation only — **this does not gate Q-A or the Stage 1 retry**; see §1. Shipping the bundle is tested empirically.)*
 7. Documented **outbound connection limits** — concurrent sockets per instance, connection lifetime, idle timeout?
 8. Does the platform **terminate long-lived outbound connections**, and after how long? *(Bears directly on connection pooling in Phase 1.)*
 
 **Question 3 is the one that determines whether Q-B can ever pass.** An IP range that may change without notice is not a basis for an allowlist in a financial control system.
+
+**No question in this ticket gates Q-A.** Q-A is settled by deploying the probe and observing it. The ticket and the Stage 1 retry proceed in parallel and neither waits on the other.
 
 ---
 

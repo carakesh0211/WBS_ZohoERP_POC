@@ -42,11 +42,23 @@ ENV = {
 }
 
 
+#: A synthetic, self-signed CA committed under fixtures/. It is never a real
+#: trust anchor -- it exists so the suite exercises the genuine verification
+#: path instead of short-circuiting on the fail-closed gate, and so CI needs
+#: neither the real Supabase certificate nor a certificate-parsing dependency.
+VALID_CA = PROBE_DIR / "fixtures" / "valid-ca.pem"
+EXPIRED_CA = PROBE_DIR / "fixtures" / "expired-ca.pem"
+
+
 @pytest.fixture()
 def probe(monkeypatch):
     for k, v in ENV.items():
         monkeypatch.setenv(k, v)
     sys.path.insert(0, str(PROBE_DIR))
+    import ca as ca_mod
+    # Patch the module global, not an environment variable: the trust anchor
+    # must not become an operator-tunable knob just to make tests convenient.
+    monkeypatch.setattr(ca_mod, "CA_BUNDLE_PATH", str(VALID_CA))
     mod = importlib.import_module("main")
     mod = importlib.reload(mod)
     yield mod
@@ -260,7 +272,11 @@ def test_every_stage_is_always_reported(probe, monkeypatch):
     out = probe._run("P2", probe.ENDPOINTS["P2"])
     assert set(out["stages"]) == set(probe.STAGE_ORDER)
     assert out["stages"]["dns"]["outcome"] == "fail"
-    assert out["stages"]["tcp"]["outcome"] == "skipped_deadline"
+    # Corrected 2026-08-29: previously asserted `skipped_deadline`, which was
+    # the label the code emitted and was wrong -- the deadline had not expired,
+    # DNS had failed. Tightened, not weakened; see test_ca_bundle.py::
+    # test_upstream_failure_is_not_reported_as_a_deadline_skip.
+    assert out["stages"]["tcp"]["outcome"] == "skipped_upstream_failure"
 
 
 def test_a_dns_failure_is_distinguishable_from_an_auth_failure(probe, monkeypatch):

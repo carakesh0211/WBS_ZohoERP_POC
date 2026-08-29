@@ -40,11 +40,24 @@ cd vendor && for w in ../wheels/*.whl; do unzip -o "$w"; done
 
 Prefer the `py3-none-any` wheel per package; only `pydantic-core` needs `cp313-…-manylinux…x86_64`. Never `musllinux`, never `win_amd64`.
 
+## The CA bundle is mandatory
+
+Supabase presents a chain rooted in **its own CA**, so verification against the
+system trust store fails correctly and uninformatively. `ca-bundle.pem` must be
+at the archive root. Obtain it per [`CA_BUNDLE.md`](CA_BUNDLE.md) -- it is not
+project-specific, so get it **before** any throwaway project exists and keep
+packaging out of the exposure window.
+
+There is no "build without it" path. `build_bundle.py` exits non-zero if the
+file is missing, empty, malformed, expired, or absent from the finished ZIP.
+
 ## Assemble
 
 ```
 bundle/
 ├── main.py
+├── ca.py                 # stdlib-only; shared with the build gate
+├── ca-bundle.pem         # REQUIRED; the build fails without it
 ├── app-config.json
 ├── requirements.txt      # a comment only; Catalyst does not read it
 └── vendor/
@@ -52,7 +65,19 @@ bundle/
 
 Zip the **contents**, so `main.py` sits at the archive root. Exclude `__pycache__` and `*.pyc`.
 
+Use the script rather than zipping by hand -- it assembles and then re-opens and
+verifies the artefact, because checking the source tree is not the same as
+checking the thing that gets uploaded:
+
+```bash
+python docs/phase-0b/probe/build_bundle.py --out wbs-phase0b-probe.zip
+```
+
 ## Verify before uploading
+
+`build_bundle.py` already performs every check below on the finished archive.
+The manual form is kept because a reviewer should be able to verify a bundle
+without trusting the script that produced it.
 
 ```bash
 python - <<'EOF'
@@ -75,7 +100,7 @@ The `.pyd` assertion is the one that matters most: a Windows binary slipping in 
 python -m pytest docs/phase-0b/probe/test_probe.py -q
 ```
 
-36 tests: authorisation, SSRF surface, secret containment, deadline behaviour, concurrency, TLS verification, and the Q-B claim guard.
+89 tests: authorisation, SSRF surface, secret containment, deadline behaviour, concurrency, TLS verification, CA pinning and fail-closed behaviour, stage-skip attribution, and the Q-B claim guard. The CA tests run against committed synthetic fixtures under `fixtures/`, so they need neither the real Supabase certificate nor a certificate-parsing dependency.
 
 **Run these WITHOUT the vendor directory on `PYTHONPATH`.** The vendored `pydantic_core` is a Linux binary and cannot load on Windows or macOS — by design. Verify the vendored `pg8000` separately, since it is pure Python and imports anywhere:
 

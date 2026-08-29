@@ -1,84 +1,174 @@
 # Phase 0B Stage 1 — status
 
-**Branch:** `phase-0b/connectivity-gate`, cut from `4759c79`
-**Status: HALTED before probe execution. Exposure window closed early and cleanly.**
+**Branch:** `phase-0b/connectivity-gate`
+**Status: attempt 2 prepared. Blocked at one manual step — the CA certificate download.**
+**No Supabase project exists. No exposure clock is running.**
 
-Q-A (can AppSail reach an external PostgreSQL on 5432?) is **NOT ANSWERED**.
-Q-B (is the path securable by network controls?) remains **UNRESOLVED**, as it must.
-
-## What was built, deployed and proven
-
-| Item | Status |
+| | |
 |---|---|
-| Probe source, 36 local tests | Done (unchanged from the prior commit) |
-| Vendored Linux x86_64 CPython 3.13 dependencies | Done |
-| **Probe deployed to `wbs-platform-spike`** | **Done** — `GET /healthz` → 200, Python **3.13.9 / x86_64**, cold start **2593 ms** |
-| **`POST /probe` rejects an unauthenticated request** | **Done** — 401, proving authorisation precedes all network activity in the deployed build |
-| Supabase throwaway project, hardened ephemeral role | Done, then destroyed |
-| **P1 / P2 execution** | **NOT RUN — deliberately abandoned. See below.** |
+| **Q-A** — can AppSail reach an external PostgreSQL on 5432? | **NOT ANSWERED.** Empirical; answered by deploying the probe |
+| **Q-B** — can that path be secured by network controls? | **UNRESOLVED.** Authoritative; needs Zoho question 3, a private path, or client sign-off |
 
-`wbs-capex-poc` was not accessed, requested, modified, redeployed or inspected at any point.
+---
 
-## Why P1 and P2 were not run
+## Correction of record: what gates what
 
-Two reasons. The second is on its own decisive.
+Attempt 1's write-up claimed Zoho support **question 6** — may a custom CA
+bundle ship inside a deployment bundle — gated the retry. **That was wrong, and
+it is corrected here rather than quietly edited away.**
 
-**1 — Setting `PGPASSWORD` through browser automation would have written the password into the session transcript.**
-Catalyst environment variables are set through a Console dialog; there is no way to type a value into that field without the value appearing verbatim in the automation call. The governing instruction is that passwords must never be displayed, logged or reproduced. No partial connectivity result is worth breaching that, so the variables were never created — the Configuration panel was left in its empty state, which was verified after the fact.
+AppSail has already accepted and executed from a deployment ZIP containing
+vendored files, twice: the Phase 0A spike and the first Stage 1 deployment.
+Whether a `.pem` alongside `main.py` loads is therefore an **empirically
+testable property of the deployment**, and Stage 1 tests it by deploying it.
 
-**2 — The result would have been partial regardless.**
-The deployed bundle ships **no `ca-bundle.pem`**. Supabase presents a certificate chain that the bundle cannot verify, and the probe refuses to disable verification (a test greps the source for `CERT_NONE`, `check_hostname = False` and `_create_unverified_context`). P1 and P2 would therefore have answered DNS and TCP and then failed at the TLS stage on a **packaging gap of ours**, not a Catalyst limitation. Reproduced identically from a local machine against all three endpoints, which is how the cause was isolated.
+The general principle, now written into `TEST_PLAN.md` section 1:
 
-**This is the substantive finding of the attempt, and it is a Stage 1 prerequisite that the test plan did not carry:** a CA bundle for the database provider must be vendored into the deployment bundle before the probe can answer anything past TCP. Zoho support question 6 — whether a custom CA bundle may be shipped inside the deployment bundle — is therefore no longer a nice-to-have; it gates the re-run.
+- **Q-A is empirical.** It is measured. **No support question gates it.**
+- **Q-B is authoritative.** Question 3 gates it, and always did.
+- The unsent Zoho ticket proceeds **independently** and must never block Q-A.
 
-## Endpoint facts established (from the local machine, not from AppSail)
+---
 
-These are **not** answers to Q-A. They characterise the target, not the platform's ability to reach it.
+## Attempt 1 — preserved as audit history
 
-| Endpoint | Family | TLS | Chain verified |
-|---|---|---|---|
-| Direct, port 5432 | **IPv6 only** | TLS 1.3, `TLS_AES_256_GCM_SHA384` | **No** — no CA bundle |
-| Session pooler, port 5432 | **IPv4** | TLS 1.3, `TLS_AES_256_GCM_SHA384` | **No** — no CA bundle |
+Recorded because how a failure was handled is itself evidence.
 
-The direct host being IPv6-only on the free tier is worth carrying forward: if AppSail egress is IPv4-only, P1 is untestable without the paid IPv4 add-on, and the session pooler becomes the only free path. That remains a hypothesis — it was not tested.
+**P1 and P2 were never run.** Two reasons:
 
-## Exposure window and cleanup
+1. **Setting `PGPASSWORD` through the Catalyst Console dialog would have written
+   the password into the session transcript.** Catalyst environment variables
+   are set through a browser dialog; there is no way to type a value into that
+   field without it appearing verbatim in the automation call. No partial
+   connectivity result justified breaching that, so **no environment variables
+   were ever created.**
+2. **The bundle shipped no `ca-bundle.pem`**, and the code silently degraded to
+   the system trust store when the file was absent — `if os.path.isfile(bundle):`
+   guarded the `load_verify_locations` call, so an absent file meant system CAs.
+   Supabase presents its own CA, so the omission surfaced as
+   `SSLCertVerificationError` against the live endpoint — indistinguishable from
+   a Catalyst egress restriction or a network fault. Reproduced identically from
+   a local machine against all three endpoints, which is how the cause was
+   isolated to **our packaging**, not the platform.
+
+**What attempt 1 did prove on the live deployment**
+
+| Evidence | Result |
+|---|---|
+| Probe runs on AppSail | `GET /healthz` returned 200, Python **3.13.9 / x86_64**, cold start **2593 ms** |
+| Authorisation precedes network activity | `POST /probe` returned **401** without a token, on the deployed build |
+| Catalyst executes from a vendored ZIP | Confirmed — the basis for the Q6 correction above |
+
+**Exposure and cleanup**
 
 | | |
 |---|---|
 | Project created | 2026-08-29 **00:13:10** local |
 | Project deleted | 2026-08-29 **00:27:29** local |
-| **Actual public exposure** | **14 min 19 s** of an authorised 60 min |
-| Database contents during exposure | Empty. No schema, no data, no Data API |
+| **Actual exposure** | **14 min 19 s** of an authorised 60 min |
+| Database contents throughout | Empty — no schema, no data, no Data API |
 
-Cleanup performed and verified:
+Verified: project deleted **by reference** (`tlqufzaatqfbyundzqvm`), navigation
+by ref so no other project was reachable, confirmation dialog required the name
+typed in full; organisation `carakesh` returned to **1 project**; the
+pre-existing project was never opened and remains paused; the project host no
+longer resolves, which kills the ephemeral role with it; local secret files
+deleted; **zero environment variables** on `wbs-platform-spike`.
 
-- **Supabase project deleted** — navigated **by project reference**, so a different project could not be reached; the confirmation dialog required the project name typed in full. Organisation `carakesh` now lists **1 project**.
-- **The one pre-existing project was never opened** and remains paused, exactly as found.
-- **Ephemeral credentials are dead** — the project host no longer resolves (`getaddrinfo` failure), which destroys the role along with the database.
-- **Local secret files deleted** from the scratchpad.
-- **Zero environment variables** on `wbs-platform-spike`, verified in the Console after cleanup.
+`wbs-capex-poc` was not accessed, requested, modified, redeployed or inspected
+at any point, in either attempt.
 
-## The deployed probe is inert, and why that is structural rather than a promise
+---
 
-The probe binary remains deployed on `wbs-platform-spike`. It cannot act:
+## Attempt 2 — what has been corrected
 
-- `_endpoints()` builds its table from `PGHOST_DIRECT` / `PGHOST_POOLER`. Both unset → the table is empty → **P1 and P2 do not exist as reachable keys**, and the request schema accepts nothing else.
-- `PROBE_TOKEN` unset → authorisation **fails closed**; the 401 was observed against the live deployment.
-- The endpoints it was configured for no longer resolve.
+### Packaging fails closed
 
-**One outstanding item requiring the user:** restoring the plain FastAPI bundle needs a manual ZIP upload (`wbs-platform-spike-vendored.zip`) and cannot be automated. This is cosmetic, not a security matter, for the reasons above.
+| Change | File |
+|---|---|
+| CA handling extracted to a **stdlib-only** module so the build gate and the runtime share one implementation and cannot drift | `probe/ca.py` |
+| Missing / empty / malformed / expired CA raises `CaBundleUnusable` — **never** a fallback to system CAs | `probe/ca.py` |
+| The pinned bundle is the **only** trust anchor — passing `cafile` to `create_default_context` suppresses `load_default_certs()` | `probe/ca.py` |
+| `/probe` returns **503 `CA_BUNDLE_UNUSABLE`** — after the 401, before any DNS | `probe/main.py` |
+| `/healthz` reports CA state, so a packaging fault is visible **before** a window is spent on it | `probe/main.py` |
+| Build gate refuses to produce a bundle without a valid CA, and re-opens the finished ZIP to verify it | `probe/build_bundle.py` |
+| CA provenance — source, SHA-256, subject, issuer, expiry | `probe/CA_BUNDLE.md` |
 
-## What Stage 1 needs before it is re-attempted
+### A real attribution defect, found in evidence output
 
-1. **Vendor a CA bundle** into the probe and load it explicitly. Without this the probe cannot pass TLS, and DNS+TCP alone leaves Q-A half-answered.
-2. **Supply secrets without a browser.** Setting Catalyst environment variables through the Console dialog is incompatible with the no-secrets-in-transcript rule. Either the user sets the six variables directly, or Stage 1 uses a mechanism that never routes a credential through automation.
-3. Only then re-create a throwaway project and run P1 and P2.
+Stages after a failure were labelled `skipped_deadline` even when the deadline
+had not expired — a DNS failure produced four misleading "out of time" verdicts.
+Corrected to `skipped_upstream_failure`. Found by reading actual helper output,
+not by review. One pre-existing test asserted the wrong label and was
+**tightened, not weakened**; the change is annotated in place.
 
-Items 1 and 2 are both **plan defects**, not execution failures. The plan specified the variables and the deadline budget but never said who types the password, and it assumed TLS verification would succeed against a provider using its own CA.
+### Secret handling, solved before any database exists
+
+`probe/probe_invoke.py`:
+
+- reads the token via `getpass` (unechoed) or `--token-stdin` (for piping from a
+  password manager) — **never** an argv element, so `ps` and shell history
+  cannot see it;
+- holds the token only as an outbound header, never writes it anywhere;
+- sanitises every response in **three layers** — known secret values stripped by
+  literal match (including inside free prose), key-name matching, then
+  value-shape matching for addresses and hostnames;
+- preserves `inet_client_addr`, which is Q-B evidence, while redacting target
+  addresses, which are not.
+
+The self-test caught a genuine gap on first run: a secret embedded in free text
+survived key-name redaction. Value-based stripping was added in response.
+
+### Test coverage
+
+**89 tests pass**, up from 36.
+
+| Proof | Tests |
+|---|---|
+| The intended CA file is explicitly loaded, and is the sole anchor | 5 |
+| Missing / empty / malformed / expired fails closed; refusal does no network I/O | 9 |
+| Hostname verification on; `CERT_REQUIRED`; TLS 1.2 or newer | 3 |
+| Verification cannot be disabled anywhere (source scan, 3 files x 6 patterns) | 18 |
+| No path, filename, certificate body or secret leaks on failure | 7 |
+| P1/P2 remain the only keys; port 5432 only; 6543 unreachable (AST, not grep) | 7 |
+| Stage-skip attribution is honest | 1 |
+
+---
+
+## The one remaining blocker
+
+**`ca-bundle.pem` is not present, and the build gate correctly refuses to
+build without it:**
+
+```
+BUILD FAILED: CA bundle gate failed: ca_bundle_missing.
+```
+
+Supabase publishes **no documented download URL**; the certificate comes from
+the dashboard (Database Settings, SSL Configuration, `prod-ca-2021.crt`). It is
+**not project-specific** — it is Supabase's shared production root — so it can
+be obtained once, in advance, and **does not require the throwaway project to
+exist**. That decoupling is deliberate: packaging must be finished before any
+exposure clock starts.
+
+Full instructions, and the boundary note on not opening `praktiq`, are in
+`probe/CA_BUNDLE.md`.
+
+Until the file is placed, **build, deployment and health verification cannot
+proceed** — which is the gate working as designed rather than a setback.
+
+---
 
 ## Unchanged
 
-- **Q-B is UNRESOLVED.** No authoritative Zoho evidence was obtained. Sampled address stability remains a hypothesis and nothing observed here changes that.
-- Stage 1 success would have been a **partial pass** in any case. Phase 0B does not clear until Stage 2 proves the Cron/Event Function path.
-- The Zoho support ticket at `ZOHO_SUPPORT_TICKET_DRAFT.md` remains **unsent** and is a user action. Question 3 decides Q-B; question 6 now also gates the Stage 1 re-run.
+- **Q-B is UNRESOLVED**, and no work here changes that. Sampled address
+  stability remains a hypothesis.
+- Stage 1 success is a **partial pass**. Phase 0B does not clear until Stage 2
+  proves the Cron/Event Function path.
+- The Zoho support ticket at `ZOHO_SUPPORT_TICKET_DRAFT.md` remains **unsent**
+  and is a user action. It proceeds independently of Q-A.
+- `wbs-platform-spike` still carries the attempt-1 probe, **structurally inert**:
+  no `PGHOST_*` variables means the endpoint table is empty, so P1 and P2 do not
+  exist as reachable keys, and an unset `PROBE_TOKEN` fails closed. It will be
+  replaced by the corrected bundle rather than restored first, to avoid a
+  needless extra upload.

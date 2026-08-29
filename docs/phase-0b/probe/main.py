@@ -38,6 +38,7 @@ review found in tracebacks, and the same remedy.
 """
 from __future__ import annotations
 
+import hashlib
 import hmac
 import os
 import platform
@@ -115,20 +116,21 @@ def log(stage: str, outcome: str, ms: float, **safe: Any) -> None:
 
 
 # --------------------------------------------------------------- TLS
-def verified_context() -> ssl.SSLContext:
-    """Chain validation, hostname verification, SNI, TLS 1.2 minimum.
+# Shared with the build gate; see ca.py for why it is a separate module.
+from ca import (  # noqa: E402
+    CA_BUNDLE_PATH,
+    CaBundleUnusable,
+    _ca_summary,
+    verified_context,
+)
 
-    Negotiating encryption is not sufficient: an unverified session proves only
-    that something answered.
-    """
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = True
-    ctx.verify_mode = ssl.CERT_REQUIRED
-    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
-    bundle = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ca-bundle.pem")
-    if os.path.isfile(bundle):
-        ctx.load_verify_locations(cafile=bundle)
-    return ctx
+#: Evaluated once at start-up so a packaging fault is visible in the boot log
+#: and at /healthz, not first discovered midway through a timed exposure window.
+try:
+    CA_BUNDLE: dict[str, Any] | None = _ca_summary()
+    CA_BUNDLE_ERROR: str | None = None
+except CaBundleUnusable as exc:
+    CA_BUNDLE, CA_BUNDLE_ERROR = None, str(exc)
 
 
 # --------------------------------------------------------------- stages
@@ -311,7 +313,13 @@ class ProbeRequest(BaseModel):
 def healthz() -> dict[str, Any]:
     """Public. Touches no database and reveals no configuration."""
     return {"status": "ok", "service": "phase-0b-connectivity-probe",
-            "python": platform.python_version(), "machine": platform.machine()}
+            "python": platform.python_version(), "machine": platform.machine(),
+            # Packaging state only. Reveals no endpoint, credential or token,
+            # and the CA is public by construction -- but it lets a broken
+            # bundle be caught before a timed window is spent on it.
+            "ca_bundle_loaded": CA_BUNDLE is not None,
+            "ca_bundle_sha256": CA_BUNDLE["sha256"] if CA_BUNDLE else None,
+            "ca_bundle_error": CA_BUNDLE_ERROR}
 
 
 @app.post("/probe")
@@ -322,6 +330,16 @@ def probe(body: ProbeRequest, x_probe_token: str = Header(default="")) -> dict[s
     # so it cannot leak through logs, referrers or browser history.
     if not expected or not hmac.compare_digest(x_probe_token, expected):
         raise HTTPException(status_code=401, detail={"code": "UNAUTHORISED"})
+
+    # Fail closed. A probe that cannot verify TLS cannot answer Q-A, and must
+    # not spend a network round trip implying otherwise. This sits after the
+    # 401 so an unauthenticated caller learns nothing about packaging state,
+    # and before DNS so nothing leaves the container.
+    if CA_BUNDLE is None:
+        raise HTTPException(status_code=503, detail={
+            "code": "CA_BUNDLE_UNUSABLE", "reason": CA_BUNDLE_ERROR,
+            "message": "The pinned CA bundle is unusable. TLS verification is "
+                       "never disabled to work around this; rebuild the bundle."})
 
     key = body.endpoint
     if key in STAGE2_ONLY:
@@ -349,34 +367,41 @@ def _run(key: str, target: dict[str, Any]) -> dict[str, Any]:
     started = time.monotonic()
     stages: dict[str, Any] = {}
 
-    def skip_rest(from_index: int) -> None:
+    def skip_rest(from_index: int, reason: str) -> None:
+        """Record WHY later stages did not run.
+
+        `skipped_deadline` and `skipped_upstream_failure` are different findings:
+        the first says the probe ran out of time, the second says an earlier
+        stage failed and the rest were never eligible. Collapsing them would
+        reintroduce exactly the ambiguity this probe exists to remove.
+        """
         for name in STAGE_ORDER[from_index:]:
-            stages.setdefault(name, {"outcome": "skipped_deadline"})
+            stages.setdefault(name, {"outcome": reason})
 
     sock = None
     try:
         for i, name in enumerate(STAGE_ORDER):
             if not deadline.allows(name):
                 log(name, "skipped_deadline", 0.0, remaining=round(deadline.remaining(), 2))
-                skip_rest(i)
+                skip_rest(i, "skipped_deadline")
                 break
             budget = min(STAGE_BUDGET_S[name], max(deadline.remaining() - 0.25, 0.1))
 
             if name == "dns":
                 stages["dns"] = stage_dns(host, port, budget)
                 if stages["dns"]["outcome"] != "pass":
-                    skip_rest(1)
+                    skip_rest(1, "skipped_upstream_failure")
                     break
             elif name == "tcp":
                 stages["tcp"], sock = stage_tcp(host, port, budget)
                 if stages["tcp"]["outcome"] != "pass":
-                    skip_rest(2)
+                    skip_rest(2, "skipped_upstream_failure")
                     break
             elif name == "tls":
                 stages["tls"] = stage_tls(sock, host, budget)
                 sock = None  # wrapped socket is closed inside the stage
                 if stages["tls"]["outcome"] != "pass":
-                    skip_rest(3)
+                    skip_rest(3, "skipped_upstream_failure")
                     break
             elif name == "auth":
                 q_budget = min(STAGE_BUDGET_S["query"], max(deadline.remaining() - 0.25, 0.1))
@@ -403,6 +428,12 @@ def _run(key: str, target: dict[str, Any]) -> dict[str, Any]:
         "total_ms": round(total_ms, 1),
         "deadline_s": DEADLINE_S,
         "deadline_exceeded": total_ms / 1000 > DEADLINE_S,
+        "ca_bundle": {
+            "sha256": CA_BUNDLE["sha256"],
+            "subjects": [c["subject_cn"] for c in CA_BUNDLE["certificates"]],
+            "issuers": [c["issuer_cn"] for c in CA_BUNDLE["certificates"]],
+            "not_after": [c["not_after"] for c in CA_BUNDLE["certificates"]],
+        } if CA_BUNDLE else None,
         "q_a": "pass" if stages["query"].get("outcome") == "pass" else "fail",
         "q_b": "unresolved",
         "q_b_note":
@@ -417,6 +448,9 @@ if __name__ == "__main__":
     port = int(os.environ.get("X_ZOHO_CATALYST_LISTEN_PORT", "9000"))
     print(f"[probe] python {platform.python_version()} {platform.machine()}", flush=True)
     print(f"[probe] endpoints configured: {sorted(ENDPOINTS)}", flush=True)
+    print(f"[probe] ca-bundle: "
+          f"{'sha256=' + CA_BUNDLE['sha256'][:16] if CA_BUNDLE else 'UNUSABLE ' + str(CA_BUNDLE_ERROR)}",
+          flush=True)
     print(f"[probe] binding 0.0.0.0:{port}", flush=True)
     import uvicorn
 
