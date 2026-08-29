@@ -48,7 +48,10 @@ def verify_ca() -> dict:
     except CaBundleUnusable as exc:
         raise BuildFailed(
             f"CA bundle gate failed: {exc}. "
-            f"Place the Supabase root CA at {CA_FILENAME} (see CA_BUNDLE.md). "
+            f"Place the certificate at {CA_FILENAME}, downloaded from the Database "
+            f"Settings of the EXACT throwaway project under test -- not from any "
+            f"pre-existing project, not from a TLS handshake, not from a third-party "
+            f"repository. See CA_BUNDLE.md section 1. "
             f"TLS verification is never relaxed to work around this."
         ) from None
     return summary

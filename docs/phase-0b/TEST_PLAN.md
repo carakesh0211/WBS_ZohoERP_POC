@@ -139,7 +139,7 @@ stage at all.
 
 | Requirement | Enforcement |
 |---|---|
-| `ca-bundle.pem` obtained only from an official Supabase source | `probe/CA_BUNDLE.md`, provenance recorded with SHA-256, subject, issuer, expiry |
+| `ca-bundle.pem` obtained **only from the exact throwaway project under test**, from its own Database Settings, with the project reference recorded first; never from a TLS handshake, a third-party repository, or any pre-existing project | `probe/CA_BUNDLE.md` provenance rule; SHA-256, subject, issuer, validity and download time recorded, and the fingerprint re-checked against `/healthz` before the ephemeral role is created |
 | Present at the archive root and byte-identical to the validated file | `build_bundle.py::verify_zip` — **the build fails otherwise** |
 | Missing, empty, malformed or expired → **fail closed** | `ca.py::CaBundleUnusable`; never a fallback to system CAs |
 | The pinned bundle is the **only** trust anchor | `test_ca_bundle.py` |

@@ -42,11 +42,19 @@ Prefer the `py3-none-any` wheel per package; only `pydantic-core` needs `cp313-â
 
 ## The CA bundle is mandatory
 
-Supabase presents a chain rooted in **its own CA**, so verification against the
-system trust store fails correctly and uninformatively. `ca-bundle.pem` must be
-at the archive root. Obtain it per [`CA_BUNDLE.md`](CA_BUNDLE.md) -- it is not
-project-specific, so get it **before** any throwaway project exists and keep
-packaging out of the exposure window.
+Supabase presents a chain rooted in a CA that is **not** in the system trust
+store, so verification against system CAs fails correctly and uninformatively.
+`ca-bundle.pem` must be at the archive root.
+
+Obtain it per [`CA_BUNDLE.md`](CA_BUNDLE.md), which is binding: it comes from
+**the exact throwaway project used for the test**, from that project's Database
+Settings -> SSL Configuration, with the project reference recorded first. It is
+**not** assumed to be shared across projects -- that was claimed once, was an
+inference from a filename rather than a documented fact, and is withdrawn.
+
+This means the build happens **inside** the exposure window, after the project
+exists. Everything else -- vendoring, code, tests -- must therefore be finished
+beforehand, so the in-window build is one file plus a zip.
 
 There is no "build without it" path. `build_bundle.py` exits non-zero if the
 file is missing, empty, malformed, expired, or absent from the finished ZIP.

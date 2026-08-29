@@ -1,8 +1,12 @@
 # Phase 0B Stage 1 — status
 
 **Branch:** `phase-0b/connectivity-gate`
-**Status: attempt 2 prepared. Blocked at one manual step — the CA certificate download.**
+**Status: attempt 2 prepared. Stopped at the fresh-project approval gate.**
 **No Supabase project exists. No exposure clock is running.**
+
+The CA certificate is **not** a separate blocker: under the approved provenance
+rule its only legitimate source is the throwaway project itself, so it is
+obtained inside the window, immediately after creation.
 
 | | |
 |---|---|
@@ -135,27 +139,60 @@ survived key-name redaction. Value-based stripping was added in response.
 
 ---
 
-## The one remaining blocker
+## Second correction of record: CA provenance
 
-**`ca-bundle.pem` is not present, and the build gate correctly refuses to
-build without it:**
+An earlier revision of this document claimed the certificate is **"not
+project-specific — Supabase's shared production root"**, and concluded it could
+be fetched from any project in advance of the test.
+
+**Withdrawn. That was an inference from a filename, not a documented fact.**
+Supabase's documentation says the certificate is downloaded from Database
+Settings for *your database*; it nowhere states the file is identical across
+projects. A shared-looking filename is not evidence that it is shared. This is
+the same error class as reading "no published static egress IPs" as "no static
+egress IPs" — absence of a contrary statement treated as a guarantee.
+
+The practical consequence was worse than the wording: it would have sourced the
+probe's trust anchor from a project that is out of scope.
+
+**Approved provenance rule, now binding:**
+
+1. The CA comes from **the exact newly created throwaway project** used for the test
+2. Downloaded from **that project's** Database Settings → SSL Configuration
+3. The **project reference is recorded before** the download
+4. SHA-256, subject, issuer, validity and download time all recorded
+5. **Never** from a TLS handshake or a third-party repository
+6. **`praktiq` is never opened or inspected**, by anyone, for this or anything else
+
+## The remaining blocker
+
+**Not the certificate — the approval gate.**
+
+`ca-bundle.pem` cannot exist yet, because under rule 1 its only legitimate
+source is a project that has not been created. The build gate correctly refuses
+to build without it:
 
 ```
 BUILD FAILED: CA bundle gate failed: ca_bundle_missing.
 ```
 
-Supabase publishes **no documented download URL**; the certificate comes from
-the dashboard (Database Settings, SSL Configuration, `prod-ca-2021.crt`). It is
-**not project-specific** — it is Supabase's shared production root — so it can
-be obtained once, in advance, and **does not require the throwaway project to
-exist**. That decoupling is deliberate: packaging must be finished before any
-exposure clock starts.
+That is the gate working as designed, not a setback.
 
-Full instructions, and the boundary note on not opening `praktiq`, are in
-`probe/CA_BUNDLE.md`.
+**What this costs.** Packaging now happens *inside* the exposure window — create
+project, download its CA, build, upload, health-check — where it would otherwise
+have been finished in advance. The accepted consequence: **if `/healthz` reports
+`ca_bundle_loaded: false`, or a fingerprint that does not match the one recorded
+at download, the run aborts to cleanup.** There is no iterating on packaging
+under the clock. Provenance integrity is worth that, and the risk is small
+because everything except the certificate is already proven.
 
-Until the file is placed, **build, deployment and health verification cannot
-proceed** — which is the gate working as designed rather than a setback.
+Sequence, timings and the minute-45 cleanup trigger are in
+`OPERATOR_RUNBOOK.md`; provenance detail in `probe/CA_BUNDLE.md`.
+
+**One Phase A item is still outstanding:** the vendored Linux x86_64 /
+CPython 3.13 dependency tree is not built. It must be, before the approval gate,
+so that the in-window build is one file plus a zip rather than dependency
+resolution under time pressure.
 
 ---
 
