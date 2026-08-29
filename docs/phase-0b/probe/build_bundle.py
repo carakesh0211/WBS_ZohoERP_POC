@@ -57,28 +57,32 @@ def verify_ca() -> dict:
     return summary
 
 
-def _iter_sources():
+def _iter_sources(vendor: str):
     for name in REQUIRED_ROOT:
         yield os.path.join(HERE, name), name
     req = os.path.join(HERE, "requirements.txt")
     if os.path.isfile(req):
         yield req, "requirements.txt"
-    vendor = os.path.join(HERE, "vendor")
     if not os.path.isdir(vendor):
         raise BuildFailed(
-            "vendor/ is absent. Catalyst does not run pip install; build it "
-            "first with the recipe in BUILD.md."
+            f"vendored tree absent at {vendor}. Catalyst does not run pip install. "
+            f"Build it OUTSIDE the repository first:  py vendor_deps.py --dest <staging>"
         )
+    # Arcnames are relative to the VENDOR ROOT, not to HERE. The vendored tree
+    # normally lives outside the repository, so relpath-from-HERE would emit
+    # `../..`-prefixed names and the archive would not have a `vendor/` prefix
+    # at all. Caught by a rehearsal build rather than inside the exposure window.
     for root, dirs, files in os.walk(vendor):
         dirs[:] = [d for d in dirs if d != "__pycache__"]
         for f in files:
             if f.endswith((".pyc", ".pyo")):
                 continue
             full = os.path.join(root, f)
-            yield full, os.path.relpath(full, HERE).replace(os.sep, "/")
+            rel = os.path.relpath(full, vendor).replace(os.sep, "/")
+            yield full, f"vendor/{rel}"
 
 
-def build(out_path: str) -> dict:
+def build(out_path: str, vendor: str) -> dict:
     ca = verify_ca()
 
     missing = [n for n in REQUIRED_ROOT if not os.path.isfile(os.path.join(HERE, n))]
@@ -86,7 +90,7 @@ def build(out_path: str) -> dict:
         raise BuildFailed(f"missing required root files: {missing}")
 
     with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as z:
-        for src, arc in _iter_sources():
+        for src, arc in _iter_sources(vendor):
             z.write(src, arc)
 
     return verify_zip(out_path, ca)
@@ -128,6 +132,9 @@ def verify_zip(path: str, ca: dict) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out")
+    ap.add_argument("--vendor", default=os.path.join(HERE, "vendor"),
+                    help="vendored dependency tree, normally OUTSIDE this repository; "
+                         "see vendor_deps.py")
     ap.add_argument("--verify-ca-only", action="store_true")
     ap.add_argument("--verify-zip")
     args = ap.parse_args()
@@ -139,7 +146,7 @@ def main() -> int:
         else:
             if not args.out:
                 ap.error("--out is required unless --verify-ca-only is given")
-            print(json.dumps(build(args.out), indent=2))
+            print(json.dumps(build(args.out, args.vendor), indent=2))
     except BuildFailed as exc:
         print(f"BUILD FAILED: {exc}", file=sys.stderr)
         return 1

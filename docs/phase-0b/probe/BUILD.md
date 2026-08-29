@@ -19,26 +19,45 @@ Two resolution traps, each of which fails at import:
 - **`pydantic` 2.13.4 pins `pydantic-core==2.46.4`.** Taking the latest breaks it.
 - **`fastapi` 0.133.1 additionally requires `annotated-doc`**, which is easy to miss.
 
-## Build
+## Build the vendored tree — before the exposure window
 
-### Option A — Linux, or a Linux container (preferred)
-
-```bash
-docker run --rm -v "$PWD":/w -w /w python:3.13-slim \
-  pip install --target ./vendor -r <(python -c "
-import json;print('\n'.join(f'{k}=={v[\"version\"]}' for k,v in json.load(open('dependency-inventory.json')).items()))")
-```
-
-### Option B — cross-platform, no Docker
+`vendor_deps.py` does this, and it must be run **outside** the repository. It
+refuses a `--dest` inside the repo, because the tree must not be committable.
 
 ```bash
-pip download -d wheels --platform manylinux2014_x86_64 \
-  --python-version 313 --implementation cp --only-binary=:all: \
-  -r requirements-from-inventory.txt
-cd vendor && for w in ../wheels/*.whl; do unzip -o "$w"; done
+py docs/phase-0b/probe/vendor_deps.py --dest <staging-dir-outside-the-repo>
 ```
 
-Prefer the `py3-none-any` wheel per package; only `pydantic-core` needs `cp313-…-manylinux…x86_64`. Never `musllinux`, never `win_amd64`.
+It **resolves** the closure from the four top-level pins (`fastapi`, `uvicorn`,
+`pg8000`, `pydantic`) and then asserts the result equals
+`dependency-inventory.json` exactly, hash for hash. Downloading the inventory
+directly would only prove the inventory is downloadable; resolving and comparing
+detects a dependency that has appeared, disappeared or changed.
+
+It did exactly that on first run: `sniffio` was listed in the inventory but is
+**not** in the closure. `anyio` 4.14.2 imports it under
+`try/except ModuleNotFoundError` with every call site handling `sniffio is None`,
+so it is genuinely optional and correctly absent from `Requires-Dist`. The
+attempt-1 bundle had been shipping a package nothing depends on. Entry removed;
+18 packages remain.
+
+Checks, all of which fail the run rather than warn:
+
+- resolved closure equals the inventory, filename and SHA-256 per wheel
+- no source distributions — a sdist would be built for the host, not the target
+- declared-pure packages really are `-none-any`; declared-binary really is manylinux
+- no `win_amd64`, `musllinux` or `macosx` wheels
+- zero `.pyd`, zero `.dll`
+- exactly the expected `cpython-313-x86_64-linux-gnu.so`
+- every required module present in the extracted tree
+
+It writes `staged-inventory.json` to the staging root with a deterministic
+**tree hash** (sorted relative path + content), so two independently built trees
+can be compared for identity.
+
+Two programs, deliberately: `vendor_deps.py` may use pip and the network;
+`build_bundle.py` may not, and a test enforces that. The in-window build must
+never depend on an index being reachable.
 
 ## The CA bundle is mandatory
 
@@ -78,8 +97,13 @@ verifies the artefact, because checking the source tree is not the same as
 checking the thing that gets uploaded:
 
 ```bash
-python docs/phase-0b/probe/build_bundle.py --out wbs-phase0b-probe.zip
+py docs/phase-0b/probe/build_bundle.py --out wbs-phase0b-probe.zip --vendor <staging>/vendor
 ```
+
+This is the **only** command that runs inside the exposure window. It performs
+no network access: the tree is already staged, and the sole missing input is
+`ca-bundle.pem`. Measured on a rehearsal build with a synthetic CA: **480 files,
+3.52 MB, ~1.1 s**.
 
 ## Verify before uploading
 
@@ -108,7 +132,7 @@ The `.pyd` assertion is the one that matters most: a Windows binary slipping in 
 python -m pytest docs/phase-0b/probe/test_probe.py -q
 ```
 
-89 tests: authorisation, SSRF surface, secret containment, deadline behaviour, concurrency, TLS verification, CA pinning and fail-closed behaviour, stage-skip attribution, and the Q-B claim guard. The CA tests run against committed synthetic fixtures under `fixtures/`, so they need neither the real Supabase certificate nor a certificate-parsing dependency.
+92 tests: authorisation, SSRF surface, secret containment, deadline behaviour, concurrency, TLS verification, CA pinning and fail-closed behaviour, stage-skip attribution, and the Q-B claim guard. The CA tests run against committed synthetic fixtures under `fixtures/`, so they need neither the real Supabase certificate nor a certificate-parsing dependency.
 
 **Run these WITHOUT the vendor directory on `PYTHONPATH`.** The vendored `pydantic_core` is a Linux binary and cannot load on Windows or macOS — by design. Verify the vendored `pg8000` separately, since it is pure Python and imports anywhere:
 

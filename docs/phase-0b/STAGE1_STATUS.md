@@ -72,12 +72,16 @@ Recorded because how a failure was handled is itself evidence.
 | **Actual exposure** | **14 min 19 s** of an authorised 60 min |
 | Database contents throughout | Empty — no schema, no data, no Data API |
 
-Verified: project deleted **by reference** (`tlqufzaatqfbyundzqvm`), navigation
-by ref so no other project was reachable, confirmation dialog required the name
-typed in full; organisation `carakesh` returned to **1 project**; the
-pre-existing project was never opened and remains paused; the project host no
-longer resolves, which kills the ephemeral role with it; local secret files
-deleted; **zero environment variables** on `wbs-platform-spike`.
+Verified, with the control-plane check as the authority: project deleted **by
+reference** (`tlqufzaatqfbyundzqvm`), navigation by ref so no other project was
+reachable, confirmation dialog required the name typed in full; **the
+organisation-level listing for `carakesh` returned to 1 project, that reference
+absent** — this is the deletion proof. The project host also stopped resolving,
+recorded as **secondary corroboration only**: DNS can cache or persist briefly,
+so it can never be the sole evidence. The pre-existing project was never opened,
+and its untouched, paused state was read from the organisation listing alone.
+Local secret files deleted; **zero environment variables** on
+`wbs-platform-spike`.
 
 `wbs-capex-poc` was not accessed, requested, modified, redeployed or inspected
 at any point, in either attempt.
@@ -125,7 +129,7 @@ survived key-name redaction. Value-based stripping was added in response.
 
 ### Test coverage
 
-**89 tests pass**, up from 36.
+**92 tests pass**, up from 36.
 
 | Proof | Tests |
 |---|---|
@@ -136,6 +140,7 @@ survived key-name redaction. Value-based stripping was added in response.
 | No path, filename, certificate body or secret leaks on failure | 7 |
 | P1/P2 remain the only keys; port 5432 only; 6543 unreachable (AST, not grep) | 7 |
 | Stage-skip attribution is honest | 1 |
+| The in-window build is offline; vendoring is a separate program | 3 |
 
 ---
 
@@ -189,10 +194,7 @@ because everything except the certificate is already proven.
 Sequence, timings and the minute-45 cleanup trigger are in
 `OPERATOR_RUNBOOK.md`; provenance detail in `probe/CA_BUNDLE.md`.
 
-**One Phase A item is still outstanding:** the vendored Linux x86_64 /
-CPython 3.13 dependency tree is not built. It must be, before the approval gate,
-so that the in-window build is one file plus a zip rather than dependency
-resolution under time pressure.
+**Phase A is now complete.** See the vendoring section below.
 
 ---
 
@@ -209,3 +211,51 @@ resolution under time pressure.
   exist as reachable keys, and an unset `PROBE_TOKEN` fails closed. It will be
   replaced by the corrected bundle rather than restored first, to avoid a
   needless extra upload.
+
+---
+
+## Phase A6 — vendored dependency tree
+
+Staged **outside the repository** and never committed: `vendor_deps.py` refuses
+a `--dest` inside the repo. The reproducible form is
+`dependency-inventory.json` plus that script.
+
+| | |
+|---|---|
+| Packages | **18** |
+| Files staged | **475** |
+| Staged size | **11,140,237 bytes** (10.62 MiB) |
+| Inventory SHA-256 | `f7081f7cc7cb2195a1124b2fdedb961cc598ab6b540684ebd327c25fe0a7e2ff` |
+| Tree SHA-256 | `fffcabd61dcbf09f51334212bea59ae70f29d7a4b3d7feba50526e643a543e40` |
+| Shared objects | exactly one — `pydantic_core/_pydantic_core.cpython-313-x86_64-linux-gnu.so` |
+| Windows binaries | none |
+| OSV.dev scan | **no known vulnerabilities**, 18/18 scanned |
+
+### A stale inventory entry, found by resolving rather than trusting
+
+The script resolves the closure from four top-level pins and asserts the result
+equals the inventory. It immediately found that **`sniffio` was listed but is
+not in the closure**: `anyio` 4.14.2 imports it under
+`try/except ModuleNotFoundError`, with every call site handling `sniffio is None`,
+so it is genuinely optional and correctly absent from `Requires-Dist`.
+
+The attempt-1 bundle had therefore been shipping a package nothing depends on.
+Entry removed. This is exactly what downloading the inventory directly would
+never have caught — that would only prove the inventory is downloadable.
+
+### A defect caught by rehearsing the build
+
+A rehearsal build using the **synthetic** CA fixture, in a temporary copy
+outside the repository, exposed a real bug in the new out-of-tree vendor
+support: archive names were computed relative to the probe directory, so an
+external tree produced `../`-prefixed names and the archive had no `vendor/`
+prefix. The gate caught it as `vendored module absent: fastapi` — inside the
+window that would have cost the run. Fixed; re-rehearsed clean at **480 files,
+3.52 MB, ~1.1 s**. The rehearsal artefact was deleted immediately and no
+deployable ZIP exists.
+
+### The gate was not bypassed
+
+`build_bundle.py` still exits **1** with `ca_bundle_missing` even when handed a
+complete, verified vendor tree, and produces **no ZIP**. The only missing input
+is the throwaway project's own certificate.

@@ -83,12 +83,6 @@
     "version": "1.17.0",
     "wheel": "six-1.17.0-py2.py3-none-any.whl"
   },
-  "sniffio": {
-    "kind": "pure",
-    "sha256": "2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2",
-    "version": "1.3.1",
-    "wheel": "sniffio-1.3.1-py3-none-any.whl"
-  },
   "starlette": {
     "kind": "pure",
     "sha256": "a86dd39d14bb45f85a3d18525215a9ef0cfd1f192ac793220e72598c90335f0c",

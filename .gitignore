@@ -20,3 +20,21 @@ tests/vrt/report/
 # ignored: they are the AUD-M-006 evidence. A CI artifact with 90-day
 # retention is not a durable record of 'the vulnerability scan is verified'.
 tools/resolved.txt
+
+# --- Phase 0B additions ---------------------------------------------------
+# The vendored dependency tree is built OUTSIDE the repository, by
+# docs/phase-0b/probe/vendor_deps.py --dest <staging>. These entries are
+# defence in depth, not the mechanism: ~475 files of third-party wheel
+# contents including a compiled Linux .so do not belong under review. The
+# reproducible form is dependency-inventory.json plus that script, which
+# resolves the closure and asserts it hash-for-hash.
+docs/phase-0b/probe/vendor/
+docs/phase-0b/probe/wheels/
+docs/phase-0b/probe/staged-inventory.json
+*.zip
+
+# ca-bundle.pem is deliberately NOT ignored. It is a public root certificate
+# carrying no secret, and pinning the trust anchor in Git is the same reasoning
+# that commits a lockfile. See docs/phase-0b/probe/CA_BUNDLE.md.
+# docs/phase-0b/evidence/ is likewise committed: it is sanitised by
+# probe_invoke.py before anything is written.

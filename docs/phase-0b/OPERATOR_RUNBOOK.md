@@ -32,15 +32,22 @@ Everything that can be finished before the clock starts, is.
 | | Item | State |
 |---|---|---|
 | A1 | Probe code, fail-closed CA handling, build gate | **done** |
-| A2 | 89 tests, green on CI (Linux, Python 3.11) | **done** |
+| A2 | 92 tests, green on CI (Linux, Python 3.11) | **done** |
 | A3 | Invocation helper + sanitiser self-test | **done**, tested with dummy values |
 | A4 | Ephemeral-role SQL template with placeholders | **done** |
 | A5 | Upload instructions | **done** — `probe/BUILD.md` |
-| A6 | Dependency vendoring / build directory | **outstanding** — see below |
+| A6 | Dependency vendoring / build directory | **done** — staged outside Git, 18 packages, 475 files, closure verified hash-for-hash, OSV scan clean |
 
-**A6 must be finished before the approval gate.** The vendored Linux
-x86_64 / CPython 3.13 tree is what makes the in-window build a matter of adding
-one file and zipping, rather than resolving dependencies under time pressure.
+**Phase A is complete.** The vendored Linux x86_64 / CPython 3.13 tree is
+staged outside the repository, so the in-window build is one file plus a zip —
+measured at **~1.1 s** on a rehearsal build — and performs **no network access**,
+which a test enforces.
+
+A rehearsal build with a synthetic CA also caught a real defect in the
+out-of-tree vendor support: archive names were computed relative to the probe
+directory, so an external vendor tree produced `../`-prefixed paths and no
+`vendor/` prefix at all. That would have failed inside the window. Fixed and
+re-rehearsed.
 
 The certificate is **not** part of Phase A. Under the approved provenance rule it
 can only come from the throwaway project, which does not exist yet.
@@ -101,11 +108,12 @@ from a third-party repository.
 ### B3. Build and verify — Claude · ~2 min
 
 ```bash
-python docs/phase-0b/probe/build_bundle.py --out wbs-phase0b-probe.zip
+py docs/phase-0b/probe/build_bundle.py --out wbs-phase0b-probe.zip --vendor <staging>/vendor
 ```
 
-Fails closed if the certificate is missing, empty, malformed, expired, or absent
-from the finished archive. Claude records SHA-256, subject, issuer, validity and
+The vendored tree is already staged from Phase A6, so this performs **no network
+access** and takes about a second. Fails closed if the certificate is missing,
+empty, malformed, expired, or absent from the finished archive. Claude records SHA-256, subject, issuer, validity and
 download time into `probe/CA_BUNDLE.md` §3, against the recorded project
 reference.
 
@@ -192,10 +200,32 @@ step:
 
 1. Remove **all six** Catalyst environment variables
 2. Delete **only** the recorded throwaway project, **by reference**
-3. Confirm its host no longer resolves — this kills the role with the database
-4. Confirm `praktiq` is untouched and still paused
+3. **Confirm deletion authoritatively** — see below
+4. Confirm `praktiq` is untouched and still paused, from the organisation-level
+   listing only
 5. Confirm zero environment variables remain
 6. Record created / deleted timestamps and actual exposure duration
+
+**Deletion proof — what counts and what does not**
+
+| Evidence | Status |
+|---|---|
+| The **exact recorded project reference** is absent from the organisation's project listing, or resolves to not-found / invalid | **Primary. This is the proof.** |
+| The project host no longer resolves in DNS | **Secondary only.** Corroborating, never sufficient |
+
+DNS is not proof of deletion. A record can be cached by a resolver, or persist
+briefly after the resource is gone, so a non-resolving host is consistent with
+both "deleted" and "deleted a moment ago, or not yet propagated" — and, in the
+other direction, a *still-resolving* host does not prove the project survived.
+Deletion is a fact about the Supabase control plane, so it is confirmed against
+the control plane: the recorded reference must be gone.
+
+Both are recorded, with the reference check named as the authority.
+
+**Verify without opening anything.** Use the **organisation-level project
+listing** only. Do not open `praktiq`, or any other project, to confirm it is
+untouched — its presence and state in the listing is the whole of the check. The
+recorded reference is matched against that listing; no project is entered.
 
 If safe automated cleanup becomes impossible, Claude stops and gives you the
 exact project name and reference for manual deletion, and never risks another
@@ -232,8 +262,19 @@ provisioning or a slow deployment without ever touching the cap.
 ## After you have used them
 
 - **`PROBE_TOKEN`** — dead once the Catalyst variable is removed (B9.1)
-- **`PGPASSWORD` and the project password** — dead once the project is deleted
-  (B9.2); both were `VALID UNTIL` a two-hour horizon regardless
+- **`PGPASSWORD`** — the *ephemeral role* password. It carries
+  `VALID UNTIL` a two-hour horizon (B6), so it expires on its own even if
+  teardown were to fail, and dies outright when the project is deleted (B9.2).
+- **The project / database administrator password** — **no `VALID UNTIL`, and it
+  must never be described as having one.** It has no expiry at all. It becomes
+  unusable only when the throwaway project is deleted (B9.2), which is precisely
+  why deletion is the load-bearing control and not a tidy-up.
+
+**The probe never uses the administrator credential.** It connects only as
+`probe_ephemeral`, which holds `CONNECT` and nothing else (B6). The
+administrator password exists to create that role and for nothing else; it is
+never placed in `PGPASSWORD`, never given to Catalyst, and never used by
+`probe_invoke.py`.
 
 Neither should be stored anywhere afterwards.
 

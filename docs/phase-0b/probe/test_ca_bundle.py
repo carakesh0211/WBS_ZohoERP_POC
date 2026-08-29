@@ -328,3 +328,57 @@ def test_upstream_failure_is_not_reported_as_a_deadline_skip(monkeypatch):
     assert body["stages"]["dns"]["outcome"] == "fail"
     for later in ("tcp", "tls", "auth", "query"):
         assert body["stages"][later]["outcome"] == "skipped_upstream_failure", later
+
+
+# ------------------------------------------------- in-window build is offline
+NETWORK_MODULES = {
+    "urllib", "urllib2", "urllib3", "http", "httplib", "socket", "ssl_socket",
+    "requests", "httpx", "ftplib", "telnetlib", "smtplib", "asyncio",
+    "subprocess", "pip",
+}
+
+
+def _imported_modules(path):
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    names = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names.update(a.name.split(".")[0] for a in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+            names.add(node.module.split(".")[0])
+    return names
+
+
+def test_the_in_window_build_cannot_reach_the_network():
+    """The build that runs inside the exposure window must be purely offline.
+
+    Dependency resolution happens beforehand, in `vendor_deps.py`, which is
+    allowed to use pip and the network. `build_bundle.py` only adds the CA and
+    zips a pre-staged tree -- if it could download, a slow or unavailable index
+    would burn exposure minutes, and the artefact would stop being reproducible
+    from the pinned inventory.
+    """
+    used = _imported_modules(PROBE_DIR / "build_bundle.py")
+    offenders = sorted(used & NETWORK_MODULES)
+    assert not offenders, f"build_bundle.py imports network-capable modules: {offenders}"
+
+
+def test_the_runtime_ca_module_is_stdlib_and_offline():
+    """`ca.py` is imported by the build gate; it must not drag in a network stack."""
+    used = _imported_modules(PROBE_DIR / "ca.py")
+    offenders = sorted(used & (NETWORK_MODULES - {"ssl_socket"}))
+    assert not offenders, f"ca.py imports network-capable modules: {offenders}"
+
+
+def test_the_vendoring_step_is_separate_from_the_build():
+    """Resolution and assembly are different programs, deliberately.
+
+    Keeping them apart is what lets the build be offline while the vendoring
+    step is free to use pip. If they merged, the in-window step would inherit
+    the network dependency.
+    """
+    assert (PROBE_DIR / "vendor_deps.py").is_file()
+    vendoring = _imported_modules(PROBE_DIR / "vendor_deps.py")
+    assert "subprocess" in vendoring, "vendor_deps.py is expected to shell out to pip"
+    build = _imported_modules(PROBE_DIR / "build_bundle.py")
+    assert "subprocess" not in build

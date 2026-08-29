@@ -290,12 +290,21 @@ be obtained in writing and recorded against plan decision **D-16** before Phase 
 
 ## 11. Cleanup
 
-1. Revoke and drop the ephemeral role; drop the throwaway database.
-2. Delete the Supabase project.
-3. Remove the temporary environment variables from `wbs-platform-spike`.
-4. Redeploy the plain FastAPI bundle, returning the spike to its Phase 0A proven state.
-5. Confirm zero live instances.
-6. Record teardown in the evidence manifest **with timestamps**, including explicit confirmation that credentials were revoked and any temporary network exposure was withdrawn.
+1. Remove the temporary environment variables from `wbs-platform-spike`.
+2. Delete the Supabase project **by its recorded reference**. This drops the ephemeral role and the database with it.
+3. **Confirm deletion against the control plane:** the exact recorded project reference must be **absent from the organisation-level project listing**, or resolve to not-found. This is the proof.
+4. DNS non-resolution of the project host is **secondary corroboration only, never the sole proof** — records can be cached or persist briefly after deletion, so a non-resolving host is consistent with both outcomes.
+5. Confirm the pre-existing project is untouched **from the organisation-level listing alone**. No project is opened to check it.
+6. Redeploy the plain FastAPI bundle, returning the spike to its Phase 0A proven state.
+7. Confirm zero live instances.
+8. Record teardown in the evidence manifest **with timestamps**, including explicit confirmation that credentials died with the project and any temporary network exposure was withdrawn.
+
+**Two credentials, two different lifetimes, and they must not be conflated.** The
+**ephemeral role** password carries `VALID UNTIL` (§9), so it expires on its own even
+if teardown is interrupted. The **project administrator** password has **no expiry**;
+it becomes unusable only when the project is deleted, which is why step 2 is the
+load-bearing control rather than a tidy-up. The probe never uses the administrator
+credential — it connects only as the `CONNECT`-only ephemeral role.
 
 The spike service itself remains, idle. **`wbs-capex-poc` is not touched at any point.**
 
