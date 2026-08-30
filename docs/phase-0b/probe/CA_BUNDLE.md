@@ -1,8 +1,9 @@
 # `ca-bundle.pem` — provenance record
 
-**Status: NOT PRESENT, and cannot be obtained yet.** Under the approved
-provenance rule the certificate comes from the throwaway project used for the
-test, which does not exist and will not be created without explicit approval.
+**Status: OBTAINED AND VERIFIED**, 2026-08-30 21:03:08 local, from the Database
+Settings of project `lttaytjmkqsfhgyskamx` — the exact throwaway project under
+test, whose reference was recorded at 20:55 before the download. Full record at
+§3. `praktiq` was not opened.
 
 ## Why this file exists
 
@@ -91,17 +92,32 @@ Filled from `build_bundle.py --verify-ca-only` once the file is in place, in the
 same commit as the evidence.
 
 ```
-project reference:  <pending -- recorded BEFORE download, per rule 3>
-downloaded from:    <pending -- that project's Database Settings, SSL Configuration>
-downloaded at:      <pending, UTC>
-downloaded by:      <pending, named person>
-sha256:             <pending>
-subject CN:         <pending>
-subject O:          <pending>
-issuer CN:          <pending>
-not before:         <pending>
-not after:          <pending>
+project name:       wbs-phase0b-connectivity-spike-0830
+project reference:  lttaytjmkqsfhgyskamx        <- recorded 20:55 BEFORE download, per rule 3
+downloaded from:    that project's Database Settings -> SSL configuration
+                    (link target: supabase-downloads S3 /prod/ssl/prod-ca-2021.crt)
+downloaded at:      2026-08-30 21:03:08 local  (2026-08-30 15:33:08 UTC)
+downloaded by:      the operator, manually, from the dashboard
+saved as:           prod-ca-2021.crt, copied byte-identical to ca-bundle.pem
+sha256:             700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7
+subject CN:         Supabase Root 2021 CA
+subject O:          Supabase Inc
+issuer CN:          Supabase Root 2021 CA        (self-signed root)
+not before:         Apr 28 10:56:53 2021 GMT
+not after:          Apr 26 10:56:53 2031 GMT
+currently valid:    yes
+bundle sha256:      51160f270898b67f2c453380f12baccd8eaf6145583964bf151bacdd1d2d62ef
+                    (480 files, 3,694,808 bytes)
 ```
+
+**Observation, recorded without generalising.** The download control on this
+project's own settings page points at a shared Supabase S3 path
+(`/prod/ssl/prod-ca-2021.crt`), and the certificate is a self-signed root named
+"Supabase Root 2021 CA". That is consistent with the file being common across
+projects -- but it is **still not a documented guarantee**, and the withdrawn
+claim is not revived. What is recorded is what the rule requires: this file was
+obtained from `lttaytjmkqsfhgyskamx`'s own Database Settings, and it is pinned
+as the anchor for that project alone. `praktiq` was not opened, by anyone.
 
 **Committing the certificate is intentional.** It is a public root certificate,
 contains no secret, no credential and no connection string, and committing it

@@ -1,0 +1,9 @@
+{
+  "body": {
+    "detail": {
+      "code": "ENDPOINT_NOT_CONFIGURED",
+      "endpoint": "P1"
+    }
+  },
+  "http_status": 404
+}

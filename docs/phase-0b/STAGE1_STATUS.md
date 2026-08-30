@@ -1,8 +1,8 @@
 # Phase 0B Stage 1 — status
 
 **Branch:** `phase-0b/connectivity-gate`
-**Status: attempt 2 prepared. Stopped at the fresh-project approval gate.**
-**No Supabase project exists. No exposure clock is running.**
+**Status: attempt 2 EXECUTED 2026-08-30. Q-A NOT ANSWERED. Window overran by 2 min 18 s.**
+**All resources destroyed. No Supabase project exists.**
 
 The CA certificate is **not** a separate blocker: under the approved provenance
 rule its only legitimate source is the throwaway project itself, so it is
@@ -259,3 +259,110 @@ deployable ZIP exists.
 `build_bundle.py` still exits **1** with `ca_bundle_missing` even when handed a
 complete, verified vendor tree, and produces **no ZIP**. The only missing input
 is the throwaway project's own certificate.
+
+---
+
+# Attempt 2 — executed 2026-08-30
+
+## Outcome, stated first
+
+**Q-A is NOT ANSWERED.** P1 and P2 both returned
+`404 ENDPOINT_NOT_CONFIGURED`. **No DNS, TCP, TLS, authentication or query stage
+ever ran against the database.** There is zero connectivity data. Nothing about
+Catalyst egress to PostgreSQL was established.
+
+**Q-B remains UNRESOLVED**, as it must.
+
+## Two failures, both mine
+
+### 1. The environment variables never reached the running instance
+
+AppSail binds environment variables **at instance start**. The instance was
+already warm from the 21:10 health check, and changing configuration does not
+recycle a running instance — a **new deployment** (or a cold start after
+scale-down) is required for new variables to be read.
+
+I set the six variables and went straight to running the probe. The container
+answered from its existing process, where `_endpoints()` had been evaluated at
+import with no `PGHOST_*` present — so the endpoint table was empty and every
+request was correctly refused with 404.
+
+The probe behaved exactly as designed. The operator sequence was wrong.
+
+**Fix for attempt 3:** set the environment variables **before** the deployment
+upload, or force a fresh instance after setting them and re-verify via
+`/healthz` before invoking. A cheap positive check is available and was not
+used: with variables loaded, an authorised `POST /probe` returns a stage result
+rather than `ENDPOINT_NOT_CONFIGURED`.
+
+### 2. The exposure window overran
+
+| | |
+|---|---|
+| Created | **20:55:22** |
+| Cleanup should have begun | **21:40:22** |
+| Cleanup actually began | **~21:56:30** |
+| Project deleted | **21:57:40** |
+| **Actual exposure** | **62 min 18 s** against an authorised **60 min** |
+
+**This is a breach of the control, not a rounding error.** Between 21:25 and
+21:56 I was blocked waiting on a manual step and checked the clock only when I
+happened to run a command. I had no timer. The minute-45 rule was written into
+the runbook and then not enforced by anything.
+
+**Fix for attempt 3:** arm an actual background alarm at creation +40 min that
+fires regardless of what else is happening. A deadline that depends on
+remembering to look at a clock is not a control.
+
+## What was genuinely established
+
+These are real results and they were not free.
+
+| # | Finding | Evidence |
+|---|---|---|
+| 1 | **Catalyst AppSail loads a custom CA bundle shipped inside the deployment ZIP** | `/healthz` → `ca_bundle_loaded: true`, `ca_bundle_sha256` equal to the fingerprint recorded at download |
+| 2 | This **empirically answers Zoho support question 6** | No support ticket was needed. The earlier claim that Q6 gated the retry was wrong, and is now disproved by observation |
+| 3 | The fail-closed CA design works on the platform, not just in tests | Deployed build reports the pinned anchor and refuses unauthenticated calls |
+| 4 | The operator-assisted secret flow works | `PGPASSWORD` and `PROBE_TOKEN` were entered by the operator; neither ever reached an automation call, log, evidence file or transcript |
+| 5 | **Supabase Free offers network restrictions** — "Add restriction" / "Restrict all access" | Database Settings of the throwaway project. The plan had this as unverified |
+| 6 | **Direct connections are IPv6 by default**; IPv4 is a paid add-on | Stated on the project's own Connect dialog. Not enabled |
+| 7 | **The session pooler requires a `<role>.<project_ref>` username** | Connect dialog. The probe reads a single `PGUSER`, so P1 and P2 cannot run in one pass — a real design gap |
+| 8 | Enabling server-side SSL enforcement requires a **database restart with minutes of downtime** | Confirmation dialog. Declined inside a timed window; recorded as a deliberate deviation from plan section 9 |
+
+Finding 7 needs a code change before attempt 3: either a second user variable,
+or per-endpoint user derivation.
+
+## Cleanup — complete and verified
+
+| Step | Result |
+|---|---|
+| All six Catalyst environment variables removed | **Done** — panel back to empty state |
+| Supabase project deleted **by recorded reference** `lttaytjmkqsfhgyskamx` | **Done** at 21:57:40, name typed in full to confirm |
+| **Control-plane proof** | Navigating to that reference no longer resolves to a project; organisation listing shows **1 project** |
+| DNS | Host **still resolved** shortly after deletion — recorded as **secondary evidence only**, exactly why it is never the proof |
+| `praktiq` | Present and paused, read **from the organisation listing alone**. Never opened, by anyone, at any point |
+| Probe inertness | `/healthz` 200; unauthenticated `POST /probe` → 401; no endpoint variables configured |
+| `wbs-capex-poc` | Never accessed, requested, modified, redeployed or inspected |
+
+**Outstanding:** `wbs-platform-spike` still carries the probe build. It is
+structurally inert — no `PGHOST_*` means the endpoint table is empty, and an
+unset `PROBE_TOKEN` fails closed — but restoring the plain FastAPI bundle needs
+a manual ZIP upload by the operator.
+
+## Disclosure
+
+The Catalyst environment-variable list renders values in plain text. A
+screenshot taken while deleting the variables therefore rendered the
+`PROBE_TOKEN` value into the assistant's context. It was **not transcribed, not
+written to any file, and not committed**, and the variable has since been
+deleted, so the token is dead. Recorded because a near-miss on a secret-handling
+control is worth recording. **Fix for attempt 3:** delete secret-valued
+variables using DOM references only, never a screenshot of the list.
+
+## Artefacts
+
+| | |
+|---|---|
+| CA | `Supabase Root 2021 CA`, sha256 `700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7`, valid to 2031-04-26 |
+| Bundle | sha256 `51160f270898b67f2c453380f12baccd8eaf6145583964bf151bacdd1d2d62ef`, 480 files, 3,694,808 bytes |
+| Evidence | `evidence/P1-*.json`, `evidence/P2-*.json`, `evidence/summary-*.json` — sanitised, both 404 |

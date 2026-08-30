@@ -1,0 +1,32 @@
+{
+  "P1": {
+    "body": {
+      "detail": {
+        "code": "ENDPOINT_NOT_CONFIGURED",
+        "endpoint": "P1"
+      }
+    },
+    "http_status": 404
+  },
+  "P2": {
+    "body": {
+      "detail": {
+        "code": "ENDPOINT_NOT_CONFIGURED",
+        "endpoint": "P2"
+      }
+    },
+    "http_status": 404
+  },
+  "healthz": {
+    "body": {
+      "ca_bundle_error": null,
+      "ca_bundle_loaded": true,
+      "ca_bundle_sha256": "700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7",
+      "machine": "x86_64",
+      "python": "3.13.9",
+      "service": "phase-0b-connectivity-probe",
+      "status": "ok"
+    },
+    "http_status": 200
+  }
+}
