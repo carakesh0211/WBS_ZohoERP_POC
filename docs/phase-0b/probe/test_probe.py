@@ -36,7 +36,10 @@ ENV = {
     "PROBE_TOKEN": TOKEN,
     "PGHOST_DIRECT": DIRECT_HOST,
     "PGHOST_POOLER": POOLER_HOST,
-    "PGUSER": "probe_ephemeral",
+    # Two usernames, not one: the session pooler routes on
+    # <role>.<project_ref> while a direct connection uses the bare role.
+    "PGUSER_DIRECT": "probe_ephemeral",
+    "PGUSER_POOLER": "probe_ephemeral.exampleprojectref",
     "PGPASSWORD": PASSWORD,
     "PGDATABASE": "probe_db",
 }

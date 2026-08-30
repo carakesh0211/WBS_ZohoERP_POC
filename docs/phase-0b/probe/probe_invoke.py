@@ -201,14 +201,57 @@ def main() -> int:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
     h = sanitise(health(args.base_url), args.keep_addresses, (token,))
+    hb = h.get("body", {}) if isinstance(h.get("body"), dict) else {}
     print(f"/healthz -> {h.get('http_status')} "
-          f"ca_bundle_loaded={h.get('body', {}).get('ca_bundle_loaded')}")
+          f"ca_bundle_loaded={hb.get('ca_bundle_loaded')} "
+          f"endpoints={hb.get('configured_endpoints')} "
+          f"loaded_at={hb.get('configuration_loaded_at')}")
+
+    # ---------------------------------------------------------- operator gate
+    # Attempt 2 ran the probe against an instance that had started before the
+    # environment variables existed. Every call returned 404
+    # ENDPOINT_NOT_CONFIGURED, and that 404 was written to the evidence files as
+    # though it were a result. It was not: no DNS, TCP, TLS, auth or query stage
+    # ever ran. This gate refuses to produce that artefact again.
+    gate_failures = []
+    if h.get("http_status") != 200:
+        gate_failures.append(f"/healthz returned {h.get('http_status')}, expected 200")
+    if hb.get("ca_bundle_loaded") is not True:
+        gate_failures.append(f"ca_bundle_loaded is {hb.get('ca_bundle_loaded')}, expected true")
+    configured = hb.get("configured_endpoints")
+    if not isinstance(configured, list):
+        gate_failures.append("healthz did not report configured_endpoints -- the deployed "
+                             "build predates this gate; redeploy before probing")
+    else:
+        missing = [e for e in ENDPOINTS if e not in configured]
+        if missing:
+            gate_failures.append(
+                f"endpoint(s) {missing} absent from configured_endpoints={configured}. "
+                f"The running instance did not load them. AppSail binds environment "
+                f"variables at INSTANCE START, so set every variable first and then "
+                f"deploy -- a configuration change does not recycle a live instance.")
+
+    if gate_failures:
+        print("\nABORTED before any probe ran:", file=sys.stderr)
+        for f in gate_failures:
+            print(f"  - {f}", file=sys.stderr)
+        print("\nNo evidence file was written. A refusal to run is not a result, "
+              "and must not be recorded as one.", file=sys.stderr)
+        return 3
 
     results = {"healthz": h}
     for ep in ENDPOINTS:
         print(f"running {ep} ...", flush=True)
         raw = call(args.base_url, ep, token)
         clean = sanitise(raw, args.keep_addresses, (token,))
+        detail = clean.get("body", {}).get("detail") if isinstance(clean.get("body"), dict) else None
+        code = detail.get("code") if isinstance(detail, dict) else None
+        if code == "ENDPOINT_NOT_CONFIGURED":
+            print(f"\nABORTED at {ep}: ENDPOINT_NOT_CONFIGURED.", file=sys.stderr)
+            print("  The instance lost or never had this endpoint. No stage ran, so "
+                  "there is nothing to record. Redeploy after setting variables.",
+                  file=sys.stderr)
+            return 3
         results[ep] = clean
         path = os.path.join(args.out, f"{ep}-{stamp}.json")
         with open(path, "w", encoding="utf-8") as fh:

@@ -262,6 +262,23 @@ To be created only after approval, and only as an isolated throwaway.
 - **Short validity** — `VALID UNTIL` set to a few hours, so the credential expires even if teardown is interrupted.
 - **Immediate revocation** at the end of the test (§11), not deferred.
 
+### The deadline must be enforced by something other than Claude
+
+Attempt 2 overran its authorised window by 2 min 18 s. The minute-45 rule was
+written into the runbook and enforced by nothing: Claude checked the clock only
+when it happened to run a command, and spent 31 minutes blocked on a manual step.
+
+**A deadline that depends on the assistant remembering to look at a clock is not
+a control.** From attempt 3, project creation is forbidden until the operator
+confirms **two independent alarms** are armed:
+
+| Alarm | Fires at | Effect |
+|---|---|---|
+| Warning | creation **+40 min** | No new work starts |
+| Mandatory cleanup | creation **+45 min** | Operator notifies; teardown begins immediately, whatever is in progress |
+
+60 minutes remains an **absolute breach threshold**, not a target.
+
 ### Network exposure requires its own approval
 
 If the verified free-tier configuration cannot restrict network access, then running this test means **temporarily allowing public connectivity to the database**.

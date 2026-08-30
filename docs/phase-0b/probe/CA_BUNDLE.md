@@ -1,9 +1,19 @@
 # `ca-bundle.pem` — provenance record
 
-**Status: OBTAINED AND VERIFIED**, 2026-08-30 21:03:08 local, from the Database
-Settings of project `lttaytjmkqsfhgyskamx` — the exact throwaway project under
-test, whose reference was recorded at 20:55 before the download. Full record at
-§3. `praktiq` was not opened.
+**Status: ABSENT, deliberately, pending attempt 3.**
+
+Attempt 2's certificate was obtained and verified correctly (full record at §3,
+retained as evidence) — but from project `lttaytjmkqsfhgyskamx`, which has been
+deleted. Provenance rule 1 requires the anchor to come from **the project
+actually under test**, so that file has been removed from the tree rather than
+carried forward.
+
+Keeping it would have let the build gate silently accept a stale anchor for a
+different database. With it gone the gate fails closed on `ca_bundle_missing`
+until attempt 3's own certificate is downloaded — the rule enforcing itself
+instead of relying on someone remembering it.
+
+`praktiq` was not opened, at any point, by anyone.
 
 ## Why this file exists
 
@@ -88,8 +98,8 @@ abort rule if the bundle fails to load on AppSail.
 
 ## 3. Recorded provenance
 
-Filled from `build_bundle.py --verify-ca-only` once the file is in place, in the
-same commit as the evidence.
+**Attempt 2 (project now deleted).** Retained as evidence of what was obtained
+and verified; **not** a valid anchor for attempt 3, which must re-download.
 
 ```
 project name:       wbs-phase0b-connectivity-spike-0830

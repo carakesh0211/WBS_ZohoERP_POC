@@ -38,6 +38,7 @@ review found in tracebacks, and the same remedy.
 """
 from __future__ import annotations
 
+import datetime as _dt
 import hashlib
 import hmac
 import os
@@ -64,17 +65,33 @@ STAGE_ORDER = ("dns", "tcp", "tls", "auth", "query")
 #: a host or port, so this cannot be turned into an SSRF or scanning primitive.
 #: P3 (transaction pooler, 6543) is Stage 2 and is deliberately absent.
 def _endpoints() -> dict[str, dict[str, Any]]:
+    """Build the endpoint table from the environment, once, at import.
+
+    Each endpoint carries **its own username**. Attempt 2 assumed a single
+    ``PGUSER`` served both, which is false: Supabase's session pooler routes on
+    a ``<role>.<project_ref>`` username while a direct connection uses the bare
+    role name. One variable could not express both, so P1 and P2 could not run
+    in a single pass.
+
+    An endpoint appears **only if both its host and its user are configured**.
+    A half-configured endpoint is a configuration error, and materialising it
+    would produce an auth failure that looked like a platform finding.
+    """
     table: dict[str, dict[str, Any]] = {}
-    if os.environ.get("PGHOST_DIRECT"):
+    direct_host, direct_user = os.environ.get("PGHOST_DIRECT"), os.environ.get("PGUSER_DIRECT")
+    if direct_host and direct_user:
         table["P1"] = {
-            "host": os.environ["PGHOST_DIRECT"],
+            "host": direct_host,
+            "user": direct_user,
             "port": 5432,
             "endpoint_type": "direct",
             "expected_family": "IPv6",
         }
-    if os.environ.get("PGHOST_POOLER"):
+    pooler_host, pooler_user = os.environ.get("PGHOST_POOLER"), os.environ.get("PGUSER_POOLER")
+    if pooler_host and pooler_user:
         table["P2"] = {
-            "host": os.environ["PGHOST_POOLER"],
+            "host": pooler_host,
+            "user": pooler_user,
             "port": 5432,
             "endpoint_type": "session-pooled",
             "expected_family": "IPv4",
@@ -83,6 +100,14 @@ def _endpoints() -> dict[str, dict[str, Any]]:
 
 
 ENDPOINTS = _endpoints()
+
+#: Stamped when the table was built. Proves WHICH process answered: an AppSail
+#: instance binds environment variables at start, and a configuration change
+#: does not recycle a running one. Attempt 2 set six variables and then queried
+#: an instance that had started before them, which returned
+#: ENDPOINT_NOT_CONFIGURED for every request. A visible start-up timestamp makes
+#: "you are talking to the old instance" observable instead of inferred.
+CONFIGURATION_LOADED_AT = _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds")
 STAGE2_ONLY = {"P3"}
 
 _probe_lock = threading.Lock()
@@ -230,7 +255,7 @@ def stage_tls(sock: socket.socket, host: str, budget: float) -> dict[str, Any]:
         return {"outcome": "fail", "ms": round(ms, 1), "verified": False, **err}
 
 
-def stage_auth_and_query(host: str, port: int, auth_budget: float,
+def stage_auth_and_query(host: str, port: int, user: str, auth_budget: float,
                          query_budget: float) -> tuple[dict, dict]:
     """pg8000 with an explicitly VERIFIED context.
 
@@ -246,7 +271,7 @@ def stage_auth_and_query(host: str, port: int, auth_budget: float,
     try:
         conn = pg8000.dbapi.connect(
             host=host, port=port,
-            user=os.environ["PGUSER"],
+            user=user,
             password=os.environ["PGPASSWORD"],
             database=os.environ["PGDATABASE"],
             ssl_context=ctx,
@@ -312,14 +337,23 @@ class ProbeRequest(BaseModel):
 @app.get("/healthz")
 def healthz() -> dict[str, Any]:
     """Public. Touches no database and reveals no configuration."""
+    # Everything here is deliberately non-identifying. Endpoint KEYS are
+    # published; hosts, usernames, passwords, tokens, DSNs and resolved
+    # addresses are not, and a test asserts each of those never appears.
     return {"status": "ok", "service": "phase-0b-connectivity-probe",
             "python": platform.python_version(), "machine": platform.machine(),
-            # Packaging state only. Reveals no endpoint, credential or token,
-            # and the CA is public by construction -- but it lets a broken
-            # bundle be caught before a timed window is spent on it.
+            # Packaging state. Reveals no endpoint, credential or token, and the
+            # CA is public by construction -- but it lets a broken bundle be
+            # caught before a timed window is spent on it.
             "ca_bundle_loaded": CA_BUNDLE is not None,
             "ca_bundle_sha256": CA_BUNDLE["sha256"] if CA_BUNDLE else None,
-            "ca_bundle_error": CA_BUNDLE_ERROR}
+            "ca_bundle_error": CA_BUNDLE_ERROR,
+            # Configuration state. THE point of these three fields is to make
+            # "this instance started before the variables existed" visible
+            # before a probe is run, rather than inferred afterwards from a 404.
+            "configured_endpoints": sorted(ENDPOINTS),
+            "endpoint_count": len(ENDPOINTS),
+            "configuration_loaded_at": CONFIGURATION_LOADED_AT}
 
 
 @app.post("/probe")
@@ -406,7 +440,7 @@ def _run(key: str, target: dict[str, Any]) -> dict[str, Any]:
             elif name == "auth":
                 q_budget = min(STAGE_BUDGET_S["query"], max(deadline.remaining() - 0.25, 0.1))
                 stages["auth"], stages["query"] = stage_auth_and_query(
-                    host, port, budget, q_budget)
+                    host, port, target["user"], budget, q_budget)
                 break  # auth and query run together on one connection
     finally:
         if sock is not None:

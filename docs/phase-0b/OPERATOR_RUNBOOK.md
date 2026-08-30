@@ -1,240 +1,203 @@
-# Phase 0B Stage 1 — operator runbook
+# Phase 0B Stage 1 — operator runbook (attempt 3)
 
-Every step that touches a secret. **No secret value in this document, in any
-commit, in any automation call, or in any transcript.**
-
-The division of labour is the whole point:
+Every step that touches a secret, and every step that attempt 2 got wrong.
 
 | | Performed by |
 |---|---|
-| Non-secret configuration, build, deployment checks, evidence review | **Claude** |
-| Every secret *value* — generating it, typing it, using it | **You** |
+| Non-secret configuration, build, verification, evidence review | **Claude** |
+| Every secret *value* — generating it, typing it, deleting it | **You** |
 | Catalyst ZIP upload (no CLI path available) | **You** |
+| Running the probe helper | **You** |
+| The two deadline alarms | **You** |
 
-Claude never learns `PGPASSWORD` or `PROBE_TOKEN`. That is not a courtesy; it is
-what makes the earlier stall unnecessary rather than merely deferred.
+Claude never learns `PGPASSWORD` or `PROBE_TOKEN`.
 
 ## Absolute boundaries
 
-- **`praktiq` is out of scope for everyone.** It is never opened, inspected,
-  queried, resumed, modified or used as a source for anything — including the CA
-  certificate. Claude will not ask you to open it.
+- **`praktiq` is out of scope for everyone.** Never opened, inspected, queried,
+  resumed, modified, or used as a source for anything — including the CA.
+  Claude will not ask you to open it. Verified **only** from the
+  organisation-level project listing.
 - `wbs-capex-poc` is never accessed or modified.
 - Only `wbs-platform-spike` carries the probe.
-- No Supabase project is created without explicit per-run approval.
+- No Supabase project is created without explicit per-run approval **and** both
+  alarms armed.
 
 ---
 
-## Phase A — preparation, no Supabase project, no exposure clock
+## What attempt 2 cost, and what is fixed
 
-Everything that can be finished before the clock starts, is.
+Attempt 2 produced **no connectivity data**. Both endpoints returned
+`404 ENDPOINT_NOT_CONFIGURED`, and the run overran its window by 2 min 18 s.
+Root causes, now fixed in code rather than in prose:
+
+| Fault | Fix |
+|---|---|
+| One `PGUSER` for two endpoints — the pooler needs `<role>.<project_ref>` | `PGUSER_DIRECT` and `PGUSER_POOLER`; an endpoint materialises only if **both** its host and user are set |
+| Variables set **after** deployment, so the running instance never saw them | Deploy **last**; `/healthz` now publishes `configured_endpoints`, `endpoint_count` and `configuration_loaded_at` |
+| A 404 was written into the evidence files as a result | `ENDPOINT_NOT_CONFIGURED` now **aborts** the helper. A refusal to run is not a result |
+| The 45-minute rule depended on Claude remembering to look at a clock | **Two operator alarms**, armed before creation. Claude cannot be the timekeeper — it may be blocked waiting for you |
+
+---
+
+## Phase A — offline preparation, no project, no clock
 
 | | Item | State |
 |---|---|---|
-| A1 | Probe code, fail-closed CA handling, build gate | **done** |
-| A2 | 92 tests, green on CI (Linux, Python 3.11) | **done** |
-| A3 | Invocation helper + sanitiser self-test | **done**, tested with dummy values |
-| A4 | Ephemeral-role SQL template with placeholders | **done** |
-| A5 | Upload instructions | **done** — `probe/BUILD.md` |
-| A6 | Dependency vendoring / build directory | **done** — staged outside Git, 18 packages, 475 files, closure verified hash-for-hash, OSV scan clean |
+| A1 | Probe code, fail-closed CA handling, build gate | done |
+| A2 | **120 tests**, green on CI | done |
+| A3 | Invocation helper, operator gate, sanitiser self-test | done |
+| A4 | Ephemeral-role SQL template | done |
+| A5 | Vendored Linux tree, staged outside Git | done |
+| A6 | Per-endpoint usernames + `/healthz` configuration proof | done |
 
-**Phase A is complete.** The vendored Linux x86_64 / CPython 3.13 tree is
-staged outside the repository, so the in-window build is one file plus a zip —
-measured at **~1.1 s** on a rehearsal build — and performs **no network access**,
-which a test enforces.
-
-A rehearsal build with a synthetic CA also caught a real defect in the
-out-of-tree vendor support: archive names were computed relative to the probe
-directory, so an external vendor tree produced `../`-prefixed paths and no
-`vendor/` prefix at all. That would have failed inside the window. Fixed and
-re-rehearsed.
-
-The certificate is **not** part of Phase A. Under the approved provenance rule it
-can only come from the throwaway project, which does not exist yet.
+`ca-bundle.pem` is **deliberately absent**. Attempt 2's certificate belonged to a
+project that no longer exists, and provenance rule 1 requires the anchor to come
+from the project actually under test. The build gate therefore fails closed
+until you download the new one — the rule enforcing itself.
 
 ---
 
-## The approval gate
+## The approval gate — two things must be true
 
-**Claude stops here.** Creating the project starts the exposure clock and
-requires your explicit approval for that specific creation.
+**1. You approve this specific project creation.**
+
+**2. Both alarms are armed, by you, and you have said so.**
+
+| Alarm | Fires at | Meaning |
+|---|---|---|
+| **Warning** | creation **+40 min** | Wrap up whatever is in flight. No new work starts. |
+| **Mandatory cleanup** | creation **+45 min** | You tell Claude. Cleanup begins **immediately**, whatever is in progress. |
+
+Use a phone timer — anything that rings without you watching it. **Claude must
+not be the timekeeper.** Attempt 2 overran precisely because Claude was blocked
+waiting on a manual step and nothing independent was watching the clock.
+
+**Project creation is forbidden until you confirm both alarms are armed.**
+
+**60 minutes remains an absolute breach threshold**, not a target.
 
 ---
 
 ## Phase B — the exposure window
 
-**Hard maximum 60 minutes. Cleanup begins no later than minute 45, even if
-testing is incomplete.** An incomplete result is a finding; an overrun is not
-acceptable.
-
-### The consequence of sourcing the CA correctly, stated plainly
-
-Packaging now happens **inside** the window: create project → download its CA →
-build → upload → health-check. Previously I had proposed doing this in advance,
-which was wrong for the reason recorded in `probe/CA_BUNDLE.md`.
-
-So there is a real risk this buys: **if `/healthz` reports
-`ca_bundle_loaded: false`, or a fingerprint that does not match the one recorded
-at download, we abort and clean up.** There is no time to iterate on packaging
-under the clock, and attempting to would be how a 60-minute cap becomes 90. The
-run is then re-attempted with the defect fixed. This is the correct trade —
-provenance integrity over convenience — and it is cheap because everything
-except the certificate is already proven.
-
 ### B1. Create the project — Claude · ~4 min
 
-Fresh Mumbai `ap-south-1`, Free plan, **Data API disabled**. No trial, no
-upgrade, no paid IPv4 add-on, no payment method.
+Fresh Mumbai `ap-south-1`, Free, **Data API disabled**. No trial, no upgrade, no
+paid IPv4 add-on, no payment method.
 
-Claude **records the exact project reference immediately** — before anything
-else, per provenance rule 3 — and re-verifies it against that record before
-every subsequent write or delete.
+Claude records the **exact project reference immediately**, before anything else,
+and re-checks it before every later write or delete.
 
-**You** set the project's database password at creation. High entropy. Do not
-share it, do not paste it into chat, do not reuse it.
+**You** set the project/database administrator password. High entropy, not
+reused. **The probe never uses this credential** — it exists only to create the
+role in B3.
 
 ### B2. Download the CA — you · ~2 min
 
-**From this new project only:**
-
-Dashboard → **the newly created project** → **Database Settings → SSL
-Configuration** → download the certificate.
-
-Save it unmodified as `docs/phase-0b/probe/ca-bundle.pem` and tell Claude.
+**From this new project only:** Database Settings → SSL Configuration →
+Download certificate. Save unmodified as `docs/phase-0b/probe/ca-bundle.pem`.
 
 Not from `praktiq`. Not from any other project. Not from a TLS handshake. Not
 from a third-party repository.
 
-### B3. Build and verify — Claude · ~2 min
+Claude verifies it and records reference, download time, SHA-256, subject,
+issuer and validity into `probe/CA_BUNDLE.md` §3.
+
+### B3. Create the restricted role — you run the SQL · ~3 min
+
+Claude stages `probe_role.template.sql` in a **new query tab**. You replace the
+password placeholder (expiry is pre-filled and non-secret) and Run.
+
+Claude verifies **non-secret attributes only**, from its own separate query tab:
+`rolcanlogin` true; `rolsuper`, `rolcreatedb`, `rolcreaterole`, `rolreplication`,
+`rolbypassrls` all false; `rolconnlimit` 5; `rolvaliduntil` ≈ +2 h.
+
+### B4. Configure ALL Catalyst variables — ~7 min · **before any deployment**
+
+Seven. Claude enters five; **you** enter two.
+
+| Variable | Value | Who |
+|---|---|---|
+| `PGHOST_DIRECT` | `db.<ref>.supabase.co` | Claude |
+| `PGHOST_POOLER` | `aws-0-ap-south-1.pooler.supabase.com` | Claude |
+| `PGUSER_DIRECT` | `probe_ephemeral` | Claude |
+| `PGUSER_POOLER` | `probe_ephemeral.<ref>` | Claude |
+| `PGDATABASE` | `postgres` | Claude |
+| **`PGPASSWORD`** | the **role** password from B3 | **You** |
+| **`PROBE_TOKEN`** | a fresh high-entropy token | **You** |
+
+Claude opens each secret dialog with the key filled and the **value field blank**,
+and does not screenshot or read it back.
+
+Keep the token — you type it into the helper at B7.
+
+### B5. Build and deploy — Claude builds, you upload · ~6 min
 
 ```bash
 py docs/phase-0b/probe/build_bundle.py --out wbs-phase0b-probe.zip --vendor <staging>/vendor
 ```
 
-The vendored tree is already staged from Phase A6, so this performs **no network
-access** and takes about a second. Fails closed if the certificate is missing,
-empty, malformed, expired, or absent from the finished archive. Claude records SHA-256, subject, issuer, validity and
-download time into `probe/CA_BUNDLE.md` §3, against the recorded project
-reference.
+Offline, about a second. Then **you** upload via Catalyst → AppSail →
+`wbs-platform-spike` → **Create Deployment**: Python 3.13, `python3 -u main.py`,
+port 9000, 512 MB, Development.
 
-### B4. Upload — you · ~4 min
+**Deployment happens after the variables exist.** AppSail binds environment
+variables at *instance start*, and a configuration change does not recycle a live
+instance. Deploying last is what makes the new instance read them. This single
+ordering change is the fix for attempt 2's total failure.
 
-Catalyst Console → AppSail → `wbs-platform-spike` → Create Deployment. Python
-3.13, `python3 -u main.py`, port 9000, 512 MB, **Development only**. There is no
-CLI upload path here, which is why this step is yours.
+### B6. Verification gate — Claude · ~3 min · **abort on any failure**
 
-### B5. Health verification — Claude · ~4 min · **gate**
+- `GET /healthz` → 200
+- `ca_bundle_loaded: true`, `ca_bundle_sha256` **equals** the B2 fingerprint
+- **`configured_endpoints` contains both `P1` and `P2`**, `endpoint_count` 2
+- `configuration_loaded_at` is **after** the B4 variable writes
+- unauthenticated `POST /probe` → 401
 
-Before any role exists and before any database variable is set:
+**Any failure aborts to cleanup (B8).** No iterating on packaging or
+configuration under the clock.
 
-- `GET /healthz` → 200, `ca_bundle_loaded: true`
-- `ca_bundle_sha256` **equals** the fingerprint recorded at B3
-- `POST /probe` without a token → 401
-
-**If the fingerprint does not match, or the bundle did not load: abort to
-cleanup (B9).** No environment variables, no role, no credentials.
-
-### B6. Ephemeral role — you run the SQL · ~3 min
-
-Claude stages `probe_role.template.sql`. **You** replace the two placeholders in
-the SQL Editor of the new project and run it. Claude does not read the editor
-contents afterwards.
-
-Replace exactly:
-
-- `<<<REPLACE-WITH-HIGH-ENTROPY-PASSWORD>>>`
-- `<<<REPLACE-WITH-UTC-TIMESTAMP-2H-FROM-NOW>>>`
-
-Open a **new query tab** before pasting — a previous attempt hit a merged
-statement because Ctrl+A did not select inside the editor.
-
-Claude then verifies the role **by attribute only** — `rolcanlogin`, `rolsuper`,
-`rolvaliduntil`, `rolconnlimit` — never by reading a secret.
-
-### B7. Environment variables — ~6 min
-
-Six. Claude enters the four that are not secrets; **you** type the two that are.
-
-| Variable | Who enters it |
-|---|---|
-| `PGHOST_DIRECT` | Claude |
-| `PGHOST_POOLER` | Claude |
-| `PGUSER` | Claude |
-| `PGDATABASE` | Claude |
-| **`PGPASSWORD`** | **You** — the role password from B6 |
-| **`PROBE_TOKEN`** | **You** — a fresh high-entropy value you generate now |
-
-Claude opens each dialog, fills the non-secret fields, and **stops with the
-value field blank** for the two secret rows. Claude does not screenshot, read
-back or otherwise inspect those fields afterwards.
-
-Omitting a host variable simply removes that endpoint from the table — the probe
-cannot be asked for an endpoint it was never configured with.
-
-### B8. Run P1 and P2 — you · ~3 min
-
-**You** run this, in your own terminal. Claude does not, because running it would
-mean holding the token:
+### B7. Run P1 and P2 — you · ~3 min
 
 ```bash
 python docs/phase-0b/probe/probe_invoke.py --base-url https://<service-url> --out docs/phase-0b/evidence
 ```
 
-The token prompt is hidden. Or pipe it from a password manager, which keeps it
-out of shell history too:
+Hidden token prompt, or pipe from a password manager with `--token-stdin`.
 
-```bash
-pass show wbs/probe-token | python docs/phase-0b/probe/probe_invoke.py --base-url https://<service-url> --out docs/phase-0b/evidence --token-stdin
-```
+The helper **re-checks the gate itself** and exits 3 without writing anything if
+either endpoint is missing — so attempt 2's artefact cannot reach the evidence
+directory even if the earlier gate were skipped.
 
-The helper writes **sanitised** evidence only. Claude reads those files.
+### B8. Cleanup — starts at your +45 alarm, no exceptions
 
-### B9. Cleanup — Claude · begins by **minute 45**, without exception
+**Secret-safe order. You go first.**
 
-Triggered by the clock, not by completion. It runs even if a probe failed, the
-deployment failed, evidence is incomplete, browser automation stopped working,
-or P1/P2 timed out.
+1. **You delete `PGPASSWORD` and `PROBE_TOKEN`**, and say so.
+   Claude does **not** open, inspect or screenshot the environment-variable list
+   while either secret exists — the Catalyst list renders values in plain text,
+   which is how attempt 2 rendered a token into context.
+2. Claude removes the five non-secret variables and confirms the empty state.
+3. Claude deletes **only** the recorded throwaway project, **by reference**.
+4. **Deletion proof:** the exact reference is absent from the
+   **organisation-level listing**, or resolves to not-found. This is the proof.
+5. DNS non-resolution is **secondary corroboration only** — records cache or
+   persist briefly, so it can never be the sole evidence.
+6. `praktiq` confirmed present and paused **from the listing alone**.
+7. Timestamps and actual exposure duration recorded.
 
-In order, re-verifying the recorded project reference before each destructive
-step:
+Cleanup runs even if a probe failed, deployment failed, evidence is incomplete,
+automation broke, or P1/P2 timed out. If safe automated deletion becomes
+impossible, Claude stops everything and gives you the exact project name and
+reference for manual deletion, and never risks another project.
 
-1. Remove **all six** Catalyst environment variables
-2. Delete **only** the recorded throwaway project, **by reference**
-3. **Confirm deletion authoritatively** — see below
-4. Confirm `praktiq` is untouched and still paused, from the organisation-level
-   listing only
-5. Confirm zero environment variables remain
-6. Record created / deleted timestamps and actual exposure duration
+### B9. Restore and record — Claude, plus one upload from you
 
-**Deletion proof — what counts and what does not**
-
-| Evidence | Status |
-|---|---|
-| The **exact recorded project reference** is absent from the organisation's project listing, or resolves to not-found / invalid | **Primary. This is the proof.** |
-| The project host no longer resolves in DNS | **Secondary only.** Corroborating, never sufficient |
-
-DNS is not proof of deletion. A record can be cached by a resolver, or persist
-briefly after the resource is gone, so a non-resolving host is consistent with
-both "deleted" and "deleted a moment ago, or not yet propagated" — and, in the
-other direction, a *still-resolving* host does not prove the project survived.
-Deletion is a fact about the Supabase control plane, so it is confirmed against
-the control plane: the recorded reference must be gone.
-
-Both are recorded, with the reference check named as the authority.
-
-**Verify without opening anything.** Use the **organisation-level project
-listing** only. Do not open `praktiq`, or any other project, to confirm it is
-untouched — its presence and state in the listing is the whole of the check. The
-recorded reference is matched against that listing; no project is entered.
-
-If safe automated cleanup becomes impossible, Claude stops and gives you the
-exact project name and reference for manual deletion, and never risks another
-project.
-
-### B10. Restore and record — Claude
-
-Restore `wbs-platform-spike` to the plain FastAPI bundle, commit the sanitised
-evidence and the CA provenance, push, verify CI.
+Restore `wbs-platform-spike` to the plain FastAPI bundle
+(`wbs-platform-spike-vendored.zip`, 3,214,269 bytes — **not** the 1.4 KB
+un-vendored one, which is the build that 503'd). Commit sanitised evidence and
+the CA provenance record, push, verify CI.
 
 ---
 
@@ -242,54 +205,43 @@ evidence and the CA provenance, push, verify CI.
 
 | Minute | Step |
 |---|---|
-| 0–4 | B1 create project, record reference |
+| 0–4 | B1 create, record reference |
 | 4–6 | B2 you download the CA |
-| 6–8 | B3 build and verify |
-| 8–12 | B4 you upload |
-| 12–16 | B5 health gate — **abort here if the fingerprint is wrong** |
-| 16–19 | B6 role |
-| 19–25 | B7 environment variables |
-| 25–28 | B8 P1 and P2 |
-| 28–45 | slack for retries within scope |
-| **45** | **B9 cleanup begins regardless** |
-| ~55 | B10 restore, commit, CI |
-
-Expected finish well inside 60. The slack is deliberate: it absorbs a slow
-provisioning or a slow deployment without ever touching the cap.
+| 6–9 | B3 role |
+| 9–16 | B4 **all** variables |
+| 16–22 | B5 build, you upload |
+| 22–25 | B6 verification gate — **abort here on any mismatch** |
+| 25–28 | B7 P1 and P2 |
+| 28–40 | slack |
+| **40** | **your warning alarm** |
+| **45** | **your cleanup alarm — teardown begins** |
+| 60 | absolute breach threshold |
 
 ---
 
 ## After you have used them
 
-- **`PROBE_TOKEN`** — dead once the Catalyst variable is removed (B9.1)
-- **`PGPASSWORD`** — the *ephemeral role* password. It carries
-  `VALID UNTIL` a two-hour horizon (B6), so it expires on its own even if
-  teardown were to fail, and dies outright when the project is deleted (B9.2).
-- **The project / database administrator password** — **no `VALID UNTIL`, and it
-  must never be described as having one.** It has no expiry at all. It becomes
-  unusable only when the throwaway project is deleted (B9.2), which is precisely
-  why deletion is the load-bearing control and not a tidy-up.
-
-**The probe never uses the administrator credential.** It connects only as
-`probe_ephemeral`, which holds `CONNECT` and nothing else (B6). The
-administrator password exists to create that role and for nothing else; it is
-never placed in `PGPASSWORD`, never given to Catalyst, and never used by
-`probe_invoke.py`.
-
-Neither should be stored anywhere afterwards.
+- **`PGPASSWORD`** — the *ephemeral role* password. Carries `VALID UNTIL` ≈ +2 h,
+  so it expires on its own even if teardown fails, and dies with the project.
+- **The project/database administrator password** — **no expiry, and must never
+  be described as having one.** It becomes unusable only when the project is
+  deleted, which is why deletion is the load-bearing control. **The probe never
+  uses it.**
+- **`PROBE_TOKEN`** — dead once you delete the variable.
 
 ---
 
 ## What Claude will refuse
 
 - Typing any secret value into any field, form or command
-- Reading back a secret field after you have filled it
-- Running `probe_invoke.py`, because that requires holding the token
+- Reading back, screenshotting or listing environment variables while a secret
+  value exists among them
+- Running `probe_invoke.py`, which would require holding the token
 - Opening, querying or modifying `praktiq` or any pre-existing resource — for
-  the certificate or for anything else
-- Asking you to open `praktiq`
+  the certificate or anything else — or asking you to
 - Touching `wbs-capex-poc`
-- Sourcing the CA from a TLS handshake or a third-party repository
-- Creating the Supabase project before you explicitly approve it
-- Continuing past minute 45 without starting cleanup
+- Sourcing the CA from a TLS handshake, a third-party repository, or any project
+  other than the one under test
+- Creating the project before you approve **and** confirm both alarms armed
+- Treating `ENDPOINT_NOT_CONFIGURED` as evidence
 - Sending the Zoho support ticket

@@ -1,8 +1,13 @@
 # Phase 0B Stage 1 — status
 
 **Branch:** `phase-0b/connectivity-gate`
-**Status: attempt 2 EXECUTED 2026-08-30. Q-A NOT ANSWERED. Window overran by 2 min 18 s.**
-**All resources destroyed. No Supabase project exists.**
+**Status: attempt 3 PREPARED, offline. Stopped at the approval gate.**
+**No Supabase project exists. No exposure clock is running.**
+
+Attempt 2's result stands unchanged below and is **not** rewritten:
+**Q-A NOT ANSWERED · Q-B UNRESOLVED · no connectivity stage ran · exposure
+overran by 2 min 18 s.** Its platform findings, including the CA-loading
+result, remain valid.
 
 The CA certificate is **not** a separate blocker: under the approved provenance
 rule its only legitimate source is the throwaway project itself, so it is
@@ -366,3 +371,99 @@ variables using DOM references only, never a screenshot of the list.
 | CA | `Supabase Root 2021 CA`, sha256 `700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7`, valid to 2031-04-26 |
 | Bundle | sha256 `51160f270898b67f2c453380f12baccd8eaf6145583964bf151bacdd1d2d62ef`, 480 files, 3,694,808 bytes |
 | Evidence | `evidence/P1-*.json`, `evidence/P2-*.json`, `evidence/summary-*.json` — sanitised, both 404 |
+
+---
+
+# Attempt 3 — prepared offline, not executed
+
+Nothing was created, deployed, configured or accessed. `praktiq` and
+`wbs-capex-poc` were not touched. The Zoho ticket remains unsent.
+
+## The two attempt-2 faults, fixed in code
+
+### 1. Separate database usernames
+
+A single `PGUSER` could never serve both endpoints: Supabase's session pooler
+routes on `<role>.<project_ref>` while a direct connection uses the bare role
+name. Replaced by **`PGUSER_DIRECT`** and **`PGUSER_POOLER`**, carried on the
+endpoint record itself, so P1 and P2 can run in one pass.
+
+An endpoint now materialises **only if both its host and its user are set**. A
+half-configured endpoint is a configuration error, and materialising it would
+produce an auth failure that read like a platform finding.
+
+Proven by: each endpoint receives only its own username at the `pg8000` call
+(captured via an injected driver); the two usernames are never equal; a stray
+legacy `PGUSER` configures nothing; neither username appears in any response or
+log line even when injected into an exception message.
+
+### 2. Configuration is now provable before a probe runs
+
+`/healthz` gained three non-secret fields:
+
+```
+configured_endpoints      ["P1", "P2"]
+endpoint_count            2
+configuration_loaded_at   <UTC timestamp the table was built>
+```
+
+The timestamp is the important one: AppSail binds environment variables at
+**instance start**, so it identifies *which* process answered. Attempt 2 set six
+variables and then queried a container that had started before them — visible
+now, inferred then.
+
+**Published: endpoint keys only.** Hosts, usernames, passwords, tokens, DSNs and
+resolved addresses are never returned, and a parametrised test asserts each of
+those strings is absent from the `/healthz` body.
+
+### 3. A refusal to run is no longer recorded as a result
+
+The helper aborts with exit 3 and **writes nothing** when `/healthz` is not 200,
+the CA did not load, `configured_endpoints` lacks P1 or P2, the deployed build
+predates the gate fields, or any probe returns `ENDPOINT_NOT_CONFIGURED`.
+
+Attempt 2 wrote two 404s into the evidence directory as though they were
+results. They were not: no DNS, TCP, TLS, auth or query stage ran. That artefact
+is now impossible to produce.
+
+### 4. The deadline is no longer Claude's to keep
+
+Two **operator-armed** alarms are required before project creation — warning at
++40, mandatory cleanup at +45 — and creation is forbidden until the operator
+confirms both are armed. Claude may be blocked waiting on a manual step, which
+is exactly what happened for 31 minutes of attempt 2, so Claude cannot be the
+timekeeper. 60 minutes stays an absolute breach threshold.
+
+### 5. Secret-safe cleanup order
+
+The operator deletes `PGPASSWORD` and `PROBE_TOKEN` **first**. Claude does not
+open, inspect or screenshot the environment-variable list while either secret
+exists — the Catalyst list renders values in plain text, which is how attempt 2
+rendered a token into context. Only after confirmation does Claude remove the
+five non-secret variables and verify the empty state.
+
+## The trust anchor was removed, deliberately
+
+`ca-bundle.pem` is gone from the tree. Attempt 2's certificate was obtained and
+verified correctly, but from a project that no longer exists; provenance rule 1
+binds the anchor to the project under test. Leaving it would have let the build
+gate accept a stale anchor for a different database. The gate now fails closed
+on `ca_bundle_missing` until attempt 3 downloads its own — the rule enforcing
+itself. The attempt-2 fingerprint is retained in `probe/CA_BUNDLE.md` §3 as
+evidence, explicitly marked as not valid for attempt 3.
+
+## Tests
+
+**120 pass**, up from 92. New in `probe/test_attempt3.py` (28):
+
+| Proof | Tests |
+|---|---|
+| Each endpoint carries and receives only its own username | 5 |
+| Half-configured endpoints do not materialise; legacy `PGUSER` is inert | 3 |
+| No username or password reaches a response or log | 2 |
+| `/healthz` reports endpoints, count and load timestamp honestly | 4 |
+| `/healthz` leaks no host, username, credential or DSN | 9 |
+| The helper refuses to run, and writes nothing, on any gate failure | 5 |
+
+The last group includes the exact attempt-2 artefact: an
+`ENDPOINT_NOT_CONFIGURED` response must abort rather than be written as evidence.
