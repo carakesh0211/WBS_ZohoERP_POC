@@ -124,7 +124,7 @@ def _roll_cells_for_entity(session: Session, entity_id: str, as_of: date, actor:
     same lock-then-recompute path rather than two copies that could drift.
     """
     affected = [
-        (r[0], r[1]) for r in session.fetchall(
+        (r[0], r[1]) for r in session.fetchall(  # scope-exempt: period roll must move EVERY cell in the entity, not only the caller's
             """
             SELECT bc.wbs_id, bc.budget_head_id
             FROM budget_control_cell bc
@@ -145,10 +145,18 @@ def transition_period(session: Session, *, period_id: str, to_state: str, actor:
     if to_state not in _ALLOWED_TRANSITIONS:
         _err("UNKNOWN_STATE", f"{to_state!r} is not a recognised period state.")
 
-    row = session.fetchone(
-        "SELECT period_id, entity_id, period_start, period_end, state "
-        "FROM accounting_period WHERE period_id = %s",
-        (period_id,))
+    # Scoped, not a bare read: holding `period.transition` is authority over
+    # the periods of the entities in your scope, not over every entity's. An
+    # out-of-scope period answers 404, exactly as a non-existent one does.
+    row = repo.query_one(
+        session,
+        """
+        SELECT period_id, entity_id, period_start, period_end, state
+        FROM accounting_period WHERE period_id = %(period_id)s AND {scope}
+        """,
+        {"period_id": period_id},
+        columns=_PERIOD_SCOPE_COLUMNS,
+    )
     if row is None:
         _err("PERIOD_NOT_FOUND", f"Period {period_id} does not exist.", status=404)
     _pid, entity_id, period_start, _period_end, current_state = row
@@ -173,12 +181,12 @@ def transition_period(session: Session, *, period_id: str, to_state: str, actor:
         rolled = _roll_cells_for_entity(session, entity_id, period_start, actor)
 
     # Document row -- second in the global order.
-    session.execute(
+    session.execute(  # scope-exempt: locks the period already scope-gated at the top of this call
         "SELECT period_id FROM accounting_period WHERE period_id = %s FOR UPDATE",
         (period_id,))
     # Re-verify under the lock: another transaction could have moved this
     # period between the unlocked read above and here.
-    current_state_locked = session.fetchone(
+    current_state_locked = session.fetchone(  # scope-exempt: re-reads the row just locked above
         "SELECT state FROM accounting_period WHERE period_id = %s", (period_id,))[0]
     if current_state_locked != current_state:
         _err("ILLEGAL_TRANSITION",
@@ -215,7 +223,7 @@ def roll_period_effective_budget(session: Session, period_id: str, *,
     incrementally, so calling this twice for the same period with no
     intervening change produces the same result both times.
     """
-    row = session.fetchone(
+    row = session.fetchone(  # scope-exempt: job entry point, run by a SERVICE principal, not a user request
         "SELECT entity_id, period_start FROM accounting_period WHERE period_id = %s",
         (period_id,))
     if row is None:

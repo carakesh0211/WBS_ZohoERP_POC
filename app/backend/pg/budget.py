@@ -52,8 +52,29 @@ MAX_LIMIT = 200
 WATCH_PCT = domain.WATCH_PCT
 CRITICAL_PCT = domain.CRITICAL_PCT
 
-_CELL_SCOPE_COLUMNS = {"project": "w.project_id", "entity": None, "plant": None, "location": None}
-_PROJECT_SCOPE_COLUMNS = {"project": "p.project_id", "entity": None, "plant": None, "location": None}
+# Every dimension is mapped through the joined `project` row, so none is
+# waived. The waived form -- entity/plant/location = None, copied from
+# WBS_ELEMENT_SCOPE_COLUMNS -- is correct for `wbs_element`, which carries no
+# org columns and is not reachable from one. It is NOT correct here: these
+# queries already join out to a row that has entity_id, plant_id and
+# location_id, so waiving them meant a caller restricted to one entity, and
+# not otherwise restricted by project, read every entity's budget.
+#
+# `compile_scope` treats an explicit None as "waived", not as "refuse" -- the
+# refusal is only for a dimension the mapping omits entirely -- so the waiver
+# widened silently rather than failing closed.
+_CELL_SCOPE_COLUMNS = {
+    "project": "w.project_id",
+    "entity": "p.entity_id",
+    "plant": "p.plant_id",
+    "location": "p.location_id",
+}
+_PROJECT_SCOPE_COLUMNS = {
+    "project": "p.project_id",
+    "entity": "p.entity_id",
+    "plant": "p.plant_id",
+    "location": "p.location_id",
+}
 
 
 class BudgetServiceError(Exception):
@@ -140,7 +161,7 @@ def recompute_cell(session: Session, wbs_id: str, budget_head_id: str, *,
     as_of = as_of or date.today()
     params = {"wbs_id": wbs_id, "head": budget_head_id, "as_of": as_of, "actor": actor}
 
-    session.execute(
+    session.execute(  # scope-exempt: derives one already-locked cell from its own lines
         """
         UPDATE budget_control_cell SET
             budget_paise = COALESCE((
@@ -153,7 +174,7 @@ def recompute_cell(session: Session, wbs_id: str, budget_head_id: str, *,
         """,
         params,
     )
-    session.execute(
+    session.execute(  # scope-exempt: derives one already-locked cell from its own lines
         """
         UPDATE budget_ledger_cell SET
             original_paise = COALESCE((
@@ -176,7 +197,7 @@ def recompute_cell(session: Session, wbs_id: str, budget_head_id: str, *,
         """,
         params,
     )
-    row = session.fetchone(
+    row = session.fetchone(  # scope-exempt: reads back the cell this call just recomputed
         "SELECT bc.budget_paise, bl.original_paise, bl.revisions_paise, bl.future_budget_paise "
         "FROM budget_control_cell bc "
         "JOIN budget_ledger_cell bl ON bl.wbs_id = bc.wbs_id AND bl.budget_head_id = bc.budget_head_id "
@@ -198,7 +219,7 @@ def _owning_ancestor(session: Session, wbs_id: str, budget_head_id: str) -> tupl
     """``(owner_wbs_id, owner_wbs_path)`` of the nearest ancestor-or-self of
     ``wbs_id`` whose OWN ``budget_paise`` is non-zero for ``budget_head_id``,
     or ``None`` if no cell on the chain owns budget for this head at all."""
-    row = session.fetchone(
+    row = session.fetchone(  # scope-exempt: ancestor rollup must see the whole chain
         """
         SELECT a.wbs_id, a.wbs_path::text
         FROM wbs_element w
@@ -220,7 +241,7 @@ def _subtree_totals(session: Session, owner_wbs_id: str, budget_head_id: str) ->
     ``budget_head_id`` -- the exact rollup ``app.backend.domain.compute_ledger``
     produces at ``head_totals``, via an ``ltree`` subtree scan instead of an
     in-memory tree walk. Never persisted; recomputed at every call."""
-    row = session.fetchone(
+    row = session.fetchone(  # scope-exempt: subtree rollup must see the whole subtree
         """
         SELECT
             COALESCE(SUM(bc.budget_paise), 0),
@@ -253,8 +274,7 @@ def check_availability(session: Session, wbs_id: str, budget_head_id: str,
     if amount_paise is None or amount_paise < 0:
         _err("NEGATIVE_AMOUNT", "amount_paise must be zero or a positive integer.")
 
-    if session.fetchone("SELECT 1 FROM wbs_element WHERE wbs_id = %s", (wbs_id,)) is None:
-        _err("WBS_NOT_FOUND", f"WBS element {wbs_id} does not exist.", status=404)
+    _assert_wbs_in_scope(session, wbs_id)
 
     if session.fetchone(
         "SELECT 1 FROM budget_head WHERE budget_head_id = %s AND active", (budget_head_id,)
@@ -334,6 +354,7 @@ def list_cells(session: Session, *, project_id: str | None = None,
                COALESCE(bl.pr_reserved_paise, 0), bc.updated_at
         FROM budget_control_cell bc
         JOIN wbs_element w ON w.wbs_id = bc.wbs_id
+        JOIN project p ON p.project_id = w.project_id
         LEFT JOIN budget_ledger_cell bl
             ON bl.wbs_id = bc.wbs_id AND bl.budget_head_id = bc.budget_head_id
         WHERE {where} AND {{scope}}
@@ -407,6 +428,7 @@ def list_lines(session: Session, *, project_id: str | None = None,
                bl.justification, bl.created_at, bl.created_by, bl.version_no
         FROM budget_line bl
         JOIN wbs_element w ON w.wbs_id = bl.wbs_id
+        JOIN project p ON p.project_id = w.project_id
         WHERE {where} AND {{scope}}
         ORDER BY bl.created_at DESC, bl.budget_line_id
         """,
@@ -417,8 +439,56 @@ def list_lines(session: Session, *, project_id: str | None = None,
 
 
 def _project_id_for_wbs(session: Session, wbs_id: str) -> str | None:
-    row = session.fetchone("SELECT project_id FROM wbs_element WHERE wbs_id = %s", (wbs_id,))
+    row = session.fetchone(  # scope-exempt: internal lookup; callers scope-gate the wbs_id first
+        "SELECT project_id FROM wbs_element WHERE wbs_id = %s", (wbs_id,))
     return row[0] if row else None
+
+
+def _assert_wbs_in_scope(session: Session, wbs_id: str) -> None:
+    """Refuse a WBS element the caller's scope does not reach.
+
+    NOT-FOUND OVER FORBIDDEN: an out-of-scope element answers exactly as a
+    non-existent one does. A 403 on an id the caller cannot see is an
+    existence oracle -- it confirms the element is real.
+    """
+    row = repo.query_one(
+        session,
+        """
+        SELECT 1 FROM wbs_element w
+        JOIN project p ON p.project_id = w.project_id
+        WHERE w.wbs_id = %(wbs_id)s AND {scope}
+        """,
+        {"wbs_id": wbs_id},
+        columns=_CELL_SCOPE_COLUMNS,
+    )
+    if row is None:
+        _err("WBS_NOT_FOUND", f"WBS element {wbs_id} does not exist.", status=404)
+
+
+def _assert_project_in_scope(session: Session, project_id: str) -> None:
+    """As `_assert_wbs_in_scope`, for a caller-supplied project id."""
+    row = repo.query_one(
+        session,
+        "SELECT 1 FROM project p WHERE p.project_id = %(project_id)s AND {scope}",
+        {"project_id": project_id},
+        columns=_PROJECT_SCOPE_COLUMNS,
+    )
+    if row is None:
+        _err("PROJECT_NOT_FOUND", f"Project {project_id} does not exist.", status=404)
+
+
+def _assert_cell_in_scope(session: Session, wbs_id: str, budget_head_id: str,
+                           *, label: str = "") -> None:
+    """Scope first, then existence -- in that order, for the same reason."""
+    _assert_wbs_in_scope(session, wbs_id)
+    row = session.fetchone(  # scope-exempt: the wbs_id above is already scope-cleared
+        "SELECT 1 FROM budget_control_cell WHERE wbs_id=%s AND budget_head_id=%s",
+        (wbs_id, budget_head_id))
+    if row is None:
+        prefix = f"the {label} cell " if label else ""
+        _err("CELL_NOT_FOUND",
+             f"No control cell exists for {prefix}({wbs_id}, {budget_head_id}).",
+             status=404)
 
 
 # ==========================================================================
@@ -475,12 +545,7 @@ def create_revision(session: Session, *, wbs_id: str, budget_head_id: str,
         _err("INVALID_DELTA", "delta_paise must be a non-zero integer.")
     if not justification or not justification.strip():
         _err("JUSTIFICATION_REQUIRED", "A justification is required for a budget revision.")
-    if session.fetchone(
-        "SELECT 1 FROM budget_control_cell WHERE wbs_id=%s AND budget_head_id=%s",
-        (wbs_id, budget_head_id),
-    ) is None:
-        _err("CELL_NOT_FOUND",
-             f"No control cell exists for ({wbs_id}, {budget_head_id}).", status=404)
+    _assert_cell_in_scope(session, wbs_id, budget_head_id)
 
     revision_id = _new_id("REV")
     session.execute(
@@ -499,12 +564,14 @@ def create_revision(session: Session, *, wbs_id: str, budget_head_id: str,
 
 
 def approve_revision(session: Session, *, revision_id: str, actor: str) -> dict:
-    row = session.fetchone(
+    row = session.fetchone(  # scope-exempt: the cell it names is scope-gated immediately below
         "SELECT wbs_id, budget_head_id, delta_paise, effective_from, justification, "
         "status, created_by FROM budget_revision WHERE revision_id = %s",
         (revision_id,))
     if row is None:
         _err("REVISION_NOT_FOUND", f"Revision {revision_id} does not exist.", status=404)
+    # Holding `revision.approve` is not authority over every entity's budget.
+    _assert_wbs_in_scope(session, row[0])
     (wbs_id, head_id, delta_paise, effective_from, justification,
      status, created_by) = row
     if status != "DRAFT":
@@ -525,12 +592,12 @@ def approve_revision(session: Session, *, revision_id: str, actor: str) -> dict:
     lock_affected_cells(session, [(wbs_id, head_id)])
 
     # Document row -- second in the global order.
-    session.execute(
+    session.execute(  # scope-exempt: locks a row already scope-gated in this call
         "SELECT revision_id FROM budget_revision WHERE revision_id = %s FOR UPDATE",
         (revision_id,))
     # Re-read status under the lock: another transaction could have decided
     # this revision between the unlocked read above and this point.
-    status = session.fetchone(
+    status = session.fetchone(  # scope-exempt: re-reads the row just locked above
         "SELECT status FROM budget_revision WHERE revision_id = %s", (revision_id,))[0]
     if status != "DRAFT":
         _err("REVISION_NOT_DRAFT",
@@ -590,11 +657,14 @@ def approve_revision(session: Session, *, revision_id: str, actor: str) -> dict:
 
 def reject_revision(session: Session, *, revision_id: str, actor: str,
                      reason: str | None = None) -> dict:
-    row = session.fetchone(
-        "SELECT status, created_by FROM budget_revision WHERE revision_id = %s FOR UPDATE",
+    row = session.fetchone(  # scope-exempt: scope-gated immediately below
+        "SELECT wbs_id, status, created_by FROM budget_revision "
+        "WHERE revision_id = %s FOR UPDATE",
         (revision_id,))
     if row is None:
         _err("REVISION_NOT_FOUND", f"Revision {revision_id} does not exist.", status=404)
+    _assert_wbs_in_scope(session, row[0])
+    row = row[1:]
     status, _created_by = row
     if status != "DRAFT":
         _err("REVISION_NOT_DRAFT", f"Revision {revision_id} is {status}, not DRAFT.", status=409)
@@ -623,13 +693,7 @@ def create_transfer(session: Session, *, from_wbs_id: str, from_head_id: str,
     for cell_wbs_id, cell_head_id, role in (
         (from_wbs_id, from_head_id, "from"), (to_wbs_id, to_head_id, "to"),
     ):
-        if session.fetchone(
-            "SELECT 1 FROM budget_control_cell WHERE wbs_id=%s AND budget_head_id=%s",
-            (cell_wbs_id, cell_head_id),
-        ) is None:
-            _err("CELL_NOT_FOUND",
-                 f"No control cell exists for the {role} cell ({cell_wbs_id}, {cell_head_id}).",
-                 status=404)
+        _assert_cell_in_scope(session, cell_wbs_id, cell_head_id, label=role)
 
     transfer_id = _new_id("TRF")
     session.execute(
@@ -651,12 +715,15 @@ def create_transfer(session: Session, *, from_wbs_id: str, from_head_id: str,
 
 
 def approve_transfer(session: Session, *, transfer_id: str, actor: str) -> dict:
-    row = session.fetchone(
+    row = session.fetchone(  # scope-exempt: both cells are scope-gated immediately below
         "SELECT from_wbs_id, from_head_id, to_wbs_id, to_head_id, amount_paise, "
         "effective_from, justification, status, created_by "
         "FROM budget_transfer WHERE transfer_id = %s", (transfer_id,))
     if row is None:
         _err("TRANSFER_NOT_FOUND", f"Transfer {transfer_id} does not exist.", status=404)
+    # BOTH ends, not just the source: a transfer moves budget into a cell too.
+    _assert_wbs_in_scope(session, row[0])
+    _assert_wbs_in_scope(session, row[2])
     (from_wbs, from_head, to_wbs, to_head, amount_paise, effective_from,
      justification, status, created_by) = row
     if status != "DRAFT":
@@ -671,10 +738,10 @@ def approve_transfer(session: Session, *, transfer_id: str, actor: str) -> dict:
     lock_affected_cells(session, [(from_wbs, from_head), (to_wbs, to_head)])
 
     # Document row -- second in the global order.
-    session.execute(
+    session.execute(  # scope-exempt: locks a row already scope-gated in this call
         "SELECT transfer_id FROM budget_transfer WHERE transfer_id = %s FOR UPDATE",
         (transfer_id,))
-    status = session.fetchone(
+    status = session.fetchone(  # scope-exempt: re-reads the row just locked above
         "SELECT status FROM budget_transfer WHERE transfer_id = %s", (transfer_id,))[0]
     if status != "DRAFT":
         _err("TRANSFER_NOT_DRAFT", f"Transfer {transfer_id} is {status}, not DRAFT.", status=409)
@@ -739,12 +806,15 @@ def approve_transfer(session: Session, *, transfer_id: str, actor: str) -> dict:
 
 def reject_transfer(session: Session, *, transfer_id: str, actor: str,
                      reason: str | None = None) -> dict:
-    row = session.fetchone(
-        "SELECT status FROM budget_transfer WHERE transfer_id = %s FOR UPDATE",
+    row = session.fetchone(  # scope-exempt: scope-gated immediately below
+        "SELECT from_wbs_id, to_wbs_id, status FROM budget_transfer "
+        "WHERE transfer_id = %s FOR UPDATE",
         (transfer_id,))
     if row is None:
         _err("TRANSFER_NOT_FOUND", f"Transfer {transfer_id} does not exist.", status=404)
-    (status,) = row
+    _assert_wbs_in_scope(session, row[0])
+    _assert_wbs_in_scope(session, row[1])
+    status = row[2]
     if status != "DRAFT":
         _err("TRANSFER_NOT_DRAFT", f"Transfer {transfer_id} is {status}, not DRAFT.", status=409)
     session.execute(
@@ -767,15 +837,16 @@ def create_version_snapshot(session: Session, *, project_id: str, label: str,
     "never persist a rollup"). Called after a revision or transfer is
     approved so SCR-10 always has something fresh to compare against, and by
     the seed fragment for the initial baseline."""
+    _assert_project_in_scope(session, project_id)
     version_id = _new_id("BV")
-    (next_no,) = session.fetchone(
+    (next_no,) = session.fetchone(  # scope-exempt: project_id scope-cleared just above
         "SELECT COALESCE(MAX(version_no), 0) + 1 FROM budget_version WHERE project_id = %s",
         (project_id,))
     session.execute(
         "INSERT INTO budget_version (version_id, project_id, version_no, label, created_by) "
         "VALUES (%s, %s, %s, %s, %s)",
         (version_id, project_id, next_no, label, actor))
-    session.execute(
+    session.execute(  # scope-exempt: project_id scope-cleared at the top of this call
         """
         INSERT INTO budget_version_cell (version_id, wbs_id, budget_head_id, budget_paise)
         SELECT %s, bc.wbs_id, bc.budget_head_id, bc.budget_paise
@@ -812,19 +883,38 @@ def list_versions(session: Session, project_id: str) -> list[dict]:
 
 
 def compare_versions(session: Session, *, project_id: str, left: int, right: int) -> list[dict]:
-    left_row = session.fetchone(
-        "SELECT version_id FROM budget_version WHERE project_id = %s AND version_no = %s",
-        (project_id, left))
-    if left_row is None:
-        _err("VERSION_NOT_FOUND", f"No version {left} for project {project_id}.", status=404)
-    right_row = session.fetchone(
-        "SELECT version_id FROM budget_version WHERE project_id = %s AND version_no = %s",
-        (project_id, right))
-    if right_row is None:
-        _err("VERSION_NOT_FOUND", f"No version {right} for project {project_id}.", status=404)
-    left_id, right_id = left_row[0], right_row[0]
+    # Both version lookups go through the scoped chokepoint. They previously
+    # used `session.fetchone` directly, so any authenticated caller could name
+    # any project_id and read its budget comparison -- and because the bypass
+    # was `session.fetchone` rather than a raw `.execute(`, no gate caught it.
+    #
+    # Scope resolves BEFORE existence: an out-of-scope project returns the same
+    # 404 as a project that does not exist, which is the not-found-over-
+    # forbidden rule -- a 403 on a project id is an existence oracle.
+    def _version_id(version_no: int) -> str:
+        row = repo.query_one(
+            session,
+            """
+            SELECT bv.version_id
+            FROM budget_version bv
+            JOIN project p ON p.project_id = bv.project_id
+            WHERE bv.project_id = %(project_id)s
+              AND bv.version_no = %(version_no)s
+              AND {scope}
+            """,
+            {"project_id": project_id, "version_no": version_no},
+            columns=_PROJECT_SCOPE_COLUMNS,
+        )
+        if row is None:
+            _err("VERSION_NOT_FOUND",
+                 f"No version {version_no} for project {project_id}.", status=404)
+        return row[0]
 
-    rows = session.fetchall(
+    left_id, right_id = _version_id(left), _version_id(right)
+
+    # The row set is keyed on two version_ids that scope has already cleared,
+    # and budget_version_cell carries no scope columns of its own.
+    rows = session.fetchall(  # scope-exempt: keyed on scope-cleared version ids
         """
         SELECT COALESCE(l.wbs_id, r.wbs_id), COALESCE(l.budget_head_id, r.budget_head_id),
                COALESCE(l.budget_paise, 0), COALESCE(r.budget_paise, 0)
