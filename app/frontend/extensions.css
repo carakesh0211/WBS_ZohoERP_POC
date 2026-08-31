@@ -1,0 +1,91 @@
+/* app/frontend/extensions.css
+   Additive stylesheet for screens built as ES modules (SCR-nn), loaded AFTER
+   the byte-frozen app/frontend/styles.css. Every colour reference below is
+   var(--…) against a custom property already declared in styles.css's :root
+   (which is itself research/30_contracts/C6_tokens.json's registry) — no new
+   custom property is declared here and no raw hex value appears anywhere in
+   this file. Everything else (banners, buttons, cards, tables, statuses,
+   messages, empty/loading states) is drawn from the classes styles.css
+   already defines, reused as-is so a new screen looks like it was always
+   part of this application.
+*/
+
+/* A plain <a> standing in for the shellbar's usual <button class="icon-btn">
+   on a standalone host page (see audit.html) needs the underline removed;
+   nothing else about .icon-btn changes. */
+.shellbar a.icon-btn { text-decoration: none; }
+
+/* styles.css's .breadcrumb .crumb was written for a <button> (app.js uses one
+   for in-app navigation, where the surrounding chrome already marks it
+   interactive). audit.html's breadcrumb is a real <a> sitting in flowing
+   text, so it needs its own visible, non-colour distinction — underlined at
+   rest, not only on hover — to clear WCAG 1.4.1 (axe: link-in-text-block). */
+.breadcrumb a.crumb { text-decoration: underline; text-underline-offset: 2px; }
+
+/* ---------------- view toggle (table / timeline) ---------------- */
+.view-toggle {
+  display: inline-flex; border: 1px solid var(--n300); border-radius: var(--radius);
+  overflow: hidden;
+}
+.view-toggle button {
+  border: 0; border-radius: 0; height: var(--input-h); padding: 0 10px;
+  background: var(--n0); color: var(--n700);
+}
+.view-toggle button + button { border-left: 1px solid var(--n300); }
+.view-toggle button[aria-pressed="true"] {
+  background: var(--primary-600); color: var(--n0); font-weight: 600;
+}
+
+/* ---------------- sortable table headers ---------------- */
+th .sort-btn {
+  background: transparent; border: 0; padding: 0; height: auto; font: inherit;
+  font-weight: 600; color: inherit; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+th .sort-btn:hover { text-decoration: underline; }
+th .sort-btn .sort-ico { font-size: 9px; opacity: .7; }
+
+/* ---------------- skeleton loading rows ---------------- */
+.audit-skel-bar {
+  display: inline-block; height: 10px; border-radius: 2px; max-width: 100%;
+  background: linear-gradient(90deg, var(--n100) 25%, var(--n200) 37%, var(--n100) 63%);
+  background-size: 400% 100%;
+  animation: audit-skel-shimmer 1.4s ease infinite;
+}
+@keyframes audit-skel-shimmer {
+  0%   { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/* ---------------- audit entry timeline ---------------- */
+.audit-timeline { list-style: none; margin: 0; padding: 0; }
+.audit-timeline-item { position: relative; display: flex; gap: 12px; padding: 0 0 18px 4px; }
+.audit-timeline-item::before {
+  content: ""; position: absolute; left: 9px; top: 14px; bottom: -4px; width: 1px;
+  background: var(--n200);
+}
+.audit-timeline-item:last-child::before { display: none; }
+.audit-timeline-dot {
+  flex: 0 0 10px; width: 10px; height: 10px; border-radius: 50%; margin-top: 4px;
+  background: var(--n500);
+}
+.audit-timeline-dot.st-positive { background: var(--positive); }
+.audit-timeline-dot.st-warning  { background: var(--warning); }
+.audit-timeline-dot.st-negative { background: var(--negative); }
+.audit-timeline-dot.st-progress { background: var(--progress); }
+.audit-timeline-dot.st-neutral  { background: var(--n500); }
+.audit-timeline-body { flex: 1; min-width: 0; }
+.audit-timeline-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.audit-timeline-actor { font-weight: 600; font-size: 13px; color: var(--n900); }
+.audit-timeline-action { font-size: 13px; color: var(--n700); }
+.audit-timeline-meta { margin-top: 2px; }
+.audit-timeline-detail { font-size: 13px; margin-top: 4px; overflow-wrap: anywhere; color: var(--n900); }
+.audit-timeline-hash { margin-top: 4px; overflow-wrap: anywhere; }
+
+/* ---------------- entries table cell widths ---------------- */
+.audit-detail-cell, .audit-hash-cell { max-width: 260px; overflow-wrap: anywhere; }
+.audit-cid-cell { max-width: 160px; overflow-wrap: anywhere; }
+
+/* ---------------- pagination / footer row ---------------- */
+.audit-pagination { display: flex; align-items: center; gap: 10px; padding: 10px 0 2px; flex-wrap: wrap; }
+.audit-pagination .grow { flex: 1; }
