@@ -105,7 +105,6 @@ def _requires(permission: str):
 router = APIRouter(dependencies=[Depends(require_masters_access)])
 
 _CORRELATION_HEADER = "X-Correlation-Id"
-_PERMISSIONS_HEADER = "X-Permissions"
 _REVEAL_REASON_HEADER = "X-Reveal-Reason"
 _DEFAULT_LIMIT = 50
 _MAX_LIMIT = 200
@@ -201,6 +200,28 @@ def _permissions(request: Request) -> frozenset[str]:
                      if roles & set(holders))
 
 
+def _reveal_context(request: Request) -> tuple[bool, str]:
+    """`(granted, reason)` for a `?reveal=true` request. Raises 403 if
+    reveal was requested but the caller does not hold `REVEAL_PERMISSION` --
+    fail-closed, never silently falling back to masked data for a caller who
+    explicitly asked to see it (that would hide a permissions bug as a
+    formatting quirk). Raises 400 if reveal is granted but no reason was
+    supplied: the audit entry `masters.reveal_vendor_tax_identity` writes
+    requires one."""
+    if REVEAL_PERMISSION not in _permissions(request):
+        raise _problem(403, "REVEAL_PERMISSION_REQUIRED",
+                        "Tax identity reveal requires a distinct permission",
+                        f"the caller must hold {REVEAL_PERMISSION!r} to request "
+                        f"?reveal=true")
+    reason = request.headers.get(_REVEAL_REASON_HEADER, "").strip()
+    if not reason:
+        raise _problem(400, "REVEAL_REASON_REQUIRED",
+                        "A reveal reason is required",
+                        f"supply {_REVEAL_REASON_HEADER} naming why the reveal is needed; "
+                        f"it is written into the audit entry")
+    return True, reason
+
+
 def _encode_cursor(value: str) -> str:
     return base64.urlsafe_b64encode(value.encode("utf-8")).decode("ascii")
 
@@ -234,8 +255,8 @@ def _reveal_context(request: Request) -> tuple[bool, str]:
     if REVEAL_PERMISSION not in _permissions(request):
         raise _problem(403, "REVEAL_PERMISSION_REQUIRED",
                         "Tax identity reveal requires a distinct permission",
-                        f"the caller must hold {REVEAL_PERMISSION!r} (via the "
-                        f"{_PERMISSIONS_HEADER} header) to request ?reveal=true")
+                        f"the caller must hold {REVEAL_PERMISSION!r} to "
+                        f"request ?reveal=true")
     reason = request.headers.get(_REVEAL_REASON_HEADER, "").strip()
     if not reason:
         raise _problem(400, "REVEAL_REASON_REQUIRED",

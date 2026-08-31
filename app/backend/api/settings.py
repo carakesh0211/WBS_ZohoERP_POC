@@ -108,7 +108,6 @@ def _requires(permission: str):
 router = APIRouter(dependencies=[Depends(require_settings_access)])
 
 _CORRELATION_HEADER = "X-Correlation-Id"
-_PERMISSIONS_HEADER = "X-Permissions"
 _REVEAL_REASON_HEADER = "X-Reveal-Reason"
 _DEFAULT_LIMIT = 50
 _MAX_LIMIT = 200
@@ -300,6 +299,36 @@ def _permissions(request: Request) -> frozenset[str]:
                      if roles & set(holders))
 
 
+def _reveal_context(request: Request) -> tuple[bool, str]:
+    if REVEAL_PERMISSION not in _permissions(request):
+        raise _problem(403, "REVEAL_PERMISSION_REQUIRED",
+                        "Tax identity reveal requires a distinct permission",
+                        f"the caller must hold {REVEAL_PERMISSION!r} to request "
+                        f"?reveal=true")
+    reason = request.headers.get(_REVEAL_REASON_HEADER, "").strip()
+    if not reason:
+        raise _problem(400, "REVEAL_REASON_REQUIRED", "A reveal reason is required",
+                        f"supply {_REVEAL_REASON_HEADER} naming why the reveal is needed; "
+                        f"it is written into the audit entry")
+    return True, reason
+
+
+def _reveal_entity_tax_identity(session, entity_id: str, *, actor: str, reason: str,
+                                 correlation_id: str | None) -> None:
+    """One audit entry per revealed field, naming the actor, the field and
+    the reason -- the same discipline as
+    `app.backend.pg.masters.reveal_vendor_tax_identity`, repeated here since
+    `entity` is not a master-data table this stream's `pg/masters.py` owns."""
+    row = _select_row(session, COLLECTIONS["entities"], entity_id)
+    if row is None:
+        return
+    data = _row_to_dict(COLLECTIONS["entities"], row)
+    for f in ("gst_no", "pan_no"):
+        if data.get(f):
+            pg_audit.append(session, actor, "REVEAL_TAX_IDENTITY", "entity", entity_id,
+                             f"field={f} reason={reason!r}", correlation_id=correlation_id)
+
+
 def _encode_cursor(value: str) -> str:
     return base64.urlsafe_b64encode(value.encode("utf-8")).decode("ascii")
 
@@ -364,7 +393,7 @@ def list_collection(
         if reveal_granted:
             for row in page:
                 data = _row_to_dict(spec, row)
-                pg_masters.reveal_entity_tax_identity(
+                _reveal_entity_tax_identity(
                     session, data[spec.id_column], actor=actor,
                     reason=reveal_reason,
                     correlation_id=_correlation_id(request))

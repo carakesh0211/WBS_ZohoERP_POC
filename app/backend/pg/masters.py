@@ -593,38 +593,6 @@ def reveal_vendor_tax_identity(session: Session, vendor_id: str, *, actor: str,
     return render_vendor(data, reveal=True)
 
 
-def reveal_entity_tax_identity(session: Session, entity_id: str, *, actor: str,
-                                reason: str, correlation_id: str | None = None
-                                ) -> dict[str, Any]:
-    """`reveal_vendor_tax_identity`'s counterpart for `entity`.
-
-    `api/settings.py` called `_reveal_entity_tax_identity` -- a name that
-    existed nowhere -- so every successful entity reveal raised NameError
-    inside the session, rolled back, and returned 500. No entity reveal ever
-    succeeded, and the module's central claim, that a full reveal always
-    writes an audit entry, was never once exercised on this path.
-
-    `entity` is not a MasterKind, so this reads the two regulated columns
-    directly rather than through `_select_row`. As with the vendor form, the
-    PERMISSION check belongs to the API layer; this function is only reachable
-    once that check has passed, and it always audits when called.
-    """
-    row = session.fetchone(  # scope-exempt: settings data is organisation-wide reference data; the permission check is the control
-        "SELECT gst_no, pan_no FROM entity WHERE entity_id = %s", (entity_id,))
-    if row is None:
-        raise MasterDataError(404, NOT_FOUND, f"entity {entity_id} does not exist")
-
-    gst_no, pan_no = row
-    for field, value in (("gst_no", gst_no), ("pan_no", pan_no)):
-        if value:
-            pg_audit.append(
-                session, actor, "REVEAL_TAX_IDENTITY", "entity", entity_id,
-                f"field={field} reason={reason!r}",
-                correlation_id=correlation_id)
-
-    return {"gst_no": gst_no, "pan_no": pan_no}
-
-
 # ============================================================================
 # Numbering
 # ============================================================================

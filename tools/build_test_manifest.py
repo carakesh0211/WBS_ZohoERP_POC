@@ -63,6 +63,7 @@ POST_BASELINE_FILES = {
     # defects they hold lived where a database-gated test would have skipped.
     "test_budget_api_guard.py", "test_masters_settings_api_guard.py",
     "test_scope_enforcement.py", "test_money_sql_discipline.py",
+    "test_no_undefined_names.py",
 }
 
 

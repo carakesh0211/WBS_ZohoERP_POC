@@ -1340,6 +1340,24 @@
         "body_sha": "3b93139a2d4bd1c1"
       }
     },
+    "test_no_undefined_names.py": {
+      "test_every_name_a_module_uses_is_defined_somewhere_in_it": {
+        "assertions": 1,
+        "body_sha": "a065d02c5d2d3df9"
+      },
+      "test_the_check_catches_a_deleted_helper": {
+        "assertions": 1,
+        "body_sha": "75b180d6f549d7c0"
+      },
+      "test_the_check_does_not_flag_ordinary_code": {
+        "assertions": 1,
+        "body_sha": "7e95580d14afe8c3"
+      },
+      "test_there_are_modules_to_check": {
+        "assertions": 3,
+        "body_sha": "0e719045063041c8"
+      }
+    },
     "test_observability.py": {
       "test_every_record_is_one_json_object_per_line": {
         "assertions": 1,
@@ -2666,6 +2684,7 @@
     "test_money.py": 23,
     "test_money_sql_discipline.py": 4,
     "test_negative_access_matrix.py": 9,
+    "test_no_undefined_names.py": 4,
     "test_observability.py": 40,
     "test_pg_adoption.py": 16,
     "test_pg_audit.py": 20,
@@ -2704,6 +2723,7 @@
     "test_money.py": 31,
     "test_money_sql_discipline.py": 4,
     "test_negative_access_matrix.py": 29,
+    "test_no_undefined_names.py": 6,
     "test_observability.py": 77,
     "test_pg_adoption.py": 39,
     "test_pg_audit.py": 62,

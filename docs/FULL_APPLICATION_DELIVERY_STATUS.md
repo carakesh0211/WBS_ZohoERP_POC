@@ -45,7 +45,7 @@ organisation-hierarchy admin.
 
 ## Tests
 
-**860 passed, 124 skipped, 0 failed** locally (Milestone 1 baseline: 608/49).
+**892 passed, 124 skipped, 0 failed** locally (Milestone 1 baseline: 608/49).
 Every skip is a live-PostgreSQL test that runs in the `pg_tests` CI job.
 
 ## What integration found, and fixed
@@ -82,7 +82,7 @@ fixed, three recorded below.
 | # | Finding | Outcome |
 |---|---|---|
 | 1 | `X-Actor-Id` survived on three **read** paths. The integration replaced the `_actor()` helper but three call sites read the header directly, so the audit entry for a tax-identity reveal named whoever the caller claimed — and named `SYSTEM` when no header was sent, which is what the frontend sends | **fixed**; the constant is deleted, so it cannot come back |
-| 2 | `api/settings.py` called `_reveal_entity_tax_identity`, a name defined nowhere. Every successful entity reveal raised `NameError`, rolled back and returned 500, so no entity reveal ever succeeded and none was ever audited | **fixed**; the function exists and audits per revealed field |
+| 2 | `api/settings.py` called `_reveal_entity_tax_identity`, a name defined nowhere. Every successful entity reveal raised `NameError`, rolled back and returned 500, so no entity reveal ever succeeded and none was ever audited. **This was mine, not the stream's**: the function was present in stream 4's own commit and my auth patch deleted it as collateral, along with `_reveal_context` in both routers, by replacing a whole block of helpers between two anchors | **fixed**; all three restored from the stream's commit, and `tests/test_no_undefined_names.py` now catches the whole class |
 | 3 | The vendor edit dialog round-tripped the **masked** `gst_no` into a `PUT`, violating the column CHECK, and `api/masters.py` did not catch `CheckViolation` — so editing a vendor returned an unhandled 500 and renaming one was impossible through the UI | **fixed**; a masked value is refused with an actionable 422 |
 | 4 | The scope AST gate was blind to computed table names (`FROM {kind.table}`, how `pg/masters.py` writes every statement), to SQL held in a variable, and to `app/backend/api/` entirely | **fixed**; unanalysable SQL is flagged, both directories scanned, no-row-scope declared in one place |
 | 5 | `FinanceApprover` sat in the whole-estate role set. That set reads as a concession for *reads*, but the Scope it builds is used on the **write** paths — so the maker-checker approver for `revision.approve` could approve revisions and close periods in every entity | **fixed**; removed from the set |
@@ -91,6 +91,16 @@ fixed, three recorded below.
 | 7 | RLS missing on `accounting_period`, the five budget document tables, `item_master` and `vendor_master` | **open** — see gaps |
 | 8 | `recompute_cell`'s `UPDATE` takes a cell lock implicitly, after `lock_affected_cells`; the period roll can take none at all | **open** — see gaps |
 | 10 | `Scope.as_settings()` renders a literal scope id of `*` identically to "unrestricted" | **open** — see gaps |
+
+Two of the ten were regressions this integration introduced, not defects the
+streams delivered — #2 above, and the deleted `_reveal_context` that CI caught
+straight after. Both are the same mistake: patching by replacing everything
+between two anchors, without checking what else lived in between. The gate
+that now holds it, `tests/test_no_undefined_names.py`, resolves every name
+each backend module uses and fails on any bound nowhere. It runs on source in
+under a second, and would have caught both instantly — the reveal paths need a
+live PostgreSQL, so every local test touching them skipped and the suite
+stayed green.
 
 The reviewer also confirmed, by attacking them, that the router guards hold on
 every route, that `X-Permissions` is genuinely inert, that no float or Decimal
