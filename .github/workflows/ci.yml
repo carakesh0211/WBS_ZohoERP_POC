@@ -166,7 +166,14 @@ jobs:
         #
         # A filename glob cannot under-select as milestones add files, and
         # cannot break by naming a file that does not exist yet.
-        run: python -m pytest -q tests/test_pg_*.py
+        #
+        # -rs prints every SKIP with its reason. This job's selection has been
+        # wrong twice -- `-m pg` ran a third of the suite, then a hand-written
+        # list omitted the two files covering the lock query and the audit
+        # chain -- and both times the job reported green while testing less
+        # than it claimed. A silent skip is indistinguishable from a pass in a
+        # summary line, so the reasons are now always in the log.
+        run: python -m pytest -q -rs tests/test_pg_*.py
 
   supply_chain:
     name: Supply chain
