@@ -173,7 +173,35 @@ jobs:
         # chain -- and both times the job reported green while testing less
         # than it claimed. A silent skip is indistinguishable from a pass in a
         # summary line, so the reasons are now always in the log.
-        run: python -m pytest -q -rs tests/test_pg_*.py
+        run: python -m pytest -q -rs tests/test_pg_*.py | tee pg-result.txt
+
+      # A green pytest proves nothing ran wrong. It does NOT prove anything
+      # ran: a suite that skipped every live test exits 0 and reports success,
+      # which is exactly how this job once passed while nine end-to-end tests
+      # had quietly opted out of it.
+      #
+      # CAPEX_DB_URL is set for the step above and a PostgreSQL service is
+      # attached, so the live tests are guaranteed to be runnable here. A
+      # skip in that state is a broken guarantee, not an environment
+      # condition -- so the floor is asserted rather than assumed.
+      - name: Prove the live tests actually ran
+        run: |
+          python - <<'PY'
+          import re, sys, pathlib
+          out = pathlib.Path("pg-result.txt").read_text(encoding="utf-8", errors="replace")
+          m = re.search(r"(\d+) passed", out)
+          passed = int(m.group(1)) if m else 0
+          skipped = int(s.group(1)) if (s := re.search(r"(\d+) skipped", out)) else 0
+          print(f"live PostgreSQL tests: {passed} passed, {skipped} skipped")
+          if passed < 150:
+              sys.exit(
+                  f"only {passed} tests ran against the live database. This job "
+                  f"attaches a PostgreSQL service and sets CAPEX_DB_URL, so the "
+                  f"live suite must execute; a low count means it skipped itself "
+                  f"and the green tick means nothing.")
+          if skipped:
+              print(f"NOTE: {skipped} skipped -- every reason is printed above by -rs")
+          PY
 
   supply_chain:
     name: Supply chain

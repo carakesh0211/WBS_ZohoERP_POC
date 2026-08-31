@@ -45,8 +45,16 @@ organisation-hierarchy admin.
 
 ## Tests
 
-**892 passed, 124 skipped, 0 failed** locally (Milestone 1 baseline: 608/49).
-Every skip is a live-PostgreSQL test that runs in the `pg_tests` CI job.
+**892 passed, 125 skipped, 0 failed** locally (Milestone 1 baseline: 608/49),
+and **all five CI jobs green**. Every local skip is a live-PostgreSQL test
+that runs in the `pg_tests` job.
+
+That job now proves it: a green pytest shows nothing ran *wrong*, not that
+anything ran, and a suite that skipped every live test would exit 0 and
+report success -- which is how this job once passed while nine end-to-end
+tests had quietly opted out of it. The job attaches a PostgreSQL service and
+sets `CAPEX_DB_URL`, so the live suite is guaranteed runnable there; the step
+after it asserts a floor on the number that actually executed.
 
 ## What integration found, and fixed
 
