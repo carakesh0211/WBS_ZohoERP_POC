@@ -84,9 +84,31 @@ def pg_backed_app(seeded_pg):
 
     paths = {getattr(r, "path", None) for r in _walk_routes(main.app.routes)}
     if "/api/audit/entries" not in paths:
-        pytest.skip(
-            "the PostgreSQL audit router is not mounted; main.py mounts it only "
-            "when CAPEX_DB_URL or CAPEX_DB_HOST is set at import time")
+        # FAIL, do not skip.
+        #
+        # This is reached only when CAPEX_DB_URL is set (the @PG marker gates
+        # every test here), and in that case main.py mounting the router is a
+        # guaranteed precondition, not a maybe. A skip here silently opted the
+        # entire end-to-end proof out of CI twice while the job reported green.
+        #
+        # A precondition that is guaranteed in this environment must assert.
+        # Skipping turns a broken guarantee into a green tick.
+        audit_paths = sorted(p for p in paths if p and "audit" in p)
+        mounted = getattr(main, "audit_api", "attribute absent")
+        diagnostics = [
+            "the PostgreSQL audit router is not mounted, but CAPEX_DB_URL is "
+            "set so it must be.",
+            f"  CAPEX_DB_URL set:  {bool(os.environ.get('CAPEX_DB_URL'))}",
+            f"  CAPEX_DB_HOST set: {bool(os.environ.get('CAPEX_DB_HOST'))}",
+            f"  main.audit_api:    {mounted}",
+            f"  audit-ish paths:   {audit_paths}",
+            f"  total routes seen: {len(paths)}",
+        ]
+        raise AssertionError(
+            "\n".join(diagnostics) + "\n"
+            "If main.audit_api is None, importing app.backend.api.audit raised "
+            "ImportError and main.py swallowed it defensively."
+        )
 
     previous = None
     try:
