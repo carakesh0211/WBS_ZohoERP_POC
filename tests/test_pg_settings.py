@@ -81,6 +81,32 @@ class TestCollectionRegistry:
 # ============================================================================
 # Live PostgreSQL
 # ============================================================================
+def _session_for(uid: str, role: str) -> dict:
+    """Sign in an identity holding exactly `role`, and return its session
+    header. Permissions come from the principal's roles now, so proving a
+    refusal needs a caller who genuinely lacks the permission -- not a header
+    left off the request."""
+    from app.backend import auth, db
+
+    password = uid + "-pw"
+    con = db.connect()
+    try:
+        con.execute(
+            "INSERT OR REPLACE INTO app_user (user_id, name, role) VALUES (?,?,?)",
+            (uid, f"Test {uid}", role))
+        salt, hashed = auth.hash_password(password)
+        con.execute(
+            """INSERT OR REPLACE INTO app_credential
+               (user_id, password_salt, password_hash, disabled, created_at)
+               VALUES (?,?,?,0,'2026-08-06T00:00:00')""", (uid, salt, hashed))
+        con.execute("DELETE FROM user_role WHERE user_id=?", (uid,))
+        con.execute("INSERT INTO user_role (user_id, role) VALUES (?,?)", (uid, role))
+        con.commit()
+        return {"X-Session": auth.login(con, uid, password)["session_id"]}
+    finally:
+        con.close()
+
+
 def _administrator_session() -> dict:
     """Create an Administrator identity and return its session header.
 
@@ -135,6 +161,30 @@ def client(pg_database, capex_db):
     try:
         test_client = TestClient(app)
         test_client.headers.update(_administrator_session())
+        yield test_client
+    finally:
+        pg_engine.set_database(previous)
+
+
+@pytest.fixture()
+def reader_client(pg_database, capex_db):
+    """A caller holding `settings.read` but NOT `settings.tax_identity.reveal`.
+
+    Requestor is the role used: it can list every collection, which is what
+    puts it past the router's floor, and it cannot unmask a tax identity.
+    """
+    previous = None
+    try:
+        previous = pg_engine.get_database()
+    except RuntimeError:
+        previous = None
+    pg_engine.set_database(pg_database)
+
+    app = FastAPI()
+    app.include_router(settings_api.router)
+    try:
+        test_client = TestClient(app)
+        test_client.headers.update(_session_for("U-SETTINGS-READER", "Requestor"))
         yield test_client
     finally:
         pg_engine.set_database(previous)
@@ -218,7 +268,7 @@ class TestSettingsOptimisticConcurrency:
                                    headers=HEADERS,
                                    json={"name": "OCC Org Hijacked", "version_no": 1})
         assert stale_update.status_code == 409
-        assert stale_update.json()["code"] == "VERSION_CONFLICT"
+        assert stale_update.json()["detail"]["code"] == "VERSION_CONFLICT"
 
         current = client.get("/api/settings/organisations", headers=HEADERS).json()
         row = next(i for i in current["items"] if i["organisation_id"] == created["organisation_id"])
@@ -264,18 +314,28 @@ class TestEntityTaxIdentityMasking:
         row = next(i for i in listed["items"] if i["entity_id"] == entity["entity_id"])
         assert row["gst_no"] == "27ABCDE****1Z5"
 
-    def test_reveal_without_permission_is_refused(self, client):
+    def test_reveal_without_permission_is_refused(self, client, reader_client):
+        """The refusal is now proven against a caller who genuinely lacks the
+        permission.
+
+        This used to send no `X-Permissions` header, which was the whole of
+        the check. Permissions come from the session's roles now, so omitting
+        a header proves nothing -- the setup writes the rows as an
+        Administrator and then asks as a Requestor, who can read settings and
+        cannot unmask a tax identity.
+        """
         org = client.post("/api/settings/organisations", headers=HEADERS,
                            json={"code": "ORG-MASK2", "name": "Masking Org 2"}).json()
         self._create_entity(client, org["organisation_id"], code="ENT-T2")
 
-        resp = client.get("/api/settings/entities", headers=HEADERS,
-                           params={"reveal": "true"})
+        resp = reader_client.get("/api/settings/entities", params={"reveal": "true"})
         assert resp.status_code == 403
         assert resp.json()["detail"]["code"] == "REVEAL_PERMISSION_REQUIRED"
 
     def test_reveal_with_permission_but_no_reason_is_refused(self, client):
-        headers = dict(HEADERS, **{"X-Permissions": settings_api.REVEAL_PERMISSION})
+        # No X-Permissions header: the client is an Administrator, who holds
+        # settings.tax_identity.reveal by role.
+        headers = dict(HEADERS)
         resp = client.get("/api/settings/entities", headers=headers, params={"reveal": "true"})
         assert resp.status_code == 400
         assert resp.json()["detail"]["code"] == "REVEAL_REASON_REQUIRED"
@@ -286,7 +346,6 @@ class TestEntityTaxIdentityMasking:
         entity = self._create_entity(client, org["organisation_id"], code="ENT-T3")
 
         headers = dict(HEADERS, **{
-            "X-Permissions": settings_api.REVEAL_PERMISSION,
             "X-Reveal-Reason": "statutory filing verification",
         })
         resp = client.get("/api/settings/entities", headers=headers, params={"reveal": "true"})

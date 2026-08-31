@@ -248,6 +248,24 @@ def test_fragments_never_load_when_a_guard_refuses(monkeypatch):
 # ============================================================================
 # Live loader -- needs a real, disposable PostgreSQL database.
 # ============================================================================
+def _seed_base_only(connection) -> None:
+    """Load `seed_demo.sql` WITHOUT the `seed_parts/` fragments.
+
+    The assertions below pin the demo estate exactly -- row counts per table,
+    audit-chain lengths, rollup totals to the paisa. That precision is the
+    point: it catches a seed edit that silently changes the dataset every
+    screenshot and screen was approved against.
+
+    It only works against a fixed input. `seed()` loads `seed_demo.sql` plus
+    every fragment each backend stream contributes, so those numbers move
+    whenever a stream lands. Pointing `parts_dir` at a directory that does not
+    exist gives these tests the one stable input they need, and
+    `test_the_fragments_load_on_top_of_the_base_seed` covers the composed
+    estate separately.
+    """
+    pgseed.seed(connection, parts_dir=_Path("no-such-seed-parts-directory"))
+
+
 EXPECTED_COUNTS = {
     "organisation": 1,
     "entity": 2,
@@ -280,7 +298,7 @@ MONEY_COLUMNS_BY_TABLE = {
 @PG
 def test_seed_loads_the_full_demo_dataset(pg_connection, monkeypatch):
     monkeypatch.setenv("CAPEX_PROFILE", "local-demo")
-    pgseed.seed(pg_connection)
+    _seed_base_only(pg_connection)
     pg_connection.commit()
 
     for table, expected in EXPECTED_COUNTS.items():
@@ -294,7 +312,7 @@ def test_seed_loads_the_full_demo_dataset(pg_connection, monkeypatch):
 @PG
 def test_every_money_column_is_an_exact_int_never_float_or_decimal(pg_connection, monkeypatch):
     monkeypatch.setenv("CAPEX_PROFILE", "local-demo")
-    pgseed.seed(pg_connection)
+    _seed_base_only(pg_connection)
     pg_connection.commit()
 
     checked = 0
@@ -318,7 +336,7 @@ def test_every_money_column_is_an_exact_int_never_float_or_decimal(pg_connection
 @PG
 def test_seeded_audit_streams_verify_intact(pg_connection, pg_scope, monkeypatch):
     monkeypatch.setenv("CAPEX_PROFILE", "local-demo")
-    pgseed.seed(pg_connection)
+    _seed_base_only(pg_connection)
     pg_connection.commit()
 
     session = Session(connection=pg_connection, scope=pg_scope)
@@ -346,7 +364,7 @@ def test_po_line_invariant_holds_for_every_ledger_cell_with_spend(pg_connection,
     `actual_paise + commitment_paise == ordered_paise` for every cell that
     has any ordered amount at all."""
     monkeypatch.setenv("CAPEX_PROFILE", "local-demo")
-    pgseed.seed(pg_connection)
+    _seed_base_only(pg_connection)
     pg_connection.commit()
 
     rows = pg_connection.execute(
@@ -372,13 +390,18 @@ def test_ancestor_chain_rollup_matches_own_plus_children(pg_connection, monkeypa
     head (BH-DM1-CIVIL), and exposure at the leaves rolls up through BOTH.
     """
     monkeypatch.setenv("CAPEX_PROFILE", "local-demo")
-    pgseed.seed(pg_connection)
+    _seed_base_only(pg_connection)
     pg_connection.commit()
 
     def subtree_exposure(root_wbs_id: str, head_id: str) -> int:
         row = pg_connection.execute(
             """
-            SELECT coalesce(sum(l.commitment_paise + l.actual_paise + l.pr_reserved_paise), 0)
+            -- ::bigint for the same reason the service layer casts: SUM over bigint
+            -- returns numeric, which psycopg hands back as Decimal, and a
+            -- Decimal compared against an int total silently fails the
+            -- money rule this suite exists to enforce.
+            SELECT coalesce(sum(l.commitment_paise + l.actual_paise
+                                + l.pr_reserved_paise), 0)::bigint
             FROM wbs_element w
             JOIN wbs_element root ON root.wbs_id = %s
             JOIN budget_ledger_cell l ON l.wbs_id = w.wbs_id AND l.budget_head_id = %s
@@ -434,6 +457,47 @@ def test_ancestor_chain_rollup_matches_own_plus_children(pg_connection, monkeypa
     # precondition for the multi-level lock set the seed exists to exercise.
     assert budget_of("WBS-A-CIVIL", head) != 0
     assert budget_of("WBS-A-CIVIL-FOUND", head) != 0
+
+
+@pytest.mark.pg
+@PG
+def test_the_fragments_load_on_top_of_the_base_seed(pg_connection, monkeypatch):
+    """The composed estate, which is what `seed()` actually produces.
+
+    The counterpart to the exact-count tests above: those pin
+    `seed_demo.sql` alone, this proves the `seed_parts/` fragments are applied
+    on top of it. Deliberately asserts the RELATIONSHIP rather than new fixed
+    numbers, so a stream adding a fragment does not have to edit this file --
+    and so this test cannot be quietly satisfied by fragments that fail to
+    load.
+
+    The loader shipped broken once, computing its directory from a name that
+    did not exist and never being called at all, which showed up as screens
+    rendering an empty state that read as "no data yet" rather than as a
+    defect.
+    """
+    monkeypatch.setenv("CAPEX_PROFILE", "local-demo")
+    pgseed.seed(pg_connection)
+    pg_connection.commit()
+
+    def count(table: str) -> int:
+        return pg_connection.execute(
+            sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(table))
+        ).fetchone()[0]
+
+    for table, base in EXPECTED_COUNTS.items():
+        assert count(table) >= base, (
+            f"{table}: the composed estate has fewer rows than seed_demo.sql "
+            f"alone, so a fragment deleted base data")
+
+    # Tables only a fragment populates. Non-empty here is the proof that
+    # fragments ran; each is empty under `_seed_base_only`.
+    for table in ("budget_line", "budget_revision", "budget_transfer",
+                   "item_master", "vendor_master"):
+        assert count(table) > 0, (
+            f"{table} is empty, so migrations/pg/seed_parts/ did not load")
+
+    assert pgseed.seed_part_files(), "no fragments are committed to load"
 
 
 @pytest.mark.pg
