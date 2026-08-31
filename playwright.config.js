@@ -62,7 +62,14 @@ module.exports = defineConfig({
   ],
 
   webServer: {
-    command: `python app/run.py`,
+    // Migrate FIRST, then start. The application deliberately refuses to
+    // migrate itself on boot (DEF-01: an app that does cannot be rolled back,
+    // races when scaled, and turns a schema error into an outage) -- so the
+    // schema is now a DEPLOY STEP, and this harness must perform it like any
+    // other deployment would. Previously `run.py` created the demo database as
+    // a side effect of starting, which is exactly the behaviour that was
+    // removed.
+    command: `python -m app.backend.migrate --fresh --seed && python app/run.py`,
     url: `http://127.0.0.1:${PORT}/api/health`,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,

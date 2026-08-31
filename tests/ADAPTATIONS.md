@@ -129,3 +129,22 @@ detection test when the anchor writer lands.
 
 **Found by:** adversarial review of Milestone 1 (finding F6).
 **Approved by:** engagement lead, Milestone 1 integration pass.
+
+## 2026-08-31 — `test_aud_c_006_every_mutating_route_is_covered_by_the_authorisation_matrix`
+
+**Change:** route enumeration now descends into router containers via a new
+`_walk_routes` helper, and reads `path` with `getattr` rather than bare
+attribute access. **The assertion itself is unchanged.**
+
+**Reason:** newer FastAPI places an `_IncludedRouter` object in `app.routes`
+for an included router. It has no `.path`, so bare access raised
+`AttributeError` in CI while passing locally on an older pinned version.
+
+Crashing was the lucky outcome. The dangerous one is that any route reachable
+only *through* such a container is invisible to the scan — so an uncovered
+mutating endpoint would pass the authorisation-matrix check in silence. The
+walk keeps the test meaning what its name claims.
+
+**Not a weakening.** The check now sees strictly more routes than before.
+
+**Approved by:** engagement lead, Milestone 1 integration pass.

@@ -9,6 +9,24 @@ database. A round trip against real PostgreSQL is gated the same way as
 """
 from __future__ import annotations
 
+# Fixtures come from tests/conftest_pg.py, imported explicitly.
+#
+# Without this the live tests below fail at SETUP with "fixture 'pg_database'
+# not found" -- but ONLY where CAPEX_DB_URL is set. Locally they skip, so the
+# missing fixture is never resolved and the gap is invisible. CI is the first
+# place these run for real, which is the whole point of that job.
+import sys as _sys
+from pathlib import Path as _Path
+
+_TESTS_DIR = _Path(__file__).resolve().parent
+if str(_TESTS_DIR) not in _sys.path:
+    _sys.path.insert(0, str(_TESTS_DIR))
+
+from conftest_pg import (  # noqa: E402,F401  (re-exported as fixtures)
+    pg_admin_connection, pg_connection, pg_database, pg_disposable_db_name,
+    pg_scope, pg_template, pg_url,
+)
+
 import hashlib
 import os
 from datetime import datetime, timezone

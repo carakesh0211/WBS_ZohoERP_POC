@@ -86,16 +86,37 @@ def _ids(entries):
 
 
 # ========================================================= completeness of the matrix
+def _walk_routes(routes):
+    """Yield every real route, descending into router containers.
+
+    Newer FastAPI versions place an `_IncludedRouter` object in `app.routes`
+    for an included router. It has no `.path`, so bare attribute access raised
+    AttributeError in CI while passing locally on an older pin.
+
+    Crashing was the lucky outcome. The dangerous one is that routes reachable
+    only THROUGH such a container would be invisible to this scan, and an
+    uncovered mutating endpoint would pass the authorisation-matrix check
+    silently. Descending keeps the assertion meaning what its name says.
+    """
+    for route in routes:
+        nested = getattr(route, "routes", None)
+        if nested:
+            yield from _walk_routes(nested)
+        if hasattr(route, "path"):
+            yield route
+
+
 def test_aud_c_006_every_mutating_route_is_covered_by_the_authorisation_matrix():
     """A new mutating endpoint must be added to MUTATING_ROUTES to pass this."""
     live = set()
-    for route in main.app.routes:
+    for route in _walk_routes(main.app.routes):
         methods = getattr(route, "methods", None) or set()
-        if not route.path.startswith("/api/"):
+        path = getattr(route, "path", None)
+        if not path or not path.startswith("/api/"):
             continue
         for method in methods:
             if method in ("POST", "PUT", "PATCH", "DELETE"):
-                live.add(route.path)
+                live.add(path)
     covered = {entry[0] for entry in MUTATING_ROUTES} | PUBLIC_MUTATING_ROUTES
     assert live == covered, (
         f"uncovered mutating routes: {sorted(live - covered)}; "
