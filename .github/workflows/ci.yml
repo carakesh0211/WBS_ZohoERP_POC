@@ -155,18 +155,18 @@ jobs:
           # rather than by a permissive library default that would also have
           # silently downgraded production.
           CAPEX_DB_SSLMODE: disable
-        # Explicit file list, not `-m pg`: the modules use two different
-        # gating styles (pytest.mark.pg and skipif on CAPEX_DB_URL), so a
-        # marker selection silently ran a third of the intended suite while
-        # reporting green.
+        # A GLOB, not `-m pg` and not a hand-maintained list.
         #
-        # test_pg_locking.py and test_pg_audit.py were BOTH omitted from the
-        # first version of this list -- which meant lock_affected_cells and the
-        # audit chain had zero execution against a real server anywhere. That
-        # is exactly how a lock query that PostgreSQL cannot even parse reached
-        # integration.
-        run: |
-          python -m pytest -q             tests/test_pg_fixture_guard.py             tests/test_pg_migrations_runner.py             tests/test_pg_constraints.py             tests/test_pg_transactions.py             tests/test_pg_scope_leakage.py             tests/test_pg_locking.py             tests/test_pg_audit.py             tests/test_pg_repo.py
+        # `-m pg` silently ran a third of the suite, because the modules use
+        # two different gating styles (pytest.mark.pg and skipif on
+        # CAPEX_DB_URL). An explicit list then omitted test_pg_locking.py and
+        # test_pg_audit.py -- so the lock query and the audit chain had zero
+        # execution against a real server, which is how a query PostgreSQL
+        # cannot even parse reached integration.
+        #
+        # A filename glob cannot under-select as milestones add files, and
+        # cannot break by naming a file that does not exist yet.
+        run: python -m pytest -q tests/test_pg_*.py
 
   supply_chain:
     name: Supply chain
