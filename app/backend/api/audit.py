@@ -12,7 +12,9 @@ parallel, so it must not drift)::
           "next_cursor":str|null,"has_more":bool}
     GET /api/audit/chain/verify?stream_key=
       -> {"stream_key":str,"intact":bool,"entries_checked":int,
-          "first_break_seq":int|null,"verified_at":iso8601}
+          "first_break_seq":int|null,"stream_found":bool,
+          "sequence_contiguous":bool,"head_seq":int|null,
+          "whole_stream_truncation_note":str,"verified_at":iso8601}
 
 `router = APIRouter()` is exported and mounted by `app/backend/main.py`, which
 this module does not touch. Its routes carry their full `/api/audit/...` path
@@ -281,10 +283,24 @@ def verify(
     with database.session(_audit_service_scope()) as session:
         result = verify_chain(session, stream_key)
 
+    # Forward the evidence fields, not just the verdict.
+    #
+    # This handler originally rebuilt a fixed five-key response, so when
+    # verify_chain gained stream_found, sequence_contiguous and head_seq --
+    # the fields that distinguish "verified intact" from "verified nothing" --
+    # they stopped at the service boundary and never reached a caller.
+    #
+    # `intact` alone is the field most likely to be trusted and least able to
+    # justify itself: an unknown stream_key used to report intact=True with
+    # entries_checked=0. A caller has to be able to see WHY.
     return {
         "stream_key": stream_key,
         "intact": result["intact"],
         "entries_checked": result["entries_checked"],
         "first_break_seq": result["first_break_seq"],
+        "stream_found": result["stream_found"],
+        "sequence_contiguous": result["sequence_contiguous"],
+        "head_seq": result["head_seq"],
+        "whole_stream_truncation_note": result["whole_stream_truncation_note"],
         "verified_at": datetime.now(timezone.utc).isoformat(),
     }
