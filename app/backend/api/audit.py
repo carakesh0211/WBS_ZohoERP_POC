@@ -54,7 +54,22 @@ def _audit_service_scope() -> Scope:
 
 
 def _get_database() -> Database:
-    return get_database()
+    """Degrade to a clean 503, never a 500 traceback.
+
+    If this router is ever reached on a process with no PostgreSQL configured,
+    that is a deployment fault, not a caller fault -- and the caller deserves a
+    diagnosable status rather than an unhandled RuntimeError. Defence in depth
+    behind the conditional mount in main.py.
+    """
+    try:
+        return get_database()
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "DATABASE_NOT_CONFIGURED",
+                    "message": "The PostgreSQL audit API is mounted but no "
+                               "database is configured for this process."},
+        ) from exc
 
 
 def _correlation_id(request: Request) -> str:

@@ -42,19 +42,35 @@ observability.configure()
 # orchestrator's health probe carries no session.
 app.include_router(health_api.router)
 
-# app/backend/api/audit.py is being built in parallel by another agent on this
-# engagement. Imported defensively so this app still starts if that module is
-# not yet present in a given worktree -- the router is still wired here
-# because the lead integrates both, and a wiring gap should not be the thing
-# that silently drops audit coverage once the file lands.
+# The PostgreSQL audit API is mounted ONLY when PostgreSQL is configured.
+#
+# It shares the `/api/audit` prefix with the legacy SQLite endpoints defined
+# further down this module, and a router included here registers BEFORE those
+# decorators run -- so mounting it unconditionally shadowed
+# `GET /api/audit/verify` and turned four passing SQLite audit tests into 500s
+# via `get_database()` on a process with no PostgreSQL configured.
+#
+# The collision is intentional in the end state: once SQLite is retired the
+# PostgreSQL routes take that prefix over. Until then the two must not both
+# claim it, and "is PostgreSQL configured" is the honest discriminator --
+# clearer than a feature flag, because it is the actual precondition.
+def _postgresql_is_configured() -> bool:
+    return bool(os.environ.get("CAPEX_DB_URL") or os.environ.get("CAPEX_DB_HOST"))
+
+
 try:
     from .api import audit as audit_api
-except ImportError as exc:  # pragma: no cover - exercised only before audit.py lands
+except ImportError as exc:  # pragma: no cover - only before audit.py lands
     audit_api = None
     logging.getLogger("capex").warning(
         "app.backend.api.audit not available yet; its router is not mounted (%s)", exc)
 else:
-    app.include_router(audit_api.router)
+    if _postgresql_is_configured():
+        app.include_router(audit_api.router)
+    else:
+        logging.getLogger("capex").info(
+            "PostgreSQL is not configured; serving the legacy SQLite audit API. "
+            "Set CAPEX_DB_URL or CAPEX_DB_HOST to mount the PostgreSQL audit API.")
 
 PUBLIC_PATHS = {"/api/health", "/api/auth/login"}
 
