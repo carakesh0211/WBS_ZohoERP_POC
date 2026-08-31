@@ -214,16 +214,34 @@ def test_def_01_pg_adopts_a_preexisting_legacy_schema():
     runner did in the original DEF-01 reproduction."""
     from app.backend.pg import migrate_pg
 
-    migration = migrate_pg.discover()[0]  # 001_foundation
-    tables = migrate_pg._tables_created_by(migration)
-    assert tables, "the real migration 001 must declare at least one table"
+    # Adopt EVERY discovered migration, not just the first.
+    #
+    # This test originally pinned itself to `discover()[0]` and seeded the fake
+    # with only migration 001's tables. That passed while 001 was the only
+    # migration and broke the moment 002 was merged: upgrade() reached 002,
+    # the fake raised DuplicateTable as it does for any DDL, 002's tables were
+    # absent from the seeded set, and adoption correctly refused -- so the test
+    # failed for a reason that had nothing to do with the behaviour it asserts.
+    #
+    # A test of "adoption works" must not also encode "there is exactly one
+    # migration", or it breaks on every future milestone. The realism of using
+    # the real migration files is worth keeping; the coupling to how many there
+    # are is not.
+    migrations = migrate_pg.discover()
+    assert migrations, "the real migration set must not be empty"
 
-    con = _FakeAdoptConnection(existing_tables=set(tables))
+    all_tables: set[str] = set()
+    for migration in migrations:
+        tables = migrate_pg._tables_created_by(migration)
+        assert tables, f"migration {migration.version} must declare a table"
+        all_tables.update(tables)
+
+    con = _FakeAdoptConnection(existing_tables=all_tables)
 
     performed = migrate_pg.upgrade(con)
 
-    assert performed == [f"{migration.version} (adopted)"]
-    assert con.recorded == [(migration.version, migration.checksum)]
+    assert performed == [f"{m.version} (adopted)" for m in migrations]
+    assert con.recorded == [(m.version, m.checksum) for m in migrations]
 
 
 def test_def_01_pg_refuses_a_genuine_conflict_rather_than_guessing():
