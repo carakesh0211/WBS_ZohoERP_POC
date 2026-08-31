@@ -67,6 +67,63 @@ MUTATING_ROUTES = [
     ("/api/zoho/{connection_id}/sync/{module}", "POST", "/api/zoho/CONN-01/sync/bills",
      {}, "connector.manage", "Auditor"),
     ("/api/admin/reset", "POST", "/api/admin/reset", {}, "admin.reset", "Auditor"),
+
+    # ---------------------------------------------------------- Wave 2
+    # The PostgreSQL budget, masters, settings and access routers. Each names
+    # the permission its route requires and a role that holds the router's
+    # read floor -- so it authenticates and gets past the floor -- but not the
+    # route's own permission, so only a 403 can pass.
+    ("/api/budget/periods/{period_id}/transition", "POST",
+     "/api/budget/periods/AP-2026-07/transition", {"to_state": "OPEN"},
+     "period.transition", "Requestor"),
+    ("/api/budget/revisions", "POST", "/api/budget/revisions",
+     {"wbs_id": "WBS-A-CIVIL", "budget_head_id": "BH-DM1-CIVIL",
+      "delta_paise": 100000, "effective_from": "2026-09-01",
+      "justification": "unauthorised attempt"},
+     "revision.create", "ProcurementApprover"),
+    ("/api/budget/revisions/{revision_id}/approve", "POST",
+     "/api/budget/revisions/REV-DM1-ELEC-INC/approve", {},
+     "revision.approve", "Requestor"),
+    ("/api/budget/revisions/{revision_id}/reject", "POST",
+     "/api/budget/revisions/REV-DM1-ELEC-INC/reject",
+     {"reason": "unauthorised attempt"}, "revision.approve", "Requestor"),
+    ("/api/budget/transfers", "POST", "/api/budget/transfers",
+     {"from_wbs_id": "WBS-B-PM-MOD", "from_head_id": "BH-DM2-PM",
+      "to_wbs_id": "WBS-B-CIVIL", "to_head_id": "BH-DM2-CIVIL",
+      "amount_paise": 100000, "effective_from": "2026-09-01",
+      "justification": "unauthorised attempt"},
+     "revision.create", "ProcurementApprover"),
+    ("/api/budget/transfers/{transfer_id}/approve", "POST",
+     "/api/budget/transfers/TRF-DM2-PMMOD-TO-CIVIL/approve", {},
+     "revision.approve", "Requestor"),
+    ("/api/budget/transfers/{transfer_id}/reject", "POST",
+     "/api/budget/transfers/TRF-DM2-PMMOD-TO-CIVIL/reject",
+     {"reason": "unauthorised attempt"}, "revision.approve", "Requestor"),
+
+    ("/api/masters/{kind_name}", "POST", "/api/masters/items",
+     {"code": "IT-X", "name": "unauthorised attempt"},
+     "masters.write", "Requestor"),
+    ("/api/masters/{kind_name}/{item_id}", "PUT", "/api/masters/items/IT-DM-001",
+     {"name": "unauthorised attempt", "version_no": 1},
+     "masters.write", "Requestor"),
+    ("/api/masters/{kind_name}/{item_id}/deactivate", "POST",
+     "/api/masters/items/IT-DM-001/deactivate", {},
+     "masters.write", "Requestor"),
+
+    ("/api/settings/{collection}", "POST", "/api/settings/entities",
+     {"code": "ENT-X", "name": "unauthorised attempt"},
+     "settings.write", "Requestor"),
+    ("/api/settings/{collection}/{item_id}", "PUT",
+     "/api/settings/entities/ENT-DM-01",
+     {"name": "unauthorised attempt", "version_no": 1},
+     "settings.write", "Requestor"),
+    ("/api/settings/{collection}/{item_id}/deactivate", "POST",
+     "/api/settings/entities/ENT-DM-01/deactivate", {},
+     "settings.write", "Requestor"),
+
+    ("/api/admin/users/{user_id}/grants", "PUT", "/api/admin/users/U-PM/grants",
+     {"roles": ["Administrator"], "scopes": {"read_all": True}},
+     "admin.reset", "Auditor"),
 ]
 
 PUBLIC_MUTATING_ROUTES = {"/api/auth/login"}

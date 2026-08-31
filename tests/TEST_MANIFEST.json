@@ -192,6 +192,40 @@
         "body_sha": "52f1f0e819b5cc62"
       }
     },
+    "test_budget_api_guard.py": {
+      "test_every_budget_route_is_actually_served": {
+        "assertions": 1,
+        "body_sha": "43c5aadb5e2c642f"
+      },
+      "test_no_budget_route_answers_an_unauthenticated_caller": {
+        "assertions": 1,
+        "body_sha": "15f83cf95e53160f"
+      },
+      "test_a_present_but_invalid_session_is_still_refused": {
+        "assertions": 1,
+        "body_sha": "246617fb5f909be5"
+      },
+      "test_the_guard_is_declared_on_the_router_not_route_by_route": {
+        "assertions": 1,
+        "body_sha": "974a2d101d07da70"
+      },
+      "test_period_transition_permission_exists_and_excludes_read_only_roles": {
+        "assertions": 3,
+        "body_sha": "a8da7c44817872c0"
+      },
+      "test_a_role_lacking_the_permission_is_refused": {
+        "assertions": 2,
+        "body_sha": "ff57fef343ae505d"
+      },
+      "test_the_actor_is_server_derived_and_ignores_a_caller_supplied_header": {
+        "assertions": 2,
+        "body_sha": "1cd9c50f66ddb530"
+      },
+      "test_scope_is_not_an_unconditional_whole_estate_service_principal": {
+        "assertions": 4,
+        "body_sha": "e826326886f38d42"
+      }
+    },
     "test_capitalisation.py": {
       "test_aud_c_009_capitalisation_is_blocked_while_commitment_remains": {
         "assertions": 4,
@@ -986,6 +1020,44 @@
         "body_sha": "c488e1746f509059"
       }
     },
+    "test_masters_settings_api_guard.py": {
+      "test_every_route_is_actually_served": {
+        "assertions": 1,
+        "body_sha": "f5ffbc57a6abeeba"
+      },
+      "test_an_unauthenticated_caller_is_refused": {
+        "assertions": 1,
+        "body_sha": "f203d24bdd848591"
+      },
+      "test_a_forged_session_is_refused": {
+        "assertions": 1,
+        "body_sha": "246617fb5f909be5"
+      },
+      "test_caller_supplied_permission_headers_grant_nothing": {
+        "assertions": 1,
+        "body_sha": "2e5b1e150d1df63d"
+      },
+      "test_the_guard_is_declared_on_the_router": {
+        "assertions": 1,
+        "body_sha": "a134036b885f1b14"
+      },
+      "test_a_role_lacking_the_write_permission_is_refused": {
+        "assertions": 2,
+        "body_sha": "74a526e8fd5923f6"
+      },
+      "test_each_new_permission_is_real_and_least_privilege": {
+        "assertions": 3,
+        "body_sha": "bffa624fac130233"
+      },
+      "test_revealing_tax_identity_is_narrower_than_reading": {
+        "assertions": 1,
+        "body_sha": "9804c5c13b0b61f1"
+      },
+      "test_permissions_come_from_the_principal_not_from_headers": {
+        "assertions": 4,
+        "body_sha": "423b5189f515ca11"
+      }
+    },
     "test_middleware_observability.py": {
       "test_a_successful_request_is_recorded_with_duration": {
         "assertions": 3,
@@ -1206,6 +1278,44 @@
       "test_aud_h_007_split_pro_rata_refuses_a_zero_total_weight": {
         "assertions": 1,
         "body_sha": "1f5ff16ac4882cad"
+      }
+    },
+    "test_negative_access_matrix.py": {
+      "test_every_admin_access_route_carries_a_permission_dependency": {
+        "assertions": 1,
+        "body_sha": "eb6abc81fc889593"
+      },
+      "test_negative_matrix_per_role_archetype_live": {
+        "assertions": 5,
+        "body_sha": "d407d4ac8b0b9389"
+      },
+      "test_negative_matrix_out_of_scope_insert_is_refused_live": {
+        "assertions": 2,
+        "body_sha": "190e2341ca3a562e"
+      },
+      "test_negative_matrix_moving_a_row_out_of_scope_is_refused_live": {
+        "assertions": 3,
+        "body_sha": "81761bdb7555aa4a"
+      },
+      "test_api_read_grants_requires_audit_read_permission_live": {
+        "assertions": 5,
+        "body_sha": "5920ea83824c23a2"
+      },
+      "test_api_read_grants_for_unknown_user_is_not_found_live": {
+        "assertions": 2,
+        "body_sha": "8b98ef8800b25288"
+      },
+      "test_api_write_grants_requires_admin_reset_permission_live": {
+        "assertions": 3,
+        "body_sha": "aea88dd8b74c12f6"
+      },
+      "test_api_write_grants_denies_service_maker_checker_role_live": {
+        "assertions": 2,
+        "body_sha": "8c9446041c022cf8"
+      },
+      "test_api_write_grants_is_audited_live": {
+        "assertions": 6,
+        "body_sha": "3b93139a2d4bd1c1"
       }
     },
     "test_observability.py": {
@@ -1548,6 +1658,96 @@
         "body_sha": "f7e12b3c5d572512"
       }
     },
+    "test_pg_budget.py": {
+      "test_cursor_round_trips": {
+        "assertions": 1,
+        "body_sha": "59113f977d3b5e3a"
+      },
+      "test_decode_cursor_rejects_garbage": {
+        "assertions": 2,
+        "body_sha": "3b5643959af6a595"
+      },
+      "test_budget_service_error_carries_code_status_message": {
+        "assertions": 4,
+        "body_sha": "c145e6088abb459b"
+      },
+      "test_err_helper_always_raises": {
+        "assertions": 3,
+        "body_sha": "4c8d1a974baf6885"
+      },
+      "test_watch_and_critical_thresholds_come_from_domain_not_literals": {
+        "assertions": 2,
+        "body_sha": "03f70c255934abf5"
+      },
+      "test_check_availability_rejects_negative_amount_before_touching_session": {
+        "assertions": 2,
+        "body_sha": "c99487fe6fab5d0b"
+      },
+      "test_line_row_to_dict_shape": {
+        "assertions": 6,
+        "body_sha": "0588ad42308b4a65"
+      },
+      "test_migration_makes_original_budget_lines_immutable_at_the_database_level": {
+        "assertions": 4,
+        "body_sha": "ee5b2604e8b8abd3"
+      },
+      "test_migration_original_lines_must_be_positive_amount": {
+        "assertions": 2,
+        "body_sha": "f074d4dcdd52199f"
+      },
+      "test_migration_has_a_rollback_section": {
+        "assertions": 1,
+        "body_sha": "7fb07a2b463671d4"
+      },
+      "test_migration_money_columns_are_bigint": {
+        "assertions": 1,
+        "body_sha": "55d306163008e277"
+      },
+      "test_original_budget_line_refuses_update_at_database_level": {
+        "assertions": 1,
+        "body_sha": "b509613b26f53044"
+      },
+      "test_original_budget_line_refuses_delete_at_database_level": {
+        "assertions": 1,
+        "body_sha": "7bbd4e095ccef36a"
+      },
+      "test_revision_budget_line_may_be_updated_and_deleted": {
+        "assertions": 0,
+        "body_sha": "d0dd956c00a00dfe"
+      },
+      "test_recompute_cell_is_idempotent": {
+        "assertions": 3,
+        "body_sha": "61760d42f5e62587"
+      },
+      "test_revision_creates_no_spending_capacity_until_approved": {
+        "assertions": 4,
+        "body_sha": "9e327b87b0959fd1"
+      },
+      "test_approve_revision_refuses_self_approval": {
+        "assertions": 2,
+        "body_sha": "6fdc9b53ffe5316f"
+      },
+      "test_transfer_moves_budget_net_zero_between_two_cells": {
+        "assertions": 4,
+        "body_sha": "41cbcda71877b502"
+      },
+      "test_approve_transfer_raises_budget_moved_when_source_exposure_grew": {
+        "assertions": 2,
+        "body_sha": "98bd44bcccdcf3e4"
+      },
+      "test_check_availability_invariants": {
+        "assertions": 5,
+        "body_sha": "04cfa9b982277d9d"
+      },
+      "test_check_availability_rolls_up_the_whole_subtree_not_just_the_owner": {
+        "assertions": 3,
+        "body_sha": "68d0d68bb039a799"
+      },
+      "test_concurrent_revision_approvals_at_60_percent_each_exactly_one_succeeds": {
+        "assertions": 4,
+        "body_sha": "325584e81425c7bf"
+      }
+    },
     "test_pg_constraints.py": {
       "test_overlapping_accounting_periods_for_the_same_entity_are_rejected": {
         "assertions": 1,
@@ -1666,6 +1866,132 @@
         "body_sha": "4e27e171d32990d5"
       }
     },
+    "test_pg_masters.py": {
+      "test_mask_gst_no_matches_contract_example": {
+        "assertions": 1,
+        "body_sha": "677107d6922ff79b"
+      },
+      "test_mask_pan_no_matches_contract_example": {
+        "assertions": 1,
+        "body_sha": "986d7fbf71755da0"
+      },
+      "test_mask_gst_no_none_passes_through": {
+        "assertions": 2,
+        "body_sha": "f2bf9e3b7f421440"
+      },
+      "test_mask_pan_no_none_passes_through": {
+        "assertions": 1,
+        "body_sha": "ebd1d041ceaaca17"
+      },
+      "test_mask_never_raises_on_a_too_short_value": {
+        "assertions": 2,
+        "body_sha": "5e09b7b3659d478b"
+      },
+      "test_render_vendor_masks_by_default": {
+        "assertions": 3,
+        "body_sha": "113983d5a9e69ec5"
+      },
+      "test_render_vendor_reveals_on_request": {
+        "assertions": 3,
+        "body_sha": "076806d178187a2d"
+      },
+      "test_render_vendor_does_not_mutate_the_input_row": {
+        "assertions": 1,
+        "body_sha": "82bce9614ce51860"
+      },
+      "test_masters_module_never_imports_or_calls_a_hash_function": {
+        "assertions": 1,
+        "body_sha": "f9589aca0a291f4e"
+      },
+      "test_migration_never_hashes_gst_or_pan_columns": {
+        "assertions": 1,
+        "body_sha": "52e1636d40f29194"
+      },
+      "test_normalise_text": {
+        "assertions": 1,
+        "body_sha": "2498760014466f5d"
+      },
+      "test_a_duplicate_pair_normalises_identically": {
+        "assertions": 1,
+        "body_sha": "449962de68018fee"
+      },
+      "test_kind_for_items_and_vendors": {
+        "assertions": 2,
+        "body_sha": "cb3fe39a2a4dc6e6"
+      },
+      "test_kind_for_unknown_raises": {
+        "assertions": 3,
+        "body_sha": "cd869a3de7c5b8f2"
+      },
+      "test_item_and_vendor_business_fields_are_disjoint_from_governance_fields": {
+        "assertions": 1,
+        "body_sha": "15630cfa8d0262f4"
+      },
+      "test_ingest_refuses_live_status": {
+        "assertions": 3,
+        "body_sha": "badd32f936ceefc0"
+      },
+      "test_create_local_forces_source_local_even_if_payload_lies": {
+        "assertions": 5,
+        "body_sha": "c35c181cb0e2c5db"
+      },
+      "test_create_local_writes_an_audit_entry": {
+        "assertions": 2,
+        "body_sha": "f2988b1c90d36c71"
+      },
+      "test_ingest_from_adapter_creates_a_zoho_row": {
+        "assertions": 3,
+        "body_sha": "53c31901aa9ea460"
+      },
+      "test_ingest_from_adapter_refuses_live_or_verified_status": {
+        "assertions": 2,
+        "body_sha": "3c8562e730568fa9"
+      },
+      "test_stale_version_returns_409_and_row_is_provably_unchanged": {
+        "assertions": 7,
+        "body_sha": "5083358eba4dca97"
+      },
+      "test_zoho_sourced_row_refuses_a_business_field_edit": {
+        "assertions": 4,
+        "body_sha": "1e90328690aa2e38"
+      },
+      "test_zoho_sourced_row_allows_a_governance_field_edit": {
+        "assertions": 3,
+        "body_sha": "7744a9ae0b0f416c"
+      },
+      "test_duplicate_is_flagged_never_merged": {
+        "assertions": 5,
+        "body_sha": "3bfc53506da16a85"
+      },
+      "test_find_duplicate_returns_none_when_nothing_matches": {
+        "assertions": 1,
+        "body_sha": "f1593ce4275442a1"
+      },
+      "test_deactivate_does_not_delete": {
+        "assertions": 4,
+        "body_sha": "6a55a01e80f37a53"
+      },
+      "test_reveal_writes_one_audit_entry_per_present_field": {
+        "assertions": 4,
+        "body_sha": "9d26a583c72a315a"
+      },
+      "test_issue_number_formats_with_prefix_and_padding": {
+        "assertions": 3,
+        "body_sha": "77ab46d91c983202"
+      },
+      "test_issue_number_unknown_series_raises": {
+        "assertions": 2,
+        "body_sha": "ae6abcd3e273e350"
+      },
+      "test_issued_numbers_are_immutable": {
+        "assertions": 4,
+        "body_sha": "7d30bfca7978e5d6"
+      },
+      "test_numbering_is_collision_safe_under_concurrency": {
+        "assertions": 3,
+        "body_sha": "b7624f1d68d33b7d"
+      }
+    },
     "test_pg_migrations_runner.py": {
       "test_discover_skips_seed_demo_sql_and_its_presence_does_not_change_the_version_list": {
         "assertions": 4,
@@ -1710,6 +2036,64 @@
       "test_assert_schema_current_passes_silently_when_current": {
         "assertions": 0,
         "body_sha": "485d746ad36d4129"
+      }
+    },
+    "test_pg_periods.py": {
+      "test_allowed_transitions_are_forward_only": {
+        "assertions": 4,
+        "body_sha": "618a4ee483255189"
+      },
+      "test_no_transition_skips_a_state": {
+        "assertions": 2,
+        "body_sha": "9500bda79d6d5c5d"
+      },
+      "test_no_backward_transition": {
+        "assertions": 3,
+        "body_sha": "e57ad424621feabf"
+      },
+      "test_period_service_error_carries_code_status_message": {
+        "assertions": 3,
+        "body_sha": "203c2e06ba6dc167"
+      },
+      "test_table_exists_helper_is_false_for_a_made_up_name": {
+        "assertions": 1,
+        "body_sha": "253c92a8cebad509"
+      },
+      "test_has_open_reconciliation_exceptions_is_vacuously_false_without_the_table": {
+        "assertions": 2,
+        "body_sha": "24e782b938c166de"
+      },
+      "test_transition_future_to_open_succeeds": {
+        "assertions": 2,
+        "body_sha": "9bced2e5f35eeaa2"
+      },
+      "test_transition_refuses_illegal_skip": {
+        "assertions": 3,
+        "body_sha": "eef5a7faae638c6d"
+      },
+      "test_transition_refuses_backward_move": {
+        "assertions": 2,
+        "body_sha": "1924e1baed3ee5b5"
+      },
+      "test_transition_to_closed_sets_closed_at_and_closed_by": {
+        "assertions": 3,
+        "body_sha": "ee51f23d707cb1b1"
+      },
+      "test_period_cannot_close_while_open_reconciliation_exception_exists": {
+        "assertions": 3,
+        "body_sha": "3ec8d8f1282c39ef"
+      },
+      "test_transition_to_open_rolls_future_budget_into_current": {
+        "assertions": 2,
+        "body_sha": "356554dc2d391a8a"
+      },
+      "test_roll_period_effective_budget_is_idempotent": {
+        "assertions": 2,
+        "body_sha": "4789a6067be3c408"
+      },
+      "test_roll_period_effective_budget_only_touches_its_own_entity": {
+        "assertions": 3,
+        "body_sha": "47f163e4396cfb50"
       }
     },
     "test_pg_repo.py": {
@@ -1806,6 +2190,158 @@
         "body_sha": "87f1f360b08651af"
       }
     },
+    "test_pg_rls.py": {
+      "test_no_bare_set_statement_in_app_backend_pg": {
+        "assertions": 1,
+        "body_sha": "68cd0aba98706c70"
+      },
+      "test_migration_registers_rls_and_a_policy_for_every_table_in_the_registry": {
+        "assertions": 3,
+        "body_sha": "8293b32ad7f57d87"
+      },
+      "test_rls_table_columns_matches_repo_project_scope_columns": {
+        "assertions": 1,
+        "body_sha": "0b244fc6a8f413b8"
+      },
+      "test_rls_table_columns_matches_repo_wbs_element_scope_columns": {
+        "assertions": 1,
+        "body_sha": "ecd40d317e9448f5"
+      },
+      "test_permits_none_dimension_is_unrestricted": {
+        "assertions": 2,
+        "body_sha": "41fcc3034dcf2f65"
+      },
+      "test_permits_empty_frozenset_permits_nothing": {
+        "assertions": 2,
+        "body_sha": "eb3622195e0ba248"
+      },
+      "test_permits_restricted_set_matches_membership": {
+        "assertions": 2,
+        "body_sha": "c600e775f46a2882"
+      },
+      "test_permits_read_all_overrides_every_restriction": {
+        "assertions": 1,
+        "body_sha": "baf748c4f6b66fc9"
+      },
+      "test_permits_requires_every_dimension_to_agree": {
+        "assertions": 2,
+        "body_sha": "8a69cdae9dd04c14"
+      },
+      "test_rls_enabled_and_forced_for_every_registered_table_live": {
+        "assertions": 2,
+        "body_sha": "c2364b331fac0009"
+      },
+      "test_capex_app_role_exists_and_is_not_login_live": {
+        "assertions": 3,
+        "body_sha": "c349f75491b23a9f"
+      },
+      "test_project_rls_matches_compiler_and_pure_python_live": {
+        "assertions": 3,
+        "body_sha": "a406691de32d9e94"
+      },
+      "test_wbs_element_rls_matches_compiler_live": {
+        "assertions": 2,
+        "body_sha": "a023e6dd9e0f209e"
+      },
+      "test_budget_cell_rls_matches_join_compiler_live": {
+        "assertions": 3,
+        "body_sha": "a446fdbb13814aa4"
+      },
+      "test_org_table_rls_matches_pure_python_permits_live": {
+        "assertions": 1,
+        "body_sha": "0dc8002ec3f70532"
+      },
+      "test_empty_scope_yields_no_rows_via_compiler_and_rls_live": {
+        "assertions": 2,
+        "body_sha": "e8c13bde054cc82a"
+      },
+      "test_role_and_scope_do_not_leak_across_pool_reuse_live": {
+        "assertions": 3,
+        "body_sha": "869cd0afada39905"
+      },
+      "test_no_service_maker_checker_across_seeded_and_fixture_users_live": {
+        "assertions": 0,
+        "body_sha": "eae558ea7372dadc"
+      }
+    },
+    "test_pg_roles.py": {
+      "test_roles_match_frozen_c9_contract": {
+        "assertions": 2,
+        "body_sha": "31b06476c892eabb"
+      },
+      "test_migration_check_constraint_matches_roles_py": {
+        "assertions": 2,
+        "body_sha": "1ac238b8226be118"
+      },
+      "test_permissions_reference_only_known_roles": {
+        "assertions": 1,
+        "body_sha": "7fbf0cd7322e4389"
+      },
+      "test_maker_checker_is_a_subset_of_known_permissions": {
+        "assertions": 1,
+        "body_sha": "5a76b105635a8285"
+      },
+      "test_roles_with_maker_checker_is_nonempty_and_known": {
+        "assertions": 2,
+        "body_sha": "44a5cbca737ed27f"
+      },
+      "test_permissions_for_roles_is_a_union": {
+        "assertions": 2,
+        "body_sha": "b60f149ab73394d6"
+      },
+      "test_permissions_for_unknown_role_is_empty_not_an_error": {
+        "assertions": 1,
+        "body_sha": "90d1b5538472ef26"
+      },
+      "test_roles_with_permission_unknown_permission_raises": {
+        "assertions": 1,
+        "body_sha": "c1577bfe656d7e0b"
+      },
+      "test_assert_role_grantable_rejects_unknown_role": {
+        "assertions": 1,
+        "body_sha": "52209b7ab0609483"
+      },
+      "test_assert_role_grantable_allows_user_any_role": {
+        "assertions": 0,
+        "body_sha": "87b04f01bfbd3b8e"
+      },
+      "test_assert_role_grantable_denies_service_maker_checker_role": {
+        "assertions": 1,
+        "body_sha": "013d8f16ab70e3c2"
+      },
+      "test_assert_role_grantable_allows_service_non_maker_checker_role": {
+        "assertions": 1,
+        "body_sha": "2455ee711591e2d3"
+      },
+      "test_seed_fragment_grants_no_service_maker_checker_role": {
+        "assertions": 2,
+        "body_sha": "40f6b4fc2abd7046"
+      },
+      "test_seed_fragment_demonstrates_empty_grant_set": {
+        "assertions": 2,
+        "body_sha": "30531d23f45f5d0d"
+      },
+      "test_resolve_scope_distinguishes_none_from_empty_live": {
+        "assertions": 3,
+        "body_sha": "a0aa74dbae434256"
+      },
+      "test_set_roles_and_set_scope_round_trip_live": {
+        "assertions": 8,
+        "body_sha": "cf02c762e68d98bb"
+      },
+      "test_set_roles_denies_service_maker_checker_and_writes_nothing": {
+        "assertions": 2,
+        "body_sha": "e8d72fb9ef63445f"
+      },
+      "test_assert_no_service_maker_checker_live": {
+        "assertions": 1,
+        "body_sha": "264fbbbffe2c5f75"
+      },
+      "test_seed_fragment_produces_the_five_archetypes_live": {
+        "assertions": 17,
+        "body_sha": "e8c46464b0b3cf49"
+      }
+    },
     "test_pg_scope_leakage.py": {
       "test_no_bare_set_statement_in_pg_backend": {
         "assertions": 1,
@@ -1861,6 +2397,30 @@
         "assertions": 1,
         "body_sha": "9d3b2354919f9277"
       },
+      "test_seed_parts_dir_resolves_to_a_real_directory": {
+        "assertions": 4,
+        "body_sha": "a27437a528c8251e"
+      },
+      "test_every_committed_fragment_is_discovered": {
+        "assertions": 2,
+        "body_sha": "3f914966ccaee4d4"
+      },
+      "test_fragments_load_in_filename_order": {
+        "assertions": 1,
+        "body_sha": "a02d0f6bd1920f4f"
+      },
+      "test_seed_executes_the_base_file_then_every_fragment": {
+        "assertions": 1,
+        "body_sha": "72427c22c3be8c36"
+      },
+      "test_a_missing_fragment_directory_is_not_an_error": {
+        "assertions": 1,
+        "body_sha": "9a8829c17ee341ff"
+      },
+      "test_fragments_never_load_when_a_guard_refuses": {
+        "assertions": 2,
+        "body_sha": "fd513ef7d4c95c57"
+      },
       "test_seed_loads_the_full_demo_dataset": {
         "assertions": 1,
         "body_sha": "961861ef04b2c740"
@@ -1892,6 +2452,76 @@
       "test_seed_refuses_against_an_unmigrated_database": {
         "assertions": 1,
         "body_sha": "4197d50506353f41"
+      }
+    },
+    "test_pg_settings.py": {
+      "test_every_contract_collection_is_registered": {
+        "assertions": 1,
+        "body_sha": "55189c4ab9f26a5f"
+      },
+      "test_spec_for_unknown_collection_raises_404": {
+        "assertions": 3,
+        "body_sha": "4066ba83042708b5"
+      },
+      "test_only_entities_carries_masked_fields": {
+        "assertions": 2,
+        "body_sha": "32ee6a52a2c6c3eb"
+      },
+      "test_render_masks_entity_tax_identity_by_default": {
+        "assertions": 2,
+        "body_sha": "858c8136c6a80520"
+      },
+      "test_render_reveals_entity_tax_identity_on_request": {
+        "assertions": 2,
+        "body_sha": "8827d50657f6ffa7"
+      },
+      "test_render_leaves_unmasked_collections_alone": {
+        "assertions": 1,
+        "body_sha": "0c4da1cbdca61d4a"
+      },
+      "test_create_and_list_an_organisation": {
+        "assertions": 6,
+        "body_sha": "f3a0c80d6e427471"
+      },
+      "test_create_requires_a_parent_reference": {
+        "assertions": 2,
+        "body_sha": "f932f67d1fb78c0c"
+      },
+      "test_create_refuses_an_invalid_parent_reference": {
+        "assertions": 2,
+        "body_sha": "d39e6fb545d2b98a"
+      },
+      "test_create_requires_actor_header": {
+        "assertions": 2,
+        "body_sha": "1a112615db8996e5"
+      },
+      "test_unknown_collection_is_404": {
+        "assertions": 2,
+        "body_sha": "4b12b0247619e6a1"
+      },
+      "test_stale_version_returns_409_and_row_is_unchanged": {
+        "assertions": 6,
+        "body_sha": "849ee3b2ee6b8451"
+      },
+      "test_deactivate_does_not_delete": {
+        "assertions": 3,
+        "body_sha": "7b2144c4a3ccb8e3"
+      },
+      "test_masked_by_default": {
+        "assertions": 3,
+        "body_sha": "a9845084480c48bd"
+      },
+      "test_reveal_without_permission_is_refused": {
+        "assertions": 2,
+        "body_sha": "9c89b75846c8aacf"
+      },
+      "test_reveal_with_permission_but_no_reason_is_refused": {
+        "assertions": 2,
+        "body_sha": "ba9073831aae3d7c"
+      },
+      "test_reveal_with_permission_and_reason_unmasks_and_audits": {
+        "assertions": 6,
+        "body_sha": "33c0044a7559a015"
       }
     },
     "test_pg_transactions.py": {
@@ -1957,11 +2587,34 @@
         "assertions": 4,
         "body_sha": "f579f980549700b2"
       }
+    },
+    "test_scope_enforcement.py": {
+      "test_no_service_module_reads_a_scopable_table_off_the_chokepoint": {
+        "assertions": 1,
+        "body_sha": "20851fd1a79fc9cc"
+      },
+      "test_the_gate_actually_catches_a_bypass": {
+        "assertions": 3,
+        "body_sha": "8089d6e5131d7b33"
+      },
+      "test_an_exempt_comment_is_required_to_state_a_reason": {
+        "assertions": 1,
+        "body_sha": "430f1983d307cab2"
+      },
+      "test_the_infrastructure_allow_list_names_only_files_that_exist": {
+        "assertions": 1,
+        "body_sha": "9a2f70bea094d4d9"
+      },
+      "test_there_are_service_modules_to_check": {
+        "assertions": 1,
+        "body_sha": "08298fae926df5a9"
+      }
     }
   },
   "counts": {
     "test_api_auth.py": 27,
     "test_audit.py": 17,
+    "test_budget_api_guard.py": 8,
     "test_capitalisation.py": 18,
     "test_connector.py": 20,
     "test_contracts.py": 47,
@@ -1969,26 +2622,36 @@
     "test_financial_controls.py": 61,
     "test_known_defects.py": 5,
     "test_manifest.py": 10,
+    "test_masters_settings_api_guard.py": 9,
     "test_middleware_observability.py": 11,
     "test_migrations.py": 20,
     "test_money.py": 23,
+    "test_negative_access_matrix.py": 9,
     "test_observability.py": 40,
     "test_pg_adoption.py": 16,
     "test_pg_audit.py": 20,
     "test_pg_audit_api_e2e.py": 7,
+    "test_pg_budget.py": 22,
     "test_pg_constraints.py": 8,
     "test_pg_fixture_guard.py": 3,
     "test_pg_locking.py": 17,
+    "test_pg_masters.py": 31,
     "test_pg_migrations_runner.py": 11,
+    "test_pg_periods.py": 14,
     "test_pg_repo.py": 23,
+    "test_pg_rls.py": 18,
+    "test_pg_roles.py": 19,
     "test_pg_scope_leakage.py": 5,
-    "test_pg_seed.py": 16,
+    "test_pg_seed.py": 22,
+    "test_pg_settings.py": 17,
     "test_pg_transactions.py": 4,
-    "test_runtime_startup.py": 11
+    "test_runtime_startup.py": 11,
+    "test_scope_enforcement.py": 5
   },
   "assertions": {
     "test_api_auth.py": 50,
     "test_audit.py": 39,
+    "test_budget_api_guard.py": 15,
     "test_capitalisation.py": 58,
     "test_connector.py": 57,
     "test_contracts.py": 73,
@@ -1996,21 +2659,30 @@
     "test_financial_controls.py": 159,
     "test_known_defects.py": 13,
     "test_manifest.py": 15,
+    "test_masters_settings_api_guard.py": 15,
     "test_middleware_observability.py": 31,
     "test_migrations.py": 45,
     "test_money.py": 31,
+    "test_negative_access_matrix.py": 29,
     "test_observability.py": 77,
     "test_pg_adoption.py": 37,
     "test_pg_audit.py": 62,
     "test_pg_audit_api_e2e.py": 24,
+    "test_pg_budget.py": 57,
     "test_pg_constraints.py": 13,
     "test_pg_fixture_guard.py": 3,
     "test_pg_locking.py": 36,
+    "test_pg_masters.py": 79,
     "test_pg_migrations_runner.py": 32,
+    "test_pg_periods.py": 35,
     "test_pg_repo.py": 37,
+    "test_pg_rls.py": 34,
+    "test_pg_roles.py": 50,
     "test_pg_scope_leakage.py": 12,
-    "test_pg_seed.py": 42,
+    "test_pg_seed.py": 53,
+    "test_pg_settings.py": 47,
     "test_pg_transactions.py": 10,
-    "test_runtime_startup.py": 31
+    "test_runtime_startup.py": 31,
+    "test_scope_enforcement.py": 7
   }
 }

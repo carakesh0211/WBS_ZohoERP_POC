@@ -95,6 +95,14 @@ if masters_api is not None:
 if settings_api is not None:
     app.include_router(settings_api.router)
 
+try:
+    from .api import admin_access as admin_access_api
+except Exception:  # pragma: no cover - import guard, mirrors audit above
+    admin_access_api = None
+
+if admin_access_api is not None:
+    app.include_router(admin_access_api.router)
+
 PUBLIC_PATHS = {"/api/health", "/api/auth/login"}
 
 

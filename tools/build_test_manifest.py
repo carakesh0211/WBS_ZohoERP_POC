@@ -53,6 +53,16 @@ POST_BASELINE_FILES = {
     "test_pg_scope_leakage.py",
     # M1-S2
     "test_pg_audit_api_e2e.py", "test_pg_seed.py", "test_pg_adoption.py",
+    # --- Wave 2: M3 budget, M4a identity/scope, M2 settings and masters ---
+    # Stream-owned suites.
+    "test_pg_budget.py", "test_pg_periods.py",
+    "test_pg_masters.py", "test_pg_settings.py",
+    "test_pg_roles.py", "test_pg_rls.py", "test_negative_access_matrix.py",
+    # Integration-owned: the guards written after reviewing what the streams
+    # delivered. All three run without a live database, deliberately -- the
+    # defects they hold lived where a database-gated test would have skipped.
+    "test_budget_api_guard.py", "test_masters_settings_api_guard.py",
+    "test_scope_enforcement.py",
 }
 
 

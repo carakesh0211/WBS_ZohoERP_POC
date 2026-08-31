@@ -99,7 +99,10 @@ class _RequirePermission:
 require_access_read = _RequirePermission("audit.read")
 require_access_grant = _RequirePermission("admin.reset")
 
-router = APIRouter()
+# A router-level floor as well as the per-route permissions below: the
+# per-route guards are correct and complete for the three routes that
+# exist, but a route added later would inherit nothing without this.
+router = APIRouter(dependencies=[Depends(require_access_read)])
 
 
 def _get_database() -> Database:
