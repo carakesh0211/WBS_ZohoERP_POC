@@ -342,7 +342,15 @@ def test_append_and_verify_chain_round_trip_against_postgres(pg_database, pg_sco
 
     with pg_database.session(pg_scope) as session:
         result = verify_chain(session, stream_key)
-    assert result == {"intact": True, "entries_checked": 2, "first_break_seq": None}
+    # Field-by-field, not an exact dict. verify_chain grew head_seq,
+    # sequence_contiguous, stream_found and a truncation note; an exact-equality
+    # assertion turns every added piece of EVIDENCE into a failure, which
+    # pressures the next person to drop the evidence rather than the assertion.
+    assert result["intact"] is True
+    assert result["entries_checked"] == 2
+    assert result["first_break_seq"] is None
+    assert result["stream_found"] is True
+    assert result["sequence_contiguous"] is True
 
 
 # ---------------------------------------------------------------------------
