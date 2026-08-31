@@ -58,7 +58,54 @@ from ..pg import audit as pg_audit
 from ..pg import masters as pg_masters
 from ..pg.engine import Database, Scope, get_database
 
-router = APIRouter()
+class _SettingsAccess:
+    """Router-level dependency: authenticate, and require `settings.read`, on
+    EVERY route of this router.
+
+    Declared on the ROUTER rather than per route, so a route added later
+    cannot ship unguarded by omission.
+    """
+
+    def __call__(self, request: Request) -> dict:
+        # Lazy import: `main` imports this module, so a module-level import
+        # would be circular.
+        from ..main import principal
+        from .. import auth as auth_mod
+
+        who = principal(
+            authorization=request.headers.get("Authorization", ""),
+            x_session=request.headers.get("X-Session", ""),
+        )
+        try:
+            auth_mod.require(who, "settings.read")
+        except auth_mod.AuthError as exc:
+            raise HTTPException(exc.status,
+                                {"code": exc.code, "message": exc.message})
+        request.state.settings_principal = who
+        return who
+
+
+require_settings_access = _SettingsAccess()
+
+
+def _requires(permission: str):
+    """One route's own permission, on top of the router's read floor."""
+
+    def _dep(request: Request) -> dict:
+        from .. import auth as auth_mod
+
+        who = getattr(request.state, "settings_principal", None) or {}
+        try:
+            auth_mod.require(who, permission)
+        except auth_mod.AuthError as exc:
+            raise HTTPException(exc.status,
+                                {"code": exc.code, "message": exc.message})
+        return who
+
+    return _dep
+
+
+router = APIRouter(dependencies=[Depends(require_settings_access)])
 
 _CORRELATION_HEADER = "X-Correlation-Id"
 _ACTOR_HEADER = "X-Actor-Id"
@@ -217,47 +264,41 @@ def _problem(status_code: int, code: str, title: str, detail: str | None = None)
     })
 
 
+def _principal_of(request: Request) -> dict:
+    return getattr(request.state, "settings_principal", None) or {}
+
+
 def _actor(request: Request) -> str:
-    actor = request.headers.get(_ACTOR_HEADER, "").strip()
+    """The acting user, SERVER-DERIVED from the session.
+
+    Was `request.headers.get("X-Actor-Id")`, which let any caller attribute a
+    master-data change -- and the audit entry written for a tax-identity
+    reveal -- to anyone at all.
+    """
+    who = _principal_of(request)
+    actor = str(who.get("user_id") or who.get("username") or "")
     if not actor:
-        raise _problem(400, "ACTOR_REQUIRED", "X-Actor-Id header is required",
-                        "A mutating request must identify its actor for the audit trail.")
+        raise _problem(401, "NOT_AUTHENTICATED", "Authentication required",
+                        "A mutating request must identify its actor for the "
+                        "audit trail, and the actor is taken from the "
+                        "session, never from a request header.")
     return actor
 
 
 def _permissions(request: Request) -> frozenset[str]:
-    raw = request.headers.get(_PERMISSIONS_HEADER, "")
-    return frozenset(p.strip() for p in raw.split(",") if p.strip())
+    """The caller's permissions, derived from the AUTHENTICATED principal.
 
+    Was `request.headers.get("X-Permissions")` split on commas -- the caller
+    stating its own authorization. Any client could send
+    `X-Permissions: settings.tax_identity.reveal` and unmask every
+    GSTIN and PAN in the estate, which is Regulated data under the plan's
+    data classification.
+    """
+    from .. import auth as auth_mod
 
-def _reveal_context(request: Request) -> tuple[bool, str]:
-    if REVEAL_PERMISSION not in _permissions(request):
-        raise _problem(403, "REVEAL_PERMISSION_REQUIRED",
-                        "Tax identity reveal requires a distinct permission",
-                        f"the caller must hold {REVEAL_PERMISSION!r} (via the "
-                        f"{_PERMISSIONS_HEADER} header) to request ?reveal=true")
-    reason = request.headers.get(_REVEAL_REASON_HEADER, "").strip()
-    if not reason:
-        raise _problem(400, "REVEAL_REASON_REQUIRED", "A reveal reason is required",
-                        f"supply {_REVEAL_REASON_HEADER} naming why the reveal is needed; "
-                        f"it is written into the audit entry")
-    return True, reason
-
-
-def _reveal_entity_tax_identity(session, entity_id: str, *, actor: str, reason: str,
-                                 correlation_id: str | None) -> None:
-    """One audit entry per revealed field, naming the actor, the field and
-    the reason -- the same discipline as
-    `app.backend.pg.masters.reveal_vendor_tax_identity`, repeated here since
-    `entity` is not a master-data table this stream's `pg/masters.py` owns."""
-    row = _select_row(session, COLLECTIONS["entities"], entity_id)
-    if row is None:
-        return
-    data = _row_to_dict(COLLECTIONS["entities"], row)
-    for f in ("gst_no", "pan_no"):
-        if data.get(f):
-            pg_audit.append(session, actor, "REVEAL_TAX_IDENTITY", "entity", entity_id,
-                             f"field={f} reason={reason!r}", correlation_id=correlation_id)
+    roles = set(_principal_of(request).get("roles") or ())
+    return frozenset(name for name, holders in auth_mod.PERMISSIONS.items()
+                     if roles & set(holders))
 
 
 def _encode_cursor(value: str) -> str:
@@ -332,7 +373,7 @@ def list_collection(
     return {"items": items, "next_cursor": next_cursor, "has_more": has_more}
 
 
-@router.post("/api/settings/{collection}", status_code=201)
+@router.post("/api/settings/{collection}", status_code=201, dependencies=[Depends(_requires("settings.write"))])
 def create_collection_row(collection: str, response: Response, request: Request,
                            payload: dict[str, Any] = Body(...),
                            database: Database = Depends(_get_database)) -> dict[str, Any]:
@@ -385,7 +426,7 @@ def create_collection_row(collection: str, response: Response, request: Request,
     return _render(spec, _row_to_dict(spec, row), reveal=False)
 
 
-@router.put("/api/settings/{collection}/{item_id}")
+@router.put("/api/settings/{collection}/{item_id}", dependencies=[Depends(_requires("settings.write"))])
 def update_collection_row(collection: str, item_id: str, response: Response, request: Request,
                            payload: dict[str, Any] = Body(...),
                            database: Database = Depends(_get_database)) -> dict[str, Any]:
@@ -447,7 +488,7 @@ def update_collection_row(collection: str, item_id: str, response: Response, req
     return _render(spec, _row_to_dict(spec, row), reveal=False)
 
 
-@router.post("/api/settings/{collection}/{item_id}/deactivate")
+@router.post("/api/settings/{collection}/{item_id}/deactivate", dependencies=[Depends(_requires("settings.write"))])
 def deactivate_collection_row(collection: str, item_id: str, response: Response,
                                request: Request,
                                database: Database = Depends(_get_database)) -> dict[str, Any]:

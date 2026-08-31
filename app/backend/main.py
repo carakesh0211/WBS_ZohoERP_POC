@@ -83,6 +83,18 @@ if budget_api is not None:
     # twice while the job reported green.
     app.include_router(budget_api.router)
 
+try:
+    from .api import masters as masters_api
+    from .api import settings as settings_api
+except Exception:  # pragma: no cover - import guard, mirrors audit above
+    masters_api = None
+    settings_api = None
+
+if masters_api is not None:
+    app.include_router(masters_api.router)
+if settings_api is not None:
+    app.include_router(settings_api.router)
+
 PUBLIC_PATHS = {"/api/health", "/api/auth/login"}
 
 

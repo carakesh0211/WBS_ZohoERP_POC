@@ -51,6 +51,22 @@ PERMISSIONS: dict[str, tuple[str, ...]] = {
     "capitalisation.approve": ("CapitalisationApprover",),
     "bill.void":              ("FinanceApprover",),
     "audit.read":             ("Auditor", "Administrator"),
+    # Settings and master data. See D-12: the role-to-permission mapping is
+    # a client sign-off, and these are least-privilege placeholders until it
+    # lands, not the final matrix.
+    "settings.read":          ("Requestor", "BudgetController", "ProcurementApprover",
+                               "FinanceApprover", "CapitalisationApprover",
+                               "Administrator"),
+    "settings.write":         ("Administrator",),
+    "masters.read":           ("Requestor", "BudgetController", "ProcurementApprover",
+                               "FinanceApprover", "CapitalisationApprover",
+                               "Administrator"),
+    "masters.write":          ("Administrator", "BudgetController"),
+    # Regulated tax identity. A full reveal is a distinct permission and
+    # writes an audit entry; masking is never bypassed by holding read alone.
+    "settings.tax_identity.reveal": ("Administrator", "FinanceApprover"),
+    "masters.tax_identity.reveal":  ("Administrator", "FinanceApprover",
+                                     "ProcurementApprover"),
     "connector.read":         ("Administrator", "Auditor"),
     "connector.manage":       ("Administrator",),
     "admin.reset":            ("Administrator",),
