@@ -1,0 +1,52 @@
+/* app/frontend/budget.css
+   Additive stylesheet for SCR-09 Budget Planning Grid, SCR-10 Budget
+   Version Comparison and SCR-13 Budget Availability Check — the three
+   screens app/frontend/src/features/budget/** and
+   app/frontend/src/components/budget/** implement.
+
+   Loaded AFTER the byte-frozen app/frontend/styles.css and AFTER
+   extensions.css. Every colour reference below is var(--…) against a custom
+   property already declared in styles.css's :root (itself
+   research/30_contracts/C6_tokens.json's registry) — no new custom property
+   is declared here and no raw hex value appears anywhere in this file.
+   Everything not styled here (tables, tree rows, the utilisation bar,
+   status/verdict dots, messages, empty/loading states, the legend) reuses
+   the classes styles.css and extensions.css already define, unmodified, so
+   these three screens look like they were always part of this application.
+*/
+
+/* ---------------- SCR-09/10/13 host page tabs ----------------
+   A standard WAI-ARIA tabs widget (see budget-tabs.js), visually built from
+   the same idiom as extensions.css's .view-toggle so it reads as one family
+   of controls, but declared here since extensions.css is shared/frozen and
+   not this stream's file to edit. */
+.budget-tabs {
+  display: inline-flex; border: 1px solid var(--n300); border-radius: var(--radius);
+  overflow: hidden; margin-bottom: 10px;
+}
+.budget-tabs button {
+  border: 0; border-radius: 0; height: var(--input-h); padding: 0 14px;
+  background: var(--n0); color: var(--n700); font-weight: 500;
+}
+.budget-tabs button + button { border-left: 1px solid var(--n300); }
+.budget-tabs button[aria-selected="true"] {
+  background: var(--primary-600); color: var(--n0); font-weight: 600;
+}
+
+/* ---------------- section headings inside a tab panel ----------------
+   C6_tokens.json typography.scale "section-title": 15px / 20px / 600 — this
+   token has no class of its own in styles.css (its headings so far are
+   .page-title and .card > h3), so it is declared once, here, for the visible
+   <h2> at the top of each SCR-09/10/13 tab panel. */
+.section-title { font-size: 15px; line-height: 20px; font-weight: 600; color: var(--n900); margin: 4px 0 10px; }
+
+/* ---------------- SCR-13 verdict badge ----------------
+   Reuses the approved .status / .st-* dot-plus-text pattern from styles.css
+   verbatim; this only sizes the "headline" rendering used in the SCR-13
+   result card, where the verdict is the single most important fact on the
+   screen rather than one value among many in a table row. */
+.budget-verdict-lg {
+  font-size: 15px; font-weight: 600; gap: 7px;
+}
+.budget-verdict-lg::before { width: 10px; height: 10px; }
+.budget-verdict-lg .sym { font-size: 13px; }

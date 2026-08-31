@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Budget — CAPEX &amp; WBS Control Hub</title>
+<link rel="stylesheet" href="/static/styles.css">
+<link rel="stylesheet" href="/static/extensions.css">
+<link rel="stylesheet" href="/static/budget.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231B5762'/%3E%3Cpath d='M12 5v4M6 19v-4h12v4M12 9v6' stroke='%23fff' stroke-width='2' fill='none'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<a class="skip-link" href="#budgetContent">Skip to main content</a>
+
+<header class="shellbar">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 4v5M5 20v-5h14v5M12 9v6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </svg>
+    <span class="brand-text">CAPEX &amp; WBS Control Hub</span>
+  </div>
+  <div class="spacer"></div>
+  <a class="icon-btn" href="/">
+    <span aria-hidden="true">←</span> Back to application
+  </a>
+</header>
+
+<main class="main">
+  <div class="page-header">
+    <div class="breadcrumb">
+      <a class="crumb" href="/">Home</a><span aria-hidden="true"> › </span>Budgets
+    </div>
+    <div class="page-title-row">
+      <h1 class="page-title">Budget</h1>
+    </div>
+    <p class="muted small mt-10">
+      Plan against the work breakdown structure, compare budget versions, and check available budget
+      before committing spend.
+    </p>
+  </div>
+  <div class="content" id="budgetContent" tabindex="-1">
+
+    <div class="budget-tabs" role="tablist" aria-label="Budget screens">
+      <button type="button" role="tab" id="budgetTabGrid" aria-controls="budgetPanelGrid" aria-selected="true" tabindex="0">Planning Grid</button>
+      <button type="button" role="tab" id="budgetTabCompare" aria-controls="budgetPanelCompare" aria-selected="false" tabindex="-1">Version Comparison</button>
+      <button type="button" role="tab" id="budgetTabAvailability" aria-controls="budgetPanelAvailability" aria-selected="false" tabindex="-1">Availability Check</button>
+    </div>
+
+    <section id="budgetPanelGrid" role="tabpanel" aria-labelledby="budgetTabGrid" tabindex="0">
+      <h2 class="section-title">Budget Planning Grid</h2>
+    </section>
+
+    <section id="budgetPanelCompare" role="tabpanel" aria-labelledby="budgetTabCompare" tabindex="0" hidden>
+      <h2 class="section-title">Budget Version Comparison</h2>
+    </section>
+
+    <section id="budgetPanelAvailability" role="tabpanel" aria-labelledby="budgetTabAvailability" tabindex="0" hidden>
+      <h2 class="section-title">Budget Availability Check</h2>
+    </section>
+
+  </div>
+</main>
+
+<div id="budgetLiveRegion" class="sr-only" role="status" aria-live="polite"></div>
+
+<script type="module" src="/static/src/features/budget/budget-tabs.js"></script>
+</body>
+</html>
