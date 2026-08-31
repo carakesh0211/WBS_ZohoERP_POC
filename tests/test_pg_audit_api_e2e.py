@@ -70,7 +70,19 @@ def pg_backed_app(seeded_pg):
     from app.backend import main
     from app.backend.pg import engine
 
-    paths = {getattr(r, "path", None) for r in main.app.routes}
+    # Walk RECURSIVELY. Newer FastAPI wraps an included router in a container
+    # object that has no `.path`, so a flat scan of `app.routes` cannot see the
+    # audit routes at all -- and this fixture would then skip every test in the
+    # file while the job reported green.
+    #
+    # That is exactly what happened: all nine of these skipped in CI with
+    # "router is not mounted" while the router was mounted perfectly well. It
+    # is also the same defect I had already fixed once, in
+    # tests/test_api_auth.py::_walk_routes, and then reintroduced here by
+    # writing the naive scan again. Hence the shared helper.
+    from test_api_auth import _walk_routes
+
+    paths = {getattr(r, "path", None) for r in _walk_routes(main.app.routes)}
     if "/api/audit/entries" not in paths:
         pytest.skip(
             "the PostgreSQL audit router is not mounted; main.py mounts it only "
