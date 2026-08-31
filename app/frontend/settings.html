@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings and Master Data — CAPEX &amp; WBS Control Hub</title>
+<link rel="stylesheet" href="/static/styles.css">
+<link rel="stylesheet" href="/static/extensions.css">
+<link rel="stylesheet" href="/static/settings.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231B5762'/%3E%3Cpath d='M12 5v4M6 19v-4h12v4M12 9v6' stroke='%23fff' stroke-width='2' fill='none'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<a class="skip-link" href="#settingsContent">Skip to main content</a>
+
+<header class="shellbar">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 4v5M5 20v-5h14v5M12 9v6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </svg>
+    <span class="brand-text">CAPEX &amp; WBS Control Hub</span>
+  </div>
+  <div class="spacer"></div>
+  <a class="icon-btn" href="/">
+    <span aria-hidden="true">←</span> Back to application
+  </a>
+</header>
+
+<main class="main">
+  <div class="page-header">
+    <div class="breadcrumb">
+      <a class="crumb" href="/">Home</a><span aria-hidden="true"> › </span>Settings and Master Data
+    </div>
+    <div class="page-title-row">
+      <h1 class="page-title">Settings and Master Data</h1>
+    </div>
+    <p class="muted small mt-10">
+      SCR-30 Master Data Configuration, plus the organisation-hierarchy admin screens for organisations,
+      entities, divisions, branches, zones, plants, locations and departments. Records are deactivated, never
+      deleted.
+    </p>
+    <div class="settings-tablist" role="tablist" aria-label="Settings sections">
+      <button type="button" id="settingsTabHierarchy" class="settings-tab" role="tab"
+              aria-selected="true" aria-controls="settingsHierarchyPanel">Organisation hierarchy</button>
+      <button type="button" id="settingsTabMasters" class="settings-tab" role="tab"
+              aria-selected="false" tabindex="-1" aria-controls="settingsMastersPanel">Item &amp; vendor masters</button>
+    </div>
+  </div>
+  <div class="content" id="settingsContent" tabindex="-1">
+    <div id="settingsHierarchyPanel" role="tabpanel" aria-labelledby="settingsTabHierarchy"></div>
+    <div id="settingsMastersPanel" role="tabpanel" aria-labelledby="settingsTabMasters" hidden></div>
+  </div>
+</main>
+
+<div id="settingsLiveRegion" class="sr-only" role="status" aria-live="polite"></div>
+
+<script type="module" src="/static/src/features/settings/settings-app.js"></script>
+</body>
+</html>
