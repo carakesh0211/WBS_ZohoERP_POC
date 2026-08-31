@@ -1,0 +1,63 @@
+/* app/frontend/settings.css
+   Additive stylesheet for the Settings and Master Data screens
+   (app/frontend/src/features/settings/**), loaded AFTER the byte-frozen
+   app/frontend/styles.css and the lead-owned app/frontend/extensions.css.
+   Every colour reference below is var(--…) against a custom property
+   already declared in styles.css's :root (research/30_contracts/
+   C6_tokens.json's registry) — no new custom property is declared here and
+   no raw hex value appears anywhere in this file. Everything else (cards,
+   tables, dialogs, buttons, statuses, messages, empty/loading states) is
+   drawn from classes styles.css and extensions.css already define, reused
+   as-is so this screen looks like it was always part of the application.
+
+   Per ui-contract.md / the settings-frontend brief: never a `style="…"`
+   attribute here either — this file exists so nothing computed ever needs
+   one; only genuinely runtime geometry goes through the CSSOM in JS.
+*/
+
+/* ---------------- section tabs (organisation hierarchy / masters) ---------------- */
+.settings-tablist { display: flex; gap: 4px; margin-top: 10px; border-bottom: 1px solid var(--n200); }
+.settings-tab {
+  border: 0; border-bottom: 2px solid transparent; border-radius: 0;
+  background: transparent; height: 32px; padding: 0 4px; margin-bottom: -1px;
+  font-size: 13px; font-weight: 500; color: var(--n700);
+}
+.settings-tab:hover { background: var(--n100); }
+.settings-tab[aria-selected="true"] {
+  border-bottom-color: var(--primary-600); color: var(--primary-800); font-weight: 600;
+}
+
+/* ---------------- toolbar layout helpers ---------------- */
+.field.grow-action { margin-left: auto; }
+.toolbar .field.f1 { flex: 1; }
+.toolbar .field.f2 { flex: 2; min-width: 180px; }
+
+/* ---------------- row action buttons inside a table cell ---------------- */
+.row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ---------------- pagination / footer row (mirrors extensions.css's .audit-pagination) ---------------- */
+.settings-pagination { display: flex; align-items: center; gap: 10px; padding: 10px 0 2px; flex-wrap: wrap; }
+.settings-pagination .grow { flex: 1; }
+
+/* ---------------- masked identifier + disabled reveal control ---------------- */
+.mask-field { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.mask-reveal-btn { height: 20px; padding: 0 6px; font-size: 10px; }
+.mask-note { white-space: nowrap; }
+
+/* ---------------- source badge / external-record detail ---------------- */
+.source-badge-group { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.source-cell { display: flex; flex-direction: column; gap: 2px; }
+.external-detail { overflow-wrap: anywhere; }
+
+/* ---------------- record dialog: field errors, hints and readonly notes ---------------- */
+.field-hint { margin-top: 1px; }
+.field-err { margin-top: 2px; }
+.field-err-list { margin: 6px 0 0; padding-left: 18px; }
+.field-readonly-note {
+  display: flex; align-items: flex-start; gap: 5px; margin-top: 3px; color: var(--n700);
+}
+.field-readonly-note .sym { flex: 0 0 auto; }
+input:disabled, textarea:disabled { background: var(--n50); color: var(--n500); }
+
+/* ---------------- required-field asterisk keeps the same tone as errors ---------------- */
+.field label { overflow-wrap: anywhere; }
