@@ -143,37 +143,38 @@ def _ids(entries):
 
 
 # ========================================================= completeness of the matrix
-def _walk_routes(routes):
-    """Yield every real route, descending into router containers.
+def _mutating_paths(app) -> set[str]:
+    """Every mutating path the application actually serves, from its OpenAPI
+    schema rather than from `app.routes`.
 
-    Newer FastAPI versions place an `_IncludedRouter` object in `app.routes`
-    for an included router. It has no `.path`, so bare attribute access raised
-    AttributeError in CI while passing locally on an older pin.
+    This walked the route table, descending into router containers, because a
+    newer FastAPI puts an `_IncludedRouter` object in `app.routes` that has no
+    `.path`. Descending fixed the crash but not the underlying problem: the
+    structure of `app.routes` is an internal detail that keeps changing. On
+    FastAPI 0.133 (local) all fourteen Wave 2 routes appear directly; on
+    0.141.1 (CI) they do not, so this assertion reported every one of them as
+    a STALE entry -- reading "these routes were removed" when they were
+    mounted and serving perfectly well. One version of this suite passed
+    locally while claiming in CI that the entire budget, masters, settings and
+    access API had disappeared.
 
-    Crashing was the lucky outcome. The dangerous one is that routes reachable
-    only THROUGH such a container would be invisible to this scan, and an
-    uncovered mutating endpoint would pass the authorisation-matrix check
-    silently. Descending keeps the assertion meaning what its name says.
+    The OpenAPI schema is the application's own published description of what
+    it serves. It is a supported, stable interface, and it cannot disagree
+    with the router structure because it is generated from it.
     """
-    for route in routes:
-        nested = getattr(route, "routes", None)
-        if nested:
-            yield from _walk_routes(nested)
-        if hasattr(route, "path"):
-            yield route
+    schema = app.openapi()
+    return {
+        path
+        for path, operations in schema.get("paths", {}).items()
+        if path.startswith("/api/")
+        for method in operations
+        if method.upper() in ("POST", "PUT", "PATCH", "DELETE")
+    }
 
 
 def test_aud_c_006_every_mutating_route_is_covered_by_the_authorisation_matrix():
     """A new mutating endpoint must be added to MUTATING_ROUTES to pass this."""
-    live = set()
-    for route in _walk_routes(main.app.routes):
-        methods = getattr(route, "methods", None) or set()
-        path = getattr(route, "path", None)
-        if not path or not path.startswith("/api/"):
-            continue
-        for method in methods:
-            if method in ("POST", "PUT", "PATCH", "DELETE"):
-                live.add(path)
+    live = _mutating_paths(main.app)
     covered = {entry[0] for entry in MUTATING_ROUTES} | PUBLIC_MUTATING_ROUTES
     assert live == covered, (
         f"uncovered mutating routes: {sorted(live - covered)}; "

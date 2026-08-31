@@ -187,3 +187,26 @@ def test_scope_is_not_an_unconditional_whole_estate_service_principal():
     assert ordinary.read_all is False
 
     assert _scope_for_roles(["Auditor"]).read_all is True
+
+
+def test_the_route_inventory_is_not_silently_empty():
+    """Guards `test_aud_c_006_every_mutating_route_is_covered_by_the_
+    authorisation_matrix` against passing vacuously.
+
+    That assertion compares the live route inventory against a hand-written
+    matrix. If the inventory ever came back empty -- as it effectively did on
+    FastAPI 0.141.1, where route-table introspection saw none of the Wave 2
+    routers -- the comparison would report every covered route as "stale"
+    rather than saying the inventory was broken. This pins the floor.
+
+    It lives here rather than beside that assertion because `test_api_auth.py`
+    is one of the 220 baseline files, whose count is itself guarded: the
+    baseline exists to catch a baseline test being REMOVED, and adding to it
+    would retire that guard by dilution.
+    """
+    from tests.test_api_auth import _mutating_paths
+
+    live = _mutating_paths(app)
+    assert len(live) >= 20, (
+        f"only {len(live)} mutating paths found; the application serves far "
+        f"more, so the route inventory is not seeing them")
