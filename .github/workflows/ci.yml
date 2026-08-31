@@ -173,34 +173,53 @@ jobs:
         # chain -- and both times the job reported green while testing less
         # than it claimed. A silent skip is indistinguishable from a pass in a
         # summary line, so the reasons are now always in the log.
-        run: python -m pytest -q -rs tests/test_pg_*.py | tee pg-result.txt
+        run: python -m pytest -q -rs --junitxml=pg-result.xml tests/test_pg_*.py
 
       # A green pytest proves nothing ran wrong. It does NOT prove anything
-      # ran: a suite that skipped every live test exits 0 and reports success,
-      # which is exactly how this job once passed while nine end-to-end tests
-      # had quietly opted out of it.
+      # ran: a suite that skipped every live test exits 0 and reports
+      # success, which is how this job once passed while nine end-to-end
+      # tests had quietly opted out of it, five different ways.
       #
-      # CAPEX_DB_URL is set for the step above and a PostgreSQL service is
-      # attached, so the live tests are guaranteed to be runnable here. A
-      # skip in that state is a broken guarantee, not an environment
-      # condition -- so the floor is asserted rather than assumed.
+      # CAPEX_DB_URL is set for the step above and a postgres:16 service is
+      # attached, so the live tests are guaranteed runnable here. A skip in
+      # that state is a broken guarantee, not an environment condition.
+      #
+      # Counts come from the JUnit report rather than from scraping pytest's
+      # summary text: the first version of this guard parsed stdout, found
+      # nothing, and reported "0 passed" on a run whose tests had all passed.
+      # A guard that can be wrong about the thing it guards is worse than no
+      # guard.
       - name: Prove the live tests actually ran
+        if: always()
         run: |
           python - <<'PY'
-          import re, sys, pathlib
-          out = pathlib.Path("pg-result.txt").read_text(encoding="utf-8", errors="replace")
-          m = re.search(r"(\d+) passed", out)
-          passed = int(m.group(1)) if m else 0
-          skipped = int(s.group(1)) if (s := re.search(r"(\d+) skipped", out)) else 0
-          print(f"live PostgreSQL tests: {passed} passed, {skipped} skipped")
-          if passed < 150:
+          import sys, xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          report = Path("pg-result.xml")
+          if not report.is_file():
+              sys.exit("pg-result.xml was not written: the suite did not run at all.")
+
+          root = ET.parse(report).getroot()
+          suites = root.iter("testsuite") if root.tag == "testsuites" else [root]
+          total = skipped = failures = errors = 0
+          for suite in suites:
+              total += int(suite.get("tests", 0))
+              skipped += int(suite.get("skipped", 0))
+              failures += int(suite.get("failures", 0))
+              errors += int(suite.get("errors", 0))
+          executed = total - skipped
+          print(f"live PostgreSQL suite: {total} collected, {executed} executed, "
+                f"{skipped} skipped, {failures} failed, {errors} errored")
+
+          if executed < 150:
               sys.exit(
-                  f"only {passed} tests ran against the live database. This job "
-                  f"attaches a PostgreSQL service and sets CAPEX_DB_URL, so the "
-                  f"live suite must execute; a low count means it skipped itself "
+                  f"only {executed} tests executed against the live database. "
+                  f"This job attaches PostgreSQL and sets CAPEX_DB_URL, so the "
+                  f"live suite must run; a low count means it skipped itself "
                   f"and the green tick means nothing.")
           if skipped:
-              print(f"NOTE: {skipped} skipped -- every reason is printed above by -rs")
+              print(f"NOTE: {skipped} skipped; -rs prints every reason above.")
           PY
 
   supply_chain:
