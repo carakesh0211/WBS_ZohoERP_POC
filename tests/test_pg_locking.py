@@ -281,7 +281,15 @@ def test_lock_affected_cells_actually_blocks_a_concurrent_transaction(
                 lock_affected_cells(session, [(wbs_id, head_id)])
                 order.append("first-locked")
                 release_first.wait(timeout=5)
-            order.append("first-released")
+                # Recorded INSIDE the block, before __exit__ commits.
+                #
+                # This previously appended "first-released" AFTER the `with`
+                # exited, and raced: the commit inside __exit__ unblocks the
+                # waiting thread immediately, so the second thread could append
+                # "second-locked" before this thread reached its next line.
+                # The database was behaving correctly -- the assertion was
+                # comparing two Python appends, not two database events.
+                order.append("first-releasing")
 
         def take_second():
             with pg_database.session(pg_scope) as session:
@@ -306,7 +314,17 @@ def test_lock_affected_cells_actually_blocks_a_concurrent_transaction(
 
         assert second_locked.is_set(), "second transaction never got the lock"
         assert order[0] == "first-locked"
-        assert order.index("first-released") < order.index("second-locked")
+        # Sound ordering: "first-releasing" is appended before the commit that
+        # releases the lock, so it must precede the other thread's acquisition.
+        assert order.index("first-releasing") < order.index("second-locked"), (
+            f"the second transaction must acquire only after the first "
+            f"released; got {order}")
+
+        # The real proof of serialisation is the pair of assertions above:
+        # the second transaction had NOT acquired while the first held the
+        # cell, and DID acquire once it was released. Those are statements
+        # about database behaviour. The ordering check is a secondary
+        # consistency check on the same events.
     finally:
         pg_connection.execute(
             "DELETE FROM budget_control_cell WHERE wbs_id = %s", (wbs_id,))

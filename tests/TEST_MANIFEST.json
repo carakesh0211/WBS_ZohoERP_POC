@@ -1551,7 +1551,7 @@
       },
       "test_lock_affected_cells_actually_blocks_a_concurrent_transaction": {
         "assertions": 4,
-        "body_sha": "e7091cc905ec7e14"
+        "body_sha": "6ec68c3e32c00c2a"
       },
       "test_locking_query_does_not_combine_distinct_with_for_update": {
         "assertions": 2,
