@@ -290,3 +290,69 @@ def test_lock_affected_cells_actually_blocks_a_concurrent_transaction(
         pg_connection.execute(
             "DELETE FROM entity WHERE entity_id = %s", (entity_id,))
         pg_connection.commit()
+
+
+# ---------------------------------------------------------------------------
+# Lead-added regression: the locking query must remain executable by PostgreSQL.
+# ---------------------------------------------------------------------------
+def test_locking_query_does_not_combine_distinct_with_for_update():
+    """PostgreSQL rejects `SELECT DISTINCT ... FOR UPDATE`.
+
+        ERROR:  FOR UPDATE is not allowed with DISTINCT clause
+
+    A locking clause needs every returned row to map to one identifiable table
+    row, and DISTINCT destroys that mapping. The first version of this query
+    combined them and would have failed on first contact with a real database --
+    the live-Postgres tests that would have caught it are exactly the ones
+    skipped when no local database is available, so this asserts it statically.
+
+    De-duplication belongs in a CTE; the outer locking SELECT must be plain.
+    """
+    from app.backend.pg import locking
+
+    sql = locking._LOCK_SQL
+    upper = sql.upper()
+
+    assert "FOR UPDATE" in upper, "the lock query must actually take row locks"
+
+    # The outer query is everything after the final CTE. Locate the last
+    # top-level SELECT -- the one carrying FOR UPDATE -- and assert it is not
+    # a SELECT DISTINCT.
+    for_update_at = upper.index("FOR UPDATE")
+    outer_select_at = upper.rindex("SELECT", 0, for_update_at)
+    outer_query = upper[outer_select_at:for_update_at]
+
+    assert "DISTINCT" not in outer_query, (
+        "the locking SELECT must not use DISTINCT; PostgreSQL refuses to "
+        "combine it with FOR UPDATE. Move de-duplication into a CTE."
+    )
+
+
+def test_locking_query_still_deduplicates():
+    """Removing DISTINCT from the outer query must not lose de-duplication.
+
+    Two affected cells sharing an ancestor would otherwise try to lock that
+    ancestor twice, so the guarantee has to survive the fix, not just the
+    syntax error.
+    """
+    from app.backend.pg import locking
+
+    assert "DISTINCT" in locking._LOCK_SQL.upper(), (
+        "de-duplication was removed entirely rather than moved into a CTE"
+    )
+    assert "WITH" in locking._LOCK_SQL.upper()
+
+
+def test_locking_query_orders_by_path_then_head():
+    """The total order is what makes the deadlock-freedom proof hold."""
+    from app.backend.pg import locking
+
+    upper = locking._LOCK_SQL.upper()
+    order_at = upper.rindex("ORDER BY")
+    order_clause = upper[order_at:upper.index("FOR UPDATE", order_at)]
+    assert "PATH" in order_clause and "BUDGET_HEAD_ID" in order_clause, (
+        f"lock acquisition must be ordered by (wbs_path, budget_head_id); got {order_clause!r}"
+    )
+    assert order_clause.index("PATH") < order_clause.index("BUDGET_HEAD_ID"), (
+        "path must be the primary sort key"
+    )

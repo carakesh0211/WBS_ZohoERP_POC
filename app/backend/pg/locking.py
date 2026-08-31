@@ -44,15 +44,38 @@ from .engine import Session
 #: two arrays positionally, so this is the exact per-(wbs,head) union the
 #: domain rule specifies -- never a cross product of every wbs id against
 #: every head.
+#: The de-duplication happens in a CTE, NOT in the locking SELECT, because
+#: PostgreSQL rejects `SELECT DISTINCT ... FOR UPDATE` outright:
+#:
+#:     ERROR:  FOR UPDATE is not allowed with DISTINCT clause
+#:
+#: A locking clause requires every returned row to map to one identifiable
+#: table row, and DISTINCT destroys that mapping. The first version of this
+#: query combined the two and would have failed on its first contact with a
+#: real database -- the two tests that would have caught it are precisely the
+#: ones skipped when no PostgreSQL is available locally. The outer query
+#: therefore locks plain rows of `budget_control_cell`, ordered by the path
+#: carried out of the CTE.
 _LOCK_SQL = """
-    SELECT DISTINCT a.wbs_id, aff.head_id, a.wbs_path
-    FROM unnest(%(wbs_ids)s::text[], %(heads)s::text[]) AS aff(wbs_id, head_id)
-    JOIN wbs_element w ON w.wbs_id = aff.wbs_id
-    JOIN wbs_element a ON w.wbs_path <@ a.wbs_path
-    JOIN budget_control_cell bc
-        ON bc.wbs_id = a.wbs_id AND bc.budget_head_id = aff.head_id
-    WHERE bc.budget_paise <> 0
-    ORDER BY a.wbs_path, bc.budget_head_id
+    WITH affected(wbs_id, head_id) AS (
+        SELECT * FROM unnest(%(wbs_ids)s::text[], %(heads)s::text[])
+    ),
+    target AS (
+        SELECT DISTINCT a.wbs_id AS lock_wbs_id,
+                        aff.head_id AS lock_head_id,
+                        a.wbs_path AS lock_path
+        FROM affected aff
+        JOIN wbs_element w ON w.wbs_id = aff.wbs_id
+        JOIN wbs_element a ON w.wbs_path <@ a.wbs_path
+        JOIN budget_control_cell bc
+            ON bc.wbs_id = a.wbs_id AND bc.budget_head_id = aff.head_id
+        WHERE bc.budget_paise <> 0
+    )
+    SELECT bc.wbs_id, bc.budget_head_id
+    FROM budget_control_cell bc
+    JOIN target t
+        ON t.lock_wbs_id = bc.wbs_id AND t.lock_head_id = bc.budget_head_id
+    ORDER BY t.lock_path, bc.budget_head_id
     FOR UPDATE OF bc
 """
 
