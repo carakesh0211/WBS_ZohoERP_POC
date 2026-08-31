@@ -35,6 +35,26 @@ def _payload(prev_hash: str | None, at_iso: str, actor: str, action: str,
     return f"{prev_hash or ''}|{at_iso}|{actor}|{action}|{object_type}|{object_id}|{detail}"
 
 
+def canonical_at(value: Any) -> str:
+    """Render a timestamp for hashing, independent of session TimeZone.
+
+    `timestamptz` is returned by the server rendered in the CONNECTION's
+    TimeZone setting. A connection running with, say, `Asia/Kolkata` yields the
+    same instant as `...+05:30` where the appending connection wrote
+    `...+00:00`. The bytes differ, so the recomputed hash differs, and a
+    perfectly intact chain reports as BROKEN -- a false tamper alarm on the
+    guarantee this product is built to make.
+
+    Normalising to UTC on both the append and the verify path makes the hash a
+    function of the instant, not of whoever happens to be connected.
+    """
+    if hasattr(value, "astimezone"):
+        if value.tzinfo is None:              # naive: the server said UTC
+            value = value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc).isoformat()
+    return str(value)
+
+
 def compute_entry_hash(prev_hash: str | None, at_iso: str, actor: str, action: str,
                         object_type: str, object_id: str, detail: str) -> str:
     """The frozen hash function. `at_iso` must be the exact string stored/read
@@ -69,7 +89,7 @@ def append(session: Session, actor: str, action: str, object_type: str, object_i
     seq = prev_seq + 1
 
     at = datetime.now(timezone.utc)
-    at_iso = at.isoformat()
+    at_iso = canonical_at(at)   # UTC-normalised; see canonical_at()
     entry_hash = compute_entry_hash(prev_hash, at_iso, actor, action,
                                      object_type, object_id, detail)
 
@@ -121,7 +141,7 @@ def verify_chain(session: Session, stream_key: str) -> dict[str, Any]:
     for (seq, at, actor, action, object_type, object_id, detail,
          row_prev_hash, row_entry_hash) in rows:
         checked += 1
-        at_iso = at.isoformat() if hasattr(at, "isoformat") else str(at)
+        at_iso = canonical_at(at)
         recomputed = compute_entry_hash(row_prev_hash, at_iso, actor, action,
                                          object_type, object_id, detail)
         broken = (row_prev_hash != expected_prev) or (recomputed != row_entry_hash)

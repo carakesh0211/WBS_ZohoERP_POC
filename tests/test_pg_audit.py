@@ -257,3 +257,62 @@ def test_append_and_verify_chain_round_trip_against_postgres(pg_database, pg_sco
     with pg_database.session(pg_scope) as session:
         result = verify_chain(session, stream_key)
     assert result == {"intact": True, "entries_checked": 2, "first_break_seq": None}
+
+
+# ---------------------------------------------------------------------------
+# Lead-added regression: the chain must not depend on session TimeZone.
+# ---------------------------------------------------------------------------
+def test_chain_hash_is_independent_of_connection_timezone():
+    """A timestamptz is rendered in the CONNECTION's TimeZone.
+
+    An appending connection running UTC writes `...+00:00`; a verifying
+    connection running Asia/Kolkata reads the SAME INSTANT back as `...+05:30`.
+    Hashing the rendered string would then recompute a different digest and
+    report a perfectly intact chain as BROKEN -- a false tamper alarm on the
+    guarantee this product exists to make.
+
+    canonical_at() normalises to UTC on both paths, so the hash is a function
+    of the instant rather than of whoever happens to be connected.
+    """
+    from datetime import datetime, timedelta, timezone
+    from app.backend.pg import audit
+
+    instant_utc = datetime(2026, 8, 31, 12, 34, 56, 789012, tzinfo=timezone.utc)
+    same_instant_ist = instant_utc.astimezone(timezone(timedelta(hours=5, minutes=30)))
+
+    assert instant_utc == same_instant_ist, "precondition: the same instant"
+    assert instant_utc.isoformat() != same_instant_ist.isoformat(), (
+        "precondition: naive isoformat() renders them differently"
+    )
+
+    assert audit.canonical_at(instant_utc) == audit.canonical_at(same_instant_ist), (
+        "canonical_at must erase the rendering difference"
+    )
+
+    # prev_hash, then actor, action, object_type, object_id, detail
+    prev_hash = "prevhash"
+    rest = ("u-approver", "APPROVE", "PO", "PO-1", "amount 500000 paise")
+    assert audit.compute_entry_hash(prev_hash, audit.canonical_at(instant_utc), *rest) == \
+           audit.compute_entry_hash(prev_hash, audit.canonical_at(same_instant_ist), *rest), (
+        "the same instant must produce the same entry hash from any timezone"
+    )
+
+
+def test_canonical_at_treats_a_naive_timestamp_as_utc():
+    """A driver configured without tzinfo must not silently shift the instant."""
+    from datetime import datetime, timezone
+    from app.backend.pg import audit
+
+    naive = datetime(2026, 8, 31, 12, 34, 56, 789012)
+    aware = naive.replace(tzinfo=timezone.utc)
+    assert audit.canonical_at(naive) == audit.canonical_at(aware)
+
+
+def test_different_instants_still_produce_different_hashes():
+    """Canonicalisation must not flatten genuinely different timestamps."""
+    from datetime import datetime, timezone
+    from app.backend.pg import audit
+
+    a = datetime(2026, 8, 31, 12, 34, 56, 789012, tzinfo=timezone.utc)
+    b = datetime(2026, 8, 31, 12, 34, 56, 789013, tzinfo=timezone.utc)
+    assert audit.canonical_at(a) != audit.canonical_at(b)
