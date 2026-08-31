@@ -139,6 +139,113 @@ def test_seed_guard_error_is_a_runtime_error():
 
 
 # ============================================================================
+# Seed fragments -- no database required.
+#
+# These exist because the fragment loader shipped broken and NOTHING caught
+# it: `SEED_PARTS_DIR` was computed from a name that did not exist, guarded by
+# an `if ... in dir()` that silently evaluated to None, and the loader
+# function was never called from `seed()` at all. Every backend stream wrote
+# its fragment; none of them would have loaded.
+#
+# The failure mode is the dangerous kind -- not a crash, but an empty demo
+# estate that reads as "no data seeded yet" on every screen built against it.
+# So these tests run with NO live PostgreSQL: the defect lived in code that a
+# database-gated test would have skipped straight past.
+# ============================================================================
+class _RecordingConnection:
+    """Accepts any statement and records it. Answers `current_database()`
+    with a disposable name so the guard lets the load proceed."""
+
+    def __init__(self, current_database_name: str = "capex_t1"):
+        self._name = current_database_name
+        self.executed: list[str] = []
+
+    def execute(self, statement, params=None):
+        self.executed.append(statement)
+        return _FakeCursorResult((self._name,))
+
+
+def test_seed_parts_dir_resolves_to_a_real_directory():
+    """The original defect in one assertion.
+
+    `SEED_PARTS_DIR` was None, so the loader had nothing to walk. A path that
+    does not resolve is indistinguishable from a directory that is empty --
+    both load zero fragments -- which is why this asserts the directory
+    exists rather than that the walk returned something."""
+    assert pgseed.SEED_PARTS_DIR is not None
+    assert pgseed.SEED_PARTS_DIR.is_dir(), (
+        f"{pgseed.SEED_PARTS_DIR} does not exist; every stream's seed "
+        f"fragment would load nowhere and every screen built on it would "
+        f"render an empty state that looks like missing data, not a defect")
+    assert pgseed.SEED_PARTS_DIR.name == "seed_parts"
+    assert pgseed.SEED_PARTS_DIR.parent == pgseed.SEED_FILE.parent
+
+
+def test_every_committed_fragment_is_discovered():
+    """Whatever is on disk is what loads. No allow-list to forget to update."""
+    on_disk = sorted(f.name for f in pgseed.SEED_PARTS_DIR.iterdir()
+                     if f.suffix == ".sql")
+    discovered = [f.name for f in pgseed.seed_part_files()]
+    assert discovered == on_disk
+    assert on_disk, (
+        "no fragments committed; if that is deliberate, this assertion is "
+        "the thing to delete -- deliberately, not by accident")
+
+
+def test_fragments_load_in_filename_order():
+    """Load order is filename order, and the numbering is what encodes the
+    dependency: 003_budget.sql needs 003_budget_planning.sql's tables."""
+    names = [f.name for f in pgseed.seed_part_files()]
+    assert names == sorted(names)
+
+
+def test_seed_executes_the_base_file_then_every_fragment(tmp_path, monkeypatch):
+    """The regression proper: `seed()` must actually CALL the loader.
+
+    The loader existed and was correct; nothing invoked it. A test that only
+    checked `seed_part_files()` in isolation would have passed against the
+    broken build."""
+    monkeypatch.setenv("CAPEX_PROFILE", "local-demo")
+
+    base = tmp_path / "seed_demo.sql"
+    base.write_text("-- BASE", encoding="utf-8")
+    parts = tmp_path / "seed_parts"
+    parts.mkdir()
+    (parts / "005_masters.sql").write_text("-- FIVE", encoding="utf-8")
+    (parts / "003_budget.sql").write_text("-- THREE", encoding="utf-8")
+    (parts / "notes.md").write_text("not sql", encoding="utf-8")
+
+    con = _RecordingConnection()
+    pgseed.seed(con, force=True, seed_file=base, parts_dir=parts)  # type: ignore[arg-type]
+
+    loaded = [s for s in con.executed if s.startswith("--")]
+    assert loaded == ["-- BASE", "-- THREE", "-- FIVE"], (
+        "base first, then fragments in filename order, and nothing else")
+
+
+def test_a_missing_fragment_directory_is_not_an_error(tmp_path, monkeypatch):
+    """seed_demo.sql alone must remain a valid estate -- a fresh checkout
+    with no fragments yet still seeds."""
+    monkeypatch.setenv("CAPEX_PROFILE", "local-demo")
+    base = tmp_path / "seed_demo.sql"
+    base.write_text("-- BASE", encoding="utf-8")
+
+    con = _RecordingConnection()
+    pgseed.seed(con, force=True, seed_file=base,
+                parts_dir=tmp_path / "nonexistent")  # type: ignore[arg-type]
+    assert [s for s in con.executed if s.startswith("--")] == ["-- BASE"]
+
+
+def test_fragments_never_load_when_a_guard_refuses(monkeypatch):
+    """Fragment loading sits behind every guard, not beside them."""
+    monkeypatch.setenv("CAPEX_PROFILE", "local-demo")
+    con = _RecordingConnection("production_capex")
+    with pytest.raises(pgseed.SeedGuardError, match="disposable"):
+        pgseed.seed(con, force=True)  # type: ignore[arg-type]
+    assert not [s for s in con.executed if s.startswith("--")]
+
+
+# ============================================================================
 # Live loader -- needs a real, disposable PostgreSQL database.
 # ============================================================================
 EXPECTED_COUNTS = {

@@ -57,7 +57,64 @@ from ..pg import periods as periods_svc
 from ..pg import budget as budget_svc
 from ..pg.engine import Database, Scope, get_database
 
-router = APIRouter()
+class _BudgetAccess:
+    """Router-level dependency: authenticate, and require `budget.read`, on
+    EVERY budget route.
+
+    Declared on the ROUTER rather than per route, so a route added later
+    cannot ship unguarded by omission. The audit router shipped exactly that
+    way in Milestone 1 -- each route declared only its database dependency,
+    and the middleware in front of it checks that a session header EXISTS
+    without validating it, so `X-Session: anything` was enough to read the
+    whole estate.
+
+    Mutating routes add their own permission on top of this floor.
+    """
+
+    def __call__(self, request: Request) -> dict:
+        # Lazy import: `main` imports this module, so a module-level import
+        # would be circular.
+        from ..main import principal
+        from .. import auth as auth_mod
+
+        who = principal(
+            authorization=request.headers.get("Authorization", ""),
+            x_session=request.headers.get("X-Session", ""),
+        )
+        try:
+            auth_mod.require(who, "budget.read")
+        except auth_mod.AuthError as exc:
+            raise HTTPException(exc.status,
+                                {"code": exc.code, "message": exc.message})
+        request.state.budget_principal = who
+        return who
+
+
+require_budget_access = _BudgetAccess()
+
+
+def _requires(permission: str):
+    """One route's own permission, on top of the router's floor.
+
+    Runs after the router dependency, so `request.state.budget_principal` is
+    already populated and authentication has already happened.
+    """
+
+    def _dep(request: Request) -> dict:
+        from .. import auth as auth_mod
+
+        who = getattr(request.state, "budget_principal", None) or {}
+        try:
+            auth_mod.require(who, permission)
+        except auth_mod.AuthError as exc:
+            raise HTTPException(exc.status,
+                                {"code": exc.code, "message": exc.message})
+        return who
+
+    return _dep
+
+
+router = APIRouter(dependencies=[Depends(require_budget_access)])
 
 _CORRELATION_HEADER = "X-Correlation-Id"
 _DEFAULT_LIMIT = 50
@@ -102,14 +159,54 @@ def _service_error_to_http(exc: Exception) -> HTTPException:
     return _problem(status, code, code.replace("_", " ").title(), message)
 
 
+def _principal_of(request: Request) -> dict:
+    return getattr(request.state, "budget_principal", None) or {}
+
+
 def _scope_for(request: Request) -> Scope:
-    """No authenticated per-caller scope exists yet for this milestone -- see
-    the module docstring's Scope note."""
-    return Scope(user_id="SVC-BUDGET-API", principal_kind="SERVICE", read_all=True)
+    """Scope derived from the AUTHENTICATED caller.
+
+    This previously returned an unconditional
+    `Scope(principal_kind="SERVICE", read_all=True)`, which made every request
+    -- from any caller who got past the un-validating middleware -- a
+    whole-estate read, with `compile_scope` short-circuiting to TRUE.
+
+    HONEST LIMIT, recorded rather than papered over: per-user scope GRANTS do
+    not exist yet; they arrive with the identity and scope stream (plan Phase
+    3 / M4a, migration 004). Until then a non-whole-estate principal gets a
+    Scope whose every dimension is `None`, which `engine.Scope` defines as
+    unrestricted. So this buys real authentication and real permission
+    enforcement -- it does NOT yet buy row-level data scope on budget routes,
+    and nothing here should be read as claiming it does.
+    """
+    who = _principal_of(request)
+    roles = {r for r in ([who.get("role")] + list(who.get("roles") or [])) if r}
+    return Scope(
+        user_id=str(who.get("user_id") or who.get("username") or "UNKNOWN"),
+        principal_kind="USER",
+        read_all=bool(roles & _WHOLE_ESTATE_BUDGET_ROLES),
+    )
+
+
+#: Roles for which reading across the whole estate is the point of the role.
+_WHOLE_ESTATE_BUDGET_ROLES = frozenset({
+    "Administrator", "System Administrator", "Auditor", "Internal Auditor",
+    "FinanceApprover",
+})
 
 
 def _actor(request: Request) -> str:
-    return request.headers.get("X-User-Id") or "UNKNOWN"
+    """The acting user, SERVER-DERIVED from the session.
+
+    Was `request.headers.get("X-User-Id")`, which let any caller name any
+    actor. That value is written into `budget_line.created_by`, into approval
+    decisions and into the audit chain, so a caller-supplied actor would have
+    made the financial record and its audit trail unattributable -- and
+    maker-checker, which compares exactly those identities, trivially
+    defeatable.
+    """
+    who = _principal_of(request)
+    return str(who.get("user_id") or who.get("username") or "UNKNOWN")
 
 
 # ============================================================== periods
@@ -134,7 +231,7 @@ class _PeriodTransitionIn(BaseModel):
     to_state: str
 
 
-@router.post("/api/budget/periods/{period_id}/transition")
+@router.post("/api/budget/periods/{period_id}/transition", dependencies=[Depends(_requires("period.transition"))])
 def post_period_transition(
     period_id: str, body: _PeriodTransitionIn,
     response: Response, request: Request,
@@ -174,7 +271,7 @@ def get_cells(
 
 
 # ============================================================== availability
-@router.get("/api/budget/availability")
+@router.get("/api/budget/availability", dependencies=[Depends(_requires("budget.check"))])
 def get_availability(
     response: Response, request: Request,
     wbs_id: str = Query(...),
@@ -220,7 +317,7 @@ class _RevisionIn(BaseModel):
     justification: str
 
 
-@router.post("/api/budget/revisions", status_code=201)
+@router.post("/api/budget/revisions", status_code=201, dependencies=[Depends(_requires("revision.create"))])
 def post_revision(
     body: _RevisionIn, response: Response, request: Request,
     database: Database = Depends(_get_database),
@@ -242,7 +339,7 @@ class _DecisionIn(BaseModel):
     reason: str | None = None
 
 
-@router.post("/api/budget/revisions/{revision_id}/approve")
+@router.post("/api/budget/revisions/{revision_id}/approve", dependencies=[Depends(_requires("revision.approve"))])
 def post_revision_approve(
     revision_id: str, response: Response, request: Request,
     database: Database = Depends(_get_database),
@@ -257,7 +354,7 @@ def post_revision_approve(
     return result
 
 
-@router.post("/api/budget/revisions/{revision_id}/reject")
+@router.post("/api/budget/revisions/{revision_id}/reject", dependencies=[Depends(_requires("revision.approve"))])
 def post_revision_reject(
     revision_id: str, body: _DecisionIn, response: Response, request: Request,
     database: Database = Depends(_get_database),
@@ -284,7 +381,7 @@ class _TransferIn(BaseModel):
     justification: str
 
 
-@router.post("/api/budget/transfers", status_code=201)
+@router.post("/api/budget/transfers", status_code=201, dependencies=[Depends(_requires("revision.create"))])
 def post_transfer(
     body: _TransferIn, response: Response, request: Request,
     database: Database = Depends(_get_database),
@@ -302,7 +399,7 @@ def post_transfer(
     return result
 
 
-@router.post("/api/budget/transfers/{transfer_id}/approve")
+@router.post("/api/budget/transfers/{transfer_id}/approve", dependencies=[Depends(_requires("revision.approve"))])
 def post_transfer_approve(
     transfer_id: str, response: Response, request: Request,
     database: Database = Depends(_get_database),
@@ -317,7 +414,7 @@ def post_transfer_approve(
     return result
 
 
-@router.post("/api/budget/transfers/{transfer_id}/reject")
+@router.post("/api/budget/transfers/{transfer_id}/reject", dependencies=[Depends(_requires("revision.approve"))])
 def post_transfer_reject(
     transfer_id: str, body: _DecisionIn, response: Response, request: Request,
     database: Database = Depends(_get_database),

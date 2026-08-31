@@ -71,6 +71,18 @@ except ImportError as exc:  # pragma: no cover - only before audit.py lands
 else:
     app.include_router(audit_api.router)
 
+try:
+    from .api import budget as budget_api
+except Exception:  # pragma: no cover - import guard, mirrors audit above
+    budget_api = None
+
+if budget_api is not None:
+    # Mounted unconditionally, exactly like the audit router. A router whose
+    # database is unconfigured answers 503 from its own dependency; making the
+    # MOUNT conditional is what let the audit routes silently vanish in CI
+    # twice while the job reported green.
+    app.include_router(budget_api.router)
+
 PUBLIC_PATHS = {"/api/health", "/api/auth/login"}
 
 

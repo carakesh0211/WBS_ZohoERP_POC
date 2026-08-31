@@ -42,6 +42,10 @@ PERMISSIONS: dict[str, tuple[str, ...]] = {
     "po.cancel":              ("ProcurementApprover",),
     "po.close":               ("ProcurementApprover",),
     "revision.create":        ("Requestor", "BudgetController"),
+    # Closing an accounting period freezes what can still be posted into it,
+    # so it is a finance control, not an administrative convenience. Auditor
+    # is deliberately absent: the role is read-only.
+    "period.transition":      ("BudgetController", "FinanceApprover"),
     "revision.approve":       ("FinanceApprover",),
     "capitalisation.allocate": ("BudgetController", "FinanceApprover"),
     "capitalisation.approve": ("CapitalisationApprover",),

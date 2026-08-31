@@ -126,24 +126,28 @@ def _assert_empty(connection: psycopg.Connection) -> None:
                 f"of silently merging).")
 
 
-SEED_PARTS_DIR = _MIGRATIONS_DIR / "seed_parts" if "_MIGRATIONS_DIR" in dir() else None
+SEED_PARTS_DIR = SEED_FILE.parent / "seed_parts"
 
 
-def _seed_part_files(directory) -> list:
+def seed_part_files(parts_dir: Path = SEED_PARTS_DIR) -> list[Path]:
     """Fragment files, in filename order, loaded after seed_demo.sql.
 
-    Each Wave 2 backend stream owns one. They live in a SUBDIRECTORY because
+    Each backend stream owns one. They live in a SUBDIRECTORY because
     migrate_pg.discover() scans only top-level *.sql entries -- putting a data
     file beside the migrations broke discovery once already.
+
+    Filename order is the load order, which is why the fragments carry their
+    migration's number: 003_budget.sql needs the tables 003_budget_planning.sql
+    creates, and needs the rows seed_demo.sql inserted.
     """
-    parts = directory / "seed_parts"
-    if not parts.is_dir():
+    if not parts_dir.is_dir():
         return []
-    return sorted(p for p in parts.iterdir() if p.suffix == ".sql")
+    return sorted(f for f in parts_dir.iterdir() if f.suffix == ".sql")
 
 
 def seed(connection: psycopg.Connection, *, force: bool = False,
-          seed_file: Path = SEED_FILE) -> None:
+          seed_file: Path = SEED_FILE,
+          parts_dir: Path = SEED_PARTS_DIR) -> None:
     """Load ``seed_file`` (default: ``migrations/pg/seed_demo.sql``) into
     ``connection``.
 
@@ -165,6 +169,13 @@ def seed(connection: psycopg.Connection, *, force: bool = False,
 
     connection.execute(seed_file.read_text(encoding="utf-8"))
 
+    # Fragments load AFTER the base seed, in filename order. They are part of
+    # the demo estate, not an optional extra: a fragment that silently never
+    # loads leaves every screen built against it showing an empty state, which
+    # reads as "no data yet" rather than as the defect it is.
+    for part in seed_part_files(parts_dir):
+        connection.execute(part.read_text(encoding="utf-8"))
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -180,7 +191,10 @@ def main(argv: list[str] | None = None) -> int:
         with psycopg.connect(dsn, autocommit=False) as con:
             seed(con, force=args.force)
             con.commit()
-            print("seeded: migrations/pg/seed_demo.sql")
+            loaded = ["migrations/pg/seed_demo.sql"]
+            loaded += [f"migrations/pg/seed_parts/{f.name}"
+                       for f in seed_part_files()]
+            print("seeded: " + ", ".join(loaded))
     except SeedGuardError as exc:
         print(f"SEED REFUSED: {exc}", file=sys.stderr)
         return 1
