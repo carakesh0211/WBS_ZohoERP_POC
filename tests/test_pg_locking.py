@@ -213,11 +213,22 @@ def test_lock_affected_cells_actually_blocks_a_concurrent_transaction(
     entity_id, project_id = f"E_{suffix}", f"PRJ_{suffix}"
     wbs_id, head_id = f"W_{suffix}", f"H_{suffix}"
 
+    # Seed the organisation explicitly. This previously did
+    # `INSERT INTO entity ... SELECT organisation_id FROM organisation LIMIT 1`,
+    # but pg_template runs upgrade() with NO seed data, so `organisation` is
+    # empty: the SELECT matched nothing, the INSERT added zero rows, and the
+    # next statement died on project.entity_id's foreign key -- before the test
+    # reached a single assertion. A live test that cannot run is not coverage.
+    org_id = f"ORG_{suffix}"
+    pg_connection.execute(
+        "INSERT INTO organisation (organisation_id, code, name, "
+        "created_by, updated_by) VALUES (%s, %s, %s, 'test', 'test')",
+        (org_id, f"ORGC_{suffix}", f"Org {suffix}"),
+    )
     pg_connection.execute(
         "INSERT INTO entity (entity_id, organisation_id, code, name, "
-        "created_by, updated_by) SELECT %s, organisation_id, %s, %s, 'test', "
-        "'test' FROM organisation LIMIT 1",
-        (entity_id, f"CODE_{suffix}", f"Entity {suffix}"),
+        "created_by, updated_by) VALUES (%s, %s, %s, %s, 'test', 'test')",
+        (entity_id, org_id, f"CODE_{suffix}", f"Entity {suffix}"),
     )
     pg_connection.execute(
         "INSERT INTO project (project_id, entity_id, capex_code, name, "
@@ -356,3 +367,64 @@ def test_locking_query_orders_by_path_then_head():
     assert order_clause.index("PATH") < order_clause.index("BUDGET_HEAD_ID"), (
         "path must be the primary sort key"
     )
+
+
+@pytest.mark.pg
+@pytest.mark.skipif(not os.environ.get("CAPEX_DB_URL"),
+                    reason="needs a live PostgreSQL (CAPEX_DB_URL)")
+def test_lock_set_walks_the_whole_ancestor_chain_live(pg_database, pg_connection):
+    """The domain rule, executed against a real server.
+
+    Everything else covering the ancestor chain is either `derive_lock_set` --
+    a Python re-implementation that could agree with a wrong SQL query -- or a
+    string grep over `_LOCK_SQL`. Neither would notice a query PostgreSQL
+    cannot parse, which is exactly the defect that reached integration.
+
+    Three levels, budget owned at levels 1 and 2 and NOT at level 3. A spend on
+    the leaf must lock BOTH owning ancestors, in (wbs_path, budget_head_id)
+    order. Locking only the nearest owner is the correctness hole the domain
+    rules call out by name.
+    """
+    import uuid
+    from app.backend.pg.engine import Scope
+    from app.backend.pg.locking import lock_affected_cells
+
+    sfx = uuid.uuid4().hex[:12]
+    org, ent, prj, head = f"O_{sfx}", f"E_{sfx}", f"P_{sfx}", f"H_{sfx}"
+    root, mid, leaf = f"R_{sfx}", f"M_{sfx}", f"L_{sfx}"
+
+    ex = pg_connection.execute
+    ex("INSERT INTO organisation (organisation_id, code, name, created_by, updated_by)"
+       " VALUES (%s,%s,%s,'t','t')", (org, f"OC_{sfx}", "Org"))
+    ex("INSERT INTO entity (entity_id, organisation_id, code, name, created_by, updated_by)"
+       " VALUES (%s,%s,%s,%s,'t','t')", (ent, org, f"EC_{sfx}", "Entity"))
+    ex("INSERT INTO project (project_id, entity_id, capex_code, name, created_by, updated_by)"
+       " VALUES (%s,%s,%s,%s,'t','t')", (prj, ent, f"C_{sfx}", "Project"))
+    ex("INSERT INTO budget_head (budget_head_id, entity_id, code, name, created_by, updated_by)"
+       " VALUES (%s,%s,%s,%s,'t','t')", (head, ent, f"HC_{sfx}", "Head"))
+
+    for wbs, parent, path in ((root, None, root),
+                              (mid, root, f"{root}.{mid}"),
+                              (leaf, mid, f"{root}.{mid}.{leaf}")):
+        ex("INSERT INTO wbs_element (wbs_id, project_id, parent_wbs_id, wbs_code,"
+           " description, wbs_path, created_by, updated_by)"
+           " VALUES (%s,%s,%s,%s,%s,%s,'t','t')",
+           (wbs, prj, parent, wbs, "n", path))
+
+    # Budget owned at root and mid; the leaf owns none.
+    for wbs, paise in ((root, 500000), (mid, 200000), (leaf, 0)):
+        ex("INSERT INTO budget_control_cell (wbs_id, budget_head_id, budget_paise,"
+           " updated_by) VALUES (%s,%s,%s,'t')", (wbs, head, paise))
+    pg_connection.commit()
+
+    with pg_database.session(Scope.system()) as session:
+        locked = lock_affected_cells(session, [(leaf, head)])
+
+    assert locked == [(root, head), (mid, head)], (
+        f"a spend on the leaf must lock BOTH budget-owning ancestors in "
+        f"wbs_path order, not just the nearest; got {locked}"
+    )
+    assert (leaf, head) not in locked, (
+        "a cell with budget_paise = 0 owns no availability and must be excluded"
+    )
+    assert session.locks_taken == locked, "lock order must be recorded for audit"

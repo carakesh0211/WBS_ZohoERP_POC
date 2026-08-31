@@ -1543,7 +1543,7 @@
       },
       "test_lock_affected_cells_actually_blocks_a_concurrent_transaction": {
         "assertions": 4,
-        "body_sha": "f01c0110294851c4"
+        "body_sha": "e7091cc905ec7e14"
       },
       "test_locking_query_does_not_combine_distinct_with_for_update": {
         "assertions": 2,
@@ -1556,24 +1556,28 @@
       "test_locking_query_orders_by_path_then_head": {
         "assertions": 2,
         "body_sha": "9a80acdd43afb0b9"
+      },
+      "test_lock_set_walks_the_whole_ancestor_chain_live": {
+        "assertions": 3,
+        "body_sha": "4e27e171d32990d5"
       }
     },
     "test_pg_migrations_runner.py": {
       "test_upgrade_applies_001_cleanly": {
         "assertions": 7,
-        "body_sha": "0ae44d6e4ecb199c"
+        "body_sha": "d324b63f6f377b9b"
       },
       "test_upgrade_is_idempotent": {
         "assertions": 3,
-        "body_sha": "ed2bb9acbcdc4b8c"
+        "body_sha": "5595713dc6e0d2d1"
       },
       "test_status_reports_current_after_upgrade": {
         "assertions": 6,
-        "body_sha": "35a25d1524e99913"
+        "body_sha": "cf72c82125bece7f"
       },
       "test_status_reports_pending_before_upgrade": {
         "assertions": 3,
-        "body_sha": "c54341a3d6e3c649"
+        "body_sha": "4475a03fafe9adb2"
       },
       "test_changed_checksum_after_apply_raises_migration_error": {
         "assertions": 1,
@@ -1794,7 +1798,7 @@
     "test_pg_audit.py": 18,
     "test_pg_constraints.py": 8,
     "test_pg_fixture_guard.py": 3,
-    "test_pg_locking.py": 16,
+    "test_pg_locking.py": 17,
     "test_pg_migrations_runner.py": 9,
     "test_pg_repo.py": 23,
     "test_pg_scope_leakage.py": 5,
@@ -1818,7 +1822,7 @@
     "test_pg_audit.py": 46,
     "test_pg_constraints.py": 13,
     "test_pg_fixture_guard.py": 3,
-    "test_pg_locking.py": 33,
+    "test_pg_locking.py": 36,
     "test_pg_migrations_runner.py": 27,
     "test_pg_repo.py": 37,
     "test_pg_scope_leakage.py": 12,

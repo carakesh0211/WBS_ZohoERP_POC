@@ -79,7 +79,7 @@ def test_upgrade_applies_001_cleanly(bare_pg_connection):
     performed = migrate_pg.upgrade(con)
     con.commit()
 
-    assert performed == ["001"]
+    assert performed == _all_versions()
     for table in ("organisation", "entity", "app_user", "accounting_period",
                   "audit_log", "audit_anchor", "schema_migrations"):
         assert _table_exists(con, table), f"migration 001 did not create {table}"
@@ -87,24 +87,38 @@ def test_upgrade_applies_001_cleanly(bare_pg_connection):
         assert _extension_installed(con, ext), f"migration 001 did not install extension {ext}"
 
     rows = con.execute("SELECT version, name, checksum FROM schema_migrations").fetchall()
-    assert len(rows) == 1
-    assert rows[0][0] == "001"
+    assert len(rows) == len(_all_versions())
+    assert [r[0] for r in rows] == _all_versions()
     assert rows[0][1] == "foundation"
     assert len(rows[0][2]) == 64  # sha256 hexdigest
+
+
+def _all_versions():
+    """Every migration version on disk, in order.
+
+    These assertions were written against a one-migration world and pinned to
+    the literal "001". migrations/pg/ now holds 002, and will hold 003 at the
+    next milestone, so a literal makes the runner's own regression suite fail
+    every time the product grows -- which invites relaxing the assertions
+    rather than parameterising them.
+    """
+    from app.backend.pg import migrate_pg
+    return [m.version for m in migrate_pg.discover()]
 
 
 def test_upgrade_is_idempotent(bare_pg_connection):
     con = bare_pg_connection
     first = migrate_pg.upgrade(con)
     con.commit()
-    assert first == ["001"]
+    assert first == _all_versions()
 
     second = migrate_pg.upgrade(con)
     con.commit()
     assert second == [], "re-running upgrade() against an up-to-date schema must apply nothing"
 
     rows = con.execute("SELECT count(*) FROM schema_migrations").fetchone()
-    assert rows[0] == 1, "a re-run must not duplicate the schema_migrations record"
+    assert rows[0] == len(_all_versions()), (
+        "a re-run must not duplicate any schema_migrations record")
 
 
 # ------------------------------------------------------------------------- status
@@ -114,11 +128,11 @@ def test_status_reports_current_after_upgrade(bare_pg_connection):
     con.commit()
 
     state = migrate_pg.status(con)
-    assert state["applied"] == ["001"]
+    assert state["applied"] == _all_versions()
     assert state["pending"] == []
     assert state["drifted"] == []
-    assert state["current"] == "001"
-    assert state["latest_available"] == "001"
+    assert state["current"] == _all_versions()[-1]
+    assert state["latest_available"] == _all_versions()[-1]
     assert state["is_current"] is True
 
 
@@ -126,7 +140,7 @@ def test_status_reports_pending_before_upgrade(bare_pg_connection):
     con = bare_pg_connection
     state = migrate_pg.status(con)
     assert state["applied"] == []
-    assert state["pending"] == ["001"]
+    assert state["pending"] == _all_versions()
     assert state["is_current"] is False
 
 
