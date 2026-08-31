@@ -10,7 +10,7 @@ parallel, so it must not drift)::
                      "action":str,"object_type":str,"object_id":str,"detail":str,
                      "correlation_id":str|null,"entry_hash":str|null}],
           "next_cursor":str|null,"has_more":bool}
-    GET /api/audit/verify?stream_key=
+    GET /api/audit/chain/verify?stream_key=
       -> {"stream_key":str,"intact":bool,"entries_checked":int,
           "first_break_seq":int|null,"verified_at":iso8601}
 
@@ -266,7 +266,7 @@ def list_entries(
     return {"items": items, "next_cursor": next_cursor, "has_more": has_more}
 
 
-@router.get("/api/audit/verify")
+@router.get("/api/audit/chain/verify")
 def verify(
     response: Response,
     request: Request,

@@ -1529,11 +1529,11 @@
       },
       "test_the_seeded_audit_chain_actually_verifies": {
         "assertions": 6,
-        "body_sha": "43f606754dad473c"
+        "body_sha": "d545f835be321f99"
       },
       "test_an_unknown_stream_is_not_reported_as_intact": {
         "assertions": 2,
-        "body_sha": "c5b93d4d645c4cb2"
+        "body_sha": "3118b66760baa99d"
       },
       "test_every_audit_route_refuses_an_unauthenticated_caller": {
         "assertions": 2,

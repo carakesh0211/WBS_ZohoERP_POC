@@ -172,7 +172,7 @@ def test_the_seeded_audit_chain_actually_verifies(pg_backed_app, make_user):
     auditor = make_user(["Auditor"])
     stream = auditor.get("/api/audit/streams").json()["items"][0]["stream_key"]
 
-    resp = auditor.get(f"/api/audit/verify?stream_key={stream}")
+    resp = auditor.get(f"/api/audit/chain/verify?stream_key={stream}")
     assert resp.status_code == 200, resp.text
     body = resp.json()
 
@@ -189,7 +189,7 @@ def test_the_seeded_audit_chain_actually_verifies(pg_backed_app, make_user):
 def test_an_unknown_stream_is_not_reported_as_intact(pg_backed_app, make_user):
     """A typo in the nightly verification job must not read as a pass."""
     auditor = make_user(["Auditor"])
-    body = auditor.get("/api/audit/verify?stream_key=NO-SUCH-STREAM").json()
+    body = auditor.get("/api/audit/chain/verify?stream_key=NO-SUCH-STREAM").json()
     assert body["intact"] is False
     assert body["stream_found"] is False
 
@@ -200,7 +200,7 @@ def test_an_unknown_stream_is_not_reported_as_intact(pg_backed_app, make_user):
 @pytest.mark.parametrize("path", [
     "/api/audit/streams",
     "/api/audit/entries?stream_key=x",
-    "/api/audit/verify?stream_key=x",
+    "/api/audit/chain/verify?stream_key=x",
 ])
 def test_every_audit_route_refuses_an_unauthenticated_caller(pg_backed_app, path):
     """Regression for the critical finding F1.

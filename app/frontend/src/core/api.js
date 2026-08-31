@@ -1,6 +1,6 @@
 /* app/frontend/src/core/api.js
    Fetch wrapper for the Audit Trail API (GET /api/audit/streams,
-   /api/audit/entries, /api/audit/verify). Handles correlation ids, RFC-7807
+   /api/audit/entries, /api/audit/chain/verify). Handles correlation ids, RFC-7807
    problem+json error parsing and cursor paging.
 
    Contract (do not invent fields):
@@ -10,7 +10,7 @@
        -> {"items":[{"audit_id","stream_key","seq","at","actor","action",
                       "object_type","object_id","detail","correlation_id",
                       "entry_hash"}], "next_cursor", "has_more"}
-     GET /api/audit/verify?stream_key=
+     GET /api/audit/chain/verify?stream_key=
        -> {"stream_key","intact","entries_checked","first_break_seq","verified_at"}
 
    Session: app.js authenticates every /api call with a server-issued session
@@ -167,7 +167,7 @@ export function listEntries({ streamKey, objectType, objectId, cursor, limit } =
   });
 }
 
-/** GET /api/audit/verify?stream_key= */
+/** GET /api/audit/chain/verify?stream_key= */
 export function verifyChain(streamKey) {
   return get('/verify', { stream_key: streamKey });
 }

@@ -42,22 +42,26 @@ observability.configure()
 # orchestrator's health probe carries no session.
 app.include_router(health_api.router)
 
-# The PostgreSQL audit API is mounted ONLY when PostgreSQL is configured.
+# The PostgreSQL audit API is mounted UNCONDITIONALLY.
 #
-# It shares the `/api/audit` prefix with the legacy SQLite endpoints defined
-# further down this module, and a router included here registers BEFORE those
-# decorators run -- so mounting it unconditionally shadowed
-# `GET /api/audit/verify` and turned four passing SQLite audit tests into 500s
-# via `get_database()` on a process with no PostgreSQL configured.
+# It used to mount only when CAPEX_DB_URL/CAPEX_DB_HOST was set -- a decision
+# taken ONCE, at import time. That made behaviour depend on whether any earlier
+# import happened to see the variable, and it failed twice in CI: the entire
+# end-to-end suite skipped because the router was absent while the database was
+# configured perfectly well. An import-order-dependent toggle is not
+# configuration, it is a race.
 #
-# The collision is intentional in the end state: once SQLite is retired the
-# PostgreSQL routes take that prefix over. Until then the two must not both
-# claim it, and "is PostgreSQL configured" is the honest discriminator --
-# clearer than a feature flag, because it is the actual precondition.
-def _postgresql_is_configured() -> bool:
-    return bool(os.environ.get("CAPEX_DB_URL") or os.environ.get("CAPEX_DB_HOST"))
-
-
+# The original reason for the toggle was a genuine collision: this router and
+# the legacy SQLite endpoints both claimed `/api/audit/verify`, and a router
+# included here registers before the decorators further down, so the legacy
+# route was shadowed and four passing tests turned into 500s.
+#
+# That is now fixed at the source: the PostgreSQL chain check lives at
+# `/api/audit/chain/verify`, which collides with nothing. `/api/audit/streams`
+# and `/api/audit/entries` never collided. With no overlapping path there is
+# nothing to gate, so the router mounts always and
+# `api/audit.py::_get_database` returns a clean 503 when no database is
+# configured -- a runtime answer to a runtime question.
 try:
     from .api import audit as audit_api
 except ImportError as exc:  # pragma: no cover - only before audit.py lands
@@ -65,12 +69,7 @@ except ImportError as exc:  # pragma: no cover - only before audit.py lands
     logging.getLogger("capex").warning(
         "app.backend.api.audit not available yet; its router is not mounted (%s)", exc)
 else:
-    if _postgresql_is_configured():
-        app.include_router(audit_api.router)
-    else:
-        logging.getLogger("capex").info(
-            "PostgreSQL is not configured; serving the legacy SQLite audit API. "
-            "Set CAPEX_DB_URL or CAPEX_DB_HOST to mount the PostgreSQL audit API.")
+    app.include_router(audit_api.router)
 
 PUBLIC_PATHS = {"/api/health", "/api/auth/login"}
 

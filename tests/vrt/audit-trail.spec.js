@@ -190,7 +190,7 @@ test.describe('SCR-28 Audit Trail Viewer — chain verification', () => {
   test('a broken chain renders the exact break sequence, never softened', async ({ page }) => {
     await routeJson(page, '**/api/audit/streams', STREAMS_FIXTURE);
     await routeJson(page, '**/api/audit/entries**', ENTRIES_FIXTURE);
-    await routeJson(page, '**/api/audit/verify**', {
+    await routeJson(page, '**/api/audit/chain/verify**', {
       stream_key: 'WBS-PRJ-01', intact: false, entries_checked: 46,
       first_break_seq: 47, verified_at: '2026-08-20T09:20:00Z',
     });
@@ -212,7 +212,7 @@ test.describe('SCR-28 Audit Trail Viewer — chain verification', () => {
   test('an intact chain states the entries checked, honestly and specifically', async ({ page }) => {
     await routeJson(page, '**/api/audit/streams', STREAMS_FIXTURE);
     await routeJson(page, '**/api/audit/entries**', ENTRIES_FIXTURE);
-    await routeJson(page, '**/api/audit/verify**', {
+    await routeJson(page, '**/api/audit/chain/verify**', {
       stream_key: 'WBS-PRJ-01', intact: true, entries_checked: 128,
       first_break_seq: null, verified_at: '2026-08-20T09:20:00Z',
     });
@@ -245,7 +245,7 @@ test.describe('SCR-28 Audit Trail Viewer — accessibility', () => {
   test('keyboard-only traversal reaches every control, with visible focus', async ({ page }) => {
     await routeJson(page, '**/api/audit/streams', STREAMS_FIXTURE);
     await routeJson(page, '**/api/audit/entries**', ENTRIES_FIXTURE);
-    await routeJson(page, '**/api/audit/verify**', {
+    await routeJson(page, '**/api/audit/chain/verify**', {
       stream_key: 'WBS-PRJ-01', intact: true, entries_checked: 128,
       first_break_seq: null, verified_at: '2026-08-20T09:20:00Z',
     });
@@ -306,7 +306,7 @@ test.describe('SCR-28 Audit Trail Viewer — accessibility', () => {
   test('axe-core: verified-chain view has no violations', async ({ page }) => {
     await routeJson(page, '**/api/audit/streams', STREAMS_FIXTURE);
     await routeJson(page, '**/api/audit/entries**', ENTRIES_FIXTURE);
-    await routeJson(page, '**/api/audit/verify**', {
+    await routeJson(page, '**/api/audit/chain/verify**', {
       stream_key: 'WBS-PRJ-01', intact: true, entries_checked: 128,
       first_break_seq: null, verified_at: '2026-08-20T09:20:00Z',
     });

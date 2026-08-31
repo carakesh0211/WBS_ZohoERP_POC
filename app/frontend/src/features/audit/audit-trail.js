@@ -2,7 +2,7 @@
    SCR-28 Audit Trail Viewer, with hash-chain verification.
 
    Wired to the real API only — GET /api/audit/streams, /api/audit/entries,
-   /api/audit/verify (see core/api.js for the exact contract). There is no
+   /api/audit/chain/verify (see core/api.js for the exact contract). There is no
    static fake data anywhere in this module; every row on screen came back
    from a fetch() call. Tests intercept the network with Playwright's
    page.route() rather than this module ever hard-coding a row.
