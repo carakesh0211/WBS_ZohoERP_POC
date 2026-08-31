@@ -10,7 +10,7 @@ argument-hint: "[start|continue|milestone-number]"
 
 **Build the application. Do not re-plan it.**
 
-The plan exists (`.claude/plans/prompt-1-claude-elegant-milner.md`, v1.2.1,
+The plan exists (`docs/APPROVED_PRODUCTION_IMPLEMENTATION_PLAN.md`, v1.2.1,
 approved). The contracts exist (`research/30_contracts/`). The approved UI
 exists (`app/frontend/`). Your job is to turn them into working software, one
 vertical slice at a time.
