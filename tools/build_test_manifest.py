@@ -38,6 +38,19 @@ MANIFEST = TESTS / "TEST_MANIFEST.json"
 POST_BASELINE_FILES = {
     "test_contracts.py", "test_manifest.py", "test_observability.py",
     "test_known_defects.py", "test_middleware_observability.py",
+    # --- Milestone 1: production PostgreSQL foundation -------------------
+    # The 220 baseline counts the POC's audit-remediation suite, and its
+    # purpose is to catch a baseline test being REMOVED. New milestone files
+    # belong here rather than inflating that number, or the guard stops
+    # meaning anything the moment the product grows.
+    "test_pg_repo.py", "test_pg_locking.py", "test_pg_audit.py",
+    "test_runtime_startup.py",
+    # PostgreSQL integration suite, skipped without CAPEX_DB_URL. Flattened
+    # out of tests/pg/ because a second conftest.py there shadowed the root
+    # one under the bare module name `conftest`.
+    "test_pg_fixture_guard.py", "test_pg_migrations_runner.py",
+    "test_pg_constraints.py", "test_pg_transactions.py",
+    "test_pg_scope_leakage.py",
 }
 
 

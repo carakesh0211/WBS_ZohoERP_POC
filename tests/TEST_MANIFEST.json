@@ -924,12 +924,24 @@
     },
     "test_known_defects.py": {
       "test_def_01_a_legacy_v1_database_can_be_upgraded": {
-        "assertions": 1,
-        "body_sha": "af2e384ed7c31a10"
+        "assertions": 5,
+        "body_sha": "c0eef20543536438"
       },
       "test_def_01_control_a_fresh_database_upgrades_cleanly": {
         "assertions": 1,
-        "body_sha": "403e72650e7824e4"
+        "body_sha": "64f01820780bda46"
+      },
+      "test_def_01_run_py_boots_cleanly_against_a_legacy_database": {
+        "assertions": 1,
+        "body_sha": "e736fc2828c853c9"
+      },
+      "test_def_01_pg_adopts_a_preexisting_legacy_schema": {
+        "assertions": 4,
+        "body_sha": "2c02ffebee68d7fa"
+      },
+      "test_def_01_pg_refuses_a_genuine_conflict_rather_than_guessing": {
+        "assertions": 2,
+        "body_sha": "60cb5ef83f724de6"
       }
     },
     "test_manifest.py": {
@@ -1357,6 +1369,396 @@
         "assertions": 1,
         "body_sha": "b78bd3137796f867"
       }
+    },
+    "test_pg_audit.py": {
+      "test_compute_entry_hash_matches_the_frozen_pipe_format": {
+        "assertions": 1,
+        "body_sha": "36182b3ee8cf4b35"
+      },
+      "test_compute_entry_hash_treats_none_prev_hash_as_empty_string": {
+        "assertions": 2,
+        "body_sha": "e7178c129d0b46d7"
+      },
+      "test_compute_entry_hash_is_sensitive_to_every_field": {
+        "assertions": 7,
+        "body_sha": "ea9f25f3d47d74b9"
+      },
+      "test_append_takes_advisory_lock_before_reading_prev_hash": {
+        "assertions": 4,
+        "body_sha": "cb72385b88ddc72a"
+      },
+      "test_append_default_stream_key_is_object_type_colon_object_id": {
+        "assertions": 1,
+        "body_sha": "cc75f351db0ef335"
+      },
+      "test_append_first_entry_gets_seq_1_and_null_prev_hash": {
+        "assertions": 2,
+        "body_sha": "052e71103291a652"
+      },
+      "test_append_next_entry_increments_seq_and_chains_prev_hash": {
+        "assertions": 2,
+        "body_sha": "b59869ba25f195b7"
+      },
+      "test_append_computes_the_frozen_payload_hash_for_the_insert": {
+        "assertions": 1,
+        "body_sha": "a2c293a589fe0bfe"
+      },
+      "test_append_returns_the_row_shaped_dict": {
+        "assertions": 5,
+        "body_sha": "e1b8a23403d30ebb"
+      },
+      "test_verify_chain_reports_intact_for_a_valid_chain": {
+        "assertions": 1,
+        "body_sha": "1059a9d3185478a1"
+      },
+      "test_verify_chain_empty_stream_is_trivially_intact": {
+        "assertions": 1,
+        "body_sha": "cb39c9af6b4154c5"
+      },
+      "test_verify_chain_detects_a_tampered_entry_hash": {
+        "assertions": 3,
+        "body_sha": "df515470f7fd6103"
+      },
+      "test_verify_chain_detects_broken_linkage_even_when_each_hash_is_locally_consistent": {
+        "assertions": 3,
+        "body_sha": "79cbe748f0bc536e"
+      },
+      "test_verify_chain_reports_only_the_first_break_but_still_scans_everything": {
+        "assertions": 3,
+        "body_sha": "7715cef9fa450c03"
+      },
+      "test_append_and_verify_chain_round_trip_against_postgres": {
+        "assertions": 4,
+        "body_sha": "8ac028c5b55f89d8"
+      },
+      "test_chain_hash_is_independent_of_connection_timezone": {
+        "assertions": 4,
+        "body_sha": "ecfd6ac3bef1f707"
+      },
+      "test_canonical_at_treats_a_naive_timestamp_as_utc": {
+        "assertions": 1,
+        "body_sha": "a2663fc789def49a"
+      },
+      "test_different_instants_still_produce_different_hashes": {
+        "assertions": 1,
+        "body_sha": "c4fb8befcc3f639e"
+      }
+    },
+    "test_pg_constraints.py": {
+      "test_overlapping_accounting_periods_for_the_same_entity_are_rejected": {
+        "assertions": 1,
+        "body_sha": "dbc57624ca3a9087"
+      },
+      "test_adjacent_non_overlapping_accounting_periods_are_accepted": {
+        "assertions": 1,
+        "body_sha": "fc46e2a579ef94fd"
+      },
+      "test_the_same_date_range_is_permitted_for_a_different_entity": {
+        "assertions": 0,
+        "body_sha": "f9ba7030337c6bfa"
+      },
+      "test_period_end_before_period_start_is_rejected": {
+        "assertions": 1,
+        "body_sha": "9b23230c10f0de85"
+      },
+      "test_audit_log_rejects_update": {
+        "assertions": 3,
+        "body_sha": "aa8ee2c8e15e2762"
+      },
+      "test_audit_log_rejects_delete": {
+        "assertions": 3,
+        "body_sha": "0813ca450d9df4d7"
+      },
+      "test_audit_anchor_rejects_update_and_delete": {
+        "assertions": 3,
+        "body_sha": "0d4c72d9f5bc1910"
+      },
+      "test_audit_log_stream_seq_must_be_unique": {
+        "assertions": 1,
+        "body_sha": "bf7896706a0f19e7"
+      }
+    },
+    "test_pg_fixture_guard.py": {
+      "test_disposable_names_are_accepted": {
+        "assertions": 1,
+        "body_sha": "cc40d65f09b2ad48"
+      },
+      "test_non_disposable_names_are_refused": {
+        "assertions": 1,
+        "body_sha": "012fbea5b2709e12"
+      },
+      "test_refusal_names_the_offending_database": {
+        "assertions": 1,
+        "body_sha": "21131c12ae6d9fd4"
+      }
+    },
+    "test_pg_locking.py": {
+      "test_derive_lock_set_excludes_non_owning_ancestors": {
+        "assertions": 1,
+        "body_sha": "42346e17796b166d"
+      },
+      "test_derive_lock_set_locks_every_budget_owning_ancestor_not_just_nearest": {
+        "assertions": 1,
+        "body_sha": "28b41d561c77d6ae"
+      },
+      "test_derive_lock_set_is_per_pair_not_a_cross_product": {
+        "assertions": 1,
+        "body_sha": "4926e746a3afb887"
+      },
+      "test_derive_lock_set_dedupes_shared_ancestor_across_affected_pairs": {
+        "assertions": 1,
+        "body_sha": "ed0980d1c0ee8283"
+      },
+      "test_derive_lock_set_orders_by_wbs_path_then_head_a_total_order": {
+        "assertions": 1,
+        "body_sha": "db881e4804c2f079"
+      },
+      "test_derive_lock_set_empty_affected_is_empty": {
+        "assertions": 1,
+        "body_sha": "0a3b39e92b264a15"
+      },
+      "test_lock_affected_cells_empty_affected_never_touches_session": {
+        "assertions": 3,
+        "body_sha": "028b7d824791debb"
+      },
+      "test_lock_affected_cells_appends_to_locks_taken_in_returned_order": {
+        "assertions": 2,
+        "body_sha": "3c2c639f5fb29b54"
+      },
+      "test_lock_affected_cells_appends_without_clearing_prior_locks": {
+        "assertions": 1,
+        "body_sha": "6f8e31ad6b9996c6"
+      },
+      "test_lock_affected_cells_query_is_a_single_ordered_for_update": {
+        "assertions": 5,
+        "body_sha": "21e7cbd58808d40a"
+      },
+      "test_lock_affected_cells_pairs_are_positional_not_a_cross_product_in_sql": {
+        "assertions": 2,
+        "body_sha": "66297ee62af9e206"
+      },
+      "test_advisory_audit_lock_uses_hashtext_and_xact_scope": {
+        "assertions": 4,
+        "body_sha": "a76d72b8eb65bdce"
+      },
+      "test_lock_affected_cells_actually_blocks_a_concurrent_transaction": {
+        "assertions": 4,
+        "body_sha": "f01c0110294851c4"
+      },
+      "test_locking_query_does_not_combine_distinct_with_for_update": {
+        "assertions": 2,
+        "body_sha": "29181fbf0c4bae88"
+      },
+      "test_locking_query_still_deduplicates": {
+        "assertions": 2,
+        "body_sha": "f4c335d9120984ee"
+      },
+      "test_locking_query_orders_by_path_then_head": {
+        "assertions": 2,
+        "body_sha": "9a80acdd43afb0b9"
+      }
+    },
+    "test_pg_migrations_runner.py": {
+      "test_upgrade_applies_001_cleanly": {
+        "assertions": 7,
+        "body_sha": "0ae44d6e4ecb199c"
+      },
+      "test_upgrade_is_idempotent": {
+        "assertions": 3,
+        "body_sha": "ed2bb9acbcdc4b8c"
+      },
+      "test_status_reports_current_after_upgrade": {
+        "assertions": 6,
+        "body_sha": "35a25d1524e99913"
+      },
+      "test_status_reports_pending_before_upgrade": {
+        "assertions": 3,
+        "body_sha": "c54341a3d6e3c649"
+      },
+      "test_changed_checksum_after_apply_raises_migration_error": {
+        "assertions": 1,
+        "body_sha": "9a8fb3c45d234df5"
+      },
+      "test_drift_is_reported_by_status_without_raising": {
+        "assertions": 2,
+        "body_sha": "2159d1a9674fc706"
+      },
+      "test_assert_schema_current_raises_when_behind_and_writes_nothing": {
+        "assertions": 3,
+        "body_sha": "b89d7b0a43dda74a"
+      },
+      "test_assert_schema_current_raises_on_drift_and_writes_nothing": {
+        "assertions": 2,
+        "body_sha": "b2b33c2d57aa7d74"
+      },
+      "test_assert_schema_current_passes_silently_when_current": {
+        "assertions": 0,
+        "body_sha": "485d746ad36d4129"
+      }
+    },
+    "test_pg_repo.py": {
+      "test_require_scope_token_raises_without_literal_token": {
+        "assertions": 1,
+        "body_sha": "0732bcac245524b2"
+      },
+      "test_require_scope_token_accepts_token_anywhere_in_statement": {
+        "assertions": 0,
+        "body_sha": "f9eebeee839f3a6a"
+      },
+      "test_query_raises_before_touching_the_session_when_token_missing": {
+        "assertions": 2,
+        "body_sha": "577b663b35a1f0fd"
+      },
+      "test_query_runs_when_token_present": {
+        "assertions": 2,
+        "body_sha": "3cb75666d1efafc1"
+      },
+      "test_none_dimension_is_unrestricted_no_clause_contributed": {
+        "assertions": 2,
+        "body_sha": "742c7617959d0b43"
+      },
+      "test_empty_frozenset_means_nothing_not_unrestricted": {
+        "assertions": 2,
+        "body_sha": "deb96e498c604815"
+      },
+      "test_empty_frozenset_on_one_dimension_overrides_other_populated_dimensions": {
+        "assertions": 2,
+        "body_sha": "f5499397b0f03060"
+      },
+      "test_populated_set_compiles_to_any_clause_with_sorted_params": {
+        "assertions": 2,
+        "body_sha": "fd536554ee8890ed"
+      },
+      "test_read_all_short_circuits_to_true_regardless_of_other_fields": {
+        "assertions": 2,
+        "body_sha": "943ade824135f437"
+      },
+      "test_no_columns_declared_means_no_filter_even_if_scope_is_restrictive": {
+        "assertions": 2,
+        "body_sha": "983f873f21fa43b2"
+      },
+      "test_multiple_dimensions_are_anded_together": {
+        "assertions": 2,
+        "body_sha": "3fca64717a98f83d"
+      },
+      "test_unknown_dimension_name_is_rejected": {
+        "assertions": 1,
+        "body_sha": "aebb4115e8aafa3b"
+      },
+      "test_query_merges_scope_params_and_substitutes_token": {
+        "assertions": 3,
+        "body_sha": "d37c2148df01305d"
+      },
+      "test_query_defaults_to_session_scope_when_scope_kwarg_omitted": {
+        "assertions": 1,
+        "body_sha": "ad1460a741b613a5"
+      },
+      "test_query_scope_kwarg_overrides_session_scope": {
+        "assertions": 1,
+        "body_sha": "a8975b60df744a55"
+      },
+      "test_query_caller_params_survive_alongside_scope_params": {
+        "assertions": 2,
+        "body_sha": "d3e6ec53eb6d6000"
+      },
+      "test_query_rejects_positional_params": {
+        "assertions": 1,
+        "body_sha": "c313b5d70fd7f5f6"
+      },
+      "test_query_one_returns_none_for_out_of_scope_or_missing_row": {
+        "assertions": 1,
+        "body_sha": "f9e3db54981979a2"
+      },
+      "test_query_one_returns_first_row": {
+        "assertions": 1,
+        "body_sha": "87f1f360b08651af"
+      }
+    },
+    "test_pg_scope_leakage.py": {
+      "test_no_bare_set_statement_in_pg_backend": {
+        "assertions": 1,
+        "body_sha": "22e05c55cff8b9d2"
+      },
+      "test_scope_settings_are_always_applied_via_set_local": {
+        "assertions": 1,
+        "body_sha": "e5eda52464e08f59"
+      },
+      "test_scope_does_not_leak_across_pool_reuse": {
+        "assertions": 2,
+        "body_sha": "d86be74bb7cf5fd8"
+      },
+      "test_session_scope_does_not_leak_to_the_next_session": {
+        "assertions": 5,
+        "body_sha": "77865e1cd7c5a7a4"
+      },
+      "test_session_rollback_also_clears_scope": {
+        "assertions": 3,
+        "body_sha": "dd917dc216e45938"
+      }
+    },
+    "test_pg_transactions.py": {
+      "test_concurrent_transactions_on_the_same_row_serialise_under_for_update": {
+        "assertions": 2,
+        "body_sha": "b5d48f2dcffd7913"
+      },
+      "test_for_update_blocks_a_concurrent_reader_of_the_same_row": {
+        "assertions": 2,
+        "body_sha": "6bd174abb311d216"
+      },
+      "test_rollback_leaves_no_partial_state": {
+        "assertions": 4,
+        "body_sha": "5a8610d2bdc7e203"
+      },
+      "test_rollback_after_a_constraint_violation_leaves_no_partial_state": {
+        "assertions": 2,
+        "body_sha": "a5d7e88ff37750f4"
+      }
+    },
+    "test_runtime_startup.py": {
+      "test_healthz_returns_200_with_database_unavailable": {
+        "assertions": 2,
+        "body_sha": "d61b5253255959a4"
+      },
+      "test_healthz_returns_200_even_with_a_configured_but_unreachable_database": {
+        "assertions": 2,
+        "body_sha": "42e5bee78eced1f2"
+      },
+      "test_readyz_returns_503_when_database_unavailable": {
+        "assertions": 2,
+        "body_sha": "36ec0e1dff331dba"
+      },
+      "test_readyz_returns_503_and_leaks_nothing_with_an_unreachable_database": {
+        "assertions": 4,
+        "body_sha": "72b7d272d7c3e6fa"
+      },
+      "test_readyz_reports_ok_and_schema_version_when_database_is_healthy": {
+        "assertions": 3,
+        "body_sha": "3e36896d9a4f8484"
+      },
+      "test_boot_refuses_when_the_postgres_schema_is_behind_and_writes_nothing": {
+        "assertions": 2,
+        "body_sha": "d35aa7e47acb1ee9"
+      },
+      "test_boot_refuses_when_the_postgres_database_is_unreachable": {
+        "assertions": 4,
+        "body_sha": "eb0b9d3122725680"
+      },
+      "test_run_py_boot_refuses_against_a_legacy_sqlite_database_and_writes_nothing": {
+        "assertions": 2,
+        "body_sha": "216e0edfee5b12b8"
+      },
+      "test_run_py_contains_no_migration_execution_call": {
+        "assertions": 1,
+        "body_sha": "717252eb533056e0"
+      },
+      "test_database_config_repr_never_contains_the_password": {
+        "assertions": 5,
+        "body_sha": "818cbdb300d0a35d"
+      },
+      "test_database_config_from_url_does_not_retain_the_password_on_the_object": {
+        "assertions": 4,
+        "body_sha": "f579f980549700b2"
+      }
     }
   },
   "counts": {
@@ -1367,12 +1769,21 @@
     "test_contracts.py": 47,
     "test_domain_invariants.py": 34,
     "test_financial_controls.py": 61,
-    "test_known_defects.py": 2,
+    "test_known_defects.py": 5,
     "test_manifest.py": 10,
     "test_middleware_observability.py": 11,
     "test_migrations.py": 20,
     "test_money.py": 23,
-    "test_observability.py": 40
+    "test_observability.py": 40,
+    "test_pg_audit.py": 18,
+    "test_pg_constraints.py": 8,
+    "test_pg_fixture_guard.py": 3,
+    "test_pg_locking.py": 16,
+    "test_pg_migrations_runner.py": 9,
+    "test_pg_repo.py": 19,
+    "test_pg_scope_leakage.py": 5,
+    "test_pg_transactions.py": 4,
+    "test_runtime_startup.py": 11
   },
   "assertions": {
     "test_api_auth.py": 50,
@@ -1382,11 +1793,20 @@
     "test_contracts.py": 73,
     "test_domain_invariants.py": 94,
     "test_financial_controls.py": 159,
-    "test_known_defects.py": 2,
+    "test_known_defects.py": 13,
     "test_manifest.py": 15,
     "test_middleware_observability.py": 31,
     "test_migrations.py": 45,
     "test_money.py": 31,
-    "test_observability.py": 77
+    "test_observability.py": 77,
+    "test_pg_audit.py": 46,
+    "test_pg_constraints.py": 13,
+    "test_pg_fixture_guard.py": 3,
+    "test_pg_locking.py": 33,
+    "test_pg_migrations_runner.py": 27,
+    "test_pg_repo.py": 30,
+    "test_pg_scope_leakage.py": 12,
+    "test_pg_transactions.py": 10,
+    "test_runtime_startup.py": 31
   }
 }

@@ -1,3 +1,11 @@
 fastapi>=0.110
 uvicorn[standard]>=0.27
 pydantic>=2.6
+
+# --- Milestone 1: production PostgreSQL foundation ---------------------------
+# psycopg 3 (not psycopg2): server-side cursors, native pipeline mode, and a
+# maintained pure-Python fallback. [binary] ships prebuilt wheels for Windows
+# and manylinux, so no local libpq or compiler is needed on either a developer
+# workstation or a CI runner.
+psycopg[binary]>=3.2
+psycopg_pool>=3.2

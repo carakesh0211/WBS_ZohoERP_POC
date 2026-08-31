@@ -4,7 +4,28 @@ A constraint that only exists in a comment is not a constraint. These tests
 insert directly against a fully migrated disposable database and assert the
 server itself refuses the bad write - never the application layer.
 """
+
 from __future__ import annotations
+
+# Fixtures come from tests/conftest_pg.py, imported explicitly.
+#
+# They deliberately do NOT live in a tests/pg/conftest.py: two conftest.py
+# files in non-package directories both import under the bare module name
+# `conftest`, and the subdirectory one shadows the root one -- which broke
+# `from conftest import code_of, detail` in seven baseline test modules.
+# Importing the fixtures by name into this module's namespace makes them
+# available to pytest here, with no second conftest to collide.
+import sys as _sys
+from pathlib import Path as _Path
+
+_TESTS_DIR = _Path(__file__).resolve().parent
+if str(_TESTS_DIR) not in _sys.path:
+    _sys.path.insert(0, str(_TESTS_DIR))
+
+from conftest_pg import (  # noqa: E402,F401  (re-exported as fixtures)
+    pg_admin_connection, pg_connection, pg_database, pg_disposable_db_name,
+    pg_scope, pg_template, pg_url,
+)
 
 import psycopg
 import pytest
