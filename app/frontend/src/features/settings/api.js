@@ -98,8 +98,15 @@ async function parseProblem(response) {
   }
   const isObj = body && typeof body === 'object';
   return {
-    detail: isObj ? (body.detail || body.title || null) : (typeof body === 'string' ? body : null),
-    code: isObj ? (body.code || null) : null,
+    detail: isObj
+      ? ((body.detail && body.detail.message) || (typeof body.detail === 'string'
+          ? body.detail : null) || body.title || null)
+      : (typeof body === 'string' ? body : null),
+    // Two envelopes exist in this API: the services.BusinessError handler
+    // emits `code` at the top level, while a router raising HTTPException
+    // produces `{detail: {code}}`. Reading only the first meant every
+    // error from the Wave 2 routers arrived with a null code.
+    code: isObj ? (body.code || (body.detail && body.detail.code) || null) : null,
     messageId: isObj ? (body.message_id || null) : null,
     raw: body,
   };

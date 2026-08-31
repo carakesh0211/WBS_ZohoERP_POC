@@ -2507,19 +2507,19 @@
       },
       "test_create_requires_a_parent_reference": {
         "assertions": 2,
-        "body_sha": "f932f67d1fb78c0c"
+        "body_sha": "8864e6daffca2208"
       },
       "test_create_refuses_an_invalid_parent_reference": {
         "assertions": 2,
-        "body_sha": "d39e6fb545d2b98a"
+        "body_sha": "e9009d825f064822"
       },
-      "test_create_requires_actor_header": {
-        "assertions": 2,
-        "body_sha": "1a112615db8996e5"
+      "test_create_refuses_an_unauthenticated_caller": {
+        "assertions": 1,
+        "body_sha": "107c18c8120b63ef"
       },
       "test_unknown_collection_is_404": {
         "assertions": 2,
-        "body_sha": "4b12b0247619e6a1"
+        "body_sha": "2f58f6cce6c277ba"
       },
       "test_stale_version_returns_409_and_row_is_unchanged": {
         "assertions": 6,
@@ -2535,11 +2535,11 @@
       },
       "test_reveal_without_permission_is_refused": {
         "assertions": 2,
-        "body_sha": "9c89b75846c8aacf"
+        "body_sha": "f3b5ecfa22607fc6"
       },
       "test_reveal_with_permission_but_no_reason_is_refused": {
         "assertions": 2,
-        "body_sha": "ba9073831aae3d7c"
+        "body_sha": "b87d9ef3f7f62b92"
       },
       "test_reveal_with_permission_and_reason_unmasks_and_audits": {
         "assertions": 6,
@@ -2716,7 +2716,7 @@
     "test_pg_roles.py": 50,
     "test_pg_scope_leakage.py": 12,
     "test_pg_seed.py": 53,
-    "test_pg_settings.py": 47,
+    "test_pg_settings.py": 46,
     "test_pg_transactions.py": 10,
     "test_runtime_startup.py": 31,
     "test_scope_enforcement.py": 9

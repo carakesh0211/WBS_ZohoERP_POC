@@ -166,25 +166,39 @@ class TestSettingsCrud:
         resp = client.post("/api/settings/divisions", headers=HEADERS,
                             json={"code": "DIV-T1", "name": "Missing Parent Division"})
         assert resp.status_code == 422
-        assert resp.json()["code"] == "MISSING_FIELD"
+        assert resp.json()["detail"]["code"] == "MISSING_FIELD"
 
     def test_create_refuses_an_invalid_parent_reference(self, client):
         resp = client.post("/api/settings/divisions", headers=HEADERS,
                             json={"code": "DIV-T2", "name": "Bad Parent Division",
                                   "entity_id": "ENT-DOES-NOT-EXIST"})
         assert resp.status_code == 422
-        assert resp.json()["code"] == "INVALID_REFERENCE"
+        assert resp.json()["detail"]["code"] == "INVALID_REFERENCE"
 
-    def test_create_requires_actor_header(self, client):
-        resp = client.post("/api/settings/organisations",
-                            json={"code": "ORG-NOACTOR", "name": "No Actor"})
-        assert resp.status_code == 400
-        assert resp.json()["code"] == "ACTOR_REQUIRED"
+    def test_create_refuses_an_unauthenticated_caller(self):
+        """Replaces `test_create_requires_actor_header`.
+
+        The actor used to come from an `X-Actor-Id` header, and its absence
+        was a 400. The actor is now taken from the session, so the question
+        the old test asked no longer exists -- an unauthenticated caller is
+        refused before any handler runs. Asserted here against a client
+        carrying no session at all, rather than deleted, so the refusal stays
+        covered on this router's own create path.
+        """
+        from fastapi import FastAPI
+        from app.backend.api import settings as settings_module
+
+        bare = FastAPI()
+        bare.include_router(settings_module.router)
+        anonymous = TestClient(bare, raise_server_exceptions=False)
+        resp = anonymous.post("/api/settings/organisations",
+                               json={"code": "ORG-NOACTOR", "name": "No Actor"})
+        assert resp.status_code == 401
 
     def test_unknown_collection_is_404(self, client):
         resp = client.get("/api/settings/not-a-real-collection", headers=HEADERS)
         assert resp.status_code == 404
-        assert resp.json()["code"] == "UNKNOWN_COLLECTION"
+        assert resp.json()["detail"]["code"] == "UNKNOWN_COLLECTION"
 
 
 @pytest.mark.pg
@@ -258,13 +272,13 @@ class TestEntityTaxIdentityMasking:
         resp = client.get("/api/settings/entities", headers=HEADERS,
                            params={"reveal": "true"})
         assert resp.status_code == 403
-        assert resp.json()["code"] == "REVEAL_PERMISSION_REQUIRED"
+        assert resp.json()["detail"]["code"] == "REVEAL_PERMISSION_REQUIRED"
 
     def test_reveal_with_permission_but_no_reason_is_refused(self, client):
         headers = dict(HEADERS, **{"X-Permissions": settings_api.REVEAL_PERMISSION})
         resp = client.get("/api/settings/entities", headers=headers, params={"reveal": "true"})
         assert resp.status_code == 400
-        assert resp.json()["code"] == "REVEAL_REASON_REQUIRED"
+        assert resp.json()["detail"]["code"] == "REVEAL_REASON_REQUIRED"
 
     def test_reveal_with_permission_and_reason_unmasks_and_audits(self, client, pg_database, pg_scope):
         org = client.post("/api/settings/organisations", headers=HEADERS,

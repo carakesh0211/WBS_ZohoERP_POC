@@ -103,6 +103,23 @@ VALUES
 --     MILL-INSTALL). Cutting the cell's own budget from Rs 30,00,000 to
 --     Rs 20,00,000 (-Rs 10,00,000) brings utilisation to 17/20 = 85% ->
 --     WATCH (>= domain.WATCH_PCT, 80%, and < CRITICAL_PCT).
+-- budget_line FIRST: budget_revision.budget_line_id carries a foreign key
+-- to it, so the reverse order -- which is how this shipped -- fails on that
+-- constraint the moment the fragment actually loads. It never did load
+-- until the loader itself was fixed, which is why nothing caught it.
+INSERT INTO budget_line
+    (budget_line_id, wbs_id, budget_head_id, kind, amount_paise, effective_from,
+     status, justification, created_by, updated_by)
+VALUES
+    ('BL-DM1-CIVILFOUND-CUT', 'WBS-A-CIVIL-FOUND', 'BH-DM1-CIVIL', 'REVISION',
+     -80000000, '2026-07-10', 'Approved',
+     'Reallocating foundation contingency to Plant & Machinery acceleration.',
+     'U-CFO', 'U-CFO'),
+    ('BL-DM1-PMMILL-CUT', 'WBS-A-PM-MILL', 'BH-DM1-PM', 'REVISION',
+     -100000000, '2026-07-10', 'Approved',
+     'Reallocating from mill equipment contingency to the solar park (PRJ-DM-002).',
+     'U-CFO', 'U-CFO');
+
 INSERT INTO budget_revision
     (revision_id, wbs_id, budget_head_id, delta_paise, effective_from,
      justification, status, budget_line_id, created_by, decided_at, decided_by)
@@ -117,19 +134,6 @@ VALUES
      'Reallocating from mill equipment contingency to the solar park (PRJ-DM-002).',
      'APPROVED', 'BL-DM1-PMMILL-CUT', 'U-PM',
      '2026-07-10T09:15:00+00:00'::timestamptz, 'U-CFO');
-
-INSERT INTO budget_line
-    (budget_line_id, wbs_id, budget_head_id, kind, amount_paise, effective_from,
-     status, justification, created_by, updated_by)
-VALUES
-    ('BL-DM1-CIVILFOUND-CUT', 'WBS-A-CIVIL-FOUND', 'BH-DM1-CIVIL', 'REVISION',
-     -80000000, '2026-07-10', 'Approved',
-     'Reallocating foundation contingency to Plant & Machinery acceleration.',
-     'U-CFO', 'U-CFO'),
-    ('BL-DM1-PMMILL-CUT', 'WBS-A-PM-MILL', 'BH-DM1-PM', 'REVISION',
-     -100000000, '2026-07-10', 'Approved',
-     'Reallocating from mill equipment contingency to the solar park (PRJ-DM-002).',
-     'U-CFO', 'U-CFO');
 
 -- ---- apply the two approved cuts and the WBS-A-CIVIL correction (see the
 -- file header) to the Milestone 1 cells this fragment is not otherwise
