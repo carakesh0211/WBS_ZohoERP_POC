@@ -1370,6 +1370,72 @@
         "body_sha": "b78bd3137796f867"
       }
     },
+    "test_pg_adoption.py": {
+      "test_parser_finds_001_function": {
+        "assertions": 1,
+        "body_sha": "94ad599f8e88afe9"
+      },
+      "test_parser_finds_001_audit_triggers": {
+        "assertions": 1,
+        "body_sha": "b54c87c3212d00b9"
+      },
+      "test_parser_finds_001_accounting_period_gist_exclusion": {
+        "assertions": 1,
+        "body_sha": "3e08b84dd2d93669"
+      },
+      "test_parser_finds_002_named_constraints": {
+        "assertions": 6,
+        "body_sha": "50b600732a433960"
+      },
+      "test_parser_finds_every_paise_column_across_both_migrations": {
+        "assertions": 2,
+        "body_sha": "8973eae46d6a8a17"
+      },
+      "test_parser_ignores_unnamed_table_level_constraints": {
+        "assertions": 1,
+        "body_sha": "9226e6dada846b99"
+      },
+      "test_adoption_succeeds_when_schema_is_genuinely_complete": {
+        "assertions": 3,
+        "body_sha": "ffb61d2e6f63bd90"
+      },
+      "test_adoption_refused_when_a_trigger_is_missing": {
+        "assertions": 2,
+        "body_sha": "6c75c75c00705e53"
+      },
+      "test_adoption_refused_when_budget_paise_is_numeric": {
+        "assertions": 3,
+        "body_sha": "3a582182dfaf3065"
+      },
+      "test_partial_table_presence_is_a_genuine_conflict_not_an_adoption": {
+        "assertions": 2,
+        "body_sha": "b7efac0f7c02256f"
+      },
+      "test_assert_schema_current_writes_nothing_even_against_an_adoptable_schema": {
+        "assertions": 2,
+        "body_sha": "d7bf7816ffc4e223"
+      },
+      "test_adoption_succeeds_when_the_legacy_schema_is_genuinely_complete": {
+        "assertions": 1,
+        "body_sha": "8214077a8946069e"
+      },
+      "test_adoption_is_refused_when_an_append_only_trigger_is_missing": {
+        "assertions": 2,
+        "body_sha": "72c2ef9e5d4e37b8"
+      },
+      "test_adoption_is_refused_when_budget_paise_is_not_bigint": {
+        "assertions": 3,
+        "body_sha": "8ab26c38b387970e"
+      },
+      "test_adoption_refusal_names_every_problem_in_that_migration": {
+        "assertions": 3,
+        "body_sha": "1579a8aad7437048"
+      },
+      "test_adoption_stops_at_the_first_unadoptable_migration": {
+        "assertions": 4,
+        "body_sha": "5279b6d93a61ad9d"
+      }
+    },
     "test_pg_audit.py": {
       "test_compute_entry_hash_matches_the_frozen_pipe_format": {
         "assertions": 1,
@@ -1601,6 +1667,14 @@
       }
     },
     "test_pg_migrations_runner.py": {
+      "test_discover_skips_seed_demo_sql_and_its_presence_does_not_change_the_version_list": {
+        "assertions": 4,
+        "body_sha": "50f183b52c4765cf"
+      },
+      "test_discover_still_rejects_a_genuinely_unrecognised_filename": {
+        "assertions": 1,
+        "body_sha": "134182e703814a8a"
+      },
       "test_upgrade_applies_001_cleanly": {
         "assertions": 7,
         "body_sha": "d324b63f6f377b9b"
@@ -1754,6 +1828,72 @@
         "body_sha": "dd917dc216e45938"
       }
     },
+    "test_pg_seed.py": {
+      "test_guard_refuses_when_capex_profile_is_not_local_demo": {
+        "assertions": 1,
+        "body_sha": "b57087cc4e30b997"
+      },
+      "test_guard_refuses_an_explicitly_wrong_profile_value": {
+        "assertions": 1,
+        "body_sha": "b65c14aa6905667d"
+      },
+      "test_guard_refuses_a_non_disposable_database_name": {
+        "assertions": 1,
+        "body_sha": "a93f49879041b1ff"
+      },
+      "test_guard_accepts_names_matching_the_disposable_patterns": {
+        "assertions": 2,
+        "body_sha": "660347fa00215f29"
+      },
+      "test_force_does_not_bypass_the_profile_check": {
+        "assertions": 1,
+        "body_sha": "1132198a5546783c"
+      },
+      "test_force_does_not_bypass_the_disposable_name_check": {
+        "assertions": 1,
+        "body_sha": "9011a90581e2362d"
+      },
+      "test_disposable_name_patterns_match_conftest_pg_exactly": {
+        "assertions": 2,
+        "body_sha": "51648a7590d82532"
+      },
+      "test_seed_guard_error_is_a_runtime_error": {
+        "assertions": 1,
+        "body_sha": "9d3b2354919f9277"
+      },
+      "test_seed_loads_the_full_demo_dataset": {
+        "assertions": 1,
+        "body_sha": "961861ef04b2c740"
+      },
+      "test_every_money_column_is_an_exact_int_never_float_or_decimal": {
+        "assertions": 3,
+        "body_sha": "44bb4f119ffb2c61"
+      },
+      "test_seeded_audit_streams_verify_intact": {
+        "assertions": 10,
+        "body_sha": "f7ceb5f4af0116a6"
+      },
+      "test_po_line_invariant_holds_for_every_ledger_cell_with_spend": {
+        "assertions": 3,
+        "body_sha": "d8a535e21c09151c"
+      },
+      "test_ancestor_chain_rollup_matches_own_plus_children": {
+        "assertions": 11,
+        "body_sha": "50a1a81523db093c"
+      },
+      "test_seed_refuses_when_the_database_already_contains_rows": {
+        "assertions": 1,
+        "body_sha": "e4494b0943554880"
+      },
+      "test_force_skips_the_emptiness_precheck_but_still_never_silently_merges": {
+        "assertions": 2,
+        "body_sha": "147a029aacc3d124"
+      },
+      "test_seed_refuses_against_an_unmigrated_database": {
+        "assertions": 1,
+        "body_sha": "4197d50506353f41"
+      }
+    },
     "test_pg_transactions.py": {
       "test_concurrent_transactions_on_the_same_row_serialise_under_for_update": {
         "assertions": 2,
@@ -1833,14 +1973,16 @@
     "test_migrations.py": 20,
     "test_money.py": 23,
     "test_observability.py": 40,
+    "test_pg_adoption.py": 16,
     "test_pg_audit.py": 20,
     "test_pg_audit_api_e2e.py": 7,
     "test_pg_constraints.py": 8,
     "test_pg_fixture_guard.py": 3,
     "test_pg_locking.py": 17,
-    "test_pg_migrations_runner.py": 9,
+    "test_pg_migrations_runner.py": 11,
     "test_pg_repo.py": 23,
     "test_pg_scope_leakage.py": 5,
+    "test_pg_seed.py": 16,
     "test_pg_transactions.py": 4,
     "test_runtime_startup.py": 11
   },
@@ -1858,14 +2000,16 @@
     "test_migrations.py": 45,
     "test_money.py": 31,
     "test_observability.py": 77,
+    "test_pg_adoption.py": 37,
     "test_pg_audit.py": 62,
     "test_pg_audit_api_e2e.py": 24,
     "test_pg_constraints.py": 13,
     "test_pg_fixture_guard.py": 3,
     "test_pg_locking.py": 36,
-    "test_pg_migrations_runner.py": 27,
+    "test_pg_migrations_runner.py": 32,
     "test_pg_repo.py": 37,
     "test_pg_scope_leakage.py": 12,
+    "test_pg_seed.py": 42,
     "test_pg_transactions.py": 10,
     "test_runtime_startup.py": 31
   }

@@ -287,3 +287,114 @@ def test_assert_schema_current_writes_nothing_even_against_an_adoptable_schema(b
         "assert_schema_current() must perform no write at all -- not even the "
         "ledger table's own CREATE TABLE IF NOT EXISTS -- regardless of "
         "whether the schema underneath it happens to be adoptable")
+
+
+# ---------------------------------------------------------------------------
+# Lead-added: F5's refusals, WITHOUT a database.
+#
+# The five live refusal tests above skip on any machine with no PostgreSQL,
+# which is every developer workstation here. That is exactly the gap that let a
+# lock query PostgreSQL cannot parse reach integration: a check whose only
+# coverage is in an environment nobody runs locally is a check nobody runs.
+#
+# These drive the same code paths through the fake connection in
+# tests/test_known_defects.py, so F5 has coverage in both environments.
+# ---------------------------------------------------------------------------
+def _fake_with_full_schema(**overrides):
+    """A legacy database that IS genuinely complete, unless overridden."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from test_known_defects import _FakeAdoptConnection
+    from app.backend.pg import migrate_pg
+
+    tables = set()
+    for migration in migrate_pg.discover():
+        tables.update(migrate_pg._tables_created_by(migration))
+    return _FakeAdoptConnection(existing_tables=tables, **overrides)
+
+
+def test_adoption_succeeds_when_the_legacy_schema_is_genuinely_complete():
+    """The control. Without this the refusal tests below prove nothing --
+    a check that refuses everything is not a check."""
+    from app.backend.pg import migrate_pg
+
+    con = _fake_with_full_schema()
+    performed = migrate_pg.upgrade(con)
+    assert performed == [f"{m.version} (adopted)" for m in migrate_pg.discover()]
+
+
+def test_adoption_is_refused_when_an_append_only_trigger_is_missing():
+    """F5 failure A: a dump taken before the audit triggers existed.
+
+    Adopted under the old table-existence check, audit_log would be freely
+    UPDATE-able while assert_schema_current() reported the schema current --
+    the domain's "immutability is a database property, not discipline"
+    guarantee silently gone, with nothing anywhere saying so.
+    """
+    from app.backend.pg import migrate_pg
+
+    con = _fake_with_full_schema(missing_objects={"audit_log_no_update"})
+    with pytest.raises(migrate_pg.MigrationError) as exc:
+        migrate_pg.upgrade(con)
+    assert "audit_log_no_update" in str(exc.value), (
+        f"the refusal must name the missing object; got {exc.value}")
+
+
+def test_adoption_is_refused_when_budget_paise_is_not_bigint():
+    """F5 failure B: the one float-leakage path in the system.
+
+    A hand-applied `budget_paise numeric(18,2)` has the right table name, so
+    the old check adopted it. Every write then stores a numeric where the
+    domain requires bigint paise; psycopg returns Decimal, and the first
+    arithmetic mixing it with an int propagates a non-integer amount through
+    the financial controls.
+    """
+    from app.backend.pg import migrate_pg
+
+    con = _fake_with_full_schema(paise_types={"budget_paise": "numeric"})
+    with pytest.raises(migrate_pg.MigrationError) as exc:
+        migrate_pg.upgrade(con)
+    message = str(exc.value)
+    assert "budget_paise" in message, "the refusal must name the column"
+    assert "numeric" in message, "the refusal must name the ACTUAL type found"
+
+
+def test_adoption_refusal_names_every_problem_in_that_migration():
+    """One error naming everything wrong, not a discovery per redeploy.
+
+    An operator fixing one problem at a time, redeploying between each, is how
+    a short outage becomes a long one.
+
+    Scoped to a SINGLE migration deliberately: upgrade() stops at the first
+    migration it cannot adopt, so an error can only speak for that one. My
+    first version of this test expected problems from 001 AND 002 in one
+    message, which asked for behaviour that would be wrong -- silently
+    continuing past a migration that failed to adopt.
+    """
+    from app.backend.pg import migrate_pg
+
+    con = _fake_with_full_schema(
+        missing_objects={"audit_log_no_update", "audit_anchor_no_delete"})
+    with pytest.raises(migrate_pg.MigrationError) as exc:
+        migrate_pg.upgrade(con)
+    message = str(exc.value)
+    assert "audit_log_no_update" in message
+    assert "audit_anchor_no_delete" in message, (
+        "the second missing trigger must be reported too, not just the first")
+
+
+def test_adoption_stops_at_the_first_unadoptable_migration():
+    """001's problems must not be masked by, or mixed with, 002's."""
+    from app.backend.pg import migrate_pg
+
+    con = _fake_with_full_schema(
+        missing_objects={"audit_log_no_update"},          # 001
+        paise_types={"budget_paise": "numeric"})          # 002
+    with pytest.raises(migrate_pg.MigrationError) as exc:
+        migrate_pg.upgrade(con)
+    message = str(exc.value)
+    assert "001_foundation" in message
+    assert "audit_log_no_update" in message
+    assert "budget_paise" not in message, (
+        "upgrade() must stop at 001 rather than continuing into 002")

@@ -174,8 +174,14 @@ class _FakeAdoptConnection:
     exactly the ``execute`` surface ``migrate_pg`` calls.
     """
 
-    def __init__(self, existing_tables: set[str]):
+    def __init__(self, existing_tables: set[str], *,
+                 missing_objects: set[str] | None = None,
+                 paise_types: dict[str, str] | None = None):
         self.existing_tables = set(existing_tables)
+        #: Function / trigger / constraint names this legacy database LACKS.
+        self.missing_objects = set(missing_objects or ())
+        #: Column name -> actual SQL type, for modelling money-type drift.
+        self.paise_types = dict(paise_types or {})
         self.recorded: list[tuple] = []
         self.statements: list[str] = []
 
@@ -189,6 +195,42 @@ class _FakeAdoptConnection:
         if norm.startswith("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES"):
             wanted = set(params[0])
             return _FakeCursor([(t,) for t in wanted & self.existing_tables])
+
+        # --- schema-shape queries added when F5 closed the adoption gap ------
+        #
+        # Adoption used to check table EXISTENCE only, which meant a legacy
+        # database dumped before the append-only triggers existed could be
+        # adopted and reported "current" with audit_log freely UPDATE-able --
+        # and a hand-applied `budget_paise numeric` could be adopted as valid,
+        # the one float-leakage path in the system.
+        #
+        # This fake modelled exactly that old contract: it answered the table
+        # query and raised DuplicateTable at everything else. Once adoption
+        # started asking about functions, triggers, constraints and column
+        # types, the fake refused the questions and the test failed -- the fake
+        # encoding an obsolete definition of "complete schema", not a defect in
+        # the new checks.
+        #
+        # It now answers as a genuinely COMPLETE legacy schema would: every
+        # object present, every *_paise column bigint. `missing_objects` and
+        # `paise_types` let a test model an INCOMPLETE one instead.
+        if norm.startswith("SELECT P.PRONAME FROM PG_PROC"):
+            wanted = set(params[0]) if params else set()
+            return _FakeCursor([(n,) for n in wanted - self.missing_objects])
+        if norm.startswith("SELECT 1 FROM PG_TRIGGER") or                 norm.startswith("SELECT 1 FROM PG_CONSTRAINT"):
+            # Order-independent on purpose: the trigger lookup binds
+            # (table, name) and the constraint lookup binds (table, name) too,
+            # so keying on params[0] silently matched the TABLE and every
+            # object looked present. A fake that answers the wrong parameter is
+            # worse than no fake -- it makes a refusal test pass while
+            # exercising nothing.
+            supplied = {str(p) for p in (params or ())}
+            absent = bool(supplied & self.missing_objects)
+            return _FakeCursor([] if absent else [(1,)])
+        if norm.startswith("SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS"):
+            # params carry (table, column) in some order; look up by column.
+            column = next((p for p in (params or ()) if str(p).endswith("_paise")), None)
+            return _FakeCursor([(self.paise_types.get(column, "bigint"),)])
         if norm.startswith("INSERT INTO SCHEMA_MIGRATIONS"):
             version, name, checksum, duration_ms = params
             self.recorded.append((version, checksum))
