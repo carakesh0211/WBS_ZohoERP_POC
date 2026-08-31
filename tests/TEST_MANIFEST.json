@@ -1436,8 +1436,8 @@
         "body_sha": "7715cef9fa450c03"
       },
       "test_append_and_verify_chain_round_trip_against_postgres": {
-        "assertions": 4,
-        "body_sha": "8ac028c5b55f89d8"
+        "assertions": 8,
+        "body_sha": "daeda415d3f5dda9"
       },
       "test_chain_hash_is_independent_of_connection_timezone": {
         "assertions": 4,
@@ -1827,7 +1827,7 @@
     "test_migrations.py": 45,
     "test_money.py": 31,
     "test_observability.py": 77,
-    "test_pg_audit.py": 58,
+    "test_pg_audit.py": 62,
     "test_pg_constraints.py": 13,
     "test_pg_fixture_guard.py": 3,
     "test_pg_locking.py": 36,
