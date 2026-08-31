@@ -108,7 +108,6 @@ def _requires(permission: str):
 router = APIRouter(dependencies=[Depends(require_settings_access)])
 
 _CORRELATION_HEADER = "X-Correlation-Id"
-_ACTOR_HEADER = "X-Actor-Id"
 _PERMISSIONS_HEADER = "X-Permissions"
 _REVEAL_REASON_HEADER = "X-Reveal-Reason"
 _DEFAULT_LIMIT = 50
@@ -352,7 +351,7 @@ def list_collection(
     params["fetch_limit"] = limit + 1
 
     columns = ", ".join(_row_columns(spec))
-    actor = request.headers.get(_ACTOR_HEADER, "SYSTEM") or "SYSTEM"
+    actor = _actor(request)
     with database.session(_service_scope(actor)) as session:
         rows = session.fetchall(
             f"SELECT {columns} FROM {spec.table} WHERE {where} "  # noqa: S608
@@ -365,9 +364,10 @@ def list_collection(
         if reveal_granted:
             for row in page:
                 data = _row_to_dict(spec, row)
-                _reveal_entity_tax_identity(session, data[spec.id_column], actor=actor,
-                                             reason=reveal_reason,
-                                             correlation_id=_correlation_id(request))
+                pg_masters.reveal_entity_tax_identity(
+                    session, data[spec.id_column], actor=actor,
+                    reason=reveal_reason,
+                    correlation_id=_correlation_id(request))
 
     next_cursor = _encode_cursor(page[-1][0]) if has_more and page else None
     return {"items": items, "next_cursor": next_cursor, "has_more": has_more}

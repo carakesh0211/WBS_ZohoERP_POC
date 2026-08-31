@@ -71,37 +71,32 @@ except ImportError as exc:  # pragma: no cover - only before audit.py lands
 else:
     app.include_router(audit_api.router)
 
-try:
-    from .api import budget as budget_api
-except Exception:  # pragma: no cover - import guard, mirrors audit above
-    budget_api = None
+# The Wave 2 routers are imported and mounted with NO try/except.
+#
+# They first shipped wrapped in `except Exception: <name> = None`, copied from
+# the audit guard above. That guard exists only because audit.py post-dates
+# main.py; these modules are product code. The blanket form turned any import
+# error into fourteen silently missing routes, logged nothing, and passed
+# locally while every one of them was absent in CI -- the authorisation-matrix
+# gate is the only reason it was caught at all.
+#
+# A router that cannot be imported is a broken deployment. It should fail at
+# import, loudly, with the real traceback, rather than serve an application
+# that is quietly missing its budget, masters, settings and access APIs.
+#
+# Mounting is unconditional for the reason given above: a router whose
+# database is unconfigured answers 503 from its own dependency. Making the
+# MOUNT conditional is what let the audit routes vanish in CI twice while the
+# job reported green.
+from .api import admin_access as admin_access_api
+from .api import budget as budget_api
+from .api import masters as masters_api
+from .api import settings as settings_api
 
-if budget_api is not None:
-    # Mounted unconditionally, exactly like the audit router. A router whose
-    # database is unconfigured answers 503 from its own dependency; making the
-    # MOUNT conditional is what let the audit routes silently vanish in CI
-    # twice while the job reported green.
-    app.include_router(budget_api.router)
-
-try:
-    from .api import masters as masters_api
-    from .api import settings as settings_api
-except Exception:  # pragma: no cover - import guard, mirrors audit above
-    masters_api = None
-    settings_api = None
-
-if masters_api is not None:
-    app.include_router(masters_api.router)
-if settings_api is not None:
-    app.include_router(settings_api.router)
-
-try:
-    from .api import admin_access as admin_access_api
-except Exception:  # pragma: no cover - import guard, mirrors audit above
-    admin_access_api = None
-
-if admin_access_api is not None:
-    app.include_router(admin_access_api.router)
+app.include_router(budget_api.router)
+app.include_router(masters_api.router)
+app.include_router(settings_api.router)
+app.include_router(admin_access_api.router)
 
 PUBLIC_PATHS = {"/api/health", "/api/auth/login"}
 

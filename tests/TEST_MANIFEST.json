@@ -1280,6 +1280,24 @@
         "body_sha": "1f5ff16ac4882cad"
       }
     },
+    "test_money_sql_discipline.py": {
+      "test_every_sum_of_a_paise_column_is_cast_back_to_bigint": {
+        "assertions": 1,
+        "body_sha": "1c82e48aad37d037"
+      },
+      "test_the_gate_catches_an_uncast_sum": {
+        "assertions": 1,
+        "body_sha": "88d772a71b8ca9ee"
+      },
+      "test_the_gate_accepts_the_cast_form": {
+        "assertions": 1,
+        "body_sha": "87b90b56d2951bd6"
+      },
+      "test_no_pg_module_multiplies_or_divides_by_a_float_literal_in_money_code": {
+        "assertions": 1,
+        "body_sha": "96ee6797bdaaf678"
+      }
+    },
     "test_negative_access_matrix.py": {
       "test_every_admin_access_route_carries_a_permission_dependency": {
         "assertions": 1,
@@ -1506,8 +1524,8 @@
         "body_sha": "9226e6dada846b99"
       },
       "test_adoption_succeeds_when_schema_is_genuinely_complete": {
-        "assertions": 3,
-        "body_sha": "ffb61d2e6f63bd90"
+        "assertions": 5,
+        "body_sha": "cac9fb7134c50fc3"
       },
       "test_adoption_refused_when_a_trigger_is_missing": {
         "assertions": 2,
@@ -1931,9 +1949,13 @@
         "assertions": 3,
         "body_sha": "badd32f936ceefc0"
       },
-      "test_create_local_forces_source_local_even_if_payload_lies": {
+      "test_create_local_refuses_a_payload_that_tries_to_set_source": {
+        "assertions": 3,
+        "body_sha": "3923384270672101"
+      },
+      "test_create_local_sets_source_local_itself": {
         "assertions": 5,
-        "body_sha": "c35c181cb0e2c5db"
+        "body_sha": "17a54ff348714312"
       },
       "test_create_local_writes_an_audit_entry": {
         "assertions": 2,
@@ -2589,25 +2611,37 @@
       }
     },
     "test_scope_enforcement.py": {
-      "test_no_service_module_reads_a_scopable_table_off_the_chokepoint": {
+      "test_no_module_reads_a_scopable_table_off_the_chokepoint": {
         "assertions": 1,
-        "body_sha": "20851fd1a79fc9cc"
+        "body_sha": "e79c6b94c7b4c4a5"
       },
-      "test_the_gate_actually_catches_a_bypass": {
-        "assertions": 3,
-        "body_sha": "8089d6e5131d7b33"
+      "test_the_gate_catches_a_literal_bypass": {
+        "assertions": 1,
+        "body_sha": "ac80c79543038f7b"
+      },
+      "test_the_gate_catches_a_computed_table_name": {
+        "assertions": 1,
+        "body_sha": "e37ff1b92d358dd5"
+      },
+      "test_the_gate_catches_sql_held_in_a_variable": {
+        "assertions": 1,
+        "body_sha": "c0f9d51c08c34a36"
       },
       "test_an_exempt_comment_is_required_to_state_a_reason": {
         "assertions": 1,
-        "body_sha": "430f1983d307cab2"
+        "body_sha": "a4318b8aa531528b"
       },
-      "test_the_infrastructure_allow_list_names_only_files_that_exist": {
-        "assertions": 1,
-        "body_sha": "9a2f70bea094d4d9"
+      "test_the_routers_are_scanned_not_only_the_service_layer": {
+        "assertions": 2,
+        "body_sha": "8b88f43d1524997c"
       },
-      "test_there_are_service_modules_to_check": {
+      "test_every_declared_exemption_names_a_file_that_exists": {
         "assertions": 1,
-        "body_sha": "08298fae926df5a9"
+        "body_sha": "06fb026424e85990"
+      },
+      "test_no_row_scope_declarations_each_state_a_reason": {
+        "assertions": 1,
+        "body_sha": "6ed04a51854a80db"
       }
     }
   },
@@ -2626,6 +2660,7 @@
     "test_middleware_observability.py": 11,
     "test_migrations.py": 20,
     "test_money.py": 23,
+    "test_money_sql_discipline.py": 4,
     "test_negative_access_matrix.py": 9,
     "test_observability.py": 40,
     "test_pg_adoption.py": 16,
@@ -2635,7 +2670,7 @@
     "test_pg_constraints.py": 8,
     "test_pg_fixture_guard.py": 3,
     "test_pg_locking.py": 17,
-    "test_pg_masters.py": 31,
+    "test_pg_masters.py": 32,
     "test_pg_migrations_runner.py": 11,
     "test_pg_periods.py": 14,
     "test_pg_repo.py": 23,
@@ -2646,7 +2681,7 @@
     "test_pg_settings.py": 17,
     "test_pg_transactions.py": 4,
     "test_runtime_startup.py": 11,
-    "test_scope_enforcement.py": 5
+    "test_scope_enforcement.py": 8
   },
   "assertions": {
     "test_api_auth.py": 50,
@@ -2663,16 +2698,17 @@
     "test_middleware_observability.py": 31,
     "test_migrations.py": 45,
     "test_money.py": 31,
+    "test_money_sql_discipline.py": 4,
     "test_negative_access_matrix.py": 29,
     "test_observability.py": 77,
-    "test_pg_adoption.py": 37,
+    "test_pg_adoption.py": 39,
     "test_pg_audit.py": 62,
     "test_pg_audit_api_e2e.py": 24,
     "test_pg_budget.py": 57,
     "test_pg_constraints.py": 13,
     "test_pg_fixture_guard.py": 3,
     "test_pg_locking.py": 36,
-    "test_pg_masters.py": 79,
+    "test_pg_masters.py": 82,
     "test_pg_migrations_runner.py": 32,
     "test_pg_periods.py": 35,
     "test_pg_repo.py": 37,
@@ -2683,6 +2719,6 @@
     "test_pg_settings.py": 47,
     "test_pg_transactions.py": 10,
     "test_runtime_startup.py": 31,
-    "test_scope_enforcement.py": 7
+    "test_scope_enforcement.py": 9
   }
 }

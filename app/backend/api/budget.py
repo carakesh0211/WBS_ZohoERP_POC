@@ -189,9 +189,20 @@ def _scope_for(request: Request) -> Scope:
 
 
 #: Roles for which reading across the whole estate is the point of the role.
+#:
+#: FinanceApprover was here and has been REMOVED. The Scope this produces is
+#: the session scope for every budget call, not only reads, and `read_all`
+#: short-circuits `compile_scope` to TRUE before any dimension is examined --
+#: so a "read concession" silently granted FinanceApprover, the maker-checker
+#: approver for `revision.approve`, authority to approve revisions and
+#: transfers and to close accounting periods in EVERY entity.
+#:
+#: The remaining two are defensible: Auditor holds no mutating budget
+#: permission at all, and Administrator is barred from financial approval by
+#: `test_aud_c_006_administrator_holds_no_financial_approval`. Neither can
+#: reach a write path to which this scope would apply.
 _WHOLE_ESTATE_BUDGET_ROLES = frozenset({
     "Administrator", "System Administrator", "Auditor", "Internal Auditor",
-    "FinanceApprover",
 })
 
 

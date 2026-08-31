@@ -71,6 +71,7 @@ NOT_FOUND = "NOT_FOUND"
 VERSION_CONFLICT = "VERSION_CONFLICT"
 MISSING_FIELD = "MISSING_FIELD"
 UNKNOWN_FIELD = "UNKNOWN_FIELD"
+MASKED_VALUE_SUBMITTED = "MASKED_VALUE_SUBMITTED"
 ZOHO_CREATE_REFUSED = "ZOHO_SOURCE_NOT_CREATABLE"
 ZOHO_FIELD_READONLY = "ZOHO_SOURCED_FIELD_READONLY"
 INVALID_SOURCE_OF_TRUTH = "SOURCE_OF_TRUTH_NOT_ALLOWED"
@@ -220,6 +221,11 @@ def _mask(value: str, head: int, tail: int) -> str:
     return value[:head] + "****" + value[-tail:]
 
 
+#: Fields rendered masked in any response, and therefore never accepted
+#: back in a payload while they still carry the mask character.
+MASKED_FIELDS = frozenset({"gst_no", "pan_no"})
+
+
 def mask_gst_no(value: str | None) -> str | None:
     """`27ABCDE1234A1Z5` -> `27ABCDE****1Z5` -- first 7, last 3, fixed
     4-asterisk gap, matching the contract's worked example exactly."""
@@ -265,9 +271,18 @@ def render_item(row: Mapping[str, Any]) -> dict[str, Any]:
 def create_local(session: Session, kind: MasterKind, *, actor: str,
                   payload: Mapping[str, Any],
                   correlation_id: str | None = None) -> dict[str, Any]:
-    """Create a `source='LOCAL'` row. `source` is forced regardless of what
-    `payload` contains -- see the module docstring, invariant 1; a ZOHO row
-    is never created through this path."""
+    """Create a `source='LOCAL'` row.
+
+    A ZOHO row is never created through this path. `source` is set here, not
+    taken from `payload`, and a payload that tries to carry `source` at all is
+    REFUSED as an unknown field rather than silently ignored -- a caller who
+    believes they set a field they did not is worse off than one who is told.
+
+    (The docstring previously said `source` was "forced regardless of what
+    payload contains", which read as "ignored". The unknown-field check below
+    runs first and refuses it. Code and docstring now agree, and the test
+    asserts the refusal.)
+    """
     code = (payload.get("code") or "").strip()
     name = (payload.get("name") or "").strip()
     if not code:
@@ -442,6 +457,25 @@ def update_master(session: Session, kind: MasterKind, *, actor: str, id_value: s
         raise MasterDataError(422, UNKNOWN_FIELD,
                                f"unknown field(s) for this master kind: {sorted(unknown)}")
 
+    # A masked value must never be written back as if it were the real one.
+    #
+    # A list response returns `gst_no` as `27ABCDE****1Z5`. An edit form that
+    # loads a row, shows that value and submits it unchanged would write the
+    # mask over the true tax identity -- and here it does not even fail
+    # safely: `vendor_master` CHECKs `gst_no ~ '^[0-9]{2}[A-Z0-9]{13}$'`, so
+    # `*` violates the constraint and psycopg raises CheckViolation, which the
+    # router does not catch, so the caller gets a 500 and cannot edit the
+    # vendor at all. Refusing here turns silent corruption -- and an
+    # unhandled 500 -- into an actionable 422 that names the field.
+    masked = sorted(field for field in MASKED_FIELDS & set(payload)
+                    if isinstance(payload.get(field), str) and "*" in payload[field])
+    if masked:
+        raise MasterDataError(
+            422, MASKED_VALUE_SUBMITTED,
+            f"masked value(s) submitted for {masked}: a masked field cannot be "
+            f"written back. Omit the field to leave it unchanged, or send the "
+            f"full value.")
+
     current_row = _select_row(session, kind, id_value, for_update=True)
     if current_row is None:
         raise MasterDataError(404, NOT_FOUND, f"{kind.table} {id_value} does not exist")
@@ -557,6 +591,38 @@ def reveal_vendor_tax_identity(session: Session, vendor_id: str, *, actor: str,
                 correlation_id=correlation_id)
 
     return render_vendor(data, reveal=True)
+
+
+def reveal_entity_tax_identity(session: Session, entity_id: str, *, actor: str,
+                                reason: str, correlation_id: str | None = None
+                                ) -> dict[str, Any]:
+    """`reveal_vendor_tax_identity`'s counterpart for `entity`.
+
+    `api/settings.py` called `_reveal_entity_tax_identity` -- a name that
+    existed nowhere -- so every successful entity reveal raised NameError
+    inside the session, rolled back, and returned 500. No entity reveal ever
+    succeeded, and the module's central claim, that a full reveal always
+    writes an audit entry, was never once exercised on this path.
+
+    `entity` is not a MasterKind, so this reads the two regulated columns
+    directly rather than through `_select_row`. As with the vendor form, the
+    PERMISSION check belongs to the API layer; this function is only reachable
+    once that check has passed, and it always audits when called.
+    """
+    row = session.fetchone(  # scope-exempt: settings data is organisation-wide reference data; the permission check is the control
+        "SELECT gst_no, pan_no FROM entity WHERE entity_id = %s", (entity_id,))
+    if row is None:
+        raise MasterDataError(404, NOT_FOUND, f"entity {entity_id} does not exist")
+
+    gst_no, pan_no = row
+    for field, value in (("gst_no", gst_no), ("pan_no", pan_no)):
+        if value:
+            pg_audit.append(
+                session, actor, "REVEAL_TAX_IDENTITY", "entity", entity_id,
+                f"field={field} reason={reason!r}",
+                correlation_id=correlation_id)
+
+    return {"gst_no": gst_no, "pan_no": pan_no}
 
 
 # ============================================================================

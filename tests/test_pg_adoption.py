@@ -196,9 +196,26 @@ def test_adoption_succeeds_when_schema_is_genuinely_complete(bare_pg_connection)
     performed = migrate_pg.upgrade(con)
     con.commit()
 
-    assert performed == ["001 (adopted)", "002 (adopted)"]
+    # Exactly the two whose DDL was pre-applied are ADOPTED; every other
+    # migration the runner discovers is applied normally. Asserted this way
+    # rather than against a literal list, because the previous form --
+    # `performed == ["001 (adopted)", "002 (adopted)"]` -- broke the moment
+    # migration 003 existed, and a test that fails whenever the product grows
+    # gets "fixed" by relaxing it rather than by being read.
+    adopted = [entry for entry in performed if "(adopted)" in entry]
+    applied = [entry for entry in performed if "(adopted)" not in entry]
+
+    assert adopted == ["001 (adopted)", "002 (adopted)"], (
+        "only the migrations whose DDL was already present may be adopted")
     assert _recorded_version(con, "001")
     assert _recorded_version(con, "002")
+
+    # The rest ran for real, in order, and are recorded.
+    later = [m.version for m in migrate_pg.discover() if m.version not in ("001", "002")]
+    assert applied == later, (
+        f"expected every later migration to be applied normally, got {applied}")
+    for version in later:
+        assert _recorded_version(con, version)
 
 
 @PG

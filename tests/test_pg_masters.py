@@ -188,11 +188,22 @@ def _seed_series(pg_connection):
 @pytest.mark.pg
 @PG
 class TestCreateAndSource:
-    def test_create_local_forces_source_local_even_if_payload_lies(self, pg_database, pg_scope):
+    def test_create_local_refuses_a_payload_that_tries_to_set_source(self, pg_database, pg_scope):
+        """A caller cannot create a ZOHO-sourced row through this path, and is
+        told so rather than having the field quietly dropped."""
+        with pg_database.session(pg_scope) as session:
+            with pytest.raises(masters.MasterDataError) as exc:
+                masters.create_local(
+                    session, masters.ITEM, actor="tester",
+                    payload={"code": "ITM-A", "name": "Widget A", "source": "ZOHO"})
+        assert exc.value.status == 422
+        assert "source" in str(exc.value)
+
+    def test_create_local_sets_source_local_itself(self, pg_database, pg_scope):
         with pg_database.session(pg_scope) as session:
             row = masters.create_local(
                 session, masters.ITEM, actor="tester",
-                payload={"code": "ITM-A", "name": "Widget A", "source": "ZOHO"})
+                payload={"code": "ITM-A", "name": "Widget A"})
         assert row["source"] == "LOCAL"
         assert row["source_of_truth_status"] == "LOCAL"
         assert row["mapping_status"] == "UNMAPPED"

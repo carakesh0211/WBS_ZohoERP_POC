@@ -49,6 +49,7 @@ import binascii
 from typing import Any
 from uuid import uuid4
 
+import psycopg
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response
 
 from ..pg import masters as pg_masters
@@ -104,7 +105,6 @@ def _requires(permission: str):
 router = APIRouter(dependencies=[Depends(require_masters_access)])
 
 _CORRELATION_HEADER = "X-Correlation-Id"
-_ACTOR_HEADER = "X-Actor-Id"
 _PERMISSIONS_HEADER = "X-Permissions"
 _REVEAL_REASON_HEADER = "X-Reveal-Reason"
 _DEFAULT_LIMIT = 50
@@ -300,7 +300,7 @@ def list_masters(
     params["fetch_limit"] = limit + 1  # one extra row decides has_more with no 2nd query
 
     columns = ", ".join(pg_masters.row_columns(kind))
-    actor = request.headers.get(_ACTOR_HEADER, "SYSTEM") or "SYSTEM"
+    actor = _actor(request)
     with database.session(_service_scope(actor)) as session:
         rows = session.fetchall(
             f"SELECT {columns} FROM {kind.table} WHERE {where} "  # noqa: S608 -- table/columns from a fixed internal allow-list
@@ -338,7 +338,7 @@ def list_duplicates(kind_name: str, response: Response, request: Request,
     except pg_masters.MasterDataError as exc:
         raise _from_master_error(exc) from exc
 
-    actor = request.headers.get(_ACTOR_HEADER, "SYSTEM") or "SYSTEM"
+    actor = _actor(request)
     with database.session(_service_scope(actor)) as session:
         rows = session.fetchall(
             f"""
@@ -368,15 +368,23 @@ def create_master(kind_name: str, response: Response, request: Request,
         raise _from_master_error(exc) from exc
 
     actor = _actor(request)
-    # source is forced to LOCAL regardless of what the caller sent -- a ZOHO
-    # row is never created through this API (docs/WAVE2_CONTRACTS.md).
-    payload = {k: v for k, v in payload.items() if k != "source"}
+    # `source` is NOT stripped here. It used to be, which meant a caller who
+    # sent `source: "ZOHO"` got a 201 and a LOCAL row, believing they had set
+    # a field they had not. `create_local` refuses the field instead, so the
+    # caller is told. A ZOHO row is still never created through this API
+    # (docs/WAVE2_CONTRACTS.md); it is refused rather than silently rewritten.
     with database.session(_service_scope(actor)) as session:
         try:
             row = pg_masters.create_local(session, kind, actor=actor, payload=payload,
                                            correlation_id=_correlation_id(request))
         except pg_masters.MasterDataError as exc:
             raise _from_master_error(exc) from exc
+        except psycopg.errors.UniqueViolation as exc:
+            raise _problem(409, "DUPLICATE_CODE",
+                            "that code already exists for this master kind") from exc
+        except psycopg.errors.CheckViolation as exc:
+            raise _problem(422, "INVALID_FIELD",
+                            "a field value violates a database constraint") from exc
     return _render(kind, row, reveal=False)
 
 
@@ -408,6 +416,12 @@ def update_master(kind_name: str, item_id: str, response: Response, request: Req
                 correlation_id=_correlation_id(request))
         except pg_masters.MasterDataError as exc:
             raise _from_master_error(exc) from exc
+        except psycopg.errors.UniqueViolation as exc:
+            raise _problem(409, "DUPLICATE_CODE",
+                            "that code already exists for this master kind") from exc
+        except psycopg.errors.CheckViolation as exc:
+            raise _problem(422, "INVALID_FIELD",
+                            "a field value violates a database constraint") from exc
     return _render(kind, row, reveal=False)
 
 
@@ -427,4 +441,10 @@ def deactivate_master(kind_name: str, item_id: str, response: Response, request:
                                                 correlation_id=_correlation_id(request))
         except pg_masters.MasterDataError as exc:
             raise _from_master_error(exc) from exc
+        except psycopg.errors.UniqueViolation as exc:
+            raise _problem(409, "DUPLICATE_CODE",
+                            "that code already exists for this master kind") from exc
+        except psycopg.errors.CheckViolation as exc:
+            raise _problem(422, "INVALID_FIELD",
+                            "a field value violates a database constraint") from exc
     return {"id": row[kind.id_column], "is_active": row["is_active"]}

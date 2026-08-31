@@ -33,9 +33,10 @@ immutability trigger, `budget_revision`, `budget_transfer`, `budget_version`),
 open-exception guard), 13 API routes, and SCR-09/10/13 wired to them.
 
 **M4a — identity, roles and scope.** Migration 004 (`role_grant`,
-`user_scope_grant`, `user_scope_restriction`, RLS policies on every scopable
-table), `pg/roles.py`, `pg/rls.py` as a pure-Python mirror of the SQL
-predicate, and `/api/admin/*`.
+`user_scope_grant`, `user_scope_restriction`, RLS policies on eleven tables),
+`pg/roles.py`, `pg/rls.py` as a pure-Python mirror of the SQL predicate, and
+`/api/admin/*`. An earlier draft of this document said "RLS policies on every
+scopable table". That was wrong, and the gap is recorded below.
 
 **M2 — settings and master data.** Migration 005 (`item_master`,
 `vendor_master`, the custom-field engine, collision-safe numbering),
@@ -44,7 +45,7 @@ organisation-hierarchy admin.
 
 ## Tests
 
-**828 passed, 116 skipped, 0 failed** locally (Milestone 1 baseline: 608/49).
+**860 passed, 124 skipped, 0 failed** locally (Milestone 1 baseline: 608/49).
 Every skip is a live-PostgreSQL test that runs in the `pg_tests` CI job.
 
 ## What integration found, and fixed
@@ -73,6 +74,31 @@ the first two and the plan's `execute`-only walk sails past them. Reads that
 are correct unscoped carry a stated reason, a bare `# scope-exempt` with no
 reason does not silence it, and a planted bypass proves it fails.
 
+## Adversarial review — what it found after integration
+
+An independent reviewer went over the integrated result. Ten findings: seven
+fixed, three recorded below.
+
+| # | Finding | Outcome |
+|---|---|---|
+| 1 | `X-Actor-Id` survived on three **read** paths. The integration replaced the `_actor()` helper but three call sites read the header directly, so the audit entry for a tax-identity reveal named whoever the caller claimed — and named `SYSTEM` when no header was sent, which is what the frontend sends | **fixed**; the constant is deleted, so it cannot come back |
+| 2 | `api/settings.py` called `_reveal_entity_tax_identity`, a name defined nowhere. Every successful entity reveal raised `NameError`, rolled back and returned 500, so no entity reveal ever succeeded and none was ever audited | **fixed**; the function exists and audits per revealed field |
+| 3 | The vendor edit dialog round-tripped the **masked** `gst_no` into a `PUT`, violating the column CHECK, and `api/masters.py` did not catch `CheckViolation` — so editing a vendor returned an unhandled 500 and renaming one was impossible through the UI | **fixed**; a masked value is refused with an actionable 422 |
+| 4 | The scope AST gate was blind to computed table names (`FROM {kind.table}`, how `pg/masters.py` writes every statement), to SQL held in a variable, and to `app/backend/api/` entirely | **fixed**; unanalysable SQL is flagged, both directories scanned, no-row-scope declared in one place |
+| 5 | `FinanceApprover` sat in the whole-estate role set. That set reads as a concession for *reads*, but the Scope it builds is used on the **write** paths — so the maker-checker approver for `revision.approve` could approve revisions and close periods in every entity | **fixed**; removed from the set |
+| 6 | `_PERIOD_SCOPE_COLUMNS` waived `project`, `plant` and `location`, so a project-restricted principal saw and could close every entity's periods — the same waive-versus-refuse defect as integration finding #4, on the other side | **fixed**; omitted rather than waived, so the restriction is refused |
+| 9 | `test_pg_audit_api_e2e.py` skipped when `seed_demo.sql` was missing. That file is committed and frozen, so its absence is a deleted file, not an environment condition, and the skip would have taken the whole e2e suite out of CI silently | **fixed**; asserts |
+| 7 | RLS missing on `accounting_period`, the five budget document tables, `item_master` and `vendor_master` | **open** — see gaps |
+| 8 | `recompute_cell`'s `UPDATE` takes a cell lock implicitly, after `lock_affected_cells`; the period roll can take none at all | **open** — see gaps |
+| 10 | `Scope.as_settings()` renders a literal scope id of `*` identically to "unrestricted" | **open** — see gaps |
+
+The reviewer also confirmed, by attacking them, that the router guards hold on
+every route, that `X-Permissions` is genuinely inert, that no float or Decimal
+touches a paise value, that maker-checker closes its TOCTOU window, that no
+caller data reaches SQL uninterpolated, that every mutation audits inside its
+own transaction, and that the frontend carries no `style=` attribute, no
+`innerHTML`, and no client-side permission decision.
+
 ## Known gaps, recorded rather than implied
 
 - **Row-level data scope is enforced at the query layer but not yet
@@ -92,6 +118,27 @@ reason does not silence it, and a planted bypass proves it fails.
 - **`core/api.js` is hard-wired to `/api/audit`,** so both frontend streams
   duplicated its session/correlation/RFC-7807 handling. A base-path
   parameterised client should land before a third copy.
+- **RLS does not cover every scopable table.** Migration 004 enables it on
+  eleven. `accounting_period`, the five budget document tables, `item_master`
+  and `vendor_master` have none, so for those the application layer is the
+  only layer. `accounting_period` is the starkest: it carries `entity_id NOT
+  NULL`, the exact shape that earns the org tables their policies. `pg/rls.py`
+  derives its registry from the migration, so its tests cannot detect a table
+  absent from both.
+- **The §7.4 lock proof has an unstated exception.** `lock_affected_cells`
+  filters `budget_paise <> 0`, but `recompute_cell`'s `UPDATE` acquires that
+  row's lock regardless — so a zero-budget cell is written without having been
+  locked, and `_roll_cells_for_entity` can run with an empty lock set in
+  exactly the case it exists for: a period opening where all budget is still
+  future-dated. No deadlock has been demonstrated, and the reviewer tried. The
+  defect is that the invariant and its docstring now overclaim, so the next
+  mutation built on them inherits an exception nobody wrote down.
+- **A literal scope id of `*` is indistinguishable from "unrestricted".**
+  `Scope.as_settings()` renders both as `*`, and the grants endpoint does not
+  validate grant values, so `["*"]` is stored as a restriction but read by RLS
+  as none. Not exploitable today — it needs `admin.reset`, and the stricter
+  layer wins wherever `repo.query` is used — but it breaks defence in depth
+  exactly where RLS is the only layer.
 - **Whole-stream audit truncation is not detectable.** `audit_anchor` has no
   writer; `/api/audit/chain/verify` returns `whole_stream_truncation_note` so
   `intact: true` never implies more than it can support.

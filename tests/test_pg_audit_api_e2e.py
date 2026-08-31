@@ -49,11 +49,18 @@ SEED_FILE = Path(__file__).resolve().parents[1] / "migrations" / "pg" / "seed_de
 def seeded_pg(pg_connection, pg_database):
     """A disposable PostgreSQL database carrying the demo dataset.
 
-    Skips rather than fails if the seed has not landed yet, so this file can be
-    committed alongside the seed work without breaking the branch in between.
+    ASSERTS, never skips. This skipped while the seed was still being written
+    -- a reasonable transitional measure that outlived its reason. The file is
+    committed, lead-owned and frozen, so its absence is not an environment
+    condition; it is a deleted or renamed frozen file, and every test in this
+    module depends on this fixture. A skip here would take the whole
+    end-to-end suite out of CI while the job reported green, which is exactly
+    how this suite silently opted out twice before.
     """
-    if not SEED_FILE.is_file():
-        pytest.skip(f"{SEED_FILE.name} does not exist yet")
+    assert SEED_FILE.is_file(), (
+        f"{SEED_FILE} is missing. It is committed and frozen, so this is not a "
+        f"setup gap -- it means the seed was deleted or renamed, and every "
+        f"end-to-end test below depends on it.")
     pg_connection.execute(SEED_FILE.read_text(encoding="utf-8"))
     pg_connection.commit()
     return pg_database

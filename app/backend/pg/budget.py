@@ -165,7 +165,7 @@ def recompute_cell(session: Session, wbs_id: str, budget_head_id: str, *,
         """
         UPDATE budget_control_cell SET
             budget_paise = COALESCE((
-                SELECT SUM(amount_paise) FROM budget_line
+                SELECT SUM(amount_paise)::bigint FROM budget_line
                 WHERE wbs_id = %(wbs_id)s AND budget_head_id = %(head)s
                   AND status = 'Approved' AND effective_from <= %(as_of)s
             ), 0),
@@ -178,17 +178,17 @@ def recompute_cell(session: Session, wbs_id: str, budget_head_id: str, *,
         """
         UPDATE budget_ledger_cell SET
             original_paise = COALESCE((
-                SELECT SUM(amount_paise) FROM budget_line
+                SELECT SUM(amount_paise)::bigint FROM budget_line
                 WHERE wbs_id = %(wbs_id)s AND budget_head_id = %(head)s
                   AND status = 'Approved' AND kind = 'ORIGINAL' AND effective_from <= %(as_of)s
             ), 0),
             revisions_paise = COALESCE((
-                SELECT SUM(amount_paise) FROM budget_line
+                SELECT SUM(amount_paise)::bigint FROM budget_line
                 WHERE wbs_id = %(wbs_id)s AND budget_head_id = %(head)s
                   AND status = 'Approved' AND kind <> 'ORIGINAL' AND effective_from <= %(as_of)s
             ), 0),
             future_budget_paise = COALESCE((
-                SELECT SUM(amount_paise) FROM budget_line
+                SELECT SUM(amount_paise)::bigint FROM budget_line
                 WHERE wbs_id = %(wbs_id)s AND budget_head_id = %(head)s
                   AND status = 'Approved' AND effective_from > %(as_of)s
             ), 0),
@@ -243,11 +243,17 @@ def _subtree_totals(session: Session, owner_wbs_id: str, budget_head_id: str) ->
     in-memory tree walk. Never persisted; recomputed at every call."""
     row = session.fetchone(  # scope-exempt: subtree rollup must see the whole subtree
         """
+        -- ::bigint on every SUM. PostgreSQL's SUM(bigint) returns NUMERIC,
+        -- which psycopg hands back as decimal.Decimal, and a Decimal reaching
+        -- the arithmetic below raised TypeError on Decimal * float. The cast
+        -- is the fix at the source: money leaves the database as an integer
+        -- number of paise, exactly as it is stored, with no Decimal to
+        -- coerce, round or accidentally mix with a float downstream.
         SELECT
-            COALESCE(SUM(bc.budget_paise), 0),
-            COALESCE(SUM(bl.commitment_paise), 0),
-            COALESCE(SUM(bl.actual_paise), 0),
-            COALESCE(SUM(bl.pr_reserved_paise), 0)
+            COALESCE(SUM(bc.budget_paise), 0)::bigint,
+            COALESCE(SUM(bl.commitment_paise), 0)::bigint,
+            COALESCE(SUM(bl.actual_paise), 0)::bigint,
+            COALESCE(SUM(bl.pr_reserved_paise), 0)::bigint
         FROM wbs_element o
         JOIN wbs_element x ON x.wbs_path <@ o.wbs_path
         JOIN budget_control_cell bc ON bc.wbs_id = x.wbs_id AND bc.budget_head_id = %(head)s
@@ -295,8 +301,12 @@ def check_availability(session: Session, wbs_id: str, budget_head_id: str,
     if exceeds:
         verdict = "EXCEEDS_BUDGET"
     else:
+        # Integer numerator and denominator, both paise; the float appears
+        # only in the final ratio, which is a display/threshold percentage and
+        # never a monetary value.
         pct_after = (
-            round((totals["exposure_paise"] + amount_paise) / totals["budget_paise"] * 100.0, 1)
+            round((totals["exposure_paise"] + amount_paise) * 100.0
+                  / totals["budget_paise"], 1)
             if totals["budget_paise"] else 0.0
         )
         verdict = ("CRITICAL" if pct_after >= CRITICAL_PCT else
@@ -864,7 +874,7 @@ def list_versions(session: Session, project_id: str) -> list[dict]:
     rows = repo.query(
         session,
         """
-        SELECT bv.version_no, bv.label, bv.created_at, COALESCE(SUM(vc.budget_paise), 0)
+        SELECT bv.version_no, bv.label, bv.created_at, COALESCE(SUM(vc.budget_paise), 0)::bigint
         FROM budget_version bv
         JOIN project p ON p.project_id = bv.project_id
         LEFT JOIN budget_version_cell vc ON vc.version_id = bv.version_id

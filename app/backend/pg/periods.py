@@ -38,7 +38,19 @@ _ALLOWED_TRANSITIONS: dict[str, set[str]] = {
 #: "table not there yet".
 _RECONCILIATION_EXCEPTION_TABLE = "reconciliation_exception"
 
-_PERIOD_SCOPE_COLUMNS = {"entity": "entity_id", "plant": None, "project": None, "location": None}
+# Only `entity` is mapped, and the other three are OMITTED rather than set to
+# None. That distinction is the control: `compile_scope` treats an explicit
+# None as *waived* and a missing key as *inexpressible*, raising
+# ScopeNotExpressible. accounting_period carries an entity and nothing else,
+# so a principal restricted by project, plant or location cannot be filtered
+# here -- and waiving it, as this mapping did, meant such a principal saw
+# every entity's periods and could close any of them via `period.transition`.
+#
+# Refusing is the fail-closed answer and matches repo.py's rule: never widen a
+# restriction a query cannot express. The consequence -- a plant-scoped
+# finance user cannot list periods until the role-to-scope mapping is settled
+# -- is recorded against D-6/D-12 rather than papered over.
+_PERIOD_SCOPE_COLUMNS = {"entity": "entity_id"}
 
 
 class PeriodServiceError(Exception):
@@ -71,7 +83,7 @@ def _has_open_reconciliation_exceptions(session: Session, entity_id: str) -> boo
     exist -- see the module docstring."""
     if not _table_exists(session, _RECONCILIATION_EXCEPTION_TABLE):
         return False
-    row = session.fetchone(
+    row = session.fetchone(  # scope-exempt: table name is a module constant, and entity_id comes from a period already scope-gated by transition_period
         f"SELECT 1 FROM {_RECONCILIATION_EXCEPTION_TABLE} "  # noqa: S608 -- fixed name, existence checked above
         f"WHERE entity_id = %s AND status = 'Open' LIMIT 1",
         (entity_id,))

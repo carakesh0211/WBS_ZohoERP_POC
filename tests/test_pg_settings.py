@@ -81,8 +81,43 @@ class TestCollectionRegistry:
 # ============================================================================
 # Live PostgreSQL
 # ============================================================================
+def _administrator_session() -> dict:
+    """Create an Administrator identity and return its session header.
+
+    The settings router now authenticates against the SQLite identity store
+    and derives permissions from the principal's roles, so a caller has to
+    sign in. `X-Actor-Id` and `X-Permissions` are deliberately NOT sent: the
+    routers ignore them now, and a suite that still passed while sending them
+    would not be proving that the header-trust path is dead.
+
+    Administrator, because these tests create, update and deactivate across
+    every collection, which needs `settings.write`.
+    """
+    from app.backend import auth, db
+
+    uid = "U-SETTINGS-TEST"
+    password = uid + "-pw"
+    con = db.connect()
+    try:
+        con.execute(
+            "INSERT OR REPLACE INTO app_user (user_id, name, role) VALUES (?,?,?)",
+            (uid, "Settings Test", "Administrator"))
+        salt, hashed = auth.hash_password(password)
+        con.execute(
+            """INSERT OR REPLACE INTO app_credential
+               (user_id, password_salt, password_hash, disabled, created_at)
+               VALUES (?,?,?,0,'2026-08-06T00:00:00')""", (uid, salt, hashed))
+        con.execute("DELETE FROM user_role WHERE user_id=?", (uid,))
+        con.execute("INSERT INTO user_role (user_id, role) VALUES (?,?)",
+                    (uid, "Administrator"))
+        con.commit()
+        return {"X-Session": auth.login(con, uid, password)["session_id"]}
+    finally:
+        con.close()
+
+
 @pytest.fixture()
-def client(pg_database):
+def client(pg_database, capex_db):
     """A minimal FastAPI app carrying ONLY this stream's settings router --
     `app/backend/main.py` does not mount it yet (the lead mounts routers only
     after every Wave 2 stream lands), so tests build their own app rather
@@ -98,12 +133,17 @@ def client(pg_database):
     app = FastAPI()
     app.include_router(settings_api.router)
     try:
-        yield TestClient(app)
+        test_client = TestClient(app)
+        test_client.headers.update(_administrator_session())
+        yield test_client
     finally:
         pg_engine.set_database(previous)
 
 
-HEADERS = {"X-Actor-Id": "tester"}
+# The session travels on the client itself (see `client`). Kept as an
+# empty mapping so every call site reads unchanged -- and so a call that
+# still depended on X-Actor-Id now fails instead of quietly working.
+HEADERS: dict[str, str] = {}
 
 
 @pytest.mark.pg
