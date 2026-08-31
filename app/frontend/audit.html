@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audit Trail Viewer — CAPEX &amp; WBS Control Hub</title>
+<link rel="stylesheet" href="/static/styles.css">
+<link rel="stylesheet" href="/static/extensions.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231B5762'/%3E%3Cpath d='M12 5v4M6 19v-4h12v4M12 9v6' stroke='%23fff' stroke-width='2' fill='none'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<a class="skip-link" href="#auditContent">Skip to main content</a>
+
+<header class="shellbar">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 4v5M5 20v-5h14v5M12 9v6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </svg>
+    <span class="brand-text">CAPEX &amp; WBS Control Hub</span>
+  </div>
+  <div class="spacer"></div>
+  <a class="icon-btn" href="/">
+    <span aria-hidden="true">←</span> Back to application
+  </a>
+</header>
+
+<main class="main">
+  <div class="page-header">
+    <div class="breadcrumb">
+      <a class="crumb" href="/">Home</a><span aria-hidden="true"> › </span>Audit Trail Viewer
+    </div>
+    <div class="page-title-row">
+      <h1 class="page-title">Audit Trail Viewer</h1>
+    </div>
+    <p class="muted small mt-10">
+      Every recorded action, in append order, with hash-chain verification so tampering with the
+      record itself cannot go unnoticed.
+    </p>
+  </div>
+  <div class="content" id="auditContent" tabindex="-1">
+    <div id="audit-trail-root"></div>
+  </div>
+</main>
+
+<div id="auditLiveRegion" class="sr-only" role="status" aria-live="polite"></div>
+
+<script type="module" src="/static/src/features/audit/audit-trail.js"></script>
+</body>
+</html>
