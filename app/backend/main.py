@@ -11,6 +11,7 @@ Post-audit corrections (2026-08-06):
     they never surface as 500 (AUD-H-008, AUD-M-007).
   * Destructive administration exists only under CAPEX_PROFILE=local-demo (AUD-C-010).
 """
+import logging
 import os
 import time
 import uuid
@@ -22,6 +23,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import auth, db, domain, observability, services, zoho
+from .api import health as health_api
 from .money import MoneyError
 
 APP_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -34,6 +36,25 @@ app = FastAPI(title="CAPEX & WBS Control Hub", version="0.2.0-poc-hardened")
 # lives in the formatter - is silently discarded. Installed at import so it
 # covers the AppSail entrypoint and any Function bundle that imports the app.
 observability.configure()
+
+# /healthz and /readyz -- process liveness and PostgreSQL-schema readiness.
+# Outside /api/, so the auth guard below never intercepts them: an
+# orchestrator's health probe carries no session.
+app.include_router(health_api.router)
+
+# app/backend/api/audit.py is being built in parallel by another agent on this
+# engagement. Imported defensively so this app still starts if that module is
+# not yet present in a given worktree -- the router is still wired here
+# because the lead integrates both, and a wiring gap should not be the thing
+# that silently drops audit coverage once the file lands.
+try:
+    from .api import audit as audit_api
+except ImportError as exc:  # pragma: no cover - exercised only before audit.py lands
+    audit_api = None
+    logging.getLogger("capex").warning(
+        "app.backend.api.audit not available yet; its router is not mounted (%s)", exc)
+else:
+    app.include_router(audit_api.router)
 
 PUBLIC_PATHS = {"/api/health", "/api/auth/login"}
 
