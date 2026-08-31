@@ -78,6 +78,79 @@ jobs:
       - name: Full suite
         run: python -m pytest
 
+  pg_tests:
+    name: PostgreSQL integration suite
+    runs-on: ubuntu-latest
+    needs: gates
+    # M1-S1. Milestone 1's PostgreSQL foundation (migrations/pg/001_foundation.sql,
+    # app/backend/pg/) has no production database to test against in this job's
+    # sibling `suite` run, so it gets its own service container. `ltree`,
+    # `pgcrypto` and `btree_gist` ship as contrib extensions in the official
+    # postgres:16 image; the migration itself does `CREATE EXTENSION IF NOT
+    # EXISTS`, so nothing extra is installed here beyond a reachable server.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          # Service-container defaults only - never a real credential. The
+          # maintenance database (POSTGRES_DB) is deliberately left as
+          # `postgres`: tests/conftest_pg.py never migrates or drops it, only
+          # the disposable `capex_tmpl_*` / `capex_t<n>` databases it creates
+          # from here (tests/conftest_pg.py::_assert_pg_disposable guards
+          # that boundary even if CAPEX_DB_URL is ever mis-set).
+          POSTGRES_USER: capex
+          POSTGRES_PASSWORD: capex
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U capex"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -r requirements-dev.txt
+
+      # The service's own --health-cmd already blocks this job's steps until
+      # docker reports it healthy; this is a second, self-contained check
+      # using the same driver the tests use, rather than assuming `pg_isready`
+      # is on the runner's PATH.
+      - name: Wait for PostgreSQL
+        run: |
+          python - <<'PY'
+          import sys
+          import time
+
+          import psycopg
+
+          for attempt in range(30):
+              try:
+                  with psycopg.connect(
+                          "postgresql://capex:capex@localhost:5432/postgres",
+                          connect_timeout=3):
+                      print("PostgreSQL is ready")
+                      break
+              except Exception as exc:
+                  print(f"not ready yet ({attempt + 1}/30): {exc}")
+                  time.sleep(1)
+          else:
+              print("PostgreSQL never became ready", file=sys.stderr)
+              sys.exit(1)
+          PY
+
+      # tests/conftest_pg.py skips the whole suite cleanly (never fails) when
+      # CAPEX_DB_URL is unset, which is the expected state on a dev machine
+      # without a local PostgreSQL - here it is always set, so the suite runs
+      # for real.
+      - name: PostgreSQL integration suite
+        env:
+          CAPEX_DB_URL: postgresql://capex:capex@localhost:5432/postgres
+        run: python -m pytest tests/pg -q
+
   supply_chain:
     name: Supply chain
     runs-on: ubuntu-latest
