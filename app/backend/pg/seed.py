@@ -126,6 +126,22 @@ def _assert_empty(connection: psycopg.Connection) -> None:
                 f"of silently merging).")
 
 
+SEED_PARTS_DIR = _MIGRATIONS_DIR / "seed_parts" if "_MIGRATIONS_DIR" in dir() else None
+
+
+def _seed_part_files(directory) -> list:
+    """Fragment files, in filename order, loaded after seed_demo.sql.
+
+    Each Wave 2 backend stream owns one. They live in a SUBDIRECTORY because
+    migrate_pg.discover() scans only top-level *.sql entries -- putting a data
+    file beside the migrations broke discovery once already.
+    """
+    parts = directory / "seed_parts"
+    if not parts.is_dir():
+        return []
+    return sorted(p for p in parts.iterdir() if p.suffix == ".sql")
+
+
 def seed(connection: psycopg.Connection, *, force: bool = False,
           seed_file: Path = SEED_FILE) -> None:
     """Load ``seed_file`` (default: ``migrations/pg/seed_demo.sql``) into
