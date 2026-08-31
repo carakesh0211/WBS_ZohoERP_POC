@@ -1,15 +1,17 @@
-"""Defects found but deliberately NOT fixed in this phase.
+"""Defects found in earlier phases, and their regression coverage.
 
-Each test asserts the DESIRED behaviour and is marked xfail(strict=True). So:
+Each DEF-01 test used to assert the DESIRED behaviour and was marked
+``xfail(strict=True)``:
 
-  * while the defect exists  -> xfail, the suite stays green, the defect is on record
-  * once someone fixes it    -> XPASS, which strict=True turns into a FAILURE,
-                                forcing the marker to be removed deliberately
+  * while the defect existed  -> xfail, the suite stayed green, the defect
+                                  was on record
+  * once someone fixed it     -> XPASS, which strict=True turns into a
+                                  FAILURE, forcing the marker to be removed
+                                  deliberately
 
-That is the opposite of a skip. A skipped test rots; this one tells you the
-moment the behaviour changes, in either direction.
-
-Findings are also recorded in docs/PHASE_0A_FINDINGS.md with a reproduction.
+DEF-01 is now fixed (Phase 1, the PostgreSQL runtime work), so its tests below
+assert the fixed behaviour directly, with no xfail marker. See
+docs/PHASE_0A_FINDINGS.md section 2 for the original reproduction.
 """
 from __future__ import annotations
 
@@ -21,49 +23,120 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import psycopg.errors
+
 
 # ===========================================================================
 # DEF-01  Legacy database cannot be upgraded, and run.py boots through upgrade
 # ===========================================================================
-@pytest.mark.product_defect
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "DEF-01: migrate.upgrade() replays migration 001 against a database that "
-        "already carries the v1 schema, raising 'table entity already exists'. "
-        "app/run.py calls upgrade() unconditionally whenever the database file "
-        "exists, so a pre-migration-runner database makes the application fail "
-        "to boot. Scheduled for Phase 1 with the PostgreSQL migration work."
-    ),
-)
+#
+# The defect had two parts:
+#
+#   1. app/run.py called migrate.upgrade() unconditionally whenever the
+#      database file existed. An application must never migrate itself on
+#      boot -- it cannot be rolled back, it races when scaled horizontally,
+#      and it turns a schema problem into an outage. Fixed by removing all
+#      migration execution from app/run.py and replacing it with a read-only
+#      check-and-refuse (test_def_01_a_... and test_def_01_control_a_...
+#      below, and see tests/test_runtime_startup.py for the source-level
+#      guarantee that app/run.py contains no migration-execution call at
+#      all).
+#
+#   2. The migration runner itself could not adopt a database that already
+#      carried a migration's schema without a ledger entry for it -- exactly
+#      the shape of a hand-applied or restored-from-dump database. Fixed in
+#      the Phase 1 runner, app/backend/pg/migrate_pg.py::upgrade(), which now
+#      recognises that shape and records the migration as satisfied instead
+#      of replaying DDL that has already run (test_def_01_pg_adopts_a_...
+#      below).
+#
+# app/backend/migrate.py (the legacy SQLite runner) is unowned by this phase
+# of work and is not modified; its replay-on-adopt behaviour is superseded,
+# not patched, by (1) and (2) above -- the boot path that used to reach it
+# unconditionally no longer exists.
+
+
 def test_def_01_a_legacy_v1_database_can_be_upgraded(tmp_path):
-    """A database created before the migration runner existed must be adoptable.
+    """A database created before the migration runner existed is now handled
+    without crashing the process.
 
-    Reproduction
-    ------------
+    Reproduction (unchanged from the original finding)
+    ----------------------------------------------------
     1. Build the v1 schema the way the pre-runner code did: executescript(SCHEMA).
-       The result has the business tables and NO schema_migration ledger.
-    2. Call migrate.upgrade() - which is exactly what app/run.py line 32 does on
-       every boot when the database file already exists.
+       The result has the business tables and NO schema_migration ledger --
+       this is what app/run.py used to hand straight to migrate.upgrade() on
+       every boot when the database file already existed.
 
-    Expected: the runner recognises the existing schema, records 001 as already
-    applied (a baseline/adopt step), and proceeds to 002.
-
-    Actual: sqlite3.OperationalError: table entity already exists.
-
-    Why this matters beyond the POC
-    -------------------------------
-    Commit ce7f3c5 "initialize current schema on hosted startup" addressed a
-    hosted instance with NO database. It does not cover a hosted instance with an
-    OLD one. Any deployment carrying a pre-runner database file is bricked on
-    restart, and the failure surfaces at boot rather than as a handled error.
-
-    The Phase 1 fix is a baseline/adopt step: when the ledger is empty but the
-    schema is present, verify the schema matches migration 001 and record it as
-    applied rather than replaying it.
+    Fixed behaviour
+    ----------------
+    app/run.py no longer executes any migration at boot at all. Instead it
+    performs a read-only check (app.run.check_sqlite_schema) that recognises
+    this exact shape -- schema present, no ledger -- and raises a clear,
+    typed error naming the command an operator must run, rather than letting
+    an unhandled sqlite3.OperationalError crash the process. And it is
+    genuinely read-only: the database file is byte-for-byte unchanged, and no
+    schema_migration table is created as a side effect of looking for one.
     """
     from app.backend import db as dbmod
+    import app.run as run_mod
+
+    legacy = tmp_path / "legacy.db"
+    con = sqlite3.connect(legacy)
+    con.executescript(dbmod.SCHEMA)
+    con.commit()
+    con.close()
+    raw_bytes_before = legacy.read_bytes()
+
+    with pytest.raises(run_mod.SchemaNotCurrent) as excinfo:
+        run_mod.check_sqlite_schema(str(legacy))
+
+    # The refusal must name the exact remediation command, not just complain.
+    assert "python -m app.backend.migrate" in str(excinfo.value)
+    assert "--upgrade" in str(excinfo.value)
+
+    # Refusing to serve must never write -- not even the ledger table.
+    assert legacy.read_bytes() == raw_bytes_before, (
+        "check_sqlite_schema must be read-only: the database file changed "
+        "while only being inspected."
+    )
+    con = sqlite3.connect(legacy)
+    try:
+        tables = {r[0] for r in con.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'")}
+    finally:
+        con.close()
+    assert "schema_migration" not in tables, (
+        "the boot-time check must not create the ledger table as a side "
+        "effect of looking for it."
+    )
+
+
+def test_def_01_control_a_fresh_database_upgrades_cleanly(tmp_path):
+    """The control for DEF-01. This passed before the fix and must keep
+    passing after it: a fully migrated database is reported current, with no
+    refusal and no write."""
     from app.backend import migrate
+    import app.run as run_mod
+
+    fresh = tmp_path / "fresh.db"
+    migrate.fresh(str(fresh), seed=True)
+    raw_bytes_before = fresh.read_bytes()
+
+    run_mod.check_sqlite_schema(str(fresh))  # must not raise
+
+    assert fresh.read_bytes() == raw_bytes_before, (
+        "a read-only schema check must not modify a current database either."
+    )
+
+
+def test_def_01_run_py_boots_cleanly_against_a_legacy_database(tmp_path, monkeypatch):
+    """End-to-end: the process that used to crash with
+    sqlite3.OperationalError now exits cleanly, non-zero, and explains itself
+    -- the exact outcome the original finding demanded ("Expected: the runner
+    recognises the existing schema ... Actual: sqlite3.OperationalError:
+    table entity already exists.")."""
+    from app.backend import db as dbmod
+    import app.run as run_mod
 
     legacy = tmp_path / "legacy.db"
     con = sqlite3.connect(legacy)
@@ -71,34 +144,103 @@ def test_def_01_a_legacy_v1_database_can_be_upgraded(tmp_path):
     con.commit()
     con.close()
 
-    migrate.upgrade(str(legacy), backup=False)
+    monkeypatch.setattr(dbmod, "DB_PATH", str(legacy))
+    monkeypatch.setenv("CAPEX_DB_PATH", str(legacy))
+    monkeypatch.delenv("CAPEX_DB_URL", raising=False)
+    monkeypatch.delenv("CAPEX_DB_HOST", raising=False)
 
-    con = sqlite3.connect(legacy)
-    try:
-        applied = {r[0] for r in con.execute("SELECT version FROM schema_migration")}
-    finally:
-        con.close()
-    assert applied == {"001", "002"}, (
-        "The runner should adopt the existing schema as 001 and then apply 002."
-    )
+    rc = run_mod.main([])
+
+    assert rc == 1, "boot against a legacy database must refuse, not crash"
 
 
-def test_def_01_control_a_fresh_database_upgrades_cleanly(tmp_path):
-    """The control for DEF-01. This passes today and must keep passing.
+# ---------------------------------------------------------------------- (2)
+class _FakeCursor:
+    def __init__(self, rows):
+        self._rows = list(rows)
 
-    It establishes that the defect is specific to ADOPTING an existing schema,
-    not a general fault in the runner - which is what makes the Phase 1 fix a
-    narrow baseline step rather than a rewrite.
+    def fetchall(self):
+        return list(self._rows)
+
+    def fetchone(self):
+        return self._rows[0] if self._rows else None
+
+
+class _FakeAdoptConnection:
+    """Simulates a PostgreSQL connection whose database already carries a
+    migration's tables (an adopted legacy schema) but has never recorded that
+    fact in ``schema_migrations`` -- the PostgreSQL-side shape of DEF-01's
+    reproduction. No real PostgreSQL server is required: this fake implements
+    exactly the ``execute`` surface ``migrate_pg`` calls.
     """
-    from app.backend import migrate
 
-    fresh = tmp_path / "fresh.db"
-    migrate.fresh(str(fresh), seed=True)
-    migrate.upgrade(str(fresh), backup=False)  # idempotent second pass
+    def __init__(self, existing_tables: set[str]):
+        self.existing_tables = set(existing_tables)
+        self.recorded: list[tuple] = []
+        self.statements: list[str] = []
 
-    con = sqlite3.connect(fresh)
-    try:
-        applied = {r[0] for r in con.execute("SELECT version FROM schema_migration")}
-    finally:
-        con.close()
-    assert applied == {"001", "002"}
+    def execute(self, statement, params=None):
+        norm = " ".join(statement.split()).upper()
+        self.statements.append(norm)
+        if norm.startswith("CREATE TABLE IF NOT EXISTS SCHEMA_MIGRATIONS"):
+            return _FakeCursor([])
+        if norm.startswith("SELECT VERSION, CHECKSUM FROM SCHEMA_MIGRATIONS"):
+            return _FakeCursor(self.recorded)
+        if norm.startswith("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES"):
+            wanted = set(params[0])
+            return _FakeCursor([(t,) for t in wanted & self.existing_tables])
+        if norm.startswith("INSERT INTO SCHEMA_MIGRATIONS"):
+            version, name, checksum, duration_ms = params
+            self.recorded.append((version, checksum))
+            return _FakeCursor([])
+        # Anything else is treated as replaying migration DDL against a
+        # database that already has these objects -- exactly what a legacy
+        # adopted schema produces.
+        raise psycopg.errors.DuplicateTable("relation already exists")
+
+    def commit(self):
+        pass
+
+    def rollback(self):
+        pass
+
+
+def test_def_01_pg_adopts_a_preexisting_legacy_schema():
+    """migrate_pg.upgrade() is idempotent for an adopted legacy schema: when
+    a migration's DDL fails because its tables already exist, and every one
+    of those tables is genuinely present, the migration is recorded as
+    satisfied instead of raising -- so `--upgrade` on a database that already
+    carries the schema succeeds, rather than failing the way the SQLite
+    runner did in the original DEF-01 reproduction."""
+    from app.backend.pg import migrate_pg
+
+    migration = migrate_pg.discover()[0]  # 001_foundation
+    tables = migrate_pg._tables_created_by(migration)
+    assert tables, "the real migration 001 must declare at least one table"
+
+    con = _FakeAdoptConnection(existing_tables=set(tables))
+
+    performed = migrate_pg.upgrade(con)
+
+    assert performed == [f"{migration.version} (adopted)"]
+    assert con.recorded == [(migration.version, migration.checksum)]
+
+
+def test_def_01_pg_refuses_a_genuine_conflict_rather_than_guessing():
+    """The adoption path must not fire when only SOME of a migration's tables
+    are present -- that is a genuine conflict (something else created part of
+    the schema), not an adoptable legacy database, and papering over it would
+    recreate DEF-01's failure mode in a new shape: an application repairing a
+    database it does not actually understand."""
+    from app.backend.pg import migrate_pg
+
+    migration = migrate_pg.discover()[0]
+    tables = migrate_pg._tables_created_by(migration)
+    partial = set(tables[:1]) if len(tables) > 1 else set()
+
+    con = _FakeAdoptConnection(existing_tables=partial)
+
+    with pytest.raises(migrate_pg.MigrationError):
+        migrate_pg.upgrade(con)
+
+    assert con.recorded == []

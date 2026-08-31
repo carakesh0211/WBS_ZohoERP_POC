@@ -17,11 +17,17 @@ Nothing is exposed, nothing can be clicked by anyone else, and you control the p
 python app/run.py
 ```
 
-Open <http://127.0.0.1:8000> and share your screen. Press `--reseed` between runs to reset the data:
+Open <http://127.0.0.1:8000> and share your screen. To reset the data between runs, rebuild the
+database as its own explicit step first, then start the app:
 
 ```bash
-python app/run.py --reseed
+python -m app.backend.migrate --db app/data/capex.db --fresh --seed
+python app/run.py
 ```
+
+> **Why two commands, not one.** `app/run.py` used to rebuild the database itself whenever the file
+> was missing or you passed `--reseed`. It no longer does — see *"This process never migrates
+> itself"* below. Rebuilding is now always a command you run on purpose.
 
 **Suggested demo path (about 12 minutes)**
 
@@ -81,8 +87,20 @@ Two things to expect on the free tier:
 
 - The service sleeps after inactivity, so the first request takes 30-50 seconds. Open it yourself a
   minute before any call.
-- There is no persistent disk. `CAPEX_DB_PATH` points at `/tmp`, so the demo dataset reseeds on
-  restart. For a demo that is a feature — it always returns to a clean, known state.
+- There is no persistent disk. `CAPEX_DB_PATH` points at `/tmp`, which is empty on every restart.
+
+> **Operational note (post DEF-01 fix).** `app/run.py` no longer creates a missing database itself
+> — see *"This process never migrates itself"* below. `render.yaml`'s `startCommand` and the
+> `Dockerfile`'s `CMD` still read `python app/run.py` alone as committed in this repository; against
+> an empty `/tmp` that now refuses to start instead of reseeding. Until those two files are updated
+> to run the migration command first, deploy with a start command that does both steps, for example:
+>
+> ```bash
+> python -m app.backend.migrate --db /tmp/capex.db --fresh --seed && python app/run.py
+> ```
+>
+> This is flagged here rather than fixed in `render.yaml` / `Dockerfile` directly — both are outside
+> this change's file ownership.
 
 Railway, Fly.io and Azure App Service all work the same way. Any host that runs a Dockerfile can use
 the one in this repository:
@@ -99,6 +117,40 @@ docker run -p 8000:8000 -e DEMO_USER=atha -e DEMO_PASSWORD=<strong> -v capexdata
 Best once they want their own people clicking around, and it avoids any public exposure. Their IT
 team runs the container on an internal host; only staff on the network can reach it. Still set
 `DEMO_USER` and `DEMO_PASSWORD` — an internal network is not an access control.
+
+---
+
+## This process never migrates itself
+
+`app/run.py` used to rebuild or upgrade the database on every boot, unconditionally. A database
+that predated the migration runner made that upgrade fail outright, and the whole application
+refused to start (DEF-01, `docs/PHASE_0A_FINDINGS.md`).
+
+An application must never migrate itself on boot — it cannot be rolled back, it races when scaled
+horizontally, and it turns a schema problem into an outage. So `app/run.py` now only ever **checks**
+the schema before serving, and refuses to start — printing the exact command to run, and exiting
+non-zero — if it is missing, behind, or drifted. It never writes.
+
+```bash
+python -m app.backend.migrate --db <path> --fresh --seed   # first run, or after --reseed's old job
+python -m app.backend.migrate --db <path> --upgrade         # every run after that
+python app/run.py                                           # then, and only then, start the app
+```
+
+The same discipline applies to the PostgreSQL foundation landing alongside SQLite in this phase of
+the port (`app/backend/pg/`). It is optional for this POC — unset `CAPEX_DB_URL` / `CAPEX_DB_HOST`
+and the process serves purely on SQLite as before — but when configured, `app/run.py` verifies its
+schema the same read-only way via `python -m app.backend.pg.migrate_pg --upgrade` as the deploy step.
+
+**Two endpoints, two different questions**, both mounted outside `/api/` so a health probe never
+needs a session:
+
+- `GET /healthz` — is the process up? Touches no database at all; answers even if one is completely
+  unreachable.
+- `GET /readyz` — is the database reachable **and** at a known schema revision? Returns `503` when
+  either is false, with `schema_version` on success. Never reports a host, user, database name, DSN
+  or raw driver message on failure — only an error class, because a driver's own error text can echo
+  connection parameters.
 
 ---
 
