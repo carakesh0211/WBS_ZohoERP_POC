@@ -153,10 +153,41 @@ def verify_chain(session: Session, stream_key: str) -> dict[str, Any]:
         # spuriously report as broken too.
         expected_prev = row_entry_hash
 
+    # Tail truncation and a missing stream both used to report intact=True.
+    #
+    # The loop above walks the rows that ARE stored and checks each links to
+    # the previous one. Deleting the LAST k entries leaves a perfectly linked
+    # prefix, so nothing was flagged -- an attacker removing the most recent
+    # (most incriminating) entries was invisible. And an empty or misspelled
+    # stream_key returned intact=True with entries_checked=0, so a typo in the
+    # nightly verification job read as a pass.
+    #
+    # Contiguity is the available check: seq is assigned 1..n under the
+    # advisory lock, so a gap or a short tail is detectable without trusting
+    # any external record. It does NOT detect truncation of a whole stream --
+    # that needs the daily anchors, which exist as a table with no writer yet
+    # and are recorded as an open gap rather than implied by this result.
+    expected_seqs = list(range(1, checked + 1))
+    actual_seqs = [row[0] for row in rows]
+    contiguous = actual_seqs == expected_seqs
+    if not contiguous and first_break_seq is None:
+        missing = sorted(set(expected_seqs) - set(actual_seqs))
+        first_break_seq = missing[0] if missing else (actual_seqs[-1] + 1)
+
     return {
-        "intact": first_break_seq is None,
+        "intact": first_break_seq is None and contiguous and checked > 0,
         "entries_checked": checked,
         "first_break_seq": first_break_seq,
+        "head_seq": actual_seqs[-1] if actual_seqs else None,
+        "sequence_contiguous": contiguous,
+        # An empty result is NOT an intact chain. It is either an unknown
+        # stream or a wholly deleted one, and both deserve saying so.
+        "stream_found": checked > 0,
+        "whole_stream_truncation_note": (
+            "Contiguity proves no entry is missing from WITHIN this stream. "
+            "Deletion of an entire stream is detectable only against the daily "
+            "anchors, which are not yet written."
+        ),
     }
 
 

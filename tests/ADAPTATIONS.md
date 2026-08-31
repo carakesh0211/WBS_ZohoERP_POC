@@ -103,3 +103,29 @@ which specifically flagged that this test locked the hazard in.
 mappings now express all four dimensions, mapped or explicitly waived. Four
 tests added covering refusal, explicit waiver, unrestricted scope, and mapping
 completeness.
+
+## 2026-08-31 — `test_verify_chain_empty_stream_is_trivially_intact`
+
+**Change:** assertion INVERTED. Was `intact: True` for an empty stream; now
+asserts `intact is False` and `stream_found is False`. Renamed to
+`test_verify_chain_does_NOT_report_an_unknown_stream_as_intact`.
+
+**Reason:** an empty result means either an unknown `stream_key` or a wholly
+deleted stream. Reporting either as "intact" turns a typo in the nightly
+verification job into a green tick — the verification would pass while
+verifying nothing.
+
+**Not a weakening.** `verify_chain` additionally now checks `seq` contiguity,
+so an interior gap is detected even if the remaining hashes were recomputed.
+
+**Known limit, deliberately documented rather than papered over:** tail
+truncation is still undetectable from within a stream — deleting the last k
+entries leaves a contiguous, correctly linked prefix. That needs the daily
+anchors in `audit_anchor`, which has no writer yet.
+`test_tail_truncation_is_NOT_detectable_from_the_stream_alone` records the
+limit, and `verify_chain` returns `whole_stream_truncation_note` so the result
+cannot imply coverage it does not have. Both should be replaced with a
+detection test when the anchor writer lands.
+
+**Found by:** adversarial review of Milestone 1 (finding F6).
+**Approved by:** engagement lead, Milestone 1 integration pass.

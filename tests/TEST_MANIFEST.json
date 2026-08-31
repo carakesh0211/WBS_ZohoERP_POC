@@ -1408,12 +1408,20 @@
         "body_sha": "e1b8a23403d30ebb"
       },
       "test_verify_chain_reports_intact_for_a_valid_chain": {
-        "assertions": 1,
-        "body_sha": "1059a9d3185478a1"
+        "assertions": 5,
+        "body_sha": "23741dfee6bdc56e"
       },
-      "test_verify_chain_empty_stream_is_trivially_intact": {
-        "assertions": 1,
-        "body_sha": "cb39c9af6b4154c5"
+      "test_verify_chain_does_NOT_report_an_unknown_stream_as_intact": {
+        "assertions": 3,
+        "body_sha": "5a3f02c6905fb6b6"
+      },
+      "test_tail_truncation_is_NOT_detectable_from_the_stream_alone": {
+        "assertions": 4,
+        "body_sha": "04bcf5e119012a08"
+      },
+      "test_verify_chain_detects_a_gap_in_the_middle": {
+        "assertions": 2,
+        "body_sha": "423142361e1507cd"
       },
       "test_verify_chain_detects_a_tampered_entry_hash": {
         "assertions": 3,
@@ -1795,7 +1803,7 @@
     "test_migrations.py": 20,
     "test_money.py": 23,
     "test_observability.py": 40,
-    "test_pg_audit.py": 18,
+    "test_pg_audit.py": 20,
     "test_pg_constraints.py": 8,
     "test_pg_fixture_guard.py": 3,
     "test_pg_locking.py": 17,
@@ -1819,7 +1827,7 @@
     "test_migrations.py": 45,
     "test_money.py": 31,
     "test_observability.py": 77,
-    "test_pg_audit.py": 46,
+    "test_pg_audit.py": 58,
     "test_pg_constraints.py": 13,
     "test_pg_fixture_guard.py": 3,
     "test_pg_locking.py": 36,

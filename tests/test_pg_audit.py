@@ -160,6 +160,19 @@ def test_append_returns_the_row_shaped_dict():
     assert isinstance(entry["at"], str)   # serialised, not a raw datetime
 
 
+def _chain_rows(n: int):
+    """`n` correctly-linked audit rows, in verify_chain's SELECT column order:
+    (seq, at, actor, action, object_type, object_id, detail, prev_hash, entry_hash).
+    """
+    rows, prev = [], None
+    for i in range(1, n + 1):
+        at = datetime(2026, 1, i, tzinfo=timezone.utc)
+        h = compute_entry_hash(prev, at.isoformat(), f"u{i}", f"A{i}", "T", str(i), f"d{i}")
+        rows.append((i, at, f"u{i}", f"A{i}", "T", str(i), f"d{i}", prev, h))
+        prev = h
+    return rows
+
+
 # ============================================================== verify_chain()
 def test_verify_chain_reports_intact_for_a_valid_chain():
     at1 = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -172,13 +185,68 @@ def test_verify_chain_reports_intact_for_a_valid_chain():
     ]
     session = FakeSession(fetchall_rows=rows)
     result = verify_chain(session, "S1")
-    assert result == {"intact": True, "entries_checked": 2, "first_break_seq": None}
+    assert result["intact"] is True
+    assert result["entries_checked"] == 2
+    assert result["first_break_seq"] is None
+    assert result["head_seq"] == 2
+    assert result["sequence_contiguous"] is True
 
 
-def test_verify_chain_empty_stream_is_trivially_intact():
+def test_verify_chain_does_NOT_report_an_unknown_stream_as_intact():
+    """INVERTED 2026-08-31 after adversarial review. See tests/ADAPTATIONS.md.
+
+    This asserted that an empty stream is "trivially intact". It is not: an
+    empty result means either an unknown stream_key or a wholly deleted one,
+    and reporting either as intact turns a typo in the nightly verification job
+    into a green tick. `stream_found` distinguishes them.
+    """
     session = FakeSession(fetchall_rows=[])
     result = verify_chain(session, "S-empty")
-    assert result == {"intact": True, "entries_checked": 0, "first_break_seq": None}
+    assert result["intact"] is False
+    assert result["stream_found"] is False
+    assert result["entries_checked"] == 0
+
+
+def test_tail_truncation_is_NOT_detectable_from_the_stream_alone():
+    """Documents a REAL LIMIT rather than asserting a capability we lack.
+
+    Deleting the LAST k entries leaves a perfectly linked, perfectly
+    contiguous prefix: 1,2 after removing 3,4 is indistinguishable from a
+    stream that only ever had two entries. Nothing inside the stream can
+    reveal it -- not the link walk, not seq contiguity.
+
+    Detecting it requires an external record of the head, which is exactly what
+    the daily anchors in `audit_anchor` are for. That table exists with no
+    writer and no reader, so this guarantee is NOT yet in place, and
+    `verify_chain` says so in `whole_stream_truncation_note` rather than
+    letting `intact: true` imply more than it can support.
+
+    This test exists so the limit is recorded and cannot be quietly forgotten
+    once the anchor writer lands -- at which point it should be replaced by one
+    that asserts detection.
+    """
+    full = verify_chain(FakeSession(fetchall_rows=_chain_rows(4)), "S-1")
+    assert full["intact"] is True and full["head_seq"] == 4
+
+    truncated = verify_chain(FakeSession(fetchall_rows=_chain_rows(4)[:2]), "S-1")
+    assert truncated["intact"] is True, (
+        "documenting the current limit: a truncated tail still reports intact"
+    )
+    assert truncated["head_seq"] == 2, (
+        "head_seq is exposed precisely so an external anchor can catch this"
+    )
+    assert "anchors" in truncated["whole_stream_truncation_note"], (
+        "the result must state the limit rather than implying full coverage"
+    )
+
+
+def test_verify_chain_detects_a_gap_in_the_middle():
+    """A missing interior seq must be reported even if hashes were recomputed."""
+    rows = _chain_rows(4)
+    rows = [r for r in rows if r[0] != 3]   # remove seq 3
+    result = verify_chain(FakeSession(fetchall_rows=rows), "S-1")
+    assert result["intact"] is False
+    assert result["sequence_contiguous"] is False
 
 
 def test_verify_chain_detects_a_tampered_entry_hash():
