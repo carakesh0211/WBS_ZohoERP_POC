@@ -58,6 +58,15 @@ class ScopeTokenMissing(ValueError):
     """
 
 
+class ScopeNotExpressible(RuntimeError):
+    """A query cannot express a restriction the caller's scope imposes.
+
+    Raised rather than returning a wider predicate. A query that cannot honour
+    a scope must fail loudly; quietly returning more rows is the failure this
+    whole module exists to prevent.
+    """
+
+
 def compile_scope(scope: Scope, columns: Mapping[str, str] | None = None
                    ) -> tuple[str, dict[str, Any]]:
     """Compile a `Scope` into a SQL boolean expression plus its named params.
@@ -85,7 +94,36 @@ def compile_scope(scope: Scope, columns: Mapping[str, str] | None = None
         # scope are asserting that responsibility, not this module.
         return "TRUE", {}
 
-    columns = columns or {}
+    columns = {} if columns is None else dict(columns)
+
+    # A restricted dimension the caller did not map is REFUSED, not skipped.
+    #
+    # This loop previously iterated over `columns`, so any dimension the caller
+    # omitted contributed no clause and nobody noticed. With `columns=None` --
+    # the default on both query() and query_one() -- the predicate was an
+    # unconditional TRUE no matter how restrictive the scope was. A user
+    # scoped to one entity, run against a query whose mapping omits `entity`,
+    # read every entity's rows, and the `{scope}` token guard passed happily
+    # because a token was present.
+    #
+    # The module's stated invariant is that an empty frozenset compiles to
+    # FALSE and never to "skip this filter". That has to hold for dimensions
+    # the caller forgot as well, or it is not an invariant. To waive a
+    # dimension deliberately, map it to None -- visible in the call site and in
+    # review, unlike an omission.
+    restricted = {
+        dimension for dimension, field in _DIMENSION_FIELDS.items()
+        if getattr(scope, field) is not None
+    }
+    unexpressed = sorted(restricted - set(columns))
+    if unexpressed:
+        raise ScopeNotExpressible(
+            f"scope restricts {unexpressed} but the query maps no column for "
+            f"{'it' if len(unexpressed) == 1 else 'them'}. Add the column to "
+            f"`columns`, or map the dimension to None to waive it explicitly. "
+            f"Silently dropping a restriction would widen the caller's access."
+        )
+
     clauses: list[str] = []
     params: dict[str, Any] = {}
     for index, (dimension, column) in enumerate(sorted(columns.items())):
@@ -94,6 +132,9 @@ def compile_scope(scope: Scope, columns: Mapping[str, str] | None = None
             raise ValueError(
                 f"unknown scope dimension {dimension!r}; expected one of "
                 f"{sorted(_DIMENSION_FIELDS)}")
+        if column is None:
+            # Explicitly waived by the caller. Deliberate and reviewable.
+            continue
         values: frozenset[str] | None = getattr(scope, field)
         if values is None:
             # Unrestricted on this dimension: no clause contributed.
@@ -185,12 +226,22 @@ def query_one(session: Session, statement: str, params: Mapping[str, Any] | None
 #: that want the common case without repeating the column names at every call
 #: site. Not mandatory -- any caller may pass its own `columns=` mapping for a
 #: joined or aliased query shape.
-PROJECT_SCOPE_COLUMNS: dict[str, str] = {
+PROJECT_SCOPE_COLUMNS: dict[str, str | None] = {
     "entity": "entity_id",
     "plant": "plant_id",
     "location": "location_id",
+    # `project` was absent, so a caller scoped to specific projects -- including
+    # one scoped to NO projects, frozenset() -- got TRUE instead of a filter.
+    "project": "project_id",
 }
 
-WBS_ELEMENT_SCOPE_COLUMNS: dict[str, str] = {
+WBS_ELEMENT_SCOPE_COLUMNS: dict[str, str | None] = {
     "project": "project_id",
+    # wbs_element carries project_id but not the org dimensions directly; they
+    # are reachable only through project. Mapped to None = waived DELIBERATELY
+    # for this table, which is now a visible decision rather than an omission
+    # that silently widened every query using this mapping.
+    "entity": None,
+    "plant": None,
+    "location": None,
 }

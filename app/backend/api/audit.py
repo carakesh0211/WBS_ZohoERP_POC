@@ -41,16 +41,74 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from ..pg.audit import verify_chain
 from ..pg.engine import Database, Scope, get_database
 
-router = APIRouter()
+class _AuditRead:
+    """Router-level dependency enforcing `audit.read` on EVERY audit route.
+
+    Declared on the ROUTER, not per route, so a future route cannot be added
+    without a guard -- which is exactly how these three shipped unprotected:
+    each declared only its database dependency, and the middleware in front of
+    them checks that a session header EXISTS without validating it.
+
+    The legacy SQLite `/api/audit/verify` has always required this permission.
+    These routes register first and shadow it, so omitting the check did not
+    merely leave new code open, it silently REMOVED an existing control.
+    """
+
+    def __call__(self, request: Request) -> dict:
+        # Imported lazily: `main` imports this module, so a module-level
+        # import would be circular.
+        from ..main import principal
+        from .. import auth as auth_mod
+
+        who = principal(
+            authorization=request.headers.get("Authorization", ""),
+            x_session=request.headers.get("X-Session", ""),
+        )
+        try:
+            auth_mod.require(who, "audit.read")
+        except auth_mod.AuthError as exc:
+            raise HTTPException(exc.status,
+                                {"code": exc.code, "message": exc.message})
+        request.state.audit_principal = who
+        return who
+
+
+require_audit_read = _AuditRead()
+
+router = APIRouter(dependencies=[Depends(require_audit_read)])
 
 _CORRELATION_HEADER = "X-Correlation-Id"
 _DEFAULT_LIMIT = 50
 _MAX_LIMIT = 200
 
 
-def _audit_service_scope() -> Scope:
-    """Unrestricted read scope for the audit API. See module docstring."""
-    return Scope(user_id="SVC-AUDIT-API", principal_kind="SERVICE", read_all=True)
+def _audit_service_scope(request: Request | None = None) -> Scope:
+    """Scope for an audit read, derived from the AUTHENTICATED caller.
+
+    This previously returned an unconditional `read_all=True` service scope, so
+    `compile_scope` short-circuited to TRUE on every request and any caller who
+    reached the handler could read every audit row in the database.
+
+    The router now guarantees `audit.read`. The scope carries the real user id
+    so the read is attributable, and `read_all` is granted only to a principal
+    holding a role for which a whole-estate audit read is the actual point.
+    """
+    who: dict[str, Any] = {}
+    if request is not None:
+        who = getattr(request.state, "audit_principal", None) or {}
+    roles = {r for r in ([who.get("role")] + list(who.get("roles") or [])) if r}
+    return Scope(
+        user_id=str(who.get("user_id") or who.get("username") or "UNKNOWN"),
+        principal_kind="USER",
+        read_all=bool(roles & _WHOLE_ESTATE_AUDIT_ROLES),
+    )
+
+
+#: Roles for which reading the entire audit estate is the purpose of the role.
+#: Anyone else holding `audit.read` still reads through their own data scope.
+_WHOLE_ESTATE_AUDIT_ROLES = frozenset({
+    "Administrator", "System Administrator", "Internal Auditor", "Auditor",
+})
 
 
 def _get_database() -> Database:

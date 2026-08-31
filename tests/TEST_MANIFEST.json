@@ -1633,9 +1633,25 @@
         "assertions": 2,
         "body_sha": "943ade824135f437"
       },
-      "test_no_columns_declared_means_no_filter_even_if_scope_is_restrictive": {
+      "test_no_columns_declared_is_REFUSED_when_the_scope_is_restrictive": {
         "assertions": 2,
-        "body_sha": "983f873f21fa43b2"
+        "body_sha": "91a645f53b2b7647"
+      },
+      "test_an_unmapped_restricted_dimension_is_refused_even_when_others_map": {
+        "assertions": 1,
+        "body_sha": "c0dfe95dc70b584c"
+      },
+      "test_a_dimension_can_be_waived_explicitly_with_none": {
+        "assertions": 3,
+        "body_sha": "aae8f8e553c9b08d"
+      },
+      "test_an_unrestricted_scope_needs_no_mapping": {
+        "assertions": 2,
+        "body_sha": "6b0b7c7cad2723c6"
+      },
+      "test_the_shipped_mappings_express_every_dimension": {
+        "assertions": 1,
+        "body_sha": "50baeb8ff3e490fe"
       },
       "test_multiple_dimensions_are_anded_together": {
         "assertions": 2,
@@ -1780,7 +1796,7 @@
     "test_pg_fixture_guard.py": 3,
     "test_pg_locking.py": 16,
     "test_pg_migrations_runner.py": 9,
-    "test_pg_repo.py": 19,
+    "test_pg_repo.py": 23,
     "test_pg_scope_leakage.py": 5,
     "test_pg_transactions.py": 4,
     "test_runtime_startup.py": 11
@@ -1804,7 +1820,7 @@
     "test_pg_fixture_guard.py": 3,
     "test_pg_locking.py": 33,
     "test_pg_migrations_runner.py": 27,
-    "test_pg_repo.py": 30,
+    "test_pg_repo.py": 37,
     "test_pg_scope_leakage.py": 12,
     "test_pg_transactions.py": 10,
     "test_runtime_startup.py": 31

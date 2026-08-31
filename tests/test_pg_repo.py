@@ -14,7 +14,8 @@ from __future__ import annotations
 import pytest
 
 from app.backend.pg.engine import Scope
-from app.backend.pg.repo import (
+from app.backend.pg.repo import (  # noqa: F401
+    ScopeNotExpressible,
     ScopeTokenMissing,
     compile_scope,
     query,
@@ -107,14 +108,62 @@ def test_read_all_short_circuits_to_true_regardless_of_other_fields():
     assert params == {}
 
 
-def test_no_columns_declared_means_no_filter_even_if_scope_is_restrictive():
-    """A caller that passes no `columns=` mapping gets no filtering at all --
-    this is a statement about what the query shape can express, and callers
-    must declare every dimension their target table actually carries."""
-    scope = _scope(entity_ids=frozenset())  # would otherwise mean "nothing"
-    predicate, params = compile_scope(scope, columns=None)
+def test_no_columns_declared_is_REFUSED_when_the_scope_is_restrictive():
+    """INVERTED 2026-08-31 after adversarial review. See tests/ADAPTATIONS.md.
+
+    This previously asserted that omitting `columns=` yields "TRUE" -- and so
+    locked in the exact hazard the module exists to prevent. A user scoped to
+    one entity, run through a query with no mapping, read every entity's rows;
+    a user scoped to NOTHING (`frozenset()`) likewise got TRUE rather than
+    FALSE, turning "no grants" into "all rows".
+
+    A restriction the query cannot express must fail loudly. Waiving one is
+    still possible, but only by mapping it to None -- deliberate and visible in
+    review, unlike an omission.
+    """
+    scope = _scope(entity_ids=frozenset())  # "nothing"
+    with pytest.raises(ScopeNotExpressible) as exc:
+        compile_scope(scope, columns=None)
+    assert "entity" in str(exc.value)
+
+
+def test_an_unmapped_restricted_dimension_is_refused_even_when_others_map():
+    """The dangerous shape: some dimensions mapped, one silently missing."""
+    scope = _scope(entity_ids=frozenset({"ENT-A"}), project_ids=frozenset({"PRJ-1"}))
+    with pytest.raises(ScopeNotExpressible):
+        compile_scope(scope, columns={"project": "project_id"})
+
+
+def test_a_dimension_can_be_waived_explicitly_with_none():
+    """Waiving must remain possible -- but only as a visible act."""
+    scope = _scope(entity_ids=frozenset({"ENT-A"}), project_ids=frozenset({"PRJ-1"}))
+    predicate, params = compile_scope(
+        scope, columns={"project": "project_id", "entity": None,
+                        "plant": None, "location": None})
+    assert "project_id" in predicate
+    assert "entity" not in predicate
+    assert list(params.values()) == [["PRJ-1"]]
+
+
+def test_an_unrestricted_scope_needs_no_mapping():
+    """A scope that restricts nothing is expressible by any query."""
+    predicate, params = compile_scope(_scope(), columns=None)
     assert predicate == "TRUE"
     assert params == {}
+
+
+def test_the_shipped_mappings_express_every_dimension():
+    """Both shipped mappings must cover all four dimensions, mapped or waived.
+
+    PROJECT_SCOPE_COLUMNS omitted `project` entirely, so a project-scoped user
+    was unfiltered against the project table itself.
+    """
+    from app.backend.pg.repo import (PROJECT_SCOPE_COLUMNS,
+                                     WBS_ELEMENT_SCOPE_COLUMNS, _DIMENSION_FIELDS)
+    for name, mapping in (("PROJECT_SCOPE_COLUMNS", PROJECT_SCOPE_COLUMNS),
+                          ("WBS_ELEMENT_SCOPE_COLUMNS", WBS_ELEMENT_SCOPE_COLUMNS)):
+        missing = sorted(set(_DIMENSION_FIELDS) - set(mapping))
+        assert not missing, f"{name} does not express {missing}"
 
 
 def test_multiple_dimensions_are_anded_together():

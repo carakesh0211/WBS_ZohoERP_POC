@@ -65,3 +65,41 @@ New tests are additive and do not need an adaptation entry, but the manifest mus
 | Phase 0A | `tests/test_known_defects.py` | `xfail(strict=True)` record of DEF-01 |
 
 Counts are deliberately omitted here — `tests/TEST_MANIFEST.json` is the inventory of record and cannot go stale.
+
+## 2026-08-31 — `test_no_columns_declared_means_no_filter_even_if_scope_is_restrictive`
+
+**Change:** assertion INVERTED. Was `assert predicate == "TRUE"`; now asserts
+`ScopeNotExpressible` is raised. Renamed to
+`test_no_columns_declared_is_REFUSED_when_the_scope_is_restrictive`.
+
+**Reason:** the assertion documented and locked in a data-leakage hazard.
+`compile_scope` iterated over the caller's `columns` mapping rather than over
+the dimensions the `Scope` actually restricts, so any dimension the caller
+omitted contributed no clause. With `columns=None` — the default on both
+`query()` and `query_one()` — the predicate was an unconditional `TRUE`
+regardless of how restrictive the scope was.
+
+Two concrete failures this permitted:
+
+- A user scoped to one entity, queried through a mapping that omits `entity`,
+  read every entity's rows. The `{scope}` token guard passed, because a token
+  was present.
+- `Scope(project_ids=frozenset())` — "no grants at all" — compiled to `TRUE`
+  rather than `FALSE` against `PROJECT_SCOPE_COLUMNS`, which did not map
+  `project`. That is precisely the "no grants becomes all rows" inversion the
+  module's own docstring says must never happen.
+
+**Not a weakening.** The control is strengthened: a restriction the query
+cannot express is now refused rather than silently dropped. Waiving a dimension
+remains possible by mapping it to `None`, which is visible at the call site and
+in review — unlike an omission.
+
+**Found by:** adversarial financial-control review of Milestone 1 (finding F2),
+which specifically flagged that this test locked the hazard in.
+
+**Approved by:** engagement lead, as part of the Milestone 1 integration pass.
+
+**Also changed:** `PROJECT_SCOPE_COLUMNS` gained `project`; both shipped
+mappings now express all four dimensions, mapped or explicitly waived. Four
+tests added covering refusal, explicit waiver, unrestricted scope, and mapping
+completeness.

@@ -181,7 +181,14 @@ def _from_url(url: str) -> DatabaseConfig:
         port=parsed.port or 5432,
         database=(parsed.path or "/capex").lstrip("/") or "capex",
         user=urllib.parse.unquote(parsed.username or "capex_app"),
-        sslmode=os.environ.get("CAPEX_DB_SSLMODE", "prefer"),
+        # verify-full, matching the CAPEX_DB_HOST path and the dataclass
+        # default. This branch previously defaulted to `prefer`, which performs
+        # NO certificate or hostname validation and silently falls back to
+        # plaintext if the server declines TLS -- and it is the branch
+        # `from_env()` takes first, so any URL-configured deployment was
+        # downgraded without a word in the logs. Relaxing TLS must be a
+        # deliberate act, so `prefer` now requires setting CAPEX_DB_SSLMODE.
+        sslmode=os.environ.get("CAPEX_DB_SSLMODE", "verify-full"),
         password_secret_name=secret_name,
     )
 
