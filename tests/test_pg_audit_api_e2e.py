@@ -60,55 +60,23 @@ def seeded_pg(pg_connection, pg_database):
 
 
 @pytest.fixture()
-def pg_backed_app(seeded_pg):
+def pg_backed_app(seeded_pg, make_user):
     """`main.app` wired to the seeded PostgreSQL database.
 
-    In the pg_tests job CAPEX_DB_URL is set for the whole run, so main.py has
-    already mounted the PostgreSQL audit router at import. Here we only point
-    the process-wide Database at THIS test's disposable database.
+    Mount detection is a BEHAVIOURAL PROBE, not route-table introspection.
+
+    Two previous versions inspected `main.app.routes` -- first a flat scan,
+    then a recursive walk -- and both concluded "not mounted" in CI while the
+    router was mounted perfectly well. FastAPI versions differ in how an
+    included router appears in `app.routes`, so any structural inspection is a
+    guess about internals that changes between releases.
+
+    Asking the application whether it serves the route cannot be wrong about
+    that: an authenticated request to a mounted route is anything but 404; to
+    an unmounted one it is exactly 404.
     """
     from app.backend import main
     from app.backend.pg import engine
-
-    # Walk RECURSIVELY. Newer FastAPI wraps an included router in a container
-    # object that has no `.path`, so a flat scan of `app.routes` cannot see the
-    # audit routes at all -- and this fixture would then skip every test in the
-    # file while the job reported green.
-    #
-    # That is exactly what happened: all nine of these skipped in CI with
-    # "router is not mounted" while the router was mounted perfectly well. It
-    # is also the same defect I had already fixed once, in
-    # tests/test_api_auth.py::_walk_routes, and then reintroduced here by
-    # writing the naive scan again. Hence the shared helper.
-    from test_api_auth import _walk_routes
-
-    paths = {getattr(r, "path", None) for r in _walk_routes(main.app.routes)}
-    if "/api/audit/entries" not in paths:
-        # FAIL, do not skip.
-        #
-        # This is reached only when CAPEX_DB_URL is set (the @PG marker gates
-        # every test here), and in that case main.py mounting the router is a
-        # guaranteed precondition, not a maybe. A skip here silently opted the
-        # entire end-to-end proof out of CI twice while the job reported green.
-        #
-        # A precondition that is guaranteed in this environment must assert.
-        # Skipping turns a broken guarantee into a green tick.
-        audit_paths = sorted(p for p in paths if p and "audit" in p)
-        mounted = getattr(main, "audit_api", "attribute absent")
-        diagnostics = [
-            "the PostgreSQL audit router is not mounted, but CAPEX_DB_URL is "
-            "set so it must be.",
-            f"  CAPEX_DB_URL set:  {bool(os.environ.get('CAPEX_DB_URL'))}",
-            f"  CAPEX_DB_HOST set: {bool(os.environ.get('CAPEX_DB_HOST'))}",
-            f"  main.audit_api:    {mounted}",
-            f"  audit-ish paths:   {audit_paths}",
-            f"  total routes seen: {len(paths)}",
-        ]
-        raise AssertionError(
-            "\n".join(diagnostics) + "\n"
-            "If main.audit_api is None, importing app.backend.api.audit raised "
-            "ImportError and main.py swallowed it defensively."
-        )
 
     previous = None
     try:
@@ -116,7 +84,24 @@ def pg_backed_app(seeded_pg):
     except RuntimeError:
         previous = None
     engine.set_database(seeded_pg)
+
     try:
+        prober = make_user(["Auditor"])
+        probe = prober.get("/api/audit/streams")
+        if probe.status_code == 404:
+            # FAIL, never skip. Every test here is gated on CAPEX_DB_URL being
+            # set, and in that state the router mounting is a guaranteed
+            # precondition. Skipping on a broken guarantee is how this entire
+            # end-to-end suite silently opted out of CI twice while the job
+            # reported green.
+            raise AssertionError(
+                "GET /api/audit/streams returned 404: the PostgreSQL audit "
+                "router is not serving.\n"
+                f"  CAPEX_DB_URL set: {bool(os.environ.get('CAPEX_DB_URL'))}\n"
+                f"  main.audit_api:   {getattr(main, 'audit_api', 'absent')}\n"
+                "main.py mounts it unconditionally, so a 404 means "
+                "include_router did not register these paths."
+            )
         yield main.app
     finally:
         engine.set_database(previous)

@@ -169,5 +169,9 @@ export function listEntries({ streamKey, objectType, objectId, cursor, limit } =
 
 /** GET /api/audit/chain/verify?stream_key= */
 export function verifyChain(streamKey) {
-  return get('/verify', { stream_key: streamKey });
+  // '/chain/verify', not '/verify'. The backend moved this path so it stops
+  // colliding with the legacy SQLite GET /api/audit/verify, which the
+  // PostgreSQL router was shadowing. API_BASE supplies the '/api/audit' prefix,
+  // so only this segment changes.
+  return get('/chain/verify', { stream_key: streamKey });
 }
