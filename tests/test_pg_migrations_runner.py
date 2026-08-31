@@ -73,6 +73,56 @@ def _extension_installed(con, name: str) -> bool:
     return row is not None
 
 
+# ----------------------------------------------------------------------- discover
+def _copy_real_migrations_into(dest: "object") -> None:
+    """Every real migration file under migrations/pg/, copied byte-for-byte
+    into `dest` (a `pathlib.Path`). Used so these tests exercise discover()
+    against real migration content, not a synthetic stand-in, while still
+    controlling exactly what else is in the directory."""
+    for f in sorted(migrate_pg.MIGRATIONS_DIR.glob("*.sql")):
+        (dest / f.name).write_bytes(f.read_bytes())
+
+
+def test_discover_skips_seed_demo_sql_and_its_presence_does_not_change_the_version_list(tmp_path):
+    """seed_demo.sql lives alongside real migrations in migrations/pg/ -- it is
+    loaded by `fresh()` on `--seed`, never applied as a migration by
+    `upgrade()` -- and does not match NNN_lower_snake.sql. discover() must
+    skip it by name, not by loosening `_FILENAME` (which exists to keep real
+    migration ordering unambiguous)."""
+    without_seed = tmp_path / "without_seed"
+    without_seed.mkdir()
+    _copy_real_migrations_into(without_seed)
+
+    with_seed = tmp_path / "with_seed"
+    with_seed.mkdir()
+    _copy_real_migrations_into(with_seed)
+    (with_seed / "seed_demo.sql").write_text(
+        "-- not a migration -- demo data only, loaded by fresh() on --seed\n"
+        "SELECT 1;\n", encoding="utf-8")
+
+    without_versions = [m.version for m in migrate_pg.discover(without_seed)]
+    with_migrations = migrate_pg.discover(with_seed)
+    with_versions = [m.version for m in with_migrations]
+
+    assert without_versions, "the real migration set copied into the fixture must not be empty"
+    assert with_versions == without_versions, (
+        "seed_demo.sql's presence must not change which versions discover() reports")
+    assert "seed_demo.sql" not in {m.path.name for m in with_migrations}
+    assert "seed_demo" not in {m.name for m in with_migrations}
+
+
+def test_discover_still_rejects_a_genuinely_unrecognised_filename(tmp_path):
+    """The NON_MIGRATION_FILES skip-list is not a general escape hatch: a
+    filename that is neither a real migration nor a known non-migration data
+    file must still fail loudly, exactly as before."""
+    bad = tmp_path / "bad"
+    bad.mkdir()
+    (bad / "not_a_migration.sql").write_text("-- x\n", encoding="utf-8")
+
+    with pytest.raises(migrate_pg.MigrationError, match="does not match"):
+        migrate_pg.discover(bad)
+
+
 # ------------------------------------------------------------------------ upgrade
 def test_upgrade_applies_001_cleanly(bare_pg_connection):
     con = bare_pg_connection
