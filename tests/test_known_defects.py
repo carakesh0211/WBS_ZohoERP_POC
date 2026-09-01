@@ -274,9 +274,20 @@ def test_def_01_pg_adopts_a_preexisting_legacy_schema():
 
     all_tables: set[str] = set()
     for migration in migrations:
-        tables = migrate_pg._tables_created_by(migration)
-        assert tables, f"migration {migration.version} must declare a table"
-        all_tables.update(tables)
+        # A migration may legitimately create NO table. 006 is RLS policies
+        # plus one function; 007 replaces a function body and adds a CHECK
+        # constraint. The per-migration `assert tables` that stood here
+        # encoded "every migration creates a table" -- the same class of
+        # coupling this test's own comment above warns against, one step
+        # along. It was fixture seeding, not the behaviour under test.
+        all_tables.update(migrate_pg._tables_created_by(migration))
+
+    # The guard that actually matters is kept: if NOTHING declared a table the
+    # fake connection below would be seeded empty and the adoption path would
+    # never fire, so the test would pass while proving nothing.
+    assert all_tables, (
+        "no migration declares a table; the adoption fixture would be empty "
+        "and this test would pass vacuously")
 
     con = _FakeAdoptConnection(existing_tables=all_tables)
 
