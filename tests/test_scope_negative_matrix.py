@@ -506,15 +506,19 @@ def test_approval_shape_closing_an_out_of_scope_period_is_refused():
     """APPROVAL -- `periods.transition_period`. An entity-restricted principal
     must not close another entity's accounting period.
 
-    Only the entity dimension is exercised here because
-    `periods._PERIOD_SCOPE_COLUMNS` maps only `entity`; the other three are
-    covered by the test immediately below, which proves they are REFUSED
-    rather than waived.
+    All four dimensions now reach `accounting_period` through the entity's
+    projects, so the fixture row carries the aliased columns
+    `periods._PERIOD_SCOPE_COLUMNS` actually names (`sp.*`, the correlated
+    subquery over `project`). It used to carry a bare `entity_id`, because
+    that mapping named only `entity`.
     """
     scope = scope_restricted_to_row_a("entity")
     session = ScopedRowSession(
         scope, periods_mod._PERIOD_SCOPE_COLUMNS,
-        {"entity_id": ROW_B["p.entity_id"]})
+        {"sp.entity_id": ROW_B["p.entity_id"],
+         "sp.plant_id": ROW_B["p.plant_id"],
+         "sp.project_id": ROW_B["p.project_id"],
+         "sp.location_id": ROW_B["p.location_id"]})
 
     with pytest.raises(periods_mod.PeriodServiceError) as excinfo:
         periods_mod.transition_period(
@@ -526,23 +530,68 @@ def test_approval_shape_closing_an_out_of_scope_period_is_refused():
 
 
 @pytest.mark.parametrize("dimension", ["plant", "project", "location"])
-def test_a_period_transition_refuses_a_restriction_it_cannot_express(dimension):
-    """`accounting_period` carries only `entity_id`, so a plant-, project- or
-    location-restricted principal's restriction cannot be expressed against
-    it. `compile_scope` REFUSES -- it does not waive the dimension and let the
-    transition through, which is the widening this wave exists to close.
+def test_a_period_transition_ENFORCES_a_restriction_it_once_could_not_express(dimension):
+    """Rewritten after the adversarial review, and the change is the point.
 
-    No statement reaches the session: the refusal happens in the compiler.
+    This asserted `pytest.raises(repo.ScopeNotExpressible)`. That refusal was
+    genuinely correct -- `accounting_period` carries only `entity_id`, and
+    refusing beats waiving the dimension and letting the transition through.
+    But nothing tested what the ROUTER did with that exception, and the answer
+    was: nothing. `ScopeNotExpressible` is a RuntimeError, no route caught it
+    and no app-level handler existed, so once Wave 3 wired real grants in,
+    three of the nine seeded demo users got an unhandled 500 on a plain read
+    of the period list.
+
+    The dimensions are now EXPRESSED rather than refused, through the entity's
+    projects: a period is visible when any project in its entity is visible.
+    So the restriction is enforced, which is strictly better than being
+    refused -- the caller sees their own periods instead of an error.
+
+    The assertion this test exists to make is unchanged and unweakened: a
+    restricted principal must not reach an out-of-scope period. Only the
+    mechanism moved, from an exception to a predicate.
     """
     scope = scope_restricted_to_row_a(dimension)
     session = _RefusingSession(scope)
 
-    with pytest.raises(repo.ScopeNotExpressible):
+    # It compiles now, where it used to raise.
+    predicate, params = repo.compile_scope(scope, periods_mod._PERIOD_SCOPE_COLUMNS)
+    assert predicate != "TRUE", "the restriction must not have been waived"
+    assert params, "a real restriction must bind real values"
+
+    # And the transition still refuses an out-of-scope period, writing nothing.
+    with pytest.raises(periods_mod.PeriodServiceError) as excinfo:
         periods_mod.transition_period(
             session, period_id="P-A-Q2", to_state="CLOSED", actor="U-SCOPED")
 
-    assert session.statements == []
+    assert excinfo.value.code == "PERIOD_NOT_FOUND"
+    assert excinfo.value.status == 404
     assert session.writes == []
+
+
+@pytest.mark.parametrize("dimension", ["plant", "project", "location"])
+def test_an_inexpressible_dimension_is_a_403_and_never_a_500(dimension):
+    """The exit path the original test never checked.
+
+    `compile_scope` still refuses a dimension a query genuinely cannot
+    express, and that refusal is still right. What was missing was a handler:
+    the refusal escaped as a RuntimeError and became a traceback. Asserted
+    here against a mapping that deliberately omits the dimension, so the guard
+    holds for the NEXT mapping someone writes, not only for periods.
+    """
+    from app.backend.main import app
+
+    scope = scope_restricted_to_row_a(dimension)
+    entity_only = {"entity": "entity_id"}
+
+    with pytest.raises(repo.ScopeNotExpressible):
+        repo.compile_scope(scope, entity_only)
+
+    handled = [k for k in app.exception_handlers
+               if getattr(k, "__name__", "") == "ScopeNotExpressible"]
+    assert handled, (
+        "ScopeNotExpressible has no application-level handler, so a refusal "
+        "surfaces as a 500 rather than a 403")
 
 
 @pytest.mark.parametrize("dimension", [d for d, _f, _c in DIMENSIONS])
@@ -616,15 +665,30 @@ def test_a_principal_with_no_grants_is_refused_every_service_shape():
     assert excinfo.value.code == "WBS_NOT_FOUND"
     assert read_session.writes == []
 
-    # `accounting_period` maps only `entity`, and this principal is restricted
-    # on all four dimensions, so the refusal here is the compiler's -- louder
-    # than a not-found, and closed for the same reason: a restriction the
-    # query cannot express is refused, never waived.
-    period_session = _RefusingSession(scope)
-    with pytest.raises(repo.ScopeNotExpressible):
+    # `accounting_period` now reaches all four dimensions through the entity's
+    # projects, so this no longer refuses in the compiler -- it compiles to
+    # FALSE and matches nothing, which is the same answer arrived at more
+    # usefully. A principal restricted on every dimension with no grants on
+    # any of them sees no period, and closing one is a not-found.
+    #
+    # It used to assert `pytest.raises(ScopeNotExpressible)`. That refusal was
+    # correct in itself, but nothing checked the router's exit path, and there
+    # wasn't one: the exception escaped as an unhandled 500.
+    predicate, _params = repo.compile_scope(
+        scope, periods_mod._PERIOD_SCOPE_COLUMNS)
+    assert predicate == "FALSE", (
+        f"a principal with no grants must match nothing, got {predicate!r}")
+
+    period_session = ScopedRowSession(
+        scope, periods_mod._PERIOD_SCOPE_COLUMNS,
+        {"sp.entity_id": ROW_A["p.entity_id"],
+         "sp.plant_id": ROW_A["p.plant_id"],
+         "sp.project_id": ROW_A["p.project_id"],
+         "sp.location_id": ROW_A["p.location_id"]})
+    with pytest.raises(periods_mod.PeriodServiceError) as period_exc:
         periods_mod.transition_period(
             period_session, period_id="P-A-Q2", to_state="CLOSED", actor="U-NONE")
-    assert period_session.statements == []
+    assert period_exc.value.code == "PERIOD_NOT_FOUND"
     assert period_session.writes == []
 
 

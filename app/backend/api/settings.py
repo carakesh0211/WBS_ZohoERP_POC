@@ -56,6 +56,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Res
 
 from ..pg import audit as pg_audit
 from ..pg import principal_scope
+from ..pg import repo as pg_repo
 from ..pg import masters as pg_masters
 from ..pg.engine import Database, Scope, get_database
 
@@ -199,12 +200,47 @@ def _row_to_dict(spec: CollectionSpec, row: tuple) -> dict[str, Any]:
     return out
 
 
+def scope_columns_for(spec: CollectionSpec) -> dict[str, str | None]:
+    """The scope column mapping for one collection, derived from its own row.
+
+    These tables ARE scopable -- `entity`, `plant` and `location` are three of
+    the four dimensions -- and this router read them with no scope predicate
+    at all, on the stated grounds that "no row-level scope dimension applies
+    to the organisation hierarchy itself". An entity-restricted caller reading
+    `GET /api/settings/entities` saw every entity, and RLS agreed with the
+    application because the router's all-`None` scope rendered as the old `*`
+    wildcard.
+
+    A dimension the table genuinely does not carry is WAIVED (`None`), not
+    omitted, so `compile_scope` filters on what exists rather than refusing
+    the whole read. `organisation` carries none of the four: it is the single
+    root of the hierarchy, so there is no sibling row for a restriction to
+    separate it from, and waiving there discloses nothing.
+    """
+    present = set(_row_columns(spec))
+    return {
+        "entity": "entity_id" if "entity_id" in present else None,
+        "plant": "plant_id" if "plant_id" in present else None,
+        "location": "location_id" if "location_id" in present else None,
+        "project": None,   # no settings table carries a project
+    }
+
+
 def _select_row(session, spec: CollectionSpec, id_value: str, *, for_update: bool = False):
+    """Scoped, not a bare read: an out-of-scope row answers as a missing one.
+
+    `FOR UPDATE` is appended AFTER the scope predicate so a row the caller
+    cannot see is never locked on their behalf.
+    """
     columns = ", ".join(_row_columns(spec))
     suffix = " FOR UPDATE" if for_update else ""
-    return session.fetchone(
-        f"SELECT {columns} FROM {spec.table} WHERE {spec.id_column} = %s{suffix}",  # noqa: S608 -- table/columns from a fixed internal allow-list
-        (id_value,))
+    return pg_repo.query_one(
+        session,
+        f"SELECT {columns} FROM {spec.table} "  # noqa: S608 -- table/columns from a fixed internal allow-list
+        f"WHERE {spec.id_column} = %(id_value)s AND {{scope}}{suffix}",
+        {"id_value": id_value},
+        columns=scope_columns_for(spec),
+    )
 
 
 def _new_id(spec: CollectionSpec) -> str:
@@ -394,10 +430,13 @@ def list_collection(
     columns = ", ".join(_row_columns(spec))
     actor = _actor(request)
     with database.session(_service_scope(request, database)) as session:
-        rows = session.fetchall(
-            f"SELECT {columns} FROM {spec.table} WHERE {where} "  # noqa: S608
+        rows = pg_repo.query(
+            session,
+            f"SELECT {columns} FROM {spec.table} "  # noqa: S608
+            f"WHERE {where} AND {{scope}} "
             f"ORDER BY {spec.id_column} LIMIT %(fetch_limit)s",
             params,
+            columns=scope_columns_for(spec),
         )
         has_more = len(rows) > limit
         page = rows[:limit]

@@ -50,7 +50,46 @@ _RECONCILIATION_EXCEPTION_TABLE = "reconciliation_exception"
 # restriction a query cannot express. The consequence -- a plant-scoped
 # finance user cannot list periods until the role-to-scope mapping is settled
 # -- is recorded against D-6/D-12 rather than papered over.
-_PERIOD_SCOPE_COLUMNS = {"entity": "entity_id"}
+#: All four dimensions, expressed through the entity's projects.
+#:
+#: `accounting_period` carries `entity_id` and nothing else, so plant, project
+#: and location are not columns on it. They were previously OMITTED from this
+#: mapping so that `compile_scope` would REFUSE a caller restricted on one of
+#: them rather than silently widen. That was correct, and fail-closed, while
+#: no principal ever carried a resolved restriction.
+#:
+#: Once Wave 3 wired real grants into the routers, principals did -- and the
+#: refusal became an uncaught `ScopeNotExpressible`, which is a RuntimeError
+#: no route and no app-level handler catches. Three of the nine seeded demo
+#: users got a 500 on a plain read of the period list. The refusal was never
+#: wrong; there was simply nothing to refuse until there was.
+#:
+#: Expressing the dimensions is better than refusing them. A period belongs to
+#: an entity, and an entity's projects carry all four, so a period is visible
+#: when ANY project in its entity is visible to the caller -- the same
+#: join-one-step-further shape migration 006 uses for the budget documents.
+#:
+#: Consequence worth stating plainly: an entity with no projects has periods
+#: no restricted caller can see. Nothing can be posted into such an entity, so
+#: there is nothing to reconcile there -- but it is a behaviour change, not a
+#: nuance, and a `read_all` principal still sees them.
+_PERIOD_SCOPE_COLUMNS = {
+    "entity": "sp.entity_id",
+    "plant": "sp.plant_id",
+    "project": "sp.project_id",
+    "location": "sp.location_id",
+}
+
+#: The correlated subquery the mapping above reads through.
+#:
+#: `EXISTS`, not a join in the FROM clause: a period must come back once
+#: however many of its entity's projects match. A plain join multiplies rows
+#: per project, which would silently corrupt both the row count and any
+#: pagination built on it.
+_PERIOD_SCOPE_EXISTS = (
+    "EXISTS (SELECT 1 FROM project sp "
+    "WHERE sp.entity_id = accounting_period.entity_id AND {scope})"
+)
 
 
 class PeriodServiceError(Exception):
@@ -120,7 +159,7 @@ def list_periods(session: Session, *, entity_id: str | None = None,
         f"""
         SELECT period_id, entity_id, period_start, period_end, state, closed_at, closed_by
         FROM accounting_period
-        WHERE {where} AND {{scope}}
+        WHERE {where} AND {_PERIOD_SCOPE_EXISTS}
         ORDER BY entity_id, period_start
         """,
         params,
@@ -210,10 +249,9 @@ def transition_period(session: Session, *, period_id: str, to_state: str, actor:
     # out-of-scope period answers 404, exactly as a non-existent one does.
     row = repo.query_one(
         session,
-        """
-        SELECT period_id, entity_id, period_start, period_end, state
-        FROM accounting_period WHERE period_id = %(period_id)s AND {scope}
-        """,
+        "SELECT period_id, entity_id, period_start, period_end, state "
+        "FROM accounting_period WHERE period_id = %(period_id)s AND "
+        + _PERIOD_SCOPE_EXISTS,
         {"period_id": period_id},
         columns=_PERIOD_SCOPE_COLUMNS,
     )

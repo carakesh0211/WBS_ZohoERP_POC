@@ -24,10 +24,13 @@ from pydantic import BaseModel, Field
 
 from . import auth, db, domain, observability, services, zoho
 from .api import health as health_api
+from .pg import repo as pg_repo
 from .money import MoneyError
 
 APP_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND = os.path.join(APP_ROOT, "frontend")
+
+log = logging.getLogger("capex")
 
 app = FastAPI(title="CAPEX & WBS Control Hub", version="0.2.0-poc-hardened")
 
@@ -240,6 +243,36 @@ async def business_error(request: Request, exc: services.BusinessError):
 async def auth_error(request: Request, exc: auth.AuthError):
     return JSONResponse(status_code=exc.status,
                         content={"detail": {"code": exc.code, "message": exc.message}})
+
+
+@app.exception_handler(pg_repo.ScopeNotExpressible)
+async def scope_not_expressible(request: Request,
+                                 exc: "pg_repo.ScopeNotExpressible"):
+    """A restriction the query cannot express is a REFUSAL, not a crash.
+
+    `compile_scope` deliberately raises rather than widening when a caller is
+    restricted on a dimension the query has no column for -- refusing is the
+    fail-closed answer and it is the right one. But `ScopeNotExpressible` is a
+    RuntimeError, so with no handler it surfaced as a 500 with a traceback:
+    `periods._PERIOD_SCOPE_COLUMNS` mapped only `entity`, and once Wave 3
+    wired real grants into the routers, every plant-, project- or
+    location-restricted caller got that 500 on a plain read of the period
+    list. Three of the nine seeded demo users.
+
+    That specific mapping is fixed. This handler exists so the NEXT one is a
+    clean 403 that names the dimension, rather than a server fault -- the
+    refusal was always correct, only its exit path was missing.
+    """
+    log.warning("scope not expressible on %s: %s", request.url.path, exc)
+    return JSONResponse(
+        status_code=403,
+        content={"detail": {
+            "code": "SCOPE_NOT_EXPRESSIBLE",
+            "message": ("Your access is restricted on a dimension this view "
+                         "cannot filter by, so it cannot be shown to you "
+                         "safely."),
+            "detail": str(exc),
+        }})
 
 
 @app.exception_handler(MoneyError)

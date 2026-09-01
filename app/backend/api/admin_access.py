@@ -144,17 +144,29 @@ def _problem(status_code: int, code: str, title: str,
 
 
 def _service_scope(actor_user_id: str) -> Scope:
-    """Scope for opening a `Database.session()` to read/write the admin
-    tables (`role_grant`, `user_access_flag`, `user_scope_restriction`,
-    `user_scope_grant`, `app_user`). None of those tables carry an entity/
-    plant/project/location column -- they are not what row-level scope
-    guards -- so `read_all=True` here does not widen access to any business
-    data; it only lets this router's own queries run unfiltered against
-    tables `repo.compile_scope`'s dimensions were never meant to apply to.
-    Row-level authorisation for THIS router is the permission dependency
-    (`require_access_read` / `require_access_grant`), not `Scope`.
+    """Scope for opening a `Database.session()` on the admin tables.
+
+    This returned `read_all=True`. The reasoning was sound as far as it went:
+    `role_grant`, `user_access_flag`, `user_scope_restriction`,
+    `user_scope_grant` and `app_user` carry no entity/plant/project/location
+    column and no RLS policy, so an unfiltered scope disclosed nothing.
+
+    It is still wrong, for two reasons an adversarial review made concrete.
+    `read_all` is the one value `compile_scope` short-circuits to `TRUE` on
+    AND the one value `capex_scope_permits` short-circuits to true on, so it
+    does not merely skip a filter -- it disables RLS for the entire
+    transaction, across all nineteen policied tables. The next statement added
+    inside either `with database.session(...)` block below inherits that
+    silently, and no test would notice. And Contract 4 says every router gets
+    its Scope from one function; this was the fifth router, quietly excluded
+    from a claim the delivery status made about "all four".
+
+    A restricted, non-`read_all` scope is correct here and costs nothing: the
+    tables this router touches carry no scope column, so `compile_scope`
+    waives every dimension and the queries run exactly as before -- but RLS
+    stays armed for anything else the transaction might come to touch.
     """
-    return Scope(user_id=actor_user_id, principal_kind="USER", read_all=True)
+    return Scope(user_id=actor_user_id, principal_kind="USER", read_all=False)
 
 
 def _grant_to_dict(grant: roles_mod.Grant) -> dict[str, Any]:

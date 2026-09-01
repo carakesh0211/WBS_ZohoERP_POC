@@ -3113,11 +3113,15 @@
       },
       "test_approval_shape_closing_an_out_of_scope_period_is_refused": {
         "assertions": 4,
-        "body_sha": "6989a6b878083f58"
+        "body_sha": "4ac5bc0a87cbf3b3"
       },
-      "test_a_period_transition_refuses_a_restriction_it_cannot_express": {
-        "assertions": 3,
-        "body_sha": "6bc1372a2ae35081"
+      "test_a_period_transition_ENFORCES_a_restriction_it_once_could_not_express": {
+        "assertions": 6,
+        "body_sha": "9382a641d95a6ec5"
+      },
+      "test_an_inexpressible_dimension_is_a_403_and_never_a_500": {
+        "assertions": 2,
+        "body_sha": "8e9bd0e6100eadf7"
       },
       "test_list_shape_the_cell_listing_filters_by_the_compiled_predicate": {
         "assertions": 2,
@@ -3132,8 +3136,8 @@
         "body_sha": "bf2b8341e4980b64"
       },
       "test_a_principal_with_no_grants_is_refused_every_service_shape": {
-        "assertions": 6,
-        "body_sha": "fd2c26dbf5957c60"
+        "assertions": 7,
+        "body_sha": "f7518e90de965ab3"
       },
       "test_an_unknown_principal_is_refused_every_shape": {
         "assertions": 2,
@@ -3325,7 +3329,7 @@
     "test_pg_transactions.py": 4,
     "test_runtime_startup.py": 11,
     "test_scope_enforcement.py": 8,
-    "test_scope_negative_matrix.py": 24,
+    "test_scope_negative_matrix.py": 25,
     "test_scope_sentinel.py": 29
   },
   "assertions": {
@@ -3370,7 +3374,7 @@
     "test_pg_transactions.py": 10,
     "test_runtime_startup.py": 31,
     "test_scope_enforcement.py": 9,
-    "test_scope_negative_matrix.py": 75,
+    "test_scope_negative_matrix.py": 81,
     "test_scope_sentinel.py": 54
   }
 }

@@ -68,7 +68,12 @@ INFRASTRUCTURE = {
 NO_ROW_SCOPE = {
     "pg/masters.py": "organisation-wide reference data; permission is the control",
     "api/masters.py": "organisation-wide reference data; permission is the control",
-    "api/settings.py": "organisation-wide reference data; permission is the control",
+    # api/settings.py was here, with the reason "organisation-wide reference
+    # data; permission is the control". Wave 3 proved that false: the router
+    # serves entity, plant and location -- three of the four scope dimensions
+    # -- and the exemption was suppressing the two reads that leaked them.
+    # Removed rather than re-worded. Both reads now go through repo.query with
+    # a per-collection column mapping.
     "pg/roles.py": "reads and writes the grant tables that DEFINE scope",
     "api/admin_access.py": "administers the grant tables that DEFINE scope",
     "pg/audit.py": "audit rows are scoped by stream key at the API layer",
