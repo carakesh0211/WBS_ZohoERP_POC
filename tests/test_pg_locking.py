@@ -181,7 +181,16 @@ def test_lock_affected_cells_query_is_a_single_ordered_for_update():
     statement, params = session.fetchall_calls[0]
     assert "FOR UPDATE" in statement
     assert "ORDER BY" in statement
-    assert "budget_paise <> 0" in statement
+    # Contract 3 (docs/WAVE3_CONTRACTS.md): there is deliberately no
+    # `budget_paise <> 0` predicate any more. It filtered on a value another
+    # transaction can change, so two transactions could derive DIFFERENT lock
+    # sets for the same chain -- and it excluded exactly the cells
+    # `recompute_cell` then locked implicitly with its UPDATE. This assertion
+    # is inverted rather than deleted: it still pins the lock set's
+    # definition, which is what it was written to protect.
+    assert "budget_paise <> 0" not in statement, (
+        "the lock set must not filter on budget_paise; a zero-budget cell is "
+        "still written by recompute_cell and must be locked")
     assert params == {"wbs_ids": ["G1", "C2"], "heads": ["H1", "H2"]}
 
 
@@ -456,11 +465,13 @@ def test_lock_set_walks_the_whole_ancestor_chain_live(pg_database, pg_connection
     with pg_database.session(Scope.system()) as session:
         locked = lock_affected_cells(session, [(leaf, head)])
 
-    assert locked == [(root, head), (mid, head)], (
+    assert locked == [(root, head), (mid, head), (leaf, head)], (
         f"a spend on the leaf must lock BOTH budget-owning ancestors in "
-        f"wbs_path order, not just the nearest; got {locked}"
+        f"wbs_path order, AND the leaf's own cell; got {locked}"
     )
-    assert (leaf, head) not in locked, (
-        "a cell with budget_paise = 0 owns no availability and must be excluded"
+    assert (leaf, head) in locked, (
+        "a cell with budget_paise = 0 owns no AVAILABILITY, but recompute_cell "
+        "still UPDATEs its row -- so excluding it from the declared set meant "
+        "taking a lock the set never contained (Contract 3)"
     )
     assert session.locks_taken == locked, "lock order must be recorded for audit"
