@@ -819,7 +819,14 @@ def approve_transfer(session: Session, *, transfer_id: str, actor: str) -> dict:
     version_note = ""
     from_project = _project_id_for_wbs(session, from_wbs)
     to_project = _project_id_for_wbs(session, to_wbs)
-    for project_id in {p for p in (from_project, to_project) if p}:
+    # SORTED, not a set. Iterating a set of strings takes an order that varies
+    # with PYTHONHASHSEED across worker processes, so two concurrent
+    # cross-project transfers between the same pair could take the two
+    # projects' advisory locks in opposite orders and deadlock. A total order
+    # over the project ids removes the cycle, exactly as the cell lock order
+    # does -- see locking.py's proof of deadlock freedom, which this now obeys
+    # rather than sitting outside.
+    for project_id in sorted({p for p in (from_project, to_project) if p}):
         v = create_version_snapshot(
             session, project_id=project_id,
             label=f"After transfer {transfer_id} approved", actor=actor)
@@ -866,6 +873,30 @@ def create_version_snapshot(session: Session, *, project_id: str, label: str,
     the seed fragment for the initial baseline."""
     _assert_project_in_scope(session, project_id)
     version_id = _new_id("BV")
+
+    # Serialise version minting per project.
+    #
+    # `MAX(version_no) + 1` is a read-then-write against
+    # `UNIQUE (project_id, version_no)`, and nothing above serialises it: two
+    # revisions in the same project on DIFFERENT budget heads hold disjoint
+    # ancestor-chain lock sets, so `lock_affected_cells` does not make them
+    # wait for each other. Both computed the same next number and the second
+    # died on the unique index -- an unhandled 500 that rolled back a
+    # legitimate approval, its budget line, its cell recompute and its audit
+    # entry, and reported the loss as a server fault.
+    #
+    # An advisory lock keyed on the project, rather than `FOR UPDATE`: there
+    # is no row to lock when a project has no versions yet, which is exactly
+    # the first-approval case. It is transaction-scoped, so it releases on
+    # commit or rollback without a code path to forget.
+    #
+    # It sits AFTER the cell locks and before the document row, so it does not
+    # disturb the global order in locking.py's rule 3, and the key is
+    # namespaced apart from the audit chain's.
+    session.execute(
+        "SELECT pg_advisory_xact_lock(hashtext(%s))",
+        (f"capex.budget_version:{project_id}",))
+
     (next_no,) = session.fetchone(  # scope-exempt: project_id scope-cleared just above
         "SELECT COALESCE(MAX(version_no), 0) + 1 FROM budget_version WHERE project_id = %s",
         (project_id,))

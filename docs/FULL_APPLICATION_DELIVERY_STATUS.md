@@ -191,12 +191,6 @@ place to guess between opposites.
   for today's schema — but it is the same reasoning that was already false for
   `api/settings.py`, so it is written down rather than assumed permanent.
 
-- **Row-level data scope is enforced at the query layer but not yet
-  populated.** `_scope_for` builds a Scope from the authenticated principal;
-  per-user grants exist in migration 004 but are not yet resolved into it, so
-  a non-whole-estate principal is currently unrestricted. `_scope_for` says
-  so in its docstring rather than implying otherwise. Wiring
-  `roles.resolve_scope` into the API is the first task of the next wave.
 - **Auditor holds none of the six new settings/masters permissions.** Plan
   §10.4 lists Auditor among the roles entitled to a full GSTIN, but
   `test_aud_c_006_auditor_is_read_only` pins Auditor to an allow-list of four
@@ -205,14 +199,23 @@ place to guess between opposites.
 - **No reveal endpoint.** The reveal permissions exist server-side; the
   frozen contract carries no reveal route and no `can_reveal` field, so the
   UI control is present but permanently disabled.
-- **`core/api.js` is hard-wired to `/api/audit`,** so both frontend streams
-  duplicated its session/correlation/RFC-7807 handling. A base-path
-  parameterised client should land before a third copy.
 - **Whole-stream audit truncation is not detectable.** `audit_anchor` has no
   writer; `/api/audit/chain/verify` returns `whole_stream_truncation_note` so
   `intact: true` never implies more than it can support.
-- SCR-28, SCR-09/10/13 and SCR-30 are standalone pages, not yet in the SPA
-  shell's hash router.
+- **The five SCR screens are routable but carry no primary-navigation entry.**
+  `#audit-trail`, `#budget-grid`, `#budget-compare`, `#budget-availability`
+  and `#settings` are reachable, deep-linkable and permission-gated. Adding
+  rows to the navigation rail changes the client-approved UI -- it renders
+  inside every approved screenshot -- so it needs client sign-off and a
+  deliberate re-baselining rather than a stream overwriting the evidence.
+- **`settings.css` has two unscoped selectors** (`input:disabled`,
+  `.field label`) that move unrelated screens when the stylesheet is loaded
+  globally. Measured at 694 pixels on one screen; the stylesheets now load per
+  route, which contains the symptom rather than fixing the cause.
+- **`#userAvatar` fails WCAG 2 AA contrast** at 4.02:1 against the required
+  4.5:1. It is excluded from the a11y tests by exactly one selector, with a
+  guard asserting that stays the only exclusion. Fixing it means editing the
+  byte-frozen `styles.css`, so it needs sign-off.
 - Review findings F8 (global secret-provider mutation) and F9 (`formatINR`
   routes paise through a JS double) remain open, both low.
 
