@@ -9,7 +9,13 @@
 import { mountOrgHierarchy } from './org-hierarchy.js';
 import { mountMasters } from './masters.js';
 
-function mountSettingsApp() {
+/**
+ * Mount the settings screens into whichever host document supplies the ids
+ * below. Exported so the SPA shell's hash route (#settings, via
+ * core/router.js) drives the same controller as the standalone settings.html —
+ * one implementation, two hosts. Returns silently when the host is absent.
+ */
+export function mountSettingsApp() {
   const hierarchyTabBtn = document.getElementById('settingsTabHierarchy');
   const mastersTabBtn = document.getElementById('settingsTabMasters');
   const hierarchyPanel = document.getElementById('settingsHierarchyPanel');
@@ -57,4 +63,7 @@ function mountSettingsApp() {
   activate('hierarchy');
 }
 
+// Standalone host only. The SPA imports this module after DOMContentLoaded has
+// already fired and calls mountSettingsApp() itself, so this listener never
+// runs there and cannot double-mount.
 document.addEventListener('DOMContentLoaded', mountSettingsApp);
