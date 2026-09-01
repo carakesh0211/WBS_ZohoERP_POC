@@ -2396,6 +2396,10 @@
       "test_the_module_source_contains_no_widening_literal": {
         "assertions": 2,
         "body_sha": "c1f89b8918de4bb1"
+      },
+      "test_a_denied_scope_compiles_to_FALSE_even_when_every_dimension_is_waived": {
+        "assertions": 4,
+        "body_sha": "06002e8fe541d797"
       }
     },
     "test_pg_repo.py": {
@@ -3318,7 +3322,7 @@
     "test_pg_migrations_runner.py": 11,
     "test_pg_period_concurrency.py": 9,
     "test_pg_periods.py": 14,
-    "test_pg_principal_scope.py": 34,
+    "test_pg_principal_scope.py": 35,
     "test_pg_repo.py": 23,
     "test_pg_rls.py": 18,
     "test_pg_rls_coverage.py": 34,
@@ -3363,7 +3367,7 @@
     "test_pg_migrations_runner.py": 32,
     "test_pg_period_concurrency.py": 28,
     "test_pg_periods.py": 35,
-    "test_pg_principal_scope.py": 78,
+    "test_pg_principal_scope.py": 82,
     "test_pg_repo.py": 37,
     "test_pg_rls.py": 34,
     "test_pg_rls_coverage.py": 72,

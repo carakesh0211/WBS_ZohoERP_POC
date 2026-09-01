@@ -672,3 +672,38 @@ def test_the_module_source_contains_no_widening_literal():
     assert "Scope.system" not in body, (
         "principal_scope references Scope.system, which is documented "
         "'never for a request'")
+
+
+def test_a_denied_scope_compiles_to_FALSE_even_when_every_dimension_is_waived():
+    """The adversarial review's L2, and the reason it mattered.
+
+    `compile_scope`'s emptiness check sat AFTER its waiver check, so a
+    dimension the query waived skipped the check entirely -- and a fully
+    denied scope compiled to `TRUE` against any mapping that waived all four.
+    `denied_scope()`'s own docstring promised `FALSE`.
+
+    It was not hypothetical: `audit_log` carries no scope column, so audit
+    reads already went through exactly that path, and a denied principal read
+    them. The audit end-to-end tests passed while the principal was denied,
+    which is the shape of a test proving nothing.
+
+    An empty frozenset is a statement about the PRINCIPAL, not the table:
+    "you may see rows in zero entities" is true whether or not this query has
+    an entity column to filter on.
+    """
+    from app.backend.pg import repo as repo_mod
+
+    all_waived = {"entity": None, "plant": None, "project": None, "location": None}
+    denied = denied_scope("U-NOBODY")
+
+    predicate, params = repo_mod.compile_scope(denied, all_waived)
+    assert predicate == "FALSE", (
+        f"a denied scope must reject every row even when the query waives "
+        f"every dimension, got {predicate!r}")
+    assert params == {}
+
+    # Still correct in the ordinary directions.
+    unrestricted = Scope(user_id="U-FREE")
+    assert repo_mod.compile_scope(unrestricted, all_waived)[0] == "TRUE"
+    assert repo_mod.compile_scope(
+        Scope(user_id="U-ALL", read_all=True), all_waived)[0] == "TRUE"

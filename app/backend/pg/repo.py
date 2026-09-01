@@ -154,18 +154,29 @@ def compile_scope(scope: Scope, columns: Mapping[str, str] | None = None
             raise ValueError(
                 f"unknown scope dimension {dimension!r}; expected one of "
                 f"{sorted(_DIMENSION_FIELDS)}")
+        values: frozenset[str] | None = getattr(scope, field)
+
+        # The emptiness check comes BEFORE the waiver, deliberately.
+        #
+        # It used to sit after it, so a dimension the table waived skipped the
+        # check entirely -- and a fully denied scope compiled to TRUE against
+        # any mapping that waived all four. `denied_scope()`'s own docstring
+        # promised FALSE, and `audit_log`, which carries no scope column, was
+        # already reading through exactly that path.
+        #
+        # An empty frozenset is a statement about the PRINCIPAL, not about the
+        # table: "you may see rows in zero entities" is true whether or not
+        # this particular query has an entity column to filter on. Waiving it
+        # answers a question nobody asked.
+        if values is not None and len(values) == 0:
+            return "FALSE", {}
+
         if column is None:
             # Explicitly waived by the caller. Deliberate and reviewable.
             continue
-        values: frozenset[str] | None = getattr(scope, field)
         if values is None:
             # Unrestricted on this dimension: no clause contributed.
             continue
-        if len(values) == 0:
-            # Empty frozenset: this dimension permits nothing. The whole
-            # predicate must therefore reject every row -- do not let other
-            # clauses' ANY(...) accidentally re-admit rows via OR.
-            return "FALSE", {}
         param_name = f"__scope_{dimension}_{index}"
         clauses.append(f"({column} = ANY(%({param_name})s))")
         params[param_name] = sorted(values)
