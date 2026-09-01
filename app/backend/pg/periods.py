@@ -38,18 +38,6 @@ _ALLOWED_TRANSITIONS: dict[str, set[str]] = {
 #: "table not there yet".
 _RECONCILIATION_EXCEPTION_TABLE = "reconciliation_exception"
 
-# Only `entity` is mapped, and the other three are OMITTED rather than set to
-# None. That distinction is the control: `compile_scope` treats an explicit
-# None as *waived* and a missing key as *inexpressible*, raising
-# ScopeNotExpressible. accounting_period carries an entity and nothing else,
-# so a principal restricted by project, plant or location cannot be filtered
-# here -- and waiving it, as this mapping did, meant such a principal saw
-# every entity's periods and could close any of them via `period.transition`.
-#
-# Refusing is the fail-closed answer and matches repo.py's rule: never widen a
-# restriction a query cannot express. The consequence -- a plant-scoped
-# finance user cannot list periods until the role-to-scope mapping is settled
-# -- is recorded against D-6/D-12 rather than papered over.
 #: All four dimensions, expressed through the entity's projects.
 #:
 #: `accounting_period` carries `entity_id` and nothing else, so plant, project
@@ -90,6 +78,38 @@ _PERIOD_SCOPE_EXISTS = (
     "EXISTS (SELECT 1 FROM project sp "
     "WHERE sp.entity_id = accounting_period.entity_id AND {scope})"
 )
+
+#: The direct form, used when nothing needs the project join.
+_PERIOD_DIRECT_COLUMNS: dict[str, str | None] = {
+    "entity": "entity_id", "plant": None, "project": None, "location": None,
+}
+_PERIOD_DIRECT_SQL = "{scope}"
+
+#: Dimensions `accounting_period` can only reach through `project`.
+_VIA_PROJECT = ("plant_ids", "project_ids", "location_ids")
+
+
+def period_scope_sql_and_columns(scope) -> tuple[str, dict[str, str | None]]:
+    """Which scope form this caller needs, and the columns it reads through.
+
+    The project join is required ONLY when the caller is actually restricted
+    on a dimension `accounting_period` cannot reach directly. Applying it
+    unconditionally was wrong in a way live PostgreSQL caught and no
+    database-free test could: `EXISTS (SELECT 1 FROM project ...)` demands at
+    least one project row in the entity even when the inner predicate is
+    `TRUE`, so a period in an entity with no projects became invisible to
+    EVERY caller -- including `read_all`. The restriction was correct; making
+    it unconditional turned it into a data-shape dependency.
+
+    So: unrestricted on all three, or `read_all`, and the period is filtered
+    directly on its own `entity_id`, with the other three waived. Waiving a
+    dimension the caller is not restricted on is a no-op, not a widening.
+    Restricted on any of the three, and the join is required and enforced.
+    """
+    if scope.read_all or all(
+            getattr(scope, field) is None for field in _VIA_PROJECT):
+        return _PERIOD_DIRECT_SQL, _PERIOD_DIRECT_COLUMNS
+    return _PERIOD_SCOPE_EXISTS, _PERIOD_SCOPE_COLUMNS
 
 
 class PeriodServiceError(Exception):
@@ -154,16 +174,17 @@ def list_periods(session: Session, *, entity_id: str | None = None,
         params["state"] = state
     where = " AND ".join(conditions) if conditions else "TRUE"
 
+    scope_sql, scope_columns = period_scope_sql_and_columns(session.scope)
     rows = repo.query(
         session,
         f"""
         SELECT period_id, entity_id, period_start, period_end, state, closed_at, closed_by
         FROM accounting_period
-        WHERE {where} AND {_PERIOD_SCOPE_EXISTS}
+        WHERE {where} AND {scope_sql}
         ORDER BY entity_id, period_start
         """,
         params,
-        columns=_PERIOD_SCOPE_COLUMNS,
+        columns=scope_columns,
     )
     return [_row_to_period(r) for r in rows]
 
@@ -247,13 +268,14 @@ def transition_period(session: Session, *, period_id: str, to_state: str, actor:
     # Scoped, not a bare read: holding `period.transition` is authority over
     # the periods of the entities in your scope, not over every entity's. An
     # out-of-scope period answers 404, exactly as a non-existent one does.
+    scope_sql, scope_columns = period_scope_sql_and_columns(session.scope)
     row = repo.query_one(
         session,
         "SELECT period_id, entity_id, period_start, period_end, state "
         "FROM accounting_period WHERE period_id = %(period_id)s AND "
-        + _PERIOD_SCOPE_EXISTS,
+        + scope_sql,
         {"period_id": period_id},
-        columns=_PERIOD_SCOPE_COLUMNS,
+        columns=scope_columns,
     )
     if row is None:
         _err("PERIOD_NOT_FOUND", f"Period {period_id} does not exist.", status=404)

@@ -513,12 +513,16 @@ def test_approval_shape_closing_an_out_of_scope_period_is_refused():
     that mapping named only `entity`.
     """
     scope = scope_restricted_to_row_a("entity")
+    # The columns come from the service itself: an entity-only restriction
+    # filters `accounting_period.entity_id` directly, while a plant-, project-
+    # or location-restricted caller reads through the entity's projects and
+    # gets the aliased `sp.*` columns. Asking the service which form applies
+    # keeps the fixture honest instead of hardcoding one of the two.
+    _sql, period_columns = periods_mod.period_scope_sql_and_columns(scope)
     session = ScopedRowSession(
-        scope, periods_mod._PERIOD_SCOPE_COLUMNS,
-        {"sp.entity_id": ROW_B["p.entity_id"],
-         "sp.plant_id": ROW_B["p.plant_id"],
-         "sp.project_id": ROW_B["p.project_id"],
-         "sp.location_id": ROW_B["p.location_id"]})
+        scope, period_columns,
+        {col: ROW_B[f"p.{col.split('.')[-1]}"]
+         for col in period_columns.values() if col})
 
     with pytest.raises(periods_mod.PeriodServiceError) as excinfo:
         periods_mod.transition_period(
@@ -555,7 +559,11 @@ def test_a_period_transition_ENFORCES_a_restriction_it_once_could_not_express(di
     session = _RefusingSession(scope)
 
     # It compiles now, where it used to raise.
-    predicate, params = repo.compile_scope(scope, periods_mod._PERIOD_SCOPE_COLUMNS)
+    _form_sql, form_columns = periods_mod.period_scope_sql_and_columns(scope)
+    predicate, params = repo.compile_scope(scope, form_columns)
+    assert "EXISTS" in _form_sql, (
+        "a plant/project/location restriction must read through the entity's "
+        "projects, not be waived on accounting_period's own columns")
     assert predicate != "TRUE", "the restriction must not have been waived"
     assert params, "a real restriction must bind real values"
 
@@ -674,17 +682,16 @@ def test_a_principal_with_no_grants_is_refused_every_service_shape():
     # It used to assert `pytest.raises(ScopeNotExpressible)`. That refusal was
     # correct in itself, but nothing checked the router's exit path, and there
     # wasn't one: the exception escaped as an unhandled 500.
-    predicate, _params = repo.compile_scope(
-        scope, periods_mod._PERIOD_SCOPE_COLUMNS)
+    _period_sql0, period_columns = periods_mod.period_scope_sql_and_columns(scope)
+    predicate, _params = repo.compile_scope(scope, period_columns)
     assert predicate == "FALSE", (
         f"a principal with no grants must match nothing, got {predicate!r}")
 
+    _period_sql, period_columns = periods_mod.period_scope_sql_and_columns(scope)
     period_session = ScopedRowSession(
-        scope, periods_mod._PERIOD_SCOPE_COLUMNS,
-        {"sp.entity_id": ROW_A["p.entity_id"],
-         "sp.plant_id": ROW_A["p.plant_id"],
-         "sp.project_id": ROW_A["p.project_id"],
-         "sp.location_id": ROW_A["p.location_id"]})
+        scope, period_columns,
+        {col: ROW_A[f"p.{col.split('.')[-1]}"]
+         for col in period_columns.values() if col})
     with pytest.raises(periods_mod.PeriodServiceError) as period_exc:
         periods_mod.transition_period(
             period_session, period_id="P-A-Q2", to_state="CLOSED", actor="U-NONE")
