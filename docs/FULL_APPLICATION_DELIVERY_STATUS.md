@@ -1,7 +1,8 @@
 # Full application — delivery status
 
 **Branch:** `full-application/build` · **Milestone 1 COMPLETE** · **Wave 2
-integrated** — M2 settings/masters, M3 budget control, M4a identity/scope
+integrated** — M2 settings/masters, M3 budget control, M4a identity/scope ·
+**Wave 3 in progress** — security closure, four of five streams integrated
 
 ## Traceability to the approved plan
 
@@ -121,7 +122,74 @@ caller data reaches SQL uninterpolated, that every mutation audits inside its
 own transaction, and that the frontend carries no `style=` attribute, no
 `innerHTML`, and no client-side permission decision.
 
+## Wave 3 — security closure (four of five streams integrated)
+
+Closes the gaps Wave 2 recorded as open. No new business capability. All five
+CI jobs green at `6ef4bc4`, with **438 live PostgreSQL tests collected, 438
+executed, 0 skipped** — the first execution of migrations 006 and 007 against
+a real server.
+
+| Gap | Closed by | Status |
+|---|---|---|
+| Restricted principals received unrestricted scopes | `pg/principal_scope.py`, wired into all four routers | **closed** |
+| `read_all` derived from role NAMES | removed; it now comes from `user_access_flag` only | **closed** |
+| Eight scopable tables carried no RLS | migration 006 | **closed** |
+| A literal `*` grant disabled scoping | migration 007 + three rejection layers | **closed** |
+| Zero-budget cells locked implicitly, outside the declared set | `_LOCK_SQL` no longer filters on `budget_paise` | **closed** |
+| Five screens outside the SPA shell | stream 5 | **in progress** |
+
+### What the wave found that was not on its own list
+
+**`api/settings.py` was leaking the organisation hierarchy.** It returned an
+unrestricted scope on the stated grounds that "no row-level scope dimension
+applies to the organisation hierarchy itself". That router serves `entity`,
+`plant` and `location` — three of the four dimensions, all carrying RLS since
+migration 004. An entity-restricted caller reading `GET /api/settings/entities`
+saw every entity, and because the all-`None` scope rendered as the old `*`
+wildcard, RLS waved it through too. Both enforcement layers agreed, and both
+were wrong. `tests/test_scope_enforcement.py` had the module declared as
+`NO_ROW_SCOPE`, which is why nothing caught it.
+
+**`budget_head` is a scope-carrying table with no policy.** It has `entity_id
+NOT NULL REFERENCES entity` and appears in neither 004 nor 006, so an
+entity-restricted caller can enumerate every other entity's budget heads. It
+was outside the contract's eight, so it is recorded in `scope_inventory.py`
+as an explicit gap rather than fixed by widening a migration mid-wave — which
+is the independent inventory doing precisely the job it exists for.
+
+**The adoption verifier does not check RLS.** `migrate_pg._adoption_problems`
+verifies tables, functions, triggers, named constraints and `*_paise` column
+types, but never `CREATE POLICY` or `ENABLE/FORCE ROW LEVEL SECURITY`. A
+database carrying 006's function but none of its policies is recorded as
+"006 (adopted)" and serves with RLS silently absent. This applies to 004 too.
+
+### Cross-stream reconciliation
+
+Streams 1 and 3 collided, visible only once both were merged. Stream 1
+asserted a pre-Wave-3 `*` grant survives as an ordinary id; stream 3 made the
+value refused. The refusal lives at `repo.compile_scope`, not at `Scope`
+construction, so such a grant built a Scope happily and raised on the first
+query — a 500 on every route that principal touched. It now denies at
+resolution, because `*` meant "unrestricted" to the old RLS predicate and "an
+id matching nothing" to `compile_scope`, and a security boundary is not a
+place to guess between opposites.
+
 ## Known gaps, recorded rather than implied
+
+- **`budget_head` carries `entity_id` and has no RLS policy.** Out of Wave 3's
+  contracted eight, so it was recorded rather than fixed mid-wave. An
+  entity-restricted caller can enumerate other entities' budget heads. The fix
+  is one policy shaped exactly like `accounting_period_scope`. Tracked in
+  `app/backend/pg/scope_inventory.py` as an explicit gap, with a test that
+  fails if someone closes it without reclassifying the entry.
+- **The adoption verifier does not check RLS.**
+  `migrate_pg._adoption_problems` never inspects `pg_policy` or
+  `relrowsecurity`, so a database with 006's function and none of its policies
+  is recorded as adopted while serving with RLS absent. Applies to 004 too.
+- **`item_master` / `vendor_master` are policied on principal presence, not
+  scope.** Neither carries nor reaches a scope dimension, so this is correct
+  for today's schema — but it is the same reasoning that was already false for
+  `api/settings.py`, so it is written down rather than assumed permanent.
 
 - **Row-level data scope is enforced at the query layer but not yet
   populated.** `_scope_for` builds a Scope from the authenticated principal;
@@ -140,27 +208,6 @@ own transaction, and that the frontend carries no `style=` attribute, no
 - **`core/api.js` is hard-wired to `/api/audit`,** so both frontend streams
   duplicated its session/correlation/RFC-7807 handling. A base-path
   parameterised client should land before a third copy.
-- **RLS does not cover every scopable table.** Migration 004 enables it on
-  eleven. `accounting_period`, the five budget document tables, `item_master`
-  and `vendor_master` have none, so for those the application layer is the
-  only layer. `accounting_period` is the starkest: it carries `entity_id NOT
-  NULL`, the exact shape that earns the org tables their policies. `pg/rls.py`
-  derives its registry from the migration, so its tests cannot detect a table
-  absent from both.
-- **The §7.4 lock proof has an unstated exception.** `lock_affected_cells`
-  filters `budget_paise <> 0`, but `recompute_cell`'s `UPDATE` acquires that
-  row's lock regardless — so a zero-budget cell is written without having been
-  locked, and `_roll_cells_for_entity` can run with an empty lock set in
-  exactly the case it exists for: a period opening where all budget is still
-  future-dated. No deadlock has been demonstrated, and the reviewer tried. The
-  defect is that the invariant and its docstring now overclaim, so the next
-  mutation built on them inherits an exception nobody wrote down.
-- **A literal scope id of `*` is indistinguishable from "unrestricted".**
-  `Scope.as_settings()` renders both as `*`, and the grants endpoint does not
-  validate grant values, so `["*"]` is stored as a restriction but read by RLS
-  as none. Not exploitable today — it needs `admin.reset`, and the stricter
-  layer wins wherever `repo.query` is used — but it breaks defence in depth
-  exactly where RLS is the only layer.
 - **Whole-stream audit truncation is not detectable.** `audit_anchor` has no
   writer; `/api/audit/chain/verify` returns `whole_stream_truncation_note` so
   `intact: true` never implies more than it can support.
