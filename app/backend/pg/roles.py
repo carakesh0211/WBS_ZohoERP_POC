@@ -36,7 +36,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
-from .engine import Scope, Session
+# `InvalidScopeValue` is imported (not just referenced through engine) so a
+# caller can `except roles.InvalidScopeValue` around the write path that
+# raises it, without reaching into engine for the type.
+from .engine import InvalidScopeValue, Scope, Session, validate_scope_value
 
 # ---------------------------------------------------------------- roles
 #: Frozen at research/30_contracts/C9_roles.json, 2026-08-06. Order is the
@@ -290,10 +293,31 @@ def set_scope(session: Session, user_id: str,
     of permitted ids, which may be empty -- restricted to nothing. This is
     exactly the `null` means unrestricted / `[]` means nothing contract
     `docs/WAVE2_CONTRACTS.md` states for `PUT /api/admin/users/{user_id}/grants`.
+
+    Every id is validated by `engine.validate_scope_value` BEFORE the first
+    write, so a rejected request writes nothing at all rather than leaving
+    the user's grants half-replaced. This is the first of the three layers
+    refusing the `*` sentinel (the others being `repo.compile_scope` and the
+    `user_scope_grant_value_not_sentinel` CHECK constraint in
+    `migrations/pg/007_scope_sentinel.sql`). It RAISES `InvalidScopeValue`;
+    it never drops the offending value and carries on, because silently
+    granting less than the caller asked for is its own defect.
     """
     principal_kind = resolve_principal_kind(session, user_id)
     if principal_kind is None:
         raise ValueError(f"no app_user row for {user_id!r}")
+
+    # Validate the WHOLE request up front. Doing this inside the write loop
+    # below would leave earlier dimensions already deleted and re-inserted
+    # when a later one is refused -- correct only if every caller wraps this
+    # in a transaction it remembers to roll back. Validating first makes the
+    # all-or-nothing property intrinsic instead of borrowed.
+    for dimension, field in _DIM_TO_SCOPE_FIELD.items():
+        values = scopes.get(field, None)
+        if values is None:
+            continue
+        for value in values:
+            validate_scope_value(value, dimension=dimension)
 
     session.execute(
         """

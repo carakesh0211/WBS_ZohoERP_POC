@@ -35,7 +35,10 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from .engine import Scope, Session
+# `InvalidScopeValue` is re-exported so a caller can write
+# `except repo.InvalidScopeValue` around `query()`/`compile_scope()` -- the
+# functions that raise it -- without importing engine for the type alone.
+from .engine import InvalidScopeValue, Scope, Session, validate_scope_value  # noqa: F401
 
 #: The token a caller's SQL must contain, literally, for `query()` to accept it.
 SCOPE_TOKEN = "{scope}"
@@ -87,6 +90,25 @@ def compile_scope(scope: Scope, columns: Mapping[str, str] | None = None
     of where the ``{scope}`` token sits relative to the caller's own
     placeholders, and positional `%s` params would make that order-dependent.
     """
+    # ---- the repository boundary's own refusal of the `*` sentinel --------
+    # Second of the three layers (see `engine.validate_scope_value`). A
+    # `Scope` can reach here without ever passing through `roles.set_scope`:
+    # resolved from a database restored from before Wave 3, or constructed
+    # directly by a caller. Refusing here means a `*` cannot be compiled into
+    # a predicate by ANY route, so it cannot be revived as a wildcard by a
+    # future reader of this module.
+    #
+    # Checked BEFORE the `read_all` short-circuit on purpose: a scope
+    # carrying a corrupt id is a corrupt scope whether or not it also
+    # happens to be unrestricted, and returning "TRUE" without looking would
+    # let the bad row travel on unnoticed to somewhere that does look.
+    for dimension, field in _DIMENSION_FIELDS.items():
+        values = getattr(scope, field)
+        if values is None:
+            continue
+        for value in sorted(values):
+            validate_scope_value(value, dimension=dimension)
+
     if scope.read_all:
         # Scope.system() and any principal explicitly granted unrestricted
         # read. Documented on Scope as "for migrations and start-up checks

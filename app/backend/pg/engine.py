@@ -33,17 +33,97 @@ from psycopg_pool import ConnectionPool
 
 from .config import DatabaseConfig, SecretProvider
 
+#: The four row-level scope dimensions, in the order their settings are
+#: rendered. `roles.DIMENSIONS` and `repo._DIMENSION_FIELDS` name the same
+#: four; this is the definition the wire format is generated from.
+SCOPE_DIMENSIONS: tuple[str, ...] = ("entity", "plant", "project", "location")
+
+#: dimension -> the `Scope` field carrying it.
+_DIMENSION_FIELDS: dict[str, str] = {d: f"{d}_ids" for d in SCOPE_DIMENSIONS}
+
 #: Session variables carrying row-level scope. Read by RLS policies and by the
 #: repository's predicate compiler. Always SET LOCAL, never SET.
+#:
+#: Mode and identity are SEPARATE settings (docs/WAVE3_CONTRACTS.md, contract
+#: 1). Before this wave a single `capex.<d>_ids` setting carried both: the
+#: literal string `*` meant "unrestricted". That made a grant whose
+#: `scope_value` was literally `*` indistinguishable from no restriction at
+#: all, and the two enforcement layers disagreed about it -- `compile_scope`
+#: read it as an id matching nothing, RLS read it as a wildcard matching
+#: everything. Splitting the mode out means **no value an id can take means
+#: unrestricted**, so the ambiguity cannot be expressed, let alone exploited.
 SCOPE_KEYS = (
     "capex.user_id",
     "capex.principal_kind",
-    "capex.entity_ids",
-    "capex.plant_ids",
-    "capex.project_ids",
-    "capex.location_ids",
+    *(f"capex.{d}_{suffix}" for d in SCOPE_DIMENSIONS for suffix in ("mode", "ids")),
     "capex.read_all",
 )
+
+#: The three legal values of `capex.<d>_mode`. Anything else -- including an
+#: absent setting -- denies, in SQL and in Python alike.
+SCOPE_MODE_ALL = "all"
+SCOPE_MODE_NONE = "none"
+SCOPE_MODE_LIST = "list"
+
+#: The historical wildcard. Never a legal id anywhere: not in a grant row, not
+#: in a `Scope`, not on the wire.
+SENTINEL_SCOPE_VALUE = "*"
+
+
+class InvalidScopeValue(ValueError):
+    """A scope id was one no id may ever be.
+
+    Four rejected shapes, each because some layer would MISREAD the value
+    rather than simply not match it:
+
+    * ``'*'``   -- the pre-Wave-3 wildcard. A database restored from before
+      this wave, or a caller reaching past `roles.set_scope`, could still
+      carry one; refusing it here means it can never be revived as a
+      wildcard by a future reader.
+    * empty, or whitespace only -- indistinguishable from "no ids at all"
+      once rendered into a comma-joined list.
+    * containing a comma -- would split into two ids on the wire, so one
+      grant would silently become two.
+    * not a `str` -- renders by `repr`/`str` into something nobody granted.
+
+    Raised, never dropped: silently discarding a grant value the caller
+    asked for would change access without telling anyone.
+    """
+
+
+def validate_scope_value(value: object, *, dimension: str | None = None) -> str:
+    """Return `value` unchanged, or raise `InvalidScopeValue`.
+
+    One predicate, enforced at three independent boundaries (`roles.set_scope`
+    on the write path, `repo.compile_scope` at the repository boundary, and a
+    CHECK constraint in `migrations/pg/007_scope_sentinel.sql`). One
+    definition so the three cannot drift; three call sites so deleting any one
+    of them still leaves the value refused.
+    """
+    where = f" for dimension {dimension!r}" if dimension else ""
+    if not isinstance(value, str):
+        raise InvalidScopeValue(
+            f"scope value{where} must be a string, got {type(value).__name__}: "
+            f"{value!r}")
+    if value == SENTINEL_SCOPE_VALUE:
+        raise InvalidScopeValue(
+            f"scope value{where} may not be the literal {SENTINEL_SCOPE_VALUE!r}. "
+            f"It was the pre-Wave-3 wildcard meaning 'unrestricted', and the "
+            f"two enforcement layers disagreed about what it meant. To grant "
+            f"an unrestricted dimension, pass None for that dimension (no "
+            f"restriction row) -- never a wildcard id.")
+    if not value.strip():
+        raise InvalidScopeValue(
+            f"scope value{where} may not be empty or whitespace-only "
+            f"({value!r}); it is indistinguishable from no id at all once "
+            f"rendered onto the wire. To restrict a dimension to nothing, "
+            f"pass an empty list, not a blank id.")
+    if "," in value:
+        raise InvalidScopeValue(
+            f"scope value{where} may not contain a comma ({value!r}); "
+            f"`capex.{dimension or '<d>'}_ids` is comma-joined, so one grant "
+            f"would split into two on the wire.")
+    return value
 
 
 @dataclass(frozen=True)
@@ -70,18 +150,42 @@ class Scope:
         return cls(user_id=user_id, principal_kind="SERVICE", read_all=True)
 
     def as_settings(self) -> dict[str, str]:
-        def render(values: frozenset[str] | None) -> str:
-            return "*" if values is None else ",".join(sorted(values))
+        """Render this scope into the frozen session-setting wire format.
 
-        return {
+        Per dimension ``d`` two settings are emitted, per
+        `docs/WAVE3_CONTRACTS.md` contract 1:
+
+        ==================  ==============  ==================
+        `Scope` field       ``<d>_mode``    ``<d>_ids``
+        ==================  ==============  ==================
+        ``None``            ``'all'``       ``''``
+        ``frozenset()``     ``'none'``      ``''``
+        ``frozenset({..})`` ``'list'``      sorted, comma-joined
+        ==================  ==============  ==================
+
+        The ids setting is meaningful ONLY when the mode is ``'list'``, and
+        **no value it can take means "unrestricted"** -- that is the whole
+        point of the split. The three states are therefore distinguishable
+        end to end, and the empty set (``'none'``) can never be misread as
+        the unrestricted case (``'all'``), which is the inversion this
+        format exists to make unrepresentable.
+        """
+        settings = {
             "capex.user_id": self.user_id,
             "capex.principal_kind": self.principal_kind,
-            "capex.entity_ids": render(self.entity_ids),
-            "capex.plant_ids": render(self.plant_ids),
-            "capex.project_ids": render(self.project_ids),
-            "capex.location_ids": render(self.location_ids),
-            "capex.read_all": "true" if self.read_all else "false",
         }
+        for dimension in SCOPE_DIMENSIONS:
+            values: frozenset[str] | None = getattr(self, _DIMENSION_FIELDS[dimension])
+            if values is None:
+                mode, ids = SCOPE_MODE_ALL, ""
+            elif not values:
+                mode, ids = SCOPE_MODE_NONE, ""
+            else:
+                mode, ids = SCOPE_MODE_LIST, ",".join(sorted(values))
+            settings[f"capex.{dimension}_mode"] = mode
+            settings[f"capex.{dimension}_ids"] = ids
+        settings["capex.read_all"] = "true" if self.read_all else "false"
+        return settings
 
 
 @dataclass
