@@ -139,21 +139,38 @@ def recompute_cell(session: Session, wbs_id: str, budget_head_id: str, *,
     uses, kept identical here so the two engines agree on what "the current
     approved budget" means.
 
-    Callers must call :func:`~app.backend.pg.locking.lock_affected_cells` for
-    the affected ancestor chain before calling this (every mutating function
-    in this module and in ``periods.py`` does). This function additionally
-    writes each table with a SINGLE ``UPDATE ... SET x = (SELECT ...)``
-    statement rather than a separate read-then-write: `lock_affected_cells`
-    only locks ancestor-or-self cells that ALREADY own budget
-    (``budget_paise <> 0``), so a cell receiving its first-ever money is not
-    yet an "owner" by that definition and would not be covered by it -- and
-    domain-controls.md forbids taking any *additional* cell lock after
-    `lock_affected_cells` returns. Folding the read and the write into one
-    atomic statement closes that gap for free: an ``UPDATE`` always takes its
-    target row's lock as part of executing, subquery included, regardless of
-    whether the row was pre-locked, so two concurrent recomputes of the same
-    cell still serialise correctly with no additional, differently-ordered
-    lock ever taken.
+    Locking. Callers must call
+    :func:`~app.backend.pg.locking.lock_affected_cells` for the affected
+    ancestor chain before calling this, and must have passed
+    ``(wbs_id, budget_head_id)`` itself in the affected set (every mutating
+    function in this module and in ``periods.py`` does). Both ``UPDATE``
+    statements below take their target row's exclusive lock as part of
+    executing -- an ``UPDATE`` always does, subquery included, whether or not
+    the row was pre-locked. Say that plainly rather than call it "no
+    additional lock":
+
+    * ``budget_control_cell`` for ``(wbs_id, budget_head_id)`` is in the
+      declared lock set whenever the row exists, because the lock set is every
+      ancestor-or-self cell that exists and a cell is its own ancestor. This
+      ``UPDATE`` re-enters a lock this transaction already holds, so it
+      acquires nothing new and adds no edge to the wait-for graph. Until
+      Wave 3 that was **false** for a cell with ``budget_paise = 0`` -- the
+      lock query filtered those out, and this docstring claimed the fold into
+      a single statement made the gap harmless. It did not; it only made the
+      unlocked write atomic. The filter is now gone (see
+      ``locking._LOCK_SQL``), which is what actually closes it.
+    * ``budget_ledger_cell`` is a different table and is **not** in the lock
+      set. Its row lock is taken here, implicitly, while this transaction
+      holds the corresponding ``budget_control_cell`` lock -- which
+      ``fk_ledger_control_cell`` guarantees exists. Every writer of a ledger
+      row holds that control lock, so ledger locks are always acquired beneath
+      the control order and never invert it. They are not recorded in
+      ``locks_taken``, which tracks control cells only.
+
+    Folding each read and write into one ``UPDATE ... SET x = (SELECT ...)``
+    is still worth doing -- it keeps the recompute atomic against anything
+    that could bypass the service layer -- but it is a second line of defence,
+    not the reason the lock ordering holds.
 
     Idempotent: recomputing twice for the same ``as_of`` with no intervening
     change to ``budget_line`` produces the same numbers both times.

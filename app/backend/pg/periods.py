@@ -134,7 +134,33 @@ def _roll_cells_for_entity(session: Session, entity_id: str, as_of: date, actor:
     :func:`transition_period` (opening a period) and the standalone
     :func:`roll_period_effective_budget` entry point, so both go through the
     same lock-then-recompute path rather than two copies that could drift.
+
+    This is the sharpest case in the application for the lock rule, and it was
+    the one the pre-Wave-3 rule handled worst:
+
+    * It recomputes EVERY cell in the entity, so the affected set is the whole
+      entity, not a document's line items.
+    * At the moment a roll exists for -- opening a period whose budget is all
+      still future-dated -- every ``budget_paise`` is ``0``. The old lock query
+      filtered on ``budget_paise <> 0``, so the lock set was **empty**: the
+      entire roll ran having taken no cell lock at all, and
+      ``session.locks_taken`` stayed empty, which made any ordering assertion
+      over it pass vacuously.
+    * The driving ``SELECT`` had no ``ORDER BY``, so the recompute order --
+      and with it the order those implicit ``UPDATE`` locks were acquired in
+      -- was whatever the planner produced. That is the one thing the
+      deadlock-freedom proof cannot tolerate.
+
+    Both are closed here. The driving ``SELECT`` now orders by
+    ``(w.wbs_path, bc.budget_head_id)``, the same total order
+    :func:`~app.backend.pg.locking.lock_affected_cells` acquires in, so the
+    recompute walk follows the lock walk; and because the lock set no longer
+    filters on ``budget_paise``, every one of these cells is in it. The
+    equality is then **asserted** rather than assumed -- an entity whose cells
+    exist but do not all get locked is a violation of rule 2, and this is the
+    call site with the most to lose from it going unnoticed.
     """
+    # ORDER BY is load-bearing, not cosmetic: it is the lock order.
     affected = [
         (r[0], r[1]) for r in session.fetchall(  # scope-exempt: period roll must move EVERY cell in the entity, not only the caller's
             """
@@ -143,11 +169,33 @@ def _roll_cells_for_entity(session: Session, entity_id: str, as_of: date, actor:
             JOIN wbs_element w ON w.wbs_id = bc.wbs_id
             JOIN project p ON p.project_id = w.project_id
             WHERE p.entity_id = %s
+            ORDER BY w.wbs_path, bc.budget_head_id
             """,
             (entity_id,))
     ]
-    if affected:
-        lock_affected_cells(session, affected)
+    if not affected:
+        return 0
+
+    # Rule 1: cells first, complete set, exactly once.
+    locked = set(lock_affected_cells(session, affected))
+
+    # Rule 2, enforced rather than trusted. Every affected cell was read out of
+    # `budget_control_cell` a statement ago, and a cell is its own ancestor, so
+    # each one must come back in the lock set. If any does not, the driving
+    # query and the lock query disagree about what exists -- and the recompute
+    # below would then take that row's UPDATE lock outside the declared set,
+    # which is exactly the defect this function exists to have closed. Refuse
+    # instead: an unrolled period is recoverable, a silently unlocked roll is
+    # not.
+    missing = [cell for cell in affected if cell not in locked]
+    if missing:
+        _err("LOCK_SET_INCOMPLETE",
+             f"Period roll for entity {entity_id} would recompute "
+             f"{len(missing)} cell(s) the lock set does not cover "
+             f"(first: {missing[0]}). Refusing to write cells this "
+             f"transaction does not hold locks on.",
+             status=500)
+
     for wbs_id, head_id in affected:
         recompute_cell(session, wbs_id, head_id, as_of=as_of, actor=actor)
     return len(affected)
