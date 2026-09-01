@@ -77,7 +77,8 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from . import roles as roles_module
-from .engine import Scope, Session
+from .engine import (InvalidScopeValue, Scope, Session,
+                     validate_scope_value)
 
 log = logging.getLogger(__name__)
 
@@ -307,8 +308,27 @@ def resolve_scope_with_reason(
             user_id, sorted(restricted))
         read_all = False
 
-    return (
-        Scope(
+    # Validate the stored grant values HERE, at resolution.
+    #
+    # `Scope(...)` does not validate; `repo.compile_scope` does. So a
+    # pre-Wave-3 literal '*' row -- which migration 007's CHECK constraint
+    # refuses today but an older database may still carry -- would build a
+    # Scope happily and then raise InvalidScopeValue from the first query,
+    # surfacing as a 500 on every route that principal touches.
+    #
+    # DENY instead. Contract 2: a principal whose scope cannot be resolved
+    # fails closed, and an unresolvable scope is a security condition, not a
+    # server fault. Denying is also the only safe reading of such a row: '*'
+    # meant "unrestricted" to the old RLS predicate and "an id matching
+    # nothing" to compile_scope. Those are opposites, and migration 007
+    # refuses to guess between them for exactly the same reason.
+    try:
+        for field, values in dimensions.items():
+            if values is None:
+                continue
+            for value in values:
+                validate_scope_value(value, dimension=field)
+        scope = Scope(
             user_id=user_id,
             principal_kind=actual_kind,
             entity_ids=dimensions["entity_ids"],
@@ -316,9 +336,28 @@ def resolve_scope_with_reason(
             project_ids=dimensions["project_ids"],
             location_ids=dimensions["location_ids"],
             read_all=read_all,
-        ),
-        None,
-    )
+        )
+    except InvalidScopeValue as exc:
+        # A stored grant the Scope type refuses -- in practice a pre-Wave-3
+        # literal '*' row that migration 007's CHECK constraint would refuse
+        # today but that an older database may still carry.
+        #
+        # DENY rather than raise. Contract 2: a principal whose scope cannot
+        # be resolved fails closed. Letting InvalidScopeValue escape would
+        # surface as a 500 from every route that principal touches, and an
+        # unresolvable scope is a security condition, not a server fault.
+        #
+        # Denying is also the only safe reading: '*' meant "unrestricted" to
+        # the old RLS predicate and "an id matching nothing" to compile_scope,
+        # so the row's intent is genuinely ambiguous and the two possible
+        # answers are opposites. Migration 007 refuses to guess for the same
+        # reason.
+        log.warning("scope for %s carries a value Scope refuses: %s",
+                    user_id, exc)
+        return (denied_scope(user_id, actual_kind),
+                f"stored grant rejected by Scope: {exc}")
+
+    return (scope, None)
 
 
 def scope_for_principal(session: Session, principal: Mapping[str, Any] | None,

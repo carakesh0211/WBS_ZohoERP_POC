@@ -547,35 +547,55 @@ def test_a_principal_kind_claimed_in_the_payload_is_ignored():
 
 
 # ============================================ a literal '*' is never a wildcard
-def test_a_literal_star_grant_stays_an_ordinary_id():
-    """Contract 1: "There is no value any id can take that means
-    unrestricted." A pre-Wave-3 `*` grant must therefore behave as an id that
-    matches only a row whose id is literally `*` -- never as "all rows"."""
+def test_a_stored_star_grant_denies_rather_than_widening_or_raising():
+    """A pre-Wave-3 `*` row, met at resolution time.
+
+    This test previously asserted `*` survived as an ordinary id matching only
+    a row literally named `*`. That was correct at the Wave 3 baseline and is
+    wrong now: stream 3 made `Scope` REFUSE the value outright, so the id can
+    no longer reach a predicate at all.
+
+    Refusing is the stronger position, but it must not surface as a 500 from
+    every route the principal touches. Contract 2 says an unresolvable scope
+    fails closed, so the denial is the assertion -- and denial is the only
+    safe reading of the row, because `*` meant "unrestricted" to the old RLS
+    predicate and "an id matching nothing" to `compile_scope`. Those are
+    opposites; migration 007 refuses to guess between them for the same
+    reason."""
     session = a_session(
         restrictions={"U-1": {"entity"}},
         grants={("U-1", "entity"): [WILDCARD_LOOKALIKE]},
     )
-    scope = scope_for_principal(session, {"user_id": "U-1"})
+    scope, reason = resolve_scope_with_reason(session, {"user_id": "U-1"})
 
-    assert scope.entity_ids == frozenset({"*"})
-    assert scope.entity_ids is not None
+    assert is_denied(scope), "a stored '*' must deny, never widen"
+    assert reason is not None and "Scope" in reason
 
-    predicate, params = repo.compile_scope(scope, ALL_COLUMNS)
-    assert predicate != "TRUE"
-    assert "p.entity_id = ANY" in predicate
-    assert list(params.values()) == [["*"]]
+    predicate, _params = repo.compile_scope(scope, ALL_COLUMNS)
+    assert predicate == "FALSE", (
+        f"a denied scope must compile to FALSE, not {predicate!r}")
+
+    # And it must not escape as an exception to the router.
+    assert is_denied(scope_for_principal(session, {"user_id": "U-1"}))
 
 
-def test_a_star_grant_alongside_a_real_id_does_not_widen():
+def test_a_star_grant_alongside_a_real_id_denies_the_whole_dimension():
+    """The mixed case, which is the one that could have been argued either way.
+
+    A dimension holding both `PLT-A` and `*` could plausibly be narrowed to
+    just `PLT-A` -- drop the bad value, keep the good one. It is not, and
+    should not be: the `*` row is evidence that this grant set was written
+    against semantics the system no longer honours, so trusting the rest of it
+    is a guess. Deny, and make an operator look."""
     session = a_session(
         restrictions={"U-1": {"plant"}},
         grants={("U-1", "plant"): ["PLT-A", WILDCARD_LOOKALIKE]},
     )
     scope = scope_for_principal(session, {"user_id": "U-1"})
 
-    predicate, params = repo.compile_scope(scope, ALL_COLUMNS)
-    assert predicate != "TRUE"
-    assert sorted(list(params.values())[0]) == ["*", "PLT-A"]
+    assert is_denied(scope)
+    predicate, _params = repo.compile_scope(scope, ALL_COLUMNS)
+    assert predicate == "FALSE"
 
 
 # ============================================================== helper contracts
