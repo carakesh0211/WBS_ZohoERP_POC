@@ -264,7 +264,10 @@ def _access_flag_read_raises() -> tuple[Any, Mapping[str, Any] | None]:
     return session, {"user_id": "U-1"}
 
 
-#: name -> a callable returning `(session, principal)` that must fail closed.
+#: name -> a callable returning `(session, principal)` that must DENY.
+#:
+#: Every one of these is an authorization ANSWER: this principal may see
+#: nothing. An empty result is the truthful rendering of that.
 FAILURE_CASES = {
     "principal names nobody": _principal_names_nobody,
     "principal is None": _principal_is_none,
@@ -272,10 +275,56 @@ FAILURE_CASES = {
     "principal is not a mapping": _principal_is_not_a_mapping,
     "user unknown to app_user": _user_unknown_to_app_user,
     "app_user.principal_kind is garbage": _app_user_kind_is_garbage,
+}
+
+#: name -> a callable whose failure is INFRASTRUCTURE, not authorization.
+#:
+#: These used to live in FAILURE_CASES and deny, which is fail-closed and was
+#: defensible. The adversarial review's M2 is why they moved: denying renders
+#: identically to a policy denial -- `200 {"items": []}` -- so a database whose
+#: identity tables were unreachable showed every user a healthy, empty budget
+#: grid with nothing in the response to say so, and `/readyz` stayed green
+#: because it only reads `schema_migrations`.
+#:
+#: They now raise `ScopeResolutionUnavailable`, which the app renders as 503.
+#: Still fail-closed: no scope is produced, so no row is returned. It just
+#: says so out loud.
+UNAVAILABLE_CASES = {
     "principal-kind lookup raises": _kind_lookup_raises,
     "grant read raises": _grant_read_raises,
     "access-flag read raises": _access_flag_read_raises,
 }
+
+
+@pytest.mark.parametrize("case", sorted(UNAVAILABLE_CASES))
+def test_an_infrastructure_failure_is_not_rendered_as_an_empty_answer(case):
+    """M2. A lookup that RAISES is not an authorization answer.
+
+    The distinction is the whole point: a denial says "you may see nothing",
+    an outage says "we could not find out". Rendering both as an empty list
+    on a financial control surface makes an outage indistinguishable from a
+    user with no budget.
+    """
+    session, principal = UNAVAILABLE_CASES[case]()
+    with pytest.raises(principal_scope.ScopeResolutionUnavailable):
+        scope_for_principal(session, principal)
+
+
+@pytest.mark.parametrize("case", sorted(UNAVAILABLE_CASES))
+def test_an_infrastructure_failure_still_returns_no_data(case):
+    """Fail-closed is preserved -- it is only made visible.
+
+    Raising means no `Scope` is produced at all, so there is no predicate for
+    a caller to run and no row that could come back. A 503 is strictly safer
+    than a 200 carrying an empty list, because nothing downstream can mistake
+    it for a result.
+    """
+    session, principal = UNAVAILABLE_CASES[case]()
+    try:
+        scope_for_principal(session, principal)
+    except principal_scope.ScopeResolutionUnavailable:
+        return
+    pytest.fail("an infrastructure failure must not yield a usable Scope")
 
 
 @pytest.mark.parametrize("case", sorted(FAILURE_CASES))
@@ -329,15 +378,22 @@ def test_a_resolver_returning_a_non_scope_fails_closed(monkeypatch, returned):
     assert repo.compile_scope(scope, ALL_COLUMNS)[0] == "FALSE"
 
 
-def test_a_resolver_that_raises_fails_closed(monkeypatch):
+def test_a_resolver_that_raises_fails_closed_LOUDLY(monkeypatch):
+    """It still fails closed; it now says so.
+
+    This asserted a denial, which rendered as 200 with an empty list -- see
+    UNAVAILABLE_CASES for why that is the wrong shape for an outage. No Scope
+    is produced either way, so no row can come back; the difference is
+    entirely whether an operator can tell an outage from a user who genuinely
+    has no access.
+    """
     def boom(*args: Any, **kwargs: Any):
         raise RuntimeError("the grants table is gone")
 
     monkeypatch.setattr(roles_module, "resolve_scope", boom)
-    scope, reason = resolve_scope_with_reason(a_session(), {"user_id": "U-1"})
-
-    assert is_denied(scope)
-    assert "RuntimeError" in reason
+    with pytest.raises(principal_scope.ScopeResolutionUnavailable) as excinfo:
+        resolve_scope_with_reason(a_session(), {"user_id": "U-1"})
+    assert "RuntimeError" in str(excinfo.value)
 
 
 def test_a_resolver_answering_about_another_user_fails_closed(monkeypatch):

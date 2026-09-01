@@ -209,6 +209,25 @@ def _normalise_dimension(value: Any) -> frozenset[str] | None:
     return frozenset(out)
 
 
+class ScopeResolutionUnavailable(RuntimeError):
+    """The caller's scope could not be determined for an INFRASTRUCTURE
+    reason -- the identity tables were unreachable, the lookup raised, the
+    pool timed out.
+
+    Distinct from a denial on purpose. A denial is an authorization ANSWER:
+    this principal may see nothing, and an empty result is the truthful
+    rendering of it. A resolution failure is not an answer at all, and
+    rendering it identically means a database with missing identity tables
+    shows every user a healthy, empty budget grid with nothing anywhere in
+    the response to say so -- on a financial control surface, where "no
+    budget" and "we could not determine your access" are very different
+    statements.
+
+    Still fail-closed: no scope is produced, so no row is returned. It just
+    says so out loud, as a 503, instead of a 200.
+    """
+
+
 class _MalformedScope(ValueError):
     """Internal: the resolver returned something this module cannot read.
 
@@ -254,11 +273,14 @@ def resolve_scope_with_reason(
     # --- 2. the principal must be a real, known actor -------------------
     try:
         actual_kind = roles_module.resolve_principal_kind(session, user_id)
-    except Exception as exc:                       # noqa: BLE001 - deny on anything
+    except Exception as exc:                       # noqa: BLE001
+        # An exception is not an authorization answer. See
+        # ScopeResolutionUnavailable: denying here is still fail-closed, but
+        # it renders as an ordinary empty result and hides an outage.
         log.warning("principal_kind lookup failed for %s: %s",
                     user_id, type(exc).__name__)
-        return (denied_scope(user_id, claimed_kind),
-                f"principal kind lookup raised {type(exc).__name__}")
+        raise ScopeResolutionUnavailable(
+            f"principal kind lookup raised {type(exc).__name__}") from exc
     if actual_kind is None:
         return (denied_scope(user_id, claimed_kind),
                 f"no app_user row for {user_id!r}")
@@ -271,11 +293,11 @@ def resolve_scope_with_reason(
     try:
         resolved = roles_module.resolve_scope(
             session, user_id, principal_kind=actual_kind)
-    except Exception as exc:                       # noqa: BLE001 - deny on anything
+    except Exception as exc:                       # noqa: BLE001
         log.warning("scope resolution failed for %s: %s",
                     user_id, type(exc).__name__)
-        return (denied_scope(user_id, actual_kind),
-                f"resolve_scope raised {type(exc).__name__}")
+        raise ScopeResolutionUnavailable(
+            f"resolve_scope raised {type(exc).__name__}") from exc
 
     # --- 4. it must be a Scope we can read -------------------------------
     if not isinstance(resolved, Scope):
@@ -426,7 +448,13 @@ def scope_for_request(database: Any, principal: Mapping[str, Any] | None,
         with _resolution_session(database) as session:
             return scope_for_principal(session, principal,
                                         principal_kind=principal_kind)
-    except Exception as exc:                       # noqa: BLE001 - deny on anything
+    except ScopeResolutionUnavailable:
+        raise
+    except Exception as exc:                       # noqa: BLE001
+        # The transaction itself failed -- pool exhausted, connection lost,
+        # identity tables missing. Same reasoning: not an answer, so do not
+        # render it as one.
         log.warning("scope resolution transaction failed for %s: %s",
                     user_id, type(exc).__name__)
-        return denied_scope(user_id, principal_kind)
+        raise ScopeResolutionUnavailable(
+            f"scope resolution transaction raised {type(exc).__name__}") from exc

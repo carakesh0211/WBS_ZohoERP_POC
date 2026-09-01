@@ -177,7 +177,8 @@ def client(pg_database, capex_db):
         with pg_database.session(Scope.system()) as _s:
             _s.execute(
                 "INSERT INTO app_user (user_id, email, display_name, "
-                "principal_kind) VALUES (%s, %s, %s, 'USER') "
+                "principal_kind, created_by, updated_by) "
+                "VALUES (%s, %s, %s, 'USER', 'TEST', 'TEST') "
                 "ON CONFLICT (user_id) DO NOTHING",
                 ("U-SETTINGS-TEST", "settings-test@example.invalid",
                  "Settings Test"))
@@ -209,7 +210,8 @@ def reader_client(pg_database, capex_db):
         with pg_database.session(Scope.system()) as _s:
             _s.execute(
                 "INSERT INTO app_user (user_id, email, display_name, "
-                "principal_kind) VALUES (%s, %s, %s, 'USER') "
+                "principal_kind, created_by, updated_by) "
+                "VALUES (%s, %s, %s, 'USER', 'TEST', 'TEST') "
                 "ON CONFLICT (user_id) DO NOTHING",
                 ("U-SETTINGS-READER", "settings-reader@example.invalid",
                  "Settings Reader"))

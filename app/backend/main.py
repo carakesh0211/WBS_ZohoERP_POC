@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 
 from . import auth, db, domain, observability, services, zoho
 from .api import health as health_api
+from .pg import principal_scope as pg_principal_scope
 from .pg import repo as pg_repo
 from .money import MoneyError
 
@@ -272,6 +273,32 @@ async def scope_not_expressible(request: Request,
                          "cannot filter by, so it cannot be shown to you "
                          "safely."),
             "detail": str(exc),
+        }})
+
+
+@app.exception_handler(pg_principal_scope.ScopeResolutionUnavailable)
+async def scope_resolution_unavailable(
+        request: Request, exc: "pg_principal_scope.ScopeResolutionUnavailable"):
+    """503, not an empty 200.
+
+    A denial and a resolution failure both end with the caller seeing no
+    rows, and both used to render identically as `200 {"items": []}`. On a
+    financial control surface those are very different statements: "you have
+    no budget" versus "we could not determine what you are allowed to see".
+    A database whose identity tables were missing would have shown every user
+    a healthy, empty budget grid, with `/readyz` still green because it only
+    reads `schema_migrations`.
+
+    Still fail-closed -- no scope was produced, so no row is returned.
+    """
+    log.error("scope resolution unavailable on %s: %s", request.url.path, exc)
+    return JSONResponse(
+        status_code=503,
+        content={"detail": {
+            "code": "SCOPE_RESOLUTION_UNAVAILABLE",
+            "message": ("Your access could not be determined right now, so "
+                         "nothing is shown rather than showing you an empty "
+                         "result that looks like an answer."),
         }})
 
 
