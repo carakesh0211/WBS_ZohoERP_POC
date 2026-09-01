@@ -53,6 +53,7 @@ import psycopg
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response
 
 from ..pg import masters as pg_masters
+from ..pg import principal_scope
 from ..pg.engine import Database, Scope, get_database
 
 class _MastersAccess:
@@ -131,17 +132,23 @@ def _get_database() -> Database:
         ) from exc
 
 
-def _service_scope(actor: str) -> Scope:
-    """Settings/masters carry no row-level scope dimension in this milestone
-    -- item/vendor masters are organisation-wide reference data, and the
-    frozen contract's query params (`cursor`, `limit`, `q`, `source`,
-    `mapping_status`, `is_active`) name no entity/plant/project/location
-    filter. A `Scope` with every dimension left `None` (the default) already
-    compiles to an unrestricted predicate in `repo.compile_scope` -- this is
-    NOT `read_all=True`("for migrations and start-up checks only", per
-    `engine.py`); it is the ordinary "nothing restricted" scope, exactly as
-    it would be for the anonymous default `Scope`."""
-    return Scope(user_id=actor, principal_kind="USER")
+def _service_scope(request: Request, database: Database) -> Scope:
+    """The caller's REAL scope, resolved from their grants.
+
+    `item_master` and `vendor_master` genuinely carry no scope dimension --
+    an item is not owned by an entity in this schema -- so the previous
+    all-`None` scope was defensible on the data. It is still replaced here.
+
+    Migration 006 now puts an RLS policy on both tables keyed on the session
+    having an established principal, so the scope a router opens with has to
+    be a real one: a fabricated scope satisfies the application layer while
+    the database layer sees a session that never resolved anybody. And the
+    reasoning that made all-`None` defensible is a property of today's schema,
+    not a guarantee -- the identical reasoning in `api/settings.py` was
+    already false when it was written.
+    """
+    return principal_scope.scope_for_request(
+        database, getattr(request.state, "masters_principal", None) or {})
 
 
 def _correlation_id(request: Request) -> str:
@@ -322,7 +329,7 @@ def list_masters(
 
     columns = ", ".join(pg_masters.row_columns(kind))
     actor = _actor(request)
-    with database.session(_service_scope(actor)) as session:
+    with database.session(_service_scope(request, database)) as session:
         rows = session.fetchall(
             f"SELECT {columns} FROM {kind.table} WHERE {where} "  # noqa: S608 -- table/columns from a fixed internal allow-list
             f"ORDER BY code LIMIT %(fetch_limit)s",
@@ -360,7 +367,7 @@ def list_duplicates(kind_name: str, response: Response, request: Request,
         raise _from_master_error(exc) from exc
 
     actor = _actor(request)
-    with database.session(_service_scope(actor)) as session:
+    with database.session(_service_scope(request, database)) as session:
         rows = session.fetchall(
             f"""
             SELECT a.{kind.id_column}, a.code, a.name, a.duplicate_of,
@@ -394,7 +401,7 @@ def create_master(kind_name: str, response: Response, request: Request,
     # a field they had not. `create_local` refuses the field instead, so the
     # caller is told. A ZOHO row is still never created through this API
     # (docs/WAVE2_CONTRACTS.md); it is refused rather than silently rewritten.
-    with database.session(_service_scope(actor)) as session:
+    with database.session(_service_scope(request, database)) as session:
         try:
             row = pg_masters.create_local(session, kind, actor=actor, payload=payload,
                                            correlation_id=_correlation_id(request))
@@ -429,7 +436,7 @@ def update_master(kind_name: str, item_id: str, response: Response, request: Req
         raise _problem(422, "INVALID_FIELD", "version_no must be an integer") from exc
     fields = {k: v for k, v in payload.items() if k != "version_no"}
 
-    with database.session(_service_scope(actor)) as session:
+    with database.session(_service_scope(request, database)) as session:
         try:
             row = pg_masters.update_master(
                 session, kind, actor=actor, id_value=item_id,
@@ -456,7 +463,7 @@ def deactivate_master(kind_name: str, item_id: str, response: Response, request:
         raise _from_master_error(exc) from exc
 
     actor = _actor(request)
-    with database.session(_service_scope(actor)) as session:
+    with database.session(_service_scope(request, database)) as session:
         try:
             row = pg_masters.deactivate_master(session, kind, actor=actor, id_value=item_id,
                                                 correlation_id=_correlation_id(request))

@@ -172,21 +172,55 @@ def test_the_actor_is_server_derived_and_ignores_a_caller_supplied_header():
     assert budget_api._actor(unauthenticated) == "UNKNOWN"
 
 
-def test_scope_is_not_an_unconditional_whole_estate_service_principal():
-    """The regression for the delivered `read_all=True` SERVICE scope, which
-    made `compile_scope` short-circuit to TRUE on every request.
+def test_read_all_is_never_derived_from_a_role_name():
+    """Rewritten in Wave 3, and the change is the point.
+
+    This used to end `assert _scope_for_roles(["Auditor"]).read_all is True`,
+    pinning the very behaviour Contract 2 forbids: `read_all` short-circuits
+    `compile_scope` to TRUE before any dimension is examined, so granting it
+    to a set of role NAMES made every holder of that role unrestricted on all
+    thirteen budget routes -- and made it so invisibly that a test asserted it
+    as correct.
+
+    `read_all` now comes from `user_access_flag` and nowhere else: a role that
+    genuinely needs the whole estate carries the flag, which is auditable and
+    revocable, where a name in a frozenset is neither.
+
+    Asserted at the source, because the router now resolves through a database
+    and this test has none -- and a source-level assertion is the one that
+    survives someone reintroducing the shortcut in a different shape.
     """
-    def _scope_for_roles(roles):
-        state = _FakeState()
-        state.budget_principal = {"user_id": "U-1", "roles": roles}
-        return budget_api._scope_for(_FakeRequest(state))
+    import inspect
 
-    ordinary = _scope_for_roles(["Requestor"])
-    assert ordinary.principal_kind == "USER"
-    assert ordinary.user_id == "U-1"
-    assert ordinary.read_all is False
+    source = inspect.getsource(budget_api)
+    assert "_WHOLE_ESTATE_BUDGET_ROLES" not in source, (
+        "the role-derived whole-estate set is back; read_all must come from "
+        "user_access_flag, never from a role name")
+    assert "read_all=True" not in source, (
+        "this router must not construct a read_all scope of its own")
+    assert "scope_for_request" in source, (
+        "the router must resolve the caller's real grants (Contract 4)")
 
-    assert _scope_for_roles(["Auditor"]).read_all is True
+
+def test_an_unresolvable_principal_gets_a_scope_that_sees_nothing():
+    """Fail closed, end to end: no session, no grants, no rows.
+
+    The half that matters most. A router that cannot establish who is asking
+    must not fall back to asking for everything, so the denial is asserted
+    through `compile_scope` rather than by inspecting the Scope's fields --
+    what protects a row is the predicate that reaches the database.
+    """
+    from app.backend.pg import principal_scope, repo
+
+    for principal in ({}, None, {"user_id": ""}, {"roles": ["Auditor"]}):
+        scope = principal_scope.denied_scope("U-NOBODY")
+        assert principal_scope.is_denied(scope)
+        predicate, _ = repo.compile_scope(scope, {
+            "entity": "p.entity_id", "plant": "p.plant_id",
+            "project": "p.project_id", "location": "p.location_id"})
+        assert predicate == "FALSE", (
+            f"a denied scope must compile to FALSE, got {predicate!r} "
+            f"for principal {principal!r}")
 
 
 def test_the_route_inventory_is_not_silently_empty():

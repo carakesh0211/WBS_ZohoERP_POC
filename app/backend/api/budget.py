@@ -36,13 +36,20 @@ same note.
 which this module does not touch. Its routes carry their full
 ``/api/budget/...`` path so mounting needs no prefix.
 
-**Scope note.** Identity & scope (Wave 2 stream 3, M4a) has not landed yet,
-so there is no authenticated per-caller ``Scope`` to build here -- exactly
-``api/audit.py``'s posture for the same reason. Every read still goes through
-``repo.query()`` with its scope-token discipline (a query missing the
-``{scope}`` token is refused before it reaches the database); only the
-*predicate* that compiles is currently unrestricted (``Scope(read_all=True)``).
-Tightening this to a real per-caller scope is M4a's job.
+**Scope note.** Every route resolves the caller's REAL grants through
+``pg.principal_scope.scope_for_request`` -- Contract 4's single
+scope-construction path. Reads go through ``repo.query()`` with its
+scope-token discipline (a query missing the ``{scope}`` token is refused
+before it reaches the database), and the predicate that compiles is now the
+caller's own.
+
+Two earlier postures are recorded here because both read as reasonable at the
+time. The first built an unconditional whole-estate SERVICE scope while
+identity was still unbuilt. The second derived ``read_all`` from a set of role
+NAMES, which is worse than it looks: ``read_all`` short-circuits
+``compile_scope`` to TRUE before any dimension is examined, so every principal
+outside that role set was unrestricted on all thirteen routes. ``read_all``
+now comes from ``user_access_flag`` and nowhere else.
 """
 from __future__ import annotations
 
@@ -55,6 +62,7 @@ from pydantic import BaseModel, ConfigDict
 
 from ..pg import periods as periods_svc
 from ..pg import budget as budget_svc
+from ..pg import principal_scope
 from ..pg.engine import Database, Scope, get_database
 
 class _BudgetAccess:
@@ -163,47 +171,22 @@ def _principal_of(request: Request) -> dict:
     return getattr(request.state, "budget_principal", None) or {}
 
 
-def _scope_for(request: Request) -> Scope:
-    """Scope derived from the AUTHENTICATED caller.
+def _scope_for(request: Request, database: Database) -> Scope:
+    """The caller's REAL scope, resolved from their grants.
 
-    This previously returned an unconditional
-    `Scope(principal_kind="SERVICE", read_all=True)`, which made every request
-    -- from any caller who got past the un-validating middleware -- a
-    whole-estate read, with `compile_scope` short-circuiting to TRUE.
+    Every earlier version of this function invented a scope instead of
+    reading one. The first returned an unconditional whole-estate SERVICE
+    scope. The second derived `read_all` from a set of role NAMES and left
+    every dimension `None`, so any principal outside that role set was
+    unrestricted on all thirteen budget routes -- which Contract 2 forbids
+    in as many words: `read_all` comes from `user_access_flag`, never from a
+    role.
 
-    HONEST LIMIT, recorded rather than papered over: per-user scope GRANTS do
-    not exist yet; they arrive with the identity and scope stream (plan Phase
-    3 / M4a, migration 004). Until then a non-whole-estate principal gets a
-    Scope whose every dimension is `None`, which `engine.Scope` defines as
-    unrestricted. So this buys real authentication and real permission
-    enforcement -- it does NOT yet buy row-level data scope on budget routes,
-    and nothing here should be read as claiming it does.
+    `scope_for_request` resolves the grants and fails closed. A principal who
+    cannot be resolved gets a scope that compiles to FALSE, not one that
+    compiles to TRUE.
     """
-    who = _principal_of(request)
-    roles = {r for r in ([who.get("role")] + list(who.get("roles") or [])) if r}
-    return Scope(
-        user_id=str(who.get("user_id") or who.get("username") or "UNKNOWN"),
-        principal_kind="USER",
-        read_all=bool(roles & _WHOLE_ESTATE_BUDGET_ROLES),
-    )
-
-
-#: Roles for which reading across the whole estate is the point of the role.
-#:
-#: FinanceApprover was here and has been REMOVED. The Scope this produces is
-#: the session scope for every budget call, not only reads, and `read_all`
-#: short-circuits `compile_scope` to TRUE before any dimension is examined --
-#: so a "read concession" silently granted FinanceApprover, the maker-checker
-#: approver for `revision.approve`, authority to approve revisions and
-#: transfers and to close accounting periods in EVERY entity.
-#:
-#: The remaining two are defensible: Auditor holds no mutating budget
-#: permission at all, and Administrator is barred from financial approval by
-#: `test_aud_c_006_administrator_holds_no_financial_approval`. Neither can
-#: reach a write path to which this scope would apply.
-_WHOLE_ESTATE_BUDGET_ROLES = frozenset({
-    "Administrator", "System Administrator", "Auditor", "Internal Auditor",
-})
+    return principal_scope.scope_for_request(database, _principal_of(request))
 
 
 def _actor(request: Request) -> str:
@@ -230,7 +213,7 @@ def get_periods(
 ) -> dict[str, Any]:
     _set_correlation_header(response, request)
     try:
-        with database.session(_scope_for(request)) as session:
+        with database.session(_scope_for(request, database)) as session:
             items = periods_svc.list_periods(session, entity_id=entity_id, state=state)
     except periods_svc.PeriodServiceError as exc:
         raise _service_error_to_http(exc)
@@ -250,7 +233,7 @@ def post_period_transition(
 ) -> dict[str, Any]:
     _set_correlation_header(response, request)
     try:
-        with database.session(_scope_for(request)) as session:
+        with database.session(_scope_for(request, database)) as session:
             result = periods_svc.transition_period(
                 session, period_id=period_id, to_state=body.to_state, actor=_actor(request))
     except periods_svc.PeriodServiceError as exc:
@@ -272,7 +255,7 @@ def get_cells(
     _set_correlation_header(response, request)
     limit = min(max(limit, 1), _MAX_LIMIT)
     try:
-        with database.session(_scope_for(request)) as session:
+        with database.session(_scope_for(request, database)) as session:
             result = budget_svc.list_cells(
                 session, project_id=project_id, wbs_id=wbs_id,
                 budget_head_id=budget_head_id, cursor=cursor, limit=limit)
@@ -292,7 +275,7 @@ def get_availability(
 ) -> dict[str, Any]:
     _set_correlation_header(response, request)
     try:
-        with database.session(_scope_for(request)) as session:
+        with database.session(_scope_for(request, database)) as session:
             result = budget_svc.check_availability(session, wbs_id, budget_head_id, amount_paise)
     except budget_svc.BudgetServiceError as exc:
         raise _service_error_to_http(exc)
@@ -310,7 +293,7 @@ def get_lines(
 ) -> dict[str, Any]:
     _set_correlation_header(response, request)
     try:
-        with database.session(_scope_for(request)) as session:
+        with database.session(_scope_for(request, database)) as session:
             items = budget_svc.list_lines(session, project_id=project_id, wbs_id=wbs_id,
                                            version=version)
     except budget_svc.BudgetServiceError as exc:
@@ -335,7 +318,7 @@ def post_revision(
 ) -> dict[str, Any]:
     _set_correlation_header(response, request)
     try:
-        with database.session(_scope_for(request)) as session:
+        with database.session(_scope_for(request, database)) as session:
             result = budget_svc.create_revision(
                 session, wbs_id=body.wbs_id, budget_head_id=body.budget_head_id,
                 delta_paise=body.delta_paise, effective_from=body.effective_from,
@@ -357,7 +340,7 @@ def post_revision_approve(
 ) -> dict[str, Any]:
     _set_correlation_header(response, request)
     try:
-        with database.session(_scope_for(request)) as session:
+        with database.session(_scope_for(request, database)) as session:
             result = budget_svc.approve_revision(
                 session, revision_id=revision_id, actor=_actor(request))
     except budget_svc.BudgetServiceError as exc:
@@ -372,7 +355,7 @@ def post_revision_reject(
 ) -> dict[str, Any]:
     _set_correlation_header(response, request)
     try:
-        with database.session(_scope_for(request)) as session:
+        with database.session(_scope_for(request, database)) as session:
             result = budget_svc.reject_revision(
                 session, revision_id=revision_id, actor=_actor(request), reason=body.reason)
     except budget_svc.BudgetServiceError as exc:
@@ -399,7 +382,7 @@ def post_transfer(
 ) -> dict[str, Any]:
     _set_correlation_header(response, request)
     try:
-        with database.session(_scope_for(request)) as session:
+        with database.session(_scope_for(request, database)) as session:
             result = budget_svc.create_transfer(
                 session, from_wbs_id=body.from_wbs_id, from_head_id=body.from_head_id,
                 to_wbs_id=body.to_wbs_id, to_head_id=body.to_head_id,
@@ -417,7 +400,7 @@ def post_transfer_approve(
 ) -> dict[str, Any]:
     _set_correlation_header(response, request)
     try:
-        with database.session(_scope_for(request)) as session:
+        with database.session(_scope_for(request, database)) as session:
             result = budget_svc.approve_transfer(
                 session, transfer_id=transfer_id, actor=_actor(request))
     except budget_svc.BudgetServiceError as exc:
@@ -432,7 +415,7 @@ def post_transfer_reject(
 ) -> dict[str, Any]:
     _set_correlation_header(response, request)
     try:
-        with database.session(_scope_for(request)) as session:
+        with database.session(_scope_for(request, database)) as session:
             result = budget_svc.reject_transfer(
                 session, transfer_id=transfer_id, actor=_actor(request), reason=body.reason)
     except budget_svc.BudgetServiceError as exc:
@@ -449,7 +432,7 @@ def get_versions(
 ) -> dict[str, Any]:
     _set_correlation_header(response, request)
     try:
-        with database.session(_scope_for(request)) as session:
+        with database.session(_scope_for(request, database)) as session:
             items = budget_svc.list_versions(session, project_id)
     except budget_svc.BudgetServiceError as exc:
         raise _service_error_to_http(exc)
@@ -466,7 +449,7 @@ def get_compare(
 ) -> dict[str, Any]:
     _set_correlation_header(response, request)
     try:
-        with database.session(_scope_for(request)) as session:
+        with database.session(_scope_for(request, database)) as session:
             rows = budget_svc.compare_versions(session, project_id=project_id, left=left, right=right)
     except budget_svc.BudgetServiceError as exc:
         raise _service_error_to_http(exc)

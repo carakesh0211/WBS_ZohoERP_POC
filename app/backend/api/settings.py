@@ -55,6 +55,7 @@ import psycopg.errors
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response
 
 from ..pg import audit as pg_audit
+from ..pg import principal_scope
 from ..pg import masters as pg_masters
 from ..pg.engine import Database, Scope, get_database
 
@@ -240,11 +241,22 @@ def _get_database() -> Database:
         ) from exc
 
 
-def _service_scope(actor: str) -> Scope:
-    """No row-level scope dimension applies to the organisation hierarchy
-    itself in this milestone -- see app/backend/api/masters.py's
-    `_service_scope` for the identical reasoning."""
-    return Scope(user_id=actor, principal_kind="USER")
+def _service_scope(request: Request, database: Database) -> Scope:
+    """The caller's REAL scope, resolved from their grants.
+
+    This returned `Scope(user_id=actor)` -- every dimension `None`, i.e.
+    unrestricted -- on the stated grounds that "no row-level scope dimension
+    applies to the organisation hierarchy itself".
+
+    That was wrong, and it was a live leak. This router serves `entity`,
+    `plant` and `location`, and those ARE three of the four scope dimensions;
+    all of them carry RLS from migration 004. An entity-restricted caller
+    reading `GET /api/settings/entities` saw every entity, and because the
+    all-`None` scope rendered as the old `*` wildcard, RLS waved it through
+    too. Both layers agreed, and both were wrong.
+    """
+    return principal_scope.scope_for_request(
+        database, getattr(request.state, "settings_principal", None) or {})
 
 
 def _correlation_id(request: Request) -> str:
@@ -381,7 +393,7 @@ def list_collection(
 
     columns = ", ".join(_row_columns(spec))
     actor = _actor(request)
-    with database.session(_service_scope(actor)) as session:
+    with database.session(_service_scope(request, database)) as session:
         rows = session.fetchall(
             f"SELECT {columns} FROM {spec.table} WHERE {where} "  # noqa: S608
             f"ORDER BY {spec.id_column} LIMIT %(fetch_limit)s",
@@ -432,7 +444,7 @@ def create_collection_row(collection: str, response: Response, request: Request,
     params.update({spec.id_column: row_id, "is_active": True,
                     "created_by": actor, "updated_by": actor})
 
-    with database.session(_service_scope(actor)) as session:
+    with database.session(_service_scope(request, database)) as session:
         try:
             session.execute(
                 f"INSERT INTO {spec.table} ({', '.join(columns)}) VALUES ({placeholders})",  # noqa: S608
@@ -475,7 +487,7 @@ def update_collection_row(collection: str, item_id: str, response: Response, req
     if unknown:
         raise _problem(422, "UNKNOWN_FIELD", f"unknown field(s): {sorted(unknown)}")
 
-    with database.session(_service_scope(actor)) as session:
+    with database.session(_service_scope(request, database)) as session:
         current_row = _select_row(session, spec, item_id, for_update=True)
         if current_row is None:
             raise _problem(404, "NOT_FOUND", f"{collection} {item_id} does not exist")
@@ -525,7 +537,7 @@ def deactivate_collection_row(collection: str, item_id: str, response: Response,
     spec = spec_for(collection)
     actor = _actor(request)
 
-    with database.session(_service_scope(actor)) as session:
+    with database.session(_service_scope(request, database)) as session:
         current_row = _select_row(session, spec, item_id, for_update=True)
         if current_row is None:
             raise _problem(404, "NOT_FOUND", f"{collection} {item_id} does not exist")

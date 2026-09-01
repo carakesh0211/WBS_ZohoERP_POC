@@ -72,8 +72,11 @@ tests and callers can assert its absence from any widening path.
 """
 from __future__ import annotations
 
+import contextlib
+
 import logging
 from collections.abc import Iterable, Mapping
+from collections.abc import Iterator
 from typing import Any
 
 from . import roles as roles_module
@@ -379,3 +382,51 @@ def scope_for_principal(session: Session, principal: Mapping[str, Any] | None,
     if reason is not None:
         log.warning("scope denied: %s", reason)
     return scope
+
+
+# ===========================================================================
+# The router entry point
+# ===========================================================================
+@contextlib.contextmanager
+def _resolution_session(database: Any) -> Iterator[Session]:
+    """A short transaction used only to read the caller's grants.
+
+    It runs under a DENIED scope, which is safe and deliberate: the identity
+    tables `resolve_scope` reads (`app_user`, `user_access_flag`,
+    `user_scope_restriction`, `user_scope_grant`) carry no RLS policy, so the
+    lookup succeeds, while every business table is closed to it. If someone
+    later adds a scoped read to the resolution path it will return nothing
+    rather than quietly running unrestricted.
+    """
+    with database.session(denied_scope()) as session:
+        yield session
+
+
+def scope_for_request(database: Any, principal: Mapping[str, Any] | None,
+                       *, principal_kind: str = "USER") -> Scope:
+    """The `Scope` a router should open its real session with.
+
+    Routers build a `Scope` BEFORE they have a session, and resolving grants
+    needs one -- so this opens a short resolution transaction first and
+    returns the resolved scope for the caller to use.
+
+    That is two transactions per request rather than one. The first is three
+    indexed primary-key lookups, and the alternative -- resolving inside the
+    business transaction and re-applying `SET LOCAL` partway through -- means
+    a window where the transaction is open under one scope and continues under
+    another. Paying for a second short transaction is the cheaper mistake.
+
+    Any failure denies, for the same reason `scope_for_principal` does: a
+    scope that cannot be resolved is a security condition, not a server fault,
+    and a router that cannot establish who is asking must not fall back to
+    asking for everything.
+    """
+    user_id = principal_id(principal) or ANONYMOUS_USER_ID
+    try:
+        with _resolution_session(database) as session:
+            return scope_for_principal(session, principal,
+                                        principal_kind=principal_kind)
+    except Exception as exc:                       # noqa: BLE001 - deny on anything
+        log.warning("scope resolution transaction failed for %s: %s",
+                    user_id, type(exc).__name__)
+        return denied_scope(user_id, principal_kind)

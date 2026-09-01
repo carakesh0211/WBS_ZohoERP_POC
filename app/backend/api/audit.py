@@ -40,6 +40,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 
+from ..pg import principal_scope
 from ..pg.audit import verify_chain
 from ..pg.engine import Database, Scope, get_database
 
@@ -84,33 +85,24 @@ _DEFAULT_LIMIT = 50
 _MAX_LIMIT = 200
 
 
-def _audit_service_scope(request: Request | None = None) -> Scope:
-    """Scope for an audit read, derived from the AUTHENTICATED caller.
+def _audit_service_scope(request: Request | None = None,
+                          database: Database | None = None) -> Scope:
+    """The caller's REAL scope, resolved from their grants.
 
-    This previously returned an unconditional `read_all=True` service scope, so
-    `compile_scope` short-circuited to TRUE on every request and any caller who
-    reached the handler could read every audit row in the database.
-
-    The router now guarantees `audit.read`. The scope carries the real user id
-    so the read is attributable, and `read_all` is granted only to a principal
-    holding a role for which a whole-estate audit read is the actual point.
+    This granted `read_all` to a set of role NAMES. Contract 2: `read_all`
+    comes from `user_access_flag` and nowhere else. A role that genuinely
+    needs the whole estate gets it by carrying the flag, which is auditable
+    and revocable; a role name in a frozenset is neither.
     """
-    who: dict[str, Any] = {}
+    who = {}
     if request is not None:
         who = getattr(request.state, "audit_principal", None) or {}
-    roles = {r for r in ([who.get("role")] + list(who.get("roles") or [])) if r}
-    return Scope(
-        user_id=str(who.get("user_id") or who.get("username") or "UNKNOWN"),
-        principal_kind="USER",
-        read_all=bool(roles & _WHOLE_ESTATE_AUDIT_ROLES),
-    )
+    if database is None:
+        return principal_scope.denied_scope(
+            principal_scope.principal_id(who) or "ANONYMOUS")
+    return principal_scope.scope_for_request(database, who)
 
 
-#: Roles for which reading the entire audit estate is the purpose of the role.
-#: Anyone else holding `audit.read` still reads through their own data scope.
-_WHOLE_ESTATE_AUDIT_ROLES = frozenset({
-    "Administrator", "System Administrator", "Internal Auditor", "Auditor",
-})
 
 
 def _get_database() -> Database:
