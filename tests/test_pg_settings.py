@@ -29,6 +29,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from app.backend.api import settings as settings_api  # noqa: E402
 from app.backend.pg import engine as pg_engine  # noqa: E402
+from app.backend.pg.engine import Scope  # noqa: E402
 
 PG = pytest.mark.skipif(
     not os.environ.get("CAPEX_DB_URL"),
@@ -159,6 +160,28 @@ def client(pg_database, capex_db):
     app = FastAPI()
     app.include_router(settings_api.router)
     try:
+        # The identity must exist in PostgreSQL too, not only in the SQLite
+        # dev IdP.
+        #
+        # The router now resolves a real scope through
+        # `principal_scope.scope_for_principal`, which DENIES a principal with
+        # no `app_user` row -- deliberately: `resolve_scope` alone cannot tell
+        # "this id names nobody" from "this user has no restriction rows",
+        # since both yield four Nones, i.e. unrestricted. A typo'd or revoked
+        # id would otherwise resolve to the whole estate.
+        #
+        # So a session minted only in SQLite is an unknown principal here and
+        # sees nothing. That is the product behaving correctly; the fixture
+        # was the thing that was wrong. No restriction rows are inserted, so
+        # this identity is unrestricted, which is what these tests assume.
+        with pg_database.session(Scope.system()) as _s:
+            _s.execute(
+                "INSERT INTO app_user (user_id, email, display_name, "
+                "principal_kind) VALUES (%s, %s, %s, 'USER') "
+                "ON CONFLICT (user_id) DO NOTHING",
+                ("U-SETTINGS-TEST", "settings-test@example.invalid",
+                 "Settings Test"))
+
         test_client = TestClient(app)
         test_client.headers.update(_administrator_session())
         yield test_client
@@ -183,6 +206,14 @@ def reader_client(pg_database, capex_db):
     app = FastAPI()
     app.include_router(settings_api.router)
     try:
+        with pg_database.session(Scope.system()) as _s:
+            _s.execute(
+                "INSERT INTO app_user (user_id, email, display_name, "
+                "principal_kind) VALUES (%s, %s, %s, 'USER') "
+                "ON CONFLICT (user_id) DO NOTHING",
+                ("U-SETTINGS-READER", "settings-reader@example.invalid",
+                 "Settings Reader"))
+
         test_client = TestClient(app)
         test_client.headers.update(_session_for("U-SETTINGS-READER", "Requestor"))
         yield test_client
