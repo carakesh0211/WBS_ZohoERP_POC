@@ -183,6 +183,13 @@ const NAV = [
   { id: 'budget', ico: '▦', label: 'Budget Planning Grid' },
   { id: 'check', ico: '◎', label: 'Budget Availability Check', need: ['budget.check'] },
   { id: 'revisions', ico: '↻', label: 'Budget Revisions' },
+  // SCR-09 / SCR-10 / SCR-13 — built as ES modules, reachable here since Wave 3.
+  // `need` is mirrored from src/core/router.js's SCREENS; NAV is rendered before
+  // any dynamic import can resolve, so it cannot read the registry directly.
+  // tests/vrt/spa-routing.spec.js asserts the two never drift apart.
+  { id: 'budget-grid', ico: '▩', label: 'Budget Planning Grid (cells)', need: ['budget.read'] },
+  { id: 'budget-compare', ico: '⇎', label: 'Budget Version Comparison', need: ['budget.read'] },
+  { id: 'budget-availability', ico: '⊙', label: 'Budget Availability Check (cells)', need: ['budget.check'] },
   { g: 'Procurement & Actuals' },
   { id: 'prs', ico: '✎', label: 'Purchase Requests' },
   { id: 'pos', ico: '▧', label: 'Commitments (PO)' },
@@ -196,6 +203,9 @@ const NAV = [
   { id: 'inventory', ico: '≣', label: 'API Inventory', need: ['connector.read'] },
   { g: 'Governance' },
   { id: 'audit', ico: '⎙', label: 'Audit Trail', need: ['audit.read'] },
+  // SCR-28 and SCR-30 — see the note on the budget rows above.
+  { id: 'audit-trail', ico: '⧉', label: 'Audit Trail Viewer', need: ['audit.read'] },
+  { id: 'settings', ico: '⚙', label: 'Settings & Master Data', need: ['settings.read', 'masters.read'] },
 ];
 
 function navAllowed(n) { return !n.need || can(...n.need); }
@@ -254,7 +264,43 @@ function mockBanner(extra) {
 }
 
 /* ---------------- views ---------------------------------------------------- */
+/* A view is an async function returning EITHER an HTML string (the original
+   contract — the string is assigned to #content and passed through enhance()),
+   OR an object { node, mount } for a screen that builds real DOM. In the second
+   form the node is appended as-is and `mount` is awaited afterwards, so a
+   feature module can look up ids inside its own host before it renders. Nothing
+   in that path goes near innerHTML, so nothing in it can be an XSS site. */
 const V = {};
+
+/* ---------------- SCR-nn screens, routed through this shell ----------------
+   SCR-28, SCR-09, SCR-10, SCR-13 and SCR-30 are ES modules; this file is a
+   classic script. src/core/router.js declares each of them — hash, title,
+   breadcrumb, host DOM, mount function — and is import()ed on first navigation
+   to one of these routes, so a user who never opens one never downloads them.
+   The standalone host pages (audit.html, budget.html, settings.html) still
+   work; this is an additional way in, not a replacement. */
+let scrRegistry = null;
+function loadScrRegistry() {
+  // Absolute: a dynamic import inside a classic script resolves against the
+  // document base URL ('/'), not against /static/app.js.
+  scrRegistry = scrRegistry || import('/static/src/core/router.js');
+  return scrRegistry;
+}
+
+async function scrView(id) {
+  const { screenById } = await loadScrRegistry();
+  const screen = screenById(id);
+  if (!screen) {
+    setHeader('Screen not found', ['Home'], []);
+    return msg('error', 'This screen is not registered in the screen registry.');
+  }
+  setHeader(screen.title, screen.crumbs, []);
+  return screen.build();   // { node, mount }
+}
+
+for (const id of ['budget-grid', 'budget-compare', 'budget-availability', 'audit-trail', 'settings']) {
+  V[id] = () => scrView(id);
+}
 
 V.home = async () => {
   const q = new URLSearchParams();
@@ -974,24 +1020,83 @@ function paintIdentity() {
 /* ---------------- render --------------------------------------------------- */
 function flash(kind, text) { S.flash = { kind, text }; }
 
+/* The .msg / .msg-error box of msg(), built as real nodes. Used on the DOM
+   rendering path, where no HTML string is ever produced and therefore no
+   escaping rule has to be remembered. */
+function errorNode(message) {
+  const box = document.createElement('div');
+  box.className = 'msg msg-error';
+  box.setAttribute('role', 'alert');
+  const ico = document.createElement('span');
+  ico.className = 'ico';
+  ico.setAttribute('aria-hidden', 'true');
+  ico.textContent = SYM.negative;
+  const body = document.createElement('div');
+  body.className = 'body';
+  body.appendChild(document.createTextNode(String(message ?? '')));
+  box.appendChild(ico);
+  box.appendChild(body);
+  return box;
+}
+
 async function render() {
   if (!getSession() || !S.boot) return;
-  if (!V[S.view] || !navAllowed(NAV.find(n => n.id === S.view) || {})) S.view = 'home';
-  if (location.hash.slice(1) !== S.view) history.replaceState(null, '', '#' + S.view);
+
+  // An unknown hash, or one naming a screen this principal may not see, is a
+  // CORRECTION, not a navigation. It replaces the entry so pressing Back cannot
+  // walk straight back into it. Anything else is a real navigation and gets its
+  // own history entry, so Back returns to the previous screen instead of
+  // leaving the application entirely — which is what `replaceState` for both
+  // cases used to do.
+  const corrected = !V[S.view] || !navAllowed(NAV.find(n => n.id === S.view) || {});
+  if (corrected) S.view = 'home';
+  const target = '#' + S.view;
+  if (location.hash !== target) {
+    // No hash at all is the first paint after sign-in: stamping the URL is
+    // normalisation too, and pushing there would leave a Back that goes
+    // nowhere visible.
+    if (corrected || !location.hash) history.replaceState(null, '', target);
+    else history.pushState(null, '', target);
+  }
 
   const el = document.getElementById('content');
   el.innerHTML = '<div class="loading">Loading…</div>';
-  let html;
+  const rendering = S.view;
+  let result;
   try {
-    html = await (V[S.view] || V.home)();
+    result = await (V[S.view] || V.home)();
   } catch (e) {
     if (e instanceof ApiError && e.statusCode === 401) return;   // sign-in already shown
-    html = msg('error', `Could not load this view. ${esc(e.message)}`, e.code || undefined);
+    result = msg('error', `Could not load this view. ${esc(e.message)}`, e.code || undefined);
   }
+  // A view that awaited (every SCR-nn screen import()s its module) can land
+  // after the user has already navigated on. Painting it now would put one
+  // screen's content under another screen's title.
+  if (S.view !== rendering) return;
+
   const banner = S.flash ? msg(S.flash.kind, S.flash.text) : '';
   S.flash = null;
-  el.innerHTML = banner + html;
-  enhance(el);
+
+  if (result && typeof result === 'object' && result.node instanceof Node) {
+    // DOM-building view. The node is appended before mount() runs so a feature
+    // module can find its own live region and roots by id.
+    el.innerHTML = banner;
+    el.appendChild(result.node);
+    if (typeof result.mount === 'function') {
+      try {
+        await result.mount(el);
+      } catch (e) {
+        el.appendChild(errorNode(`This screen could not be loaded. ${e.message}`));
+      }
+    }
+    // enhance() is deliberately NOT called here: these screens build their own
+    // DOM through core/dom.js, which already applies geometry through the
+    // CSSOM and table semantics at construction time. Running it would make
+    // the shell-hosted rendering differ from the standalone host page's.
+  } else {
+    el.innerHTML = banner + (result || '');
+    enhance(el);
+  }
   renderNav();
   closeNavOnNarrow();
 
@@ -1408,10 +1513,17 @@ async function start() {
     S.zohoMode = { mode: h.zoho_mode || 'MOCK', note: h.zoho_mode_note || '' };
   } catch { S.zohoMode = { mode: 'MOCK', note: '' }; }
 
-  window.addEventListener('hashchange', async () => {
+  // Both events, because the two arrive from different directions and neither
+  // covers the other: `hashchange` for a typed or pasted fragment, `popstate`
+  // for Back and Forward across the entries render() now pushes. The `v !==
+  // S.view` guard means whichever fires second is a no-op rather than a second
+  // render of the same screen.
+  const syncFromHash = async () => {
     const v = location.hash.slice(1);
     if (v && V[v] && v !== S.view && S.boot) { S.view = v; await render(); }
-  });
+  };
+  window.addEventListener('hashchange', syncFromHash);
+  window.addEventListener('popstate', syncFromHash);
 
   if (getSession()) {
     try { await start(); }
