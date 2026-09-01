@@ -64,6 +64,10 @@ POST_BASELINE_FILES = {
     "test_budget_api_guard.py", "test_masters_settings_api_guard.py",
     "test_scope_enforcement.py", "test_money_sql_discipline.py",
     "test_no_undefined_names.py",
+    # --- Wave 3: the security-closure streams -----------------------------
+    "test_pg_principal_scope.py", "test_scope_negative_matrix.py",
+    "test_pg_rls_coverage.py", "test_scope_sentinel.py",
+    "test_pg_locking_order.py", "test_pg_period_concurrency.py",
 }
 
 
