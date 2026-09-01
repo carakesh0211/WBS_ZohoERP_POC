@@ -5,17 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CAPEX &amp; WBS Control Hub</title>
 <link rel="stylesheet" href="/static/styles.css">
-<!-- The SCR-nn screens (SCR-28, SCR-09, SCR-10, SCR-13, SCR-30) are now routes of
-     this shell, so the additive stylesheets their standalone host pages load must
-     be available here too. Every one of them is loaded AFTER the byte-frozen
-     styles.css, declares no custom property of its own, and uses only var(--…)
-     tokens already in styles.css's :root (research/30_contracts/C6_tokens.json).
-     They add rules for new classes only; the approved appearance of the existing
-     seventeen shell views is unchanged, which tests/vrt/approved-ui.spec.js
-     proves at maxDiffPixelRatio: 0. -->
-<link rel="stylesheet" href="/static/extensions.css">
-<link rel="stylesheet" href="/static/budget.css">
-<link rel="stylesheet" href="/static/settings.css">
+<!-- styles.css is the ONLY stylesheet the shell loads. The additive stylesheets the
+     SCR-nn screens need (extensions.css, budget.css, settings.css) are loaded ON
+     DEMAND by src/core/router.js when one of those routes is first opened, and never
+     otherwise. They are not linked here on purpose: settings.css carries two
+     unscoped selectors -- `input:disabled, textarea:disabled` and `.field label` --
+     which, loaded globally, restyle disabled controls and label wrapping on the
+     seventeen client-approved shell views. That is a visual regression of the
+     approved design, and it is reported to the lead rather than fixed here, because
+     settings.css is not this stream's file. Loading per route keeps the approved
+     screens byte-identical and keeps the payload off users who never open them. -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231B5762'/%3E%3Cpath d='M12 5v4M6 19v-4h12v4M12 9v6' stroke='%23fff' stroke-width='2' fill='none'/%3E%3C/svg%3E">
 </head>
 <body>

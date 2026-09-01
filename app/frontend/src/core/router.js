@@ -8,14 +8,20 @@
    Master Data) were built as ES modules mounted by standalone host pages —
    audit.html, budget.html, settings.html. They worked, but they were not
    reachable from the application: the shell's hash router in app.js knew
-   nothing about them, so nothing in the primary navigation led there and no
-   hash deep-linked to them.
+   nothing about them, so no hash deep-linked to them and nothing inside the
+   running application led there at all.
 
    This module is the bridge. It declares each screen once — hash, title,
    breadcrumb, required permission, the host DOM it needs and the mount
-   function that fills it — and app.js turns that declaration into a NAV row
-   and a `V` view. The standalone host pages keep working unchanged; they are
-   simply no longer the only way in.
+   function that fills it — and app.js turns that declaration into a `V` view.
+   The standalone host pages keep working unchanged; they are simply no longer
+   the only way in.
+
+   What this does NOT do: add anything to the primary navigation. That rail is
+   rendered inside all thirty-seven client-approved screenshots, so an entry in
+   it is a change to the approved UI and needs the client's sign-off, not an
+   implementation stream's. `group`, `ico` and `label` below are carried ready
+   for that day; nothing reads them yet. See the SCR_ROUTES comment in app.js.
 
    Why a separate module, and why dynamic import
    ---------------------------------------------
@@ -34,6 +40,51 @@
 */
 
 import { h } from './dom.js';
+
+/* ---------------- on-demand stylesheets ----------------
+   index.html loads ONLY the byte-frozen styles.css. The additive stylesheets
+   these screens need are injected here, once, the first time one of these
+   routes is opened.
+
+   This is not an optimisation, it is a correctness requirement. settings.css
+   contains two UNSCOPED selectors --
+
+       input:disabled, textarea:disabled { background: …; color: …; }
+       .field label { overflow-wrap: anywhere; }
+
+   -- which, if that stylesheet were linked from index.html, would apply to
+   every one of the seventeen client-approved shell views and change how their
+   disabled controls and labels render. It does: linking it globally moved the
+   `check` (Budget Availability Check) baseline at 800px, where the navigation
+   rail is hidden and nothing else could have. Loading per route confines each
+   stylesheet to the screens it was written for, so the approved views stay
+   byte-identical. The defect itself is REPORTED, not fixed — settings.css is
+   not this stream's file.
+
+   A <link> element is same-origin and static, so `style-src 'self'` permits it;
+   nothing here builds a style attribute or injects CSS text. */
+const loadedStyles = new Set();
+
+function ensureStyles(hrefs) {
+  return Promise.all((hrefs || []).map((href) => {
+    if (loadedStyles.has(href)) return Promise.resolve();
+    loadedStyles.add(href);
+    return new Promise((resolve) => {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+      // Resolve either way: a screen that renders unstyled is still better than
+      // a screen that never renders because its stylesheet failed to load.
+      link.addEventListener('load', () => resolve());
+      link.addEventListener('error', () => resolve());
+      document.head.appendChild(link);
+    });
+  }));
+}
+
+const AUDIT_STYLES = ['/static/extensions.css'];
+const BUDGET_STYLES = ['/static/extensions.css', '/static/budget.css'];
+const SETTINGS_STYLES = ['/static/extensions.css', '/static/settings.css'];
 
 /**
  * A live region each feature module looks up by id at mount time. It has to
@@ -80,6 +131,7 @@ export const SCREENS = [
       return {
         node,
         async mount() {
+          await ensureStyles(AUDIT_STYLES);
           const { mountAuditTrail } = await import('../features/audit/audit-trail.js');
           mountAuditTrail(root);
         },
@@ -104,6 +156,7 @@ export const SCREENS = [
       return {
         node,
         async mount() {
+          await ensureStyles(BUDGET_STYLES);
           const { mountBudgetGrid } = await import('../features/budget/budget-grid.js');
           mountBudgetGrid(root);
         },
@@ -128,6 +181,7 @@ export const SCREENS = [
       return {
         node,
         async mount() {
+          await ensureStyles(BUDGET_STYLES);
           const { mountBudgetCompare } = await import('../features/budget/budget-compare.js');
           mountBudgetCompare(root);
         },
@@ -152,6 +206,7 @@ export const SCREENS = [
       return {
         node,
         async mount() {
+          await ensureStyles(BUDGET_STYLES);
           const { mountBudgetAvailability } = await import('../features/budget/budget-availability.js');
           mountBudgetAvailability(root);
         },
@@ -194,6 +249,7 @@ export const SCREENS = [
       return {
         node,
         async mount() {
+          await ensureStyles(SETTINGS_STYLES);
           const { mountSettingsApp } = await import('../features/settings/settings-app.js');
           mountSettingsApp();
         },

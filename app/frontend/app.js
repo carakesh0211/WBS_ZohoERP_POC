@@ -183,13 +183,6 @@ const NAV = [
   { id: 'budget', ico: '▦', label: 'Budget Planning Grid' },
   { id: 'check', ico: '◎', label: 'Budget Availability Check', need: ['budget.check'] },
   { id: 'revisions', ico: '↻', label: 'Budget Revisions' },
-  // SCR-09 / SCR-10 / SCR-13 — built as ES modules, reachable here since Wave 3.
-  // `need` is mirrored from src/core/router.js's SCREENS; NAV is rendered before
-  // any dynamic import can resolve, so it cannot read the registry directly.
-  // tests/vrt/spa-routing.spec.js asserts the two never drift apart.
-  { id: 'budget-grid', ico: '▩', label: 'Budget Planning Grid (cells)', need: ['budget.read'] },
-  { id: 'budget-compare', ico: '⇎', label: 'Budget Version Comparison', need: ['budget.read'] },
-  { id: 'budget-availability', ico: '⊙', label: 'Budget Availability Check (cells)', need: ['budget.check'] },
   { g: 'Procurement & Actuals' },
   { id: 'prs', ico: '✎', label: 'Purchase Requests' },
   { id: 'pos', ico: '▧', label: 'Commitments (PO)' },
@@ -203,12 +196,47 @@ const NAV = [
   { id: 'inventory', ico: '≣', label: 'API Inventory', need: ['connector.read'] },
   { g: 'Governance' },
   { id: 'audit', ico: '⎙', label: 'Audit Trail', need: ['audit.read'] },
-  // SCR-28 and SCR-30 — see the note on the budget rows above.
-  { id: 'audit-trail', ico: '⧉', label: 'Audit Trail Viewer', need: ['audit.read'] },
-  { id: 'settings', ico: '⚙', label: 'Settings & Master Data', need: ['settings.read', 'masters.read'] },
 ];
 
 function navAllowed(n) { return !n.need || can(...n.need); }
+
+/* ---------------- SCR-nn routes ------------------------------------------
+   SCR-28, SCR-09, SCR-10, SCR-13 and SCR-30 are routable, deep-linkable and
+   permission-gated in this shell, but they are DELIBERATELY NOT in the NAV
+   table above.
+
+   The primary navigation is rendered inside every one of the seventeen
+   client-approved screenshots in tests/vrt/approved-ui.spec.js-snapshots/. Any
+   entry added to it changes all of them. That is a change to the
+   client-approved UI, which needs the client's sign-off — it is not a call a
+   single implementation stream makes by overwriting the evidence that would
+   have caught it. The Wave 3 security-closure gate asks for these screens to be
+   "routable in the SPA shell", and routable is exactly what they are.
+
+   Everything needed to list them in the navigation is already here: each row
+   below is shaped like a NAV row, and src/core/router.js carries the matching
+   icon, label and group. Adding them is a loop over this table — and a
+   deliberate re-baselining of thirty-seven approved screenshots, with a
+   design-approval note, on the day the client agrees to it.
+
+   Until then this table is the permission gate. A route absent from NAV would
+   otherwise reach `navAllowed({})`, which returns true for everyone, and every
+   one of these five screens would be readable by every signed-in principal. */
+const SCR_ROUTES = [
+  { id: 'audit-trail', need: ['audit.read'] },
+  { id: 'budget-grid', need: ['budget.read'] },
+  { id: 'budget-compare', need: ['budget.read'] },
+  { id: 'budget-availability', need: ['budget.check'] },
+  { id: 'settings', need: ['settings.read', 'masters.read'] },
+];
+
+/* The permission gate for ANY view id, whether it sits in NAV or in SCR_ROUTES.
+   An id in neither table is unknown and is refused, so a mistyped hash can
+   never resolve to an ungated screen. */
+function viewAllowed(id) {
+  const row = NAV.find(n => n.id === id) || SCR_ROUTES.find(n => n.id === id);
+  return row ? navAllowed(row) : false;
+}
 
 function renderNav() {
   const el = document.getElementById('nav');
@@ -298,7 +326,9 @@ async function scrView(id) {
   return screen.build();   // { node, mount }
 }
 
-for (const id of ['budget-grid', 'budget-compare', 'budget-availability', 'audit-trail', 'settings']) {
+// One view per SCR_ROUTES row, so the route table and the permission table can
+// never disagree about which ids exist.
+for (const { id } of SCR_ROUTES) {
   V[id] = () => scrView(id);
 }
 
@@ -1048,7 +1078,7 @@ async function render() {
   // own history entry, so Back returns to the previous screen instead of
   // leaving the application entirely — which is what `replaceState` for both
   // cases used to do.
-  const corrected = !V[S.view] || !navAllowed(NAV.find(n => n.id === S.view) || {});
+  const corrected = !V[S.view] || !viewAllowed(S.view);
   if (corrected) S.view = 'home';
   const target = '#' + S.view;
   if (location.hash !== target) {
@@ -1088,6 +1118,15 @@ async function render() {
       } catch (e) {
         el.appendChild(errorNode(`This screen could not be loaded. ${e.message}`));
       }
+    }
+    // The host node lands in the document BEFORE mount() is awaited, because a
+    // feature module looks its own roots and live region up by id. So the
+    // presence of .scr-host says nothing about whether the screen has actually
+    // rendered. This flag does, and it is what anything waiting on the screen —
+    // a test, or a later render — should watch for. A view that navigated away
+    // mid-mount is skipped: S.view moved on and this node is already detached.
+    if (S.view === rendering && result.node.nodeType === 1) {
+      result.node.dataset.mounted = '1';
     }
     // enhance() is deliberately NOT called here: these screens build their own
     // DOM through core/dom.js, which already applies geometry through the

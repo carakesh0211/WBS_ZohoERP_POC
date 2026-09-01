@@ -10,21 +10,35 @@
 // gate requires "SCR-28, SCR-09, SCR-10, SCR-13, SCR-30 routable in the SPA
 // shell", and this file is what proves it.
 //
+// THE PRIMARY NAVIGATION IS DELIBERATELY NOT TOUCHED.
+//
+// The client-approved navigation rail is rendered inside every one of the
+// thirty-seven screenshots in approved-ui.spec.js-snapshots/. Adding five
+// entries to it changes all thirty-seven — and the only way to make the suite
+// green again is to overwrite the very evidence that would have caught a real
+// regression. That is a client design decision, not an implementation-stream
+// one, so these five screens are routable and deep-linkable but carry no
+// navigation entry, and the first test below asserts the rail is unchanged.
+// src/core/router.js already carries the icon, label and group for each screen,
+// so listing them is a small loop on the day the client signs it off.
+//
 // What is asserted here, and nowhere else:
-//   * every one of the five screens is reachable by clicking the primary
-//     navigation, and lands on its own hash;
-//   * every one is deep-linkable — a cold load of /#<hash> renders the screen,
-//     not the dashboard;
+//   * the approved primary navigation still holds exactly its seventeen
+//     entries, and none of the five SCR-nn routes has been added to it;
+//   * every one of the five is deep-linkable — a cold load of /#<hash> renders
+//     the screen, not the dashboard — and reachable by hash from a running
+//     shell;
 //   * browser Back and Forward move between them and restore the right screen;
-//   * app.js's NAV permission table and src/core/router.js's SCREENS registry
-//     agree, so the two declarations cannot drift apart unnoticed;
+//   * app.js's SCR_ROUTES permission gate and src/core/router.js's SCREENS
+//     registry agree, so the two declarations cannot drift apart unnoticed,
+//     and an unknown hash resolves to nothing rather than to an ungated screen;
 //   * the four required states — loading, empty, error, permission-denied —
 //     render inside the shell for each screen;
-//   * a user without the permission cannot reach the route at all, and is not
-//     shown a navigation entry for it;
-//   * axe-core is clean on each screen inside the shell, keyboard-only
-//     traversal reaches every screen, focus stays visible, and status is
-//     distinguishable without colour;
+//   * a user without the permission cannot reach the route at all, proven
+//     against a positive control that can;
+//   * axe-core is clean on each screen inside the shell, Tab alone reaches
+//     every control with a visible focus ring, and status is distinguishable
+//     without colour;
 //   * the rendered result does not drift, at 1440 / 1024 / 800 px.
 //
 // Conventions follow tests/vrt/approved-ui.spec.js and audit-trail.spec.js:
@@ -202,9 +216,16 @@ async function settleShell(page) {
  */
 async function settleScreen(page) {
   await settleShell(page);
-  await page.waitForSelector('#content .scr-host', { state: 'attached', timeout: 15_000 });
+  // data-mounted, not merely .scr-host. app.js appends the host node BEFORE it
+  // awaits the feature module's mount() — the module needs its roots in the
+  // document to find them by id — so .scr-host appears while the screen is
+  // still empty. Waiting on the host alone raced the dynamic import and the
+  // on-demand stylesheet, and intermittently found a screen with no controls
+  // in it yet.
+  await page.waitForSelector('#content .scr-host[data-mounted="1"]',
+    { state: 'attached', timeout: 15_000 });
   await page.waitForFunction(() => {
-    const host = document.querySelector('#content .scr-host');
+    const host = document.querySelector('#content .scr-host[data-mounted="1"]');
     return !!host && !host.querySelector('.audit-skel-row') && !host.querySelector('.loading');
   }, null, { timeout: 15_000 });
   await page.waitForLoadState('networkidle');
@@ -219,26 +240,23 @@ function pageTitle(page) {
   return page.locator('#pageTitle');
 }
 
+/**
+ * Move to a route from inside an already-running shell, by hash. This is how
+ * the five SCR-nn screens are reached: they are routable and deep-linkable but
+ * deliberately carry no primary-navigation entry, because every approved
+ * screenshot contains that rail.
+ */
+async function hashTo(page, hash) {
+  await page.evaluate((h) => { window.location.hash = h; }, hash);
+  await settleScreen(page);
+}
+
 /** Open the navigation drawer if this viewport collapses it (below 900px). */
 async function openNavIfCollapsed(page) {
   const collapsed = await page.locator('#nav')
     .evaluate((n) => getComputedStyle(n).display === 'none');
   if (collapsed) await page.locator('#navToggle').click();
   return collapsed;
-}
-
-/**
- * Click a primary-navigation entry the way a user would: open the drawer if
- * this viewport has one, scroll the entry into view, then click it. Never
- * `force: true` — the navigation is taller than a 900px viewport now that five
- * screens have been added to it, and a forced click on an off-screen entry
- * lands on whatever happens to be at that coordinate instead.
- */
-async function navigateTo(page, hash) {
-  await openNavIfCollapsed(page);
-  const item = page.locator(`#nav .nav-item[data-nav="${hash}"]`);
-  await item.scrollIntoViewIfNeeded();
-  await item.click();
 }
 
 /**
@@ -266,21 +284,30 @@ test.describe('SPA routing — every SCR-nn screen is reachable from the shell',
     await signIn(page);
   });
 
-  for (const s of SCREENS) {
-    test(`${s.scr} — the primary navigation reaches ${s.title}`, async ({ page }) => {
-      await settleShell(page);
-      await openNavIfCollapsed(page);
-      const item = page.locator(`#nav .nav-item[data-nav="${s.hash}"]`);
-      await expect(item, `${s.scr} has no primary navigation entry`).toHaveCount(1);
-      await expect(item).toContainText(s.navLabel);
-
-      await navigateTo(page, s.hash);
-      await settleScreen(page);
-
-      await expect(pageTitle(page)).toHaveText(s.title);
-      expect(new URL(page.url()).hash, `${s.scr} did not update the hash`).toBe(`#${s.hash}`);
-    });
-  }
+  test('the client-approved primary navigation is untouched', async ({ page }) => {
+    // THE GUARD THAT MATTERS. Every one of the seventeen approved screenshots
+    // in approved-ui.spec.js-snapshots/ contains this navigation rail, so a
+    // single entry added here silently invalidates all thirty-seven of them.
+    // This stream therefore routes the five SCR-nn screens WITHOUT adding a
+    // navigation entry, and this test is what stops that decision decaying.
+    // Adding an entry is a client design decision plus a deliberate
+    // re-baselining — not something that should ever pass unnoticed.
+    await settleShell(page);
+    const ids = await page.evaluate(
+      () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
+    );
+    expect(ids).toEqual([
+      'home', 'approvals', 'alerts',
+      'projects', 'wbs', 'budget', 'check', 'revisions',
+      'prs', 'pos', 'grns', 'bills', 'recon',
+      'cap',
+      'zoho', 'inventory',
+      'audit',
+    ]);
+    for (const s of SCREENS) {
+      expect(ids, `${s.scr} must not appear in the approved navigation`).not.toContain(s.hash);
+    }
+  });
 
   for (const s of SCREENS) {
     test(`${s.scr} — /#${s.hash} deep-links on a cold load`, async ({ page }) => {
@@ -289,22 +316,29 @@ test.describe('SPA routing — every SCR-nn screen is reachable from the shell',
       // Not silently redirected to the dashboard.
       expect(new URL(page.url()).hash).toBe(`#${s.hash}`);
       await expect(page.locator('#content .scr-host')).toHaveCount(1);
-      // The active navigation entry follows the route.
-      await expect(page.locator(`#nav .nav-item[data-nav="${s.hash}"][aria-current="page"]`))
-        .toHaveCount(1);
     });
   }
+
+  test('every SCR-nn screen is reachable by hash from inside a running shell', async ({ page }) => {
+    // Not a cold load: sign in once, then move between screens the way a link
+    // or a bookmark inside the application would, proving the router handles
+    // them live rather than only at boot.
+    await settleShell(page);
+    for (const s of SCREENS) {
+      await page.evaluate((hash) => { window.location.hash = hash; }, s.hash);
+      await settleScreen(page);
+      await expect(pageTitle(page), `${s.scr} did not open`).toHaveText(s.title);
+    }
+  });
 
   test('Back and Forward move between SCR-nn routes and restore each screen', async ({ page }) => {
     await gotoScreen(page, 'audit-trail');
     await expect(pageTitle(page)).toHaveText('Audit Trail Viewer');
 
-    await navigateTo(page, 'budget-grid');
-    await settleScreen(page);
+    await hashTo(page, 'budget-grid');
     await expect(pageTitle(page)).toHaveText('Budget Planning Grid');
 
-    await navigateTo(page, 'settings');
-    await settleScreen(page);
+    await hashTo(page, 'settings');
     await expect(pageTitle(page)).toHaveText('Settings and Master Data');
 
     await page.goBack();
@@ -325,12 +359,13 @@ test.describe('SPA routing — every SCR-nn screen is reachable from the shell',
 
   test('leaving an SCR-nn route and returning re-mounts it cleanly', async ({ page }) => {
     await gotoScreen(page, 'budget-grid');
-    await navigateTo(page, 'home');
+    // By hash, not by clicking the rail: below 900px the rail is a closed
+    // drawer and the entry is not visible.
+    await page.evaluate(() => { window.location.hash = 'home'; });
     await settleShell(page);
     await expect(page.locator('#content .scr-host')).toHaveCount(0);
 
-    await navigateTo(page, 'budget-grid');
-    await settleScreen(page);
+    await hashTo(page, 'budget-grid');
     // Exactly one host, one live region — a second mount would duplicate both,
     // and duplicate ids are both an axe violation and a broken live region.
     await expect(page.locator('#content .scr-host')).toHaveCount(1);
@@ -370,32 +405,28 @@ test.describe('SPA routing — every SCR-nn screen is reachable from the shell',
 /* ============================================ registry / NAV consistency */
 
 test.describe('SPA routing — the two declarations cannot drift', () => {
-  test('app.js NAV and src/core/router.js SCREENS agree on hash, label and permission', async ({ page }) => {
+  test('app.js SCR_ROUTES and src/core/router.js SCREENS agree on id and permission', async ({ page }) => {
     await stubScreenApis(page);
     await signIn(page);
 
     const registry = await page.evaluate(async () => {
       const mod = await import('/static/src/core/router.js');
-      return mod.SCREENS.map((s) => ({
-        id: s.id, scr: s.scr, label: s.label, title: s.title, need: s.need,
-      }));
+      return mod.SCREENS.map((s) => ({ id: s.id, scr: s.scr, need: s.need }));
     });
 
-    // Every screen in the registry has a navigation row, and the permission
-    // gate on that row is exactly the registry's. app.js has to restate `need`
-    // because NAV renders before any dynamic import can resolve; this is the
-    // assertion that keeps the restatement honest.
+    // app.js has to restate `need` in SCR_ROUTES because the permission gate
+    // runs synchronously in render(), long before any dynamic import can
+    // resolve. This is the assertion that keeps the restatement honest — a
+    // permission loosened in one table and not the other is exactly the kind of
+    // drift that opens a screen to a principal who should not see it.
+    const gates = await page.evaluate(
+      () => SCR_ROUTES.map((r) => ({ id: r.id, need: r.need })),
+    );
+    expect(gates.map((g) => g.id).sort()).toEqual(registry.map((r) => r.id).sort());
     for (const entry of registry) {
-      const nav = await page.evaluate(
-        (id) => {
-          const row = NAV.find((n) => n.id === id);
-          return row ? { id: row.id, label: row.label, need: row.need || null } : null;
-        },
-        entry.id,
-      );
-      expect(nav, `${entry.scr} (${entry.id}) has no NAV row in app.js`).not.toBeNull();
-      expect(nav.label, `${entry.scr} label drifted`).toBe(entry.label);
-      expect(nav.need, `${entry.scr} permission gate drifted`).toEqual(entry.need);
+      const gate = gates.find((g) => g.id === entry.id);
+      expect(gate, `${entry.scr} (${entry.id}) has no SCR_ROUTES gate in app.js`).toBeTruthy();
+      expect(gate.need, `${entry.scr} permission gate drifted`).toEqual(entry.need);
     }
 
     // And every screen this suite claims to cover is actually in the registry.
@@ -403,6 +434,19 @@ test.describe('SPA routing — the two declarations cannot drift', () => {
       .toEqual(SCREENS.map((s) => s.hash).sort());
     expect(registry.map((r) => r.scr).sort())
       .toEqual(['SCR-09', 'SCR-10', 'SCR-13', 'SCR-28', 'SCR-30']);
+  });
+
+  test('an unknown hash cannot resolve to an ungated screen', async ({ page }) => {
+    // viewAllowed() refuses an id in neither NAV nor SCR_ROUTES. Before it
+    // existed, render() fell back to navAllowed({}), which returns true for
+    // everyone — so any route missing from NAV was readable by every signed-in
+    // principal regardless of permission.
+    await stubScreenApis(page);
+    await signIn(page);
+    const verdicts = await page.evaluate(
+      () => ['no-such-view', '', 'constructor', '__proto__'].map((id) => viewAllowed(id)),
+    );
+    expect(verdicts).toEqual([false, false, false, false]);
   });
 
   test('no SCR-nn route displaces an existing shell view', async ({ page }) => {
@@ -419,15 +463,197 @@ test.describe('SPA routing — the two declarations cannot drift', () => {
   });
 });
 
+/* ====================================== the one shared client, both envelopes */
+
+test.describe('core/api-client.js — one client, two error envelopes', () => {
+  test.beforeEach(async ({ page }) => {
+    await stubScreenApis(page);
+    await signIn(page);
+  });
+
+  test('the session header, correlation id and problem parsing exist in exactly one module', async ({ page }) => {
+    // The defect this module was created to close: core/api.js was hard-wired
+    // to /api/audit, so budget-api.js and settings/api.js each grew their own
+    // copy of the same mechanics — and only two of the three copies ever
+    // learned that this API has two error envelopes. A fourth copy, or a
+    // regrown third, is what this test exists to catch.
+    const files = [
+      '/static/src/core/api.js',
+      '/static/src/features/budget/budget-api.js',
+      '/static/src/features/settings/api.js',
+    ];
+    for (const f of files) {
+      const body = await (await page.request.get(f)).text();
+      const code = body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+      expect(code, `${f} still calls fetch() itself`).not.toMatch(/\bfetch\s*\(/);
+      expect(code, `${f} still reads the session itself`).not.toMatch(/sessionStorage/);
+      expect(code, `${f} still sets its own correlation id`).not.toMatch(/X-Correlation-Id/);
+      expect(code, `${f} still parses problem bodies itself`).not.toMatch(/message_id/);
+      expect(code, `${f} does not build on the shared client`)
+        .toMatch(/createApiClient/);
+    }
+  });
+
+  test('readProblem reads `code` from BOTH envelopes', async ({ page }) => {
+    const got = await page.evaluate(async () => {
+      const { readProblem } = await import('/static/src/core/api-client.js');
+      return {
+        // A: services.BusinessError — code at the TOP level.
+        businessError: readProblem({
+          code: 'BUDGET_EXCEEDED', message: 'Exceeds available budget.', message_id: 'MSG-BUD-001',
+        }),
+        // B: a router raising HTTPException(detail={...}) — code NESTED.
+        httpException: readProblem({
+          detail: { code: 'VERSION_CONFLICT', message: 'Someone else changed this record.' },
+        }),
+        // C: FastAPI's own plain-string detail.
+        plainString: readProblem({ detail: 'Not found.' }),
+        // D: FastAPI request validation — an array the old copies dropped.
+        validation: readProblem({
+          detail: [{ loc: ['body', 'amount_paise'], msg: 'is not a valid integer' }],
+        }),
+        rfc7807: readProblem({ title: 'Unprocessable Entity' }),
+        garbage: readProblem(null),
+      };
+    });
+
+    expect(got.businessError.code).toBe('BUDGET_EXCEEDED');
+    expect(got.businessError.detail).toBe('Exceeds available budget.');
+    expect(got.businessError.messageId).toBe('MSG-BUD-001');
+
+    expect(got.httpException.code, 'the nested envelope lost its code').toBe('VERSION_CONFLICT');
+    expect(got.httpException.detail).toBe('Someone else changed this record.');
+
+    expect(got.plainString.detail).toBe('Not found.');
+    expect(got.plainString.code).toBeNull();
+
+    expect(got.validation.detail).toBe('amount_paise: is not a valid integer');
+    expect(got.validation.messageId).toBe('VALIDATION_ERROR');
+
+    expect(got.rfc7807.detail).toBe('Unprocessable Entity');
+    expect(got.garbage.detail).toBeNull();
+  });
+
+  test('classifyStatus applies not-found-over-forbidden to reads only', async ({ page }) => {
+    const got = await page.evaluate(async () => {
+      const { classifyStatus } = await import('/static/src/core/api-client.js');
+      return {
+        getForbidden: classifyStatus(403, null, 'GET'),
+        headForbidden: classifyStatus(403, null, 'HEAD'),
+        postForbidden: classifyStatus(403, null, 'POST'),
+        putForbidden: classifyStatus(403, null, 'PUT'),
+        notFound: classifyStatus(404, null, 'GET'),
+        unauthorised: classifyStatus(401, null, 'GET'),
+        conflict: classifyStatus(409, null, 'PUT'),
+        conflictByCode: classifyStatus(400, 'VERSION_CONFLICT', 'PUT'),
+        validation: classifyStatus(422, null, 'POST'),
+        network: classifyStatus(0, null, 'GET'),
+        server: classifyStatus(500, null, 'GET'),
+      };
+    });
+    // A 403 on a READ is an existence oracle, so it must be indistinguishable
+    // from a 404. A 403 on a WRITE leaks no id the caller did not already name,
+    // and "not found" would be a lie about a permission refusal.
+    expect(got.getForbidden).toBe('notfound');
+    expect(got.headForbidden).toBe('notfound');
+    expect(got.notFound).toBe('notfound');
+    expect(got.postForbidden).toBe('forbidden');
+    expect(got.putForbidden).toBe('forbidden');
+    expect(got.unauthorised).toBe('auth');
+    expect(got.conflict).toBe('conflict');
+    expect(got.conflictByCode).toBe('conflict');
+    expect(got.validation).toBe('validation');
+    expect(got.network).toBe('network');
+    expect(got.server).toBe('error');
+  });
+
+  test('each feature error stays its own type while sharing one base', async ({ page }) => {
+    const got = await page.evaluate(async () => {
+      const [{ ApiClientError }, audit, budget, settings] = await Promise.all([
+        import('/static/src/core/api-client.js'),
+        import('/static/src/core/api.js'),
+        import('/static/src/features/budget/budget-api.js'),
+        import('/static/src/features/settings/api.js'),
+      ]);
+      const a = new audit.AuditApiError('x');
+      const b = new budget.BudgetApiError('x');
+      const s = new settings.SettingsApiError('x');
+      return {
+        names: [a.name, b.name, s.name],
+        allShareBase: [a, b, s].every((e) => e instanceof ApiClientError),
+        // The families stay distinguishable — feature code branches on these.
+        auditIsNotBudget: !(a instanceof budget.BudgetApiError),
+        budgetIsNotSettings: !(b instanceof settings.SettingsApiError),
+      };
+    });
+    expect(got.names).toEqual(['AuditApiError', 'BudgetApiError', 'SettingsApiError']);
+    expect(got.allShareBase, 'a feature error is not an ApiClientError').toBe(true);
+    expect(got.auditIsNotBudget).toBe(true);
+    expect(got.budgetIsNotSettings).toBe(true);
+  });
+
+  test('each client is bound to its own base path', async ({ page }) => {
+    // The whole point of parameterising: one implementation, three base paths.
+    const urls = [];
+    page.on('request', (r) => { if (r.url().includes('/api/')) urls.push(new URL(r.url()).pathname); });
+    await page.evaluate(async () => {
+      const [audit, budget, settings] = await Promise.all([
+        import('/static/src/core/api.js'),
+        import('/static/src/features/budget/budget-api.js'),
+        import('/static/src/features/settings/api.js'),
+      ]);
+      await Promise.all([
+        audit.listStreams(),
+        budget.listVersions('PRJ-01'),
+        settings.listSettings('organisations'),
+        settings.listMasters('items'),
+      ]);
+    });
+    expect(urls).toContain('/api/audit/streams');
+    expect(urls).toContain('/api/budget/versions');
+    expect(urls).toContain('/api/settings/organisations');
+    expect(urls).toContain('/api/masters/items');
+  });
+
+  test('every request carries the session header and a fresh correlation id', async ({ page }) => {
+    const seen = [];
+    page.on('request', (r) => {
+      if (r.url().includes('/api/audit/streams')) {
+        seen.push({
+          session: r.headers()['x-session'] || null,
+          cid: r.headers()['x-correlation-id'] || null,
+        });
+      }
+    });
+    await page.evaluate(async () => {
+      const audit = await import('/static/src/core/api.js');
+      await audit.listStreams();
+      await audit.listStreams();
+    });
+    expect(seen.length).toBeGreaterThanOrEqual(2);
+    for (const s of seen) {
+      expect(s.session, 'a request went out with no X-Session').toBeTruthy();
+      expect(s.cid, 'a request went out with no X-Correlation-Id').toBeTruthy();
+    }
+    // A correlation id that repeats cannot correlate anything.
+    expect(new Set(seen.map((s) => s.cid)).size).toBe(seen.length);
+  });
+});
+
 /* ================================================== permission-denied state */
 
 test.describe('SPA routing — permission-denied', () => {
-  test('a user without audit.read gets no Audit Trail Viewer entry and cannot route to it', async ({ page }) => {
+  test('a user without audit.read cannot route to the Audit Trail Viewer', async ({ page }) => {
+    // Positive control first, so the refusal below cannot pass because the
+    // route is simply broken for everyone.
     await stubScreenApis(page);
+    await signIn(page, ADMIN);
+    await gotoScreen(page, 'audit-trail');
+    await expect(pageTitle(page)).toHaveText('Audit Trail Viewer');
+
+    await page.evaluate(() => sessionStorage.clear());
     await signIn(page, REQUESTOR);
     await settleShell(page);
-
-    await expect(page.locator('#nav .nav-item[data-nav="audit-trail"]')).toHaveCount(0);
 
     await page.goto('/#audit-trail');
     await settleShell(page);
@@ -439,10 +665,13 @@ test.describe('SPA routing — permission-denied', () => {
 
   test('a user without settings.read or masters.read cannot route to Settings', async ({ page }) => {
     await stubScreenApis(page);
+    await signIn(page, ADMIN);
+    await gotoScreen(page, 'settings');
+    await expect(pageTitle(page)).toHaveText('Settings and Master Data');
+
+    await page.evaluate(() => sessionStorage.clear());
     await signIn(page, AUDITOR);
     await settleShell(page);
-
-    await expect(page.locator('#nav .nav-item[data-nav="settings"]')).toHaveCount(0);
 
     await page.goto('/#settings');
     await settleShell(page);
@@ -665,44 +894,63 @@ test.describe('SPA routing — accessibility', () => {
     ).toEqual(['color-contrast']);
   });
 
-  test('every SCR-nn screen is reachable with the keyboard alone', async ({ page }) => {
-    await settleShell(page);
+  for (const s of SCREENS) {
+    test(`${s.scr} — every control is reachable by Tab alone, with visible focus`, async ({ page }) => {
+      await gotoScreen(page, s.hash);
 
-    // Below 900px the navigation is an overlay drawer that closes itself after
-    // every navigation (closeNavOnNarrow), so it has to be re-opened before
-    // each screen — with the keyboard, since that is the whole point here.
-    const openDrawerIfNeeded = async () => {
-      const collapsed = await page.locator('#nav')
-        .evaluate((n) => getComputedStyle(n).display === 'none');
-      if (!collapsed) return;
-      await page.locator('#navToggle').focus();
-      await page.keyboard.press('Enter');
-      await expect(page.locator('#nav')).toBeVisible();
-    };
+      // Walk the whole screen with Tab and check that focus actually lands on
+      // each control and is visibly indicated. A control that can be clicked
+      // but never focused is unreachable for a keyboard-only user.
+      const controls = await page.locator(
+        '#content .scr-host button, #content .scr-host input, '
+        + '#content .scr-host select, #content .scr-host textarea, '
+        + '#content .scr-host [tabindex="0"]',
+      ).count();
+      expect(controls, `${s.scr} rendered no focusable control`).toBeGreaterThan(0);
 
-    for (const s of SCREENS) {
-      await openDrawerIfNeeded();
-      const item = page.locator(`#nav .nav-item[data-nav="${s.hash}"]`);
-      await item.focus();
-      // The focused element really is the navigation entry, and it is a real
-      // button — Enter activates it without a click handler on a div.
-      const focusedRoute = await page.evaluate(() => document.activeElement
-        && document.activeElement.getAttribute('data-nav'));
-      expect(focusedRoute, `${s.scr} navigation entry could not take focus`).toBe(s.hash);
-      await page.keyboard.press('Enter');
-      await settleScreen(page);
-      await expect(pageTitle(page)).toHaveText(s.title);
-    }
-  });
+      await page.locator('#content').focus();
+      const seen = new Set();
+      // Generous bound: enough Tabs to cross the screen plus the shell chrome
+      // that follows it, without looping forever if focus ever gets trapped.
+      for (let i = 0; i < controls + 40; i += 1) {
+        await page.keyboard.press('Tab');
+        const info = await page.evaluate(() => {
+          const el = document.activeElement;
+          if (!el || el === document.body) return null;
+          const host = el.closest('#content .scr-host');
+          if (!host) return { inside: false };
+          const cs = getComputedStyle(el);
+          return {
+            inside: true,
+            key: (el.id || '') + '|' + el.tagName + '|' + (el.textContent || '').slice(0, 24),
+            focusVisible: el.matches(':focus-visible'),
+            outlineWidth: parseFloat(cs.outlineWidth) || 0,
+            outlineStyle: cs.outlineStyle,
+          };
+        });
+        if (!info || !info.inside) continue;
+        seen.add(info.key);
+        // styles.css draws one high-contrast ring through :focus-visible, and
+        // Tab is exactly the interaction that triggers it.
+        expect(info.focusVisible, `${s.scr}: ${info.key} took focus with no :focus-visible ring`)
+          .toBe(true);
+        expect(info.outlineStyle, `${s.scr}: ${info.key} has outline-style none while focused`)
+          .not.toBe('none');
+        expect(info.outlineWidth, `${s.scr}: ${info.key} has a zero-width focus outline`)
+          .toBeGreaterThan(0);
+      }
+      expect(seen.size, `${s.scr}: Tab reached no control inside the screen`).toBeGreaterThan(0);
+    });
+  }
 
-  test('the focused navigation entry has a visible, non-colour-only focus ring', async ({ page }) => {
+  test('the shell chrome keeps a visible, non-colour-only focus ring', async ({ page }) => {
     await settleShell(page);
     await openNavIfCollapsed(page);
     // styles.css draws the ring through :focus-visible, which Chromium only
     // matches once the user has interacted by keyboard. Press Tab first so the
     // browser is in keyboard modality, exactly as a keyboard-only user is.
     await page.keyboard.press('Tab');
-    const item = page.locator('#nav .nav-item[data-nav="settings"]');
+    const item = page.locator('#nav .nav-item[data-nav="audit"]');
     await item.focus();
     const ring = await item.evaluate((el) => {
       const cs = getComputedStyle(el);
