@@ -160,19 +160,21 @@ def _seed_definition(con, suffix, *, entity, stages, object_type="BUDGET_REVISIO
     """
     definition_id = f"AD_{suffix}"
     con.execute(
-        # created_by is NOT NULL with no default on every configuration table
-        # in 008 -- the audit columns are required, not optional, because a
-        # workflow definition without a recorded author is exactly the row an
-        # auditor would ask about. Omitting them failed all 12 of these tests
-        # in CI and nowhere else, there being no local PostgreSQL.
+        # created_by is NOT NULL with no default on the three configuration
+        # tables -- a workflow definition with no recorded author is exactly
+        # the row an auditor would ask about. There is NO updated_by on any of
+        # them: unlike the org tables, an ACTIVE definition is immutable, so a
+        # last-updated column would only ever restate created_by. Adding one to
+        # this INSERT was my first correction and it was wrong -- both failures
+        # were visible only in CI, there being no local PostgreSQL.
         "INSERT INTO approval_definition (definition_id, object_type, code, version, "
-        "status, entity_id, effective_from, created_by, updated_by) "
-        "VALUES (%s,%s,%s,1,%s,%s,%s,'TEST','TEST')",
+        "status, entity_id, effective_from, created_by) "
+        "VALUES (%s,%s,%s,1,%s,%s,%s,'TEST')",
         (definition_id, object_type, f"CODE_{suffix}", rules.DEF_ACTIVE, entity,
          date(2020, 1, 1)))
     con.execute(
         "INSERT INTO approval_rule (rule_id, definition_id, priority, predicate, "
-        "created_by, updated_by) VALUES (%s,%s,10,%s,'TEST','TEST')",
+        "created_by) VALUES (%s,%s,10,%s,'TEST')",
         (f"AR_{suffix}", definition_id, Jsonb({"op": "true"})))
     for spec in stages:
         stage_id = f"AS_{suffix}_{spec['stage_no']}"
@@ -180,8 +182,8 @@ def _seed_definition(con, suffix, *, entity, stages, object_type="BUDGET_REVISIO
             "INSERT INTO approval_stage (stage_id, definition_id, stage_no, name, "
             "parallel_group, quorum_type, quorum_n, applies_when, sla_hours, "
             "escalate_after_hours, escalate_to, allow_delegation, requires_reason, "
-            "created_by, updated_by) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'TEST','TEST')",
+            "created_by) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'TEST')",
             (stage_id, definition_id, spec["stage_no"], f"Stage {spec['stage_no']}",
              spec.get("parallel_group"), spec.get("quorum_type", rules.QUORUM_ANY),
              spec.get("quorum_n"),

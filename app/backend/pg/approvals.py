@@ -698,19 +698,30 @@ def _append_action(session: Session, *, instance_id: str, stage_instance_id: str
     outcome_payload = dict(outcome or {})
     outcome_payload.setdefault("detail", detail)
 
-    action_id = _new_id("AACT")
-    session.execute(
+    # No fabricated id. The row's identity is whatever the database mints, and
+    # returning a made-up one would hand every caller -- the timeline, the API,
+    # the audit view -- an id that matches no row.
+    row = session.fetchone(
         f"""
+        -- action_id is GENERATED ALWAYS AS IDENTITY in migration 008, so it
+        -- must NOT be supplied: PostgreSQL rejects a non-DEFAULT value
+        -- outright. Letting the database mint it is also the right design for
+        -- an append-only ledger -- there is no id to collide, and no caller
+        -- can choose where its row lands. Note the ordering guarantee still
+        -- comes from `seq` under the advisory lock, never from action_id:
+        -- identity values are assigned before commit and can commit out of
+        -- order, which is the same trap audit_log documents.
         INSERT INTO approval_action
-            (action_id, stage_instance_id, instance_id, actor_user_id,
+            (stage_instance_id, instance_id, actor_user_id,
              acting_for_user_id, action, reason_code, reason_text, at, seq,
              prev_hash, entry_hash, idempotency_key, outcome)
-        VALUES (%(action_id)s, %(stage_instance_id)s, %(instance_id)s,
+        VALUES (%(stage_instance_id)s, %(instance_id)s,
                 %(actor)s, %(acting_for)s, %(action)s, %(reason_code)s,
                 %(reason_text)s, %(at)s, %(seq)s, %(prev_hash)s, %(entry_hash)s,
                 %(idempotency_key)s, %(outcome)s)
+        RETURNING action_id
         """,
-        {"action_id": action_id, "stage_instance_id": stage_instance_id,
+        {"stage_instance_id": stage_instance_id,
          "instance_id": instance_id, "actor": actor_user_id,
          "acting_for": acting_for_user_id, "action": action,
          "reason_code": reason_code, "reason_text": reason_text, "at": at,
@@ -718,6 +729,7 @@ def _append_action(session: Session, *, instance_id: str, stage_instance_id: str
          "idempotency_key": idempotency_key,
          "outcome": _to_jsonb(outcome_payload)},
     )
+    action_id = row[0] if row else None
     return {"action_id": action_id, "seq": seq, "at": at_iso,
             "entry_hash": entry_hash, "prev_hash": prev_hash}
 
