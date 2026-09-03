@@ -100,8 +100,10 @@ def _body_hash(node: ast.AST) -> str:
 
     Normalised so that formatting churn does not create false alarms:
       * the docstring is excluded - prose may be improved freely
-      * `ast.dump` is taken WITHOUT line/column attributes, so reflowing,
-        re-indenting or moving a test does not change the hash
+      * the body is unparsed back to canonical source, so reflowing,
+        re-indenting or moving a test does not change the hash -- and
+        neither does upgrading CPython, which an `ast.dump` of the AST
+        repr does not survive
     A comment change is likewise invisible, because comments are not in the AST.
     """
     body = list(getattr(node, "body", []))
@@ -109,9 +111,20 @@ def _body_hash(node: ast.AST) -> str:
             and isinstance(body[0].value, ast.Constant)
             and isinstance(body[0].value.value, str)):
         body = body[1:]  # drop the docstring
-    dumped = chr(10).join(
-        ast.dump(n, annotate_fields=True, include_attributes=False) for n in body
-    )
+    # `ast.unparse`, not `ast.dump`.
+    #
+    # `ast.dump` renders CPython's own AST repr, and that repr changes between
+    # CPython releases -- moving this machine from 3.11 to 3.14 changed all 773
+    # recorded hashes at once, with not one test edited. A gate that fires on
+    # every test because the interpreter moved is a gate someone switches off,
+    # and this one protects the 220 audit-remediation tests.
+    #
+    # `ast.unparse` round-trips the AST back to canonical source instead. It
+    # still ignores comments, formatting, indentation and line numbers -- the
+    # properties this hash was chosen for -- but its output is the Python
+    # language, which is far more stable than an internal repr. CI runs 3.11
+    # and a developer may run anything, so the hash has to survive that.
+    dumped = chr(10).join(ast.unparse(n) for n in body)
     return hashlib.sha256(dumped.encode()).hexdigest()[:16]
 
 

@@ -15,3287 +15,3287 @@
     "test_api_auth.py": {
       "test_aud_c_006_every_mutating_route_is_covered_by_the_authorisation_matrix": {
         "assertions": 1,
-        "body_sha": "36015fbc1fe34260"
+        "body_sha": "cb0a5881b1dac27a"
       },
       "test_aud_c_006_public_paths_are_only_health_and_login": {
         "assertions": 1,
-        "body_sha": "dfa3d6da9db2bc26"
+        "body_sha": "e4f189dad72e3147"
       },
       "test_aud_c_006_mutating_route_rejects_an_unauthenticated_caller": {
         "assertions": 2,
-        "body_sha": "0c20fbefbdb1ba36"
+        "body_sha": "983142d699e53d13"
       },
       "test_aud_c_006_read_route_rejects_an_unauthenticated_caller": {
         "assertions": 1,
-        "body_sha": "e4b4d998dca53f14"
+        "body_sha": "7faaf3e78353e2e8"
       },
       "test_aud_c_006_health_is_reachable_without_a_session": {
         "assertions": 2,
-        "body_sha": "e1f1c8574a057102"
+        "body_sha": "23d94eeb55b36f8e"
       },
       "test_aud_c_006_an_arbitrary_bearer_token_is_not_an_identity": {
         "assertions": 2,
-        "body_sha": "5f0db8baf472bca4"
+        "body_sha": "64f1ed0e688d19eb"
       },
       "test_aud_c_006_an_unknown_session_header_is_rejected": {
         "assertions": 2,
-        "body_sha": "8673445aecc4d969"
+        "body_sha": "1e5ae1340f6858a0"
       },
       "test_aud_c_006_a_revoked_session_is_rejected": {
         "assertions": 4,
-        "body_sha": "1a11a47adbe12cb3"
+        "body_sha": "8544afab609ca4de"
       },
       "test_aud_c_006_an_expired_session_is_rejected": {
         "assertions": 2,
-        "body_sha": "64362c2dd28a2c93"
+        "body_sha": "ebaf3fe3351fb178"
       },
       "test_aud_c_006_bad_password_is_refused": {
         "assertions": 1,
-        "body_sha": "6adacfc4e542d5fd"
+        "body_sha": "b3a7093ee91066b1"
       },
       "test_aud_c_006_login_does_not_disclose_which_accounts_exist": {
         "assertions": 2,
-        "body_sha": "c4b87683f9eb6040"
+        "body_sha": "1d42a48f10ccff14"
       },
       "test_aud_c_006_a_disabled_account_cannot_log_in": {
         "assertions": 1,
-        "body_sha": "93061bb95a4bfd6f"
+        "body_sha": "02f9039a5a0cf1c5"
       },
       "test_aud_c_006_mutating_route_rejects_a_role_without_the_permission": {
         "assertions": 3,
-        "body_sha": "d9a6ed6638bed71a"
+        "body_sha": "411d0c29e26e70d9"
       },
       "test_aud_c_006_a_caller_with_no_role_at_all_can_mutate_nothing": {
         "assertions": 1,
-        "body_sha": "5c83afea8392acb4"
+        "body_sha": "426dba9177c6451b"
       },
       "test_aud_c_006_every_permission_maps_to_known_roles": {
         "assertions": 2,
-        "body_sha": "4069c402c0f878e3"
+        "body_sha": "ca94ffc37d21875a"
       },
       "test_aud_c_006_maker_checker_covers_every_approval_permission": {
         "assertions": 1,
-        "body_sha": "c2a9d631762cd324"
+        "body_sha": "6ea2a1c990ca5de5"
       },
       "test_aud_c_006_administrator_holds_no_financial_approval": {
         "assertions": 1,
-        "body_sha": "eb2822808c7406a1"
+        "body_sha": "02ef5099a499b579"
       },
       "test_aud_c_006_auditor_is_read_only": {
         "assertions": 1,
-        "body_sha": "719a9be8ea821fb1"
+        "body_sha": "8b7c7755cd9b5802"
       },
       "test_aud_c_006_bootstrap_reports_only_the_callers_own_permissions": {
         "assertions": 2,
-        "body_sha": "c7fa4d615b8baa6b"
+        "body_sha": "45472ca96b423fa3"
       },
       "test_aud_c_006_request_body_cannot_nominate_the_acting_user": {
         "assertions": 3,
-        "body_sha": "2272c68edaac8400"
+        "body_sha": "55557cafcdc3592c"
       },
       "test_aud_c_006_audit_records_the_session_identity_not_a_supplied_one": {
         "assertions": 1,
-        "body_sha": "68e6950be729031a"
+        "body_sha": "509adc60a672adb7"
       },
       "test_aud_c_006_a_purchase_request_cannot_be_self_approved": {
         "assertions": 4,
-        "body_sha": "71bb62a033dcb4c5"
+        "body_sha": "445193fb95f3a273"
       },
       "test_aud_c_006_an_independent_approver_may_approve_the_same_request": {
         "assertions": 3,
-        "body_sha": "dd2a84e7a6604adb"
+        "body_sha": "c16cf7475eecdd81"
       },
       "test_aud_c_006_an_exception_approval_requires_a_recorded_reason": {
         "assertions": 2,
-        "body_sha": "b95cb3f1f38b19c3"
+        "body_sha": "dc70f6a6cd6b0663"
       },
       "test_aud_c_006_a_budget_revision_cannot_be_self_approved": {
         "assertions": 2,
-        "body_sha": "54dd61fe28199237"
+        "body_sha": "e8ff9528ddf27036"
       },
       "test_aud_c_006_a_capitalisation_cannot_be_self_approved": {
         "assertions": 2,
-        "body_sha": "f61471ae9d2518e7"
+        "body_sha": "dc27d255f71d3c67"
       },
       "test_aud_c_006_a_bill_void_is_subject_to_segregation_of_duties": {
         "assertions": 1,
-        "body_sha": "9b1d2f0c404f9b89"
+        "body_sha": "e89d3e589cfce31f"
       }
     },
     "test_audit.py": {
       "test_aud_c_010_an_audit_row_cannot_be_updated": {
         "assertions": 2,
-        "body_sha": "6143309691da189d"
+        "body_sha": "3b6c5a234b7a8074"
       },
       "test_aud_c_010_an_audit_row_cannot_be_deleted": {
         "assertions": 2,
-        "body_sha": "91e8b4c541f52119"
+        "body_sha": "e260a5978539342d"
       },
       "test_aud_c_010_no_audit_column_may_be_rewritten": {
         "assertions": 1,
-        "body_sha": "4d74421f76b5b71f"
+        "body_sha": "d2f4dbb9fe5d45b0"
       },
       "test_aud_c_010_the_hash_chain_verifies_through_the_api": {
         "assertions": 4,
-        "body_sha": "ddfff62efa4ac05d"
+        "body_sha": "0f3f6f834da76aeb"
       },
       "test_aud_c_010_the_chain_still_verifies_after_a_burst_of_business_activity": {
         "assertions": 2,
-        "body_sha": "6d825af5066083f2"
+        "body_sha": "449dab0d70c4c829"
       },
       "test_aud_c_010_every_entry_is_linked_to_its_predecessor": {
         "assertions": 2,
-        "body_sha": "f5f18b07fe203f4c"
+        "body_sha": "cd4c8d10d438973f"
       },
       "test_aud_c_010_tampering_is_detected_even_when_the_triggers_are_dropped": {
         "assertions": 3,
-        "body_sha": "bef58b58b2cd390b"
+        "body_sha": "c1eb6c5f17875fee"
       },
       "test_aud_c_010_verify_reports_the_first_broken_link_onwards": {
         "assertions": 2,
-        "body_sha": "97da3c0fbaeabd37"
+        "body_sha": "c9eee4d9a1d7deb3"
       },
       "test_aud_c_010_audit_read_requires_the_auditor_or_administrator_role": {
         "assertions": 4,
-        "body_sha": "449a688347cc0528"
+        "body_sha": "6b2324844cd55174"
       },
       "test_aud_c_010_each_guarded_mutation_writes_an_audit_entry": {
         "assertions": 1,
-        "body_sha": "61c54e44d49cd87a"
+        "body_sha": "beb61ebbf63fff93"
       },
       "test_aud_c_010_a_refused_mutation_writes_no_audit_entry": {
         "assertions": 2,
-        "body_sha": "be876446cd2de691"
+        "body_sha": "643057f35c639672"
       },
       "test_aud_c_010_the_audit_entry_names_the_acting_session_identity": {
         "assertions": 1,
-        "body_sha": "ef96a0690e2437a3"
+        "body_sha": "f405098abb76b23a"
       },
       "test_aud_c_010_reset_is_forbidden_without_the_local_demo_profile": {
         "assertions": 3,
-        "body_sha": "1f8d5e87e8ed03ff"
+        "body_sha": "7e57c3ffdda58581"
       },
       "test_aud_c_010_reset_stays_forbidden_under_any_other_profile": {
         "assertions": 1,
-        "body_sha": "73caac9c7fe47373"
+        "body_sha": "a73001345d24f94c"
       },
       "test_aud_c_010_reset_is_never_available_to_a_non_administrator": {
         "assertions": 1,
-        "body_sha": "823f42eca6cd9cd9"
+        "body_sha": "445d91a6add70582"
       },
       "test_aud_c_010_reset_under_the_local_demo_profile_succeeds": {
         "assertions": 6,
-        "body_sha": "a3eb2c4d8d4082e4"
+        "body_sha": "9347fa9f4702175d"
       },
       "test_aud_c_010_the_audit_log_is_still_append_only_after_a_reset": {
         "assertions": 2,
-        "body_sha": "52f1f0e819b5cc62"
+        "body_sha": "cbb2de2217044bb2"
       }
     },
     "test_budget_api_guard.py": {
       "test_every_budget_route_is_actually_served": {
         "assertions": 1,
-        "body_sha": "43c5aadb5e2c642f"
+        "body_sha": "2e76d864da55d41b"
       },
       "test_no_budget_route_answers_an_unauthenticated_caller": {
         "assertions": 1,
-        "body_sha": "15f83cf95e53160f"
+        "body_sha": "19170395ed30e442"
       },
       "test_a_present_but_invalid_session_is_still_refused": {
         "assertions": 1,
-        "body_sha": "246617fb5f909be5"
+        "body_sha": "ebc30aea65577056"
       },
       "test_the_guard_is_declared_on_the_router_not_route_by_route": {
         "assertions": 1,
-        "body_sha": "974a2d101d07da70"
+        "body_sha": "2f90471aab23e885"
       },
       "test_period_transition_permission_exists_and_excludes_read_only_roles": {
         "assertions": 3,
-        "body_sha": "a8da7c44817872c0"
+        "body_sha": "d60849237f74d6c5"
       },
       "test_a_role_lacking_the_permission_is_refused": {
         "assertions": 2,
-        "body_sha": "ff57fef343ae505d"
+        "body_sha": "27b7800597d86905"
       },
       "test_the_actor_is_server_derived_and_ignores_a_caller_supplied_header": {
         "assertions": 2,
-        "body_sha": "1cd9c50f66ddb530"
+        "body_sha": "d4ab40ca09cbdff2"
       },
       "test_read_all_is_never_derived_from_a_role_name": {
         "assertions": 3,
-        "body_sha": "ef674a039cc7bfd6"
+        "body_sha": "78a963ccc3a4f94a"
       },
       "test_an_unresolvable_principal_gets_a_scope_that_sees_nothing": {
         "assertions": 2,
-        "body_sha": "fb758bf25b8ed500"
+        "body_sha": "2f7077172ee0bd18"
       },
       "test_the_route_inventory_is_not_silently_empty": {
         "assertions": 1,
-        "body_sha": "2269eabe8d728df4"
+        "body_sha": "c39a8064fdbcc167"
       }
     },
     "test_capitalisation.py": {
       "test_aud_c_009_capitalisation_is_blocked_while_commitment_remains": {
         "assertions": 4,
-        "body_sha": "fc047a740e4a824d"
+        "body_sha": "2358f65724725e0a"
       },
       "test_aud_c_009_capitalisation_is_blocked_while_value_is_received_not_billed": {
         "assertions": 6,
-        "body_sha": "589329a35d51cba6"
+        "body_sha": "b5d98056edfd421f"
       },
       "test_aud_c_009_capitalisation_is_blocked_by_an_open_reconciliation_exception": {
         "assertions": 3,
-        "body_sha": "40fe9b5c35b517ca"
+        "body_sha": "2a287d6887fccff9"
       },
       "test_aud_c_009_a_negative_allocation_is_refused": {
         "assertions": 2,
-        "body_sha": "439957273e36550a"
+        "body_sha": "41ce04b0337cd23a"
       },
       "test_aud_c_009_a_zero_allocation_is_refused": {
         "assertions": 2,
-        "body_sha": "7cce6f95921add73"
+        "body_sha": "af59476ceb490303"
       },
       "test_aud_c_009_the_database_also_refuses_a_non_positive_allocation": {
         "assertions": 1,
-        "body_sha": "a67b7e64b19f8206"
+        "body_sha": "c1426e819e7f66bc"
       },
       "test_aud_c_009_a_write_off_without_a_reason_is_refused": {
         "assertions": 4,
-        "body_sha": "ee1d00168d95580a"
+        "body_sha": "cd413544cbc61a34"
       },
       "test_aud_c_009_the_database_also_requires_a_write_off_reason": {
         "assertions": 1,
-        "body_sha": "5a1752254238fe7e"
+        "body_sha": "a206007ec6f51ebd"
       },
       "test_aud_c_009_a_write_off_with_a_reason_is_accepted_and_recorded": {
         "assertions": 4,
-        "body_sha": "1f0fd6a02b908e38"
+        "body_sha": "307c5e40bbd3de70"
       },
       "test_aud_c_009_allocations_accumulate_into_the_request_total": {
         "assertions": 2,
-        "body_sha": "193d655cde79bbe2"
+        "body_sha": "13296835e53ef9e9"
       },
       "test_aud_c_009_allocation_is_closed_once_the_request_is_approved": {
         "assertions": 4,
-        "body_sha": "b5c4e22fabe311dd"
+        "body_sha": "152149e397ead45d"
       },
       "test_aud_c_009_allocation_total_must_equal_the_cwip_balance": {
         "assertions": 4,
-        "body_sha": "5463a91cb731051b"
+        "body_sha": "78d8e27d8918156d"
       },
       "test_aud_c_009_over_allocating_is_refused_too": {
         "assertions": 3,
-        "body_sha": "5d99290ff073f99f"
+        "body_sha": "a8cba8ffb77e206b"
       },
       "test_aud_c_009_a_fully_allocated_clean_project_capitalises": {
         "assertions": 6,
-        "body_sha": "461036327258fdb1"
+        "body_sha": "28728a558ad7f53a"
       },
       "test_aud_c_009_a_second_approval_is_refused": {
         "assertions": 4,
-        "body_sha": "1ae1c6a74c27c6f9"
+        "body_sha": "31529a3f1488022c"
       },
       "test_aud_c_009_approval_does_not_claim_a_general_ledger_posting": {
         "assertions": 3,
-        "body_sha": "e261929db564a09d"
+        "body_sha": "73ae110fbd3c29bf"
       },
       "test_aud_c_009_approving_an_unknown_request_is_404": {
         "assertions": 2,
-        "body_sha": "c55dc31811cc2567"
+        "body_sha": "2ac739eacc72e916"
       },
       "test_aud_c_009_the_capitalisation_listing_reports_readiness_honestly": {
         "assertions": 3,
-        "body_sha": "134ce55063e21819"
+        "body_sha": "bf472679c2fbfcf3"
       }
     },
     "test_connector.py": {
       "test_aud_h_003_sync_while_disconnected_is_409": {
         "assertions": 3,
-        "body_sha": "0ac1111264279bdc"
+        "body_sha": "106ab45368fff1b4"
       },
       "test_aud_h_003_sync_of_an_unknown_module_is_404": {
         "assertions": 2,
-        "body_sha": "0e3be967c3f1ffe6"
+        "body_sha": "fe592b92240dbace"
       },
       "test_aud_h_003_an_unknown_module_is_404_even_before_the_connection_is_checked": {
         "assertions": 2,
-        "body_sha": "8f3bf7e7fd44afec"
+        "body_sha": "8e669825bcaf2341"
       },
       "test_aud_h_003_sync_against_an_unknown_connection_is_404": {
         "assertions": 2,
-        "body_sha": "596404b786105249"
+        "body_sha": "7ea52787af2f66ce"
       },
       "test_aud_h_003_authorise_on_a_nonexistent_connection_is_404": {
         "assertions": 2,
-        "body_sha": "123b954b900db65b"
+        "body_sha": "41a94daadecac849"
       },
       "test_aud_h_003_module_metadata_for_an_unknown_module_is_404": {
         "assertions": 2,
-        "body_sha": "c05abbd32c13beb9"
+        "body_sha": "192533ef9de1f622"
       },
       "test_aud_h_003_a_disabled_connector_refuses_to_sync": {
         "assertions": 3,
-        "body_sha": "4c003dc89576b2f5"
+        "body_sha": "fcc88b4631738a22"
       },
       "test_aud_h_003_a_withheld_scope_blocks_the_module_it_protects": {
         "assertions": 5,
-        "body_sha": "748727513841bb36"
+        "body_sha": "337802234f8c5328"
       },
       "test_aud_h_003_a_granted_scope_allows_the_module": {
         "assertions": 3,
-        "body_sha": "c64d61945d0450f5"
+        "body_sha": "bc5eb835b456295b"
       },
       "test_aud_h_003_connectivity_tests_do_not_report_pass_while_disconnected": {
         "assertions": 3,
-        "body_sha": "100d1cb4c2dc9063"
+        "body_sha": "23c78667b6cad597"
       },
       "test_aud_h_003_connectivity_tests_fail_the_modules_whose_scope_was_withheld": {
         "assertions": 3,
-        "body_sha": "9a053db51d3fb460"
+        "body_sha": "220a9685cf79c99c"
       },
       "test_aud_h_002_the_connector_declares_itself_a_mock": {
         "assertions": 6,
-        "body_sha": "813fa75252b41a24"
+        "body_sha": "cee3fc209be75b13"
       },
       "test_aud_h_003_documented_specification_gaps_are_surfaced_not_hidden": {
         "assertions": 2,
-        "body_sha": "e5b778633f28b968"
+        "body_sha": "573ccbcf81f61d95"
       },
       "test_aud_h_003_modules_without_a_list_endpoint_report_a_limitation": {
         "assertions": 2,
-        "body_sha": "3f3fb02f2570926a"
+        "body_sha": "766cb5d1238f1a1f"
       },
       "test_aud_h_003_the_endpoint_inventory_is_read_from_the_verified_specification": {
         "assertions": 4,
-        "body_sha": "f472335e2809ebdd"
+        "body_sha": "a9e01c09200f0509"
       },
       "test_aud_h_003_reading_the_connector_requires_connector_read": {
         "assertions": 3,
-        "body_sha": "51ed8f15260c56b4"
+        "body_sha": "ac1e8498e52734ac"
       },
       "test_aud_h_003_managing_the_connector_requires_connector_manage": {
         "assertions": 4,
-        "body_sha": "bf847d2ccceee9a8"
+        "body_sha": "b1b2d925c08e5c9e"
       },
       "test_aud_h_003_authorisation_stores_secret_references_not_secrets": {
         "assertions": 1,
-        "body_sha": "f7b5eda8dc847b72"
+        "body_sha": "f4ca668d533abc17"
       },
       "test_aud_h_003_authorisation_and_sync_are_recorded_as_integration_events": {
         "assertions": 2,
-        "body_sha": "eaded5d16a4999b6"
+        "body_sha": "e152a099b93fb0f5"
       },
       "test_aud_h_003_health_reports_the_missing_scopes": {
         "assertions": 3,
-        "body_sha": "91e6901012f1c384"
+        "body_sha": "1d6d979f67db43da"
       }
     },
     "test_contracts.py": {
       "test_c3_holds_exactly_twenty_one_business_statuses": {
         "assertions": 2,
-        "body_sha": "fe76f44bbdbc135a"
+        "body_sha": "5a6974f975aa2ba0"
       },
       "test_c3_every_status_is_distinguishable_without_colour": {
         "assertions": 1,
-        "body_sha": "a49819b9e28e50f1"
+        "body_sha": "addcbb4373771085"
       },
       "test_c3_semantic_roles_are_from_the_declared_set": {
         "assertions": 1,
-        "body_sha": "1176103088d96eb5"
+        "body_sha": "95826865ce617eea"
       },
       "test_approval_label_overlap_with_c3_is_exactly_the_reviewed_set": {
         "assertions": 1,
-        "body_sha": "6cbb6c08e5bb3741"
+        "body_sha": "c9abb0746ade6386"
       },
       "test_every_approval_status_mapping_targets_a_real_business_status": {
         "assertions": 1,
-        "body_sha": "4ea2bf8cbdf8a08e"
+        "body_sha": "f22eb65bf0dfde79"
       },
       "test_integration_statuses_are_disjoint_from_business_statuses": {
         "assertions": 1,
-        "body_sha": "3fcafe5606e4bd95"
+        "body_sha": "ac778adcc785e7ad"
       },
       "test_domain_status_overlap_with_c3_is_exactly_the_reviewed_set": {
         "assertions": 1,
-        "body_sha": "789fa8f3750bc302"
+        "body_sha": "d58fb04ce4d5aea5"
       },
       "test_cross_namespace_code_reuse_is_exactly_the_reviewed_set": {
         "assertions": 1,
-        "body_sha": "0d1d6c7da8c64c87"
+        "body_sha": "92a8ff9bca0a9caf"
       },
       "test_every_integration_badge_value_derives_from_a_real_status": {
         "assertions": 1,
-        "body_sha": "0bfb19e8e1581439"
+        "body_sha": "3cdb90acf5360c57"
       },
       "test_the_only_business_visible_integration_bridge_is_the_two_c3_codes": {
         "assertions": 2,
-        "body_sha": "6793f40056130caf"
+        "body_sha": "65c5c792b51df6e4"
       },
       "test_every_zoho_mapping_target_exists_in_the_business_registry": {
         "assertions": 1,
-        "body_sha": "56dc30cfd5b042f5"
+        "body_sha": "31e350c12daaa928"
       },
       "test_zoho_mappings_always_name_their_product": {
         "assertions": 2,
-        "body_sha": "d6dd0fa7a3e6370e"
+        "body_sha": "e1a54a454e737f39"
       },
       "test_erp_mappings_are_marked_provisional_pending_d14": {
         "assertions": 1,
-        "body_sha": "71a2cb3e1dbcf537"
+        "body_sha": "0d07f8372e56a01d"
       },
       "test_every_traced_requirement_has_a_known_provenance": {
         "assertions": 1,
-        "body_sha": "2dbdd573d9bb9199"
+        "body_sha": "a58c7ecf329ddc5b"
       },
       "test_every_traced_requirement_has_at_least_one_test": {
         "assertions": 1,
-        "body_sha": "fde4d7dce1766b94"
+        "body_sha": "9ae32e6c1f1d944e"
       },
       "test_every_traced_requirement_has_acceptance_criteria": {
         "assertions": 1,
-        "body_sha": "d871b824f7bded08"
+        "body_sha": "9ce05739dcf03379"
       },
       "test_every_requirement_declares_a_traceability_status": {
         "assertions": 1,
-        "body_sha": "dae43914ed9e5870"
+        "body_sha": "f3412b43a820c577"
       },
       "test_untraced_requirement_count_only_ever_falls": {
         "assertions": 1,
-        "body_sha": "eb903e535c157b2a"
+        "body_sha": "fcab7aab10c7f2db"
       },
       "test_no_pending_requirement_pretends_to_have_coverage": {
         "assertions": 2,
-        "body_sha": "e511798b6ab9fad1"
+        "body_sha": "b3f59f94ae2b51df"
       },
       "test_every_client_note_and_product_owner_requirement_is_fully_traced": {
         "assertions": 1,
-        "body_sha": "df65d4f02576eee5"
+        "body_sha": "061df3c0ec76c4ac"
       },
       "test_requirement_ids_follow_the_frozen_scheme": {
         "assertions": 1,
-        "body_sha": "402f928c23b0ee86"
+        "body_sha": "95d313293c74afaa"
       },
       "test_client_note_and_product_owner_requirements_are_separately_attributed": {
         "assertions": 2,
-        "body_sha": "a8599098a75d7e5d"
+        "body_sha": "70dee49402ce024a"
       },
       "test_master_prompt_requirements_are_never_presented_as_client_confirmed": {
         "assertions": 1,
-        "body_sha": "8051a84f866b0d4b"
+        "body_sha": "9c9f3d73c61ddb24"
       },
       "test_wbs_requirement_records_its_provenance_caveat": {
         "assertions": 1,
-        "body_sha": "24d741d4e108855f"
+        "body_sha": "cada69bbaaa52948"
       },
       "test_every_message_id_used_in_code_exists_in_the_registry": {
         "assertions": 1,
-        "body_sha": "32069652d2486523"
+        "body_sha": "9d13a8820c2a9ad1"
       },
       "test_the_root_palette_is_exactly_the_frozen_token_palette": {
         "assertions": 1,
-        "body_sha": "0356a5dc7c4949a9"
+        "body_sha": "1a6ca4eda3125713"
       },
       "test_no_new_off_token_colour_is_introduced": {
         "assertions": 1,
-        "body_sha": "147d58bd74ecad40"
+        "body_sha": "e0df4dd6a3e492ba"
       },
       "test_the_approved_stylesheet_is_unchanged": {
         "assertions": 1,
-        "body_sha": "e5633fb65ef7876a"
+        "body_sha": "4ed212ebd1c0fe75"
       },
       "test_the_server_sends_a_style_src_self_content_security_policy": {
         "assertions": 2,
-        "body_sha": "10c07e82ba9a6a6c"
+        "body_sha": "85dc92d078db10ca"
       },
       "test_the_frontend_carries_no_inline_style_attribute": {
         "assertions": 1,
-        "body_sha": "ef3f463e7c0165a4"
+        "body_sha": "802f080c8129660e"
       },
       "test_technical_role_set_has_not_drifted_while_d12_is_unresolved": {
         "assertions": 1,
-        "body_sha": "fa9983864b3ce1b0"
+        "body_sha": "a9ecd0587c16863f"
       },
       "test_every_permission_maps_only_to_known_technical_roles": {
         "assertions": 1,
-        "body_sha": "62c3227b0a63c4fa"
+        "body_sha": "fb3f2928eabb8685"
       },
       "test_every_maker_checker_permission_is_a_real_permission": {
         "assertions": 1,
-        "body_sha": "9c31098574aba422"
+        "body_sha": "d6d2a91dcf9a9b87"
       },
       "test_derive_reproduces_every_frozen_worked_example_in_c5": {
         "assertions": 3,
-        "body_sha": "dfd3cf122d0cabb8"
+        "body_sha": "9e16fc322ec1ee3f"
       },
       "test_pr_reservation_extends_exposure_without_changing_the_frozen_formula": {
         "assertions": 3,
-        "body_sha": "265eb81bf687dc61"
+        "body_sha": "4e5001a2c92b6811"
       },
       "test_the_alert_bands_match_the_frozen_thresholds": {
         "assertions": 5,
-        "body_sha": "539c22e01cda9b61"
+        "body_sha": "a723737609a3dd77"
       },
       "test_only_accounting_effective_bill_states_move_actual_cwip": {
         "assertions": 2,
-        "body_sha": "1ee3f28ce74314c9"
+        "body_sha": "92b72ea4ea915899"
       },
       "test_only_cancelled_and_closed_release_commitment": {
         "assertions": 1,
-        "body_sha": "e950a906d39845b6"
+        "body_sha": "2281e150091eb182"
       },
       "test_money_is_integer_paise_and_never_float": {
         "assertions": 4,
-        "body_sha": "5eec53d21e92b15a"
+        "body_sha": "a025619bedc26955"
       },
       "test_c8_freezes_forty_screens_each_with_twenty_four_attributes": {
         "assertions": 3,
-        "body_sha": "141338e176a75f12"
+        "body_sha": "f0b10439a5a8c6ee"
       },
       "test_every_traced_screen_reference_is_a_real_screen_id": {
         "assertions": 1,
-        "body_sha": "f7dc91116b6c5e0b"
+        "body_sha": "20a0006167efe0ab"
       },
       "test_the_contract_gap_register_exists_and_lists_every_open_gap": {
         "assertions": 1,
-        "body_sha": "493d88b44c08f1fe"
+        "body_sha": "cd8a0b73ae0b87b9"
       },
       "test_every_contract_file_is_valid_json_and_declares_its_freeze_date": {
         "assertions": 2,
-        "body_sha": "cb58a4ff1582a958"
+        "body_sha": "9406faf252b31ba2"
       },
       "test_no_document_claims_ambiguities_are_owned_while_any_is_unassigned": {
         "assertions": 1,
-        "body_sha": "bbd48f5c0e887896"
+        "body_sha": "91b4dcfbd0a5e5fb"
       },
       "test_the_exit_report_states_the_ambiguity_position_accurately": {
         "assertions": 3,
-        "body_sha": "039f892658be35a2"
+        "body_sha": "d4e5496091e99c93"
       },
       "test_every_open_ambiguity_declares_a_decision_gate_and_cost_of_delay": {
         "assertions": 4,
-        "body_sha": "08fa72d741dae555"
+        "body_sha": "6119d2d7b18d6086"
       },
       "test_every_open_ambiguity_appears_in_the_client_questionnaire": {
         "assertions": 1,
-        "body_sha": "a8dc819a4055a4d8"
+        "body_sha": "aa332510c799c080"
       }
     },
     "test_domain_invariants.py": {
       "test_available_equals_budget_minus_actual_commitment_and_reservation": {
         "assertions": 2,
-        "body_sha": "c895f361d8d3fdef"
+        "body_sha": "354bee586d543489"
       },
       "test_exposure_is_the_sum_of_commitment_actual_and_reservation": {
         "assertions": 1,
-        "body_sha": "7fedfba0c69413b4"
+        "body_sha": "a9c0c07867b3f138"
       },
       "test_utilisation_and_band_derive_from_exposure_and_budget": {
         "assertions": 6,
-        "body_sha": "d24fdda9e19d25e4"
+        "body_sha": "6ea3ba2336095470"
       },
       "test_rollup_equals_own_plus_children": {
         "assertions": 1,
-        "body_sha": "0256c8c314a75f7a"
+        "body_sha": "227ca878d6cf8b91"
       },
       "test_money_is_only_ever_integer_paise": {
         "assertions": 1,
-        "body_sha": "cfde602d63401879"
+        "body_sha": "2580eccd2d9fbb3a"
       },
       "test_po_line_billed_plus_open_commitment_equals_ordered": {
         "assertions": 2,
-        "body_sha": "5f564b888b043ebb"
+        "body_sha": "f3aff4962639df52"
       },
       "test_over_billed_lines_are_flagged_rather_than_silently_absorbed": {
         "assertions": 4,
-        "body_sha": "98ef59947b4f263b"
+        "body_sha": "7cc1f124c5baa3e2"
       },
       "test_released_purchase_orders_hold_no_commitment": {
         "assertions": 3,
-        "body_sha": "a4816ce514bf60fd"
+        "body_sha": "c6d97ba8a6a0de10"
       },
       "test_exposure_is_unchanged_by_billing_progress": {
         "assertions": 5,
-        "body_sha": "c8094dd4e7bdcf9a"
+        "body_sha": "9a5bc54a87ac06fb"
       },
       "test_aud_h_001_live_pr_reservation_consumes_availability": {
         "assertions": 5,
-        "body_sha": "35cfef8dc2c9b68f"
+        "body_sha": "fc262b65e30ee41d"
       },
       "test_aud_h_001_a_reservation_converts_exactly_once": {
         "assertions": 4,
-        "body_sha": "4244924304ead3a2"
+        "body_sha": "09065bff7299e172"
       },
       "test_aud_h_001_only_one_live_reservation_per_request": {
         "assertions": 1,
-        "body_sha": "4b46e64db7ccc4ee"
+        "body_sha": "1d32d350ce3a68d8"
       },
       "test_aud_c_005_current_budget_is_original_plus_approved_effective_revisions": {
         "assertions": 3,
-        "body_sha": "84afd4822686b85b"
+        "body_sha": "75ffe30391f6f617"
       },
       "test_aud_c_005_seeded_transfer_moved_budget_without_creating_any": {
         "assertions": 7,
-        "body_sha": "643a1342b8f9f1b0"
+        "body_sha": "b40129976c4a63e1"
       },
       "test_aud_c_005_unapproved_budget_lines_create_no_spending_capacity": {
         "assertions": 2,
-        "body_sha": "dba8956273e12e97"
+        "body_sha": "40071c63ba85716c"
       },
       "test_aud_c_005_future_effective_revision_creates_no_capacity_today": {
         "assertions": 2,
-        "body_sha": "752ec189e7eff9d2"
+        "body_sha": "8711b66983061b36"
       },
       "test_aud_c_005_approved_line_without_evidence_is_rejected": {
         "assertions": 1,
-        "body_sha": "63284fe9e8a60c0e"
+        "body_sha": "1b604ba2acda4f4b"
       },
       "test_aud_c_005_original_budget_row_cannot_be_updated": {
         "assertions": 2,
-        "body_sha": "edab32fa6346e93c"
+        "body_sha": "50c157b1548f6c4e"
       },
       "test_aud_c_005_original_budget_row_cannot_be_deleted": {
         "assertions": 2,
-        "body_sha": "b0159d2ef2cf481b"
+        "body_sha": "ce6e08f56034821c"
       },
       "test_aud_c_005_original_budget_row_cannot_be_moved_to_another_head": {
         "assertions": 1,
-        "body_sha": "382c1a8b0fcb6026"
+        "body_sha": "45b731b7f978eb64"
       },
       "test_aud_c_005_a_positive_return_row_is_rejected_by_check": {
         "assertions": 1,
-        "body_sha": "94006a5226e5ae67"
+        "body_sha": "9f217c7b881c4443"
       },
       "test_aud_c_005_an_increasing_kind_may_not_be_negative": {
         "assertions": 1,
-        "body_sha": "b861d97809c183c7"
+        "body_sha": "34abb56150541ff8"
       },
       "test_aud_c_005_original_budget_is_never_a_revision": {
         "assertions": 1,
-        "body_sha": "e8954761866c70a0"
+        "body_sha": "e522544b27ed76d4"
       },
       "test_aud_c_005_revision_creation_returns_201": {
         "assertions": 3,
-        "body_sha": "b2d11458ce903852"
+        "body_sha": "09733bef775e296e"
       },
       "test_aud_c_005_submitted_revision_does_not_move_availability": {
         "assertions": 2,
-        "body_sha": "2fbf60dcad192b5b"
+        "body_sha": "fdc35aa00ecd193c"
       },
       "test_aud_c_005_approved_revision_increases_budget_but_not_the_original": {
         "assertions": 5,
-        "body_sha": "ffca3246f4ba90e7"
+        "body_sha": "065a6ae857a18af8"
       },
       "test_aud_c_005_return_revision_never_increases_budget": {
         "assertions": 4,
-        "body_sha": "a366d7219aba41b8"
+        "body_sha": "78a0e87d98267205"
       },
       "test_aud_c_005_revision_requires_a_reason_and_a_known_kind": {
         "assertions": 4,
-        "body_sha": "680df88c77b1eace"
+        "body_sha": "779168f9276d7657"
       },
       "test_aud_c_005_revision_approval_is_not_repeatable": {
         "assertions": 3,
-        "body_sha": "7a9975206e28f2c7"
+        "body_sha": "b4c9a8761deaba65"
       },
       "test_aud_m_005_deep_wbs_ledger_does_not_raise_recursion_error": {
         "assertions": 2,
-        "body_sha": "b8708f469264085b"
+        "body_sha": "bb124d6ddf163544"
       },
       "test_aud_m_005_deep_wbs_budget_check_is_controlled_not_crashing": {
         "assertions": 3,
-        "body_sha": "ebe8dab529e4f6db"
+        "body_sha": "5807caaea52239f6"
       },
       "test_aud_m_005_shallow_chain_within_the_depth_bound_still_resolves": {
         "assertions": 2,
-        "body_sha": "e0a3eaef27a689df"
+        "body_sha": "47a80cd76f0b9f0e"
       },
       "test_aud_m_005_deep_wbs_tree_endpoint_answers_without_a_500": {
         "assertions": 4,
-        "body_sha": "3273fed24203d0f3"
+        "body_sha": "428f9b2a7e0e9bbb"
       },
       "test_aud_m_005_a_normal_hierarchy_still_serialises_as_a_nested_tree": {
         "assertions": 4,
-        "body_sha": "465a9ae2eafd7b23"
+        "body_sha": "693e89c59be310fa"
       }
     },
     "test_financial_controls.py": {
       "test_aud_c_001_over_budget_amendment_is_refused_with_409": {
         "assertions": 5,
-        "body_sha": "ff7eb2cb931ba5b4"
+        "body_sha": "2f4c2f7dff117e5c"
       },
       "test_aud_c_001_a_refused_amendment_does_not_persist": {
         "assertions": 3,
-        "body_sha": "4cb08a8c85e93f4c"
+        "body_sha": "af9442ead83000de"
       },
       "test_aud_c_001_a_within_budget_amendment_is_applied": {
         "assertions": 5,
-        "body_sha": "3137442074bac0a6"
+        "body_sha": "09124b356ae94c1d"
       },
       "test_aud_c_001_a_decrease_releases_commitment": {
         "assertions": 3,
-        "body_sha": "c34fbaafb9deb77c"
+        "body_sha": "280066893a8d3cbc"
       },
       "test_aud_c_001_an_over_budget_amendment_needs_an_approved_independent_exception": {
         "assertions": 6,
-        "body_sha": "e448cfbbaace831f"
+        "body_sha": "f119dbde26747d26"
       },
       "test_aud_c_001_an_unapproved_or_foreign_exception_reference_is_refused": {
         "assertions": 4,
-        "body_sha": "c3538c6f863a3c4b"
+        "body_sha": "e3f3cac226fb4789"
       },
       "test_aud_c_001_an_exception_from_another_control_cell_is_refused": {
         "assertions": 3,
-        "body_sha": "47209d220bea5a9c"
+        "body_sha": "f3aa49084d550a97"
       },
       "test_aud_c_001_optimistic_version_conflict_is_reported": {
         "assertions": 2,
-        "body_sha": "6fc842c8b43b705c"
+        "body_sha": "83135e0e60574a37"
       },
       "test_aud_c_001_a_cancelled_or_closed_po_cannot_be_amended": {
         "assertions": 2,
-        "body_sha": "a9d05fd985670af1"
+        "body_sha": "e8fd22e512ea8d9c"
       },
       "test_aud_c_001_concurrent_amendments_do_not_overspend": {
         "assertions": 8,
-        "body_sha": "293a428984d76f49"
+        "body_sha": "751661f6f98d96bb"
       },
       "test_aud_c_001_the_ledger_invariant_survives_a_burst_of_amendments": {
         "assertions": 5,
-        "body_sha": "4355bf25f6caa3d5"
+        "body_sha": "56ed1a2045b605fc"
       },
       "test_aud_c_002_a_head_with_no_budget_on_the_branch_is_refused": {
         "assertions": 3,
-        "body_sha": "33c4c66908bd7069"
+        "body_sha": "e49ed5a5ea82095f"
       },
       "test_aud_c_002_the_correct_head_succeeds_on_the_same_element": {
         "assertions": 3,
-        "body_sha": "202d9a69deb6db49"
+        "body_sha": "23d98b8d65016b47"
       },
       "test_aud_c_002_spending_on_one_head_does_not_consume_another": {
         "assertions": 3,
-        "body_sha": "b25b700b5fb8b0b3"
+        "body_sha": "b93de2fe0865bd36"
       },
       "test_aud_c_002_budget_check_is_evaluated_against_the_named_head": {
         "assertions": 4,
-        "body_sha": "ba19a1be98182b54"
+        "body_sha": "70776ba9b8c745ee"
       },
       "test_aud_c_002_a_head_that_is_not_an_active_head_is_refused": {
         "assertions": 1,
-        "body_sha": "c46a10430def188b"
+        "body_sha": "fd4c75711bf83446"
       },
       "test_aud_c_002_an_unknown_head_is_refused": {
         "assertions": 1,
-        "body_sha": "819dcf71f2f0359f"
+        "body_sha": "a58f692858534d34"
       },
       "test_aud_c_002_the_control_cell_is_the_nearest_ancestor_holding_that_head": {
         "assertions": 2,
-        "body_sha": "3bf94b0c65db1b84"
+        "body_sha": "8da5b2e604dda17b"
       },
       "test_aud_c_002_budget_grid_is_keyed_on_wbs_and_head": {
         "assertions": 2,
-        "body_sha": "2fdf098c0b1ac3fa"
+        "body_sha": "fc3b3c0e29a6ff65"
       },
       "test_aud_c_003_a_pr_whose_wbs_belongs_to_another_project_is_422": {
         "assertions": 3,
-        "body_sha": "64cea715a6527222"
+        "body_sha": "f146cc8ddbf361ef"
       },
       "test_aud_c_003_amending_a_line_that_belongs_to_another_po_is_422": {
         "assertions": 3,
-        "body_sha": "c8226b4cb2137f1c"
+        "body_sha": "5a5d7e9d64f7f73e"
       },
       "test_aud_c_003_amending_an_unknown_line_is_404": {
         "assertions": 2,
-        "body_sha": "68ad9d5ea04d1632"
+        "body_sha": "093ddc3496d9ba8c"
       },
       "test_aud_c_003_a_bill_line_may_not_point_at_another_pos_line": {
         "assertions": 1,
-        "body_sha": "2f6d5efd50b57ba0"
+        "body_sha": "775ba728b0673dab"
       },
       "test_aud_c_003_a_bill_line_may_not_post_to_a_different_wbs_than_its_po_line": {
         "assertions": 1,
-        "body_sha": "54ce84badd975173"
+        "body_sha": "0903747c90a296fc"
       },
       "test_aud_c_003_a_bill_line_may_not_be_repointed_after_the_fact": {
         "assertions": 1,
-        "body_sha": "780d30c54d2ff38f"
+        "body_sha": "c9b8213daf275cac"
       },
       "test_aud_c_003_a_grn_line_must_reference_its_own_purchase_order": {
         "assertions": 1,
-        "body_sha": "0ada90efd24beb4e"
+        "body_sha": "0b106fd9215882e6"
       },
       "test_aud_c_003_a_po_line_wbs_must_belong_to_the_pos_project": {
         "assertions": 1,
-        "body_sha": "093d8339b5fc6ac9"
+        "body_sha": "c1d3b852c9d61814"
       },
       "test_aud_c_003_a_purchase_request_wbs_must_belong_to_its_project": {
         "assertions": 1,
-        "body_sha": "10fef345a9528948"
+        "body_sha": "4494d7ce6f91e5f7"
       },
       "test_aud_c_003_a_wbs_element_cannot_be_its_own_parent": {
         "assertions": 1,
-        "body_sha": "b1108ec5e1e975c5"
+        "body_sha": "d82cf64f037d1016"
       },
       "test_aud_c_003_reparenting_may_not_create_a_cycle": {
         "assertions": 1,
-        "body_sha": "0e9bfa3416976537"
+        "body_sha": "3ecd6032f039253b"
       },
       "test_aud_c_003_a_child_must_share_its_parents_project": {
         "assertions": 1,
-        "body_sha": "39b128abf3b8d2b0"
+        "body_sha": "49e8a89f01bce7ec"
       },
       "test_aud_c_003_wbs_progress_is_bounded": {
         "assertions": 1,
-        "body_sha": "2e6b6f5cc1c077fa"
+        "body_sha": "882f9e12b8ed8783"
       },
       "test_aud_c_003_a_po_line_amount_may_not_be_negative": {
         "assertions": 1,
-        "body_sha": "7cb996612bbb37f5"
+        "body_sha": "08c74adb5f1f031f"
       },
       "test_aud_c_004_voiding_a_bill_removes_actual_and_restores_commitment": {
         "assertions": 9,
-        "body_sha": "47e070bce9f3c1e2"
+        "body_sha": "ceb08f487e85c7d3"
       },
       "test_aud_c_004_voiding_requires_a_reason": {
         "assertions": 2,
-        "body_sha": "ad3600e752f68ecc"
+        "body_sha": "0e96ca69106e084e"
       },
       "test_aud_c_004_a_bill_cannot_be_voided_twice": {
         "assertions": 3,
-        "body_sha": "b398815f0591b219"
+        "body_sha": "5c7ff916347369d1"
       },
       "test_aud_c_004_voiding_an_unknown_bill_is_404": {
         "assertions": 2,
-        "body_sha": "ef8d03324af99728"
+        "body_sha": "0340da705ae46f5c"
       },
       "test_aud_c_004_a_duplicate_external_bill_id_is_rejected": {
         "assertions": 2,
-        "body_sha": "9f08605aaa8a9d1a"
+        "body_sha": "c5bb9419aa837e61"
       },
       "test_aud_c_004_a_reversal_bill_negates_rather_than_adds": {
         "assertions": 2,
-        "body_sha": "5fb2dace1cd91bf3"
+        "body_sha": "e7d216470f22a5cd"
       },
       "test_aud_c_004_a_reversal_stored_with_a_negative_amount_still_negates": {
         "assertions": 1,
-        "body_sha": "6692f8fceabe02b8"
+        "body_sha": "f6358ea535dbb81d"
       },
       "test_aud_c_004_a_non_effective_bill_does_not_move_actual_cwip": {
         "assertions": 2,
-        "body_sha": "4ab710bffe24d02a"
+        "body_sha": "fac3dfb220e2a8b7"
       },
       "test_aud_c_004_the_bills_endpoint_reports_accounting_effectiveness": {
         "assertions": 2,
-        "body_sha": "b6c5f8eb7319765d"
+        "body_sha": "a88993af3181798e"
       },
       "test_aud_c_004_a_void_is_recorded_in_the_audit_trail": {
         "assertions": 3,
-        "body_sha": "d601cdfb4e4c0c48"
+        "body_sha": "ba60260a0e4f3206"
       },
       "test_aud_c_007_repeating_a_create_with_the_same_key_produces_one_object": {
         "assertions": 3,
-        "body_sha": "025a5837f57476af"
+        "body_sha": "537a8792d03e46da"
       },
       "test_aud_c_007_distinct_keys_create_distinct_objects": {
         "assertions": 2,
-        "body_sha": "a57f6d154f0cad90"
+        "body_sha": "03023be7d6700483"
       },
       "test_aud_c_007_reusing_a_key_for_a_different_request_is_refused": {
         "assertions": 3,
-        "body_sha": "a51934d03774dba9"
+        "body_sha": "cc977f3274e9ac82"
       },
       "test_aud_c_007_without_a_key_each_call_creates_its_own_object": {
         "assertions": 1,
-        "body_sha": "312432a5ea49345f"
+        "body_sha": "3b77f22e8efe0bdc"
       },
       "test_aud_c_007_repeating_a_sync_with_the_same_key_does_not_double_count": {
         "assertions": 7,
-        "body_sha": "2a888a80ac98835b"
+        "body_sha": "c53b465cb22bb5a9"
       },
       "test_aud_c_007_external_documents_are_unique_per_source_and_organisation": {
         "assertions": 1,
-        "body_sha": "7989558046527ea2"
+        "body_sha": "6be1f7b30760d64e"
       },
       "test_aud_c_008_a_draft_project_refuses_procurement": {
         "assertions": 4,
-        "body_sha": "db037ca63437004b"
+        "body_sha": "a0b80dbd46ff2342"
       },
       "test_aud_c_008_a_non_releasing_project_state_refuses_procurement": {
         "assertions": 2,
-        "body_sha": "40efa57780d4c4a5"
+        "body_sha": "bb2c073d04bdcf26"
       },
       "test_aud_c_008_a_closed_wbs_refuses_procurement": {
         "assertions": 4,
-        "body_sha": "f1c581a109fa7b7e"
+        "body_sha": "97ca58ef4de41d07"
       },
       "test_aud_c_008_an_abandoned_wbs_refuses_procurement": {
         "assertions": 2,
-        "body_sha": "e10451f9648fa2b1"
+        "body_sha": "2efc6ca5f070f9ec"
       },
       "test_aud_c_008_an_unknown_lifecycle_state_denies_by_default": {
         "assertions": 3,
-        "body_sha": "1b898cd46ae72ede"
+        "body_sha": "7442e9fa2881587d"
       },
       "test_aud_c_008_permission_flags_follow_the_lifecycle_state": {
         "assertions": 2,
-        "body_sha": "17312e1dc0c2fab7"
+        "body_sha": "e3e48d4cf2fd3317"
       },
       "test_aud_c_008_technically_completed_permits_posting_but_not_procurement": {
         "assertions": 2,
-        "body_sha": "43f0643685f9dfc1"
+        "body_sha": "3dfebba4d8e87170"
       },
       "test_aud_c_008_an_unknown_wbs_is_refused_rather_than_approved": {
         "assertions": 2,
-        "body_sha": "a30c30619f9ce8dc"
+        "body_sha": "ab4b6cdccd659135"
       },
       "test_aud_c_008_a_negative_proposed_commitment_is_refused": {
         "assertions": 2,
-        "body_sha": "efd00a8639ea3102"
+        "body_sha": "593bd4c4b0339223"
       },
       "test_aud_c_008_a_bad_amount_is_a_controlled_refusal_not_a_500": {
         "assertions": 2,
-        "body_sha": "c2c58e30830c4a30"
+        "body_sha": "88750fe617c8ceda"
       },
       "test_aud_c_008_an_unparseable_amount_is_a_controlled_refusal": {
         "assertions": 2,
-        "body_sha": "e112c4b4f12be906"
+        "body_sha": "23b50908b112b163"
       },
       "test_aud_c_008_goods_received_but_unbilled_is_its_own_exposure_bucket": {
         "assertions": 3,
-        "body_sha": "fb2dfd61b1916625"
+        "body_sha": "61fee1e08beccf7c"
       }
     },
     "test_known_defects.py": {
       "test_def_01_a_legacy_v1_database_can_be_upgraded": {
         "assertions": 5,
-        "body_sha": "c0eef20543536438"
+        "body_sha": "139a70e3ed4cce92"
       },
       "test_def_01_control_a_fresh_database_upgrades_cleanly": {
         "assertions": 1,
-        "body_sha": "64f01820780bda46"
+        "body_sha": "860cc626d8bfe29f"
       },
       "test_def_01_run_py_boots_cleanly_against_a_legacy_database": {
         "assertions": 1,
-        "body_sha": "e736fc2828c853c9"
+        "body_sha": "44959c1badd11f61"
       },
       "test_def_01_pg_adopts_a_preexisting_legacy_schema": {
         "assertions": 4,
-        "body_sha": "99c76015032d7126"
+        "body_sha": "377c32822e5be33c"
       },
       "test_def_01_pg_refuses_a_genuine_conflict_rather_than_guessing": {
         "assertions": 2,
-        "body_sha": "60cb5ef83f724de6"
+        "body_sha": "e8b9e53c54b5290e"
       }
     },
     "test_manifest.py": {
       "test_no_test_has_vanished_without_a_recorded_adaptation": {
         "assertions": 1,
-        "body_sha": "ad1333626c92e2da"
+        "body_sha": "3058707b6d7f577b"
       },
       "test_no_test_has_been_gutted_of_its_assertions": {
         "assertions": 1,
-        "body_sha": "4f7d501f1a18c936"
+        "body_sha": "b782f027b56c79f6"
       },
       "test_new_tests_are_recorded_in_the_manifest": {
         "assertions": 1,
-        "body_sha": "0186d923a8d1361d"
+        "body_sha": "fa89a6a93b023687"
       },
       "test_the_baseline_count_is_exactly_two_hundred_and_twenty": {
         "assertions": 1,
-        "body_sha": "7c1d930145a7dcd9"
+        "body_sha": "9455140dba67ecd8"
       },
       "test_every_audit_finding_with_tests_still_has_them": {
         "assertions": 1,
-        "body_sha": "f4a08bb1159d714c"
+        "body_sha": "5d497a1c2f3754f3"
       },
       "test_the_adaptations_register_exists_and_states_the_policy": {
         "assertions": 2,
-        "body_sha": "b6a790c8224babd4"
+        "body_sha": "ea00123d25d6b81f"
       },
       "test_every_adaptation_entry_names_a_reviewer": {
         "assertions": 2,
-        "body_sha": "76ceef6c0e165b72"
+        "body_sha": "2ce7491ea3fda8a7"
       },
       "test_manifest_records_both_test_counts_unambiguously": {
         "assertions": 3,
-        "body_sha": "00fa9993330a7eef"
+        "body_sha": "89b807029e8e9cbc"
       },
       "test_no_baseline_test_body_changed_without_a_named_reviewer": {
         "assertions": 1,
-        "body_sha": "8e8e9c7608e4cba4"
+        "body_sha": "af738d6483dee587"
       },
       "test_every_baseline_test_has_a_recorded_body_hash": {
         "assertions": 2,
-        "body_sha": "c488e1746f509059"
+        "body_sha": "4a7897a99cd5ed0c"
       }
     },
     "test_masters_settings_api_guard.py": {
       "test_every_route_is_actually_served": {
         "assertions": 1,
-        "body_sha": "f5ffbc57a6abeeba"
+        "body_sha": "684f1d49b7d9ae45"
       },
       "test_an_unauthenticated_caller_is_refused": {
         "assertions": 1,
-        "body_sha": "f203d24bdd848591"
+        "body_sha": "8d99ead400172c96"
       },
       "test_a_forged_session_is_refused": {
         "assertions": 1,
-        "body_sha": "246617fb5f909be5"
+        "body_sha": "ebc30aea65577056"
       },
       "test_caller_supplied_permission_headers_grant_nothing": {
         "assertions": 1,
-        "body_sha": "2e5b1e150d1df63d"
+        "body_sha": "3f5fdd14338e80b4"
       },
       "test_the_guard_is_declared_on_the_router": {
         "assertions": 1,
-        "body_sha": "a134036b885f1b14"
+        "body_sha": "2954824fcf77cd54"
       },
       "test_a_role_lacking_the_write_permission_is_refused": {
         "assertions": 2,
-        "body_sha": "74a526e8fd5923f6"
+        "body_sha": "7da2e073ffaa6edd"
       },
       "test_each_new_permission_is_real_and_least_privilege": {
         "assertions": 3,
-        "body_sha": "bffa624fac130233"
+        "body_sha": "0e747ed4820a46d7"
       },
       "test_revealing_tax_identity_is_narrower_than_reading": {
         "assertions": 1,
-        "body_sha": "9804c5c13b0b61f1"
+        "body_sha": "f8213bbdaefa3a1c"
       },
       "test_permissions_come_from_the_principal_not_from_headers": {
         "assertions": 4,
-        "body_sha": "423b5189f515ca11"
+        "body_sha": "aba21d481029cbc8"
       }
     },
     "test_middleware_observability.py": {
       "test_a_successful_request_is_recorded_with_duration": {
         "assertions": 3,
-        "body_sha": "ec705f5b8eb0c3c6"
+        "body_sha": "fdf04551534ca46f"
       },
       "test_a_successful_request_logs_route_status_and_duration": {
         "assertions": 4,
-        "body_sha": "38f696c1536cecf9"
+        "body_sha": "f3d5d8363dc04dbb"
       },
       "test_an_unhandled_exception_is_counted_as_a_server_error": {
         "assertions": 3,
-        "body_sha": "ccdac2d48a97a9ba"
+        "body_sha": "c01ab4ea85b2fa82"
       },
       "test_an_unhandled_exception_still_records_duration": {
         "assertions": 1,
-        "body_sha": "a2527fe270f95c72"
+        "body_sha": "b20c2a6ee5c7db38"
       },
       "test_an_unhandled_exception_emits_a_structured_error_record": {
         "assertions": 6,
-        "body_sha": "c07c3c65eca770cc"
+        "body_sha": "20c765d849e9d3af"
       },
       "test_the_traceback_is_redacted": {
         "assertions": 3,
-        "body_sha": "2e92817818f5ba15"
+        "body_sha": "6edbbae7fe2243f8"
       },
       "test_correlation_context_survives_the_exception_path": {
         "assertions": 2,
-        "body_sha": "f86d536f97d47e0c"
+        "body_sha": "deaa67fe4563f3a5"
       },
       "test_correlation_context_is_unwound_after_the_exception": {
         "assertions": 1,
-        "body_sha": "497a458f08b22d7c"
+        "body_sha": "e5b37f5fcd567e8f"
       },
       "test_an_unauthenticated_request_mints_no_metric_label": {
         "assertions": 1,
-        "body_sha": "8a21a1c00095af00"
+        "body_sha": "7feedacd59eb2c76"
       },
       "test_an_unmatched_authenticated_path_collapses_into_one_bucket": {
         "assertions": 1,
-        "body_sha": "6219f37a9a105a7b"
+        "body_sha": "5d23dc357b07777b"
       },
       "test_a_five_hundred_carries_a_correlation_id_and_no_internal_detail": {
         "assertions": 6,
-        "body_sha": "e9fdf8de5bf14155"
+        "body_sha": "52044736246d2a97"
       }
     },
     "test_migrations.py": {
       "test_migrations_fresh_seed_produces_a_database_at_the_latest_version": {
         "assertions": 3,
-        "body_sha": "8e56dac186f41bc5"
+        "body_sha": "63d18a4e15098402"
       },
       "test_migrations_discover_matches_the_migration_files_on_disk": {
         "assertions": 3,
-        "body_sha": "be27bb85aa28ef07"
+        "body_sha": "e625fab44158b806"
       },
       "test_migrations_record_themselves_in_schema_migration": {
         "assertions": 2,
-        "body_sha": "ab7757fb23384108"
+        "body_sha": "b3003bc9e98704df"
       },
       "test_migrations_seed_loads_the_demonstration_dataset": {
         "assertions": 5,
-        "body_sha": "dd8355bae1c3c7a3"
+        "body_sha": "b1f38ab74e43c10b"
       },
       "test_migrations_are_idempotent": {
         "assertions": 4,
-        "body_sha": "f3cf4e81dd10680d"
+        "body_sha": "202b9c40a53af09e"
       },
       "test_migrations_repeated_upgrade_does_not_duplicate_schema_migration_rows": {
         "assertions": 1,
-        "body_sha": "3cdef9de8f6c17b0"
+        "body_sha": "2ce688549333ca06"
       },
       "test_migrations_upgrade_backs_the_database_up_before_touching_it": {
         "assertions": 4,
-        "body_sha": "f4db3e4e73ef4a04"
+        "body_sha": "77d3c8dedb0fe3e0"
       },
       "test_migrations_fresh_preserves_an_existing_database_instead_of_deleting_it": {
         "assertions": 2,
-        "body_sha": "6e7034eada4a8c30"
+        "body_sha": "32ea7242ccca40c3"
       },
       "test_migrations_upgrade_refuses_a_database_that_does_not_exist": {
         "assertions": 1,
-        "body_sha": "d19933824e97c6fc"
+        "body_sha": "a66f47a4c4b9fb3a"
       },
       "test_migrations_foreign_key_check_is_clean": {
         "assertions": 1,
-        "body_sha": "3898a70f3883c572"
+        "body_sha": "91f49fb5cea41261"
       },
       "test_migrations_integrity_check_is_ok": {
         "assertions": 1,
-        "body_sha": "39f78b437cc38b4c"
+        "body_sha": "ee7c3b7d9b172fc5"
       },
       "test_migrations_create_every_control_table": {
         "assertions": 1,
-        "body_sha": "9e3a956e7551517a"
+        "body_sha": "736b1551c799385e"
       },
       "test_migrations_create_every_control_trigger": {
         "assertions": 1,
-        "body_sha": "887721097b6dca1a"
+        "body_sha": "ddbebe31aefdbdd9"
       },
       "test_migrations_create_the_external_document_unique_indexes": {
         "assertions": 1,
-        "body_sha": "c735de8bef510013"
+        "body_sha": "fcadc4ac93271c6f"
       },
       "test_migrations_populate_the_lifecycle_state_table": {
         "assertions": 4,
-        "body_sha": "e4b6355c52171d6c"
+        "body_sha": "7f8a1a73a23b6ab3"
       },
       "test_migrations_normalise_historical_revision_signs": {
         "assertions": 2,
-        "body_sha": "56f9655c3cc60ba3"
+        "body_sha": "94002600e35cc27b"
       },
       "test_migrations_derive_the_permission_flags_from_lifecycle_state": {
         "assertions": 1,
-        "body_sha": "02fb54eea88c210e"
+        "body_sha": "b80c3329a391a799"
       },
       "test_migrations_fresh_without_seed_is_empty_but_current": {
         "assertions": 5,
-        "body_sha": "c6e12cb65840198c"
+        "body_sha": "78234f0dba169d73"
       },
       "test_migrations_status_on_a_missing_database_reports_nothing_applied": {
         "assertions": 1,
-        "body_sha": "043113ef3f32eac4"
+        "body_sha": "d900abeaeffe92a3"
       },
       "test_migrations_cli_status_is_reportable": {
         "assertions": 2,
-        "body_sha": "126e8c81298268d7"
+        "body_sha": "cb121bf5dc13f844"
       }
     },
     "test_money.py": {
       "test_aud_h_007_half_paisa_rounds_half_up_not_to_even": {
         "assertions": 1,
-        "body_sha": "39c9787f98224579"
+        "body_sha": "acb6fc6daf229343"
       },
       "test_aud_h_007_half_paisa_rounding_is_internally_consistent": {
         "assertions": 3,
-        "body_sha": "3d1857e6b1d3b18d"
+        "body_sha": "0de5d71e1576117b"
       },
       "test_aud_h_007_large_amount_survives_float64_mantissa": {
         "assertions": 1,
-        "body_sha": "bd2f8a05362be500"
+        "body_sha": "6510efb90f292648"
       },
       "test_aud_h_007_supported_inputs_convert_exactly": {
         "assertions": 1,
-        "body_sha": "0e84b782f2d70ac6"
+        "body_sha": "6853f9e8e5d43623"
       },
       "test_aud_h_007_float_that_is_not_an_exact_two_decimal_amount_is_rejected": {
         "assertions": 1,
-        "body_sha": "20f9b251f826300f"
+        "body_sha": "da694d3d84a6e3dd"
       },
       "test_aud_h_007_float_that_is_an_exact_two_decimal_amount_is_accepted": {
         "assertions": 1,
-        "body_sha": "0e84b782f2d70ac6"
+        "body_sha": "6853f9e8e5d43623"
       },
       "test_aud_h_007_negative_is_rejected_by_default": {
         "assertions": 1,
-        "body_sha": "20f9b251f826300f"
+        "body_sha": "da694d3d84a6e3dd"
       },
       "test_aud_h_007_negative_is_accepted_only_when_explicitly_allowed": {
         "assertions": 1,
-        "body_sha": "c063b3c2f610632c"
+        "body_sha": "65811a4a856f83bd"
       },
       "test_aud_h_007_non_amounts_are_rejected": {
         "assertions": 1,
-        "body_sha": "20f9b251f826300f"
+        "body_sha": "da694d3d84a6e3dd"
       },
       "test_aud_h_007_non_finite_amounts_are_rejected": {
         "assertions": 1,
-        "body_sha": "20f9b251f826300f"
+        "body_sha": "da694d3d84a6e3dd"
       },
       "test_aud_h_007_infinite_float_amount_raises_a_controlled_money_error": {
         "assertions": 1,
-        "body_sha": "20f9b251f826300f"
+        "body_sha": "da694d3d84a6e3dd"
       },
       "test_aud_h_007_amount_beyond_the_guard_rail_is_rejected": {
         "assertions": 2,
-        "body_sha": "aafa6af18410ddd1"
+        "body_sha": "81abd6242ab06dad"
       },
       "test_aud_h_007_error_message_names_the_field": {
         "assertions": 1,
-        "body_sha": "b38b0ddab1002a38"
+        "body_sha": "677c7c0e4d393174"
       },
       "test_aud_h_007_to_rupees_never_returns_a_float": {
         "assertions": 2,
-        "body_sha": "2bad7a3a5dbfb23f"
+        "body_sha": "58a83cffe5581daf"
       },
       "test_aud_h_007_paise_to_rupees_and_back_is_lossless": {
         "assertions": 1,
-        "body_sha": "580281dd0bf27771"
+        "body_sha": "e80a41e0b41a4f9f"
       },
       "test_aud_h_007_format_inr_uses_indian_digit_grouping": {
         "assertions": 1,
-        "body_sha": "907578ac38772e43"
+        "body_sha": "49bba0b827565b90"
       },
       "test_aud_h_007_format_inr_brackets_negatives_and_can_drop_the_symbol": {
         "assertions": 2,
-        "body_sha": "d8aeda85d718fb07"
+        "body_sha": "52d45cea3f57a0c2"
       },
       "test_aud_h_007_format_inr_tolerates_none_and_zero": {
         "assertions": 2,
-        "body_sha": "984bc3ce736ef856"
+        "body_sha": "4261c748e4b5be84"
       },
       "test_aud_h_007_split_pro_rata_conserves_every_paisa": {
         "assertions": 2,
-        "body_sha": "fa3bacc0c3d79cbb"
+        "body_sha": "b0b6894e3bef87d0"
       },
       "test_aud_h_007_split_pro_rata_never_loses_a_paisa_property": {
         "assertions": 2,
-        "body_sha": "9c54a1fcf365f714"
+        "body_sha": "3d6ca70863615ed2"
       },
       "test_aud_h_007_split_pro_rata_is_deterministic": {
         "assertions": 1,
-        "body_sha": "2cbac040ab69adcf"
+        "body_sha": "bcb46e502141b1f8"
       },
       "test_aud_h_007_split_pro_rata_is_proportional_within_one_paisa": {
         "assertions": 1,
-        "body_sha": "d02164fd8f4700da"
+        "body_sha": "d20cbe2163809e96"
       },
       "test_aud_h_007_split_pro_rata_refuses_a_zero_total_weight": {
         "assertions": 1,
-        "body_sha": "1f5ff16ac4882cad"
+        "body_sha": "1ff0cc89867a6782"
       }
     },
     "test_money_sql_discipline.py": {
       "test_every_sum_of_a_paise_column_is_cast_back_to_bigint": {
         "assertions": 1,
-        "body_sha": "1c82e48aad37d037"
+        "body_sha": "48a039ea68661d21"
       },
       "test_the_gate_catches_an_uncast_sum": {
         "assertions": 1,
-        "body_sha": "88d772a71b8ca9ee"
+        "body_sha": "5c2c865f773d5482"
       },
       "test_the_gate_accepts_the_cast_form": {
         "assertions": 1,
-        "body_sha": "87b90b56d2951bd6"
+        "body_sha": "e33cf9a61daa0c35"
       },
       "test_no_pg_module_multiplies_or_divides_by_a_float_literal_in_money_code": {
         "assertions": 1,
-        "body_sha": "96ee6797bdaaf678"
+        "body_sha": "8486355bfea239c0"
       }
     },
     "test_negative_access_matrix.py": {
       "test_every_admin_access_route_carries_a_permission_dependency": {
         "assertions": 1,
-        "body_sha": "eb6abc81fc889593"
+        "body_sha": "1be853a51d815882"
       },
       "test_negative_matrix_per_role_archetype_live": {
         "assertions": 5,
-        "body_sha": "d407d4ac8b0b9389"
+        "body_sha": "9f2247dc377200be"
       },
       "test_negative_matrix_out_of_scope_insert_is_refused_live": {
         "assertions": 2,
-        "body_sha": "190e2341ca3a562e"
+        "body_sha": "29ae70195e2e7e04"
       },
       "test_negative_matrix_moving_a_row_out_of_scope_is_refused_live": {
         "assertions": 3,
-        "body_sha": "81761bdb7555aa4a"
+        "body_sha": "148555346188a3dc"
       },
       "test_api_read_grants_requires_audit_read_permission_live": {
         "assertions": 5,
-        "body_sha": "5920ea83824c23a2"
+        "body_sha": "667a5dc6daf3f339"
       },
       "test_api_read_grants_for_unknown_user_is_not_found_live": {
         "assertions": 2,
-        "body_sha": "8b98ef8800b25288"
+        "body_sha": "3321e827f07b9a86"
       },
       "test_api_write_grants_requires_admin_reset_permission_live": {
         "assertions": 3,
-        "body_sha": "aea88dd8b74c12f6"
+        "body_sha": "a9463ef62d0eae7d"
       },
       "test_api_write_grants_denies_service_maker_checker_role_live": {
         "assertions": 2,
-        "body_sha": "8c9446041c022cf8"
+        "body_sha": "ef8cbe519dda39df"
       },
       "test_api_write_grants_is_audited_live": {
         "assertions": 6,
-        "body_sha": "3b93139a2d4bd1c1"
+        "body_sha": "2d9c7ca58e8ccc15"
       }
     },
     "test_no_undefined_names.py": {
       "test_every_name_a_module_uses_is_defined_somewhere_in_it": {
         "assertions": 1,
-        "body_sha": "a065d02c5d2d3df9"
+        "body_sha": "e01b458e6b877698"
       },
       "test_the_check_catches_a_deleted_helper": {
         "assertions": 1,
-        "body_sha": "75b180d6f549d7c0"
+        "body_sha": "176f904fbe28cab0"
       },
       "test_the_check_does_not_flag_ordinary_code": {
         "assertions": 1,
-        "body_sha": "7e95580d14afe8c3"
+        "body_sha": "881ab497e0c87b27"
       },
       "test_there_are_modules_to_check": {
         "assertions": 3,
-        "body_sha": "0e719045063041c8"
+        "body_sha": "048d725601fc6bc1"
       }
     },
     "test_observability.py": {
       "test_every_record_is_one_json_object_per_line": {
         "assertions": 1,
-        "body_sha": "e36c181bf19c9c70"
+        "body_sha": "c5c25a5ed097c7df"
       },
       "test_record_carries_timestamp_level_logger_and_message": {
         "assertions": 4,
-        "body_sha": "bbc49e8ef3ffff71"
+        "body_sha": "db1bcebacb08735d"
       },
       "test_extra_fields_are_promoted_onto_the_record": {
         "assertions": 2,
-        "body_sha": "a899a5245a6724dd"
+        "body_sha": "6ad9a77bd03c7ada"
       },
       "test_correlation_id_is_absent_when_unbound": {
         "assertions": 1,
-        "body_sha": "ab58c30da8efbbea"
+        "body_sha": "93e459111c2d0190"
       },
       "test_correlation_id_propagates_into_every_record_in_the_block": {
         "assertions": 2,
-        "body_sha": "a400980eb28b8d4c"
+        "body_sha": "f7022873a0e85958"
       },
       "test_correlation_context_is_restored_on_exit": {
         "assertions": 3,
-        "body_sha": "b62c5aaa4332ffc8"
+        "body_sha": "994d10fcbbc037f6"
       },
       "test_correlation_is_restored_even_when_the_block_raises": {
         "assertions": 2,
-        "body_sha": "3b52c273838b72fa"
+        "body_sha": "9385b7c3c67b9ff3"
       },
       "test_credentials_never_reach_the_sink": {
         "assertions": 2,
-        "body_sha": "54d5b73d87606b16"
+        "body_sha": "dc8c1087d22c92c1"
       },
       "test_regulated_and_personal_identifiers_are_removed_from_logs": {
         "assertions": 2,
-        "body_sha": "7ebbedf615b262a0"
+        "body_sha": "5e8ac61d3de098c2"
       },
       "test_no_sensitive_field_is_hashed_anywhere": {
         "assertions": 2,
-        "body_sha": "01e48f625a96127f"
+        "body_sha": "a32375a8b9843d1a"
       },
       "test_bypass_a_secret_passed_as_a_lazy_format_argument": {
         "assertions": 1,
-        "body_sha": "c8e1983051e5e499"
+        "body_sha": "aeba7c5bddb3f9dd"
       },
       "test_bypass_b_secret_interpolated_into_the_message_by_the_caller": {
         "assertions": 1,
-        "body_sha": "0593e7b3ac089a12"
+        "body_sha": "6ee404ad15877267"
       },
       "test_bypass_c_secret_inside_an_exception_traceback": {
         "assertions": 2,
-        "body_sha": "1a7c70547829b2c6"
+        "body_sha": "8530cd02d56747b5"
       },
       "test_bypass_d_key_name_variants_are_normalised": {
         "assertions": 1,
-        "body_sha": "2c73d5b300d0f518"
+        "body_sha": "9ac0ce6abbaea768"
       },
       "test_bypass_h_secret_in_a_list_under_a_benign_key": {
         "assertions": 1,
-        "body_sha": "638aadfd3dfe0720"
+        "body_sha": "f6b9b35133b8e7c6"
       },
       "test_bypass_i_object_whose_repr_carries_a_secret": {
         "assertions": 1,
-        "body_sha": "541bb396e19d4359"
+        "body_sha": "0427e2becff16e7a"
       },
       "test_bypass_j_bytes_value": {
         "assertions": 1,
-        "body_sha": "37835c99c61f1e63"
+        "body_sha": "e5b4d0f46af02c29"
       },
       "test_a_bare_gstin_or_pan_is_scrubbed_by_value_shape": {
         "assertions": 2,
-        "body_sha": "f5b57ae959e87f90"
+        "body_sha": "b0d67b12f40671cf"
       },
       "test_a_non_string_dict_key_does_not_destroy_the_record": {
         "assertions": 1,
-        "body_sha": "1c2fe887af6cd320"
+        "body_sha": "65ec41a3b87ea414"
       },
       "test_bearer_tokens_inside_free_text_are_scrubbed": {
         "assertions": 2,
-        "body_sha": "240a36a8da99f48f"
+        "body_sha": "bde20130c0002cc0"
       },
       "test_redaction_reaches_into_nested_structures": {
         "assertions": 2,
-        "body_sha": "3b56f67c1498fed0"
+        "body_sha": "dd7b3480799bca7e"
       },
       "test_redaction_is_case_insensitive_on_field_names": {
         "assertions": 2,
-        "body_sha": "dff3ce54c34fa547"
+        "body_sha": "912b761ddda165a3"
       },
       "test_non_sensitive_business_fields_survive_untouched": {
         "assertions": 3,
-        "body_sha": "20df523d1aaeb626"
+        "body_sha": "2cb80d62b85eed09"
       },
       "test_metrics_count_requests_and_errors_per_route": {
         "assertions": 3,
-        "body_sha": "651c47dccd0f9e12"
+        "body_sha": "294e3f5847aca569"
       },
       "test_metrics_report_latency_percentiles": {
         "assertions": 2,
-        "body_sha": "2c0e2ec012a80ec1"
+        "body_sha": "c9ec92384a2340a8"
       },
       "test_metrics_snapshot_states_that_it_is_not_durable": {
         "assertions": 1,
-        "body_sha": "f9079fe2d630a8df"
+        "body_sha": "02a62ec77030fa92"
       },
       "test_metrics_are_resettable": {
         "assertions": 1,
-        "body_sha": "0c6526d806a8ebe0"
+        "body_sha": "a65088de05a0c6bc"
       },
       "test_every_alert_condition_has_a_severity_and_description": {
         "assertions": 2,
-        "body_sha": "30561ba1b64a7388"
+        "body_sha": "20bc95554733845a"
       },
       "test_the_two_financial_integrity_alerts_are_p1": {
         "assertions": 2,
-        "body_sha": "ee76b3339fbe7111"
+        "body_sha": "a4f114eff254626c"
       },
       "test_raising_an_alert_emits_a_structured_error_record": {
         "assertions": 5,
-        "body_sha": "d20ed6fa3d3d2de1"
+        "body_sha": "1914ab9cac760209"
       },
       "test_an_undefined_alert_condition_is_refused": {
         "assertions": 1,
-        "body_sha": "c46ef7a15c2ee107"
+        "body_sha": "abb716a381d3702f"
       },
       "test_alert_payloads_are_redacted_too": {
         "assertions": 2,
-        "body_sha": "0407b39810314204"
+        "body_sha": "dd95cf4af5a8be79"
       },
       "test_metrics_do_not_grow_without_bound": {
         "assertions": 3,
-        "body_sha": "27d063ac00a81060"
+        "body_sha": "3cc0f2f79911e82c"
       },
       "test_alert_accepts_a_field_named_module": {
         "assertions": 3,
-        "body_sha": "587f8cf952829c7a"
+        "body_sha": "66165a815167e325"
       },
       "test_the_application_installs_the_structured_formatter_at_import": {
         "assertions": 3,
-        "body_sha": "e5606cbe36869d80"
+        "body_sha": "43fc1be83e64f0b0"
       },
       "test_a_caller_cannot_overwrite_a_protected_root_key": {
         "assertions": 2,
-        "body_sha": "5a80a88693b28e16"
+        "body_sha": "bd464a3ce1702602"
       },
       "test_protected_root_keys_keep_their_real_values_under_attack": {
         "assertions": 3,
-        "body_sha": "3872fdd610fac9e7"
+        "body_sha": "6e3210d763bbe4b3"
       },
       "test_the_protected_key_set_is_exactly_what_the_formatter_emits": {
         "assertions": 1,
-        "body_sha": "091529b518e13aa9"
+        "body_sha": "dcde4be845cdc2e1"
       },
       "test_nested_caller_fields_are_still_redacted": {
         "assertions": 1,
-        "body_sha": "1160ebf6ac911e95"
+        "body_sha": "9e505e89954dd508"
       },
       "test_stdlib_logging_refuses_to_overwrite_its_own_record_attributes": {
         "assertions": 1,
-        "body_sha": "b78bd3137796f867"
+        "body_sha": "518d53788140ba93"
       }
     },
     "test_pg_adoption.py": {
       "test_parser_finds_001_function": {
         "assertions": 1,
-        "body_sha": "94ad599f8e88afe9"
+        "body_sha": "1042963ad51b6d51"
       },
       "test_parser_finds_001_audit_triggers": {
         "assertions": 1,
-        "body_sha": "b54c87c3212d00b9"
+        "body_sha": "56bd87d6997108a5"
       },
       "test_parser_finds_001_accounting_period_gist_exclusion": {
         "assertions": 1,
-        "body_sha": "3e08b84dd2d93669"
+        "body_sha": "a1886832ca48d4a6"
       },
       "test_parser_finds_002_named_constraints": {
         "assertions": 6,
-        "body_sha": "50b600732a433960"
+        "body_sha": "fab1f4212d5281b3"
       },
       "test_parser_finds_every_paise_column_across_both_migrations": {
         "assertions": 2,
-        "body_sha": "8973eae46d6a8a17"
+        "body_sha": "62c357ef3492d8c7"
       },
       "test_parser_ignores_unnamed_table_level_constraints": {
         "assertions": 1,
-        "body_sha": "9226e6dada846b99"
+        "body_sha": "9ff01fe60ed98310"
       },
       "test_adoption_succeeds_when_schema_is_genuinely_complete": {
         "assertions": 5,
-        "body_sha": "cac9fb7134c50fc3"
+        "body_sha": "6e3b6509d872b222"
       },
       "test_adoption_refused_when_a_trigger_is_missing": {
         "assertions": 2,
-        "body_sha": "6c75c75c00705e53"
+        "body_sha": "ce0f24636444c7dc"
       },
       "test_adoption_refused_when_budget_paise_is_numeric": {
         "assertions": 3,
-        "body_sha": "3a582182dfaf3065"
+        "body_sha": "aea8319d4d2c854b"
       },
       "test_partial_table_presence_is_a_genuine_conflict_not_an_adoption": {
         "assertions": 2,
-        "body_sha": "b7efac0f7c02256f"
+        "body_sha": "74247e0978d5425f"
       },
       "test_assert_schema_current_writes_nothing_even_against_an_adoptable_schema": {
         "assertions": 2,
-        "body_sha": "d7bf7816ffc4e223"
+        "body_sha": "11b01f84351e69cd"
       },
       "test_adoption_succeeds_when_the_legacy_schema_is_genuinely_complete": {
         "assertions": 1,
-        "body_sha": "8214077a8946069e"
+        "body_sha": "b92b3b01159cca2d"
       },
       "test_adoption_is_refused_when_an_append_only_trigger_is_missing": {
         "assertions": 2,
-        "body_sha": "72c2ef9e5d4e37b8"
+        "body_sha": "fc90163b7efe90ad"
       },
       "test_adoption_is_refused_when_budget_paise_is_not_bigint": {
         "assertions": 3,
-        "body_sha": "8ab26c38b387970e"
+        "body_sha": "9f87a68b096a6ce3"
       },
       "test_adoption_refusal_names_every_problem_in_that_migration": {
         "assertions": 3,
-        "body_sha": "1579a8aad7437048"
+        "body_sha": "ab397f947f99497c"
       },
       "test_adoption_stops_at_the_first_unadoptable_migration": {
         "assertions": 4,
-        "body_sha": "5279b6d93a61ad9d"
+        "body_sha": "6a9bf4a2b10513e0"
       }
     },
     "test_pg_audit.py": {
       "test_compute_entry_hash_matches_the_frozen_pipe_format": {
         "assertions": 1,
-        "body_sha": "36182b3ee8cf4b35"
+        "body_sha": "1793b4426b666ff6"
       },
       "test_compute_entry_hash_treats_none_prev_hash_as_empty_string": {
         "assertions": 2,
-        "body_sha": "e7178c129d0b46d7"
+        "body_sha": "0976b67ca210fd8c"
       },
       "test_compute_entry_hash_is_sensitive_to_every_field": {
         "assertions": 7,
-        "body_sha": "ea9f25f3d47d74b9"
+        "body_sha": "b64a07eb88a9ce49"
       },
       "test_append_takes_advisory_lock_before_reading_prev_hash": {
         "assertions": 4,
-        "body_sha": "cb72385b88ddc72a"
+        "body_sha": "d2fc287179a58277"
       },
       "test_append_default_stream_key_is_object_type_colon_object_id": {
         "assertions": 1,
-        "body_sha": "cc75f351db0ef335"
+        "body_sha": "6fa4501492a84285"
       },
       "test_append_first_entry_gets_seq_1_and_null_prev_hash": {
         "assertions": 2,
-        "body_sha": "052e71103291a652"
+        "body_sha": "915ba11b42db4544"
       },
       "test_append_next_entry_increments_seq_and_chains_prev_hash": {
         "assertions": 2,
-        "body_sha": "b59869ba25f195b7"
+        "body_sha": "65b84626683d7f05"
       },
       "test_append_computes_the_frozen_payload_hash_for_the_insert": {
         "assertions": 1,
-        "body_sha": "a2c293a589fe0bfe"
+        "body_sha": "f2d73dcd08427191"
       },
       "test_append_returns_the_row_shaped_dict": {
         "assertions": 5,
-        "body_sha": "e1b8a23403d30ebb"
+        "body_sha": "d665e93b27c25633"
       },
       "test_verify_chain_reports_intact_for_a_valid_chain": {
         "assertions": 5,
-        "body_sha": "23741dfee6bdc56e"
+        "body_sha": "4d3b59549406511d"
       },
       "test_verify_chain_does_NOT_report_an_unknown_stream_as_intact": {
         "assertions": 3,
-        "body_sha": "5a3f02c6905fb6b6"
+        "body_sha": "e4fcc6c072842455"
       },
       "test_tail_truncation_is_NOT_detectable_from_the_stream_alone": {
         "assertions": 4,
-        "body_sha": "04bcf5e119012a08"
+        "body_sha": "3a3bffaca41d55c4"
       },
       "test_verify_chain_detects_a_gap_in_the_middle": {
         "assertions": 2,
-        "body_sha": "423142361e1507cd"
+        "body_sha": "65d89d38f591bb7f"
       },
       "test_verify_chain_detects_a_tampered_entry_hash": {
         "assertions": 3,
-        "body_sha": "df515470f7fd6103"
+        "body_sha": "b63410cbf9facf6b"
       },
       "test_verify_chain_detects_broken_linkage_even_when_each_hash_is_locally_consistent": {
         "assertions": 3,
-        "body_sha": "79cbe748f0bc536e"
+        "body_sha": "ec33d661f4b59b5a"
       },
       "test_verify_chain_reports_only_the_first_break_but_still_scans_everything": {
         "assertions": 3,
-        "body_sha": "7715cef9fa450c03"
+        "body_sha": "6828b820e3abcc27"
       },
       "test_append_and_verify_chain_round_trip_against_postgres": {
         "assertions": 8,
-        "body_sha": "daeda415d3f5dda9"
+        "body_sha": "61c7b2471aeb654d"
       },
       "test_chain_hash_is_independent_of_connection_timezone": {
         "assertions": 4,
-        "body_sha": "ecfd6ac3bef1f707"
+        "body_sha": "514db9fdf8eaaf87"
       },
       "test_canonical_at_treats_a_naive_timestamp_as_utc": {
         "assertions": 1,
-        "body_sha": "a2663fc789def49a"
+        "body_sha": "0ec5a125e60e65a1"
       },
       "test_different_instants_still_produce_different_hashes": {
         "assertions": 1,
-        "body_sha": "c4fb8befcc3f639e"
+        "body_sha": "e943be748daa6d4e"
       }
     },
     "test_pg_audit_api_e2e.py": {
       "test_audit_streams_returns_seeded_postgresql_data": {
         "assertions": 4,
-        "body_sha": "77f2c56dcb365b6f"
+        "body_sha": "9a2540701c798b8a"
       },
       "test_audit_entries_paginate_and_match_the_frozen_contract": {
         "assertions": 6,
-        "body_sha": "51aa95bd4c4f12c2"
+        "body_sha": "100cf7bb97ef4072"
       },
       "test_the_seeded_audit_chain_actually_verifies": {
         "assertions": 6,
-        "body_sha": "d545f835be321f99"
+        "body_sha": "b6f37c3bce69836b"
       },
       "test_an_unknown_stream_is_not_reported_as_intact": {
         "assertions": 2,
-        "body_sha": "3118b66760baa99d"
+        "body_sha": "e9aec0db4fcbec08"
       },
       "test_every_audit_route_refuses_an_unauthenticated_caller": {
         "assertions": 2,
-        "body_sha": "b4017bc74d8fca36"
+        "body_sha": "569b92c2f06d74be"
       },
       "test_a_role_without_audit_read_is_refused": {
         "assertions": 1,
-        "body_sha": "31dd2ddd0c4a1a11"
+        "body_sha": "2309e31757f2aabe"
       },
       "test_every_seeded_money_column_is_an_integer": {
         "assertions": 3,
-        "body_sha": "f7e12b3c5d572512"
+        "body_sha": "2f30360680e33e65"
       }
     },
     "test_pg_budget.py": {
       "test_cursor_round_trips": {
         "assertions": 1,
-        "body_sha": "59113f977d3b5e3a"
+        "body_sha": "319e727f0ea4d9e5"
       },
       "test_decode_cursor_rejects_garbage": {
         "assertions": 2,
-        "body_sha": "3b5643959af6a595"
+        "body_sha": "69b63712b3b16417"
       },
       "test_budget_service_error_carries_code_status_message": {
         "assertions": 4,
-        "body_sha": "c145e6088abb459b"
+        "body_sha": "f6f3273f5f463f1c"
       },
       "test_err_helper_always_raises": {
         "assertions": 3,
-        "body_sha": "4c8d1a974baf6885"
+        "body_sha": "25d9a2079528cb78"
       },
       "test_watch_and_critical_thresholds_come_from_domain_not_literals": {
         "assertions": 2,
-        "body_sha": "03f70c255934abf5"
+        "body_sha": "c38e2c50ce99964b"
       },
       "test_check_availability_rejects_negative_amount_before_touching_session": {
         "assertions": 2,
-        "body_sha": "c99487fe6fab5d0b"
+        "body_sha": "701e92cd9a6f7c8a"
       },
       "test_line_row_to_dict_shape": {
         "assertions": 6,
-        "body_sha": "0588ad42308b4a65"
+        "body_sha": "66f16038eca612b4"
       },
       "test_migration_makes_original_budget_lines_immutable_at_the_database_level": {
         "assertions": 4,
-        "body_sha": "ee5b2604e8b8abd3"
+        "body_sha": "6a47cd0dc78354dd"
       },
       "test_migration_original_lines_must_be_positive_amount": {
         "assertions": 2,
-        "body_sha": "f074d4dcdd52199f"
+        "body_sha": "8267d756b9b29421"
       },
       "test_migration_has_a_rollback_section": {
         "assertions": 1,
-        "body_sha": "7fb07a2b463671d4"
+        "body_sha": "27b827f0b38459fd"
       },
       "test_migration_money_columns_are_bigint": {
         "assertions": 1,
-        "body_sha": "55d306163008e277"
+        "body_sha": "fdb18dd5b5ff8ac7"
       },
       "test_original_budget_line_refuses_update_at_database_level": {
         "assertions": 1,
-        "body_sha": "b509613b26f53044"
+        "body_sha": "c1d4fe98d74e7d1b"
       },
       "test_original_budget_line_refuses_delete_at_database_level": {
         "assertions": 1,
-        "body_sha": "7bbd4e095ccef36a"
+        "body_sha": "a3392426a19d9067"
       },
       "test_revision_budget_line_may_be_updated_and_deleted": {
         "assertions": 0,
-        "body_sha": "d0dd956c00a00dfe"
+        "body_sha": "d784baf97f1d6390"
       },
       "test_recompute_cell_is_idempotent": {
         "assertions": 3,
-        "body_sha": "61760d42f5e62587"
+        "body_sha": "0a717307a25e17e7"
       },
       "test_revision_creates_no_spending_capacity_until_approved": {
         "assertions": 4,
-        "body_sha": "9e327b87b0959fd1"
+        "body_sha": "09bd5d15b9ad894e"
       },
       "test_approve_revision_refuses_self_approval": {
         "assertions": 2,
-        "body_sha": "6fdc9b53ffe5316f"
+        "body_sha": "bfeb81aa5982ddda"
       },
       "test_transfer_moves_budget_net_zero_between_two_cells": {
         "assertions": 4,
-        "body_sha": "41cbcda71877b502"
+        "body_sha": "4defcb2ca2fe9449"
       },
       "test_approve_transfer_raises_budget_moved_when_source_exposure_grew": {
         "assertions": 2,
-        "body_sha": "98bd44bcccdcf3e4"
+        "body_sha": "3710eb91323c1910"
       },
       "test_check_availability_invariants": {
         "assertions": 5,
-        "body_sha": "04cfa9b982277d9d"
+        "body_sha": "5a24ffbce9a594a6"
       },
       "test_check_availability_rolls_up_the_whole_subtree_not_just_the_owner": {
         "assertions": 3,
-        "body_sha": "68d0d68bb039a799"
+        "body_sha": "505e97806ac05366"
       },
       "test_concurrent_revision_approvals_at_60_percent_each_exactly_one_succeeds": {
         "assertions": 4,
-        "body_sha": "325584e81425c7bf"
+        "body_sha": "5657bb9bec1d38d4"
       }
     },
     "test_pg_constraints.py": {
       "test_overlapping_accounting_periods_for_the_same_entity_are_rejected": {
         "assertions": 1,
-        "body_sha": "dbc57624ca3a9087"
+        "body_sha": "f8725cdfc4fbe7cd"
       },
       "test_adjacent_non_overlapping_accounting_periods_are_accepted": {
         "assertions": 1,
-        "body_sha": "fc46e2a579ef94fd"
+        "body_sha": "6d3046ece98672dc"
       },
       "test_the_same_date_range_is_permitted_for_a_different_entity": {
         "assertions": 0,
-        "body_sha": "f9ba7030337c6bfa"
+        "body_sha": "c6d46eef9e83b207"
       },
       "test_period_end_before_period_start_is_rejected": {
         "assertions": 1,
-        "body_sha": "9b23230c10f0de85"
+        "body_sha": "bc5579d2c1c53e27"
       },
       "test_audit_log_rejects_update": {
         "assertions": 3,
-        "body_sha": "aa8ee2c8e15e2762"
+        "body_sha": "1d6de64350346174"
       },
       "test_audit_log_rejects_delete": {
         "assertions": 3,
-        "body_sha": "0813ca450d9df4d7"
+        "body_sha": "68afc31e209e5f4e"
       },
       "test_audit_anchor_rejects_update_and_delete": {
         "assertions": 3,
-        "body_sha": "0d4c72d9f5bc1910"
+        "body_sha": "1bbf1c3305346039"
       },
       "test_audit_log_stream_seq_must_be_unique": {
         "assertions": 1,
-        "body_sha": "bf7896706a0f19e7"
+        "body_sha": "150633a809ef5291"
       }
     },
     "test_pg_fixture_guard.py": {
       "test_disposable_names_are_accepted": {
         "assertions": 1,
-        "body_sha": "cc40d65f09b2ad48"
+        "body_sha": "cc7f3509d93e26c0"
       },
       "test_non_disposable_names_are_refused": {
         "assertions": 1,
-        "body_sha": "012fbea5b2709e12"
+        "body_sha": "0f7cb7312bbfa975"
       },
       "test_refusal_names_the_offending_database": {
         "assertions": 1,
-        "body_sha": "21131c12ae6d9fd4"
+        "body_sha": "845de295e197eada"
       }
     },
     "test_pg_locking.py": {
       "test_derive_lock_set_excludes_non_owning_ancestors": {
         "assertions": 1,
-        "body_sha": "42346e17796b166d"
+        "body_sha": "a6d4eba6dd83213f"
       },
       "test_derive_lock_set_locks_every_budget_owning_ancestor_not_just_nearest": {
         "assertions": 1,
-        "body_sha": "28b41d561c77d6ae"
+        "body_sha": "39cd7e0c10461a56"
       },
       "test_derive_lock_set_is_per_pair_not_a_cross_product": {
         "assertions": 1,
-        "body_sha": "4926e746a3afb887"
+        "body_sha": "a2e5e57d7884ed86"
       },
       "test_derive_lock_set_dedupes_shared_ancestor_across_affected_pairs": {
         "assertions": 1,
-        "body_sha": "ed0980d1c0ee8283"
+        "body_sha": "19aa9877ec7da79c"
       },
       "test_derive_lock_set_orders_by_wbs_path_then_head_a_total_order": {
         "assertions": 1,
-        "body_sha": "db881e4804c2f079"
+        "body_sha": "50c1a9180750dd18"
       },
       "test_derive_lock_set_empty_affected_is_empty": {
         "assertions": 1,
-        "body_sha": "0a3b39e92b264a15"
+        "body_sha": "733ff858cee77d88"
       },
       "test_lock_affected_cells_empty_affected_never_touches_session": {
         "assertions": 3,
-        "body_sha": "028b7d824791debb"
+        "body_sha": "f82d0b1249eab807"
       },
       "test_lock_affected_cells_appends_to_locks_taken_in_returned_order": {
         "assertions": 2,
-        "body_sha": "3c2c639f5fb29b54"
+        "body_sha": "870f1e8f1a9bf7e0"
       },
       "test_lock_affected_cells_appends_without_clearing_prior_locks": {
         "assertions": 1,
-        "body_sha": "6f8e31ad6b9996c6"
+        "body_sha": "d82ad570bcebf189"
       },
       "test_lock_affected_cells_query_is_a_single_ordered_for_update": {
         "assertions": 5,
-        "body_sha": "20a92064e86101b2"
+        "body_sha": "5299948e50af7d94"
       },
       "test_lock_affected_cells_pairs_are_positional_not_a_cross_product_in_sql": {
         "assertions": 2,
-        "body_sha": "66297ee62af9e206"
+        "body_sha": "074c2175672b20f5"
       },
       "test_advisory_audit_lock_uses_hashtext_and_xact_scope": {
         "assertions": 4,
-        "body_sha": "a76d72b8eb65bdce"
+        "body_sha": "284a102fd99fe1f0"
       },
       "test_lock_affected_cells_actually_blocks_a_concurrent_transaction": {
         "assertions": 4,
-        "body_sha": "6ec68c3e32c00c2a"
+        "body_sha": "ad0c65d091b1bd44"
       },
       "test_locking_query_does_not_combine_distinct_with_for_update": {
         "assertions": 2,
-        "body_sha": "29181fbf0c4bae88"
+        "body_sha": "406814eee9df01ee"
       },
       "test_locking_query_still_deduplicates": {
         "assertions": 2,
-        "body_sha": "f4c335d9120984ee"
+        "body_sha": "6c09a6890b3cb55b"
       },
       "test_locking_query_orders_by_path_then_head": {
         "assertions": 2,
-        "body_sha": "9a80acdd43afb0b9"
+        "body_sha": "516f86215aa0d669"
       },
       "test_lock_set_walks_the_whole_ancestor_chain_live": {
         "assertions": 3,
-        "body_sha": "dbb014f316c79240"
+        "body_sha": "29262e5134090287"
       }
     },
     "test_pg_locking_order.py": {
       "test_analyser_passes_a_correct_function": {
         "assertions": 1,
-        "body_sha": "dba04f8ccb2d3814"
+        "body_sha": "ff05c9640e856688"
       },
       "test_analyser_detects_each_violation": {
         "assertions": 2,
-        "body_sha": "a6a3c4dded9af705"
+        "body_sha": "9a26a015b155e5e6"
       },
       "test_analyser_follows_intra_module_helpers": {
         "assertions": 1,
-        "body_sha": "c0dec08c9e1438fd"
+        "body_sha": "1679571f1a7185d8"
       },
       "test_service_module_obeys_the_lock_order": {
         "assertions": 1,
-        "body_sha": "a4bedc46da574178"
+        "body_sha": "f74524e569cb88c0"
       },
       "test_the_known_mutating_functions_are_actually_analysed": {
         "assertions": 2,
-        "body_sha": "423f11227e0a6052"
+        "body_sha": "609b38c881357f9d"
       },
       "test_lock_is_not_conditional_in_the_period_roll": {
         "assertions": 1,
-        "body_sha": "368b361722a8859d"
+        "body_sha": "e40ebc656e53fd66"
       },
       "test_period_roll_orders_its_driving_query": {
         "assertions": 4,
-        "body_sha": "9572376a723ba99c"
+        "body_sha": "8be32d59f7f74d52"
       },
       "test_lock_query_no_longer_filters_on_budget_paise": {
         "assertions": 2,
-        "body_sha": "b85f684abb0eb00f"
+        "body_sha": "7eb5c729bffac57f"
       },
       "test_zero_budget_cell_is_now_in_the_lock_set": {
         "assertions": 1,
-        "body_sha": "107d23591bbf6d83"
+        "body_sha": "0bfa3da3d8ba1edb"
       },
       "test_the_affected_cell_itself_is_always_locked": {
         "assertions": 1,
-        "body_sha": "9c10763952f9cf76"
+        "body_sha": "d7d24a1833b8171c"
       },
       "test_all_zero_chain_still_locks_the_whole_chain": {
         "assertions": 2,
-        "body_sha": "04dadf97c90248f5"
+        "body_sha": "743b03b9bc54e587"
       },
       "test_a_cell_with_no_row_is_still_excluded": {
         "assertions": 1,
-        "body_sha": "b7ebd1b60ba348d8"
+        "body_sha": "0874862e5f0dd4b6"
       },
       "test_new_lock_set_is_a_superset_of_the_old_one": {
         "assertions": 2,
-        "body_sha": "36b0269e71c726e1"
+        "body_sha": "e786e8329c3ede21"
       },
       "test_membership_accepts_a_bare_set_of_pairs": {
         "assertions": 1,
-        "body_sha": "bbc68eec4b97a27a"
+        "body_sha": "fedaba5e3d2c7926"
       },
       "test_order_is_by_path_then_head_and_is_total": {
         "assertions": 2,
-        "body_sha": "7cbd936aa562b0b3"
+        "body_sha": "2d2e7cf7cfe6e5a6"
       },
       "test_order_is_deterministic_regardless_of_input_order": {
         "assertions": 1,
-        "body_sha": "6a2ec87ad24d5785"
+        "body_sha": "64702135d9ad3360"
       },
       "test_dedupes_a_shared_ancestor_across_affected_pairs": {
         "assertions": 1,
-        "body_sha": "36eadddb0872d824"
+        "body_sha": "239972070b1b0c37"
       },
       "test_union_is_per_pair_not_a_cross_product": {
         "assertions": 1,
-        "body_sha": "69c8cc9a74ccc305"
+        "body_sha": "e764f9c986eb918a"
       },
       "test_empty_affected_is_empty": {
         "assertions": 1,
-        "body_sha": "0a3b39e92b264a15"
+        "body_sha": "733ff858cee77d88"
       }
     },
     "test_pg_masters.py": {
       "test_mask_gst_no_matches_contract_example": {
         "assertions": 1,
-        "body_sha": "677107d6922ff79b"
+        "body_sha": "d58ecc7639ca1f26"
       },
       "test_mask_pan_no_matches_contract_example": {
         "assertions": 1,
-        "body_sha": "986d7fbf71755da0"
+        "body_sha": "decd7477c956eaf4"
       },
       "test_mask_gst_no_none_passes_through": {
         "assertions": 2,
-        "body_sha": "f2bf9e3b7f421440"
+        "body_sha": "33d401ccb1c29548"
       },
       "test_mask_pan_no_none_passes_through": {
         "assertions": 1,
-        "body_sha": "ebd1d041ceaaca17"
+        "body_sha": "06fcaa5fd96e38fa"
       },
       "test_mask_never_raises_on_a_too_short_value": {
         "assertions": 2,
-        "body_sha": "5e09b7b3659d478b"
+        "body_sha": "18d200df46cf3386"
       },
       "test_render_vendor_masks_by_default": {
         "assertions": 3,
-        "body_sha": "113983d5a9e69ec5"
+        "body_sha": "294c87e03d00ae31"
       },
       "test_render_vendor_reveals_on_request": {
         "assertions": 3,
-        "body_sha": "076806d178187a2d"
+        "body_sha": "58dd7fb7b2839a18"
       },
       "test_render_vendor_does_not_mutate_the_input_row": {
         "assertions": 1,
-        "body_sha": "82bce9614ce51860"
+        "body_sha": "1a72a23887fafbd5"
       },
       "test_masters_module_never_imports_or_calls_a_hash_function": {
         "assertions": 1,
-        "body_sha": "f9589aca0a291f4e"
+        "body_sha": "7c17dcaa73e29c1e"
       },
       "test_migration_never_hashes_gst_or_pan_columns": {
         "assertions": 1,
-        "body_sha": "52e1636d40f29194"
+        "body_sha": "ada156a9a8b364e3"
       },
       "test_normalise_text": {
         "assertions": 1,
-        "body_sha": "2498760014466f5d"
+        "body_sha": "25dd50308f90dc83"
       },
       "test_a_duplicate_pair_normalises_identically": {
         "assertions": 1,
-        "body_sha": "449962de68018fee"
+        "body_sha": "d17137a50d916013"
       },
       "test_kind_for_items_and_vendors": {
         "assertions": 2,
-        "body_sha": "cb3fe39a2a4dc6e6"
+        "body_sha": "b923c9bb6b840912"
       },
       "test_kind_for_unknown_raises": {
         "assertions": 3,
-        "body_sha": "cd869a3de7c5b8f2"
+        "body_sha": "4761c36465325e87"
       },
       "test_item_and_vendor_business_fields_are_disjoint_from_governance_fields": {
         "assertions": 1,
-        "body_sha": "15630cfa8d0262f4"
+        "body_sha": "cd4646f928d53908"
       },
       "test_ingest_refuses_live_status": {
         "assertions": 3,
-        "body_sha": "badd32f936ceefc0"
+        "body_sha": "8b2c3ddbf73c4f3a"
       },
       "test_create_local_refuses_a_payload_that_tries_to_set_source": {
         "assertions": 3,
-        "body_sha": "3923384270672101"
+        "body_sha": "e8675437a81a29be"
       },
       "test_create_local_sets_source_local_itself": {
         "assertions": 5,
-        "body_sha": "17a54ff348714312"
+        "body_sha": "0a1f4f6f1769e4fe"
       },
       "test_create_local_writes_an_audit_entry": {
         "assertions": 2,
-        "body_sha": "f2988b1c90d36c71"
+        "body_sha": "978891b9e8d6da96"
       },
       "test_ingest_from_adapter_creates_a_zoho_row": {
         "assertions": 3,
-        "body_sha": "53c31901aa9ea460"
+        "body_sha": "a2b499ef5a8a38b3"
       },
       "test_ingest_from_adapter_refuses_live_or_verified_status": {
         "assertions": 2,
-        "body_sha": "3c8562e730568fa9"
+        "body_sha": "6e366fbc3cd26d69"
       },
       "test_stale_version_returns_409_and_row_is_provably_unchanged": {
         "assertions": 7,
-        "body_sha": "5083358eba4dca97"
+        "body_sha": "7c7ceff22e477356"
       },
       "test_zoho_sourced_row_refuses_a_business_field_edit": {
         "assertions": 4,
-        "body_sha": "1e90328690aa2e38"
+        "body_sha": "e40911318b5f43d0"
       },
       "test_zoho_sourced_row_allows_a_governance_field_edit": {
         "assertions": 3,
-        "body_sha": "7744a9ae0b0f416c"
+        "body_sha": "950b5782019dfff7"
       },
       "test_duplicate_is_flagged_never_merged": {
         "assertions": 5,
-        "body_sha": "3bfc53506da16a85"
+        "body_sha": "e03561c51163ddd9"
       },
       "test_find_duplicate_returns_none_when_nothing_matches": {
         "assertions": 1,
-        "body_sha": "f1593ce4275442a1"
+        "body_sha": "872489138c021b07"
       },
       "test_deactivate_does_not_delete": {
         "assertions": 4,
-        "body_sha": "6a55a01e80f37a53"
+        "body_sha": "5aa4e692e7e66e2a"
       },
       "test_reveal_writes_one_audit_entry_per_present_field": {
         "assertions": 4,
-        "body_sha": "9d26a583c72a315a"
+        "body_sha": "872b89599daab340"
       },
       "test_issue_number_formats_with_prefix_and_padding": {
         "assertions": 3,
-        "body_sha": "77ab46d91c983202"
+        "body_sha": "c4cff7878d44b606"
       },
       "test_issue_number_unknown_series_raises": {
         "assertions": 2,
-        "body_sha": "ae6abcd3e273e350"
+        "body_sha": "10b1ec47bedfe954"
       },
       "test_issued_numbers_are_immutable": {
         "assertions": 4,
-        "body_sha": "7d30bfca7978e5d6"
+        "body_sha": "e5bc2f79f904929f"
       },
       "test_numbering_is_collision_safe_under_concurrency": {
         "assertions": 3,
-        "body_sha": "b7624f1d68d33b7d"
+        "body_sha": "7ac5d7160a013544"
       }
     },
     "test_pg_migrations_runner.py": {
       "test_discover_skips_seed_demo_sql_and_its_presence_does_not_change_the_version_list": {
         "assertions": 4,
-        "body_sha": "50f183b52c4765cf"
+        "body_sha": "de5e9c145fa904f2"
       },
       "test_discover_still_rejects_a_genuinely_unrecognised_filename": {
         "assertions": 1,
-        "body_sha": "134182e703814a8a"
+        "body_sha": "b5dea5273ea9870f"
       },
       "test_upgrade_applies_001_cleanly": {
         "assertions": 7,
-        "body_sha": "d324b63f6f377b9b"
+        "body_sha": "10a5ba75dd2bb0a3"
       },
       "test_upgrade_is_idempotent": {
         "assertions": 3,
-        "body_sha": "5595713dc6e0d2d1"
+        "body_sha": "460592cfaebb0b24"
       },
       "test_status_reports_current_after_upgrade": {
         "assertions": 6,
-        "body_sha": "cf72c82125bece7f"
+        "body_sha": "006392097a500d6b"
       },
       "test_status_reports_pending_before_upgrade": {
         "assertions": 3,
-        "body_sha": "4475a03fafe9adb2"
+        "body_sha": "27417f955471ff25"
       },
       "test_changed_checksum_after_apply_raises_migration_error": {
         "assertions": 1,
-        "body_sha": "9a8fb3c45d234df5"
+        "body_sha": "0d79eb2edb7a4fa6"
       },
       "test_drift_is_reported_by_status_without_raising": {
         "assertions": 2,
-        "body_sha": "2159d1a9674fc706"
+        "body_sha": "ee8845e82cbb3d88"
       },
       "test_assert_schema_current_raises_when_behind_and_writes_nothing": {
         "assertions": 3,
-        "body_sha": "b89d7b0a43dda74a"
+        "body_sha": "5cf9dbfba8b1584c"
       },
       "test_assert_schema_current_raises_on_drift_and_writes_nothing": {
         "assertions": 2,
-        "body_sha": "b2b33c2d57aa7d74"
+        "body_sha": "b3d8ee9d91db6cfd"
       },
       "test_assert_schema_current_passes_silently_when_current": {
         "assertions": 0,
-        "body_sha": "485d746ad36d4129"
+        "body_sha": "58f5f1093712b91f"
       }
     },
     "test_pg_period_concurrency.py": {
       "test_zero_budget_cell_is_in_the_lock_set": {
         "assertions": 2,
-        "body_sha": "6ac31d7fab9876de"
+        "body_sha": "70f9b8acf50ade89"
       },
       "test_zero_budget_cell_lock_blocks_a_concurrent_transaction": {
         "assertions": 2,
-        "body_sha": "844d5772f7338d75"
+        "body_sha": "f95424baf6cebf1d"
       },
       "test_locks_every_owning_ancestor_and_the_zero_leaf_in_path_order": {
         "assertions": 1,
-        "body_sha": "6026a17546f037a7"
+        "body_sha": "30672ea9916cada9"
       },
       "test_lock_order_is_identical_from_either_end_of_the_chain": {
         "assertions": 3,
-        "body_sha": "d5026613c9ed65c3"
+        "body_sha": "259bcf555d78f351"
       },
       "test_two_concurrent_approvals_of_one_revision_exactly_one_wins": {
         "assertions": 5,
-        "body_sha": "9f7041319163e381"
+        "body_sha": "b0a1557b194bf4af"
       },
       "test_concurrent_approvals_on_overlapping_chains_both_apply_once": {
         "assertions": 4,
-        "body_sha": "40c45d9e7b589565"
+        "body_sha": "8226c42e9c44e30a"
       },
       "test_period_open_concurrent_with_an_approval_does_not_deadlock": {
         "assertions": 4,
-        "body_sha": "a4c575a8427b8e51"
+        "body_sha": "fa2d4069316a257f"
       },
       "test_period_roll_records_a_non_empty_lock_set": {
         "assertions": 3,
-        "body_sha": "7b8f0b04915ed474"
+        "body_sha": "52c36cb36af99155"
       },
       "test_sustained_random_concurrency_produces_no_deadlock": {
         "assertions": 4,
-        "body_sha": "b4bf27c3f5e2fe2a"
+        "body_sha": "02b9bcecb679e00d"
       }
     },
     "test_pg_periods.py": {
       "test_allowed_transitions_are_forward_only": {
         "assertions": 4,
-        "body_sha": "618a4ee483255189"
+        "body_sha": "1ad9f20144401bac"
       },
       "test_no_transition_skips_a_state": {
         "assertions": 2,
-        "body_sha": "9500bda79d6d5c5d"
+        "body_sha": "e3223cc5842a16a8"
       },
       "test_no_backward_transition": {
         "assertions": 3,
-        "body_sha": "e57ad424621feabf"
+        "body_sha": "814c8fb893b1d7a2"
       },
       "test_period_service_error_carries_code_status_message": {
         "assertions": 3,
-        "body_sha": "203c2e06ba6dc167"
+        "body_sha": "69214186c7c341bb"
       },
       "test_table_exists_helper_is_false_for_a_made_up_name": {
         "assertions": 1,
-        "body_sha": "253c92a8cebad509"
+        "body_sha": "0509776c61d1c1c8"
       },
       "test_has_open_reconciliation_exceptions_is_vacuously_false_without_the_table": {
         "assertions": 2,
-        "body_sha": "24e782b938c166de"
+        "body_sha": "35fd14132519a1f9"
       },
       "test_transition_future_to_open_succeeds": {
         "assertions": 2,
-        "body_sha": "9bced2e5f35eeaa2"
+        "body_sha": "b64f1eba9cbecfa4"
       },
       "test_transition_refuses_illegal_skip": {
         "assertions": 3,
-        "body_sha": "eef5a7faae638c6d"
+        "body_sha": "4edb38cb3f88e8be"
       },
       "test_transition_refuses_backward_move": {
         "assertions": 2,
-        "body_sha": "1924e1baed3ee5b5"
+        "body_sha": "c0886d19f6955a68"
       },
       "test_transition_to_closed_sets_closed_at_and_closed_by": {
         "assertions": 3,
-        "body_sha": "ee51f23d707cb1b1"
+        "body_sha": "98c225fcf85e540b"
       },
       "test_period_cannot_close_while_open_reconciliation_exception_exists": {
         "assertions": 3,
-        "body_sha": "3ec8d8f1282c39ef"
+        "body_sha": "4b924b82e657f576"
       },
       "test_transition_to_open_rolls_future_budget_into_current": {
         "assertions": 2,
-        "body_sha": "356554dc2d391a8a"
+        "body_sha": "e6d08eb03d0ae85f"
       },
       "test_roll_period_effective_budget_is_idempotent": {
         "assertions": 2,
-        "body_sha": "4789a6067be3c408"
+        "body_sha": "599cfbfa8fc9f50f"
       },
       "test_roll_period_effective_budget_only_touches_its_own_entity": {
         "assertions": 3,
-        "body_sha": "47f163e4396cfb50"
+        "body_sha": "a70d132ff2dd3841"
       }
     },
     "test_pg_principal_scope.py": {
       "test_the_three_states_survive_resolution_distinctly": {
         "assertions": 4,
-        "body_sha": "a1218ee2963c3a02"
+        "body_sha": "65d764386a08883e"
       },
       "test_restricted_to_nothing_is_never_collapsed_into_unrestricted": {
         "assertions": 2,
-        "body_sha": "edb9e8aa10c7cc08"
+        "body_sha": "960c642a3432c042"
       },
       "test_restricted_to_nothing_compiles_to_false_not_true": {
         "assertions": 2,
-        "body_sha": "a6e6d9ce4015709d"
+        "body_sha": "5ad21b5f36dd8f2d"
       },
       "test_unrestricted_dimension_contributes_no_clause": {
         "assertions": 3,
-        "body_sha": "c81ed1ff10d62523"
+        "body_sha": "d2ca9bd071a28bd8"
       },
       "test_grants_are_resolved_not_invented": {
         "assertions": 3,
-        "body_sha": "3a8ea4fb6c8f2d7d"
+        "body_sha": "c141d9c184037b7c"
       },
       "test_resolve_scope_is_the_only_source_of_grants": {
         "assertions": 2,
-        "body_sha": "ad8f3fb32adf0f15"
+        "body_sha": "09c8ccc5585b19ca"
       },
       "test_an_infrastructure_failure_is_not_rendered_as_an_empty_answer": {
         "assertions": 1,
-        "body_sha": "f8c1850933d16086"
+        "body_sha": "b81bda5ebc318aad"
       },
       "test_an_infrastructure_failure_still_returns_no_data": {
         "assertions": 0,
-        "body_sha": "ba5723a5d518752d"
+        "body_sha": "f1141db19e2396cc"
       },
       "test_every_failure_path_returns_a_scope_that_sees_nothing": {
         "assertions": 3,
-        "body_sha": "ca46d9e0bc50cf87"
+        "body_sha": "151c71689eb4083b"
       },
       "test_every_failure_path_compiles_to_a_false_predicate": {
         "assertions": 2,
-        "body_sha": "e6463404bfc8ac5c"
+        "body_sha": "654a8c9dfce49f3f"
       },
       "test_every_failure_path_reports_a_reason": {
         "assertions": 2,
-        "body_sha": "a78a84d9c574d603"
+        "body_sha": "5f0db25d85da2a70"
       },
       "test_a_resolver_returning_a_non_scope_fails_closed": {
         "assertions": 2,
-        "body_sha": "70f98d1875646e12"
+        "body_sha": "3f8086edae747a6f"
       },
       "test_a_resolver_that_raises_fails_closed_LOUDLY": {
         "assertions": 2,
-        "body_sha": "b7b11145f27abd2f"
+        "body_sha": "b1091f798d16f7b7"
       },
       "test_a_resolver_answering_about_another_user_fails_closed": {
         "assertions": 2,
-        "body_sha": "3739be94268b67f1"
+        "body_sha": "f5e335796f75b1ed"
       },
       "test_a_bare_string_dimension_fails_closed_rather_than_becoming_letters": {
         "assertions": 3,
-        "body_sha": "50c07eafb849f8f1"
+        "body_sha": "5f12d815b7ee8edd"
       },
       "test_set_list_and_tuple_dimensions_normalise_without_blurring": {
         "assertions": 2,
-        "body_sha": "3e434aad47456cb5"
+        "body_sha": "36baaac3edd4b7a8"
       },
       "test_read_all_is_never_synthesised_from_a_role_name": {
         "assertions": 1,
-        "body_sha": "4ddc1d83168a716e"
+        "body_sha": "619933b328540062"
       },
       "test_a_role_name_never_widens_a_restricted_dimension": {
         "assertions": 2,
-        "body_sha": "496dcdfadd3ca4db"
+        "body_sha": "4251ba23c09f3fa3"
       },
       "test_read_all_from_the_access_flag_is_preserved": {
         "assertions": 2,
-        "body_sha": "58358a2d7dd4cc5c"
+        "body_sha": "6624c0832a337d17"
       },
       "test_read_all_is_cleared_when_restriction_rows_exist": {
         "assertions": 4,
-        "body_sha": "639a725062b59cc9"
+        "body_sha": "5c881f7cd9903817"
       },
       "test_read_all_is_cleared_even_when_the_restriction_grants_nothing": {
         "assertions": 2,
-        "body_sha": "a7d520ddcc2f3566"
+        "body_sha": "d79aeec6c7622b8a"
       },
       "test_a_non_boolean_read_all_is_not_true": {
         "assertions": 1,
-        "body_sha": "c3c19fa5b46aac04"
+        "body_sha": "679b20aa0fe11f46"
       },
       "test_service_principal_is_resolved_exactly_like_a_human": {
         "assertions": 3,
-        "body_sha": "590fd14946c02050"
+        "body_sha": "8805c9c336d1d7ad"
       },
       "test_service_principal_with_no_grants_sees_nothing": {
         "assertions": 3,
-        "body_sha": "35825ed009f81c3d"
+        "body_sha": "5a464458661a37cd"
       },
       "test_service_principal_never_receives_the_system_scope": {
         "assertions": 2,
-        "body_sha": "7c73e7b0fc606c6d"
+        "body_sha": "d6266ef071333685"
       },
       "test_unknown_service_principal_fails_closed": {
         "assertions": 2,
-        "body_sha": "f5fb21dff8d72631"
+        "body_sha": "1533059819131493"
       },
       "test_app_user_is_authoritative_for_principal_kind_not_the_caller": {
         "assertions": 2,
-        "body_sha": "2148c6d220c1477f"
+        "body_sha": "b8265de95ba1ec59"
       },
       "test_a_principal_kind_claimed_in_the_payload_is_ignored": {
         "assertions": 2,
-        "body_sha": "032d45632ee84dcf"
+        "body_sha": "ef531b2b24ac4daf"
       },
       "test_a_stored_star_grant_denies_rather_than_widening_or_raising": {
         "assertions": 4,
-        "body_sha": "83d7378e51a22dc0"
+        "body_sha": "e23a4ff4bd440787"
       },
       "test_a_star_grant_alongside_a_real_id_denies_the_whole_dimension": {
         "assertions": 2,
-        "body_sha": "e21ddad1429aaf70"
+        "body_sha": "976419eb3ab335ac"
       },
       "test_principal_id_reads_only_the_declared_keys": {
         "assertions": 1,
-        "body_sha": "fb9294b35ea020ae"
+        "body_sha": "66becc944fa8aa5a"
       },
       "test_denied_scope_is_denied_and_anonymous_by_default": {
         "assertions": 3,
-        "body_sha": "52933be714928cce"
+        "body_sha": "2710f3573451a4c1"
       },
       "test_is_denied_is_a_property_of_the_value_not_a_flag": {
         "assertions": 4,
-        "body_sha": "d969a36454be6e54"
+        "body_sha": "b9c794d980c6c4e1"
       },
       "test_denied_scope_rejects_an_unknown_principal_kind_label": {
         "assertions": 1,
-        "body_sha": "6c6c28ffd3707985"
+        "body_sha": "fc149b04a0601dbb"
       },
       "test_the_module_never_writes": {
         "assertions": 1,
-        "body_sha": "d25e402279947926"
+        "body_sha": "b1aa048e145c9c1a"
       },
       "test_the_module_source_contains_no_widening_literal": {
         "assertions": 2,
-        "body_sha": "c1f89b8918de4bb1"
+        "body_sha": "e4361687148ca87a"
       },
       "test_a_denied_scope_compiles_to_FALSE_even_when_every_dimension_is_waived": {
         "assertions": 4,
-        "body_sha": "06002e8fe541d797"
+        "body_sha": "436b750b66347aad"
       }
     },
     "test_pg_repo.py": {
       "test_require_scope_token_raises_without_literal_token": {
         "assertions": 1,
-        "body_sha": "0732bcac245524b2"
+        "body_sha": "88b69cf0c45a6e16"
       },
       "test_require_scope_token_accepts_token_anywhere_in_statement": {
         "assertions": 0,
-        "body_sha": "f9eebeee839f3a6a"
+        "body_sha": "4b33f2c1db872804"
       },
       "test_query_raises_before_touching_the_session_when_token_missing": {
         "assertions": 2,
-        "body_sha": "577b663b35a1f0fd"
+        "body_sha": "56dded12b700d251"
       },
       "test_query_runs_when_token_present": {
         "assertions": 2,
-        "body_sha": "3cb75666d1efafc1"
+        "body_sha": "f9ad70cfb3200535"
       },
       "test_none_dimension_is_unrestricted_no_clause_contributed": {
         "assertions": 2,
-        "body_sha": "742c7617959d0b43"
+        "body_sha": "d5af60e46c5030ac"
       },
       "test_empty_frozenset_means_nothing_not_unrestricted": {
         "assertions": 2,
-        "body_sha": "deb96e498c604815"
+        "body_sha": "40e707fd041b4aea"
       },
       "test_empty_frozenset_on_one_dimension_overrides_other_populated_dimensions": {
         "assertions": 2,
-        "body_sha": "f5499397b0f03060"
+        "body_sha": "534ca2270eb8a4ad"
       },
       "test_populated_set_compiles_to_any_clause_with_sorted_params": {
         "assertions": 2,
-        "body_sha": "fd536554ee8890ed"
+        "body_sha": "bf9668d2dcfe8862"
       },
       "test_read_all_short_circuits_to_true_regardless_of_other_fields": {
         "assertions": 2,
-        "body_sha": "943ade824135f437"
+        "body_sha": "a798b710e52f9c65"
       },
       "test_no_columns_declared_is_REFUSED_when_the_scope_is_restrictive": {
         "assertions": 2,
-        "body_sha": "91a645f53b2b7647"
+        "body_sha": "78baa72d5e544585"
       },
       "test_an_unmapped_restricted_dimension_is_refused_even_when_others_map": {
         "assertions": 1,
-        "body_sha": "c0dfe95dc70b584c"
+        "body_sha": "1c54ba26a13f1b7b"
       },
       "test_a_dimension_can_be_waived_explicitly_with_none": {
         "assertions": 3,
-        "body_sha": "aae8f8e553c9b08d"
+        "body_sha": "1f392bb93324a764"
       },
       "test_an_unrestricted_scope_needs_no_mapping": {
         "assertions": 2,
-        "body_sha": "6b0b7c7cad2723c6"
+        "body_sha": "b9ba6b68a4d22425"
       },
       "test_the_shipped_mappings_express_every_dimension": {
         "assertions": 1,
-        "body_sha": "50baeb8ff3e490fe"
+        "body_sha": "907756db3cc10f1d"
       },
       "test_multiple_dimensions_are_anded_together": {
         "assertions": 2,
-        "body_sha": "3fca64717a98f83d"
+        "body_sha": "e3f45e8acf1039de"
       },
       "test_unknown_dimension_name_is_rejected": {
         "assertions": 1,
-        "body_sha": "aebb4115e8aafa3b"
+        "body_sha": "254485c0e7a6dd89"
       },
       "test_query_merges_scope_params_and_substitutes_token": {
         "assertions": 3,
-        "body_sha": "d37c2148df01305d"
+        "body_sha": "95fae05c80579a08"
       },
       "test_query_defaults_to_session_scope_when_scope_kwarg_omitted": {
         "assertions": 1,
-        "body_sha": "ad1460a741b613a5"
+        "body_sha": "4d1ed4a5e10a2a93"
       },
       "test_query_scope_kwarg_overrides_session_scope": {
         "assertions": 1,
-        "body_sha": "a8975b60df744a55"
+        "body_sha": "0a4d98070198f499"
       },
       "test_query_caller_params_survive_alongside_scope_params": {
         "assertions": 2,
-        "body_sha": "d3e6ec53eb6d6000"
+        "body_sha": "6033bc0fae69735e"
       },
       "test_query_rejects_positional_params": {
         "assertions": 1,
-        "body_sha": "c313b5d70fd7f5f6"
+        "body_sha": "8736bc3a9aa33e08"
       },
       "test_query_one_returns_none_for_out_of_scope_or_missing_row": {
         "assertions": 1,
-        "body_sha": "f9e3db54981979a2"
+        "body_sha": "0776884cb2bc6cea"
       },
       "test_query_one_returns_first_row": {
         "assertions": 1,
-        "body_sha": "87f1f360b08651af"
+        "body_sha": "14963e18f9a3d63b"
       }
     },
     "test_pg_rls.py": {
       "test_no_bare_set_statement_in_app_backend_pg": {
         "assertions": 1,
-        "body_sha": "68cd0aba98706c70"
+        "body_sha": "bfa5d813f28917e9"
       },
       "test_migration_registers_rls_and_a_policy_for_every_table_in_the_registry": {
         "assertions": 3,
-        "body_sha": "8293b32ad7f57d87"
+        "body_sha": "8967e1734c0443aa"
       },
       "test_rls_table_columns_matches_repo_project_scope_columns": {
         "assertions": 1,
-        "body_sha": "0b244fc6a8f413b8"
+        "body_sha": "19bb1d941b57733a"
       },
       "test_rls_table_columns_matches_repo_wbs_element_scope_columns": {
         "assertions": 1,
-        "body_sha": "ecd40d317e9448f5"
+        "body_sha": "784d51757b116693"
       },
       "test_permits_none_dimension_is_unrestricted": {
         "assertions": 2,
-        "body_sha": "41fcc3034dcf2f65"
+        "body_sha": "7e90c6e0267d3ed4"
       },
       "test_permits_empty_frozenset_permits_nothing": {
         "assertions": 2,
-        "body_sha": "eb3622195e0ba248"
+        "body_sha": "fb6f07059a6bdd55"
       },
       "test_permits_restricted_set_matches_membership": {
         "assertions": 2,
-        "body_sha": "c600e775f46a2882"
+        "body_sha": "c63103ac59a8aefd"
       },
       "test_permits_read_all_overrides_every_restriction": {
         "assertions": 1,
-        "body_sha": "baf748c4f6b66fc9"
+        "body_sha": "c3107f7583971833"
       },
       "test_permits_requires_every_dimension_to_agree": {
         "assertions": 2,
-        "body_sha": "8a69cdae9dd04c14"
+        "body_sha": "6d441b2984eef45d"
       },
       "test_rls_enabled_and_forced_for_every_registered_table_live": {
         "assertions": 2,
-        "body_sha": "c2364b331fac0009"
+        "body_sha": "445a1dbd91cc2a36"
       },
       "test_capex_app_role_exists_and_is_not_login_live": {
         "assertions": 3,
-        "body_sha": "c349f75491b23a9f"
+        "body_sha": "00838b0973608fef"
       },
       "test_project_rls_matches_compiler_and_pure_python_live": {
         "assertions": 3,
-        "body_sha": "a406691de32d9e94"
+        "body_sha": "afb42c2943be1232"
       },
       "test_wbs_element_rls_matches_compiler_live": {
         "assertions": 2,
-        "body_sha": "a023e6dd9e0f209e"
+        "body_sha": "e90b53442f225704"
       },
       "test_budget_cell_rls_matches_join_compiler_live": {
         "assertions": 3,
-        "body_sha": "a446fdbb13814aa4"
+        "body_sha": "4a1be498a5e733ef"
       },
       "test_org_table_rls_matches_pure_python_permits_live": {
         "assertions": 1,
-        "body_sha": "0dc8002ec3f70532"
+        "body_sha": "cf090fae33cb94a8"
       },
       "test_empty_scope_yields_no_rows_via_compiler_and_rls_live": {
         "assertions": 2,
-        "body_sha": "e8c13bde054cc82a"
+        "body_sha": "c5f4b0b6922c538e"
       },
       "test_role_and_scope_do_not_leak_across_pool_reuse_live": {
         "assertions": 3,
-        "body_sha": "869cd0afada39905"
+        "body_sha": "34038044dd7f5399"
       },
       "test_no_service_maker_checker_across_seeded_and_fixture_users_live": {
         "assertions": 0,
-        "body_sha": "eae558ea7372dadc"
+        "body_sha": "5e16d99d68ca7a53"
       }
     },
     "test_pg_rls_coverage.py": {
       "test_every_table_the_inventory_marks_covered_is_protected_in_the_migrations": {
         "assertions": 1,
-        "body_sha": "d024debd3e66931b"
+        "body_sha": "06367fd8092e49ac"
       },
       "test_each_covered_table_is_protected_by_the_migration_the_inventory_names": {
         "assertions": 2,
-        "body_sha": "21a53e0fc0f06f01"
+        "body_sha": "c096b9b0b346d8c5"
       },
       "test_the_coverage_check_detects_a_table_covered_nowhere": {
         "assertions": 3,
-        "body_sha": "c9b5a82ff68ccb03"
+        "body_sha": "9cd1ee0823d08fff"
       },
       "test_the_coverage_check_rejects_enable_without_force": {
         "assertions": 1,
-        "body_sha": "5d89a9c9e24964dc"
+        "body_sha": "4c8c4b60fcf073cf"
       },
       "test_reported_gaps_are_still_gaps": {
         "assertions": 1,
-        "body_sha": "081df595874e2841"
+        "body_sha": "b3045221f1c66a37"
       },
       "test_rls_registry_and_the_independent_inventory_name_the_same_tables": {
         "assertions": 1,
-        "body_sha": "e258527a1e4486b3"
+        "body_sha": "86d77f6c0cf34dd7"
       },
       "test_rls_registry_and_the_inventory_agree_on_which_migration_covers_what": {
         "assertions": 1,
-        "body_sha": "7be2793567808e49"
+        "body_sha": "aeb3e01c48c9c2d2"
       },
       "test_a_table_in_neither_the_inventory_nor_the_registry_would_fail": {
         "assertions": 3,
-        "body_sha": "564b6f3532cd1142"
+        "body_sha": "7bee319f23811bfa"
       },
       "test_every_table_in_the_schema_is_classified_scoped_or_deliberately_not": {
         "assertions": 2,
-        "body_sha": "69d04334753af6cc"
+        "body_sha": "b9a393900fec397a"
       },
       "test_scoped_and_unscoped_are_disjoint": {
         "assertions": 1,
-        "body_sha": "aacbcb0d48a26ad3"
+        "body_sha": "85bc44e4cdc1615e"
       },
       "test_every_unscoped_table_carries_a_reason": {
         "assertions": 1,
-        "body_sha": "d3b1b367e718bc9b"
+        "body_sha": "ad5db950e49d9e83"
       },
       "test_006_covers_exactly_the_eight_tables_the_security_gate_names": {
         "assertions": 2,
-        "body_sha": "25e006964344d97b"
+        "body_sha": "7937442521e94831"
       },
       "test_006_does_not_redefine_the_frozen_scope_functions": {
         "assertions": 2,
-        "body_sha": "d4c864d2208c5957"
+        "body_sha": "cf40579be279844c"
       },
       "test_006_declares_a_rollback_section_naming_every_policy_it_creates": {
         "assertions": 4,
-        "body_sha": "3321f067b1c8709a"
+        "body_sha": "2b517b2746ed09c9"
       },
       "test_reference_tables_are_not_left_on_the_fail_open_all_null_predicate": {
         "assertions": 3,
-        "body_sha": "8a7c91f0979df662"
+        "body_sha": "7a9e542159069a66"
       },
       "test_006_forces_row_level_security_on_every_table_it_enables": {
         "assertions": 2,
-        "body_sha": "31f08653636a206b"
+        "body_sha": "939abb3782945046"
       },
       "test_transfer_permits_requires_both_legs": {
         "assertions": 4,
-        "body_sha": "4ce38f87c4d1b222"
+        "body_sha": "9cba0126c5b9f273"
       },
       "test_transfer_permits_denies_a_missing_join_row_rather_than_waiving_it": {
         "assertions": 2,
-        "body_sha": "f6f3690a89bfd603"
+        "body_sha": "17975b9b46551255"
       },
       "test_transfer_permits_honours_read_all": {
         "assertions": 1,
-        "body_sha": "91d822d19070a69f"
+        "body_sha": "34a79eda37be0c91"
       },
       "test_transfer_permits_empty_frozenset_permits_nothing": {
         "assertions": 1,
-        "body_sha": "c92c842a04e31f11"
+        "body_sha": "632b455af41c9959"
       },
       "test_version_cell_permits_requires_both_reach_paths": {
         "assertions": 4,
-        "body_sha": "6ff712c13fcb3953"
+        "body_sha": "4efc4b248f29ccc8"
       },
       "test_reference_permits_denies_a_session_with_no_principal": {
         "assertions": 1,
-        "body_sha": "4023cb665d91d4e8"
+        "body_sha": "378a1935fa6be5e9"
       },
       "test_reference_permits_admits_any_established_principal": {
         "assertions": 2,
-        "body_sha": "d6762b93a90e9c16"
+        "body_sha": "9d70423e09f7df62"
       },
       "test_reference_tables_are_registered_as_reference_not_as_unfiltered": {
         "assertions": 2,
-        "body_sha": "d561cc59b04a32cd"
+        "body_sha": "ab2601ce004bc4ad"
       },
       "test_joined_registries_cover_every_dimensionless_non_reference_table": {
         "assertions": 1,
-        "body_sha": "ee91ddcbf3c278a8"
+        "body_sha": "ca4baf7b86f341c5"
       },
       "test_rls_alone_denies_out_of_scope_rows_with_no_application_predicate_live": {
         "assertions": 2,
-        "body_sha": "f52b4c1c28ddba4e"
+        "body_sha": "b1390bac54797cfd"
       },
       "test_rls_alone_hides_the_cross_project_transfer_from_both_sides_live": {
         "assertions": 1,
-        "body_sha": "18f2fca556d78696"
+        "body_sha": "1ed1009f13dc0345"
       },
       "test_an_unscoped_capex_app_session_reads_nothing_live": {
         "assertions": 2,
-        "body_sha": "72a4bba49537fb21"
+        "body_sha": "59456e4bf51b0bd8"
       },
       "test_reference_tables_are_readable_by_an_established_principal_live": {
         "assertions": 3,
-        "body_sha": "a8e9014d62ea6cd7"
+        "body_sha": "9b8a00c16a1c6022"
       },
       "test_application_predicate_alone_denies_the_same_rows_live": {
         "assertions": 7,
-        "body_sha": "05cbbd6d0f3dcadf"
+        "body_sha": "3350470fdf3f3db0"
       },
       "test_both_layers_agree_with_the_pure_python_oracle_live": {
         "assertions": 4,
-        "body_sha": "4032eb89a6142184"
+        "body_sha": "1c9d86b32f3563f4"
       },
       "test_rls_is_enabled_and_forced_for_every_newly_covered_table_live": {
         "assertions": 2,
-        "body_sha": "7d8c9439758b3d0e"
+        "body_sha": "33b204490ec6b513"
       },
       "test_every_newly_covered_table_actually_carries_a_policy_live": {
         "assertions": 1,
-        "body_sha": "cd934b5b5d70f280"
+        "body_sha": "33bfeb26959014d9"
       },
       "test_all_nineteen_rls_tables_are_enabled_and_forced_live": {
         "assertions": 2,
-        "body_sha": "81abb847ee244ba1"
+        "body_sha": "65d3e2a8281e2903"
       }
     },
     "test_pg_roles.py": {
       "test_roles_match_frozen_c9_contract": {
         "assertions": 2,
-        "body_sha": "31b06476c892eabb"
+        "body_sha": "a65b3ab47615bf80"
       },
       "test_migration_check_constraint_matches_roles_py": {
         "assertions": 2,
-        "body_sha": "1ac238b8226be118"
+        "body_sha": "099fee956f828044"
       },
       "test_permissions_reference_only_known_roles": {
         "assertions": 1,
-        "body_sha": "7fbf0cd7322e4389"
+        "body_sha": "d3f1bfbd32d47099"
       },
       "test_maker_checker_is_a_subset_of_known_permissions": {
         "assertions": 1,
-        "body_sha": "5a76b105635a8285"
+        "body_sha": "4acfde74857dd436"
       },
       "test_roles_with_maker_checker_is_nonempty_and_known": {
         "assertions": 2,
-        "body_sha": "44a5cbca737ed27f"
+        "body_sha": "231b61d5b7986988"
       },
       "test_permissions_for_roles_is_a_union": {
         "assertions": 2,
-        "body_sha": "b60f149ab73394d6"
+        "body_sha": "cdfd331566efb614"
       },
       "test_permissions_for_unknown_role_is_empty_not_an_error": {
         "assertions": 1,
-        "body_sha": "90d1b5538472ef26"
+        "body_sha": "6043ca900ddd444d"
       },
       "test_roles_with_permission_unknown_permission_raises": {
         "assertions": 1,
-        "body_sha": "c1577bfe656d7e0b"
+        "body_sha": "aa51e372211a00cf"
       },
       "test_assert_role_grantable_rejects_unknown_role": {
         "assertions": 1,
-        "body_sha": "52209b7ab0609483"
+        "body_sha": "debb406f62786394"
       },
       "test_assert_role_grantable_allows_user_any_role": {
         "assertions": 0,
-        "body_sha": "87b04f01bfbd3b8e"
+        "body_sha": "fee54ac1bf3fc093"
       },
       "test_assert_role_grantable_denies_service_maker_checker_role": {
         "assertions": 1,
-        "body_sha": "013d8f16ab70e3c2"
+        "body_sha": "112fa282f135f6d0"
       },
       "test_assert_role_grantable_allows_service_non_maker_checker_role": {
         "assertions": 1,
-        "body_sha": "2455ee711591e2d3"
+        "body_sha": "bfbc37b37acb8799"
       },
       "test_seed_fragment_grants_no_service_maker_checker_role": {
         "assertions": 2,
-        "body_sha": "40f6b4fc2abd7046"
+        "body_sha": "458341aeefe1fd2e"
       },
       "test_seed_fragment_demonstrates_empty_grant_set": {
         "assertions": 2,
-        "body_sha": "30531d23f45f5d0d"
+        "body_sha": "c41f53acb8dc7476"
       },
       "test_resolve_scope_distinguishes_none_from_empty_live": {
         "assertions": 3,
-        "body_sha": "a0aa74dbae434256"
+        "body_sha": "ddbb44dee788ff46"
       },
       "test_set_roles_and_set_scope_round_trip_live": {
         "assertions": 8,
-        "body_sha": "cf02c762e68d98bb"
+        "body_sha": "3336d0d992f68c21"
       },
       "test_set_roles_denies_service_maker_checker_and_writes_nothing": {
         "assertions": 2,
-        "body_sha": "e8d72fb9ef63445f"
+        "body_sha": "2ea8bc6058476228"
       },
       "test_assert_no_service_maker_checker_live": {
         "assertions": 1,
-        "body_sha": "264fbbbffe2c5f75"
+        "body_sha": "c36c8cd69fc81502"
       },
       "test_seed_fragment_produces_the_five_archetypes_live": {
         "assertions": 17,
-        "body_sha": "e8c46464b0b3cf49"
+        "body_sha": "b3694cdfb2042ac9"
       }
     },
     "test_pg_scope_leakage.py": {
       "test_no_bare_set_statement_in_pg_backend": {
         "assertions": 1,
-        "body_sha": "22e05c55cff8b9d2"
+        "body_sha": "c3e2d80eabecde66"
       },
       "test_scope_settings_are_always_applied_via_set_local": {
         "assertions": 1,
-        "body_sha": "e5eda52464e08f59"
+        "body_sha": "900e0a6bf5b14d45"
       },
       "test_scope_does_not_leak_across_pool_reuse": {
         "assertions": 2,
-        "body_sha": "d86be74bb7cf5fd8"
+        "body_sha": "916187837ca15c5e"
       },
       "test_session_scope_does_not_leak_to_the_next_session": {
         "assertions": 5,
-        "body_sha": "77865e1cd7c5a7a4"
+        "body_sha": "38db76349c36983c"
       },
       "test_session_rollback_also_clears_scope": {
         "assertions": 3,
-        "body_sha": "dd917dc216e45938"
+        "body_sha": "87438bb7d110082b"
       }
     },
     "test_pg_seed.py": {
       "test_guard_refuses_when_capex_profile_is_not_local_demo": {
         "assertions": 1,
-        "body_sha": "b57087cc4e30b997"
+        "body_sha": "a382c2d16519fec4"
       },
       "test_guard_refuses_an_explicitly_wrong_profile_value": {
         "assertions": 1,
-        "body_sha": "b65c14aa6905667d"
+        "body_sha": "69686a816eb365df"
       },
       "test_guard_refuses_a_non_disposable_database_name": {
         "assertions": 1,
-        "body_sha": "a93f49879041b1ff"
+        "body_sha": "9febd9fdacc682f2"
       },
       "test_guard_accepts_names_matching_the_disposable_patterns": {
         "assertions": 2,
-        "body_sha": "660347fa00215f29"
+        "body_sha": "d78ceba9429dc744"
       },
       "test_force_does_not_bypass_the_profile_check": {
         "assertions": 1,
-        "body_sha": "1132198a5546783c"
+        "body_sha": "e5ff5fd95f5f4941"
       },
       "test_force_does_not_bypass_the_disposable_name_check": {
         "assertions": 1,
-        "body_sha": "9011a90581e2362d"
+        "body_sha": "456ba155c52a2099"
       },
       "test_disposable_name_patterns_match_conftest_pg_exactly": {
         "assertions": 2,
-        "body_sha": "51648a7590d82532"
+        "body_sha": "8fb3bbd80507eee6"
       },
       "test_seed_guard_error_is_a_runtime_error": {
         "assertions": 1,
-        "body_sha": "9d3b2354919f9277"
+        "body_sha": "173dae9b3719993e"
       },
       "test_seed_parts_dir_resolves_to_a_real_directory": {
         "assertions": 4,
-        "body_sha": "a27437a528c8251e"
+        "body_sha": "80d9aa37108b02bc"
       },
       "test_every_committed_fragment_is_discovered": {
         "assertions": 2,
-        "body_sha": "3f914966ccaee4d4"
+        "body_sha": "31dfc233bde70881"
       },
       "test_fragments_load_in_filename_order": {
         "assertions": 1,
-        "body_sha": "a02d0f6bd1920f4f"
+        "body_sha": "dea287a6a5bf20a5"
       },
       "test_seed_executes_the_base_file_then_every_fragment": {
         "assertions": 1,
-        "body_sha": "72427c22c3be8c36"
+        "body_sha": "2b70e38b96fce46e"
       },
       "test_a_missing_fragment_directory_is_not_an_error": {
         "assertions": 1,
-        "body_sha": "9a8829c17ee341ff"
+        "body_sha": "492688263b72c593"
       },
       "test_fragments_never_load_when_a_guard_refuses": {
         "assertions": 2,
-        "body_sha": "fd513ef7d4c95c57"
+        "body_sha": "36647bb7be65cb0f"
       },
       "test_seed_loads_the_full_demo_dataset": {
         "assertions": 1,
-        "body_sha": "efda2fdf6d57350a"
+        "body_sha": "df5d404214b97e6a"
       },
       "test_every_money_column_is_an_exact_int_never_float_or_decimal": {
         "assertions": 3,
-        "body_sha": "024d3363170dce65"
+        "body_sha": "f7aa9d32b59521cb"
       },
       "test_seeded_audit_streams_verify_intact": {
         "assertions": 10,
-        "body_sha": "35838dd5c1edf460"
+        "body_sha": "c2726a594b2f1378"
       },
       "test_po_line_invariant_holds_for_every_ledger_cell_with_spend": {
         "assertions": 3,
-        "body_sha": "78f7044252a38033"
+        "body_sha": "3eabeebf77d2aba3"
       },
       "test_ancestor_chain_rollup_matches_own_plus_children": {
         "assertions": 11,
-        "body_sha": "2534ae25ce09792f"
+        "body_sha": "eb6f88f528f9c482"
       },
       "test_the_fragments_load_on_top_of_the_base_seed": {
         "assertions": 3,
-        "body_sha": "164893ca79a80e72"
+        "body_sha": "5a803b5fc51c3881"
       },
       "test_seed_refuses_when_the_database_already_contains_rows": {
         "assertions": 1,
-        "body_sha": "e4494b0943554880"
+        "body_sha": "1880cd2b36bb1751"
       },
       "test_force_skips_the_emptiness_precheck_but_still_never_silently_merges": {
         "assertions": 2,
-        "body_sha": "147a029aacc3d124"
+        "body_sha": "135822a4fd737ec9"
       },
       "test_seed_refuses_against_an_unmigrated_database": {
         "assertions": 1,
-        "body_sha": "4197d50506353f41"
+        "body_sha": "0a409e4b616a643a"
       }
     },
     "test_pg_settings.py": {
       "test_every_contract_collection_is_registered": {
         "assertions": 1,
-        "body_sha": "55189c4ab9f26a5f"
+        "body_sha": "c9d105c74711ed8c"
       },
       "test_spec_for_unknown_collection_raises_404": {
         "assertions": 3,
-        "body_sha": "4066ba83042708b5"
+        "body_sha": "5b4c9f0ad38521dd"
       },
       "test_only_entities_carries_masked_fields": {
         "assertions": 2,
-        "body_sha": "32ee6a52a2c6c3eb"
+        "body_sha": "72650017540b6578"
       },
       "test_render_masks_entity_tax_identity_by_default": {
         "assertions": 2,
-        "body_sha": "858c8136c6a80520"
+        "body_sha": "ab842789d18891b8"
       },
       "test_render_reveals_entity_tax_identity_on_request": {
         "assertions": 2,
-        "body_sha": "8827d50657f6ffa7"
+        "body_sha": "83cfa19476aea2da"
       },
       "test_render_leaves_unmasked_collections_alone": {
         "assertions": 1,
-        "body_sha": "0c4da1cbdca61d4a"
+        "body_sha": "74909bf5369cf6ba"
       },
       "test_create_and_list_an_organisation": {
         "assertions": 6,
-        "body_sha": "f3a0c80d6e427471"
+        "body_sha": "5eac46175986f093"
       },
       "test_create_requires_a_parent_reference": {
         "assertions": 2,
-        "body_sha": "8864e6daffca2208"
+        "body_sha": "f06352dc5f12aabd"
       },
       "test_create_refuses_an_invalid_parent_reference": {
         "assertions": 2,
-        "body_sha": "e9009d825f064822"
+        "body_sha": "93ced3d07f73c7f0"
       },
       "test_create_refuses_an_unauthenticated_caller": {
         "assertions": 1,
-        "body_sha": "107c18c8120b63ef"
+        "body_sha": "c45697b1f6daaeb4"
       },
       "test_unknown_collection_is_404": {
         "assertions": 2,
-        "body_sha": "2f58f6cce6c277ba"
+        "body_sha": "0ef82e71b3d40257"
       },
       "test_stale_version_returns_409_and_row_is_unchanged": {
         "assertions": 6,
-        "body_sha": "bc73801376922588"
+        "body_sha": "c3f60d3ba756ca65"
       },
       "test_deactivate_does_not_delete": {
         "assertions": 3,
-        "body_sha": "7b2144c4a3ccb8e3"
+        "body_sha": "8b846e67c871f101"
       },
       "test_masked_by_default": {
         "assertions": 3,
-        "body_sha": "a9845084480c48bd"
+        "body_sha": "b5c5490af42e3800"
       },
       "test_reveal_without_permission_is_refused": {
         "assertions": 2,
-        "body_sha": "b046ee5a6f809702"
+        "body_sha": "64e0116061794076"
       },
       "test_reveal_with_permission_but_no_reason_is_refused": {
         "assertions": 2,
-        "body_sha": "1a76b50c8dbd354f"
+        "body_sha": "359fe0266a824f76"
       },
       "test_reveal_with_permission_and_reason_unmasks_and_audits": {
         "assertions": 6,
-        "body_sha": "d71ac6750b598506"
+        "body_sha": "dbad8673d261b902"
       }
     },
     "test_pg_transactions.py": {
       "test_concurrent_transactions_on_the_same_row_serialise_under_for_update": {
         "assertions": 2,
-        "body_sha": "b5d48f2dcffd7913"
+        "body_sha": "432b743d44b2db0f"
       },
       "test_for_update_blocks_a_concurrent_reader_of_the_same_row": {
         "assertions": 2,
-        "body_sha": "6bd174abb311d216"
+        "body_sha": "76a9f786fa34225c"
       },
       "test_rollback_leaves_no_partial_state": {
         "assertions": 4,
-        "body_sha": "5a8610d2bdc7e203"
+        "body_sha": "c8e78ddf02ec009c"
       },
       "test_rollback_after_a_constraint_violation_leaves_no_partial_state": {
         "assertions": 2,
-        "body_sha": "a5d7e88ff37750f4"
+        "body_sha": "2af8b9b49e219cdd"
       }
     },
     "test_runtime_startup.py": {
       "test_healthz_returns_200_with_database_unavailable": {
         "assertions": 2,
-        "body_sha": "d61b5253255959a4"
+        "body_sha": "cc82b8bcd3da8226"
       },
       "test_healthz_returns_200_even_with_a_configured_but_unreachable_database": {
         "assertions": 2,
-        "body_sha": "42e5bee78eced1f2"
+        "body_sha": "28f9bc69627585db"
       },
       "test_readyz_returns_503_when_database_unavailable": {
         "assertions": 2,
-        "body_sha": "36ec0e1dff331dba"
+        "body_sha": "49bd3185e90ed6bd"
       },
       "test_readyz_returns_503_and_leaks_nothing_with_an_unreachable_database": {
         "assertions": 4,
-        "body_sha": "72b7d272d7c3e6fa"
+        "body_sha": "e2deccc625dcc306"
       },
       "test_readyz_reports_ok_and_schema_version_when_database_is_healthy": {
         "assertions": 3,
-        "body_sha": "3e36896d9a4f8484"
+        "body_sha": "abade4a1735e1e53"
       },
       "test_boot_refuses_when_the_postgres_schema_is_behind_and_writes_nothing": {
         "assertions": 2,
-        "body_sha": "d35aa7e47acb1ee9"
+        "body_sha": "0b50e7d9285963f2"
       },
       "test_boot_refuses_when_the_postgres_database_is_unreachable": {
         "assertions": 4,
-        "body_sha": "eb0b9d3122725680"
+        "body_sha": "686fe6cc4ba75a9b"
       },
       "test_run_py_boot_refuses_against_a_legacy_sqlite_database_and_writes_nothing": {
         "assertions": 2,
-        "body_sha": "216e0edfee5b12b8"
+        "body_sha": "2e4974bcea8514fb"
       },
       "test_run_py_contains_no_migration_execution_call": {
         "assertions": 1,
-        "body_sha": "717252eb533056e0"
+        "body_sha": "6afb8741de867000"
       },
       "test_database_config_repr_never_contains_the_password": {
         "assertions": 5,
-        "body_sha": "818cbdb300d0a35d"
+        "body_sha": "68d3183085391b03"
       },
       "test_database_config_from_url_does_not_retain_the_password_on_the_object": {
         "assertions": 4,
-        "body_sha": "f579f980549700b2"
+        "body_sha": "335eeaa916330a7c"
       }
     },
     "test_scope_enforcement.py": {
       "test_no_module_reads_a_scopable_table_off_the_chokepoint": {
         "assertions": 1,
-        "body_sha": "e79c6b94c7b4c4a5"
+        "body_sha": "149cc73b683b9307"
       },
       "test_the_gate_catches_a_literal_bypass": {
         "assertions": 1,
-        "body_sha": "ac80c79543038f7b"
+        "body_sha": "ef89ecb93718073c"
       },
       "test_the_gate_catches_a_computed_table_name": {
         "assertions": 1,
-        "body_sha": "e37ff1b92d358dd5"
+        "body_sha": "197215fc89009719"
       },
       "test_the_gate_catches_sql_held_in_a_variable": {
         "assertions": 1,
-        "body_sha": "c0f9d51c08c34a36"
+        "body_sha": "d0ee1f5e12ecad8d"
       },
       "test_an_exempt_comment_is_required_to_state_a_reason": {
         "assertions": 1,
-        "body_sha": "a4318b8aa531528b"
+        "body_sha": "144a5e8c8f6b62c4"
       },
       "test_the_routers_are_scanned_not_only_the_service_layer": {
         "assertions": 2,
-        "body_sha": "8b88f43d1524997c"
+        "body_sha": "04179c010ba65f5c"
       },
       "test_every_declared_exemption_names_a_file_that_exists": {
         "assertions": 1,
-        "body_sha": "06fb026424e85990"
+        "body_sha": "96fce3b64a3351f1"
       },
       "test_no_row_scope_declarations_each_state_a_reason": {
         "assertions": 1,
-        "body_sha": "6ed04a51854a80db"
+        "body_sha": "6ec3ead0d76cb9e1"
       }
     },
     "test_scope_negative_matrix.py": {
       "test_the_evaluator_refuses_a_predicate_it_does_not_understand": {
         "assertions": 2,
-        "body_sha": "cf08fa287d520911"
+        "body_sha": "543ac3a391fd14e9"
       },
       "test_the_evaluator_matches_compile_scope_on_the_three_states": {
         "assertions": 2,
-        "body_sha": "0840f94165fc246e"
+        "body_sha": "cd22ca02aa08dca7"
       },
       "test_read_shape_cannot_see_the_out_of_scope_row": {
         "assertions": 2,
-        "body_sha": "40c0d7f4668f2c12"
+        "body_sha": "325d9008bd243a9c"
       },
       "test_export_shape_cannot_list_the_out_of_scope_row": {
         "assertions": 1,
-        "body_sha": "daf48ce978d4b6aa"
+        "body_sha": "07ca4d9cef439432"
       },
       "test_search_shape_cannot_reach_the_out_of_scope_row": {
         "assertions": 4,
-        "body_sha": "bcfee9937b9eefdf"
+        "body_sha": "8a87811ffc87ca26"
       },
       "test_a_query_without_the_scope_token_is_refused_outright": {
         "assertions": 2,
-        "body_sha": "9a418738fabaa522"
+        "body_sha": "949fedd6febcf8f4"
       },
       "test_a_query_that_cannot_express_the_restriction_is_refused_not_widened": {
         "assertions": 2,
-        "body_sha": "677e37d0a7affeb0"
+        "body_sha": "ab712db8f61aa449"
       },
       "test_write_shape_a_draft_revision_on_an_out_of_scope_cell_is_refused": {
         "assertions": 4,
-        "body_sha": "e1c71a8c5cae111a"
+        "body_sha": "0375b67fd6c713df"
       },
       "test_write_shape_an_in_scope_cell_is_not_refused_by_scope": {
         "assertions": 2,
-        "body_sha": "5e9a34316c35abd6"
+        "body_sha": "258cda2c0550d668"
       },
       "test_approval_shape_approving_an_out_of_scope_revision_is_refused": {
         "assertions": 4,
-        "body_sha": "6d7a5619b0253a0f"
+        "body_sha": "291ee8653e0d90bd"
       },
       "test_approval_shape_approving_an_out_of_scope_transfer_is_refused": {
         "assertions": 3,
-        "body_sha": "829a785089f866aa"
+        "body_sha": "a899321c99c04174"
       },
       "test_approval_shape_closing_an_out_of_scope_period_is_refused": {
         "assertions": 4,
-        "body_sha": "a5a932ca31f7e5cd"
+        "body_sha": "3fce901e3a55f554"
       },
       "test_a_period_transition_ENFORCES_a_restriction_it_once_could_not_express": {
         "assertions": 7,
-        "body_sha": "0d8bfc0f9569e14b"
+        "body_sha": "0c8573641d40a10c"
       },
       "test_an_inexpressible_dimension_is_a_403_and_never_a_500": {
         "assertions": 2,
-        "body_sha": "8e9bd0e6100eadf7"
+        "body_sha": "f25e1872aa4c86d7"
       },
       "test_list_shape_the_cell_listing_filters_by_the_compiled_predicate": {
         "assertions": 2,
-        "body_sha": "e9dcc8b61b77dd84"
+        "body_sha": "0b94902ddc79df01"
       },
       "test_list_shape_positive_control_the_in_scope_cell_is_returned": {
         "assertions": 1,
-        "body_sha": "82599a58e5a69927"
+        "body_sha": "23047e351bedcdd5"
       },
       "test_a_principal_with_no_grants_sees_neither_row": {
         "assertions": 2,
-        "body_sha": "bf2b8341e4980b64"
+        "body_sha": "f4c9fef498e0439e"
       },
       "test_a_principal_with_no_grants_is_refused_every_service_shape": {
         "assertions": 7,
-        "body_sha": "26dc694875ba6de6"
+        "body_sha": "33a81c779b96204d"
       },
       "test_an_unknown_principal_is_refused_every_shape": {
         "assertions": 2,
-        "body_sha": "aef1d74208004305"
+        "body_sha": "3a3d77e3e56b02c6"
       },
       "test_live_scope_for_principal_matches_the_seeded_grants": {
         "assertions": 10,
-        "body_sha": "d2cc96c5a7e87da2"
+        "body_sha": "60e0a3e3317d102f"
       },
       "test_live_negative_matrix_per_dimension": {
         "assertions": 2,
-        "body_sha": "fee277fb1ae9d9a5"
+        "body_sha": "14ae86f0e0e8a9ca"
       },
       "test_live_negative_matrix_location_dimension": {
         "assertions": 1,
-        "body_sha": "1ddad64a66196a09"
+        "body_sha": "e74a780d7509d6ba"
       },
       "test_live_approval_by_a_principal_with_no_grants_is_refused": {
         "assertions": 4,
-        "body_sha": "950884557aa62bc8"
+        "body_sha": "eba487f2f5cbaa6c"
       },
       "test_live_cross_entity_approval_and_period_close_are_refused": {
         "assertions": 8,
-        "body_sha": "dba2531e266ac865"
+        "body_sha": "53d7c9a4584cd693"
       },
       "test_live_out_of_scope_write_is_physically_refused_by_rls": {
         "assertions": 2,
-        "body_sha": "8d6bdc73c209b492"
+        "body_sha": "c2dda49a91184158"
       }
     },
     "test_scope_sentinel.py": {
       "test_as_settings_never_emits_the_star_sentinel_for_any_scope": {
         "assertions": 2,
-        "body_sha": "e1590660c8cc9b7f"
+        "body_sha": "3bccbcf6878c10c7"
       },
       "test_the_three_states_round_trip_to_the_frozen_representation": {
         "assertions": 6,
-        "body_sha": "02226edc8855cecf"
+        "body_sha": "117dea3998422d51"
       },
       "test_unrestricted_and_empty_are_distinguishable_on_the_wire": {
         "assertions": 3,
-        "body_sha": "49cfea65f38185cf"
+        "body_sha": "5752b463ebe1e3bd"
       },
       "test_no_ids_value_whatsoever_can_mean_unrestricted": {
         "assertions": 1,
-        "body_sha": "3a61d360ebe1a51e"
+        "body_sha": "89ceb9f30b0d02bb"
       },
       "test_scope_keys_match_what_as_settings_actually_emits": {
         "assertions": 1,
-        "body_sha": "ebaec0b2ef11385a"
+        "body_sha": "20bf70c43846b3a2"
       },
       "test_unchanged_settings_are_still_carried": {
         "assertions": 4,
-        "body_sha": "8b7445eef4892a7a"
+        "body_sha": "1d1a23374c385f3f"
       },
       "test_mirror_absent_mode_denies": {
         "assertions": 2,
-        "body_sha": "4422b0e24a7013c1"
+        "body_sha": "e1765f94e0088c53"
       },
       "test_mirror_mode_none_denies_everything": {
         "assertions": 1,
-        "body_sha": "935bc1e8a33ea091"
+        "body_sha": "b23748c9c755d9ab"
       },
       "test_mirror_mode_all_permits_everything": {
         "assertions": 1,
-        "body_sha": "f4f9d21d7ba5cd5b"
+        "body_sha": "b05a36fdace66146"
       },
       "test_mirror_mode_list_does_membership": {
         "assertions": 3,
-        "body_sha": "7bb6fd0c8340485e"
+        "body_sha": "9fd07502722afcba"
       },
       "test_mirror_unknown_mode_denies": {
         "assertions": 1,
-        "body_sha": "54918f4715567b86"
+        "body_sha": "fae950d1f564f5c2"
       },
       "test_mirror_null_value_waives_the_dimension": {
         "assertions": 1,
-        "body_sha": "5d4c509676db8996"
+        "body_sha": "29ec70e3ad7c3ae1"
       },
       "test_mirror_malformed_setting_key_denies": {
         "assertions": 1,
-        "body_sha": "6b0a8c44ca871d0b"
+        "body_sha": "5de5c68e13c5e837"
       },
       "test_set_scope_refuses_forbidden_values_and_writes_nothing": {
         "assertions": 3,
-        "body_sha": "93722af0a5244863"
+        "body_sha": "52b698ad03e501ea"
       },
       "test_set_scope_still_accepts_the_three_legitimate_shapes": {
         "assertions": 2,
-        "body_sha": "32f8fb8e509144d7"
+        "body_sha": "73cb970b17590eca"
       },
       "test_set_scope_refuses_a_non_string_id": {
         "assertions": 2,
-        "body_sha": "46de2abda59ceac2"
+        "body_sha": "677db39abb311fed"
       },
       "test_validate_scope_value_rejects": {
         "assertions": 1,
-        "body_sha": "84b499fa1bb57d7d"
+        "body_sha": "917a735127ce924b"
       },
       "test_validate_scope_value_accepts_ordinary_ids": {
         "assertions": 1,
-        "body_sha": "90169a8d880dd801"
+        "body_sha": "bfc0e04c974839a4"
       },
       "test_compile_scope_refuses_forbidden_values": {
         "assertions": 1,
-        "body_sha": "44db4a97b7b64b1c"
+        "body_sha": "b532474ae67f0e3d"
       },
       "test_compile_scope_refuses_a_star_even_under_read_all": {
         "assertions": 1,
-        "body_sha": "21d0dba9ab2a08e7"
+        "body_sha": "6121b11d5c30aec8"
       },
       "test_compile_scope_refuses_a_star_even_where_the_dimension_is_waived": {
         "assertions": 1,
-        "body_sha": "cd7a76c25ba8c534"
+        "body_sha": "ccc64ecae6c8eb0f"
       },
       "test_compile_scope_still_compiles_legitimate_scopes": {
         "assertions": 4,
-        "body_sha": "7eb08fbc4a639575"
+        "body_sha": "cfbb234ce2c24b94"
       },
       "test_a_star_grant_can_no_longer_disable_application_scoping": {
         "assertions": 1,
-        "body_sha": "e439921ee0f45275"
+        "body_sha": "318fa8c7cb52c633"
       },
       "test_a_star_grant_can_no_longer_disable_rls": {
         "assertions": 5,
-        "body_sha": "24f6296620184503"
+        "body_sha": "38ba376bc05e8a7f"
       },
       "test_a_pre_wave3_client_setting_only_ids_is_denied_not_widened": {
         "assertions": 1,
-        "body_sha": "7d8142c7530c4ad1"
+        "body_sha": "fa0ff04b4c1b5baf"
       },
       "test_star_grant_cannot_be_inserted_live": {
         "assertions": 1,
-        "body_sha": "5c687301a5b8cbf7"
+        "body_sha": "afd8543dad9b3be7"
       },
       "test_absent_mode_sees_zero_rows_live": {
         "assertions": 1,
-        "body_sha": "4ce8062398cd6214"
+        "body_sha": "aded1a9fcc891940"
       },
       "test_sql_function_agrees_with_the_python_mirror_live": {
         "assertions": 1,
-        "body_sha": "b702158f5292ca47"
+        "body_sha": "9f4eec17b6c9b0d5"
       },
       "test_null_value_waives_the_dimension_live": {
         "assertions": 1,
-        "body_sha": "bf32484f7e766ea6"
+        "body_sha": "f2a1d5cd9af4c39e"
       }
     }
   },

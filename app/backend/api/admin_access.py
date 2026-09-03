@@ -55,6 +55,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from .. import auth as auth_mod
+from ..pg import principal_scope
 from ..pg import roles as roles_mod
 from ..pg.audit import append as audit_append
 from ..pg.engine import Database, Scope, get_database
@@ -143,7 +144,7 @@ def _problem(status_code: int, code: str, title: str,
     })
 
 
-def _service_scope(actor_user_id: str) -> Scope:
+def _service_scope(request: Request, database: Database) -> Scope:
     """Scope for opening a `Database.session()` on the admin tables.
 
     This returned `read_all=True`. The reasoning was sound as far as it went:
@@ -161,12 +162,27 @@ def _service_scope(actor_user_id: str) -> Scope:
     its Scope from one function; this was the fifth router, quietly excluded
     from a claim the delivery status made about "all four".
 
-    A restricted, non-`read_all` scope is correct here and costs nothing: the
-    tables this router touches carry no scope column, so `compile_scope`
-    waives every dimension and the queries run exactly as before -- but RLS
-    stays armed for anything else the transaction might come to touch.
+    Dropping `read_all` was the first half. The second is that Contract 4
+    says every router gets its Scope from ONE function, and building one by
+    hand -- even a harmless one -- is how the fifth router drifted out of a
+    claim the delivery status made about "all four".
+
+    So the session scope is now RESOLVED like everywhere else. It costs
+    nothing today: the admin tables carry no scope column, so `compile_scope`
+    waives every dimension and the queries run exactly as before. What it buys
+    is that a statement added here later against a scoped table inherits the
+    caller's real scope instead of an unrestricted one.
+
+    Note what this does NOT change. The grant DISPLAYED by these routes still
+    comes from `roles.resolve_grant`, verbatim, including a `read_all` flag
+    set alongside restriction rows. `scope_for_principal` deliberately clears
+    that combination, because it is a request-time authorisation decision --
+    but this router's job is to show an administrator what is CONFIGURED, and
+    silently rendering the enforced value instead would hide a
+    misconfiguration from the one screen that exists to reveal it.
     """
-    return Scope(user_id=actor_user_id, principal_kind="USER", read_all=False)
+    return principal_scope.scope_for_request(
+        database, getattr(request.state, "access_principal", None) or {})
 
 
 def _grant_to_dict(grant: roles_mod.Grant) -> dict[str, Any]:
@@ -209,7 +225,7 @@ def get_grants(
     who = getattr(request.state, "access_principal", {})
     actor = str(who.get("user_id") or "UNKNOWN")
 
-    with database.session(_service_scope(actor)) as session:
+    with database.session(_service_scope(request, database)) as session:
         grant = roles_mod.resolve_grant(session, user_id)
 
     if grant is None:
@@ -254,7 +270,7 @@ def put_grants(
         raise _problem(400, "UNKNOWN_ROLE", "Unknown role(s)",
                        f"not among the 13 frozen roles: {unknown_roles}")
 
-    with database.session(_service_scope(actor)) as session:
+    with database.session(_service_scope(request, database)) as session:
         if roles_mod.resolve_principal_kind(session, user_id) is None:
             raise _problem(404, "USER_NOT_FOUND", "User not found",
                            f"no app_user row for {user_id!r}")
