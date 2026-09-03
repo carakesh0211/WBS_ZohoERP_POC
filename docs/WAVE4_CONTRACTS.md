@@ -267,6 +267,21 @@ provides — so routing `bill.void` through it is the real fix, and it needs the
 product owner to say so. Held by an `xfail(strict=True)` meanwhile, so the day
 it is fixed the test flips to a failure and forces this note to be updated.
 
+**A3 — `approval_action` gains `idempotency_key` and `outcome`; it does NOT
+gain `detail`.** Contract 8 requires a decision to carry an idempotency key
+and a replay to return the ORIGINAL outcome, and Contract 1 declared nowhere
+to store either. Added: `idempotency_key text` (NULLable — an escalation or a
+system supersede is not a caller decision), `outcome jsonb`, and
+`UNIQUE (instance_id, idempotency_key)`.
+
+Deliberately still absent: a `detail` column, though Contract 9's frozen hash
+payload names one. The engine builds the hashed detail from STORED columns
+only — `stage_instance_id`, `reason_code`, `reason_text` — so verification
+genuinely recomputes each digest from the row it is checking. Hashing a
+narrative that is not itself stored yields a chain that can only check
+`prev_hash` links, and a rewrite of REJECT to APPROVE would pass verification
+untouched. The narrative lives in `outcome`.
+
 ## Rules every stream follows
 
 - Behavioural tests, never framework introspection. Read the OpenAPI schema
