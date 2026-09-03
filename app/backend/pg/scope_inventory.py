@@ -14,7 +14,7 @@ registry. Both sides agree, both sides are wrong, every test passes.
 sat in exactly that hole from Wave 2 until Wave 3.
 
 This module is the second, *independent* source: written from
-``migrations/pg/001..005``'s **CREATE TABLE** statements -- the schema, not the
+``migrations/pg/001..008``'s **CREATE TABLE** statements -- the schema, not the
 policies -- asking of each table only "does a row of this carry, or reach, a
 scope dimension?". A table that must be protected appears here whether or not
 any migration protects it, which is what makes "protected nowhere" detectable.
@@ -45,13 +45,31 @@ Reach = Literal["direct", "joined", "reference"]
 #: Whether RLS is expected to be in place today.
 #:
 #: ``"covered"``  a migration listed in :attr:`ScopedTable.migration` enables,
-#:                forces and policies the table. The coverage test asserts it.
+#:                forces and policies the table, AND ``app.backend.pg.rls``
+#:                registers it. The coverage test asserts both.
 #: ``"gap"``      the table needs RLS, nothing provides it yet, and the owner
 #:                named in :attr:`ScopedTable.note` has not yet closed it. The
 #:                coverage test asserts the gap is still exactly where this
 #:                file says it is, so closing it forces this entry to be
 #:                reclassified rather than silently rotting into a lie.
-Status = Literal["covered", "gap"]
+#: ``"protected_pending_registry"``
+#:                the migration DOES enable, force and policy the table, but
+#:                ``app.backend.pg.rls``'s registry does not yet name it.
+#:
+#: The third value exists because coverage has two halves that are owned by
+#: different people. ``tests/test_pg_rls_coverage.py`` asserts
+#: ``set(covered_tables()) == set(rls.ALL_RLS_TABLES)`` -- an equality in both
+#: directions -- and ``rls.py`` is lead-owned and frozen for Wave 4, while
+#: ``migrations/pg/008_approval_engine.sql`` and this file are stream 1's. A
+#: table protected by 008 therefore cannot honestly be called ``"covered"``
+#: (the registry half is missing, and claiming otherwise would break that
+#: equality) and cannot be called ``"gap"`` either (it IS protected, and
+#: ``test_reported_gaps_are_still_gaps`` would rightly fail). Recording the
+#: real, in-between state keeps this inventory truthful and makes the
+#: outstanding handoff visible instead of hiding it in one of two labels that
+#: would each be a lie. :func:`pending_registry_tables` enumerates them for
+#: whoever extends ``rls.py``; reclassify to ``"covered"`` in the same commit.
+Status = Literal["covered", "gap", "protected_pending_registry"]
 
 
 @dataclass(frozen=True)
@@ -71,7 +89,7 @@ class ScopedTable:
     note: str = ""
 
 
-#: Every table in `migrations/pg/001..005` whose rows carry or reach a scope
+#: Every table in `migrations/pg/001..008` whose rows carry or reach a scope
 #: dimension. Hand-maintained from the CREATE TABLE statements -- see the
 #: module docstring. Ordered by migration, then by table name.
 SCOPED_TABLES: tuple[ScopedTable, ...] = (
@@ -185,11 +203,97 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
         status="covered", migration="006_rls_coverage.sql",
         note="As item_master. gst_no/pan_no are protected by API-boundary "
              "masking plus an audited reveal permission, not by RLS."),
+
+    # ------------------------------------------ 008_approval_engine.sql
+    # Written from 008's CREATE TABLE statements, before reading its
+    # policies -- the maintenance rule in this module's docstring. All eight
+    # ARE protected by 008; none is yet in `rls.py`'s registry, which is
+    # lead-owned and frozen for Wave 4. Hence `protected_pending_registry`;
+    # see the Status docstring above for why neither of the other two labels
+    # would be true.
+    ScopedTable(
+        table="approval_definition", dimensions=("entity",), reach="direct",
+        path="approval_definition.entity_id",
+        status="protected_pending_registry",
+        migration="008_approval_engine.sql",
+        note="entity_id is NULLABLE and a NULL means organisation-wide -- the "
+             "dimension is waived for that row, so an org-wide workflow is "
+             "visible to every principal while an entity-specific one is "
+             "confined. Left bare this would repeat the budget_head defect "
+             "below: a caller restricted to one entity could enumerate "
+             "another entity's approval workflow, its money thresholds and "
+             "its named approvers."),
+    ScopedTable(
+        table="approval_rule", dimensions=("entity",), reach="joined",
+        path="approval_rule.definition_id -> approval_definition.entity_id",
+        status="protected_pending_registry",
+        migration="008_approval_engine.sql",
+        note="The routing predicate carries the money thresholds that decide "
+             "which approvals a document needs; it is the sensitive half of a "
+             "workflow, not the definition header that points at it."),
+    ScopedTable(
+        table="approval_stage", dimensions=("entity",), reach="joined",
+        path="approval_stage.definition_id -> approval_definition.entity_id",
+        status="protected_pending_registry",
+        migration="008_approval_engine.sql"),
+    ScopedTable(
+        table="approval_stage_approver", dimensions=("entity",), reach="joined",
+        path="approval_stage_approver.stage_id -> approval_stage.definition_id "
+             "-> approval_definition.entity_id",
+        status="protected_pending_registry",
+        migration="008_approval_engine.sql",
+        note="Two joins out. Names the individuals and roles that approve, "
+             "which is exactly what an out-of-scope caller must not enumerate."),
+    ScopedTable(
+        table="approval_instance", dimensions=("entity", "project"),
+        reach="direct",
+        path="approval_instance.entity_id, approval_instance.project_id",
+        status="protected_pending_registry",
+        migration="008_approval_engine.sql",
+        note="Both columns are DENORMALISED at creation (WAVE4 contract 6) "
+             "precisely so this table is scopable without a join: "
+             "object_type/object_id are polymorphic and no RLS predicate "
+             "could follow them. project_id is nullable; a NULL waives the "
+             "project dimension for that row, so such an instance is visible "
+             "to any caller whose ENTITY permits it. plant/location are "
+             "waived -- no column for either, and project carries its own "
+             "policy."),
+    ScopedTable(
+        table="approval_stage_instance", dimensions=("entity", "project"),
+        reach="joined",
+        path="approval_stage_instance.instance_id -> approval_instance."
+             "{entity_id, project_id}",
+        status="protected_pending_registry",
+        migration="008_approval_engine.sql"),
+    ScopedTable(
+        table="approval_assignment", dimensions=("entity", "project"),
+        reach="joined",
+        path="approval_assignment.stage_instance_id -> "
+             "approval_stage_instance.instance_id -> approval_instance."
+             "{entity_id, project_id}",
+        status="protected_pending_registry",
+        migration="008_approval_engine.sql",
+        note="This is the SCOPE filter only. Contract 6 also requires a "
+             "caller to see just the assignments addressed to them unless "
+             "they hold approval.configure -- an application-layer rule in "
+             "the inbox query, because RLS cannot know what permissions a "
+             "principal holds. The two are complementary; neither replaces "
+             "the other."),
+    ScopedTable(
+        table="approval_action", dimensions=("entity", "project"),
+        reach="joined",
+        path="approval_action.instance_id -> approval_instance."
+             "{entity_id, project_id}",
+        status="protected_pending_registry",
+        migration="008_approval_engine.sql",
+        note="Reached through instance_id, NOT stage_instance_id: the latter "
+             "is NULL for RECALL and CANCEL, so joining through it would make "
+             "exactly those two action kinds invisible."),
 )
 
 #: Tables deliberately left WITHOUT a scope policy, each with the reason.
 #: Kept here so "not in SCOPED_TABLES" is a decision on record rather than an
-#: omission nobody ever looked at. Reviewed against `001..005`'s full
+#: omission nobody ever looked at. Reviewed against `001..008`'s full
 #: CREATE TABLE list; every table in the schema appears in exactly one of
 #: these two structures.
 UNSCOPED_TABLES: dict[str, str] = {
@@ -226,6 +330,21 @@ UNSCOPED_TABLES: dict[str, str] = {
                           "are themselves organisation-wide reference data.",
     "schema_migrations": "The migration runner's own ledger; not application "
                          "data.",
+    "reason_code": "Organisation-wide configuration -- the controlled "
+                   "vocabulary a decision may cite. No entity, plant, "
+                   "location or project column and no join to one; a reason "
+                   "such as BUDGET_EXCEEDED means the same thing in every "
+                   "entity. Same class as numbering_series.",
+    "approval_delegation": "Authorisation input, not scoped data -- 'X may "
+                           "act for Y' is the same kind of statement as "
+                           "role_grant, and is classified the same way. Its "
+                           "`scope_key` is an opaque application-level key, "
+                           "not an entity/plant/location/project id, so there "
+                           "is no dimension for a predicate to filter on. Who "
+                           "may read a delegation is a privilege question; "
+                           "the lead may wish to revisit that separately, "
+                           "because a delegation is more operational than "
+                           "role_grant is.",
 }
 
 
@@ -244,6 +363,21 @@ def gap_tables() -> tuple[str, ...]:
     """Tables that need RLS and do not have it -- reported, not fixed."""
     return tuple(sorted(
         entry.table for entry in SCOPED_TABLES if entry.status == "gap"))
+
+
+def pending_registry_tables() -> tuple[str, ...]:
+    """Tables a migration protects that ``rls.py``'s registry does not name.
+
+    The outstanding half of coverage, made enumerable. Whoever extends
+    ``app/backend/pg/rls.py`` (lead-owned) should add exactly these, then
+    reclassify each entry here to ``status="covered"`` in the same commit --
+    at which point this function returns empty again and
+    ``test_rls_registry_and_the_independent_inventory_name_the_same_tables``
+    keeps holding.
+    """
+    return tuple(sorted(
+        entry.table for entry in SCOPED_TABLES
+        if entry.status == "protected_pending_registry"))
 
 
 def tables_for_migration(migration: str) -> tuple[str, ...]:
