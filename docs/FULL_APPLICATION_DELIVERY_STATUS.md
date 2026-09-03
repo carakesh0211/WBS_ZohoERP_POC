@@ -1,8 +1,8 @@
 # Full application — delivery status
 
-**Branch:** `full-application/build` · **Milestone 1 COMPLETE** · **Wave 2
-integrated** — M2 settings/masters, M3 budget control, M4a identity/scope ·
-**Wave 3 in progress** — security closure, four of five streams integrated
+**Branch:** `full-application/build` · **Waves 1-3 COMPLETE** — PostgreSQL
+foundation, settings/masters, budget control, identity/scope, and security
+closure · **Wave 4 in progress** — M4b configurable approval engine
 
 ## Traceability to the approved plan
 
@@ -15,7 +15,7 @@ this build numbers by **milestone**. Recorded rather than assumed:
 | Phase 2 — Control cell, periods, budget slice (SCR-09/10/13) | M3 | **integrated** |
 | Phase 3 — Identity, roles, scope, admin slice | M4a | **integrated** |
 | Phase 3 — Settings and master data (SCR-30, Z-06) | M2 | **integrated** |
-| Phase 4 — Approval engine | M4b | not started |
+| Phase 4 — Approval engine | M4b | **in progress (Wave 4)** |
 
 ## Completed vertical slices
 
@@ -86,6 +86,38 @@ service module reads a scopable table off the chokepoint. It inspects
 the first two and the plan's `execute`-only walk sails past them. Reads that
 are correct unscoped carry a stated reason, a bare `# scope-exempt` with no
 reason does not silence it, and a planted bypass proves it fails.
+
+## Wave 3 security-closure gate — walked line by line
+
+Verified against code and CI evidence at `e559d60`, not from memory.
+
+| Gate line | Evidence |
+|---|---|
+| Restricted principals receive resolved scopes at every router | all five routers call `principal_scope.scope_for_request`; `admin_access.py` was the last, closed in the pre-Wave-4 walk |
+| A no-grant principal fails closed | `denied_scope()` compiles to the literal `FALSE`, now including when a query waives every dimension |
+| All identified tables carry RLS | the eight named tables covered by migration 006; 19 RLS tables total |
+| A literal `*` grant is impossible | refused by `validate_scope_value`, by `compile_scope` before the `read_all` short-circuit, by `roles.set_scope`, and by a CHECK constraint in 007 |
+| Zero-budget locking proven under concurrency | the `budget_paise <> 0` filter is gone from `_LOCK_SQL`; live concurrency tests execute in CI |
+| All five screens routable in the SPA | `#audit-trail`, `#budget-grid`, `#budget-compare`, `#budget-availability`, `#settings` |
+| Full local suite passes | 1131 passed, 154 skipped, 0 failed |
+| Live PostgreSQL executes with zero skips | `436 collected, 436 executed, 0 skipped, 0 failed, 0 errored` |
+| All five CI jobs green | run for `288df9f` |
+| No unresolved critical or high finding | both HIGH fixed; M1, M2, M3, L2, L6 also fixed; L1/L3/L4/L5 recorded below |
+
+Two things the gate walk caught that a green CI had not, both worth naming
+because they are the kind that hide behind a passing suite:
+
+- `admin_access.py` built its session `Scope` by hand. The `read_all` was
+  already gone, so nothing leaked — but Contract 4 says every router resolves
+  through one function, and a hand-built scope is how the fifth router drifted
+  out of a claim this document made about "all four".
+- The manifest's body hash used `ast.dump`, which renders CPython's own AST
+  repr. Moving this machine from Python 3.11 to 3.14 mid-session changed all
+  773 recorded hashes at once with not one test edited. Committing that would
+  have broken CI, which runs 3.11 — and a gate that fires on every test
+  because the interpreter moved is a gate someone switches off. It now uses
+  `ast.unparse`, whose output is the Python language rather than an internal
+  repr; CI at 3.11 verifying a manifest generated at 3.14 is the proof.
 
 ## Adversarial review — what it found after integration
 
