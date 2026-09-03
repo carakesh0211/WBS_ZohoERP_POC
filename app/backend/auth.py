@@ -46,6 +46,25 @@ PERMISSIONS: dict[str, tuple[str, ...]] = {
     # so it is a finance control, not an administrative convenience. Auditor
     # is deliberately absent: the role is read-only.
     "period.transition":      ("BudgetController", "FinanceApprover"),
+    # --- M4b, the approval engine ------------------------------------
+    # `approval.read` is the router floor: an approver must be able to see
+    # their own inbox. Contract 4 says "every role"; Auditor is deliberately
+    # EXCLUDED, because `test_aud_c_006_auditor_is_read_only` pins Auditor to
+    # an allow-list of four permissions, and widening an audit-finding
+    # assertion to grant access is not a call to make silently. An Auditor
+    # reads approval history through the audit chain, which is the record
+    # that matters for their purpose. Recorded against D-12.
+    "approval.read":          ("Requestor", "BudgetController", "ProcurementApprover",
+                               "FinanceApprover", "CapitalisationApprover",
+                               "Administrator"),
+    # The floor for acting. WHETHER a given caller may act on a given
+    # instance is not a permission question at all -- it is assignment plus
+    # maker-checker, decided per decision inside the transaction.
+    "approval.act":           ("Requestor", "BudgetController", "ProcurementApprover",
+                               "FinanceApprover", "CapitalisationApprover"),
+    "approval.configure":     ("Administrator",),
+    "approval.delegate":      ("BudgetController", "ProcurementApprover",
+                               "FinanceApprover", "CapitalisationApprover"),
     "revision.approve":       ("FinanceApprover",),
     "capitalisation.allocate": ("BudgetController", "FinanceApprover"),
     "capitalisation.approve": ("CapitalisationApprover",),
