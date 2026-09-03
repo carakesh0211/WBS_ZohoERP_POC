@@ -235,6 +235,38 @@ difference, update the `styles.css` SHA-256 pin **deliberately and in the same
 commit**, re-baseline **only** the VRT snapshots that genuinely changed, and
 prove every unrelated approved screen is still pixel-clean.
 
+## Lead amendments during the wave
+
+**A1 — the demo scenario runs on budget revisions, not purchase requests.**
+The scenario asks for an over-budget PR. There is no PostgreSQL-backed
+purchase-request module yet — `api/` carries budget, masters, settings, audit,
+admin_access and health — so step (a) has no HTTP home. Rather than build a PR
+module inside the approval wave, the scenario re-targets to
+`POST /api/budget/revisions`: an over-budget revision routes to exception
+approval, a different authorised user approves it with a reason, availability
+is revalidated in the approving transaction, and self-approval is refused.
+Every property the scenario demonstrates is preserved; only the document type
+changes. The PR module lands with Phase 5.
+
+**A2 — `bill.void` maker-checker is inert, and stays recorded rather than
+silently fixed.** `services.py:411` passes `b.get("created_by")`, but the
+`bill` table has no such column (`db.py:189`), so the maker is always `None`
+and `auth.require_separation` short-circuits on a falsy maker. Verified: a
+FinanceApprover voiding their own bill gets 200.
+
+The honest framing matters. This is not "an approver can approve their own
+work" — a bill is mirrored from Zoho, not raised by a user, so there IS no
+maker to be separated from. The control is inert **by construction**, and
+`bill.void`'s presence in `auth.MAKER_CHECKER` implies a protection that
+cannot exist against the current data model.
+
+Not fixed here, because the fix is a business decision rather than a default:
+what separation means for a mirrored document. The defensible answer is a
+second person on the void itself, which is precisely what this wave's engine
+provides — so routing `bill.void` through it is the real fix, and it needs the
+product owner to say so. Held by an `xfail(strict=True)` meanwhile, so the day
+it is fixed the test flips to a failure and forces this note to be updated.
+
 ## Rules every stream follows
 
 - Behavioural tests, never framework introspection. Read the OpenAPI schema
