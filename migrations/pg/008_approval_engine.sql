@@ -569,6 +569,26 @@ CREATE TABLE approval_action (
     seq                 bigint NOT NULL,
     prev_hash           text,
     entry_hash          text,
+    -- Contract 8, added by lead amendment A3. The contract required a
+    -- decision to carry an idempotency key and a replay to return the
+    -- ORIGINAL outcome, and declared nowhere to store either.
+    --
+    -- NULLable on purpose: not every action is a caller decision. An
+    -- escalation or a system-generated supersede carries no key, so the
+    -- uniqueness below is a PARTIAL index -- a plain UNIQUE would let exactly
+    -- one keyless action exist per instance.
+    idempotency_key     text,
+    -- The stored original outcome a replay returns verbatim. Also where the
+    -- action's narrative lives.
+    --
+    -- There is deliberately NO `detail` column, though Contract 9's frozen
+    -- payload names one. The hashed detail is built from STORED columns only
+    -- (stage_instance_id, reason_code, reason_text), so verification
+    -- genuinely recomputes each digest from the row it is checking. Hashing a
+    -- narrative that is not itself stored yields a chain that can only check
+    -- prev_hash links -- and a rewrite of REJECT to APPROVE would pass
+    -- verification untouched, on the table recording approval decisions.
+    outcome             jsonb,
     CONSTRAINT uq_approval_action_seq UNIQUE (instance_id, seq),
     CONSTRAINT ck_approval_action_seq_positive CHECK (seq >= 1),
     -- Acting for oneself is not delegation; recording it as such would put a
@@ -598,6 +618,14 @@ CREATE INDEX ix_approval_action_actor ON approval_action (actor_user_id, at DESC
 -- `revoke_reason`. Deleting the row would erase the fact that authority was
 -- ever transferred, which is precisely the fact an auditor needs after a
 -- decision taken under it.
+-- Idempotency lookup: the engine reads (instance_id, idempotency_key)
+-- BEFORE taking any lock, so a replay never contends. Partial, because a
+-- keyless action is legitimate (see the column comment).
+CREATE UNIQUE INDEX ux_approval_action_idempotency
+    ON approval_action (instance_id, idempotency_key)
+    WHERE idempotency_key IS NOT NULL;
+
+
 CREATE TABLE approval_delegation (
     delegation_id      text PRIMARY KEY,
     delegator_user_id  text NOT NULL REFERENCES app_user (user_id),

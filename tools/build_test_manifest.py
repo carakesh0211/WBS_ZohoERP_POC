@@ -68,6 +68,11 @@ POST_BASELINE_FILES = {
     "test_pg_principal_scope.py", "test_scope_negative_matrix.py",
     "test_pg_rls_coverage.py", "test_scope_sentinel.py",
     "test_pg_locking_order.py", "test_pg_period_concurrency.py",
+    # --- Wave 4: the approval engine --------------------------------------
+    "test_pg_approval_schema.py", "test_pg_approvals.py",
+    "test_pg_approval_concurrency.py", "test_approvals_api_guard.py",
+    "test_approval_negative_matrix.py", "test_approval_e2e.py",
+    "test_approval_maker_checker.py",
 }
 
 

@@ -248,15 +248,29 @@ def test_the_guard_is_declared_on_the_router_not_route_by_route():
         "open")
 
 
-def test_the_router_floor_is_approval_read_and_every_role_holds_it():
-    """Contract 4: `approval.read` is held by every role, because an approver
-    must be able to see their own inbox. The floor is therefore an
-    AUTHENTICATION gate in practice -- which is why every route above it also
-    carries a real per-route permission or a per-row check in the engine."""
+def test_the_router_floor_is_approval_read_and_excludes_only_auditor():
+    """Contract 4 said "every role". Auditor is the one exclusion, and the
+    reason is worth keeping written down.
+
+    `test_aud_c_006_auditor_is_read_only` pins Auditor to an allow-list of
+    four permissions. Granting a fifth means widening an audit-finding
+    assertion, which is not a change to make in passing so that a router floor
+    reads more tidily. An Auditor reads approval history through the audit
+    chain -- the record that actually matters for that role, and one this wave
+    hash-chains per instance.
+
+    Asserted as an exact set rather than "at least these", so quietly granting
+    Auditor later, or quietly dropping a role that needs its own inbox, both
+    fail here. Recorded against D-12, the role-to-permission sign-off.
+    """
     holders = set(approvals_api._holders_of("approval.read") or ())
-    assert holders == set(auth.ROLES), (
-        f"approval.read must be held by every role; missing "
-        f"{sorted(set(auth.ROLES) - holders)}")
+    expected = set(auth.ROLES) - {"Auditor"}
+    assert holders == expected, (
+        f"approval.read holders drifted: missing {sorted(expected - holders)}, "
+        f"unexpected {sorted(holders - expected)}")
+    assert "Auditor" not in holders, (
+        "granting Auditor approval.read requires widening "
+        "test_aud_c_006_auditor_is_read_only, which is a D-12 decision")
 
 
 # ===================================================== authorisation
@@ -311,9 +325,14 @@ def test_inbox_and_sla_are_not_shadowed_and_stay_on_the_read_floor(as_role):
     detected by a status change. It is detected by them NOT being refused as
     the instance-detail route would be, and by them reaching the engine: with
     no PostgreSQL configured the honest answer is 503, never 403 or 404.
+
+    Requestor, not Auditor. Auditor is the one role deliberately excluded from
+    `approval.read` (see the floor test), so asking as an Auditor would return
+    403 for a reason that has nothing to do with shadowing -- the test would
+    fail while proving nothing about route order.
     """
     for path in ("/api/approvals/inbox", "/api/approvals/sla"):
-        resp = as_role(["Auditor"], "GET", path)
+        resp = as_role(["Requestor"], "GET", path)
         assert resp.status_code not in (401, 403, 404), (
             f"GET {path} returned {resp.status_code}; every role holds "
             f"approval.read, so this route must reach the handler")

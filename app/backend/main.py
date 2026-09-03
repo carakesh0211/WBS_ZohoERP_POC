@@ -93,6 +93,7 @@ else:
 # MOUNT conditional is what let the audit routes vanish in CI twice while the
 # job reported green.
 from .api import admin_access as admin_access_api
+from .api import approvals as approvals_api
 from .api import budget as budget_api
 from .api import masters as masters_api
 from .api import settings as settings_api
@@ -101,6 +102,7 @@ app.include_router(budget_api.router)
 app.include_router(masters_api.router)
 app.include_router(settings_api.router)
 app.include_router(admin_access_api.router)
+app.include_router(approvals_api.router)
 
 PUBLIC_PATHS = {"/api/health", "/api/auth/login"}
 

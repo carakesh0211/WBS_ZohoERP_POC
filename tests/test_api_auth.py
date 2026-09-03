@@ -124,6 +124,48 @@ MUTATING_ROUTES = [
     ("/api/admin/users/{user_id}/grants", "PUT", "/api/admin/users/U-PM/grants",
      {"roles": ["Administrator"], "scopes": {"read_all": True}},
      "admin.reset", "Auditor"),
+
+    # ---------------------------------------------------------- Wave 4 (M4b)
+    # The approval engine. Each names the permission its route requires and a
+    # role that holds the router's `approval.read` floor -- so it
+    # authenticates and gets past the floor -- but not the route's own
+    # permission, so only a 403 can pass.
+    #
+    # Auditor is NOT usable as the denied role here: it is the one role
+    # excluded from `approval.read`, so it would be refused at the floor and
+    # the case would prove nothing about the route's own permission.
+    ("/api/approvals/{instance_id}/decide", "POST",
+     "/api/approvals/AI-DEMO-001/decide",
+     {"action": "APPROVE", "idempotency_key": "k-1", "object_version": 1},
+     "approval.act", "Administrator"),
+    ("/api/approvals/{instance_id}/recall", "POST",
+     "/api/approvals/AI-DEMO-001/recall", {"reason_text": "unauthorised attempt"},
+     "approval.act", "Administrator"),
+    ("/api/approvals/{instance_id}/cancel", "POST",
+     "/api/approvals/AI-DEMO-001/cancel", {"reason_text": "unauthorised attempt"},
+     "approval.act", "Administrator"),
+    ("/api/approvals/{instance_id}/resubmit", "POST",
+     "/api/approvals/AI-DEMO-001/resubmit", {"reason_text": "unauthorised attempt"},
+     "approval.act", "Administrator"),
+
+    ("/api/approvals/definitions", "POST", "/api/approvals/definitions",
+     {"object_type": "budget_revision", "code": "X", "stages": []},
+     "approval.configure", "Requestor"),
+    ("/api/approvals/definitions/{definition_id}/activate", "POST",
+     "/api/approvals/definitions/AD-1/activate", {},
+     "approval.configure", "Requestor"),
+    ("/api/approvals/definitions/{definition_id}/simulate", "POST",
+     "/api/approvals/definitions/AD-1/simulate", {"object": {}},
+     "approval.configure", "Requestor"),
+
+    ("/api/approvals/delegations", "POST", "/api/approvals/delegations",
+     {"delegate_user_id": "U-PM", "scope_key": "*", "from": "2026-09-01",
+      "to": "2026-09-30"},
+     "approval.delegate", "Requestor"),
+    ("/api/approvals/delegations/{delegation_id}/revoke", "POST",
+     "/api/approvals/delegations/AD-DEL-1/revoke",
+     {"reason_text": "unauthorised attempt"},
+     "approval.delegate", "Requestor"),
 ]
 
 PUBLIC_MUTATING_ROUTES = {"/api/auth/login"}

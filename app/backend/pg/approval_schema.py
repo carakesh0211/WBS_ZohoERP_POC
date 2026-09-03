@@ -164,6 +164,11 @@ COLUMNS: dict[str, tuple[str, ...]] = {
         "action_id", "stage_instance_id", "instance_id", "actor_user_id",
         "acting_for_user_id", "action", "reason_code", "reason_text", "at",
         "seq", "prev_hash", "entry_hash",
+        # Lead amendment A3. Contract 8 required a decision to carry an
+        # idempotency key and a replay to return the ORIGINAL outcome; the
+        # frozen contract declared nowhere to store either. There is
+        # deliberately no `detail` column -- see the migration's comment.
+        "idempotency_key", "outcome",
     ),
     APPROVAL_DELEGATION: (
         "delegation_id", "delegator_user_id", "delegate_user_id",
