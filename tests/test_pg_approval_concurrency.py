@@ -160,21 +160,28 @@ def _seed_definition(con, suffix, *, entity, stages, object_type="BUDGET_REVISIO
     """
     definition_id = f"AD_{suffix}"
     con.execute(
+        # created_by is NOT NULL with no default on every configuration table
+        # in 008 -- the audit columns are required, not optional, because a
+        # workflow definition without a recorded author is exactly the row an
+        # auditor would ask about. Omitting them failed all 12 of these tests
+        # in CI and nowhere else, there being no local PostgreSQL.
         "INSERT INTO approval_definition (definition_id, object_type, code, version, "
-        "status, entity_id, effective_from) VALUES (%s,%s,%s,1,%s,%s,%s)",
+        "status, entity_id, effective_from, created_by, updated_by) "
+        "VALUES (%s,%s,%s,1,%s,%s,%s,'TEST','TEST')",
         (definition_id, object_type, f"CODE_{suffix}", rules.DEF_ACTIVE, entity,
          date(2020, 1, 1)))
     con.execute(
-        "INSERT INTO approval_rule (rule_id, definition_id, priority, predicate) "
-        "VALUES (%s,%s,10,%s)",
+        "INSERT INTO approval_rule (rule_id, definition_id, priority, predicate, "
+        "created_by, updated_by) VALUES (%s,%s,10,%s,'TEST','TEST')",
         (f"AR_{suffix}", definition_id, Jsonb({"op": "true"})))
     for spec in stages:
         stage_id = f"AS_{suffix}_{spec['stage_no']}"
         con.execute(
             "INSERT INTO approval_stage (stage_id, definition_id, stage_no, name, "
             "parallel_group, quorum_type, quorum_n, applies_when, sla_hours, "
-            "escalate_after_hours, escalate_to, allow_delegation, requires_reason) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+            "escalate_after_hours, escalate_to, allow_delegation, requires_reason, "
+            "created_by, updated_by) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'TEST','TEST')",
             (stage_id, definition_id, spec["stage_no"], f"Stage {spec['stage_no']}",
              spec.get("parallel_group"), spec.get("quorum_type", rules.QUORUM_ANY),
              spec.get("quorum_n"),
