@@ -1,0 +1,147 @@
+{
+  "label": "after",
+  "capturedAt": "2026-09-03T10:34:57.464Z",
+  "viewports": {
+    "desktop-1440": {
+      "navRailRendered": true,
+      "navItemCount": 22,
+      "navItems": [
+        "home",
+        "approvals",
+        "alerts",
+        "projects",
+        "wbs",
+        "budget",
+        "check",
+        "revisions",
+        "budget-grid",
+        "budget-compare",
+        "budget-availability",
+        "prs",
+        "pos",
+        "grns",
+        "bills",
+        "recon",
+        "cap",
+        "zoho",
+        "inventory",
+        "audit",
+        "audit-trail",
+        "settings"
+      ],
+      "avatar": {
+        "colour": "#FFFFFF",
+        "background": "#24707E",
+        "fontSize": "11px",
+        "fontWeight": "600",
+        "ratio": 5.685
+      },
+      "avatarRect": {
+        "x": 1208.296875,
+        "y": 9,
+        "width": 26,
+        "height": 26
+      },
+      "navRect": {
+        "x": 0,
+        "y": 44,
+        "width": 224,
+        "height": 856
+      }
+    },
+    "laptop-1024": {
+      "navRailRendered": true,
+      "navItemCount": 22,
+      "navItems": [
+        "home",
+        "approvals",
+        "alerts",
+        "projects",
+        "wbs",
+        "budget",
+        "check",
+        "revisions",
+        "budget-grid",
+        "budget-compare",
+        "budget-availability",
+        "prs",
+        "pos",
+        "grns",
+        "bills",
+        "recon",
+        "cap",
+        "zoho",
+        "inventory",
+        "audit",
+        "audit-trail",
+        "settings"
+      ],
+      "avatar": {
+        "colour": "#FFFFFF",
+        "background": "#24707E",
+        "fontSize": "11px",
+        "fontWeight": "600",
+        "ratio": 5.685
+      },
+      "avatarRect": {
+        "x": 12,
+        "y": 29,
+        "width": 26,
+        "height": 26
+      },
+      "navRect": {
+        "x": 0,
+        "y": 55,
+        "width": 224,
+        "height": 713
+      }
+    },
+    "tablet-800": {
+      "navRailRendered": false,
+      "navItemCount": 22,
+      "navItems": [
+        "home",
+        "approvals",
+        "alerts",
+        "projects",
+        "wbs",
+        "budget",
+        "check",
+        "revisions",
+        "budget-grid",
+        "budget-compare",
+        "budget-availability",
+        "prs",
+        "pos",
+        "grns",
+        "bills",
+        "recon",
+        "cap",
+        "zoho",
+        "inventory",
+        "audit",
+        "audit-trail",
+        "settings"
+      ],
+      "avatar": {
+        "colour": "#FFFFFF",
+        "background": "#24707E",
+        "fontSize": "11px",
+        "fontWeight": "600",
+        "ratio": 5.685
+      },
+      "avatarRect": {
+        "x": 106.609375,
+        "y": 33,
+        "width": 26,
+        "height": 26
+      },
+      "navRect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    }
+  }
+}
