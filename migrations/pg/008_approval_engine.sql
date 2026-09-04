@@ -460,11 +460,21 @@ CREATE TABLE approval_stage_instance (
     skip_reason        text,
     quorum_required    integer NOT NULL CHECK (quorum_required >= 0),
     quorum_met         integer NOT NULL DEFAULT 0 CHECK (quorum_met >= 0),
-    opened_at          timestamptz NOT NULL DEFAULT now(),
+    -- Nullable, and the CHECK below says exactly when.
+    --
+    -- A SKIPPED stage never opened, so it has no open time. NOT NULL forced
+    -- every skipped row to carry a timestamp implying it had been live, which
+    -- is a falsehood on the table an auditor reads to see what did NOT run.
+    -- The constraint keeps the integrity that mattered -- a stage that opened
+    -- must record when -- without requiring one that did not.
+    opened_at          timestamptz,
     due_at             timestamptz,
     escalated_at       timestamptz,
     closed_at          timestamptz,
     CONSTRAINT uq_approval_stage_instance_stage_no UNIQUE (instance_id, stage_no),
+    CONSTRAINT ck_approval_stage_instance_opened_at CHECK (
+        (status = 'SKIPPED') OR (opened_at IS NOT NULL)
+    ),
     CONSTRAINT ck_approval_stage_instance_skip_reason CHECK (
         (status = 'SKIPPED' AND skip_reason IS NOT NULL AND btrim(skip_reason) <> '')
         OR (status <> 'SKIPPED' AND skip_reason IS NULL)

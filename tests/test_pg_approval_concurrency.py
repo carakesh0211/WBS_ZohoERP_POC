@@ -667,14 +667,25 @@ def test_an_unroutable_object_is_recorded_and_never_approved(
     _seed_users(pg_connection, {"U-MAKER": ["Requestor"]})
     revision_id = _seed_revision(pg_connection, suffix, ids, created_by="U-MAKER")
 
-    with pytest.raises(rules.ApprovalRouteUnresolved) as excinfo:
-        _open(pg_database, ids, revision_id, maker="U-MAKER")
-    assert excinfo.value.code == rules.ERR_ROUTE_UNRESOLVED
+    # RETURNED, not raised -- and that distinction is the whole point.
+    #
+    # open_instance used to write the EXCEPTION_PENDING row and then raise. The
+    # caller owns the transaction, so the exception rolled the row back: the
+    # object ended with no approval instance at all, which is the single
+    # outcome Contract 2 exists to prevent. The evidence was destroyed as a
+    # direct consequence of reporting it, and only a live database could show
+    # that -- in-memory, nothing rolls back.
+    instance = _open(pg_database, ids, revision_id, maker="U-MAKER")
+    assert instance["status"] == rules.INST_EXCEPTION_PENDING, (
+        "an unroutable object is held for an administrator, never approved")
 
-    status = pg_connection.execute(
+    row = pg_connection.execute(
         "SELECT status FROM approval_instance WHERE object_id = %s", (revision_id,)
-    ).fetchone()[0]
-    assert status == rules.INST_EXCEPTION_PENDING
+    ).fetchone()
+    assert row is not None, (
+        "an unroutable object must leave a row behind, or nobody will ever "
+        "see it -- this is the assertion that caught the rollback")
+    assert row[0] == rules.INST_EXCEPTION_PENDING
 
 
 def test_a_skipped_stage_is_recorded_with_its_reason_not_omitted(

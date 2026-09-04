@@ -1833,7 +1833,7 @@
       },
       "test_an_unroutable_object_is_recorded_and_never_approved": {
         "assertions": 3,
-        "body_sha": "5490a0bdb3ab465f"
+        "body_sha": "01120232b2bf5a67"
       },
       "test_a_skipped_stage_is_recorded_with_its_reason_not_omitted": {
         "assertions": 4,

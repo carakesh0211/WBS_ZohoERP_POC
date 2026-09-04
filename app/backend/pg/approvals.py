@@ -863,7 +863,22 @@ def open_instance(session: Session, *, object_type: str, object_id: str,
             snapshot=snapshot, maker_user_id=maker_user_id, entity_id=entity_id,
             project_id=project_id, correlation_id=correlation_id,
             supersedes_instance_id=supersedes_instance_id, exc=exc)
-        raise
+        # RETURN, do not raise.
+        #
+        # This used to `raise`, on the reasoning that the row had already been
+        # written so the object stayed visible. It did not: the caller owns
+        # the transaction, and an exception propagating out of it rolls back
+        # the EXCEPTION_PENDING row along with everything else -- destroying
+        # the evidence as a direct consequence of reporting it. The object
+        # then had no approval instance at all, which is the one outcome
+        # Contract 2 exists to prevent.
+        #
+        # An unroutable object is a recorded OUTCOME, not a control-flow
+        # exception: it is held for an administrator, and the caller decides
+        # how to present that. The API maps this status to 409
+        # APPROVAL_ROUTE_UNRESOLVED, and the row survives because nothing
+        # unwound the transaction.
+        return get_instance(session, instance_id)
 
     stages = _load_stages(session, resolution.definition.definition_id)
     if not stages:
@@ -880,7 +895,11 @@ def open_instance(session: Session, *, object_type: str, object_id: str,
             project_id=project_id, correlation_id=correlation_id,
             supersedes_instance_id=supersedes_instance_id, exc=exc,
             definition=resolution.definition)
-        raise exc
+        # Same reasoning as the branch above: recorded, returned, not raised.
+        # A definition that matched but defines no stages is a configuration
+        # defect an administrator has to see, and raising would roll away the
+        # only trace of it.
+        return get_instance(session, instance_id)
 
     waves = compute_waves(stages)
     session.execute(
@@ -935,12 +954,11 @@ def open_instance(session: Session, *, object_type: str, object_id: str,
                         object_id=object_id,
                         detail=f"{detail}; every stage SKIPPED -> EXCEPTION_PENDING "
                                f"({ApprovalRouteUnresolved.__name__})")
-        raise ApprovalRouteUnresolved(
-            f"Every stage of {resolution.definition.code} v"
-            f"{resolution.definition.version} was skipped for this object, so no "
-            f"approval would ever be taken. The instance is EXCEPTION_PENDING; it "
-            f"is NOT approved.",
-            detail={"instance_id": instance_id})
+        # Recorded and RETURNED, not raised -- same reasoning as the two
+        # branches above. The instance is already EXCEPTION_PENDING with an
+        # audit action explaining why; raising would make the caller's
+        # rollback delete both.
+        return get_instance(session, instance_id)
 
     try:
         _open_wave(session, instance_id=instance_id, wave=first,
@@ -956,7 +974,11 @@ def open_instance(session: Session, *, object_type: str, object_id: str,
                         detail=f"{detail}; NO_INDEPENDENT_APPROVER -> EXCEPTION_PENDING",
                         outcome={"code": exc.code, "detail": exc.detail})
         exc.detail.setdefault("instance_id", instance_id)
-        raise
+        # Recorded and RETURNED. NO_INDEPENDENT_APPROVER is the outcome an
+        # administrator has to act on -- every candidate approver was a
+        # contributor -- so it must survive as a row, not evaporate with the
+        # exception that announced it.
+        return get_instance(session, instance_id)
 
     _append_action(session, instance_id=instance_id, stage_instance_id=None,
                     actor_user_id=maker_user_id, acting_for_user_id=None,
@@ -1023,6 +1045,9 @@ def _insert_stage_instance(session: Session, *, instance_id: str, stage: StageSp
                             status: str, skip_reason: str | None,
                             quorum_required: int, opened: bool) -> str:
     stage_instance_id = _new_id("ASTG")
+    # None for a stage that never opened. `approval_stage_instance.opened_at`
+    # is nullable precisely so a SKIPPED stage can say "this never ran"
+    # instead of carrying a timestamp that implies it was live.
     opened_at = datetime.now(timezone.utc) if opened else None
     due_at = due_at_for(opened_at, stage.sla_hours) if opened_at else None
     session.execute(
