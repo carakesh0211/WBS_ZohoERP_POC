@@ -477,11 +477,24 @@ test.describe('SPA routing — the two declarations cannot drift', () => {
       expect(gate.need, `${entry.scr} permission gate drifted`).toEqual(entry.need);
     }
 
-    // And every screen this suite claims to cover is actually in the registry.
-    expect(registry.map((r) => r.id).sort())
-      .toEqual(SCREENS.map((s) => s.hash).sort());
-    expect(registry.map((r) => r.scr).sort())
-      .toEqual(['SCR-09', 'SCR-10', 'SCR-13', 'SCR-28', 'SCR-30']);
+    // Every screen THIS suite claims to cover is in the registry, with its
+    // SCR number intact.
+    for (const s of SCREENS) {
+      const entry = registry.find((r) => r.id === s.hash);
+      expect(entry, `${s.scr} (${s.hash}) is missing from the registry`).toBeTruthy();
+      expect(entry.scr, `${s.hash} lost its SCR number`).toBe(s.scr);
+    }
+
+    // And the registry as a whole is exactly the thirteen routable screens:
+    // these five, plus the approval engine's eight from Wave 4 (covered by
+    // tests/vrt/approvals.spec.js). Naming all thirteen rather than asserting
+    // "at least the five" keeps this an exact statement — a fourteenth screen
+    // appearing without a test still fails here.
+    expect(registry.map((r) => r.id).sort()).toEqual([
+      'approval-delegations', 'approval-inbox', 'approval-matrix', 'approval-request',
+      'approval-simulator', 'approval-sla', 'approval-timeline', 'approval-versions',
+      'audit-trail', 'budget-availability', 'budget-compare', 'budget-grid', 'settings',
+    ].sort());
   });
 
   test('an unknown hash cannot resolve to an ungated screen', async ({ page }) => {

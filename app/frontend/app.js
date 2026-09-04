@@ -171,10 +171,13 @@ async function api(path, opts = {}) {
 /* ---------------- permissions --------------------------------------------- */
 function can(...permissions) { return permissions.some(p => S.perms.has(p)); }
 
-/* ---------------- SCR-nn routes ------------------------------------------
-   SCR-28, SCR-09, SCR-10, SCR-13 and SCR-30: routable, deep-linkable,
-   permission-gated, and — since the product owner's written approval of
-   2026-09-03 — LISTED IN THE PRIMARY NAVIGATION.
+/* ---------------- module-hosted routes -----------------------------------
+   The thirteen screens that live as ES modules rather than as `V` views in
+   this file: the five built in Waves 2 and 3 (SCR-28, SCR-09, SCR-10, SCR-13,
+   SCR-30) and the approval engine's eight, added in Wave 4. All thirteen are
+   routable, deep-linkable, permission-gated, and LISTED IN THE PRIMARY
+   NAVIGATION — the five since the product owner's written approval of
+   2026-09-03, the eight as part of M4b.
 
    They were previously routable but unlisted, because the navigation rail is
    rendered inside every one of the client-approved screenshots and adding an
@@ -205,6 +208,28 @@ const SCR_ROUTES = [
   { id: 'budget-compare', ico: '⇎', label: 'Budget Version Comparison', need: ['budget.read'] },
   { id: 'budget-availability', ico: '⊙', label: 'Budget Availability Check (cells)', need: ['budget.check'] },
   { id: 'settings', ico: '⚙', label: 'Settings & Master Data', need: ['settings.read', 'masters.read'] },
+
+  /* Wave 4 / M4b — the approval engine's eight screens, on the same footing.
+
+     Contract 4's permissions. approval.read is held by every role, so gating a
+     configuration surface on it would be gating on nothing: the matrix, the
+     version history and the simulator take approval.configure (Administrator),
+     and delegation management takes approval.delegate.
+
+     THESE ARE PRESENTATIONAL GATES. The server decides. A row hidden here is a
+     courtesy — the same courtesy the rest of this shell extends — and the
+     route gate below refuses the hash for the same reason, but neither is the
+     enforcement point. `viewAllowed()` refusing a hash keeps a mistyped or
+     bookmarked URL from rendering a screen whose data the server would refuse
+     anyway; it is not what keeps the data safe. */
+  { id: 'approval-inbox', ico: '⊞', label: 'My Approval Inbox', need: ['approval.read'] },
+  { id: 'approval-request', ico: '▥', label: 'Approval Request Detail', need: ['approval.read'] },
+  { id: 'approval-sla', ico: '◷', label: 'Escalation & SLA Monitor', need: ['approval.read'] },
+  { id: 'approval-timeline', ico: '⧗', label: 'Approval Timeline', need: ['approval.read'] },
+  { id: 'approval-matrix', ico: '▨', label: 'Approval Matrix Configuration', need: ['approval.configure'] },
+  { id: 'approval-versions', ico: '⎘', label: 'Workflow Version History', need: ['approval.configure'] },
+  { id: 'approval-simulator', ico: '⊛', label: 'Approval Rule Simulator', need: ['approval.configure'] },
+  { id: 'approval-delegations', ico: '⇌', label: 'Delegation Management', need: ['approval.delegate'] },
 ];
 
 /** The SCR_ROUTES row for an id, spliced into NAV by reference. */
@@ -220,6 +245,9 @@ const NAV = [
   { id: 'home', ico: '▣', label: 'Executive Dashboard' },
   { id: 'approvals', ico: '✔', label: 'My Approvals', badge: 'approvals' },
   { id: 'alerts', ico: '⚠', label: 'Alerts & Exceptions', badge: 'alerts' },
+  scr('approval-inbox'),
+  scr('approval-request'),
+  scr('approval-sla'),
   { g: 'Project Control' },
   { id: 'projects', ico: '▤', label: 'CAPEX Projects' },
   { id: 'wbs', ico: '⌗', label: 'WBS Explorer' },
@@ -243,6 +271,11 @@ const NAV = [
   { g: 'Governance' },
   { id: 'audit', ico: '⎙', label: 'Audit Trail', need: ['audit.read'] },
   scr('audit-trail'),
+  scr('approval-timeline'),
+  scr('approval-matrix'),
+  scr('approval-versions'),
+  scr('approval-simulator'),
+  scr('approval-delegations'),
   scr('settings'),
 ];
 
