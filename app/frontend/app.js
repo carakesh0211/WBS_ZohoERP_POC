@@ -1163,11 +1163,12 @@ async function render() {
     // module can find its own live region and roots by id.
     el.innerHTML = banner;
     el.appendChild(result.node);
+    let mountError = null;
     if (typeof result.mount === 'function') {
       try {
         await result.mount(el);
       } catch (e) {
-        el.appendChild(errorNode(`This screen could not be loaded. ${e.message}`));
+        mountError = e;
       }
     }
     // The host node lands in the document BEFORE mount() is awaited, because a
@@ -1177,7 +1178,29 @@ async function render() {
     // a test, or a later render — should watch for. A view that navigated away
     // mid-mount is skipped: S.view moved on and this node is already detached.
     if (S.view === rendering && result.node.nodeType === 1) {
-      result.node.dataset.mounted = '1';
+      if (mountError) {
+        // A FAILED MOUNT IS NOT A MOUNT, AND SAYING IT IS HIDES THE FAILURE.
+        //
+        // This used to append the error to #content and then set
+        // data-mounted='1' anyway. Both halves were wrong. The flag is the
+        // whole application's "this screen has rendered" signal, so a screen
+        // whose mount() threw — a feature module that failed to fetch, an
+        // on-demand stylesheet that 404ed, a throw inside the module — was
+        // announced as rendered while being empty. Anything waiting on the
+        // flag then observed a screen with no controls in it and had to guess
+        // why: the symptom was "this screen has no focusable control", which
+        // describes the design rather than the failure, and reads as flakiness
+        // rather than as a load error.
+        //
+        // The error also belongs INSIDE the host. Appended to #content it sat
+        // outside the .scr-host every screen-scoped assertion — and every
+        // screen-scoped stylesheet — is written against.
+        result.node.appendChild(
+          errorNode(`This screen could not be loaded. ${mountError.message}`));
+        result.node.dataset.mountFailed = '1';
+      } else {
+        result.node.dataset.mounted = '1';
+      }
     }
     // enhance() is deliberately NOT called here: these screens build their own
     // DOM through core/dom.js, which already applies geometry through the

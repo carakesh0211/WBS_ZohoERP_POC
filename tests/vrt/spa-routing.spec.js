@@ -222,8 +222,19 @@ async function settleScreen(page) {
   // still empty. Waiting on the host alone raced the dynamic import and the
   // on-demand stylesheet, and intermittently found a screen with no controls
   // in it yet.
-  await page.waitForSelector('#content .scr-host[data-mounted="1"]',
+  //
+  // BOTH outcomes end the wait. app.js marks a screen whose mount() threw with
+  // data-mount-failed instead of data-mounted, and a load failure diagnosed as
+  // a load failure is worth far more than the same failure arriving fifteen
+  // seconds later as a timeout — or, worse, as "this screen rendered no
+  // focusable control", which describes the design rather than the fault.
+  await page.waitForSelector(
+    '#content .scr-host[data-mounted="1"], #content .scr-host[data-mount-failed="1"]',
     { state: 'attached', timeout: 15_000 });
+  const failed = page.locator('#content .scr-host[data-mount-failed="1"]');
+  if (await failed.count()) {
+    throw new Error(`the screen's mount() threw, so it never rendered: ${(await failed.innerText()).trim()}`);
+  }
   await page.waitForFunction(() => {
     const host = document.querySelector('#content .scr-host[data-mounted="1"]');
     return !!host && !host.querySelector('.audit-skel-row') && !host.querySelector('.loading');
@@ -296,24 +307,44 @@ test.describe('SPA routing — every SCR-nn screen is reachable from the shell',
     // On 2026-09-03 the product owner approved, in writing, exactly one change
     // to this rail: the five completed SCR-nn screens are now listed
     // (APPROVED UI CHANGE 1 of 2). The list below is that approved rail, in
-    // full and in order. A SIXTH entry, or a reordering, or a silent removal,
-    // still fails here — which is the whole job of this test. It asserts the
-    // exact sequence rather than a membership check precisely so that "the
-    // approved navigation" stays a fact with a value, not a direction of
-    // travel.
+    // full and in order. An UNEXPECTED entry, or a reordering, or a silent
+    // removal, still fails here — which is the whole job of this test. It
+    // asserts the exact sequence rather than a membership check precisely so
+    // that "the approved navigation" stays a fact with a value, not a
+    // direction of travel.
+    //
+    // WAVE 4 ADDS SEVEN MORE, AND THAT IS A THIRD CHANGE TO THIS RAIL.
+    // M4b's eight approval screens are listed under the same permission-gated
+    // mechanism. The Administrator session below sees seven of them: Contract
+    // 4 withholds approval.delegate from Administrator, so Delegation
+    // Management is correctly absent, and its absence here is an assertion
+    // about the gate rather than an oversight.
+    //
+    // It is recorded in docs/ui-change-2026-09/A3-approval-navigation.md --
+    // deliberately NOT in that directory's README.md, which is the record of
+    // the two changes the product owner approved in writing. A3 is
+    // lead-instructed and unapproved, it moves 46 baselines, and it is called
+    // out rather than folded quietly into "the approved navigation".
     await settleShell(page);
     const ids = await page.evaluate(
       () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
     );
     expect(ids).toEqual([
       'home', 'approvals', 'alerts',
+      'approval-inbox', 'approval-request', 'approval-sla',
       'projects', 'wbs', 'budget', 'check', 'revisions',
       'budget-grid', 'budget-compare', 'budget-availability',
       'prs', 'pos', 'grns', 'bills', 'recon',
       'cap',
       'zoho', 'inventory',
-      'audit', 'audit-trail', 'settings',
+      'audit', 'audit-trail',
+      'approval-timeline', 'approval-matrix', 'approval-versions', 'approval-simulator',
+      'settings',
     ]);
+    // Delegation Management needs approval.delegate, which an Administrator
+    // does not hold. Absent for this principal, by design.
+    expect(ids, 'Delegation Management was listed for a principal without approval.delegate')
+      .not.toContain('approval-delegations');
     // Every one of the five is now reachable from the rail, not merely by URL.
     for (const s of SCREENS) {
       expect(ids, `${s.scr} is missing from the approved navigation`).toContain(s.hash);
