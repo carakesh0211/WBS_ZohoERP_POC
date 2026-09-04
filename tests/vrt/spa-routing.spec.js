@@ -260,20 +260,24 @@ async function openNavIfCollapsed(page) {
 }
 
 /**
- * The one accessibility defect this stream found and did not fix, because it
- * lives in a file this stream does not own.
+ * There is no longer an accessibility exclusion on this suite.
  *
- * `#userAvatar` in the shell header renders white 11px text on the frozen
- * stylesheet's avatar background (#2e8a9a) at a contrast ratio of 4.02:1,
- * below the 4.5:1 WCAG 2 AA minimum. The colour is in app/frontend/styles.css,
- * which is BYTE-FROZEN and SHA-256 pinned in CI, so it is reported rather than
- * changed. It is excluded here — and ONLY here, by that one selector — so that
- * every other violation on these screens still fails the build.
+ * Wave 3 excluded `#userAvatar` here: it rendered white 11px text on the
+ * frozen stylesheet's avatar background (#2E8A9A) at 4.02:1, below the 4.5:1
+ * WCAG 2.2 AA minimum, and the colour lived in a byte-frozen, SHA-256-pinned
+ * stylesheet that stream could not change. It was reported rather than fixed,
+ * and excluded so that every OTHER violation still failed the build.
+ *
+ * The product owner approved the correction on 2026-09-03 (APPROVED UI CHANGE
+ * 2 of 2). `.avatar` now uses `--primary-600` (#24707E) and the same text
+ * measures 5.6850:1. The exclusion is therefore DELETED rather than retained
+ * as dead configuration: axe now runs against the whole shell with nothing
+ * carved out, so this suite is strictly stricter than it was, and a future
+ * regression of that same contrast fails here instead of being silently
+ * permitted by a stale allowance.
  */
-const KNOWN_FROZEN_STYLESHEET_DEFECT = '#userAvatar';
-
 function axeForShell(page) {
-  return new AxeBuilder({ page }).exclude(KNOWN_FROZEN_STYLESHEET_DEFECT);
+  return new AxeBuilder({ page });
 }
 
 /* ============================================================ navigation */
@@ -284,14 +288,19 @@ test.describe('SPA routing — every SCR-nn screen is reachable from the shell',
     await signIn(page);
   });
 
-  test('the client-approved primary navigation is untouched', async ({ page }) => {
-    // THE GUARD THAT MATTERS. Every one of the seventeen approved screenshots
-    // in approved-ui.spec.js-snapshots/ contains this navigation rail, so a
-    // single entry added here silently invalidates all thirty-seven of them.
-    // This stream therefore routes the five SCR-nn screens WITHOUT adding a
-    // navigation entry, and this test is what stops that decision decaying.
-    // Adding an entry is a client design decision plus a deliberate
-    // re-baselining — not something that should ever pass unnoticed.
+  test('the primary navigation is exactly the approved navigation', async ({ page }) => {
+    // THE GUARD THAT MATTERS, and it still matters — it has been re-pointed,
+    // not relaxed. Every approved screenshot contains this rail, so any entry
+    // added to it silently invalidates all of them.
+    //
+    // On 2026-09-03 the product owner approved, in writing, exactly one change
+    // to this rail: the five completed SCR-nn screens are now listed
+    // (APPROVED UI CHANGE 1 of 2). The list below is that approved rail, in
+    // full and in order. A SIXTH entry, or a reordering, or a silent removal,
+    // still fails here — which is the whole job of this test. It asserts the
+    // exact sequence rather than a membership check precisely so that "the
+    // approved navigation" stays a fact with a value, not a direction of
+    // travel.
     await settleShell(page);
     const ids = await page.evaluate(
       () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
@@ -299,14 +308,53 @@ test.describe('SPA routing — every SCR-nn screen is reachable from the shell',
     expect(ids).toEqual([
       'home', 'approvals', 'alerts',
       'projects', 'wbs', 'budget', 'check', 'revisions',
+      'budget-grid', 'budget-compare', 'budget-availability',
       'prs', 'pos', 'grns', 'bills', 'recon',
       'cap',
       'zoho', 'inventory',
-      'audit',
+      'audit', 'audit-trail', 'settings',
     ]);
+    // Every one of the five is now reachable from the rail, not merely by URL.
     for (const s of SCREENS) {
-      expect(ids, `${s.scr} must not appear in the approved navigation`).not.toContain(s.hash);
+      expect(ids, `${s.scr} is missing from the approved navigation`).toContain(s.hash);
     }
+    // The seventeen originally-approved entries all survive. An addition must
+    // never have been a replacement.
+    for (const id of ['home', 'approvals', 'alerts', 'projects', 'wbs', 'budget', 'check',
+      'revisions', 'prs', 'pos', 'grns', 'bills', 'recon', 'cap', 'zoho', 'inventory', 'audit']) {
+      expect(ids, `the approved view "${id}" was dropped from the navigation`).toContain(id);
+    }
+  });
+
+  test('a navigation entry is permission-gated, not merely present', async ({ page }) => {
+    // The rail entries are new, so the gate behind them is new too. An entry
+    // rendered for a principal who cannot open the route would be a dead link
+    // that also leaks the existence of a screen they may not see.
+    //
+    // Administrator (the session in this describe) holds all five permissions.
+    // The Auditor below holds audit.read/budget.read/budget.check but NOT
+    // settings.read or masters.read, so Settings must be absent for them while
+    // the budget entries remain — a positive control on the same assertion.
+    await settleShell(page);
+    const adminIds = await page.evaluate(
+      () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
+    );
+    expect(adminIds).toContain('settings');
+
+    const auditor = await page.context().newPage();
+    await stubScreenApis(auditor);
+    await signIn(auditor, AUDITOR);
+    await settleShell(auditor);
+    const auditorIds = await auditor.evaluate(
+      () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
+    );
+    expect(auditorIds, 'Settings was listed for a principal without settings.read')
+      .not.toContain('settings');
+    expect(auditorIds, 'the Audit Trail Viewer should be listed for an Auditor')
+      .toContain('audit-trail');
+    expect(auditorIds, 'the budget screens should be listed for an Auditor')
+      .toContain('budget-grid');
+    await auditor.close();
   });
 
   for (const s of SCREENS) {
@@ -429,11 +477,24 @@ test.describe('SPA routing — the two declarations cannot drift', () => {
       expect(gate.need, `${entry.scr} permission gate drifted`).toEqual(entry.need);
     }
 
-    // And every screen this suite claims to cover is actually in the registry.
-    expect(registry.map((r) => r.id).sort())
-      .toEqual(SCREENS.map((s) => s.hash).sort());
-    expect(registry.map((r) => r.scr).sort())
-      .toEqual(['SCR-09', 'SCR-10', 'SCR-13', 'SCR-28', 'SCR-30']);
+    // Every screen THIS suite claims to cover is in the registry, with its
+    // SCR number intact.
+    for (const s of SCREENS) {
+      const entry = registry.find((r) => r.id === s.hash);
+      expect(entry, `${s.scr} (${s.hash}) is missing from the registry`).toBeTruthy();
+      expect(entry.scr, `${s.hash} lost its SCR number`).toBe(s.scr);
+    }
+
+    // And the registry as a whole is exactly the thirteen routable screens:
+    // these five, plus the approval engine's eight from Wave 4 (covered by
+    // tests/vrt/approvals.spec.js). Naming all thirteen rather than asserting
+    // "at least the five" keeps this an exact statement — a fourteenth screen
+    // appearing without a test still fails here.
+    expect(registry.map((r) => r.id).sort()).toEqual([
+      'approval-delegations', 'approval-inbox', 'approval-matrix', 'approval-request',
+      'approval-simulator', 'approval-sla', 'approval-timeline', 'approval-versions',
+      'audit-trail', 'budget-availability', 'budget-compare', 'budget-grid', 'settings',
+    ].sort());
   });
 
   test('an unknown hash cannot resolve to an ungated screen', async ({ page }) => {
@@ -872,26 +933,71 @@ test.describe('SPA routing — accessibility', () => {
       expect(screenOnly.violations, JSON.stringify(screenOnly.violations, null, 2)).toEqual([]);
 
       // And the whole page around it, so a screen cannot pass by sitting in a
-      // broken shell. Only the one frozen-stylesheet defect is excluded.
+      // broken shell. NOTHING is excluded any more.
       const wholePage = await axeForShell(page).analyze();
       expect(wholePage.violations, JSON.stringify(wholePage.violations, null, 2)).toEqual([]);
     });
   }
 
-  test('the excluded shell defect is still exactly the one that was reported', async ({ page }) => {
-    // Guards the exclusion above: if #userAvatar's contrast is ever fixed, or
-    // if a second shell defect appears, this test says so instead of the
-    // exclusion quietly hiding a growing list.
+  test('the shell carries no accessibility violation at all, avatar included', async ({ page }) => {
+    // The inverse of the test this replaces. Wave 3 asserted that exactly one
+    // violation remained — the #userAvatar contrast defect it could not fix —
+    // so that the exclusion could not quietly grow into a list. That defect is
+    // now FIXED (APPROVED UI CHANGE 2 of 2), so the assertion inverts: the
+    // whole shell must be clean, with nothing carved out.
+    //
+    // This is strictly stronger than what it replaces. The old test permitted
+    // one violation; this one permits none.
     await gotoScreen(page, 'audit-trail');
     const results = await new AxeBuilder({ page }).analyze();
-    const outside = results.violations.flatMap((v) => v.nodes
-      .filter((n) => !n.target.includes(KNOWN_FROZEN_STYLESHEET_DEFECT))
+    const found = results.violations.flatMap((v) => v.nodes
       .map((n) => ({ id: v.id, target: n.target })));
-    expect(outside, JSON.stringify(outside, null, 2)).toEqual([]);
-    expect(
-      results.violations.map((v) => v.id),
-      'the reported #userAvatar contrast defect is no longer present — remove the exclusion',
-    ).toEqual(['color-contrast']);
+    expect(found, JSON.stringify(found, null, 2)).toEqual([]);
+  });
+
+  test('#userAvatar meets WCAG 2.2 AA, measured rather than assumed', async ({ page }) => {
+    // The specific regression guard for APPROVED UI CHANGE 2 of 2. axe would
+    // catch a contrast failure, but it would not say what the ratio was, and a
+    // future re-theme that lands at 4.49:1 should fail with the number that
+    // made it fail. This computes the WCAG 2 relative-luminance ratio from the
+    // element's OWN computed colours.
+    await gotoScreen(page, 'audit-trail');
+    const measured = await page.evaluate(() => {
+      const el = document.getElementById('userAvatar');
+      const cs = getComputedStyle(el);
+      const parse = (v) => {
+        const m = String(v).match(/rgba?\(([^)]+)\)/);
+        if (!m) return null;
+        const p = m[1].split(/[,\s/]+/).filter(Boolean).map(Number);
+        return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 };
+      };
+      let bg = parse(cs.backgroundColor);
+      let node = el;
+      while (bg && bg.a === 0 && node.parentElement) {
+        node = node.parentElement;
+        bg = parse(getComputedStyle(node).backgroundColor);
+      }
+      const fg = parse(cs.color);
+      const lin = (c) => {
+        const s = c / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      };
+      const L = (c) => 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+      const l1 = L(fg);
+      const l2 = L(bg);
+      return {
+        fontSize: parseFloat(cs.fontSize),
+        fontWeight: cs.fontWeight,
+        ratio: (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05),
+      };
+    });
+
+    // 11px 600-weight is BODY text under WCAG 2.2, not large text: large is
+    // 18.66px bold or 24px regular. So the threshold is 4.5:1, not 3:1.
+    expect(measured.fontSize).toBeLessThan(18.66);
+    expect(measured.ratio,
+      `#userAvatar contrast is ${measured.ratio.toFixed(4)}:1, below the 4.5:1 AA minimum`)
+      .toBeGreaterThanOrEqual(4.5);
   });
 
   for (const s of SCREENS) {

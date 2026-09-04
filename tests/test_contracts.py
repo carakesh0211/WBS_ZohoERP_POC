@@ -427,8 +427,19 @@ def test_no_new_off_token_colour_is_introduced():
 #
 # Recompute with:
 #   python -c "import hashlib,pathlib;print(hashlib.sha256(pathlib.Path('app/frontend/styles.css').read_bytes().replace(b'\r\n',b'\n')).hexdigest())"
+#
+# Updated 2026-09-03, deliberately, for APPROVED UI CHANGE 2 of 2 (Wave 4,
+# stream 4). The product owner approved, in writing, the smallest `#userAvatar`
+# colour correction that reaches WCAG 2.2 AA. `.avatar` moved one step down the
+# existing brand ramp, `--primary-500` (#2E8A9A) -> `--primary-600` (#24707E):
+# white 11px text measured 4.0244:1 before and 5.6850:1 after, against a 4.5:1
+# requirement. Both values are already-frozen C6 tokens, so
+# `test_the_root_palette_is_exactly_the_frozen_token_palette` and
+# `test_no_new_off_token_colour_is_introduced` are unaffected by design — the
+# correction had to be reachable without adding a colour to the registry.
+# Previous pin: 2908bf6725041060dfdaae8de9955043675214e45c9c169d17fab544b61d97a1
 APPROVED_STYLES_CSS_SHA256 = (
-    "2908bf6725041060dfdaae8de9955043675214e45c9c169d17fab544b61d97a1"
+    "cae43990b8c3cb7ea047f80771eeb103d6022f1e55a03e07b4b68aa9060ff847"
 )
 
 

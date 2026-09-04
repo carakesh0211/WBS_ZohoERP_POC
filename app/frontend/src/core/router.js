@@ -17,11 +17,13 @@
    The standalone host pages keep working unchanged; they are simply no longer
    the only way in.
 
-   What this does NOT do: add anything to the primary navigation. That rail is
-   rendered inside all thirty-seven client-approved screenshots, so an entry in
-   it is a change to the approved UI and needs the client's sign-off, not an
-   implementation stream's. `group`, `ico` and `label` below are carried ready
-   for that day; nothing reads them yet. See the SCR_ROUTES comment in app.js.
+   The primary navigation. `group`, `ico` and `label` were carried here unused
+   for two waves, against the day the client signed off on listing these
+   screens. That happened on 2026-09-03, so app.js's NAV table now reads them:
+   the five Wave 2/3 screens are APPROVED UI CHANGE 1 of 2, and the eight
+   approval-engine screens added below are listed under the same mechanism,
+   each gated on its own Contract 4 permission. See the SCR_ROUTES comment in
+   app.js for how the navigation gate and the route gate are kept identical.
 
    Why a separate module, and why dynamic import
    ---------------------------------------------
@@ -85,6 +87,13 @@ function ensureStyles(hrefs) {
 const AUDIT_STYLES = ['/static/extensions.css'];
 const BUDGET_STYLES = ['/static/extensions.css', '/static/budget.css'];
 const SETTINGS_STYLES = ['/static/extensions.css', '/static/settings.css'];
+/* extensions.css carries .audit-skel-bar and th .sort-btn, which the shared
+   capex-datatable component needs; approvals.css carries only this feature's
+   own layout. Unlike settings.css, every selector in approvals.css is scoped
+   to an `approval-` class, so it would be harmless even loaded globally — it
+   is still loaded per route, because that is the rule here and a stylesheet
+   that is safe today is not automatically safe after its next edit. */
+const APPROVAL_STYLES = ['/static/extensions.css', '/static/approvals.css'];
 
 /**
  * A live region each feature module looks up by id at mount time. It has to
@@ -105,7 +114,43 @@ function panel(headingId, heading, bodyEl) {
 }
 
 /**
- * The five screens, in the order they appear in the primary navigation.
+ * The build() for an approval screen.
+ *
+ * All eight have the same host shape — one root div plus the live region the
+ * feature module looks up by id — so the eight declarations above differ only
+ * in the module they load. Writing the host out eight times would be eight
+ * chances for one of them to forget its live region, which fails silently:
+ * announce() would simply do nothing and a screen-reader user would get no
+ * feedback on load, empty, error or refusal.
+ *
+ * ONE live region id is shared across all eight, and that is correct: only one
+ * approval screen is ever mounted at a time, and app.js replaces #content
+ * wholesale on navigation.
+ */
+function approvalScreen(hostId, moduleFile, exportName) {
+  return function build() {
+    const root = h('div', { id: `${hostId}-root` });
+    const node = h('div', { class: 'scr-host' }, [root, liveRegion('approvalsLiveRegion')]);
+    return {
+      node,
+      async mount() {
+        await ensureStyles(APPROVAL_STYLES);
+        const mod = await import(`../features/approvals/${moduleFile}`);
+        mod[exportName](root);
+      },
+    };
+  };
+}
+
+/**
+ * The thirteen routable screens, in the order they appear in the primary
+ * navigation: the five built in Waves 2 and 3, then the approval engine's
+ * eight.
+ *
+ * `need` here is the SAME permission list app.js's SCR_ROUTES declares. It has
+ * to be restated because app.js's gate runs synchronously in render(), long
+ * before this module's dynamic import can resolve; tests/vrt/spa-routing.spec.js
+ * asserts the two never drift.
  *
  * `hash` deliberately does NOT collide with any id already in app.js's NAV
  * table. `audit`, `budget` and `check` are existing shell views with their own
@@ -255,6 +300,113 @@ export const SCREENS = [
         },
       };
     },
+  },
+
+  /* ------------------------------------------------------------------
+     Wave 4 / M4b — the approval engine's eight screens.
+
+     SCREEN NUMBERING IS HONEST HERE, AND INCOMPLETE ON PURPOSE.
+     research/30_contracts/C8_screens.json is frozen at forty screens and
+     names only TWO of these eight: SCR-03 "My Approval Inbox" and SCR-29
+     "Approval Matrix Configuration". The other six surfaces the M4b brief
+     asks for are not in that registry at all. They carry `scr: null` rather
+     than an invented number: a plausible-looking SCR-41 would quietly
+     manufacture traceability that C8 does not actually provide, and the
+     traceability matrix is the thing that is supposed to catch that. This is
+     REPORTED to the lead as a contract gap.
+
+     Every one of these mounts a module under features/approvals/, which
+     codes against Wave 4 Contract 3's frozen routes. app/backend/api/
+     approvals.py is stream 3's file; nothing here imports or assumes
+     anything about it beyond those routes.
+     ------------------------------------------------------------------ */
+  {
+    id: 'approval-inbox',
+    scr: 'SCR-03',
+    group: 'Work',
+    ico: '⊞',
+    label: 'My Approval Inbox',
+    title: 'My Approval Inbox',
+    crumbs: ['Home', 'Approvals', 'My Approval Inbox'],
+    need: ['approval.read'],
+    build: approvalScreen('approval-inbox', 'approval-inbox.js', 'mountApprovalInbox'),
+  },
+  {
+    id: 'approval-request',
+    scr: null,
+    group: 'Work',
+    ico: '▥',
+    label: 'Approval Request Detail',
+    title: 'Approval Request Detail',
+    crumbs: ['Home', 'Approvals', 'Approval Request Detail'],
+    need: ['approval.read'],
+    build: approvalScreen('approval-request', 'approval-detail.js', 'mountApprovalDetail'),
+  },
+  {
+    id: 'approval-sla',
+    scr: null,
+    group: 'Work',
+    ico: '◷',
+    label: 'Escalation & SLA Monitor',
+    title: 'Escalation and SLA Monitor',
+    crumbs: ['Home', 'Approvals', 'Escalation and SLA Monitor'],
+    need: ['approval.read'],
+    build: approvalScreen('approval-sla', 'sla-monitor.js', 'mountSlaMonitor'),
+  },
+  {
+    id: 'approval-timeline',
+    scr: null,
+    group: 'Governance',
+    ico: '⧗',
+    label: 'Approval Timeline',
+    title: 'Approval Timeline and Audit History',
+    crumbs: ['Home', 'Governance', 'Approval Timeline and Audit History'],
+    need: ['approval.read'],
+    build: approvalScreen('approval-timeline', 'approval-timeline.js', 'mountApprovalTimeline'),
+  },
+  {
+    id: 'approval-matrix',
+    scr: 'SCR-29',
+    group: 'Governance',
+    ico: '▨',
+    label: 'Approval Matrix Configuration',
+    title: 'Approval Matrix Configuration',
+    crumbs: ['Home', 'Governance', 'Approval Matrix Configuration'],
+    need: ['approval.configure'],
+    build: approvalScreen('approval-matrix', 'approval-matrix.js', 'mountApprovalMatrix'),
+  },
+  {
+    id: 'approval-versions',
+    scr: null,
+    group: 'Governance',
+    ico: '⎘',
+    label: 'Workflow Version History',
+    title: 'Workflow Version History',
+    crumbs: ['Home', 'Governance', 'Workflow Version History'],
+    need: ['approval.configure'],
+    build: approvalScreen('approval-versions', 'workflow-versions.js', 'mountWorkflowVersions'),
+  },
+  {
+    id: 'approval-simulator',
+    scr: null,
+    group: 'Governance',
+    ico: '⊛',
+    label: 'Approval Rule Simulator',
+    title: 'Approval Rule Simulator',
+    crumbs: ['Home', 'Governance', 'Approval Rule Simulator'],
+    need: ['approval.configure'],
+    build: approvalScreen('approval-simulator', 'rule-simulator.js', 'mountRuleSimulator'),
+  },
+  {
+    id: 'approval-delegations',
+    scr: null,
+    group: 'Governance',
+    ico: '⇌',
+    label: 'Delegation Management',
+    title: 'Delegation Management',
+    crumbs: ['Home', 'Governance', 'Delegation Management'],
+    need: ['approval.delegate'],
+    build: approvalScreen('approval-delegations', 'delegations.js', 'mountDelegations'),
   },
 ];
 

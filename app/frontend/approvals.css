@@ -1,0 +1,283 @@
+/* app/frontend/approvals.css
+   Additive stylesheet for the approval-engine screens (Wave 4, M4b).
+
+   RULES THIS FILE KEEPS, and why
+   ------------------------------
+   1. NO :root block, NO custom property is declared here, and NO raw hex
+      value appears anywhere in this file. Every colour is a var() naming a
+      token already frozen in research/30_contracts/C6_tokens.json and
+      declared in the byte-frozen styles.css. A new colour belongs in the
+      token registry, not in a feature stylesheet.
+
+   2. EVERY SELECTOR IS SCOPED to an `approval-` class. settings.css shipped
+      two unscoped selectors -- `input:disabled, textarea:disabled` and
+      `.field label` -- and they restyle disabled controls and label wrapping
+      on every approved shell view the moment that stylesheet is loaded
+      globally. That defect is why src/core/router.js injects these
+      stylesheets per route instead of linking them in index.html. This file
+      is written so that it would be harmless even if that containment failed.
+
+   3. Layout and size only. Nothing here restyles a `.status`, a `.msg`, a
+      table or a button: those are the approved design and they come from
+      styles.css unchanged. This file positions the parts the approval screens
+      add and does nothing else.
+
+   4. No `style=` attribute is ever produced by the screens that use this
+      file; the CSP is `style-src 'self'`, and computed geometry goes through
+      the CSSOM in core/dom.js's setGeometry(). Nothing here depends on an
+      inline style existing.
+*/
+
+/* ---------------- layout ---------------- */
+
+.approval-card + .approval-card {
+  margin-top: 16px;
+}
+
+/* The card header, as an <h2> rather than the frozen stylesheet's `.card > h3`.
+   The shell renders the screen name as the page <h1>, so an h3 here would skip
+   a heading level: axe flags it and a screen-reader user navigating by heading
+   loses the outline. These declarations reproduce `.card > h3` exactly, from
+   the same tokens, so the card is visually identical and only the element name
+   and the document outline differ. budget.css solves the same problem the same
+   way with `.section-title`. */
+.approval-card > .approval-card-title {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--n200);
+  background: var(--n50);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.approval-card > .approval-card-title .spacer {
+  flex: 1;
+}
+
+.approval-card .approval-toolbar {
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* The action button in a toolbar sits on the control baseline, not on the
+   label baseline, so it lines up with the inputs beside it. */
+.approval-card .approval-toolbar .field-action {
+  display: flex;
+  align-items: flex-end;
+}
+
+.approval-pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 0;
+}
+
+/* ---------------- status ---------------- */
+
+/* The badge inherits everything from the frozen .status / .st-* rules. The
+   only addition is that it must not be squeezed onto two lines inside a dense
+   table cell, because a wrapped glyph reads as a separate column. */
+.approval-status {
+  white-space: nowrap;
+}
+
+/* A REPORTED DEFECT IN THE FROZEN TOKEN REGISTRY, MITIGATED HERE ONLY.
+   ---------------------------------------------------------------------
+   `--warning` (#A66A00) is the ONLY semantic token that fails WCAG 2.2 AA at
+   body size. Measured against every surface in the design:
+
+       on --n0        #FFFFFF   4.4843:1   FAIL
+       on --n50       #F7F8F9   4.2173:1   FAIL
+       on --warning-bg #FDF3E2  4.0775:1   FAIL
+       on --n100      #EFF1F3   3.9604:1   FAIL
+
+   (--positive 5.35, --negative 6.54, --progress 6.73, --info 6.62 and
+   --n500 4.83 all pass.) C6_tokens.json's `contrast_rule` asserts that
+   "Every text/background pairing above meets WCAG 2.2 AA (4.5:1 for body
+   text ...)". For warning-600 that is not true, and styles.css inherits it
+   through `.st-warning { color: var(--warning) }`.
+
+   The registry has no darker amber, so there is NO compliant fix inside the
+   tokens, and inventing a hex would be exactly the off-token colour the
+   contract tests exist to prevent. Both C6_tokens.json and styles.css are
+   outside this stream's ownership, so the DEFECT IS REPORTED, not fixed.
+
+   Meanwhile these screens must be axe-clean, so on approval screens the
+   warning status takes the primary text colour and keeps its amber DOT. The
+   dot is a non-text indicator needing 3:1, which #A66A00 clears at 4.48:1, so
+   the semantic colour still carries — alongside the '!' glyph and the label,
+   neither of which is colour at all. Delete this rule once the token is
+   corrected. */
+.approval-card .status.st-warning {
+  color: var(--n900);
+}
+
+/* Overdue carries a symbol AND the word "overdue" in the markup; this only
+   stops the two being split across lines. Colour is never the sole carrier. */
+.approval-overdue {
+  white-space: nowrap;
+  color: var(--negative);
+  font-weight: 600;
+}
+
+.approval-overdue .sym {
+  margin-right: 4px;
+}
+
+/* A real <dl> for key/value blocks: <dt> and <dd> are only meaningful inside
+   one (axe `dlitem`). The frozen `.kv` rule sets display:grid, which applies
+   to a <dl> unchanged; this only removes the UA stylesheet's default <dl>
+   margin so the geometry matches the <div> it replaces. */
+.approval-kv {
+  margin: 0;
+}
+
+/* A SECOND REPORTED CONTRAST DEFECT IN THE FROZEN DESIGN.
+   styles.css has `tbody tr:hover { background: var(--primary-50) }`. Against
+   that tint, `.muted` (--n500 #6B7280) measures 4.3210:1 -- below the 4.5:1
+   body minimum -- where on the plain card surface it measures 4.8345:1 and
+   passes. So ANY muted text inside a table row fails AA while the row is
+   hovered, throughout the application. REPORTED; styles.css is byte-frozen.
+
+   These screens avoid it by not de-emphasising table-cell content at all,
+   which is the better answer anyway: a value in a data table is something the
+   reviewer is meant to read, not a footnote. `.approval-cell-note` keeps the
+   smaller size that distinguishes an annotation from a primary value, and
+   takes --n700, which is 9.3528:1 on the hover tint. */
+.approval-card .approval-cell-note {
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--n700);
+}
+
+/* ---------------- assignee lists ---------------- */
+
+/* A stage can have several assignees. A comma-joined string would be unusable
+   for a screen reader and unreadable in a dense cell, so it is a real list --
+   stripped of its bullets and indentation, which is presentation, not
+   semantics. */
+.approval-assignees {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.approval-assignees > li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 0;
+  white-space: nowrap;
+}
+
+/* ---------------- definition detail ---------------- */
+
+.approval-definition-detail {
+  padding: 8px 0;
+}
+
+.approval-definition-detail > h3 {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  margin: 12px 0 6px;
+  color: var(--n700);
+}
+
+.approval-definition-detail > h3:first-child {
+  margin-top: 0;
+}
+
+.approval-rule-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.approval-rule-list > li {
+  padding: 2px 0;
+}
+
+.approval-rule-list code {
+  word-break: break-all;
+}
+
+/* ---------------- decision panel ---------------- */
+
+.approval-decision {
+  border: 1px solid var(--n200);
+  border-radius: var(--radius);
+  background: var(--n50);
+  padding: 12px;
+}
+
+.approval-decision > p {
+  margin: 0 0 12px;
+}
+
+.approval-decision textarea {
+  width: 100%;
+  max-width: 640px;
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.approval-decision .btn-row {
+  margin-top: 12px;
+}
+
+/* ---------------- forms inside an approval card ---------------- */
+
+/* Deliberately scoped to .approval-card. The equivalent rules in settings.css
+   are not, and that is the defect described at the top of this file. */
+.approval-card textarea.mono {
+  width: 100%;
+  max-width: 720px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.approval-card .field-err-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.approval-card .field-err-list > li {
+  padding: 1px 0;
+}
+
+.approval-card [aria-invalid='true'] {
+  border-color: var(--negative);
+}
+
+/* ---------------- links ---------------- */
+
+/* Reuses the frozen .linkish appearance; this only guarantees that a
+   reference in a table cell keeps its underline on hover, so it is
+   identifiable as a link without relying on colour alone. */
+.approval-link:hover,
+.approval-link:focus-visible {
+  text-decoration: underline;
+}
+
+/* ---------------- narrow viewports ---------------- */
+
+/* Below the shell's own 900px breakpoint the toolbars stack rather than
+   scrolling the document sideways. AUD-M-004: the document never scrolls
+   horizontally; wide tables scroll inside their own .table-wrap. */
+@media (max-width: 900px) {
+  .approval-card .approval-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .approval-card .approval-toolbar .field-action {
+    align-items: stretch;
+  }
+}

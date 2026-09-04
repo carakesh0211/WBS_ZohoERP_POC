@@ -113,8 +113,17 @@ body.cosy { --row-h:36px; --input-h:34px; }
   font-size:10px; font-weight:700; line-height:15px; min-width:16px; text-align:center;
 }
 .user-block { display:flex; align-items:center; gap:8px; min-width:0; }
+/* APPROVED UI CHANGE 2 of 2 (product owner, 2026-09-03): the avatar tone moves
+   one step down the existing brand ramp, primary-500 -> primary-600.
+   White 11px on primary-500 (#2E8A9A) measured 4.02:1, below the WCAG 2.2 AA
+   4.5:1 minimum for body text. On primary-600 (#24707E) it measures 5.69:1.
+   The hue is unchanged and the value is an existing frozen C6 token, so the
+   colour theme is untouched: primary-600 is already the design's default
+   interactive tone. Darkening within the ramp was chosen over recolouring the
+   text or introducing a new tone, both of which would have changed the
+   approved palette rather than corrected a contrast defect within it. */
 .avatar {
-  width:26px; height:26px; flex:0 0 26px; border-radius:50%; background:var(--primary-500);
+  width:26px; height:26px; flex:0 0 26px; border-radius:50%; background:var(--primary-600);
   display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600;
 }
 .user-meta { display:flex; flex-direction:column; line-height:13px; min-width:0; }

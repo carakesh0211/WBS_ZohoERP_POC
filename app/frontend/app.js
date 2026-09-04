@@ -171,18 +171,92 @@ async function api(path, opts = {}) {
 /* ---------------- permissions --------------------------------------------- */
 function can(...permissions) { return permissions.some(p => S.perms.has(p)); }
 
+/* ---------------- module-hosted routes -----------------------------------
+   The thirteen screens that live as ES modules rather than as `V` views in
+   this file: the five built in Waves 2 and 3 (SCR-28, SCR-09, SCR-10, SCR-13,
+   SCR-30) and the approval engine's eight, added in Wave 4. All thirteen are
+   routable, deep-linkable, permission-gated, and LISTED IN THE PRIMARY
+   NAVIGATION — the five since the product owner's written approval of
+   2026-09-03, the eight as part of M4b.
+
+   They were previously routable but unlisted, because the navigation rail is
+   rendered inside every one of the client-approved screenshots and adding an
+   entry changes all of them. That is a client design decision, and it has now
+   been made: APPROVED UI CHANGE 1 of 2. The affected visual-regression
+   baselines were re-captured deliberately, in the commit that made this
+   change, and only the baselines that genuinely moved were re-captured — the
+   rail is display:none below 900px, so the tablet-800 baselines did not move
+   and were not touched.
+
+   These rows are declared BEFORE the NAV table and are spliced into it BY
+   REFERENCE below. That is the point: the navigation gate and the route gate
+   are then the SAME OBJECT, so a permission loosened for the rail cannot
+   diverge from the permission enforced on the route. The previous arrangement
+   restated `need` in two places and relied on a test to notice when the two
+   restatements disagreed.
+
+   `id` deliberately does NOT collide with any existing shell view. `audit`,
+   `budget` and `check` are separate approved screens; repointing those hashes
+   would silently replace three approved screens with different ones.
+
+   src/core/router.js carries the matching title, breadcrumb, host DOM and
+   mount function for each id. The two declarations are held in step by
+   tests/vrt/spa-routing.spec.js. */
+const SCR_ROUTES = [
+  { id: 'audit-trail', ico: '⧉', label: 'Audit Trail Viewer', need: ['audit.read'] },
+  { id: 'budget-grid', ico: '▩', label: 'Budget Planning Grid (cells)', need: ['budget.read'] },
+  { id: 'budget-compare', ico: '⇎', label: 'Budget Version Comparison', need: ['budget.read'] },
+  { id: 'budget-availability', ico: '⊙', label: 'Budget Availability Check (cells)', need: ['budget.check'] },
+  { id: 'settings', ico: '⚙', label: 'Settings & Master Data', need: ['settings.read', 'masters.read'] },
+
+  /* Wave 4 / M4b — the approval engine's eight screens, on the same footing.
+
+     Contract 4's permissions. approval.read is held by every role, so gating a
+     configuration surface on it would be gating on nothing: the matrix, the
+     version history and the simulator take approval.configure (Administrator),
+     and delegation management takes approval.delegate.
+
+     THESE ARE PRESENTATIONAL GATES. The server decides. A row hidden here is a
+     courtesy — the same courtesy the rest of this shell extends — and the
+     route gate below refuses the hash for the same reason, but neither is the
+     enforcement point. `viewAllowed()` refusing a hash keeps a mistyped or
+     bookmarked URL from rendering a screen whose data the server would refuse
+     anyway; it is not what keeps the data safe. */
+  { id: 'approval-inbox', ico: '⊞', label: 'My Approval Inbox', need: ['approval.read'] },
+  { id: 'approval-request', ico: '▥', label: 'Approval Request Detail', need: ['approval.read'] },
+  { id: 'approval-sla', ico: '◷', label: 'Escalation & SLA Monitor', need: ['approval.read'] },
+  { id: 'approval-timeline', ico: '⧗', label: 'Approval Timeline', need: ['approval.read'] },
+  { id: 'approval-matrix', ico: '▨', label: 'Approval Matrix Configuration', need: ['approval.configure'] },
+  { id: 'approval-versions', ico: '⎘', label: 'Workflow Version History', need: ['approval.configure'] },
+  { id: 'approval-simulator', ico: '⊛', label: 'Approval Rule Simulator', need: ['approval.configure'] },
+  { id: 'approval-delegations', ico: '⇌', label: 'Delegation Management', need: ['approval.delegate'] },
+];
+
+/** The SCR_ROUTES row for an id, spliced into NAV by reference. */
+function scr(id) {
+  const row = SCR_ROUTES.find(r => r.id === id);
+  if (!row) throw new Error(`scr(): no SCR route declared for "${id}".`);
+  return row;
+}
+
 /* ---------------- navigation ---------------------------------------------- */
 const NAV = [
   { g: 'Work' },
   { id: 'home', ico: '▣', label: 'Executive Dashboard' },
   { id: 'approvals', ico: '✔', label: 'My Approvals', badge: 'approvals' },
   { id: 'alerts', ico: '⚠', label: 'Alerts & Exceptions', badge: 'alerts' },
+  scr('approval-inbox'),
+  scr('approval-request'),
+  scr('approval-sla'),
   { g: 'Project Control' },
   { id: 'projects', ico: '▤', label: 'CAPEX Projects' },
   { id: 'wbs', ico: '⌗', label: 'WBS Explorer' },
   { id: 'budget', ico: '▦', label: 'Budget Planning Grid' },
   { id: 'check', ico: '◎', label: 'Budget Availability Check', need: ['budget.check'] },
   { id: 'revisions', ico: '↻', label: 'Budget Revisions' },
+  scr('budget-grid'),
+  scr('budget-compare'),
+  scr('budget-availability'),
   { g: 'Procurement & Actuals' },
   { id: 'prs', ico: '✎', label: 'Purchase Requests' },
   { id: 'pos', ico: '▧', label: 'Commitments (PO)' },
@@ -196,39 +270,16 @@ const NAV = [
   { id: 'inventory', ico: '≣', label: 'API Inventory', need: ['connector.read'] },
   { g: 'Governance' },
   { id: 'audit', ico: '⎙', label: 'Audit Trail', need: ['audit.read'] },
+  scr('audit-trail'),
+  scr('approval-timeline'),
+  scr('approval-matrix'),
+  scr('approval-versions'),
+  scr('approval-simulator'),
+  scr('approval-delegations'),
+  scr('settings'),
 ];
 
 function navAllowed(n) { return !n.need || can(...n.need); }
-
-/* ---------------- SCR-nn routes ------------------------------------------
-   SCR-28, SCR-09, SCR-10, SCR-13 and SCR-30 are routable, deep-linkable and
-   permission-gated in this shell, but they are DELIBERATELY NOT in the NAV
-   table above.
-
-   The primary navigation is rendered inside every one of the seventeen
-   client-approved screenshots in tests/vrt/approved-ui.spec.js-snapshots/. Any
-   entry added to it changes all of them. That is a change to the
-   client-approved UI, which needs the client's sign-off — it is not a call a
-   single implementation stream makes by overwriting the evidence that would
-   have caught it. The Wave 3 security-closure gate asks for these screens to be
-   "routable in the SPA shell", and routable is exactly what they are.
-
-   Everything needed to list them in the navigation is already here: each row
-   below is shaped like a NAV row, and src/core/router.js carries the matching
-   icon, label and group. Adding them is a loop over this table — and a
-   deliberate re-baselining of thirty-seven approved screenshots, with a
-   design-approval note, on the day the client agrees to it.
-
-   Until then this table is the permission gate. A route absent from NAV would
-   otherwise reach `navAllowed({})`, which returns true for everyone, and every
-   one of these five screens would be readable by every signed-in principal. */
-const SCR_ROUTES = [
-  { id: 'audit-trail', need: ['audit.read'] },
-  { id: 'budget-grid', need: ['budget.read'] },
-  { id: 'budget-compare', need: ['budget.read'] },
-  { id: 'budget-availability', need: ['budget.check'] },
-  { id: 'settings', need: ['settings.read', 'masters.read'] },
-];
 
 /* The permission gate for ANY view id, whether it sits in NAV or in SCR_ROUTES.
    An id in neither table is unknown and is refused, so a mistyped hash can

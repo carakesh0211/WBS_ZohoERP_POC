@@ -1,0 +1,96 @@
+{
+  "label": "before",
+  "capturedAt": "2026-09-03T10:10:02.993Z",
+  "viewports": {
+    "desktop-1440": {
+      "navRailRendered": true,
+      "navItemCount": 17,
+      "navItems": [
+        "home",
+        "approvals",
+        "alerts",
+        "projects",
+        "wbs",
+        "budget",
+        "check",
+        "revisions",
+        "prs",
+        "pos",
+        "grns",
+        "bills",
+        "recon",
+        "cap",
+        "zoho",
+        "inventory",
+        "audit"
+      ],
+      "avatar": {
+        "colour": "#FFFFFF",
+        "background": "#2E8A9A",
+        "fontSize": "11px",
+        "fontWeight": "600",
+        "ratio": 4.0244
+      }
+    },
+    "laptop-1024": {
+      "navRailRendered": true,
+      "navItemCount": 17,
+      "navItems": [
+        "home",
+        "approvals",
+        "alerts",
+        "projects",
+        "wbs",
+        "budget",
+        "check",
+        "revisions",
+        "prs",
+        "pos",
+        "grns",
+        "bills",
+        "recon",
+        "cap",
+        "zoho",
+        "inventory",
+        "audit"
+      ],
+      "avatar": {
+        "colour": "#FFFFFF",
+        "background": "#2E8A9A",
+        "fontSize": "11px",
+        "fontWeight": "600",
+        "ratio": 4.0244
+      }
+    },
+    "tablet-800": {
+      "navRailRendered": false,
+      "navItemCount": 17,
+      "navItems": [
+        "home",
+        "approvals",
+        "alerts",
+        "projects",
+        "wbs",
+        "budget",
+        "check",
+        "revisions",
+        "prs",
+        "pos",
+        "grns",
+        "bills",
+        "recon",
+        "cap",
+        "zoho",
+        "inventory",
+        "audit"
+      ],
+      "avatar": {
+        "colour": "#FFFFFF",
+        "background": "#2E8A9A",
+        "fontSize": "11px",
+        "fontWeight": "600",
+        "ratio": 4.0244
+      }
+    }
+  }
+}
