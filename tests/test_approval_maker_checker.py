@@ -1087,45 +1087,24 @@ def test_an_independent_assigned_approver_is_not_blocked_by_the_engine(estate):
 
 
 # ==========================================================================
-# A reported gap that needs no database to state
+# A reported gap, now CLOSED
 # ==========================================================================
-
-
-def test_the_fail_closed_paths_attribute_their_action_to_an_unprovisioned_principal():
-    """REPORTED FINDING, stated where it can be read without a server.
-
-    ``app/backend/pg/approvals.py::open_instance`` records its two fail-closed
-    outcomes -- every stage skipped, and NO_INDEPENDENT_APPROVER -- by
-    appending an ``ESCALATE`` action whose ``actor_user_id`` is the literal
-    string ``"SYSTEM"``. ``approval_action.actor_user_id`` is
-    ``NOT NULL REFERENCES app_user (user_id)``, and no migration or seed
-    provisions a ``SYSTEM`` principal.
-
-    If that holds, those two branches raise a foreign-key violation instead of
-    the ``NoIndependentApprover`` / ``ApprovalRouteUnresolved`` the contract
-    names. The outcome is still fail-closed -- nothing is approved -- but the
-    error code is wrong and the EXCEPTION_PENDING row is lost with the aborted
-    transaction, which is exactly the visibility Contract 2 (SCR-25) requires.
-
-    Stream 5 owns neither the engine nor the seed, so this is reported rather
-    than patched. It is asserted here, without a database, because the live
-    test that would trip over it
-    (:func:`test_an_empty_approver_set_is_exception_pending_never_an_approval`)
-    runs only in CI, and a finding that only surfaces there is a finding
-    nobody reads while making the change.
-    """
-    migration = (PROJECT_ROOT / "migrations" / "pg" / "008_approval_engine.sql"
-                 ).read_text(encoding="utf-8")
-    assert "actor_user_id       text NOT NULL REFERENCES app_user (user_id)" in migration, (
-        "approval_action.actor_user_id no longer reads as a NOT NULL foreign "
-        "key into app_user. If the constraint changed, this finding is stale "
-        "and this test must be rewritten against the new shape.")
-
-    sql_dir = PROJECT_ROOT / "migrations" / "pg"
-    provisioning = [path.name for path in sorted(sql_dir.rglob("*.sql"))
-                    if "'SYSTEM'" in path.read_text(encoding="utf-8")]
-    assert not provisioning, (
-        f"a SYSTEM principal now appears in {provisioning}. If it is an "
-        f"app_user row, this finding is CLOSED: delete this test and let "
-        f"test_an_empty_approver_set_is_exception_pending_never_an_approval "
-        f"prove the contract's error code directly.")
+#
+# test_the_fail_closed_paths_attribute_their_action_to_an_unprovisioned_principal
+# stood here and is deleted on its own instruction.
+#
+# It flagged that the engine attributes fail-closed actions to a literal
+# "SYSTEM" while no migration or seed provisioned such a principal -- so
+# NO_INDEPENDENT_APPROVER and the every-stage-skipped branch would have hit a
+# foreign-key violation instead of the contract's code, and the
+# EXCEPTION_PENDING row would have died with the aborted transaction.
+#
+# Its assertion message named the condition for its own retirement: "a SYSTEM
+# principal now appears ... If it is an app_user row, this finding is CLOSED:
+# delete this test." migrations/pg/seed_parts/008_approvals.sql now seeds it
+# as a real SERVICE row holding no role -- attributable, permitted nothing,
+# able to act through no API.
+#
+# The contract it protected is still proved, by
+# test_an_empty_approver_set_is_exception_pending_never_an_approval, which
+# asserts the error code directly rather than inferring it from an absence.

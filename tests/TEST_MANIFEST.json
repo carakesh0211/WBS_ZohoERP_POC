@@ -122,6 +122,178 @@
         "body_sha": "e89d3e589cfce31f"
       }
     },
+    "test_approval_e2e.py": {
+      "test_the_demo_object_type_is_routable_and_a_purchase_request_is_not": {
+        "assertions": 6,
+        "body_sha": "fe600a51ea35896e"
+      },
+      "test_approval_action_carries_the_idempotency_columns_and_no_detail_column": {
+        "assertions": 4,
+        "body_sha": "9085da6257ecb338"
+      },
+      "test_the_configuration_tables_require_created_by_and_have_no_updated_by": {
+        "assertions": 3,
+        "body_sha": "c8da3dfabf5a34cc"
+      },
+      "test_the_demo_identities_hold_what_the_scenario_needs_and_no_more": {
+        "assertions": 8,
+        "body_sha": "5694ae0176d87a01"
+      },
+      "test_the_approval_stream_key_is_the_one_the_verifier_reports": {
+        "assertions": 2,
+        "body_sha": "6e9453e6a60d529a"
+      },
+      "test_a_parallel_wave_opens_even_when_one_of_its_stages_is_skipped": {
+        "assertions": 3,
+        "body_sha": "bb20651d77ca1476"
+      },
+      "test_step_a_the_demo_request_exceeds_available_budget": {
+        "assertions": 5,
+        "body_sha": "5b4c4289aa55fc8f"
+      },
+      "test_step_a_a_within_budget_request_at_the_same_cell_is_not_an_exception": {
+        "assertions": 3,
+        "body_sha": "d76e79a8408bc3cd"
+      },
+      "test_step_a_the_maker_raises_the_revision_through_the_real_route": {
+        "assertions": 5,
+        "body_sha": "5c205ba993029f9e"
+      },
+      "test_step_b_an_over_budget_request_routes_to_exception_approval": {
+        "assertions": 7,
+        "body_sha": "43206be34f9fc18b"
+      },
+      "test_step_b_the_exception_gate_refuses_a_decision_with_no_reason": {
+        "assertions": 4,
+        "body_sha": "93f3417e6559f8b1"
+      },
+      "test_step_e_the_maker_cannot_approve_their_own_request": {
+        "assertions": 4,
+        "body_sha": "92c73369aab31496"
+      },
+      "test_step_e_a_decision_taken_on_the_makers_behalf_is_also_refused": {
+        "assertions": 4,
+        "body_sha": "037223d0f67ed3df"
+      },
+      "test_step_c_a_different_authorised_user_approves_with_a_reason": {
+        "assertions": 9,
+        "body_sha": "bf087be6003d0bda"
+      },
+      "test_step_d_the_budget_is_revalidated_inside_the_approving_transaction": {
+        "assertions": 6,
+        "body_sha": "4f6b2e96ffb19fb2"
+      },
+      "test_step_f_the_instance_status_and_the_timeline_both_update": {
+        "assertions": 6,
+        "body_sha": "a98988f33d986b50"
+      },
+      "test_step_f_the_business_document_status_also_updates": {
+        "assertions": 2,
+        "body_sha": "481c90c383a90ffe"
+      },
+      "test_step_g_the_approval_chain_verifies_with_the_expected_entry_count": {
+        "assertions": 7,
+        "body_sha": "b390061c9744491c"
+      },
+      "test_step_g_the_decision_log_cannot_be_rewritten_at_all": {
+        "assertions": 6,
+        "body_sha": "42033c0dffcee9a6"
+      },
+      "test_the_whole_scenario_leaves_a_verifiable_chain_and_a_moved_ledger": {
+        "assertions": 7,
+        "body_sha": "76add312e44561cd"
+      },
+      "test_a_replayed_decision_returns_the_original_outcome_and_approves_once": {
+        "assertions": 5,
+        "body_sha": "f57449609339cfd8"
+      },
+      "test_step_b_the_exception_stage_opens_only_when_the_request_is_over_budget": {
+        "assertions": 6,
+        "body_sha": "13af5c1b1a3ab99a"
+      },
+      "test_the_decide_route_moves_the_ledger": {
+        "assertions": 3,
+        "body_sha": "85209f9907edb851"
+      },
+      "test_an_auditor_cannot_open_the_approval_surface": {
+        "assertions": 2,
+        "body_sha": "8450fe259644fea2"
+      }
+    },
+    "test_approval_maker_checker.py": {
+      "test_every_maker_checker_permission_has_a_behavioural_scenario": {
+        "assertions": 1,
+        "body_sha": "3a786ec050211512"
+      },
+      "test_a_maker_holding_the_approving_role_is_still_refused": {
+        "assertions": 2,
+        "body_sha": "1084a47f60b54f4e"
+      },
+      "test_the_refusal_comes_from_require_separation_and_nothing_else": {
+        "assertions": 1,
+        "body_sha": "94c135b5d03b1dd0"
+      },
+      "test_bill_void_maker_checker_is_structurally_inert": {
+        "assertions": 3,
+        "body_sha": "430ab4574a4ea016"
+      },
+      "test_require_separation_is_a_no_op_without_a_maker": {
+        "assertions": 2,
+        "body_sha": "5c43bb02efa918bd"
+      },
+      "test_an_independent_approver_is_not_blocked_by_maker_checker": {
+        "assertions": 4,
+        "body_sha": "48cb5169a670cabe"
+      },
+      "test_a_direct_decision_by_a_contributor_is_refused": {
+        "assertions": 2,
+        "body_sha": "2e191d1eac9cada4"
+      },
+      "test_a_delegation_cannot_launder_a_self_approval": {
+        "assertions": 4,
+        "body_sha": "84b47e3819df247f"
+      },
+      "test_two_independent_identities_are_not_refused": {
+        "assertions": 0,
+        "body_sha": "6e18e4d0c1ea7855"
+      },
+      "test_a_stage_emptied_by_the_contributor_filter_raises_rather_than_returning_empty": {
+        "assertions": 3,
+        "body_sha": "93e11f4856077180"
+      },
+      "test_the_contributor_filter_runs_after_delegates_are_added": {
+        "assertions": 3,
+        "body_sha": "e163cbc33cafbf8d"
+      },
+      "test_a_decision_taken_on_the_makers_behalf_is_refused": {
+        "assertions": 3,
+        "body_sha": "37d7a853979b065e"
+      },
+      "test_an_actor_who_became_a_contributor_after_routing_is_refused": {
+        "assertions": 3,
+        "body_sha": "1242031dcb9f9c6b"
+      },
+      "test_a_delegation_to_the_maker_never_produces_an_assignment": {
+        "assertions": 2,
+        "body_sha": "6ead3a41b92fe09b"
+      },
+      "test_adding_a_delegate_leaves_the_delegators_assignment_pending": {
+        "assertions": 6,
+        "body_sha": "50ff4478745cbd76"
+      },
+      "test_an_empty_approver_set_is_exception_pending_never_an_approval": {
+        "assertions": 2,
+        "body_sha": "694e05af7b881fe0"
+      },
+      "test_no_matching_rule_is_exception_pending_never_an_approval": {
+        "assertions": 2,
+        "body_sha": "01fcf9fca5c64da8"
+      },
+      "test_an_independent_assigned_approver_is_not_blocked_by_the_engine": {
+        "assertions": 5,
+        "body_sha": "69724359253d10e9"
+      }
+    },
     "test_approval_negative_matrix.py": {
       "test_each_engine_refusal_renders_as_its_agreed_status": {
         "assertions": 5,
@@ -4411,6 +4583,8 @@
   },
   "counts": {
     "test_api_auth.py": 27,
+    "test_approval_e2e.py": 24,
+    "test_approval_maker_checker.py": 18,
     "test_approval_negative_matrix.py": 23,
     "test_approvals_api_guard.py": 27,
     "test_audit.py": 17,
@@ -4461,6 +4635,8 @@
   },
   "assertions": {
     "test_api_auth.py": 50,
+    "test_approval_e2e.py": 117,
+    "test_approval_maker_checker.py": 48,
     "test_approval_negative_matrix.py": 63,
     "test_approvals_api_guard.py": 53,
     "test_audit.py": 39,
