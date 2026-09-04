@@ -400,23 +400,38 @@ async function routeJson(page, pattern, body, status = 200) {
 }
 
 /**
- * Grant the four Contract-4 approval permissions by AUGMENTING the real
- * bootstrap response, not by replacing it. See the header note.
+ * The four Contract-4 approval permissions now exist in `auth.PERMISSIONS`,
+ * so this NO LONGER GRANTS ANYTHING. It verifies.
+ *
+ * It used to augment the real bootstrap response, because at the Wave 4
+ * baseline no principal held any approval permission and every screen was
+ * correctly invisible. Leaving that stub in place once the permissions landed
+ * would have been the worst outcome: the tests would pass while never
+ * exercising the real gate, which is the "green for the wrong reason" pattern
+ * this project keeps catching.
+ *
+ * Now it asserts the signed-in principal genuinely holds what the test needs,
+ * and fails loudly naming what is missing. A test that needs a permission the
+ * server does not grant should fail, not quietly receive it.
  */
-async function grantApprovalPermissions(page, permissions = APPROVAL_PERMISSIONS) {
-  await page.route('**/api/bootstrap*', async (route) => {
-    const response = await route.fetch();
-    let body;
-    try {
-      body = await response.json();
-    } catch {
-      // If the real bootstrap failed, pass the failure through untouched
-      // rather than inventing a session that the server never issued.
-      return route.fulfill({ response });
-    }
-    const merged = new Set([...(body.permissions || []), ...permissions]);
-    return route.fulfill({ response, json: { ...body, permissions: [...merged].sort() } });
+async function requireApprovalPermissions(page, permissions = APPROVAL_PERMISSIONS) {
+  const held = await page.evaluate(async () => {
+    const res = await fetch('/api/bootstrap', { credentials: 'same-origin' });
+    if (!res.ok) return null;
+    const body = await res.json();
+    return body.permissions || [];
   });
+  if (held === null) {
+    throw new Error('bootstrap failed; cannot verify approval permissions');
+  }
+  const missing = permissions.filter((p) => !held.includes(p));
+  if (missing.length) {
+    throw new Error(
+      `signed-in principal lacks ${missing.join(', ')}. `
+      + `auth.PERMISSIONS defines the approval permissions now, so this is a `
+      + `real gap between the role under test and Contract 4 -- not something `
+      + `for the test to paper over.`);
+  }
 }
 
 /**
@@ -490,7 +505,7 @@ async function gotoScreen(page, hash) {
 
 async function prepared(page, { permissions } = {}) {
   await stubApprovalApis(page);
-  await grantApprovalPermissions(page, permissions);
+  await requireApprovalPermissions(page, permissions);
   await signIn(page);
 }
 
@@ -561,7 +576,7 @@ test.describe('Approval screens — routing and navigation', () => {
     // only must still leave the configure and delegate screens shut.
     const reader = await page.context().newPage();
     await stubApprovalApis(reader);
-    await grantApprovalPermissions(reader, ['approval.read', 'approval.act']);
+    await requireApprovalPermissions(reader, ['approval.read', 'approval.act']);
     await signIn(reader);
     await settleShell(reader);
 
@@ -688,7 +703,7 @@ test.describe('Approval screens — the four required states', () => {
   for (const s of SCREENS) {
     test(`${s.hash} — loading shows an indicator, never a blank panel`, async ({ page }) => {
       await stubApprovalApis(page);
-      await grantApprovalPermissions(page);
+      await requireApprovalPermissions(page);
       // Hold the primary request open so the loading state is observable.
       let release;
       const held = new Promise((resolve) => { release = resolve; });
@@ -718,7 +733,7 @@ test.describe('Approval screens — the four required states', () => {
 
     test(`${s.hash} — empty says so, and says what would appear`, async ({ page }) => {
       await stubApprovalApis(page);
-      await grantApprovalPermissions(page);
+      await requireApprovalPermissions(page);
       await routeJson(page, s.emptyRoute || s.primary, emptyBodyFor(s));
       await signIn(page);
       await page.goto(`/#${s.hash}`);
@@ -740,7 +755,7 @@ test.describe('Approval screens — the four required states', () => {
 
     test(`${s.hash} — a server error is shown, actionable, never a traceback`, async ({ page }) => {
       await stubApprovalApis(page);
-      await grantApprovalPermissions(page);
+      await requireApprovalPermissions(page);
       await routeJson(page, s.primary, {
         code: 'INTERNAL', message: 'The approval service is temporarily unavailable.',
       }, 503);
@@ -767,7 +782,7 @@ test.describe('Approval screens — the four required states', () => {
       // in wording as well as in status: a differently worded message is an
       // existence oracle just as surely as a different status code is.
       await stubApprovalApis(page);
-      await grantApprovalPermissions(page);
+      await requireApprovalPermissions(page);
       await routeJson(page, s.primary, {
         code: 'FORBIDDEN', message: 'No approval records were found for these filters.',
       }, 403);
@@ -807,7 +822,7 @@ test.describe('Approval screens — the four required states', () => {
       const render = async (status) => {
         const p = await page.context().newPage();
         await stubApprovalApis(p);
-        await grantApprovalPermissions(p);
+        await requireApprovalPermissions(p);
         await routeJson(p, s.primary, {
           code: status === 403 ? 'FORBIDDEN' : 'NOT_FOUND',
           message: 'No approval records were found for these filters.',
