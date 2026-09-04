@@ -140,6 +140,18 @@ def _seed_estate(con, suffix, *, budget_paise=100_000_000, commitment=0):
 
 def _seed_users(con, users):
     """`users` is {user_id: [role, ...]}, with role names from role_grant's CHECK."""
+    # The engine attributes system-initiated actions -- an auto-supersede,
+    # an escalation -- to SYSTEM, and approval_action.actor_user_id is a
+    # foreign key to app_user. SYSTEM therefore has to BE a principal,
+    # not a magic string: plan section 10.3 says background principals
+    # are real rows with principal_kind='SERVICE', never an implicit
+    # "no user" bypass. Omitting it failed every decision that supersedes
+    # or escalates, and only against live PostgreSQL.
+    con.execute(
+        "INSERT INTO app_user (user_id, email, display_name, principal_kind, "
+        "created_by, updated_by) "
+        "VALUES ('SYSTEM','system@example.test','System','SERVICE','t','t') "
+        "ON CONFLICT (user_id) DO NOTHING")
     for user_id, roles in users.items():
         con.execute(
             "INSERT INTO app_user (user_id, email, display_name, created_by, updated_by) "
@@ -168,8 +180,14 @@ def _seed_definition(con, suffix, *, entity, stages, object_type="BUDGET_REVISIO
         # this INSERT was my first correction and it was wrong -- both failures
         # were visible only in CI, there being no local PostgreSQL.
         "INSERT INTO approval_definition (definition_id, object_type, code, version, "
-        "status, entity_id, effective_from, created_by) "
-        "VALUES (%s,%s,%s,1,%s,%s,%s,'TEST')",
+        # ck_approval_definition_activation: a non-DRAFT row MUST carry an
+        # activation stamp, because it cannot have become active without
+        # one. Inserting ACTIVE with a null stamp is the state the
+        # constraint exists to forbid -- an approval definition that is
+        # live with no record of who made it live.
+        "status, entity_id, effective_from, created_by, "
+        "activated_at, activated_by) "
+        "VALUES (%s,%s,%s,1,%s,%s,%s,'TEST',now(),'TEST')",
         (definition_id, object_type, f"CODE_{suffix}", rules.DEF_ACTIVE, entity,
          date(2020, 1, 1)))
     con.execute(

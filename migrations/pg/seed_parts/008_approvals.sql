@@ -64,6 +64,25 @@
 -- OTHER is the only code with `requires_free_text`: every other code says what
 -- it means on its own, and forcing a comment beside a self-explanatory reason
 -- trains approvers to type "n/a".
+-- ---------------------------------------------------------------- SYSTEM
+-- The engine attributes system-initiated actions -- an auto-supersede when a
+-- document changes under an open instance, an SLA escalation -- to SYSTEM,
+-- and `approval_action.actor_user_id` is a foreign key to `app_user`.
+--
+-- So SYSTEM has to BE a principal rather than a magic string. Plan section
+-- 10.3 is explicit: background principals are real rows with
+-- `principal_kind = 'SERVICE'`, never an implicit "no user" bypass. A real
+-- row also means an auditor reading the chain sees an actor they can look up,
+-- and means these actions carry the same foreign-key integrity as a human's.
+--
+-- It is granted no role, so it holds no permission and can act through no
+-- API. It exists solely to be attributable.
+INSERT INTO app_user (user_id, email, display_name, principal_kind,
+                      created_by, updated_by)
+VALUES ('SYSTEM', 'system@capex.invalid', 'System', 'SERVICE', 'SEED', 'SEED')
+ON CONFLICT (user_id) DO NOTHING;
+
+
 INSERT INTO reason_code
     (code, applies_to_action, applies_to_object_type, label,
      requires_free_text, active, created_by)
