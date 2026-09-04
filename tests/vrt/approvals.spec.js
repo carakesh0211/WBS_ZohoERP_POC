@@ -444,21 +444,6 @@ async function routeJson(page, pattern, body, status = 200) {
 }
 
 /**
- * The four Contract-4 approval permissions now exist in `auth.PERMISSIONS`,
- * so this NO LONGER GRANTS ANYTHING. It verifies.
- *
- * It used to augment the real bootstrap response, because at the Wave 4
- * baseline no principal held any approval permission and every screen was
- * correctly invisible. Leaving that stub in place once the permissions landed
- * would have been the worst outcome: the tests would pass while never
- * exercising the real gate, which is the "green for the wrong reason" pattern
- * this project keeps catching.
- *
- * Now it asserts the signed-in principal genuinely holds what the test needs,
- * and fails loudly naming what is missing. A test that needs a permission the
- * server does not grant should fail, not quietly receive it.
- */
-/**
  * The permission set the SERVER reports for the live session, read from inside
  * the page. Runs in the browser, so it is written as a self-contained function.
  *
@@ -483,6 +468,24 @@ async function bootstrapPermissions() {
   return body.permissions || [];
 }
 
+/**
+ * The four Contract-4 approval permissions exist in `auth.PERMISSIONS`, so
+ * this NO LONGER GRANTS ANYTHING. It verifies.
+ *
+ * It used to augment the real bootstrap response, because at the Wave 4
+ * baseline no principal held any approval permission and every screen was
+ * correctly invisible. Leaving that stub in place once the permissions landed
+ * would have been the worst outcome: the tests would pass while never
+ * exercising the real gate, which is the "green for the wrong reason" pattern
+ * this project keeps catching.
+ *
+ * Now it asserts the signed-in principal genuinely holds what the test needs,
+ * and fails loudly naming what is missing. A test that needs a permission the
+ * server does not grant should fail, not quietly receive it.
+ *
+ * @param {import('@playwright/test').Page} page - already signed in.
+ * @param {string[]} permissions - named explicitly; there is no default.
+ */
 async function requireApprovalPermissions(page, permissions) {
   if (!Array.isArray(permissions) || permissions.length === 0) {
     throw new Error('requireApprovalPermissions: name the permissions the test '
