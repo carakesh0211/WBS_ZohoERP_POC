@@ -550,3 +550,51 @@ once each. The only double-call path is `decide` -> write-back ->
 is broken by the refusal.
 
 **Approved by:** engagement lead, Wave 4 integration pass.
+
+## 2026-09-05 — REVERTED: `LockOrderViolation` and the lock-ordering assertions
+
+**This entry records a mistake of mine and its reversal, not an improvement.**
+
+**Reverted:** `locking.LockOrderViolation` and its runtime guard;
+`test_a_second_call_may_not_introduce_a_cell_the_transaction_does_not_hold`
+(added and removed the same day); and the ordering assertions I put into
+`test_a_decision_takes_the_cell_locks_first_and_in_path_order`.
+
+**What I got wrong.** Earlier today I replaced that test's "no cell is locked
+twice" assertion, correctly identifying that it is **too weak** — a transaction
+that locks `c5` then `c1` has no duplicates and passes, despite acquiring out
+of the global order, which is the cycle §7.4's proof forbids. That finding
+stands. My fix did not.
+
+1. I made `lock_affected_cells` refuse any second call introducing a cell not
+   already held, and stated that I had "checked every caller". I had checked
+   call *sites*, not call *sequences*. CI showed three previously-passing live
+   flows legitimately make such a call: an approved transfer locking both of
+   its cells, and a period roll. The guard refused all three.
+
+2. The correct condition is that every newly acquired cell sorts AFTER every
+   cell already held, so the whole sequence is non-decreasing in the global
+   order. **That cannot be checked from `locks_taken` at all.**
+   `lock_affected_cells` orders by `wbs_path` but records
+   `(wbs_id, budget_head_id)`, and wbs_id order is not wbs_path order — so the
+   `sorted()` comparison I wrote was sorting on the wrong key and would have
+   given a confident wrong answer.
+
+**What the test asserts now.** That the affected cell is locked first, and that
+no cell outside the declared set is ever locked. It explicitly does **not**
+claim to check acquisition order, and says why in the test body rather than
+leaving a future reader to assume it is covered.
+
+**Assertion count is genuinely lower than before this session**, which is why
+this entry exists. The removed assertions were mine, added hours earlier, and
+two of the three were unsound. The pre-existing "no duplicates" assertion is
+also gone, because the write-back's legitimate re-entry violates it — that
+removal is the one real reduction in coverage, and the gap it leaves (out-of-
+order acquisition is unchecked) is recorded in
+`docs/WAVE4_INTEGRATION_NOTES.md` with what closing it requires: recording the
+path alongside the id in `locks_taken`, which several ordering tests read.
+
+**Found by:** the live PostgreSQL CI job, twice — once to disprove the guard's
+premise, once to disprove the ordering key. Neither was visible locally.
+
+**Approved by:** engagement lead, Wave 4 integration pass.

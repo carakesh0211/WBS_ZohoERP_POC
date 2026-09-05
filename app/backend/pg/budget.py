@@ -637,7 +637,7 @@ def approve_revision(session: Session, *, revision_id: str, actor: str,
                                 label="Revision")
     (wbs_id, head_id, delta_paise, effective_from, justification,
      status, created_by) = row
-    if status != "DRAFT":
+    if status not in _DECIDABLE_STATUSES:
         _err("REVISION_NOT_DRAFT",
              f"Revision {revision_id} is {status}, not DRAFT.", status=409)
 
@@ -662,7 +662,7 @@ def approve_revision(session: Session, *, revision_id: str, actor: str,
     # this revision between the unlocked read above and this point.
     status = session.fetchone(  # scope-exempt: re-reads the row just locked above
         "SELECT status FROM budget_revision WHERE revision_id = %s", (revision_id,))[0]
-    if status != "DRAFT":
+    if status not in _DECIDABLE_STATUSES:
         _err("REVISION_NOT_DRAFT",
              f"Revision {revision_id} is {status}, not DRAFT.", status=409)
 
@@ -740,7 +740,7 @@ def reject_revision(session: Session, *, revision_id: str, actor: str,
                                 label="Revision")
     row = row[1:]
     status, _created_by = row
-    if status != "DRAFT":
+    if status not in _DECIDABLE_STATUSES:
         _err("REVISION_NOT_DRAFT", f"Revision {revision_id} is {status}, not DRAFT.", status=409)
     session.execute(
         "UPDATE budget_revision SET status = 'REJECTED', decided_at = now(), "
@@ -805,7 +805,7 @@ def approve_transfer(session: Session, *, transfer_id: str, actor: str,
                                 label="Transfer")
     (from_wbs, from_head, to_wbs, to_head, amount_paise, effective_from,
      justification, status, created_by) = row
-    if status != "DRAFT":
+    if status not in _DECIDABLE_STATUSES:
         _err("TRANSFER_NOT_DRAFT", f"Transfer {transfer_id} is {status}, not DRAFT.", status=409)
     if actor == created_by:
         _err("SELF_APPROVAL_FORBIDDEN",
@@ -822,7 +822,7 @@ def approve_transfer(session: Session, *, transfer_id: str, actor: str,
         (transfer_id,))
     status = session.fetchone(  # scope-exempt: re-reads the row just locked above
         "SELECT status FROM budget_transfer WHERE transfer_id = %s", (transfer_id,))[0]
-    if status != "DRAFT":
+    if status not in _DECIDABLE_STATUSES:
         _err("TRANSFER_NOT_DRAFT", f"Transfer {transfer_id} is {status}, not DRAFT.", status=409)
 
     # Re-check the SOURCE cell's availability inside the lock: reducing its
@@ -906,7 +906,7 @@ def reject_transfer(session: Session, *, transfer_id: str, actor: str,
                                 approval_instance_id=approval_instance_id,
                                 label="Transfer")
     status = row[2]
-    if status != "DRAFT":
+    if status not in _DECIDABLE_STATUSES:
         _err("TRANSFER_NOT_DRAFT", f"Transfer {transfer_id} is {status}, not DRAFT.", status=409)
     session.execute(
         "UPDATE budget_transfer SET status = 'REJECTED', decided_at = now(), "
@@ -1213,6 +1213,30 @@ def _touch_status(session: Session, *, id_key: str, object_id: str,
     session.execute(  # noqa: S608 -- identifiers come from _SUBMIT_TABLES, never a caller
         f"UPDATE {table} SET status = %(status)s WHERE {pk} = %(id)s",
         {"status": new_status, "id": object_id})
+
+
+#: The document states a decision may be applied to.
+#:
+#: The six decision gates read `status != "DRAFT"`, which was correct while a
+#: document under approval stayed DRAFT. Migration 009 ended that: `submit_*`
+#: writes SUBMITTED, and the approval write-back then calls `approve_revision`
+#: / `reject_revision` on exactly that SUBMITTED row -- so every gate refused
+#: the decision it exists to admit, and NO approval could be applied at all.
+#:
+#: SUBMITTED is added, not substituted. A direct DRAFT approval (no instance)
+#: stays permitted, and `_assert_not_under_approval` is what stops that path
+#: being used to step around an open instance. APPROVED, REJECTED and RETURNED
+#: stay refused: a second decision on an already-decided document is precisely
+#: what these gates exist for.
+#:
+#: The two SUBMISSION gates keep `status != "DRAFT"` and are deliberately not
+#: included -- only a draft may be submitted, and a SUBMITTED document being
+#: resubmittable is the double-routing this whole design refuses.
+#:
+#: Same pair as `approval_writeback._UNDECIDED_STATUSES` and as 009's
+#: `ck_*_decision`. "Has not been decided yet" is one idea and should not be
+#: spelled three different ways.
+_DECIDABLE_STATUSES = frozenset({"DRAFT", "SUBMITTED"})
 
 
 def _submission_outcome(session: Session, *, id_key: str, object_id: str,

@@ -598,50 +598,41 @@ def test_a_decision_takes_the_cell_locks_first_and_in_path_order(
     assert taken, "the decision must lock the affected cells, not zero of them"
     assert taken[0] == (ids["wbs"], ids["head"])
 
-    # The invariant is "no cell is acquired that was not already held", NOT
-    # "no cell appears twice".
+    # A cell may be locked twice; it may not be locked out of order.
     #
-    # This asserted the latter, and the latter is wrong in both directions.
+    # This asserted "no cell is locked twice", which a decision now violates
+    # legitimately: closing the instance fires the document write-back, which
+    # re-enters `budget.approve_revision` and re-locks cells this transaction
+    # already holds. Re-acquiring a held row adds no edge to the wait-for
+    # graph, so that sequence cannot deadlock and must not fail here.
     #
-    # TOO STRICT: a decision now closes the instance, which fires the document
-    # write-back, which re-enters `budget.approve_revision`, which locks the
-    # cells it reads off the document. Those are cells this transaction already
-    # holds from `decide`'s own budget revalidation, so the re-acquisition adds
-    # NO edge to the wait-for graph and cannot deadlock. "No duplicates" failed
-    # a provably safe sequence.
+    # WHAT IS NOT ASSERTED, AND WHY -- this is a real gap, recorded rather than
+    # papered over with a check that would look reassuring and be wrong.
     #
-    # TOO WEAK, and this is the more serious half: a transaction that locked
-    # cell c5 and then later locked c1 has no duplicates and passed happily --
-    # yet c1 sorts BEFORE c5, so it was acquired out of the global order, and
-    # two such transactions form exactly the cycle the (wbs_path,
-    # budget_head_id) total order exists to forbid. The assertion this replaces
-    # would not have noticed the real deadlock.
+    # The property §7.4's proof actually needs is that the transaction's
+    # acquisition sequence is non-decreasing in the global
+    # `(wbs_path, budget_head_id)` order: a cell taken after a higher one is
+    # the cycle the order exists to prevent. `locks_taken` cannot express that.
+    # `lock_affected_cells` ORDERS BY `wbs_path` but RECORDS `wbs_id`, and
+    # wbs_id order is not wbs_path order -- so sorting this list and comparing
+    # would be sorting on the wrong key. An earlier revision of this test did
+    # exactly that, and a runtime guard built on the same mistake refused three
+    # legitimate flows (a transfer locking both its cells, and a period roll)
+    # before CI caught it.
     #
-    # `locking.lock_affected_cells` now refuses a second call that introduces
-    # an unheld cell, so this is checking a property the code enforces rather
-    # than one a reader has to maintain.
-    first_seen: list[tuple[str, str]] = []
-    for cell in taken:
-        if cell not in first_seen:
-            first_seen.append(cell)
-
-    assert first_seen == sorted(first_seen), (
-        f"cells were first acquired out of (wbs_path, budget_head_id) order: "
-        f"{first_seen}. §7.4's deadlock-freedom proof rests on every "
-        f"transaction acquiring in one common total order; acquiring a lower "
-        f"cell after a higher one is the cycle it forbids.")
-
-    held: set[tuple[str, str]] = set()
-    for index, cell in enumerate(taken):
-        if cell in held:
-            continue
-        assert index == len(held), (
-            f"{cell} was acquired at position {index} after "
-            f"{sorted(held)} were already held, so it is a NEW lock taken "
-            f"after the document and instance locks -- a new wait-for edge, "
-            f"which is the one thing the proof forbids. Re-acquiring a held "
-            f"cell is fine; extending the set later is not.")
-        held.add(cell)
+    # Closing it properly means recording the path alongside the id in
+    # `locks_taken`, which several ordering tests read. Recorded in
+    # docs/WAVE4_INTEGRATION_NOTES.md rather than guessed at here.
+    #
+    # What IS still asserted: the first lock taken is the affected cell (above,
+    # so cells are locked before anything else), and every entry belongs to the
+    # declared set -- no cell outside it is ever acquired.
+    declared = {(ids["wbs"], ids["head"])}
+    stray = sorted(set(taken) - declared)
+    assert not stray, (
+        f"cells outside the declared affected set were locked: {stray}. The "
+        f"proof's completeness half requires the set to be declared once and "
+        f"in full; a lock taken outside it was never ordered against anything.")
 
 
 def test_every_action_is_hash_chained_on_the_approval_stream(

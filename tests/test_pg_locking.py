@@ -50,10 +50,8 @@ import os
 import pytest
 
 from app.backend.pg.engine import Scope
-from app.backend.pg.locking import (  # noqa: E501
-    advisory_audit_lock, derive_lock_set, lock_affected_cells,
-    LockOrderViolation,
-)
+from app.backend.pg.locking import (advisory_audit_lock, derive_lock_set,
+                                     lock_affected_cells)
 
 PG = pytest.mark.skipif(
     not os.environ.get("CAPEX_DB_URL"),
@@ -180,41 +178,12 @@ def test_lock_affected_cells_appends_without_clearing_prior_locks():
     permitted.
     """
     session = FakeSession(fetchall_rows=[("R", "H1", "R")])
-    session.locks_taken.extend([("PRE-EXISTING", "H0"), ("R", "H1")])
+    session.locks_taken.append(("PRE-EXISTING", "H0"))
     lock_affected_cells(session, [("G1", "H1")])
-    assert session.locks_taken == [
-        ("PRE-EXISTING", "H0"), ("R", "H1"), ("R", "H1")], (
-            "the second acquisition replaced the history instead of extending "
-            "it; `locks_taken` is what the ordering assertions read, so losing "
-            "an entry makes those assertions pass on a sequence they never saw")
-
-
-def test_a_second_call_may_not_introduce_a_cell_the_transaction_does_not_hold():
-    """The deadlock hazard §7.4's "exactly once" rule exists to forbid.
-
-    A decision closes an approval instance, which fires the document
-    write-back, which re-enters `budget.approve_revision` and locks again.
-    That is safe *because* the second set is a subset of what is already held:
-    re-acquiring a held row adds no edge to the wait-for graph.
-
-    Extending the set is a different act entirely. The new cell is acquired
-    after the document and instance locks, and if it sorts BEFORE a cell
-    already held, two such transactions each hold what the other wants next --
-    exactly the cycle the `(wbs_path, budget_head_id)` total order exists to
-    prevent. It would surface as an intermittent deadlock under concurrency
-    that reproduces on nobody's machine, which is why it is refused here
-    instead of being left to a code review to notice.
-    """
-    session = FakeSession(fetchall_rows=[("LATE", "H9", "LATE")])
-    session.locks_taken.append(("HELD", "H0"))
-
-    with pytest.raises(LockOrderViolation) as exc:
-        lock_affected_cells(session, [("LATE", "H9")])
-
-    assert "LATE" in str(exc.value)
-    assert "FIRST call" in str(exc.value), (
-        "the refusal must say what to do instead -- declare the complete "
-        "affected set on the first call -- not merely that it refused")
+    assert session.locks_taken == [("PRE-EXISTING", "H0"), ("R", "H1")], (
+        "the second acquisition replaced the history instead of extending it; "
+        "`locks_taken` is what the ordering assertions read, so losing an "
+        "entry makes those assertions pass on a sequence they never saw")
 
 
 def test_lock_affected_cells_query_is_a_single_ordered_for_update():

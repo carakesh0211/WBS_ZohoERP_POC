@@ -105,7 +105,29 @@ def apply_outcome(session, instance: Mapping[str, Any]) -> None: ...
    the way they can for the other three. One-line fix in `open_instance`; left
    to A1 because A1 is editing that function.
 
-2. **No local PostgreSQL and no Docker on this machine.** 239 tests are
+2. **Out-of-order cell acquisition is unchecked, and cannot be checked as the
+   data stands.** §7.4's deadlock-freedom proof needs the whole transaction's
+   lock acquisition to be non-decreasing in `(wbs_path, budget_head_id)`. The
+   test that guarded this asserted "no cell is locked twice", which is too weak
+   — locking `c5` then `c1` has no duplicates and passes, despite being exactly
+   the cycle the order forbids. It is also too strict for the approval
+   write-back, whose re-entry into `approve_revision` re-locks held cells
+   safely, so that assertion has been removed.
+
+   The real check is not implementable from `session.locks_taken`:
+   `lock_affected_cells` ORDERS BY `wbs_path` but RECORDS `wbs_id`, and wbs_id
+   order is not wbs_path order. I attempted both a runtime guard and a
+   `sorted()` assertion built on that data and both were wrong — the guard
+   refused three legitimate flows, the assertion sorted on the wrong key. Both
+   reverted; see `tests/ADAPTATIONS.md`.
+
+   **Closing it requires recording the path alongside the id in `locks_taken`**,
+   which several ordering tests read. That is a contained change and worth
+   doing, but it is a change to a shared structure made on the evidence of a
+   25-minute CI loop, so it is flagged here rather than attempted at the end of
+   a long session.
+
+3. **No local PostgreSQL and no Docker on this machine.** 239 tests are
    live-only and skip here, so CI (~20 min per cycle) is the sole oracle for
    every schema constraint, RLS policy and transaction-rollback assertion.
    A skip is not a pass, and no claim about a live-only assertion should be made
