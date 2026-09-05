@@ -473,13 +473,9 @@
         "assertions": 1,
         "body_sha": "eb2c68baf6ad98ca"
       },
-      "test_the_contract_4_permissions_match_the_frozen_contract": {
-        "assertions": 6,
-        "body_sha": "87b0a2b3fd77c230"
-      },
-      "test_auth_permissions_wins_wherever_it_defines_an_approval_permission": {
-        "assertions": 1,
-        "body_sha": "557e1835c0604a42"
+      "test_auth_permissions_is_the_only_source_of_approval_permissions": {
+        "assertions": 5,
+        "body_sha": "4363148aecc33fad"
       },
       "test_approval_act_excludes_the_read_only_role": {
         "assertions": 2,
@@ -4586,7 +4582,7 @@
     "test_approval_e2e.py": 24,
     "test_approval_maker_checker.py": 18,
     "test_approval_negative_matrix.py": 23,
-    "test_approvals_api_guard.py": 27,
+    "test_approvals_api_guard.py": 26,
     "test_audit.py": 17,
     "test_budget_api_guard.py": 10,
     "test_capitalisation.py": 18,
@@ -4638,7 +4634,7 @@
     "test_approval_e2e.py": 117,
     "test_approval_maker_checker.py": 48,
     "test_approval_negative_matrix.py": 63,
-    "test_approvals_api_guard.py": 53,
+    "test_approvals_api_guard.py": 51,
     "test_audit.py": 39,
     "test_budget_api_guard.py": 17,
     "test_capitalisation.py": 58,

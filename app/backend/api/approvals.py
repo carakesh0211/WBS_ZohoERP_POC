@@ -80,22 +80,25 @@ Statuses the engine's frozen refusal codes map to (Contract 3 + Contract 8)::
     IDEMPOTENCY_KEY_REQUIRED   422   ditto
     IDEMPOTENT_REPLAY          200   the ORIGINAL outcome, never applied twice
 
-Two permission tables, and why
-------------------------------
+One permission table
+--------------------
 Contract 4 adds ``approval.read``, ``approval.act``, ``approval.configure``
-and ``approval.delegate`` to ``auth.PERMISSIONS``. ``app/backend/auth.py`` is
-lead-owned and frozen for this wave, and at the Wave 4 baseline it does not
-yet carry them -- ``auth.require`` raises ``UNKNOWN_PERMISSION`` (a 500) for a
-key it does not know, which would have turned every guard on this router into
-a server fault instead of a refusal.
+and ``approval.delegate`` to ``auth.PERMISSIONS``. Those entries have landed,
+so ``_holders_of`` reads ``auth.PERMISSIONS`` and nothing else.
 
-``_holders_of`` therefore reads ``auth.PERMISSIONS`` FIRST and falls back to
-:data:`_CONTRACT4_PERMISSIONS` -- a verbatim transcription of Contract 4 --
-only for a key ``auth`` does not define. The fallback disappears by itself the
-moment the lead lands the real entries, it can only ever be consulted for the
-four approval permissions, and it fails CLOSED: a permission in neither table
-is refused, never granted. See the report accompanying this commit; this is a
-defect in a file this stream does not own, reported rather than edited.
+A ``_CONTRACT4_PERMISSIONS`` transcription stood in here while ``auth.py`` --
+lead-owned and frozen at the Wave 4 baseline -- did not yet carry the four
+keys, because ``auth.require`` raises ``UNKNOWN_PERMISSION`` (a 500) for a key
+it does not know, which would have turned every guard on this router into a
+server fault instead of a refusal.
+
+It is gone, and not merely because it became redundant. It had DRIFTED: it
+transcribed Contract 4's "every role" for ``approval.read``, Auditor included,
+while the permission that actually landed EXCLUDES Auditor. So the fallback
+failed OPEN relative to the authoritative table -- deleting ``approval.read``
+from ``auth.PERMISSIONS`` would have WIDENED access rather than removing it,
+which is the opposite of what deleting a permission must ever do. A second
+table that can disagree with the first is worse than no second table.
 """
 from __future__ import annotations
 
@@ -118,18 +121,6 @@ from ..pg.engine import Database, Scope, get_database
 # ===========================================================================
 #: Contract 4, transcribed verbatim. Consulted ONLY for a permission
 #: `auth.PERMISSIONS` does not define -- see the module docstring.
-_CONTRACT4_PERMISSIONS: dict[str, tuple[str, ...]] = {
-    # every role: an approver must be able to see their own inbox
-    "approval.read": ("Requestor", "BudgetController", "ProcurementApprover",
-                      "FinanceApprover", "CapitalisationApprover", "Auditor",
-                      "Administrator"),
-    "approval.act": ("Requestor", "BudgetController", "ProcurementApprover",
-                     "FinanceApprover", "CapitalisationApprover"),
-    "approval.configure": ("Administrator",),
-    "approval.delegate": ("BudgetController", "ProcurementApprover",
-                          "FinanceApprover", "CapitalisationApprover"),
-}
-
 READ = "approval.read"
 ACT = "approval.act"
 CONFIGURE = "approval.configure"
@@ -139,16 +130,16 @@ DELEGATE = "approval.delegate"
 def _holders_of(permission: str) -> tuple[str, ...] | None:
     """The roles holding `permission`, or `None` when nothing defines it.
 
-    `auth.PERMISSIONS` is authoritative wherever it speaks. `None` means no
-    table defines the permission, and every caller of this treats that as a
-    refusal -- an undefined permission has never been an open door.
+    `auth.PERMISSIONS` is the ONLY source. `None` means nothing defines the
+    permission, and every caller treats that as a refusal -- an undefined
+    permission has never been an open door.
+
+    One table, so there is nothing left for a second one to disagree with.
     """
     from .. import auth as auth_mod
 
     holders = auth_mod.PERMISSIONS.get(permission)
-    if holders is not None:
-        return tuple(holders)
-    return _CONTRACT4_PERMISSIONS.get(permission)
+    return tuple(holders) if holders is not None else None
 
 
 def _holds(who: dict, permission: str) -> bool:

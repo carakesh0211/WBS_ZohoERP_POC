@@ -541,35 +541,51 @@ def test_an_unrecognised_engine_refusal_is_a_conflict_not_a_server_fault():
     assert 400 <= status < 500, f"expected a 4xx, got {status}"
 
 
-# ===================================================== Contract 4 fallback
-def test_the_contract_4_permissions_match_the_frozen_contract():
-    """The fallback table is a transcription, so it is checked as one."""
-    table = approvals_api._CONTRACT4_PERMISSIONS
-    assert set(table) == set(APPROVAL_PERMISSIONS)
-    assert set(table["approval.read"]) == set(auth.ROLES)
-    assert set(table["approval.act"]) == {
-        "Requestor", "BudgetController", "ProcurementApprover",
-        "FinanceApprover", "CapitalisationApprover"}
-    assert set(table["approval.configure"]) == {"Administrator"}
-    assert set(table["approval.delegate"]) == {
-        "BudgetController", "ProcurementApprover", "FinanceApprover",
-        "CapitalisationApprover"}
-    for permission, roles in table.items():
-        assert set(roles) <= set(auth.ROLES), (
-            f"{permission} names a role that does not exist: "
-            f"{sorted(set(roles) - set(auth.ROLES))}")
+# ================================================ Contract 4, one source only
+def test_auth_permissions_is_the_only_source_of_approval_permissions():
+    """What replaced the fallback transcription, and why it had to go.
 
+    A ``_CONTRACT4_PERMISSIONS`` table in the router stood in while the four
+    permissions did not yet exist in ``auth``. Two tests used to guard it: one
+    checked the transcription against Contract 4, the other checked that
+    ``auth`` won wherever it spoke. Both passed, and between them they still
+    missed the defect.
 
-def test_auth_permissions_wins_wherever_it_defines_an_approval_permission():
-    """The fallback exists only until the lead lands Contract 4 in `auth.py`,
-    and it must not outlive that. `auth.PERMISSIONS` is authoritative for any
-    key it defines, so the table below silently stops being consulted."""
+    The transcription had DRIFTED. It granted Auditor ``approval.read``,
+    faithfully transcribing Contract 4's "every role", while the permission
+    that actually landed in ``auth`` EXCLUDES Auditor (see
+    `test_the_router_floor_is_approval_read_and_excludes_only_auditor`). So
+    the fallback was not a narrower stand-in that would quietly stop being
+    consulted -- it was WIDER than the authoritative table, and deleting
+    ``approval.read`` from ``auth.PERMISSIONS`` would have granted Auditor
+    access rather than removing everyone's. A second table that can disagree
+    with the first fails open the moment it does.
+
+    Now there is one table. This test asserts that, not the transcription.
+    """
+    assert not hasattr(approvals_api, "_CONTRACT4_PERMISSIONS"), (
+        "the fallback transcription is back. Two permission tables can "
+        "disagree, and when this one did, it disagreed in the direction "
+        "that grants access")
+
     for permission in APPROVAL_PERMISSIONS:
-        if permission in auth.PERMISSIONS:
-            assert approvals_api._holders_of(permission) == \
-                tuple(auth.PERMISSIONS[permission]), (
-                    f"{permission} is defined in auth.PERMISSIONS but this "
-                    f"router is not reading it from there")
+        holders = approvals_api._holders_of(permission)
+        assert holders, (
+            f"{permission} resolves to nothing; Contract 4 requires it in "
+            f"auth.PERMISSIONS, and every guard using it now refuses "
+            f"unconditionally")
+        assert set(holders) == set(auth.PERMISSIONS[permission]), (
+            f"{permission} resolved to {sorted(holders)}, not to "
+            f"auth.PERMISSIONS' {sorted(auth.PERMISSIONS[permission])}; "
+            f"something is answering ahead of the authoritative table")
+        assert set(holders) <= set(auth.ROLES), (
+            f"{permission} names a role that does not exist: "
+            f"{sorted(set(holders) - set(auth.ROLES))}")
+
+    assert approvals_api._holders_of("approval.invented.by.nobody") is None, (
+        "an undefined permission must resolve to nothing so its callers "
+        "refuse; resolving it to a default is how an undefined permission "
+        "becomes an open door")
 
 
 def test_approval_act_excludes_the_read_only_role(as_role):

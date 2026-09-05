@@ -148,3 +148,45 @@ walk keeps the test meaning what its name claims.
 **Not a weakening.** The check now sees strictly more routes than before.
 
 **Approved by:** engagement lead, Milestone 1 integration pass.
+
+## 2026-09-05 — `test_the_contract_4_permissions_match_the_frozen_contract` and `test_auth_permissions_wins_wherever_it_defines_an_approval_permission`
+
+**Change:** both removed. Replaced by one test,
+`test_auth_permissions_is_the_only_source_of_approval_permissions`, in the
+same file.
+
+**Reason:** the thing they guarded is gone. `api/approvals.py` carried a
+`_CONTRACT4_PERMISSIONS` transcription of Contract 4, standing in while
+`auth.py` — lead-owned and frozen at the Wave 4 baseline — did not yet define
+`approval.read`, `approval.act`, `approval.configure` or `approval.delegate`.
+`auth.require` raises `UNKNOWN_PERMISSION` (a 500) for a key it does not know,
+so without the stand-in every guard on the router would have been a server
+fault rather than a refusal. The four permissions have since landed in
+`auth.PERMISSIONS`, so the router now reads that and nothing else.
+
+**Why this is not merely tidying up a redundant table.** The transcription had
+DRIFTED. It granted Auditor `approval.read`, faithfully transcribing Contract
+4's "every role", while the permission that actually landed EXCLUDES Auditor
+(D-12; see `test_the_router_floor_is_approval_read_and_excludes_only_auditor`).
+So it was not a narrower stand-in that would quietly stop being consulted — it
+was WIDER than the authoritative table. Deleting `approval.read` from
+`auth.PERMISSIONS` would have GRANTED Auditor access instead of removing
+everyone's: a fallback that fails open in exactly the situation a fallback
+exists for.
+
+**Both old tests passed throughout, and between them they still missed it.**
+The first checked the transcription against Contract 4 — it was a faithful
+transcription, so it passed. The second checked that `auth.PERMISSIONS` wins
+*wherever it defines a key* — it does, so that passed too. Neither compared
+the two tables to each other, which is where the disagreement lived. That is
+the assertion the replacement makes.
+
+**Not a weakening.** The replacement keeps every check the pair made that
+still has a subject — the four permissions resolve, resolve to
+`auth.PERMISSIONS` exactly, and name only roles in `auth.ROLES` — and adds
+two the pair did not: that the second table is absent (`hasattr`), and that an
+undefined permission resolves to `None` rather than to a default. The removed
+assertions about the literal contents of `_CONTRACT4_PERMISSIONS` have no
+subject left to assert against.
+
+**Approved by:** engagement lead, Wave 4 integration pass.
