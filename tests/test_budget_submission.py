@@ -169,16 +169,58 @@ class TestSubmissionOpensAnInstance:
         assert opened["object_id"] == "TRF-1"
         assert result["submitted"] is True
 
-    def test_submission_writes_no_document_status(self, no_audit, opened):
-        """A submitted revision stays DRAFT. There is no SUBMITTED value in
-        migration 003's CHECK constraint, and DRAFT is C3's "editable, no
-        control effect" -- which is the truth about a revision that has created
-        no spending capacity."""
+    def test_submission_moves_the_document_to_submitted(self, no_audit, opened):
+        """A routed revision says SUBMITTED, and says it in the same
+        transaction that opened the instance.
+
+        It used to stay DRAFT, because migration 003's CHECK constraint had no
+        SUBMITTED value -- so the document's own status asserted something
+        false about it, and `_assert_not_under_approval` was the only thing
+        standing between that row and a second approval taken down the direct
+        route. One guard, in one language, holding a property the schema is
+        capable of stating. `009_document_approval_states.sql` widened the
+        domain; the guard still holds, but no longer alone.
+
+        SUBMITTED carries no `decided_at`/`decided_by`: 009 puts it on the
+        undecided side of `ck_*_decision`, because a submission is not a
+        decision.
+        """
         session = FakeSession(base_rules())
         result = budget_mod.submit_revision(
             session, revision_id="REV-1", actor="U-MAKER")
+        assert result["status"] == "SUBMITTED"
+
+        writes = [w for w in session.writes if "UPDATE budget_revision" in w]
+        assert len(writes) == 1, (
+            f"expected exactly one status write, got {len(writes)}: {writes}")
+        assert "decided_at" not in writes[0] and "decided_by" not in writes[0], (
+            "the submission wrote a decision; ck_budget_revision_decision puts "
+            "SUBMITTED on the UNDECIDED side, and a fabricated decision is "
+            "exactly what that constraint exists to refuse")
+
+    def test_an_unroutable_document_stays_draft(self, no_audit, monkeypatch):
+        """SUBMITTED means routed and progressing, so a held object is not it.
+
+        `open_instance` returns EXCEPTION_PENDING for an object nothing routes.
+        Calling that SUBMITTED would claim a workflow the object never entered;
+        plan §12 reads DRAFT -> SUBMITTED -> ..., and an object held for an
+        administrator is progressing through nothing. Nothing is loosened by
+        the honesty: `live_approval_instance` still blocks a second submission
+        and still blocks the direct approval route for this document.
+        """
+        monkeypatch.setattr(
+            engine, "open_instance",
+            lambda session, **kw: {"instance_id": "AINS-X",
+                                   "status": "EXCEPTION_PENDING"})
+        session = FakeSession(base_rules())
+        result = budget_mod.submit_revision(
+            session, revision_id="REV-1", actor="U-MAKER")
+
         assert result["status"] == "DRAFT"
-        assert not [w for w in session.writes if "UPDATE budget_revision" in w]
+        assert result["submitted"] is False
+        assert not [w for w in session.writes if "UPDATE budget_revision" in w], (
+            "a held object had its document status moved; only a routed one "
+            "becomes SUBMITTED")
 
     def test_the_audit_entry_precedes_open_instance(self, monkeypatch):
         """`contributor_set` unions every actor on the document's audit stream

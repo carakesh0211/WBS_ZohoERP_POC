@@ -72,7 +72,8 @@ from .approval_rules import (
     ASSIGN_ACTED, ASSIGN_PENDING, ASSIGN_WITHDRAWN, CONDITION_DIMENSIONS,
     DEF_ACTIVE, ERR_BUDGET_MOVED, ERR_IDEMPOTENCY_KEY_REQUIRED,
     ERR_IDEMPOTENT_REPLAY, ERR_NOT_AN_ASSIGNEE, ERR_OBJECT_VERSION_STALE,
-    ERR_REASON_REQUIRED, ERR_STAGE_NOT_OPEN, INST_APPROVED, INST_CANCELLED,
+    ERR_REASON_REQUIRED, ERR_ROUTE_UNRESOLVED, ERR_STAGE_NOT_OPEN,
+    INST_APPROVED, INST_CANCELLED,
     INST_EXCEPTION_PENDING, INST_OPEN, INST_RECALLED, INST_REJECTED,
     INST_RETURNED, INST_SUPERSEDED, STAGE_APPROVED, STAGE_ESCALATED,
     STAGE_OPEN_STATUSES, STAGE_PENDING, STAGE_REJECTED, STAGE_RETURNED,
@@ -988,12 +989,34 @@ def open_instance(session: Session, *, object_type: str, object_id: str,
         # whose applies_when predicates exclude this snapshot class entirely.
         _set_instance_status(session, instance_id, INST_EXCEPTION_PENDING,
                               closed=False)
+        # `outcome`, not just `detail`.
+        #
+        # The other three fail-closed branches go through
+        # `_write_exception_instance`, which records
+        # `outcome = {"code": ..., "detail": ...}`. This one recorded its cause
+        # in PROSE only, so an administrator triaging SCR-25 could read it but
+        # could not filter or group on it, and `_submission_outcome` -- which
+        # names the refusal to the caller by reading `outcome.code` -- fell
+        # back to a default that named the wrong cause. Four ways to fail
+        # closed, three of them queryable, is three too few.
         _append_action(session, instance_id=instance_id, stage_instance_id=None,
                         actor_user_id="SYSTEM", acting_for_user_id=None,
                         action=ACTION_ESCALATE, object_type=object_type,
                         object_id=object_id,
                         detail=f"{detail}; every stage SKIPPED -> EXCEPTION_PENDING "
-                               f"({ApprovalRouteUnresolved.__name__})")
+                               f"({ApprovalRouteUnresolved.__name__})",
+                        outcome={
+                            "code": ERR_ROUTE_UNRESOLVED,
+                            "detail": {
+                                "instance_id": instance_id,
+                                "definition_id":
+                                    resolution.definition.definition_id,
+                                "definition_code": resolution.definition.code,
+                                "definition_version":
+                                    resolution.definition.version,
+                                "reason": "EVERY_STAGE_SKIPPED",
+                            },
+                        })
         # Recorded and RETURNED, not raised -- same reasoning as the two
         # branches above. The instance is already EXCEPTION_PENDING with an
         # audit action explaining why; raising would make the caller's
@@ -1476,7 +1499,13 @@ def decide(session: Session, *, instance_id: str, actor_user_id: str, action: st
         stage_instance_id=stage_instance_id, assignment_id=assignment_id,
         action=action, approvals_after=approvals_after,
         quorum_required=int(quorum_required or 0), waves=waves,
-        stages=stages, projected=projected)
+        stages=stages, projected=projected,
+        # Who is deciding. `_apply_decision` closes the instance, and the
+        # write-back that hangs off that closure must attribute the document
+        # change to this person -- not to whoever the action log happens to
+        # name, which at this moment is the PREVIOUS stage's approver because
+        # the row for THIS decision is appended below, after the close.
+        actor_user_id=actor_user_id)
 
     _append_action(
         session, instance_id=instance_id, stage_instance_id=stage_instance_id,
@@ -1551,7 +1580,8 @@ def _apply_decision(session: Session, *, instance: Mapping[str, Any], stage_no: 
                      approvals_after: int, quorum_required: int,
                      waves: Sequence[Sequence[int]],
                      stages: Mapping[int, StageSpec],
-                     projected: Mapping[int, str]) -> DecisionResult:
+                     projected: Mapping[int, str],
+                     actor_user_id: str) -> DecisionResult:
     instance_id = instance["instance_id"]
     session.execute(
         f"UPDATE approval_assignment SET state = %s WHERE assignment_id = %s",

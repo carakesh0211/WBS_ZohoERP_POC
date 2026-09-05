@@ -132,3 +132,71 @@ def test_there_are_modules_to_check():
     assert len(names) > 10
     assert any(n.startswith("api") for n in names)
     assert any(n.startswith("pg") for n in names)
+
+
+# ==========================================================================
+# The half the check above does not cover
+# ==========================================================================
+@pytest.mark.parametrize("module", _modules(),
+                          ids=lambda p: str(p.relative_to(BACKEND)))
+def test_no_function_references_a_name_bound_in_no_scope(module: Path) -> None:
+    """A name used inside a function must be bound in SOME enclosing scope.
+
+    The check above resolves module globals, and that is genuinely all it
+    resolves. It cannot see a name that is neither a global nor bound anywhere
+    in the function that uses it -- the shape you get by deleting a parameter
+    while leaving its uses behind, or by threading an argument through a call
+    site and forgetting the signature.
+
+    That is not hypothetical. Widening `_set_instance_status` to carry a
+    `closing_actor` meant passing `actor_user_id` from `_apply_decision`, which
+    did not take one. The whole local suite stayed green -- `decide` needs a
+    live PostgreSQL, so every test that would have executed the line skipped --
+    and CI reported eleven `NameError`s twenty-five minutes later. Same class
+    of defect as the one this module was written for, and the same reason it
+    hid: a skip is not a pass, and a green local run says nothing about a line
+    no local test can reach.
+
+    `symtable` answers this exactly, because it is the same analysis the
+    compiler does when it decides whether a name is local, free or global. A
+    name that is referenced but is not a parameter, not assigned, not free,
+    not declared global or nonlocal, and not resolvable at module level, is
+    unbound at every call -- a guaranteed `NameError` the moment the line runs.
+    """
+    import builtins
+    import symtable
+
+    source = module.read_text(encoding="utf-8")
+    table = symtable.symtable(source, module.name, "exec")
+
+    module_names = set(table.get_identifiers()) | set(dir(builtins))
+    unbound: list[str] = []
+
+    def visit(scope, path: str) -> None:
+        for child in scope.get_children():
+            here = f"{path}.{child.get_name()}"
+            if child.get_type() == "function":
+                for symbol in child.get_symbols():
+                    if not symbol.is_referenced():
+                        continue
+                    if (symbol.is_parameter() or symbol.is_assigned()
+                            or symbol.is_free() or symbol.is_imported()):
+                        continue
+                    # `is_global()` is NOT an exemption on its own, and that
+                    # subtlety is the whole test. symtable marks a name
+                    # "global" whenever it is neither local nor free -- which
+                    # is precisely what an unbound name looks like. Treating
+                    # that as "resolved elsewhere" is what let the original
+                    # defect through the first version of this check. A global
+                    # reference is fine only if the module or builtins really
+                    # define the name.
+                    if symbol.get_name() in module_names:
+                        continue
+                    unbound.append(f"{here}: {symbol.get_name()}")
+            visit(child, here)
+
+    visit(table, module.stem)
+    assert not unbound, (
+        f"{module.relative_to(BACKEND)} references names bound in no scope, "
+        f"which raise NameError the moment the line executes:\n  "
+        + "\n  ".join(unbound))

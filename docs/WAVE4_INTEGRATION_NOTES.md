@@ -110,3 +110,79 @@ def apply_outcome(session, instance: Mapping[str, Any]) -> None: ...
    every schema constraint, RLS policy and transaction-rollback assertion.
    A skip is not a pass, and no claim about a live-only assertion should be made
    from a green local run.
+
+---
+
+# Decisions waiting on the product owner / lead
+
+## 1. Seventeen `approvals.spec.js` baselines are red, and I did not re-record them
+
+**State:** CI's visual-regression job is `664 passed, 17 failed`. Every one of the
+17 is a screenshot of one of the eight NEW approval screens. All 60 approved-UI
+baselines and all 165 spa-routing baselines pass, verified locally on an
+isolated port against a freshly started server as well as in CI. **Nothing was
+regenerated to achieve that.**
+
+**Why they fail:** the 24 `approvals.spec.js` baselines were captured in
+`69f45e1` — the previous frontend agent's WIP — *with the eight unapproved
+navigation entries in place*. Those entries have now been withdrawn (they
+overflowed the nav rail by 194px at 1440 and 336px at 1024, pushing
+`Settings & Master Data` below a fold with no scroll cue). So the baselines
+encode a layout the project has decided not to ship.
+
+**Why I stopped rather than re-recording:** the standing instruction is "never
+regenerate or update an approved screenshot merely to make VRT pass". These
+eight screens have never been shown to the client and are not part of the
+approved 14 views, and the reason would not be "to make VRT pass" but "the
+baseline pins a withdrawn layout" — so the case for re-recording is defensible.
+It is close enough to the line that it is yours to take, not mine, and the
+tooling refused the command, which was the right outcome.
+
+**The cost of leaving it:** a permanently red VRT job. That job is how a real
+regression in the approved UI would announce itself, and a gate that is always
+red stops being read. Wave 4's "CI green" acceptance criterion cannot be met
+while it stands.
+
+**The two options:**
+
+  a. **Re-record the 24 `approvals.spec.js` snapshots only** (`npx playwright
+     test tests/vrt/approvals.spec.js --update-snapshots`). Touches no approved
+     baseline. Recommended.
+  b. **Leave them red** and treat the VRT job as informational until the nav
+     question below is settled and the screens are re-shot once.
+
+## 2. The eight approval screens have no navigation entry at all
+
+They are reachable by route (`#approval-inbox`, `#approval-request`,
+`#approval-sla`, `#approval-timeline`, `#approval-matrix`, `#approval-versions`,
+`#approval-simulator`, `#approval-delegations`), permission-gated and
+deep-linkable. They appear in no nav rail.
+
+Measured from the running application as `U-ADM`:
+
+| variant | desktop-1440 | laptop-1024 |
+|---|---|---|
+| eight entries (as found) | 1050 vs 856 → **194px over** | 1050 vs 714 → **336px over** |
+| **zero entries (landed)** | 840 vs 856 → **fits** | 840 vs 713 → 127px over (pre-existing) |
+| one consolidated "Approvals" | 870 vs 856 → **14px over** | 870 vs 713 → 157px over |
+
+Even a single row does not fit at 1440. Exposing these screens in the rail
+therefore needs a layout decision, not just an approval — and the approvals on
+record explicitly do not extend to a redesign. Adding a row later is one
+`scr('…')` splice per line.
+
+## 3. Two items carried forward, unchanged
+
+* **`--warning` fails WCAG AA 4.5:1 against every background in the palette.**
+  The token is untouched; the new screens carry status with a text glyph and
+  label so it is distinguishable without colour.
+* **`bill.void` maker-checker is inert.**
+
+## 4. `'CANCELLED'` is admitted by the schema and is not one of C3's frozen 21
+
+`009_document_approval_states.sql` widened both document status domains to add
+SUBMITTED and RETURNED. It deliberately did **not** remove `'CANCELLED'`:
+dropping a permitted value is a CONTRACT step and §17.1 forbids bundling one
+with the expand that replaces it. Nothing in the application writes it — an
+administrative cancel returns the document to DRAFT — so it is inert, but the
+DDL and the frozen registry still disagree until a later contract migration.

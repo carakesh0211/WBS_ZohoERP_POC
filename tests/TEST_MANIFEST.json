@@ -405,13 +405,13 @@
         "assertions": 2,
         "body_sha": "cab390d27777f7cb"
       },
-      "test_the_mapping_follows_c15_except_for_the_one_recorded_deviation": {
+      "test_the_mapping_follows_c15_with_no_deviation_at_all": {
         "assertions": 2,
-        "body_sha": "4060928b4b9a4c58"
+        "body_sha": "53392dc144ec3ed2"
       },
-      "test_the_returned_deviation_is_forced_by_the_schema_not_chosen": {
+      "test_the_schema_can_actually_hold_what_the_mapping_writes": {
         "assertions": 2,
-        "body_sha": "3b7603040ddac101"
+        "body_sha": "aab8ffcc881f4477"
       },
       "test_cancelled_is_not_a_c3_status_so_it_is_not_written": {
         "assertions": 2,
@@ -755,9 +755,13 @@
         "assertions": 3,
         "body_sha": "2870120e624499f5"
       },
-      "test_submission_writes_no_document_status": {
-        "assertions": 2,
-        "body_sha": "a4b9f72701ca4161"
+      "test_submission_moves_the_document_to_submitted": {
+        "assertions": 3,
+        "body_sha": "bf09b7ea3fb4fe8e"
+      },
+      "test_an_unroutable_document_stays_draft": {
+        "assertions": 3,
+        "body_sha": "a02aa689a30d6018"
       },
       "test_the_audit_entry_precedes_open_instance": {
         "assertions": 1,
@@ -1998,6 +2002,10 @@
       "test_there_are_modules_to_check": {
         "assertions": 3,
         "body_sha": "048d725601fc6bc1"
+      },
+      "test_no_function_references_a_name_bound_in_no_scope": {
+        "assertions": 1,
+        "body_sha": "26e0e3a1ae7e83eb"
       }
     },
     "test_observability.py": {
@@ -4951,7 +4959,7 @@
     "test_approvals_api_seam.py": 4,
     "test_audit.py": 17,
     "test_budget_api_guard.py": 10,
-    "test_budget_submission.py": 31,
+    "test_budget_submission.py": 32,
     "test_capitalisation.py": 18,
     "test_connector.py": 20,
     "test_contracts.py": 47,
@@ -4965,7 +4973,7 @@
     "test_money.py": 23,
     "test_money_sql_discipline.py": 4,
     "test_negative_access_matrix.py": 9,
-    "test_no_undefined_names.py": 4,
+    "test_no_undefined_names.py": 5,
     "test_observability.py": 40,
     "test_pg_adoption.py": 16,
     "test_pg_approval_concurrency.py": 12,
@@ -5007,7 +5015,7 @@
     "test_approvals_api_seam.py": 4,
     "test_audit.py": 39,
     "test_budget_api_guard.py": 17,
-    "test_budget_submission.py": 64,
+    "test_budget_submission.py": 68,
     "test_capitalisation.py": 58,
     "test_connector.py": 57,
     "test_contracts.py": 73,
@@ -5021,7 +5029,7 @@
     "test_money.py": 31,
     "test_money_sql_discipline.py": 4,
     "test_negative_access_matrix.py": 29,
-    "test_no_undefined_names.py": 6,
+    "test_no_undefined_names.py": 7,
     "test_observability.py": 77,
     "test_pg_adoption.py": 39,
     "test_pg_approval_concurrency.py": 53,

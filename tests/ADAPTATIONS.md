@@ -408,3 +408,53 @@ unapproved entry that breaks the approved layout.
 
 **Approved by:** *pending* — engagement lead, Wave 4 stream A3. Raised with measurements rather
 than taken; see the report accompanying this commit.
+
+## 2026-09-05 — `test_submission_writes_no_document_status` and the two RETURNED-deviation tests
+
+**Tests changed:** `test_submission_writes_no_document_status` →
+`test_submission_moves_the_document_to_submitted` (`test_budget_submission.py`);
+`test_the_mapping_follows_c15_except_for_the_one_recorded_deviation` →
+`test_the_mapping_follows_c15_with_no_deviation_at_all` and
+`test_the_returned_deviation_is_forced_by_the_schema_not_chosen` →
+`test_the_schema_can_actually_hold_what_the_mapping_writes`
+(`test_approval_writeback.py`).
+
+**Change:** all three pinned a limitation that no longer exists. They asserted
+that a submitted document stays DRAFT, that the write-back deviates from C15 by
+writing DRAFT for RETURNED, and that migration 003's CHECK constraint is what
+forces that deviation. `009_document_approval_states.sql` widened both document
+status domains to admit SUBMITTED and RETURNED — both already among C3's frozen
+21 — so all three claims are now false.
+
+**Reason the limitation was worth removing.** A routed revision stayed DRAFT
+while its approval instance was open, so the document's own status asserted
+something false about it, and `_assert_not_under_approval` in `pg/budget.py`
+was the only thing standing between that row and a second approval taken down
+the direct route — one guard, in one language, holding a property the schema is
+capable of stating. Separately, a returned revision was indistinguishable from
+one never submitted by reading `status`; the real outcome lived in
+`decision_note` prose, and prose is not a status.
+
+**Not a weakening — each replacement asserts more than the test it replaced.**
+
+* The submission test now checks that exactly one status write occurs and that
+  it carries **no** `decided_at`/`decided_by`, because `ck_*_decision` puts
+  SUBMITTED on the undecided side and a fabricated decision is what that
+  constraint exists to refuse. A **new** sibling,
+  `test_an_unroutable_document_stays_draft`, pins the other half: an
+  EXCEPTION_PENDING object is *not* SUBMITTED, because SUBMITTED means routed
+  and progressing and a held object is progressing through nothing.
+* The mapping test asserted a *permitted* difference set of `{"RETURNED"}`; it
+  now asserts an **empty** one. A tolerated exception became a prohibition.
+* The schema test checked that 003 does **not** contain RETURNED. Its
+  replacement checks the stronger and more useful direction: that every value
+  the write-back can write, plus SUBMITTED, is admitted by migration 009 — a
+  mapping target the column refuses is a runtime `CheckViolation` wearing a
+  passing unit test — and that 009 keeps SUBMITTED on the undecided side of
+  `ck_*_decision`.
+
+**The guard the old test was built to be** — "this will fail the moment someone
+widens the constraint" — did exactly that, which is how this change was caught
+rather than silently diverging.
+
+**Approved by:** engagement lead, Wave 4 integration pass.

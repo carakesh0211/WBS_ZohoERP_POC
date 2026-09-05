@@ -35,7 +35,7 @@ instance         written        authority
 ===============  =============  ==========================================
 APPROVED         APPROVED       C15 instance/APPROVED
 REJECTED         REJECTED       C15 instance/REJECTED
-RETURNED         DRAFT          **deviation** -- see below
+RETURNED         RETURNED       C15 instance/RETURNED
 RECALLED         DRAFT          C15 instance/RECALLED
 CANCELLED        DRAFT          not in C15; DRAFT is the only C3 status the
                                 schema admits for "back with the maker"
@@ -45,20 +45,15 @@ OPEN             -- refused --  not a closed instance; a caller bug
 EXCEPTION_PENDING -- refused --  not closed either: the object is HELD
 ===============  =============  ==========================================
 
-**The deviation.** C15 maps instance RETURNED to business RETURNED, and this
-module writes DRAFT instead. That is not a preference; migration 003 defines
-``budget_revision.status`` and ``budget_transfer.status`` with
-``CHECK (status IN ('DRAFT','APPROVED','REJECTED','CANCELLED'))``, so RETURNED
-cannot be stored on either document. DRAFT is C3's "editable, no control
-effect", which is a true description of a returned revision and is the state
-the maker must be in to correct and resubmit it -- but it is *less* informative
-than RETURNED, and a reader cannot tell a returned revision from one never
-submitted by looking at ``status`` alone. What preserves the fact is
-``decision_note`` (which the schema's ``ck_..._decision`` constraint does allow
-on a DRAFT row, unlike ``decided_at``/``decided_by``) plus the instance itself
-and its hash-chained actions. Closing the gap properly means widening those two
-CHECK constraints in a new migration, which is outside this stream's file
-ownership; it is reported rather than worked around.
+**RETURNED was a deviation until migration 009, and is not one now.** 003 gave
+both documents ``CHECK (status IN ('DRAFT','APPROVED','REJECTED','CANCELLED'))``,
+so RETURNED could not be stored and this module wrote DRAFT, keeping the real
+outcome in ``decision_note`` prose. DRAFT was *true* of a returned revision --
+editable, no control effect -- but it was less informative than the fact it
+replaced: a reader could not tell a revision that was sent back from one never
+submitted, and prose is not a status. ``009_document_approval_states.sql``
+widens both domains to include SUBMITTED and RETURNED, both already among
+C3's frozen 21, so the table now follows C15 without exception.
 
 **CANCELLED is not a C3 status.** The DDL admits ``'CANCELLED'`` on both
 documents, and C3's frozen 21 does not contain it. Writing it would leak a
@@ -119,6 +114,7 @@ __all__ = ["apply_outcome", "INSTANCE_TO_BUSINESS_STATUS", "CLOSED_STATUSES"]
 BIZ_DRAFT = "DRAFT"
 BIZ_APPROVED = "APPROVED"
 BIZ_REJECTED = "REJECTED"
+BIZ_RETURNED = "RETURNED"
 
 #: Approval-instance status -> the C3 business status to put on the document,
 #: or ``None`` for "this closure changes no business status".
@@ -129,7 +125,7 @@ BIZ_REJECTED = "REJECTED"
 INSTANCE_TO_BUSINESS_STATUS: dict[str, str | None] = {
     INST_APPROVED: BIZ_APPROVED,
     INST_REJECTED: BIZ_REJECTED,
-    INST_RETURNED: BIZ_DRAFT,      # deviation from C15; see the module docstring
+    INST_RETURNED: BIZ_RETURNED,   # C15 instance/RETURNED, storable since 009
     INST_RECALLED: BIZ_DRAFT,
     INST_CANCELLED: BIZ_DRAFT,
     INST_SUPERSEDED: None,

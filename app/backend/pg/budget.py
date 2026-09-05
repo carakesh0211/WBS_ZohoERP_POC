@@ -1189,6 +1189,32 @@ def _assert_not_under_approval(session: Session, object_type: str, object_id: st
          status=409)
 
 
+#: Which table each submission result key belongs to. A CLOSED allow-list: the
+#: identifiers below reach SQL through an f-string, because an identifier cannot
+#: be parameterised, so the only safe source for one is this dictionary.
+_SUBMIT_TABLES: dict[str, tuple[str, str]] = {
+    "revision_id": ("budget_revision", "revision_id"),
+    "transfer_id": ("budget_transfer", "transfer_id"),
+}
+
+
+def _touch_status(session: Session, *, id_key: str, object_id: str,
+                   new_status: str) -> None:
+    """Move a submitted document's own status, in the submitting transaction.
+
+    Scope is not re-applied here and does not need to be: the caller
+    (`submit_revision` / `submit_transfer`) has already read this exact row
+    through `repo.query_one` with the cell scope mapping, and refused with a
+    404 if it was not visible. Re-deriving a predicate for a row already proven
+    in scope, on a primary key already established, would add a second place
+    for the two derivations to disagree.
+    """
+    table, pk = _SUBMIT_TABLES[id_key]
+    session.execute(  # noqa: S608 -- identifiers come from _SUBMIT_TABLES, never a caller
+        f"UPDATE {table} SET status = %(status)s WHERE {pk} = %(id)s",
+        {"status": new_status, "id": object_id})
+
+
 def _submission_outcome(session: Session, *, id_key: str, object_id: str,
                          instance: Mapping[str, Any],
                          label: str) -> dict[str, Any]:
@@ -1203,15 +1229,37 @@ def _submission_outcome(session: Session, *, id_key: str, object_id: str,
     """
     status = instance.get("status")
     instance_id = instance.get("instance_id")
+    document_status = "SUBMITTED" if status == "OPEN" else "DRAFT"
     result: dict[str, Any] = {
         id_key: object_id,
-        "status": "DRAFT",
+        "status": document_status,
         "approval_instance_id": instance_id,
         "approval_status": status,
         "submitted": status == "OPEN",
         "refusal": None,
     }
     if status == "OPEN":
+        # The document says so too, and this is the point of migration 009.
+        #
+        # Until 009 widened the domain, a routed document stayed DRAFT while
+        # its instance was open -- the status ASSERTED SOMETHING FALSE, and
+        # only `_assert_not_under_approval` stood between that row and a second
+        # approval down the direct route. One guard, in one language, holding a
+        # property the schema can state. It still holds it; it is no longer
+        # holding it alone.
+        #
+        # DRAFT is kept for EXCEPTION_PENDING deliberately. SUBMITTED means
+        # routed and progressing (plan §12: DRAFT -> SUBMITTED -> ...), and an
+        # object held for an administrator is progressing through nothing. The
+        # `live_approval_instance` guard still blocks a second submission and
+        # the direct approval route for it, so nothing is loosened by leaving
+        # the status honest about what did not happen.
+        #
+        # No `decided_at`/`decided_by` is written: `ck_*_decision` puts
+        # SUBMITTED on the undecided side, because a submission is not a
+        # decision.
+        _touch_status(session, id_key=id_key, object_id=object_id,
+                       new_status="SUBMITTED")
         result["current_stage_no"] = instance.get("current_stage_no")
         return result
 

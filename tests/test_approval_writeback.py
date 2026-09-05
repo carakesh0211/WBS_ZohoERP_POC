@@ -38,6 +38,7 @@ from app.backend.pg.engine import Scope
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS = ROOT / "research" / "30_contracts"
 MIGRATION_003 = ROOT / "migrations" / "pg" / "003_budget_planning.sql"
+MIGRATION_009 = ROOT / "migrations" / "pg" / "009_document_approval_states.sql"
 
 
 def contract(name: str) -> dict:
@@ -151,10 +152,23 @@ class TestRegistrySeparation:
             f"approval-engine statuses leaked onto a business document: "
             f"{sorted(targets & engine_only)}")
 
-    def test_the_mapping_follows_c15_except_for_the_one_recorded_deviation(self):
-        """C15 is the authority. Where this table disagrees with it, the
-        disagreement must be exactly the one the module documents and must be
-        forced by the schema, not chosen."""
+    def test_the_mapping_follows_c15_with_no_deviation_at_all(self):
+        """C15 is the authority, and this table now follows it everywhere.
+
+        It did not always. `budget_revision.status` and
+        `budget_transfer.status` were defined by migration 003 as
+        `CHECK (status IN ('DRAFT','APPROVED','REJECTED','CANCELLED'))`, so
+        C15's RETURNED target could not be stored and the write-back wrote
+        DRAFT, keeping the real outcome in `decision_note` prose. That was true
+        of a returned revision but strictly less informative than the fact it
+        replaced -- a reader could not distinguish "sent back for correction"
+        from "never submitted".
+
+        `009_document_approval_states.sql` widened both domains, so the
+        exception is closed rather than tolerated. This asserts NO deviation:
+        an empty difference set, not a permitted one. Re-narrowing the schema
+        without revisiting this mapping fails here.
+        """
         declared = {code: spec.get("maps_to_business_status")
                     for code, spec in c15_instance_statuses().items()}
         differences = {
@@ -163,22 +177,36 @@ class TestRegistrySeparation:
             if code in declared
             and declared[code] != wb.INSTANCE_TO_BUSINESS_STATUS[code]
         }
-        assert set(differences) == {"RETURNED"}, (
-            f"unrecorded deviation from C15's maps_to_business_status: "
-            f"{differences}. Every entry must either follow C15 or be a "
-            f"documented, schema-forced exception.")
-        assert differences["RETURNED"] == ("RETURNED", "DRAFT")
+        assert differences == {}, (
+            f"this table disagrees with C15's maps_to_business_status: "
+            f"{differences}. There is no longer a schema constraint forcing "
+            f"one, so a difference here is a choice, and C15 is the authority.")
+        assert wb.INSTANCE_TO_BUSINESS_STATUS["RETURNED"] == "RETURNED"
 
-    def test_the_returned_deviation_is_forced_by_the_schema_not_chosen(self):
-        """The justification, checked rather than asserted in prose: migration
-        003's CHECK constraint has no RETURNED, so the C15 target is not a
-        value either document column can hold."""
-        ddl = MIGRATION_003.read_text(encoding="utf-8")
-        assert "CHECK (status IN ('DRAFT', 'APPROVED', 'REJECTED', 'CANCELLED'))" in ddl
-        assert "'RETURNED'" not in ddl, (
-            "budget_revision/budget_transfer can now hold RETURNED. The "
-            "write-back's DRAFT deviation exists only because they could not; "
-            "revisit INSTANCE_TO_BUSINESS_STATUS.")
+    def test_the_schema_can_actually_hold_what_the_mapping_writes(self):
+        """The other half: a mapping target the column refuses is a runtime
+        CheckViolation dressed as a passing unit test.
+
+        Every non-null target must appear in the document domain that migration
+        009 widened. SUBMITTED is checked alongside them because `submit_*`
+        writes it and nothing in this table does -- if 009 were reverted, this
+        catches it here rather than in a live insert.
+        """
+        ddl = MIGRATION_009.read_text(encoding="utf-8")
+        targets = {t for t in wb.INSTANCE_TO_BUSINESS_STATUS.values() if t}
+        for value in sorted(targets | {"SUBMITTED"}):
+            assert f"'{value}'" in ddl, (
+                f"the write-back can write {value!r} but migration 009 does "
+                f"not admit it on budget_revision/budget_transfer; the insert "
+                f"would fail with a CheckViolation at runtime")
+
+        # And the constraint that says which statuses have been decided must
+        # keep SUBMITTED on the undecided side: forcing decided_at/decided_by
+        # onto a submitted document would fabricate a decision at exactly the
+        # moment the point is that none has been taken.
+        assert "status IN ('DRAFT', 'SUBMITTED')" in ddl, (
+            "009 no longer exempts SUBMITTED from ck_*_decision; a submitted "
+            "document would have to carry a decision it has not had")
 
     def test_cancelled_is_not_a_c3_status_so_it_is_not_written(self):
         """The DDL admits 'CANCELLED' on both documents and C3 does not carry
