@@ -73,6 +73,12 @@ POST_BASELINE_FILES = {
     "test_pg_approval_concurrency.py", "test_approvals_api_guard.py",
     "test_approval_negative_matrix.py", "test_approval_e2e.py",
     "test_approval_maker_checker.py",
+    # Wave 4 stream A2: submission (the engine's missing front end) and the
+    # outcome write-back (its missing back end). Two of the three run with no
+    # database, deliberately -- the properties they hold are the ones a
+    # PostgreSQL-gated test would have skipped past on every dev machine.
+    "test_budget_submission.py", "test_approval_writeback.py",
+    "test_pg_approval_writeback_e2e.py",
 }
 
 

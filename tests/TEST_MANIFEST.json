@@ -388,6 +388,112 @@
         "body_sha": "ae45c446d366de9c"
       }
     },
+    "test_approval_writeback.py": {
+      "test_every_mapping_target_is_a_frozen_c3_business_status": {
+        "assertions": 1,
+        "body_sha": "1cbf614f00a93cc0"
+      },
+      "test_no_engine_only_status_is_ever_written_onto_a_document": {
+        "assertions": 2,
+        "body_sha": "cab390d27777f7cb"
+      },
+      "test_the_mapping_follows_c15_except_for_the_one_recorded_deviation": {
+        "assertions": 2,
+        "body_sha": "4060928b4b9a4c58"
+      },
+      "test_the_returned_deviation_is_forced_by_the_schema_not_chosen": {
+        "assertions": 2,
+        "body_sha": "3b7603040ddac101"
+      },
+      "test_cancelled_is_not_a_c3_status_so_it_is_not_written": {
+        "assertions": 2,
+        "body_sha": "27bdcccc7d25d29d"
+      },
+      "test_the_registry_covers_exactly_the_engine_s_routable_object_types": {
+        "assertions": 2,
+        "body_sha": "c8cd0297324d2518"
+      },
+      "test_open_and_exception_pending_are_not_closed_statuses": {
+        "assertions": 2,
+        "body_sha": "0780011065dddb16"
+      },
+      "test_an_unknown_object_type_is_a_silent_no_op": {
+        "assertions": 1,
+        "body_sha": "8fa286961130520f"
+      },
+      "test_a_non_closed_instance_is_refused": {
+        "assertions": 3,
+        "body_sha": "44a655f2bbae2230"
+      },
+      "test_a_superseded_instance_changes_no_document_status": {
+        "assertions": 1,
+        "body_sha": "403f78654c7c2e70"
+      },
+      "test_a_document_the_session_cannot_read_refuses_loudly": {
+        "assertions": 3,
+        "body_sha": "88e334ced50289d8"
+      },
+      "test_a_stale_object_version_refuses_loudly": {
+        "assertions": 4,
+        "body_sha": "2a61531fb389b662"
+      },
+      "test_a_document_already_decided_differently_is_refused": {
+        "assertions": 3,
+        "body_sha": "8935598299f55092"
+      },
+      "test_a_snapshot_that_does_not_declare_the_document_s_cells_is_refused": {
+        "assertions": 3,
+        "body_sha": "0297363831150335"
+      },
+      "test_approved_goes_through_the_existing_budget_service_path": {
+        "assertions": 4,
+        "body_sha": "f3076258aefd2ae3"
+      },
+      "test_the_actor_is_the_closing_approver_not_the_maker": {
+        "assertions": 2,
+        "body_sha": "5ec87cfec18cff25"
+      },
+      "test_with_no_action_row_yet_the_actor_comes_from_the_assignment": {
+        "assertions": 1,
+        "body_sha": "4783d349e4906457"
+      },
+      "test_with_neither_source_the_actor_falls_back_to_system": {
+        "assertions": 1,
+        "body_sha": "ab3e6bf3be45b031"
+      },
+      "test_rejected_goes_through_the_existing_reject_path": {
+        "assertions": 3,
+        "body_sha": "31ada663f20c7c8a"
+      },
+      "test_a_transfer_approval_declares_both_legs_and_calls_the_service": {
+        "assertions": 2,
+        "body_sha": "4d09e2dc54696c35"
+      },
+      "test_a_transfer_snapshot_missing_the_destination_leg_is_refused": {
+        "assertions": 2,
+        "body_sha": "ff453e4fbb9515fa"
+      },
+      "test_a_return_to_the_maker_records_why_without_inventing_a_status": {
+        "assertions": 3,
+        "body_sha": "2fe136f24155bda8"
+      },
+      "test_a_second_application_after_approval_writes_nothing": {
+        "assertions": 2,
+        "body_sha": "84105c24b2c5f441"
+      },
+      "test_a_second_application_after_rejection_writes_nothing": {
+        "assertions": 2,
+        "body_sha": "53b401c662381ee2"
+      },
+      "test_a_second_return_rewrites_the_same_note_rather_than_a_new_one": {
+        "assertions": 1,
+        "body_sha": "aad31477f3e33a0d"
+      },
+      "test_the_already_applied_check_precedes_the_staleness_check": {
+        "assertions": 1,
+        "body_sha": "c485dde682d36a89"
+      }
+    },
     "test_approvals_api_guard.py": {
       "test_every_approval_route_is_actually_served": {
         "assertions": 1,
@@ -604,6 +710,132 @@
       "test_the_route_inventory_is_not_silently_empty": {
         "assertions": 1,
         "body_sha": "c39a8064fdbcc167"
+      }
+    },
+    "test_budget_submission.py": {
+      "test_submitting_a_revision_calls_open_instance": {
+        "assertions": 5,
+        "body_sha": "0a253167ddd32916"
+      },
+      "test_submitting_a_transfer_calls_open_instance": {
+        "assertions": 3,
+        "body_sha": "2870120e624499f5"
+      },
+      "test_submission_writes_no_document_status": {
+        "assertions": 2,
+        "body_sha": "a4b9f72701ca4161"
+      },
+      "test_the_audit_entry_precedes_open_instance": {
+        "assertions": 1,
+        "body_sha": "21bb8571bf530b6e"
+      },
+      "test_a_non_draft_revision_cannot_be_submitted": {
+        "assertions": 2,
+        "body_sha": "847913396fc88b52"
+      },
+      "test_a_revision_already_under_approval_cannot_be_submitted_twice": {
+        "assertions": 2,
+        "body_sha": "4aa4b7609464f01f"
+      },
+      "test_every_paise_value_in_the_snapshot_is_an_int": {
+        "assertions": 3,
+        "body_sha": "10331239cc95b61f"
+      },
+      "test_a_decimal_amount_is_refused_rather_than_coerced": {
+        "assertions": 2,
+        "body_sha": "6d9739fe082b172c"
+      },
+      "test_a_float_amount_is_refused_rather_than_rounded": {
+        "assertions": 3,
+        "body_sha": "19a1fd34e36b2cb3"
+      },
+      "test_the_predicate_compiler_would_have_refused_a_float_anyway": {
+        "assertions": 1,
+        "body_sha": "5f8ab27bbe9559a2"
+      },
+      "test_a_cut_records_the_availability_baseline_an_increase_does_not": {
+        "assertions": 4,
+        "body_sha": "7495877b6a557e91"
+      },
+      "test_the_snapshot_carries_no_timestamp": {
+        "assertions": 2,
+        "body_sha": "44a036668f03f98b"
+      },
+      "test_the_snapshot_is_json_serialisable": {
+        "assertions": 0,
+        "body_sha": "72e85df0bf334887"
+      },
+      "test_the_snapshot_carries_every_routing_dimension": {
+        "assertions": 1,
+        "body_sha": "36767b7f0671735c"
+      },
+      "test_the_transfer_snapshot_declares_both_legs_in_lock_order": {
+        "assertions": 1,
+        "body_sha": "aaa4732e598b18c5"
+      },
+      "test_an_unroutable_submission_returns_rather_than_raising": {
+        "assertions": 1,
+        "body_sha": "38754e4955a5fa7b"
+      },
+      "test_an_unroutable_submission_is_not_success": {
+        "assertions": 2,
+        "body_sha": "78d6ee30d53a2ea3"
+      },
+      "test_the_refusal_names_the_reason": {
+        "assertions": 3,
+        "body_sha": "66e628da6d6bb3cf"
+      },
+      "test_an_unroutable_document_never_becomes_an_approved_document": {
+        "assertions": 4,
+        "body_sha": "e1a20f7112f6dbb7"
+      },
+      "test_a_transfer_is_refused_the_same_way": {
+        "assertions": 2,
+        "body_sha": "c37d46a14238eb49"
+      },
+      "test_direct_approval_is_refused_while_an_instance_is_live": {
+        "assertions": 4,
+        "body_sha": "26bd11c18017b42c"
+      },
+      "test_direct_rejection_is_refused_too": {
+        "assertions": 2,
+        "body_sha": "0e8bde5650d7cbed"
+      },
+      "test_a_transfer_is_guarded_the_same_way": {
+        "assertions": 2,
+        "body_sha": "1117545ecd7ab75c"
+      },
+      "test_the_closing_instance_itself_is_exempt": {
+        "assertions": 0,
+        "body_sha": "3c2825222f168d79"
+      },
+      "test_an_object_with_no_instance_is_unaffected": {
+        "assertions": 0,
+        "body_sha": "2048cc3dc7eee149"
+      },
+      "test_a_submit_route_exists_for_each_routable_object_type": {
+        "assertions": 2,
+        "body_sha": "0c96619e06ddd764"
+      },
+      "test_the_submit_routes_require_a_permission_beyond_the_router_floor": {
+        "assertions": 1,
+        "body_sha": "3d90ccc2f64990f4"
+      },
+      "test_the_refusal_is_raised_after_the_session_block_not_inside_it": {
+        "assertions": 3,
+        "body_sha": "f7f8959be3039712"
+      },
+      "test_no_submit_handler_swallows_the_refusal": {
+        "assertions": 2,
+        "body_sha": "c017074e0429d441"
+      },
+      "test_submission_takes_no_cell_lock": {
+        "assertions": 2,
+        "body_sha": "35994d86c0f7be88"
+      },
+      "test_the_guard_runs_before_the_lock_in_every_decision_path": {
+        "assertions": 2,
+        "body_sha": "77ee226aafcba5f1"
       }
     },
     "test_capitalisation.py": {
@@ -2272,6 +2504,60 @@
       "test_the_with_check_half_refuses_an_out_of_scope_insert_live": {
         "assertions": 1,
         "body_sha": "33351dfe52e8a162"
+      }
+    },
+    "test_pg_approval_writeback_e2e.py": {
+      "test_a_submitted_revision_opens_an_instance_and_stays_draft": {
+        "assertions": 5,
+        "body_sha": "b0ecaf7c93b6699f"
+      },
+      "test_an_approved_instance_writes_the_budget_line_and_moves_the_cell": {
+        "assertions": 8,
+        "body_sha": "1bd8b74bf69c0239"
+      },
+      "test_the_original_grant_row_is_untouched_by_an_approved_revision": {
+        "assertions": 3,
+        "body_sha": "f8685a5332fbd543"
+      },
+      "test_applying_the_same_closed_instance_twice_leaves_the_same_state": {
+        "assertions": 3,
+        "body_sha": "46d1f590eefc68f5"
+      },
+      "test_a_rejected_instance_rejects_the_document_and_writes_no_line": {
+        "assertions": 3,
+        "body_sha": "bf18fab3ce84f27e"
+      },
+      "test_a_returned_instance_leaves_the_document_editable_and_says_why": {
+        "assertions": 4,
+        "body_sha": "1988ba1445857530"
+      },
+      "test_an_approved_transfer_moves_budget_between_both_cells": {
+        "assertions": 4,
+        "body_sha": "e1532a51df07438f"
+      },
+      "test_an_unroutable_revision_is_recorded_and_survives_the_commit": {
+        "assertions": 6,
+        "body_sha": "1c09cad63dc59558"
+      },
+      "test_an_unroutable_document_never_becomes_an_approved_document": {
+        "assertions": 6,
+        "body_sha": "48f4887585013f1a"
+      },
+      "test_the_direct_route_cannot_approve_a_revision_under_an_open_instance": {
+        "assertions": 2,
+        "body_sha": "6fc536019b973d13"
+      },
+      "test_a_stale_write_back_refuses_rather_than_overwriting": {
+        "assertions": 3,
+        "body_sha": "7f83fbda32760fa0"
+      },
+      "test_a_revision_cannot_be_submitted_twice": {
+        "assertions": 3,
+        "body_sha": "a3eeb5685eb9f5fe"
+      },
+      "test_the_engine_calls_the_write_back_itself": {
+        "assertions": 2,
+        "body_sha": "48759a976e696299"
       }
     },
     "test_pg_approvals.py": {
@@ -4582,9 +4868,11 @@
     "test_approval_e2e.py": 24,
     "test_approval_maker_checker.py": 18,
     "test_approval_negative_matrix.py": 23,
+    "test_approval_writeback.py": 26,
     "test_approvals_api_guard.py": 26,
     "test_audit.py": 17,
     "test_budget_api_guard.py": 10,
+    "test_budget_submission.py": 31,
     "test_capitalisation.py": 18,
     "test_connector.py": 20,
     "test_contracts.py": 47,
@@ -4603,6 +4891,7 @@
     "test_pg_adoption.py": 16,
     "test_pg_approval_concurrency.py": 12,
     "test_pg_approval_schema.py": 65,
+    "test_pg_approval_writeback_e2e.py": 13,
     "test_pg_approvals.py": 148,
     "test_pg_audit.py": 20,
     "test_pg_audit_api_e2e.py": 7,
@@ -4634,9 +4923,11 @@
     "test_approval_e2e.py": 117,
     "test_approval_maker_checker.py": 48,
     "test_approval_negative_matrix.py": 63,
+    "test_approval_writeback.py": 55,
     "test_approvals_api_guard.py": 51,
     "test_audit.py": 39,
     "test_budget_api_guard.py": 17,
+    "test_budget_submission.py": 64,
     "test_capitalisation.py": 58,
     "test_connector.py": 57,
     "test_contracts.py": 73,
@@ -4655,6 +4946,7 @@
     "test_pg_adoption.py": 39,
     "test_pg_approval_concurrency.py": 53,
     "test_pg_approval_schema.py": 95,
+    "test_pg_approval_writeback_e2e.py": 52,
     "test_pg_approvals.py": 219,
     "test_pg_audit.py": 62,
     "test_pg_audit_api_e2e.py": 24,

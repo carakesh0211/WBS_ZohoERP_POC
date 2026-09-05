@@ -81,6 +81,11 @@ MUTATING_ROUTES = [
       "delta_paise": 100000, "effective_from": "2026-09-01",
       "justification": "unauthorised attempt"},
      "revision.create", "ProcurementApprover"),
+    # Wave 4 stream A2: raising a document into the approval workflow is a
+    # mutation and carries the maker's own permission, not the approver's.
+    ("/api/budget/revisions/{revision_id}/submit", "POST",
+     "/api/budget/revisions/REV-DM1-ELEC-INC/submit", {},
+     "revision.create", "ProcurementApprover"),
     ("/api/budget/revisions/{revision_id}/approve", "POST",
      "/api/budget/revisions/REV-DM1-ELEC-INC/approve", {},
      "revision.approve", "Requestor"),
@@ -92,6 +97,9 @@ MUTATING_ROUTES = [
       "to_wbs_id": "WBS-B-CIVIL", "to_head_id": "BH-DM2-CIVIL",
       "amount_paise": 100000, "effective_from": "2026-09-01",
       "justification": "unauthorised attempt"},
+     "revision.create", "ProcurementApprover"),
+    ("/api/budget/transfers/{transfer_id}/submit", "POST",
+     "/api/budget/transfers/TRF-DM2-PMMOD-TO-CIVIL/submit", {},
      "revision.create", "ProcurementApprover"),
     ("/api/budget/transfers/{transfer_id}/approve", "POST",
      "/api/budget/transfers/TRF-DM2-PMMOD-TO-CIVIL/approve", {},
