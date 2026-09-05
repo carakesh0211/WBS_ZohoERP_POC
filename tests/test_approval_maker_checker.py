@@ -47,12 +47,17 @@ RECONCILIATION NOTES (what moved between the frozen contract and the build)
   stage OPENS, so a delegation added after routing changes no assignment. The
   delegation is therefore created BEFORE the object is routed, which is the
   point at which the engine actually applies it.
-* ``open_instance`` records its fail-closed outcome and then RE-RAISES.
-  ``Database.session`` rolls back on any exception leaving the block, so a
-  caller who lets the exception propagate loses the EXCEPTION_PENDING row the
-  engine just wrote. Every fail-closed test here catches INSIDE the session so
-  the row commits -- and says so, because it is a trap every real caller will
-  hit too.
+* ``open_instance`` records its fail-closed outcome and RETURNS it. It used to
+  re-raise, and that was the defect: ``Database.session`` rolls back on any
+  exception leaving the block, so the exception destroyed the
+  EXCEPTION_PENDING row the engine had just written -- the object ended with no
+  approval instance at all, which is the single outcome Contract 2 exists to
+  prevent. The evidence was lost as a direct consequence of reporting it, and
+  only a live database shows that: in memory, nothing rolls back.
+  An unroutable object is a recorded OUTCOME, not a control-flow exception. The
+  safety property is unchanged -- the returned status is EXCEPTION_PENDING,
+  never APPROVED -- and the fail-closed code an administrator triages on is
+  readable from ``approval_action.outcome``.
 * ``approval_action`` gained ``idempotency_key`` and ``outcome`` and has no
   ``detail`` column (amendment A3); ``action_id`` is
   ``GENERATED ALWAYS AS IDENTITY`` and is never supplied; ``created_by`` is NOT
@@ -708,53 +713,75 @@ class _Estate:
                 snapshot=snapshot or self.snapshot(object_id, object_type=object_type),
                 maker_user_id=maker, business_date=BUSINESS_DATE)
 
-    def route_expecting(self, exc_type, object_id, *, maker,
-                        object_type="BUDGET_REVISION", snapshot=None):
-        """Route, expect `exc_type`, and KEEP the row the engine wrote.
+    def route_failing_closed(self, code, object_id, *, maker,
+                             object_type="BUDGET_REVISION", snapshot=None):
+        """Route, require the fail-closed outcome `code`, and KEEP the row.
 
-        The catch is INSIDE the session block on purpose.
-        ``open_instance`` records its fail-closed outcome as an
-        ``EXCEPTION_PENDING`` instance and then re-raises;
-        ``Database.session`` rolls back on any exception that leaves the
-        block, so a caller who simply lets it propagate destroys the very row
-        Contract 2 requires to be visible (SCR-25). Catching here is what a
-        real caller has to do, and this is the only place in the suite that
-        says so.
+        This was `route_expecting(exc_type, ...)`, catching INSIDE the session
+        block because `open_instance` re-raised after writing its
+        `EXCEPTION_PENDING` row, and `Database.session` rolls back on any
+        exception leaving the block -- so a caller who let it propagate
+        destroyed the very row Contract 2 requires to be visible (SCR-25). The
+        docstring called that "a trap every real caller will hit too", which
+        was true and was an argument for removing the trap, not documenting it.
+
+        `open_instance` now RETURNS that instance instead. The assertion is not
+        weakened by the change: the exception type carried exactly one thing
+        this suite ever read off it, `exc.code`, and that same code is written
+        to `approval_action.outcome->>'code'` on every fail-closed branch.
+        Reading it from the row is strictly the better check, because it also
+        proves the administrator triaging SCR-25 can machine-read the cause --
+        which an exception that never reached a table could not.
+
+        A silent success is still the worst available outcome, and is still
+        refused here: the returned status must be EXCEPTION_PENDING.
         """
-        captured: dict = {}
         with self._database.session(_system_scope()) as session:
             try:
-                engine.open_instance(
+                instance = engine.open_instance(
                     session, object_type=object_type, object_id=object_id,
                     object_version=1,
-                    snapshot=snapshot or self.snapshot(object_id, object_type=object_type),
+                    snapshot=snapshot or self.snapshot(object_id,
+                                                       object_type=object_type),
                     maker_user_id=maker, business_date=BUSINESS_DATE)
-            except exc_type as exc:
-                captured["exc"] = exc
             except Exception as exc:                              # noqa: BLE001
-                # Deliberately converted rather than propagated. The most
-                # likely wrong exception here is a foreign-key violation on
+                # Converted rather than propagated. The most likely wrong
+                # exception here is a foreign-key violation on
                 # `approval_action.actor_user_id`, because `open_instance`
                 # attributes its fail-closed ESCALATE to the literal "SYSTEM"
-                # and no migration or seed provisions that principal -- see
+                # -- see
                 # test_the_fail_closed_paths_attribute_their_action_to_an_unprovisioned_principal.
                 # A raw psycopg traceback in CI would send the next reader
-                # looking for a test bug instead.
+                # looking for a test bug instead. Propagating it would also
+                # roll the row back, which is the defect this contract change
+                # exists to fix.
                 raise AssertionError(
-                    f"routing {object_id} failed with {type(exc).__name__} "
-                    f"instead of the contract's {exc_type.__name__}:\n"
+                    f"routing {object_id} raised {type(exc).__name__} instead "
+                    f"of returning a fail-closed {code} instance:\n"
                     f"  {exc}\n"
                     f"If this is a ForeignKeyViolation on actor_user_id, the "
                     f"cause is the unprovisioned SYSTEM principal, the "
                     f"EXCEPTION_PENDING row has been lost with the aborted "
                     f"transaction, and Contract 2's visible fail-closed "
                     f"outcome is unreachable against a real database.") from exc
-        assert "exc" in captured, (
-            f"routing {object_id} was expected to fail closed with "
-            f"{exc_type.__name__} and did not. Contract 2 admits no route to "
-            f"auto-approval, so a silent success here is the worst outcome "
-            f"available.")
-        return captured["exc"]
+
+        assert instance is not None and \
+            instance.get("status") == rules.INST_EXCEPTION_PENDING, (
+                f"routing {object_id} was expected to fail closed with {code} "
+                f"and returned {instance!r}. Contract 2 admits no route to "
+                f"auto-approval, so a silent success here is the worst outcome "
+                f"available.")
+
+        recorded = self._fetchone(
+            "SELECT outcome->>%s FROM approval_action WHERE instance_id = %s "
+            "ORDER BY seq DESC LIMIT 1",
+            ("code", instance["instance_id"]))
+        assert recorded and recorded[0] == code, (
+            f"the fail-closed outcome recorded on the audit action was "
+            f"{recorded and recorded[0]!r}, not the frozen {code!r}. An "
+            f"administrator triaging the queue cannot tell which fail-closed "
+            f"cause applied.")
+        return instance
 
     def snapshot(self, object_id, *, object_type="BUDGET_REVISION",
                  amount_paise=1_000_000, available_paise=100_000_000):
@@ -1008,12 +1035,11 @@ def test_an_empty_approver_set_is_exception_pending_never_an_approval(estate):
     estate.seed_definition(approvers=[(rules.APPROVER_USER, "U-MC-MAKER")])
     revision = estate.seed_revision(created_by="U-MC-MAKER")
 
-    exc = estate.route_expecting(rules.NoIndependentApprover, revision,
-                                 maker="U-MC-MAKER")
-    assert exc.code == rules.ERR_NO_INDEPENDENT_APPROVER, (
-        f"routing failed closed with {exc.code!r} rather than the frozen "
-        f"NO_INDEPENDENT_APPROVER, so an administrator triaging the queue "
-        f"cannot tell which of the two fail-closed causes applied.")
+    # The `exc.code` assertion now lives inside `route_failing_closed`, read
+    # from `approval_action.outcome` -- the row an administrator actually
+    # triages, rather than an exception object that never reached a table.
+    estate.route_failing_closed(rules.ERR_NO_INDEPENDENT_APPROVER, revision,
+                                maker="U-MC-MAKER")
 
     instance_id = estate.instance_id_for(revision)
     assert estate.instance_status(instance_id) == rules.INST_EXCEPTION_PENDING, (
@@ -1039,11 +1065,8 @@ def test_no_matching_rule_is_exception_pending_never_an_approval(estate):
     """
     revision = estate.seed_revision(created_by="U-MC-MAKER")
 
-    exc = estate.route_expecting(rules.ApprovalRouteUnresolved, revision,
-                                 maker="U-MC-MAKER")
-    assert exc.code == rules.ERR_ROUTE_UNRESOLVED, (
-        f"an unroutable object failed closed with {exc.code!r} rather than the "
-        f"frozen APPROVAL_ROUTE_UNRESOLVED.")
+    estate.route_failing_closed(rules.ERR_ROUTE_UNRESOLVED, revision,
+                                maker="U-MC-MAKER")
 
     instance_id = estate.instance_id_for(revision)
     assert estate.instance_status(instance_id) == rules.INST_EXCEPTION_PENDING, (

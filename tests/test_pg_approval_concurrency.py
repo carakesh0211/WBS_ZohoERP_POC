@@ -638,7 +638,20 @@ def test_every_action_is_hash_chained_on_the_approval_stream(
 def test_a_stage_whose_only_approver_is_the_maker_goes_to_exception_pending(
         pg_connection, pg_database, approval_schema):
     """Section 9.3 stage 3, end to end. The engine does not skip the stage and
-    does not approve it -- the instance is EXCEPTION_PENDING and visible."""
+    does not approve it -- the instance is EXCEPTION_PENDING and visible.
+
+    RETURNED, not raised, for the same reason as
+    `test_an_unroutable_object_is_recorded_and_never_approved` below: the
+    caller owns the transaction, so an exception leaving it rolled back the
+    EXCEPTION_PENDING row the engine had just written, and the object ended
+    with no approval instance at all. This test used to expect the raise and
+    then assert the row survived it -- two claims that could not both hold, and
+    only a live database could show which one gave way.
+
+    The safety property is asserted more directly than the exception type ever
+    asserted it: the returned status is EXCEPTION_PENDING, the row says so too,
+    and neither is APPROVED.
+    """
     suffix = uuid.uuid4().hex[:10]
     ids = _seed_estate(pg_connection, suffix)
     _seed_users(pg_connection, {"U-MAKER": ["Requestor", "Finance"]})
@@ -647,8 +660,10 @@ def test_a_stage_whose_only_approver_is_the_maker_goes_to_exception_pending(
          "approvers": [(rules.APPROVER_ROLE, "Finance")]}])
     revision_id = _seed_revision(pg_connection, suffix, ids, created_by="U-MAKER")
 
-    with pytest.raises(rules.NoIndependentApprover):
-        _open(pg_database, ids, revision_id, maker="U-MAKER")
+    instance = _open(pg_database, ids, revision_id, maker="U-MAKER")
+    assert instance["status"] == rules.INST_EXCEPTION_PENDING, (
+        "a stage whose only approver is the maker is held for an "
+        "administrator, never approved")
 
     row = pg_connection.execute(
         "SELECT status FROM approval_instance WHERE object_id = %s", (revision_id,)

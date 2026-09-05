@@ -4,8 +4,32 @@
     {
       "name": "capex-hub",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "uvicorn", "app.backend.main:app", "--port", "8000", "--host", "127.0.0.1"],
+      "runtimeArgs": [
+        "-m",
+        "uvicorn",
+        "app.backend.main:app",
+        "--port",
+        "8000",
+        "--host",
+        "127.0.0.1"
+      ],
       "port": 8000
+    },
+    {
+      "name": "capex-hub-a3wt",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "uvicorn",
+        "app.backend.main:app",
+        "--port",
+        "8001",
+        "--host",
+        "127.0.0.1",
+        "--app-dir",
+        "C:/Users/rakes/Fable5/WBS_ZohoERP_POC/.claude/worktrees/agent-a694bc2d4fc56af5c"
+      ],
+      "port": 8001
     }
   ]
 }

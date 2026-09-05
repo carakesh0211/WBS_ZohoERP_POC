@@ -190,3 +190,86 @@ assertions about the literal contents of `_CONTRACT4_PERMISSIONS` have no
 subject left to assert against.
 
 **Approved by:** engagement lead, Wave 4 integration pass.
+
+## 2026-09-05 — the fail-closed tests of `open_instance`: raised → returned
+
+**Tests changed:** `test_a_stage_whose_only_approver_is_the_maker_goes_to_exception_pending`
+(`test_pg_approval_concurrency.py`), `test_an_empty_approver_set_is_exception_pending_never_an_approval`
+and `test_no_matching_rule_is_exception_pending_never_an_approval`
+(`test_approval_maker_checker.py`), and the helper the latter two share —
+`ApprovalEstate.route_expecting` renamed to `route_failing_closed`.
+
+**Change:** all three stop expecting an exception from `open_instance` and
+assert the returned instance instead.
+
+**Reason — the contract changed, and it changed because it was wrong.**
+`open_instance` recorded its fail-closed outcome as an `EXCEPTION_PENDING`
+`approval_instance` row and then re-raised. The caller owns the transaction and
+`Database.session` rolls back on any exception leaving the block, so the
+exception **rolled back the row it had just written**. The object ended with no
+approval instance at all — the single outcome Contract 2 exists to prevent —
+and the evidence was destroyed as a direct consequence of reporting it. Only a
+live database shows this; in memory nothing rolls back, which is why it
+survived a green in-process suite.
+
+An unroutable object, an empty approver set, a definition with no stages and a
+definition whose every stage is skipped are all recorded OUTCOMES held for an
+administrator (SCR-25), not exceptional control flow. All four branches now
+return the instance.
+
+**Not a weakening — the safety property is asserted more directly than before.**
+The exception type only ever asserted "this did not succeed". The replacement
+asserts what actually matters and what the exception could not: the returned
+status is `EXCEPTION_PENDING`, the committed row says `EXCEPTION_PENDING`, and
+neither is `APPROVED`. There is no route to auto-approval through any of these
+paths, and each test still fails if one appears.
+
+**The one assertion that moved rather than being dropped.** The two
+maker-checker tests read `exc.code` to prove an administrator can tell *which*
+fail-closed cause applied. `route_failing_closed` now reads that same code from
+`approval_action.outcome->>'code'` — the row an administrator actually triages.
+That is strictly stronger: it additionally proves the code reaches a table,
+which an exception object never did.
+
+**`ApprovalEstate.route_expecting`'s docstring described the trap** — "a caller
+who simply lets it propagate destroys the very row Contract 2 requires to be
+visible … this is the only place in the suite that says so". That was an
+argument for removing the trap, not for documenting it. The trap is gone; the
+docstring on `route_failing_closed` records why.
+
+**Found by:** the live PostgreSQL CI job, which is the only environment where
+the rollback is observable. `test_an_unroutable_object_is_recorded_and_never_approved`
+had already been moved to the return contract in an earlier commit **without an
+entry here**; this entry covers that change too.
+
+**Approved by:** engagement lead, Wave 4 integration pass.
+
+## 2026-09-05 — three `approval_stage_instance` fixtures now state when the stage opened
+
+**Tests changed:** `test_one_person_cannot_hold_two_seats_at_one_stage_live`,
+`test_a_delegated_assignment_must_name_its_delegator_live` and
+`test_the_child_policies_reach_scope_through_the_instance_live`
+(`test_pg_approval_schema.py`). Each inserts a PENDING stage instance; each now
+supplies `opened_at = now()`. **No assertion changed** — these are fixture rows,
+not the subject of any of the three tests.
+
+**Reason:** `approval_stage_instance.opened_at` was `NOT NULL DEFAULT now()`,
+which forced a SKIPPED stage — one that never ran — to carry a timestamp saying
+when it did. That is a falsehood on the table an auditor reads precisely to see
+what did *not* happen. The column became nullable with a CHECK, and these three
+fixtures had been relying on the default to fill a column they never mentioned.
+
+**Also changed, in the migration rather than a test:** the CHECK is now
+biconditional, `(status = 'SKIPPED') = (opened_at IS NULL)`, and the column has
+no DEFAULT. The one-directional form still permitted a SKIPPED row carrying a
+time, and a DEFAULT would have stamped `now()` onto any insert that forgot to
+mention the column — quietly satisfying the weaker check. Safe because SKIPPED
+is only ever written at INSERT: no UPDATE in `pg/approvals.py` moves a stage
+into SKIPPED, so no row surrenders an open time it legitimately earned.
+`test_a_stage_has_an_open_time_if_and_only_if_it_is_not_skipped_live` asserts
+both directions, because a one-sided test passes against either form and the
+weaker form is the one that was wrong.
+
+**Found by:** the live PostgreSQL CI job (`CheckViolation` ×5).
+
+**Approved by:** engagement lead, Wave 4 integration pass.

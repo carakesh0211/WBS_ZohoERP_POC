@@ -472,8 +472,22 @@ CREATE TABLE approval_stage_instance (
     escalated_at       timestamptz,
     closed_at          timestamptz,
     CONSTRAINT uq_approval_stage_instance_stage_no UNIQUE (instance_id, stage_no),
+    -- BICONDITIONAL, and deliberately so: a stage has an open time if and
+    -- only if it is not SKIPPED.
+    --
+    -- The one-directional form -- "SKIPPED, or opened_at is present" -- let a
+    -- SKIPPED row carry a timestamp, which is the falsehood the NOT NULL was
+    -- removed to stop. There is no DEFAULT on the column for the same reason:
+    -- a default would stamp `now()` onto a skipped stage the moment an insert
+    -- forgot to mention it, and quietly satisfy the weaker check. Both halves
+    -- have to be said out loud.
+    --
+    -- Safe because SKIPPED is only ever written at INSERT (open_instance
+    -- records every non-applicable stage up front); no UPDATE anywhere in
+    -- `pg/approvals.py` moves a stage INTO SKIPPED, so no row ever has to
+    -- surrender an open time it legitimately earned.
     CONSTRAINT ck_approval_stage_instance_opened_at CHECK (
-        (status = 'SKIPPED') OR (opened_at IS NOT NULL)
+        (status = 'SKIPPED') = (opened_at IS NULL)
     ),
     CONSTRAINT ck_approval_stage_instance_skip_reason CHECK (
         (status = 'SKIPPED' AND skip_reason IS NOT NULL AND btrim(skip_reason) <> '')

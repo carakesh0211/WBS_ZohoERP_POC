@@ -282,12 +282,12 @@
         "body_sha": "50ff4478745cbd76"
       },
       "test_an_empty_approver_set_is_exception_pending_never_an_approval": {
-        "assertions": 2,
-        "body_sha": "694e05af7b881fe0"
+        "assertions": 1,
+        "body_sha": "1ca0e38eb250d539"
       },
       "test_no_matching_rule_is_exception_pending_never_an_approval": {
-        "assertions": 2,
-        "body_sha": "01fcf9fca5c64da8"
+        "assertions": 1,
+        "body_sha": "43079f10ce7be58e"
       },
       "test_an_independent_assigned_approver_is_not_blocked_by_the_engine": {
         "assertions": 5,
@@ -1997,7 +1997,7 @@
       },
       "test_a_stage_whose_only_approver_is_the_maker_goes_to_exception_pending": {
         "assertions": 4,
-        "body_sha": "641e0e5fb7b3e50b"
+        "body_sha": "3b3dbb6c110829ad"
       },
       "test_an_unroutable_object_is_recorded_and_never_approved": {
         "assertions": 3,
@@ -2227,7 +2227,7 @@
       },
       "test_one_person_cannot_hold_two_seats_at_one_stage_live": {
         "assertions": 0,
-        "body_sha": "b0e6b8105e66ec0a"
+        "body_sha": "64bbd6199931f0f5"
       },
       "test_an_empty_delegation_range_is_refused_live": {
         "assertions": 0,
@@ -2245,9 +2245,13 @@
         "assertions": 0,
         "body_sha": "392d7862444cb772"
       },
+      "test_a_stage_has_an_open_time_if_and_only_if_it_is_not_skipped_live": {
+        "assertions": 1,
+        "body_sha": "c13deb837ee461ab"
+      },
       "test_a_delegated_assignment_must_name_its_delegator_live": {
         "assertions": 0,
-        "body_sha": "b1da62680495972d"
+        "body_sha": "9dc3e56df2d90eb5"
       },
       "test_the_instance_policy_hides_another_entitys_instances_live": {
         "assertions": 1,
@@ -2255,7 +2259,7 @@
       },
       "test_the_child_policies_reach_scope_through_the_instance_live": {
         "assertions": 1,
-        "body_sha": "eb4de0016b5c725e"
+        "body_sha": "59ca363fbb3c8e8b"
       },
       "test_the_configuration_policies_hide_another_entitys_workflow_live": {
         "assertions": 2,
@@ -4602,7 +4606,7 @@
     "test_observability.py": 40,
     "test_pg_adoption.py": 16,
     "test_pg_approval_concurrency.py": 12,
-    "test_pg_approval_schema.py": 65,
+    "test_pg_approval_schema.py": 66,
     "test_pg_approvals.py": 148,
     "test_pg_audit.py": 20,
     "test_pg_audit_api_e2e.py": 7,
@@ -4632,7 +4636,7 @@
   "assertions": {
     "test_api_auth.py": 50,
     "test_approval_e2e.py": 117,
-    "test_approval_maker_checker.py": 48,
+    "test_approval_maker_checker.py": 46,
     "test_approval_negative_matrix.py": 63,
     "test_approvals_api_guard.py": 51,
     "test_audit.py": 39,
@@ -4654,7 +4658,7 @@
     "test_observability.py": 77,
     "test_pg_adoption.py": 39,
     "test_pg_approval_concurrency.py": 53,
-    "test_pg_approval_schema.py": 95,
+    "test_pg_approval_schema.py": 96,
     "test_pg_approvals.py": 219,
     "test_pg_audit.py": 62,
     "test_pg_audit_api_e2e.py": 24,

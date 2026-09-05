@@ -1034,7 +1034,8 @@ def test_one_person_cannot_hold_two_seats_at_one_stage_live(pg_connection):
     _instance(pg_connection, "I-AS", definition_id="D-AS")
     pg_connection.execute(
         "INSERT INTO approval_stage_instance (stage_instance_id, instance_id, "
-        "stage_no, quorum_required) VALUES ('SI-1', 'I-AS', 1, 2)")
+        "stage_no, quorum_required, opened_at) "
+        "VALUES ('SI-1', 'I-AS', 1, 2, now())")
     pg_connection.execute(
         "INSERT INTO approval_assignment (assignment_id, stage_instance_id, "
         "assignee_user_id, assigned_via) VALUES ('A-1', 'SI-1', %s, 'ROLE')", (MAKER,))
@@ -1116,13 +1117,72 @@ def test_a_skipped_stage_without_a_reason_is_refused_live(pg_connection):
 
 @pytest.mark.pg
 @PG
+def test_a_stage_has_an_open_time_if_and_only_if_it_is_not_skipped_live(pg_connection):
+    """Both directions of `ck_approval_stage_instance_opened_at`.
+
+    `opened_at` was `NOT NULL DEFAULT now()`, so a SKIPPED stage -- one that
+    never ran -- was forced to carry a timestamp saying when it did. That is a
+    falsehood on the table an auditor reads specifically to see what did NOT
+    happen, so the column became nullable.
+
+    Nullable alone is not enough, and neither is the one-directional check it
+    first shipped with. "SKIPPED, or opened_at is present" still permits a
+    SKIPPED row that carries a time; and had the DEFAULT been kept, any insert
+    that simply forgot to mention `opened_at` would have had one stamped on and
+    passed. Hence the biconditional, and hence no default: an insert says when
+    the stage opened, or says that it never did, and the database refuses
+    anything in between.
+
+    Both halves are asserted here because a one-sided test would pass against
+    either form of the constraint, and the weaker form is the one that was
+    wrong.
+    """
+    _build_estate(pg_connection)
+    _definition(pg_connection, "D-OA", status="ACTIVE")
+    _instance(pg_connection, "I-OA", definition_id="D-OA")
+
+    # A stage that is live must say when it opened.
+    _refused(pg_connection,
+             "INSERT INTO approval_stage_instance (stage_instance_id, instance_id, "
+             "stage_no, status, quorum_required) VALUES ('SI-OA1', 'I-OA', 1, "
+             "'PENDING', 1)",
+             expect="ck_approval_stage_instance_opened_at")
+
+    # A stage that never ran must not claim it did.
+    _refused(pg_connection,
+             "INSERT INTO approval_stage_instance (stage_instance_id, instance_id, "
+             "stage_no, status, skip_reason, quorum_required, opened_at) VALUES "
+             "('SI-OA2', 'I-OA', 2, 'SKIPPED', 'RULE_NOT_MET', 0, now())",
+             expect="ck_approval_stage_instance_opened_at")
+
+    # And both truthful shapes are accepted.
+    pg_connection.execute(
+        "INSERT INTO approval_stage_instance (stage_instance_id, instance_id, "
+        "stage_no, status, quorum_required, opened_at) VALUES "
+        "('SI-OA3', 'I-OA', 3, 'PENDING', 1, now())")
+    pg_connection.execute(
+        "INSERT INTO approval_stage_instance (stage_instance_id, instance_id, "
+        "stage_no, status, skip_reason, quorum_required) VALUES "
+        "('SI-OA4', 'I-OA', 4, 'SKIPPED', 'RULE_NOT_MET', 0)")
+    pg_connection.commit()
+
+    rows = dict(pg_connection.execute(
+        "SELECT stage_instance_id, opened_at IS NULL FROM approval_stage_instance "
+        "WHERE instance_id = 'I-OA'").fetchall())
+    assert rows == {"SI-OA3": False, "SI-OA4": True}, (
+        f"the two truthful shapes did not land as written: {rows}")
+
+
+@pytest.mark.pg
+@PG
 def test_a_delegated_assignment_must_name_its_delegator_live(pg_connection):
     _build_estate(pg_connection)
     _definition(pg_connection, "D-DA", status="ACTIVE")
     _instance(pg_connection, "I-DA", definition_id="D-DA")
     pg_connection.execute(
         "INSERT INTO approval_stage_instance (stage_instance_id, instance_id, "
-        "stage_no, quorum_required) VALUES ('SI-DA', 'I-DA', 1, 1)")
+        "stage_no, quorum_required, opened_at) "
+        "VALUES ('SI-DA', 'I-DA', 1, 1, now())")
     pg_connection.commit()
     _refused(pg_connection,
              "INSERT INTO approval_assignment (assignment_id, stage_instance_id, "
@@ -1178,7 +1238,8 @@ def test_the_child_policies_reach_scope_through_the_instance_live(
                   definition_id=f"D-{suffix}")
         pg_connection.execute(
             "INSERT INTO approval_stage_instance (stage_instance_id, instance_id, "
-            "stage_no, quorum_required) VALUES (%s, %s, 1, 1)",
+            "stage_no, quorum_required, opened_at) "
+            "VALUES (%s, %s, 1, 1, now())",
             (f"SI-{suffix}", f"I-{suffix}"))
         pg_connection.execute(
             "INSERT INTO approval_assignment (assignment_id, stage_instance_id, "
