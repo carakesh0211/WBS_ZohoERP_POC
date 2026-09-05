@@ -309,7 +309,7 @@ def create_delegation(session: Session, *, delegator_user_id: str,
                        active_from=active_from, active_to=active_to)
 
 
-def revoke_delegation(session: Session, *, delegation_id: str, actor: str,
+def revoke_delegation(session: Session, *, delegation_id: str, actor_user_id: str,
                        reason_text: str | None = None) -> Delegation:
     """End a delegation now. The row is kept; only ``revoked_at`` is set.
 
@@ -332,25 +332,79 @@ def revoke_delegation(session: Session, *, delegation_id: str, actor: str,
     session.execute(
         f"UPDATE approval_delegation SET revoked_at = now(), revoke_reason = %(reason)s "
         f"WHERE delegation_id = %(id)s",
-        {"reason": reason_text or f"revoked by {actor}", "id": delegation_id})
+        {"reason": reason_text or f"revoked by {actor_user_id}",
+         "id": delegation_id})
     updated = session.fetchone(
         f"SELECT {_SELECT_COLUMNS} FROM approval_delegation WHERE delegation_id = %s",
         (delegation_id,))
     return _row_to_delegation(updated)   # type: ignore[arg-type]
 
 
+#: Page-size ceiling, mirroring ``api/approvals.py``'s own cap so a caller that
+#: reaches the engine directly cannot ask for an unbounded page.
+DEFAULT_PAGE = 50
+MAX_PAGE = 200
+
+
+def _page_size(limit: int | None) -> int:
+    try:
+        value = int(limit) if limit is not None else DEFAULT_PAGE
+    except (TypeError, ValueError):
+        value = DEFAULT_PAGE
+    return min(max(value, 1), MAX_PAGE)
+
+
 def list_delegations(session: Session, *, user_id: str | None = None,
-                      include_revoked: bool = False) -> list[Delegation]:
-    """Delegations granted BY or TO ``user_id`` (both directions), newest first."""
-    clauses, params = [], {}
+                      include_revoked: bool = False, cursor: str | None = None,
+                      limit: int | None = None) -> dict[str, Any]:
+    """``GET /api/approvals/delegations`` -- delegations granted BY or TO
+    ``user_id`` (both directions), newest first.
+
+    ``user_id`` is a FILTER, not the acting identity, which is why it is not
+    called ``actor_user_id``: it names whose delegations are being asked about.
+    The router happens to pass the caller's own id, because a caller holding
+    ``approval.delegate`` sees the delegations they are a party to and not the
+    estate's -- the fail-closed reading, and the one that needs no new decision
+    about who may audit somebody else's cover.
+
+    Paginated (Contract 3 requires a cursor on EVERY list) and returning the
+    same ``{"items", "next_cursor", "has_more"}`` envelope as every other
+    engine list. It used to return a bare ``list``: correct for the two
+    in-process callers and unbounded over HTTP, where the delegation table is
+    exactly the kind that grows quietly and is never pruned.
+
+    The keyset is ``(lower(active_range), delegation_id)`` descending.
+    ``lower(active_range)`` is coalesced to ``-infinity`` so an open-ended
+    delegation sorts and pages deterministically rather than landing in a NULL
+    ordering that the cursor comparison cannot reproduce.
+    """
+    size = _page_size(limit)
+    clauses: list[str] = []
+    params: dict[str, Any] = {"lim": size + 1}
     if user_id:
         clauses.append("(delegator_user_id = %(user)s OR delegate_user_id = %(user)s)")
         params["user"] = user_id
     if not include_revoked:
         clauses.append("revoked_at IS NULL")
+    if cursor:
+        lower, _, cursor_id = str(cursor).partition("\x1f")
+        clauses.append(
+            "(COALESCE(lower(active_range), '-infinity'::date), delegation_id) "
+            "< (%(c_from)s::date, %(c_id)s)")
+        params["c_from"] = lower or "-infinity"
+        params["c_id"] = cursor_id
     where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
     rows = session.fetchall(
         f"SELECT {_SELECT_COLUMNS} FROM approval_delegation {where} "
-        f"ORDER BY lower(active_range) DESC, delegation_id",
-        params or None)
-    return [_row_to_delegation(row) for row in rows]
+        f"ORDER BY COALESCE(lower(active_range), '-infinity'::date) DESC, "
+        f"delegation_id DESC LIMIT %(lim)s",
+        params)
+    items = [_row_to_delegation(row) for row in rows]
+    has_more = len(items) > size
+    page = items[:size]
+    next_cursor = None
+    if has_more and page:
+        last = page[-1]
+        lower = last.active_from.isoformat() if last.active_from else "-infinity"
+        next_cursor = f"{lower}\x1f{last.delegation_id}"
+    return {"items": page, "next_cursor": next_cursor, "has_more": has_more}

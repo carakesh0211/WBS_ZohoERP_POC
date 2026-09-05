@@ -104,6 +104,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import dataclasses
 import importlib
 from datetime import date
 from typing import Any, Callable
@@ -363,32 +364,121 @@ def _page(result: Any, limit: int) -> dict[str, Any]:
     is produced here rather than trusted from below: an engine function that
     returns a bare list still yields `next_cursor` and `has_more` keys, and a
     client written against the contract keeps working.
+
+    The engine's cursor is PLAIN text -- a keyset like `"2026-09-01T…\\x1fAINS-7"`
+    -- and it is encoded HERE, unconditionally, on the way out. It used to be
+    encoded only when it was not already a `str`, which meant every cursor the
+    engine actually produces travelled to the client raw and came back to
+    `_decode_cursor` as un-base64-able text: page one worked and page two was a
+    400. The pair is symmetric now -- `_decode_cursor` inbound, `_encode_cursor`
+    outbound -- so the token stays opaque and stays round-trippable.
     """
     if isinstance(result, dict):
-        items = list(result.get("items") or ())
+        items = [_jsonable(item) for item in (result.get("items") or ())]
         next_cursor = result.get("next_cursor")
         has_more = result.get("has_more")
         if has_more is None:
             has_more = next_cursor is not None
-        if next_cursor is not None and not isinstance(next_cursor, str):
+        if next_cursor is not None:
             next_cursor = _encode_cursor(str(next_cursor))
         return {"items": items, "next_cursor": next_cursor,
                 "has_more": bool(has_more)}
-    items = list(result or ())
+    items = [_jsonable(item) for item in (result or ())]
     return {"items": items, "next_cursor": None, "has_more": False}
+
+
+def _jsonable(result: Any) -> Any:
+    """Render an engine return value as JSON-shaped data.
+
+    The engine speaks in dataclasses where a dataclass is the honest type --
+    `approvals.DecisionResult`, `delegation.Delegation` -- and FastAPI cannot
+    serialise either against these handlers' `dict[str, Any]` annotation. It is
+    converted here rather than in the engine, because the engine's callers
+    include tests and other services that want the typed value, and flattening
+    it at the source to suit one transport would be the transport dictating the
+    domain model.
+
+    `as_dict()` is preferred where a type defines one (it is the shape that
+    also goes into `approval_action.outcome`, so the API and the audit record
+    agree); `dataclasses.asdict` is the fallback; anything else passes through.
+    """
+    if isinstance(result, dict) or result is None:
+        return result
+    as_dict = getattr(result, "as_dict", None)
+    if callable(as_dict):
+        return as_dict()
+    if dataclasses.is_dataclass(result) and not isinstance(result, type):
+        return dataclasses.asdict(result)
+    return result
 
 
 # ===========================================================================
 # Engine adapter -- the ONLY place streams 1 and 2 are called
 # ===========================================================================
 #: Streams 1 and 2 own `pg/approvals.py`, `pg/approval_rules.py`,
-#: `pg/delegation.py` and `pg/approval_schema.py`. They are not present in
-#: this stream's worktree, so every call to them is funnelled through
-#: :func:`_call_engine` and every assumed function name is listed here, in one
-#: place, for a single-line correction if a name differs on integration.
+#: `pg/delegation.py` and `pg/approval_schema.py`. Every call to them is
+#: funnelled through :func:`_call_engine`, which exists so a missing engine is
+#: a clean 503 rather than an `AttributeError` 500.
 #:
-#: Each entry is a tuple of ACCEPTABLE names, tried in order, so a modest
-#: naming difference (`list_inbox` vs `inbox`) needs no code change at all.
+#: Each entry is a tuple of names for `_call_engine` to try in order. EVERY
+#: tuple below now holds exactly ONE name, and that is the point: the multi-name
+#: tolerance is what made this seam fail silently.
+#:
+#: INTEGRATION NOTE. Written before the engine existed here, this seam guessed
+#: both names and keyword ARGUMENTS, and every guess was wrong. The two halves
+#: failed differently and neither failed loudly:
+#:
+#:   * a wrong NAME falls through `_call_engine` to a clean
+#:     `503 APPROVAL_ENGINE_UNAVAILABLE`, which reads as "this deployment has
+#:     no database" rather than "this route has never worked". Eight routes were
+#:     in that state.
+#:   * a wrong KEYWORD raises `TypeError`, which carries no `.code`, so
+#:     `_raise_for_engine_error` re-raises it and the route answers 500. A
+#:     control refusing correctly and a server fault then look identical.
+#:
+#: The mapper was deliberately NOT widened to swallow `TypeError`: a genuine
+#: bug must still be a 500. Instead `tests/test_approvals_api_seam.py` resolves
+#: every call site below against the real engine signature statically, with no
+#: database, so a rename on either side fails at collection time. That test is
+#: why every name tuple here must stay a LITERAL -- a computed name is a call
+#: site the check cannot see, and the three routes that used one (recall,
+#: cancel, resubmit, through a shared factory) were exactly the three that had
+#: been broken longest.
+#:
+#: TWO NAMING JUDGEMENTS, recorded here because both were open questions.
+#:
+#: 1. `actor` vs `actor_user_id`. ONE name, no aliases: **`actor_user_id`**, for
+#:    the user on whose behalf the request is being made, in every engine
+#:    function that takes one. It was already the name on the write path
+#:    (`decide`, `recall`, `cancel`, `resubmit`, `supersede_if_changed`,
+#:    `_append_action`), it is the COLUMN name in `approval_action`, and it is
+#:    the identity Contract 5's maker-checker compares -- so the read and
+#:    configuration halves were renamed to it rather than the other way round.
+#:    Parameters naming a DIFFERENT person keep their own descriptive names and
+#:    are not aliases: `delegator_user_id`, `delegate_user_id`, `maker_user_id`,
+#:    `assigned_to`, `created_by`, and `list_delegations`'s `user_id`, which is
+#:    a filter ("whose delegations") and not the acting identity.
+#:
+#: 2. `correlation_id`. Threaded through the engine wherever a STORED column can
+#:    hold it, and REMOVED wherever none can:
+#:      - `open_instance` writes it to `approval_instance.correlation_id`.
+#:      - `decide`, `recall`, `cancel` and `resubmit` now take it and
+#:        `_append_action` writes it into `approval_action.outcome`, a real
+#:        jsonb column. It is NOT folded into the hash: Contract 9 freezes the
+#:        payload as `prev|at|actor|action|type|id|detail` and `chain_detail`
+#:        builds `detail` from stored columns only, so that verification
+#:        recomputes each digest from the row it is checking.
+#:      - `create_definition`, `activate_definition` and `revoke_delegation` no
+#:        longer accept one. Those tables carry no correlation column, that path
+#:        writes no `audit_log` row, and migration 008 is lead-owned. The
+#:        parameter previously existed and was dropped on the floor, which reads
+#:        at the call site as though a trace were being recorded. The response's
+#:        `X-Correlation-Id` header is honestly the whole trace there is.
+#:    §11.9's `audit_log` propagation is about the Zoho integration path
+#:    (`job` -> inbox/outbox -> `integration_event` -> `audit_log`); the approval
+#:    engine writes `approval_action`, not `audit_log`, and giving it an
+#:    `audit_log` stream of its own is a change to a lead-owned contract, not a
+#:    wiring fix.
 _ENGINE_MODULES: dict[str, str] = {
     "approvals": "app.backend.pg.approvals",
     "rules": "app.backend.pg.approval_rules",
@@ -641,9 +731,9 @@ def get_inbox(
     decoded = _decode_cursor(cursor, request) if cursor else None
     with database.session(_scope_for(request, database)) as session:
         result = _engine_result(lambda: _call_engine(
-            "approvals", ("list_inbox", "inbox"),
+            "approvals", ("list_inbox",),
             session, request=request,
-            actor=_actor(request),
+            actor_user_id=_actor(request),
             assigned_to=None if _holds(who, CONFIGURE) else _actor(request),
             state=state, object_type=object_type, cursor=decoded, limit=limit,
         ), request)
@@ -664,9 +754,9 @@ def get_sla(
     decoded = _decode_cursor(cursor, request) if cursor else None
     with database.session(_scope_for(request, database)) as session:
         result = _engine_result(lambda: _call_engine(
-            "approvals", ("list_sla", "sla"),
+            "approvals", ("list_sla",),
             session, request=request,
-            actor=_actor(request),
+            actor_user_id=_actor(request),
             assigned_to=None if _holds(who, CONFIGURE) else _actor(request),
             overdue=overdue, cursor=decoded, limit=limit,
         ), request)
@@ -691,7 +781,7 @@ def get_definitions(
     decoded = _decode_cursor(cursor, request) if cursor else None
     with database.session(_scope_for(request, database)) as session:
         result = _engine_result(lambda: _call_engine(
-            "rules", ("list_definitions", "definitions"),
+            "rules", ("list_definitions",),
             session, request=request, object_type=object_type, status=status,
             cursor=decoded, limit=limit,
         ), request)
@@ -707,10 +797,9 @@ def post_definition(
     _set_correlation_header(response, request)
     with database.session(_scope_for(request, database)) as session:
         return _engine_result(lambda: _call_engine(
-            "rules", ("create_definition", "create_draft", "create"),
-            session, request=request, actor=_actor(request),
+            "rules", ("create_definition",),
+            session, request=request, actor_user_id=_actor(request),
             payload=body.model_dump(mode="json"),
-            correlation_id=_correlation_id(request),
         ), request)
 
 
@@ -723,9 +812,9 @@ def post_definition_activate(
     _set_correlation_header(response, request)
     with database.session(_scope_for(request, database)) as session:
         return _engine_result(lambda: _call_engine(
-            "rules", ("activate_definition", "activate"),
+            "rules", ("activate_definition",),
             session, request=request, definition_id=definition_id,
-            actor=_actor(request), correlation_id=_correlation_id(request),
+            actor_user_id=_actor(request),
         ), request)
 
 
@@ -745,9 +834,9 @@ def post_definition_simulate(
     _set_correlation_header(response, request)
     with database.session(_scope_for(request, database)) as session:
         return _engine_result(lambda: _call_engine(
-            "rules", ("simulate", "simulate_definition", "dry_run"),
+            "rules", ("simulate",),
             session, request=request, definition_id=definition_id,
-            obj=body.object_, actor=_actor(request),
+            obj=body.object_, actor_user_id=_actor(request),
         ), request)
 
 
@@ -764,7 +853,7 @@ def get_definition_versions(
     decoded = _decode_cursor(cursor, request) if cursor else None
     with database.session(_scope_for(request, database)) as session:
         result = _engine_result(lambda: _call_engine(
-            "rules", ("list_versions", "versions"),
+            "rules", ("list_versions",),
             session, request=request, definition_id=definition_id,
             cursor=decoded, limit=limit,
         ), request)
@@ -787,8 +876,8 @@ def get_delegations(
     decoded = _decode_cursor(cursor, request) if cursor else None
     with database.session(_scope_for(request, database)) as session:
         result = _engine_result(lambda: _call_engine(
-            "delegation", ("list_delegations", "delegations", "list_for_actor"),
-            session, request=request, actor=_actor(request),
+            "delegation", ("list_delegations",),
+            session, request=request, user_id=_actor(request),
             cursor=decoded, limit=limit,
         ), request)
     return _page(result, limit)
@@ -809,15 +898,18 @@ def post_delegation(
     have been able to create.
     """
     _set_correlation_header(response, request)
+    # `_jsonable`: `create_delegation` returns a `Delegation` dataclass, which
+    # is the honest type for the engine and not one FastAPI can serialise
+    # against this handler's `dict[str, Any]` annotation.
     with database.session(_scope_for(request, database)) as session:
-        return _engine_result(lambda: _call_engine(
-            "delegation", ("create_delegation", "create"),
-            session, request=request, actor=_actor(request),
+        return _jsonable(_engine_result(lambda: _call_engine(
+            "delegation", ("create_delegation",),
+            session, request=request,
             delegator_user_id=_actor(request),
             delegate_user_id=body.delegate_user_id, scope_key=body.scope_key,
-            from_date=body.from_, to_date=body.to,
-            correlation_id=_correlation_id(request),
-        ), request)
+            active_from=body.from_, active_to=body.to,
+            created_by=_actor(request),
+        ), request))
 
 
 @router.post("/api/approvals/delegations/{delegation_id}/revoke",
@@ -828,12 +920,11 @@ def post_delegation_revoke(
 ) -> dict[str, Any]:
     _set_correlation_header(response, request)
     with database.session(_scope_for(request, database)) as session:
-        return _engine_result(lambda: _call_engine(
-            "delegation", ("revoke_delegation", "revoke"),
+        return _jsonable(_engine_result(lambda: _call_engine(
+            "delegation", ("revoke_delegation",),
             session, request=request, delegation_id=delegation_id,
-            actor=_actor(request), reason_text=body.reason_text,
-            correlation_id=_correlation_id(request),
-        ), request)
+            actor_user_id=_actor(request), reason_text=body.reason_text,
+        ), request))
 
 
 # ===========================================================================
@@ -866,40 +957,61 @@ def post_decide(
                        "against, so a document that moved cannot be silently "
                        "approved (Contract 8)", request)
 
+    # `actor_user_id`, not `actor`. `approvals.decide` names the identity that
+    # goes into `approval_action.actor_user_id` and into Contract 5's
+    # maker-checker comparison, and one name for the requesting user is the
+    # whole convention -- see the adapter note above.
+    #
+    # `principal` is passed so the engine's FIRST maker-checker gate --
+    # `auth.require_separation`, the product's own, called exactly as
+    # `services.py` calls it -- actually runs. It is a second, independent
+    # enforcement point, not a replacement for the engine's contributor check,
+    # and it is a no-op when the object's permission is not in
+    # `auth.MAKER_CHECKER`. It is omitted rather than faked when the session
+    # produced no `user_id`: `require_separation` subscripts that key directly,
+    # so a principal without one is a 500 rather than a control.
+    who = _principal_of(request)
     with database.session(_scope_for(request, database)) as session:
-        return _engine_result(lambda: _call_engine(
+        return _jsonable(_engine_result(lambda: _call_engine(
             "approvals", ("decide",),
             session, request=request, instance_id=instance_id,
-            actor=_actor(request), action=action,
+            actor_user_id=_actor(request), action=action,
             reason_code=body.reason_code, reason_text=body.reason_text,
             idempotency_key=body.idempotency_key.strip(),
             object_version=body.object_version,
             correlation_id=_correlation_id(request),
-        ), request)
+            principal=dict(who) if who.get("user_id") else None,
+        ), request))
 
 
-def _instance_action(names: tuple[str, ...]):
-    def _run(instance_id: str, body: _ReasonIn, response: Response,
-             request: Request, database: Database) -> dict[str, Any]:
-        _set_correlation_header(response, request)
-        with database.session(_scope_for(request, database)) as session:
-            return _engine_result(lambda: _call_engine(
-                "approvals", names, session, request=request,
-                instance_id=instance_id, actor=_actor(request),
-                reason_text=body.reason_text,
-                correlation_id=_correlation_id(request),
-            ), request)
-
-    return _run
-
-
+# ---------------------------------------------------------------------------
+# recall / cancel / resubmit
+#
+# Written out one route at a time rather than through a shared factory that
+# took the engine function NAME as a parameter. The factory was tidier and it
+# defeated the one check that catches this class of bug: with the name
+# arriving as a variable, `tests/test_approvals_api_seam.py` cannot resolve the
+# call site statically, so the three routes were the three the seam test could
+# not see -- and all three were calling the engine with `actor=` and
+# `correlation_id=` against functions that take `actor_user_id=`. Three
+# near-identical bodies that a test can read are worth more than one body it
+# cannot.
+# ---------------------------------------------------------------------------
 @router.post("/api/approvals/{instance_id}/recall",
              dependencies=[Depends(_requires(ACT))])
 def post_recall(
     instance_id: str, body: _ReasonIn, response: Response, request: Request,
     database: Database = Depends(_get_database),
 ) -> dict[str, Any]:
-    return _instance_action(("recall",))(instance_id, body, response, request, database)
+    """The maker withdraws their own object. The engine enforces maker-only."""
+    _set_correlation_header(response, request)
+    with database.session(_scope_for(request, database)) as session:
+        return _jsonable(_engine_result(lambda: _call_engine(
+            "approvals", ("recall",), session, request=request,
+            instance_id=instance_id, actor_user_id=_actor(request),
+            reason_text=body.reason_text,
+            correlation_id=_correlation_id(request),
+        ), request))
 
 
 @router.post("/api/approvals/{instance_id}/cancel",
@@ -908,7 +1020,14 @@ def post_cancel(
     instance_id: str, body: _ReasonIn, response: Response, request: Request,
     database: Database = Depends(_get_database),
 ) -> dict[str, Any]:
-    return _instance_action(("cancel",))(instance_id, body, response, request, database)
+    _set_correlation_header(response, request)
+    with database.session(_scope_for(request, database)) as session:
+        return _jsonable(_engine_result(lambda: _call_engine(
+            "approvals", ("cancel",), session, request=request,
+            instance_id=instance_id, actor_user_id=_actor(request),
+            reason_text=body.reason_text,
+            correlation_id=_correlation_id(request),
+        ), request))
 
 
 @router.post("/api/approvals/{instance_id}/resubmit",
@@ -917,7 +1036,24 @@ def post_resubmit(
     instance_id: str, body: _ReasonIn, response: Response, request: Request,
     database: Database = Depends(_get_database),
 ) -> dict[str, Any]:
-    return _instance_action(("resubmit",))(instance_id, body, response, request, database)
+    """Re-route an object whose ROUTING failed, not one whose content changed.
+
+    Contract 3 freezes this body as ``{"reason_text"}``, so no snapshot can
+    reach the engine here, and this router has no business building one -- a
+    ``BUDGET_REVISION`` snapshot is the document layer's knowledge. The engine
+    therefore re-routes the instance's own snapshot and refuses with
+    ``OBJECT_VERSION_STALE`` if the document has moved since, which is the
+    honest answer: an edited document is resubmitted through the document
+    layer, which has the corrected snapshot to hand.
+    """
+    _set_correlation_header(response, request)
+    with database.session(_scope_for(request, database)) as session:
+        return _jsonable(_engine_result(lambda: _call_engine(
+            "approvals", ("resubmit",), session, request=request,
+            instance_id=instance_id, actor_user_id=_actor(request),
+            reason_text=body.reason_text,
+            correlation_id=_correlation_id(request),
+        ), request))
 
 
 # ===========================================================================
@@ -942,9 +1078,8 @@ def get_instance(
     _set_correlation_header(response, request)
     with database.session(_scope_for(request, database)) as session:
         result = _engine_result(lambda: _call_engine(
-            "approvals", ("get_instance", "instance", "get"),
+            "approvals", ("get_instance",),
             session, request=request, instance_id=instance_id,
-            actor=_actor(request),
         ), request)
     if result is None:
         raise _problem(404, "NOT_FOUND", "No such approval instance",
@@ -971,9 +1106,9 @@ def get_timeline(
     decoded = _decode_cursor(cursor, request) if cursor else None
     with database.session(_scope_for(request, database)) as session:
         result = _engine_result(lambda: _call_engine(
-            "approvals", ("get_timeline", "timeline"),
+            "approvals", ("get_timeline",),
             session, request=request, instance_id=instance_id,
-            actor=_actor(request), cursor=decoded, limit=limit,
+            actor_user_id=_actor(request), cursor=decoded, limit=limit,
         ), request)
     if result is None:
         raise _problem(404, "NOT_FOUND", "No such approval instance",

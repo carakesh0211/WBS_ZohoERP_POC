@@ -305,16 +305,6 @@ def test_the_approval_stream_key_is_the_one_the_verifier_reports():
     assert schema.AUDIT_STREAM_PREFIX == "approval:"
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "REPORTED DEFECT, observed by running the function: "
-    "approvals.next_wave returns None for a wave in which one stage is already "
-    "SKIPPED and the rest have no state -- exactly the shape open_instance "
-    "creates when a parallel group contains a conditional stage, because it "
-    "writes every non-applying stage's SKIPPED row BEFORE choosing the first "
-    "wave. open_instance reads that None as 'every stage was skipped' and "
-    "sends the instance to EXCEPTION_PENDING, so a workflow whose parallel "
-    "group has an applies_when member is unroutable. Sequential stages are "
-    "unaffected, which is why the live test below uses them."))
 def test_a_parallel_wave_opens_even_when_one_of_its_stages_is_skipped():
     """A conditional stage inside a parallel group must not block the group.
 
@@ -325,9 +315,9 @@ def test_a_parallel_wave_opens_even_when_one_of_its_stages_is_skipped():
     no state at all. That wave is the one to open, minus the stage that does
     not apply.
 
-    Asserted as the intended behaviour rather than as the bug, so it turns
-    green when the branch is fixed. Strict, because this stream ran it: the
-    function is pure and needs no database.
+    Was an ``xfail(strict=True)`` while the branch was wrong; the marker is
+    gone now that ``next_wave`` treats a SKIPPED member as settled rather than
+    as "in progress", so this asserts the behaviour positively.
     """
     assert engine.compute_waves([]) == [], (
         "sanity: compute_waves is the function that builds the wave shape "
@@ -1246,11 +1236,12 @@ def _seed_exception_workflow(connection, entity_id):
     stage, so it cannot demonstrate ``applies_when``. This one adds a second,
     conditional stage.
 
-    The two stages are SEQUENTIAL, not a parallel group, and that is forced
-    rather than chosen: ``next_wave`` returns ``None`` for a wave holding one
-    SKIPPED stage and one with no state, which is precisely what a parallel
-    group with a conditional member produces at routing -- see
-    ``test_a_parallel_wave_opens_even_when_one_of_its_stages_is_skipped``.
+    The two stages are SEQUENTIAL, not a parallel group, which is what this
+    scenario models: an ordinary controller gate, and behind it an exception
+    gate that fires only when the request is over budget. (A parallel group
+    with a conditional member routes correctly too, since ``next_wave`` now
+    treats a SKIPPED member as settled -- see
+    ``test_a_parallel_wave_opens_even_when_one_of_its_stages_is_skipped``.)
 
     An entity-specific definition sorts BEFORE a global one
     (``candidate_definitions``), so this deterministically wins for ENT-DM1.
@@ -1378,6 +1369,153 @@ def test_step_b_the_exception_stage_opens_only_when_the_request_is_over_budget(
             f"{instance_id} routed to {status!r} rather than OPEN")
 
 
+def _seed_parallel_group_workflow(connection, entity_id, *, conditional_only=False):
+    """An ENT-DM1 workflow whose ONE wave is a parallel group of two stages.
+
+    Stage 1 always applies; stage 2 applies only when ``exceeds_available`` is
+    true. They share ``parallel_group='PG'``, so ``compute_waves`` puts them in
+    a single wave -- and a within-budget revision therefore arrives at
+    ``next_wave`` as the mixed wave ``[1, 2]`` with state ``{2: SKIPPED}``,
+    which is the shape that used to stall.
+
+    ``conditional_only=True`` makes stage 1 conditional as well, so the same
+    within-budget revision produces an ALL-skipped wave. That is the
+    fail-closed case, and it must still hold the object EXCEPTION_PENDING: the
+    mixed-wave fix must not turn "no stage applies" into an approval.
+    """
+    tag = uuid.uuid4().hex[:8].upper()
+    definition_id = f"APD-E2E-PG-{tag}"
+    connection.execute(
+        "INSERT INTO approval_definition (definition_id, object_type, code, version, "
+        "status, entity_id, effective_from, created_by) "
+        "VALUES (%s,'BUDGET_REVISION',%s,1,'ACTIVE',%s,%s,'E2E')",
+        (definition_id, f"BREV-PG-{tag}", entity_id, date(2020, 1, 1)))
+    connection.execute(
+        "INSERT INTO approval_rule (rule_id, definition_id, priority, predicate, "
+        "description, created_by) VALUES (%s,%s,5,%s,%s,'E2E')",
+        (f"APR-E2E-PG-{tag}", definition_id,
+         Jsonb({"all": [{"field": "object_type", "op": "eq",
+                         "value": "BUDGET_REVISION"}], "route": "PARALLEL"}),
+         "Every budget revision in this entity, priority 5 so it beats the "
+         "sequential exception workflow if both are seeded."))
+
+    over_budget = Jsonb({"field": "exceeds_available", "op": "eq", "value": True})
+    connection.execute(
+        "INSERT INTO approval_stage (stage_id, definition_id, stage_no, name, "
+        "parallel_group, quorum_type, quorum_n, applies_when, sla_hours, "
+        "escalate_after_hours, escalate_to, allow_delegation, requires_reason, "
+        "created_by) VALUES (%s,%s,1,'Controller review','PG','ALL',NULL,%s,"
+        "24,NULL,NULL,true,false,'E2E')",
+        (f"APS-E2E-PG-{tag}-1", definition_id,
+         over_budget if conditional_only else None))
+    connection.execute(
+        "INSERT INTO approval_stage (stage_id, definition_id, stage_no, name, "
+        "parallel_group, quorum_type, quorum_n, applies_when, sla_hours, "
+        "escalate_after_hours, escalate_to, allow_delegation, requires_reason, "
+        "created_by) VALUES (%s,%s,2,'Finance exception approval','PG','ALL',"
+        "NULL,%s,24,NULL,NULL,false,true,'E2E')",
+        (f"APS-E2E-PG-{tag}-2", definition_id, over_budget))
+    connection.execute(
+        "INSERT INTO approval_stage_approver (stage_id, ordinal, approver_kind, "
+        "approver_ref, scope_expr) VALUES (%s,1,'ROLE','Project Finance Controller',NULL)",
+        (f"APS-E2E-PG-{tag}-1",))
+    connection.execute(
+        "INSERT INTO approval_stage_approver (stage_id, ordinal, approver_kind, "
+        "approver_ref, scope_expr) VALUES (%s,1,'USER','U-CFO',NULL)",
+        (f"APS-E2E-PG-{tag}-2",))
+    connection.commit()
+    return definition_id
+
+
+@pytest.mark.pg
+@PG
+def test_a_parallel_group_with_one_inapplicable_stage_routes_rather_than_stalling(
+        pg_connection, seeded_pg):
+    """The mixed parallel wave, end to end against a real database.
+
+    ``tests/test_pg_approvals.py`` pins the arithmetic; this pins the
+    consequence, which is what actually mattered: a workflow whose parallel
+    group contained an ``applies_when`` stage was UNROUTABLE. Every such object
+    was held EXCEPTION_PENDING with an approvable stage that nobody had ever
+    been asked to act on -- and EXCEPTION_PENDING looks like a configuration
+    problem, so the defect presented as somebody else's fault.
+
+    Within budget: stage 2 is SKIPPED at routing, stage 1 must still be opened
+    PENDING and the instance must be OPEN.
+    """
+    _seed_parallel_group_workflow(pg_connection, DEMO_ENTITY)
+
+    routed = _route_revision(seeded_pg, pg_connection, "PGMIX", exceeds=False)
+
+    with seeded_pg.session(_system_scope()) as session:
+        status = session.fetchone(
+            "SELECT status FROM approval_instance WHERE instance_id = %s",
+            (routed["instance_id"],))[0]
+        stages = {row[0]: (row[1], row[2]) for row in session.fetchall(
+            "SELECT stage_no, status, skip_reason FROM approval_stage_instance "
+            "WHERE instance_id = %s", (routed["instance_id"],))}
+        assignments = session.fetchall(
+            "SELECT s.stage_no, a.assignee_user_id, a.state "
+            "FROM approval_assignment a "
+            "JOIN approval_stage_instance s "
+            "  ON s.stage_instance_id = a.stage_instance_id "
+            "WHERE s.instance_id = %s", (routed["instance_id"],))
+
+    assert status == rules.INST_OPEN, (
+        f"the instance routed to {status!r}. A parallel group holding one "
+        f"applying and one non-applying stage is a routable workflow: the "
+        f"applying stage must be opened, not written off as 'every stage was "
+        f"skipped'.")
+    assert stages[2][0] == rules.STAGE_SKIPPED and stages[2][1], (
+        f"the inapplicable member of the group is {stages.get(2)}. It must be "
+        f"recorded SKIPPED with a skip_reason, never omitted (Contract 2).")
+    assert stages[1][0] == rules.STAGE_PENDING, (
+        f"the applying member of the group is {stages.get(1)}, not PENDING. "
+        f"An approvable stage that was never opened is the whole defect.")
+    assert any(row[0] == 1 and row[2] == rules.ASSIGN_PENDING
+               for row in assignments), (
+        f"stage 1 is PENDING but carries no PENDING assignment: {assignments}. "
+        f"A stage nobody is addressed on cannot meet a quorum, so it would "
+        f"stall in a second way.")
+    assert not any(row[0] == 2 for row in assignments), (
+        f"the SKIPPED stage was given an assignment: {assignments}. A skipped "
+        f"control took no assignment and can never be acted on.")
+
+
+@pytest.mark.pg
+@PG
+def test_a_parallel_group_whose_every_stage_is_inapplicable_still_fails_closed(
+        pg_connection, seeded_pg):
+    """The fix must not erode the fail-closed branch.
+
+    With BOTH members of the group conditional and neither applying, there is
+    genuinely nothing to approve. That is EXCEPTION_PENDING -- held for an
+    administrator, with the reason recorded -- and emphatically not APPROVED.
+    A change that made mixed waves open would be worth nothing if it also made
+    empty ones auto-approve.
+    """
+    _seed_parallel_group_workflow(pg_connection, DEMO_ENTITY,
+                                   conditional_only=True)
+
+    routed = _route_revision(seeded_pg, pg_connection, "PGNONE", exceeds=False)
+
+    with seeded_pg.session(_system_scope()) as session:
+        status = session.fetchone(
+            "SELECT status FROM approval_instance WHERE instance_id = %s",
+            (routed["instance_id"],))[0]
+        stages = {row[0]: row[1] for row in session.fetchall(
+            "SELECT stage_no, status FROM approval_stage_instance "
+            "WHERE instance_id = %s", (routed["instance_id"],))}
+
+    assert status == rules.INST_EXCEPTION_PENDING, (
+        f"a definition whose every stage was skipped left the instance "
+        f"{status!r}. 'Nothing applied' must never resolve to an approval, and "
+        f"it must not resolve to OPEN either -- an OPEN instance with no "
+        f"assignment waits on nobody, forever.")
+    assert set(stages.values()) == {rules.STAGE_SKIPPED}, (
+        f"stage states {stages}: every stage should be recorded SKIPPED.")
+
+
 # ==========================================================================
 # The HTTP surface, reported rather than assumed
 # ==========================================================================
@@ -1385,18 +1523,6 @@ def test_step_b_the_exception_stage_opens_only_when_the_request_is_over_budget(
 
 @pytest.mark.pg
 @PG
-@pytest.mark.xfail(strict=False, reason=(
-    "REPORTED DEFECT: api/approvals.py's engine seam does not match the "
-    "engine. post_decide calls _call_engine('approvals', ('decide',), session, "
-    "instance_id=, actor=, action=, reason_code=, reason_text=, "
-    "idempotency_key=, object_version=, correlation_id=) while "
-    "approvals.decide takes actor_user_id= and accepts neither actor= nor "
-    "correlation_id=, so the call raises TypeError -- which has no `code` "
-    "attribute, so _raise_for_engine_error re-raises it as a 500. Twelve "
-    "further routes are affected the same way or worse; see the stream "
-    "report. Not strict: this stream had no live database to observe the "
-    "failure on, and a strict xfail is a claim about a failure somebody has "
-    "actually seen."))
 def test_the_decide_route_moves_the_ledger(demo_scenario):
     """Step (c) through the HTTP surface the approval screens actually call.
 
@@ -1406,8 +1532,18 @@ def test_the_decide_route_moves_the_ledger(demo_scenario):
     revision -- and then reads the LEDGER, because a 200 whose control cell did
     not move is precisely the defect worth catching.
 
-    Written as an assertion of the intended behaviour so that it turns green
-    when the seam is corrected, rather than having to be rewritten.
+    The ``xfail`` this carried is gone rather than relaxed. It documented a
+    REAL defect -- ``post_decide`` called ``approvals.decide`` with ``actor=``
+    and ``correlation_id=`` against a function that takes ``actor_user_id=``
+    and, at the time, no ``correlation_id`` at all, so the call raised
+    ``TypeError`` and the route answered 500. Both halves of that are now
+    fixed: the call passes ``actor_user_id=``, and ``decide`` takes a
+    ``correlation_id`` it writes into ``approval_action.outcome``. The whole
+    class is held closed statically by
+    ``tests/test_approvals_api_seam.py``, which resolves every
+    ``_call_engine`` site against the real engine signature and needs no
+    database to do it -- which is what makes removing this marker safe rather
+    than optimistic.
     """
     s = demo_scenario
 

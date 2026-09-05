@@ -190,3 +190,78 @@ assertions about the literal contents of `_CONTRACT4_PERMISSIONS` have no
 subject left to assert against.
 
 **Approved by:** engagement lead, Wave 4 integration pass.
+
+## 2026-09-05 — `test_the_decide_route_moves_the_ledger`
+
+**Change:** the `@pytest.mark.xfail(strict=False, ...)` marker is REMOVED. Not
+relaxed, not re-scoped — removed, so the test now has to pass. Every assertion
+in the test body is unchanged.
+
+**Reason:** the marker recorded a REAL defect, and the defect is fixed.
+`post_decide` called `_call_engine("approvals", ("decide",), session, ...,
+actor=..., correlation_id=...)` against `approvals.decide`, which takes
+`actor_user_id=` and, at the time, no `correlation_id` at all. A mismatched
+keyword raises `TypeError`, which carries no `.code`, so
+`_raise_for_engine_error` re-raised it and the route answered 500. Both halves
+are now correct: the call passes `actor_user_id=`, and `decide` accepts a
+`correlation_id` it writes into `approval_action.outcome`.
+
+Twelve further `_call_engine` sites were wrong the same way or worse — eight
+named engine functions that did not exist, which do not even fail loudly:
+`_call_engine` falls through to a clean `503 APPROVAL_ENGINE_UNAVAILABLE`,
+indistinguishable from an unconfigured deployment. All are corrected.
+
+**Why removing the marker is safe rather than optimistic.** A `strict=False`
+xfail that starts passing is invisible — it reports `xpass` and CI stays green
+either way, so leaving it would have preserved nothing. The class of defect is
+now held closed by a NEW static test, `tests/test_approvals_api_seam.py`,
+which resolves every `_call_engine` site in `api/approvals.py` against the real
+engine signature and asserts both that the function exists and that the
+keywords are ones it accepts. It needs no database, so unlike this test it runs
+in every environment — which matters, because this one skips without a live
+PostgreSQL and a skip is exactly what hid the defect for as long as it hid.
+
+**Approved by:** engagement lead, Wave 4 stream A1 integration pass.
+
+## 2026-09-05 — `test_a_self_approval_by_the_maker_is_a_403_and_says_so`, `test_a_delegation_cannot_launder_a_self_approval`
+
+**Category:** Target adaptation. **The assertion is unchanged and, in both
+tests, is now stronger.**
+
+**Change:** `assert harness.last["kwargs"]["actor"] == acting_client.user_id`
+becomes `assert harness.last["kwargs"]["actor_user_id"] ==
+acting_client.user_id`, plus a new `assert "actor" not in
+harness.last["kwargs"]`.
+
+**Reason:** the engine's requesting-user parameter was named `actor` in some
+functions and `actor_user_id` in others — `decide`, `recall`, `cancel`,
+`resubmit` and `_append_action` used `actor_user_id`, while the read and
+configuration halves used `actor`. Two spellings of one identity is how the
+two come to disagree, so Wave 4 stream A1 settled on ONE: **`actor_user_id`**,
+because it was already the write path's name, it is the column name in
+`approval_action`, and it is the identity Contract 5's maker-checker compares.
+These two tests assert *which identity the router hands the engine*, which is
+unaffected by what the parameter is called; only the key they read it under
+moved.
+
+**Why the extra assertion.** No alias was added — that was the explicit
+decision, not an accident of the rename — and `"actor" not in kwargs` is what
+makes that a checked property rather than a claim in a commit message.
+
+**Approved by:** engagement lead, Wave 4 stream A1 integration pass.
+
+## 2026-09-05 — additions, Wave 4 stream A1
+
+Additive; no adaptation entry is required for these, recorded here so the
+inventory reads coherently. `tests/TEST_MANIFEST.json` was regenerated, and
+`test_approvals_api_seam.py` was registered in
+`tools/build_test_manifest.py`'s `POST_BASELINE_FILES` set — Wave 4 files are
+post-baseline by the same rule as every other one, and leaving it out would
+have inflated the 220-function baseline the removal guard is measured against.
+
+| Added in | Tests | Purpose |
+|---|---|---|
+| Wave 4 A1 | `tests/test_approvals_api_seam.py` | Static resolution of every `api/approvals.py` → engine call site. Catches the failure mode a 503-tolerant adapter makes silent |
+| Wave 4 A1 | `tests/test_pg_approvals.py::TestAMixedParallelWaveOpensRatherThanStalling` | `next_wave` opens a parallel wave holding one SKIPPED and one unopened member, and still refuses an all-SKIPPED one |
+| Wave 4 A1 | `tests/test_pg_approvals.py::TestTheWriteBackFiresOnceWhenAnInstanceCloses` | The stream A2 seam: `approval_writeback.apply_outcome` fires exactly once per closure, with the closed instance, in the same transaction |
+| Wave 4 A1 | `tests/test_approval_e2e.py` (2 tests) | The same parallel-group behaviour end to end: routes OPEN with the applying stage PENDING; an all-inapplicable group still fails closed to EXCEPTION_PENDING |
