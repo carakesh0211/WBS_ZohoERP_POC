@@ -458,3 +458,95 @@ widens the constraint" — did exactly that, which is how this change was caught
 rather than silently diverging.
 
 **Approved by:** engagement lead, Wave 4 integration pass.
+
+## 2026-09-05 — `test_a_decision_takes_the_cell_locks_first_and_in_path_order`
+
+**Change:** the assertion `taken == sorted(set(taken), key=taken.index)` —
+"no cell is locked twice; lock_affected_cells is called exactly once" — is
+replaced by two assertions: that cells are FIRST acquired in
+`(wbs_path, budget_head_id)` order, and that no cell is acquired after a
+different cell was already held (re-acquiring a held cell is permitted).
+
+**Reason.** §7.4 proves deadlock freedom from "every mutating function calls
+`lock_affected_cells` exactly once, first, with the complete set". A decision
+now closes the instance, which fires the document write-back, which re-enters
+`budget.approve_revision`, which locks the cells it reads off the document.
+Those are cells the transaction already holds from `decide`'s own budget
+revalidation, so the re-acquisition adds **no edge** to the wait-for graph and
+cannot deadlock — `approval_writeback._assert_cells_declared` refuses the
+snapshot whose declared set does not cover them, which is what makes that true.
+
+**The replaced assertion was wrong in BOTH directions, and the second matters
+more.**
+
+* *Too strict:* it failed the provably safe re-entry above.
+* *Too weak:* a transaction that locked `c5` and then later locked `c1` has no
+  duplicates and passed. But `c1` sorts **before** `c5`, so it was acquired out
+  of the global total order, and two such transactions form precisely the cycle
+  the order exists to forbid. **The guard on the deadlock-freedom proof would
+  not have caught a deadlock.**
+
+**Not a weakening.** The replacement asserts the property the proof actually
+needs rather than a proxy for it, and catches the hazard the proxy missed. It
+is also no longer the only thing holding the property:
+`locking.lock_affected_cells` now raises `LockOrderViolation` when a second
+call introduces a cell the transaction does not already hold, so the guarantee
+is structural and the next caller to re-lock inherits it rather than the
+obligation to remember it.
+
+**Found by:** the live PostgreSQL CI job, on the first run where A2's
+write-back and A1's engine were in one tree. The only earlier run containing
+both was drowned in unrelated `NameError`s, so this had never actually been
+observed.
+
+**Approved by:** engagement lead, Wave 4 integration pass.
+
+## 2026-09-05 — `test_a_submitted_revision_opens_an_instance_and_stays_draft`
+
+**Change:** renamed to `..._and_says_it_is_submitted`; asserts `SUBMITTED`
+where it asserted `DRAFT`. The live twin of the unit-level inversion recorded
+above for migration 009.
+
+**Reason.** The claim it carried — "a revision under approval must create no
+spending capacity" — is true, but `DRAFT` was never what made it true. The
+budget line is written by `approve_revision`; no status on the document creates
+capacity by itself. What `DRAFT` actually did was leave the row's own status
+asserting something false about a routed document.
+
+**Not a weakening.** The no-capacity claim is now checked **directly** —
+`budget_revision.budget_line_id IS NULL` — instead of being inferred from a
+status that never implied it. Two assertions are added: the document reads
+`SUBMITTED`, and `decided_at`/`decided_by` are both NULL, because
+`ck_budget_revision_decision` puts SUBMITTED on the undecided side and a
+submission is not a decision.
+
+**Approved by:** engagement lead, Wave 4 integration pass.
+
+## 2026-09-05 — `test_lock_affected_cells_appends_without_clearing_prior_locks`
+
+**Change:** the second `lock_affected_cells` call in this test now re-acquires
+a cell the session already holds, instead of introducing a new one. The
+assertion — that `locks_taken` **extends** rather than replaces — is unchanged
+and is now checked on a three-entry list.
+
+**Reason:** `lock_affected_cells` now raises `LockOrderViolation` when a second
+call in one transaction introduces a cell that transaction does not already
+hold, so the old scenario is refused by the code under test. The test's own
+docstring already conceded the scenario "should not happen per the 'exactly
+once' rule" — it was demonstrating a data-structure property using a sequence
+that can deadlock, which reads as an endorsement of that sequence.
+
+**Not a weakening.** The property under test is identical. A companion test,
+`test_a_second_call_may_not_introduce_a_cell_the_transaction_does_not_hold`,
+is **added** and asserts the refusal the old test's scenario would now trigger
+— so the illegal sequence is covered rather than merely absent, and the
+refusal message is required to say what to do instead.
+
+**Checked before changing:** every `lock_affected_cells` caller was reviewed
+for a legitimate second call. `periods._roll_cells_for_entity` locks once with
+the complete set for one entity per invocation; `budget`'s three callers lock
+once each. The only double-call path is `decide` -> write-back ->
+`approve_revision`, which is the subset re-entry the guard permits. No caller
+is broken by the refusal.
+
+**Approved by:** engagement lead, Wave 4 integration pass.

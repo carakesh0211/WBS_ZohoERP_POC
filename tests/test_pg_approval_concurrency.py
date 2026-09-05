@@ -597,8 +597,51 @@ def test_a_decision_takes_the_cell_locks_first_and_in_path_order(
 
     assert taken, "the decision must lock the affected cells, not zero of them"
     assert taken[0] == (ids["wbs"], ids["head"])
-    assert taken == sorted(set(taken), key=taken.index), (
-        "no cell is locked twice; lock_affected_cells is called exactly once")
+
+    # The invariant is "no cell is acquired that was not already held", NOT
+    # "no cell appears twice".
+    #
+    # This asserted the latter, and the latter is wrong in both directions.
+    #
+    # TOO STRICT: a decision now closes the instance, which fires the document
+    # write-back, which re-enters `budget.approve_revision`, which locks the
+    # cells it reads off the document. Those are cells this transaction already
+    # holds from `decide`'s own budget revalidation, so the re-acquisition adds
+    # NO edge to the wait-for graph and cannot deadlock. "No duplicates" failed
+    # a provably safe sequence.
+    #
+    # TOO WEAK, and this is the more serious half: a transaction that locked
+    # cell c5 and then later locked c1 has no duplicates and passed happily --
+    # yet c1 sorts BEFORE c5, so it was acquired out of the global order, and
+    # two such transactions form exactly the cycle the (wbs_path,
+    # budget_head_id) total order exists to forbid. The assertion this replaces
+    # would not have noticed the real deadlock.
+    #
+    # `locking.lock_affected_cells` now refuses a second call that introduces
+    # an unheld cell, so this is checking a property the code enforces rather
+    # than one a reader has to maintain.
+    first_seen: list[tuple[str, str]] = []
+    for cell in taken:
+        if cell not in first_seen:
+            first_seen.append(cell)
+
+    assert first_seen == sorted(first_seen), (
+        f"cells were first acquired out of (wbs_path, budget_head_id) order: "
+        f"{first_seen}. §7.4's deadlock-freedom proof rests on every "
+        f"transaction acquiring in one common total order; acquiring a lower "
+        f"cell after a higher one is the cycle it forbids.")
+
+    held: set[tuple[str, str]] = set()
+    for index, cell in enumerate(taken):
+        if cell in held:
+            continue
+        assert index == len(held), (
+            f"{cell} was acquired at position {index} after "
+            f"{sorted(held)} were already held, so it is a NEW lock taken "
+            f"after the document and instance locks -- a new wait-for edge, "
+            f"which is the one thing the proof forbids. Re-acquiring a held "
+            f"cell is fine; extending the set later is not.")
+        held.add(cell)
 
 
 def test_every_action_is_hash_chained_on_the_approval_stream(

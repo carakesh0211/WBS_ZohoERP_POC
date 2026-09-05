@@ -115,6 +115,40 @@ def apply_outcome(session, instance: Mapping[str, Any]) -> None: ...
 
 # Decisions waiting on the product owner / lead
 
+## 0. TWENTY-THREE approved-UI baselines still show the pre-approval avatar
+
+**This one is not really a judgement call — it is an approved change that was
+left half-applied, and the gate could not see it.**
+
+Your avatar WCAG fix landed in `1382250`: `--primary-500` -> `--primary-600`,
+raising white-on-teal from 4.02:1 to 5.69:1. Forty-six of sixty-nine baselines
+were re-captured. **The other twenty-three — every tablet-800 baseline — still
+show the OLD, WCAG-failing tone.**
+
+They were not re-captured because the suite could not tell they had changed.
+`playwright.config.js` set `maxDiffPixelRatio: 0`, which reads as "no pixel may
+differ", but Playwright applies its per-pixel `threshold` FIRST and that
+defaults to `0.2`. The avatar change alters 555 pixels at a YIQ distance of
+264.89/1408.60 = **0.188**, just under. So every tablet-800 baseline passed
+through a real colour change.
+
+That commit's own message said so, recommended `threshold: 0`, and filed it
+under "reported, not fixed (files this stream does not own)". Nobody owned it.
+
+`threshold` is now pinned at **0.05** — measured against both failure modes,
+not guessed: it refuses the 0.188 shift with wide margin while tolerating the
+~0.004 (1/255) re-render antialiasing recorded in `BASELINE-DELTA.txt`. Exactly
+`0` would fail on antialiasing and train everyone to ignore the job.
+
+The 23 now fail, correctly. The diff image is one bright region on an otherwise
+identical page: the avatar circle. Re-recording them makes the baselines match
+the state you approved; leaving them pins the contrast defect you approved
+fixing.
+
+Same command as decision 1 below, and it covers both:
+`npx playwright test tests/vrt/ --update-snapshots`, or per-spec to take them
+separately.
+
 ## 1. Seventeen `approvals.spec.js` baselines are red, and I did not re-record them
 
 **State:** CI's visual-regression job is `664 passed, 17 failed`. Every one of the

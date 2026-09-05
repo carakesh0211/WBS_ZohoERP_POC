@@ -2262,8 +2262,8 @@
         "body_sha": "7b160e10f0a03e4e"
       },
       "test_a_decision_takes_the_cell_locks_first_and_in_path_order": {
-        "assertions": 3,
-        "body_sha": "adce3fb0c1d7a085"
+        "assertions": 4,
+        "body_sha": "31e1dac3f872d9e4"
       },
       "test_every_action_is_hash_chained_on_the_approval_stream": {
         "assertions": 4,
@@ -2553,9 +2553,9 @@
       }
     },
     "test_pg_approval_writeback_e2e.py": {
-      "test_a_submitted_revision_opens_an_instance_and_stays_draft": {
-        "assertions": 5,
-        "body_sha": "b0ecaf7c93b6699f"
+      "test_a_submitted_revision_opens_an_instance_and_says_it_is_submitted": {
+        "assertions": 7,
+        "body_sha": "e6fff0b69b5ed5bc"
       },
       "test_an_approved_instance_writes_the_budget_line_and_moves_the_cell": {
         "assertions": 8,
@@ -3525,7 +3525,11 @@
       },
       "test_lock_affected_cells_appends_without_clearing_prior_locks": {
         "assertions": 1,
-        "body_sha": "d82ad570bcebf189"
+        "body_sha": "a7bb9872893567b1"
+      },
+      "test_a_second_call_may_not_introduce_a_cell_the_transaction_does_not_hold": {
+        "assertions": 3,
+        "body_sha": "2009aa101d8f941e"
       },
       "test_lock_affected_cells_query_is_a_single_ordered_for_update": {
         "assertions": 5,
@@ -4985,7 +4989,7 @@
     "test_pg_budget.py": 22,
     "test_pg_constraints.py": 8,
     "test_pg_fixture_guard.py": 3,
-    "test_pg_locking.py": 17,
+    "test_pg_locking.py": 18,
     "test_pg_locking_order.py": 19,
     "test_pg_masters.py": 32,
     "test_pg_migrations_runner.py": 11,
@@ -5032,16 +5036,16 @@
     "test_no_undefined_names.py": 7,
     "test_observability.py": 77,
     "test_pg_adoption.py": 39,
-    "test_pg_approval_concurrency.py": 53,
+    "test_pg_approval_concurrency.py": 54,
     "test_pg_approval_schema.py": 96,
-    "test_pg_approval_writeback_e2e.py": 52,
+    "test_pg_approval_writeback_e2e.py": 54,
     "test_pg_approvals.py": 238,
     "test_pg_audit.py": 62,
     "test_pg_audit_api_e2e.py": 24,
     "test_pg_budget.py": 57,
     "test_pg_constraints.py": 13,
     "test_pg_fixture_guard.py": 3,
-    "test_pg_locking.py": 36,
+    "test_pg_locking.py": 39,
     "test_pg_locking_order.py": 28,
     "test_pg_masters.py": 82,
     "test_pg_migrations_runner.py": 32,

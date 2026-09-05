@@ -22,6 +22,28 @@ module.exports = defineConfig({
   expect: {
     toHaveScreenshot: {
       maxDiffPixelRatio: 0,
+      // `maxDiffPixelRatio: 0` reads as "no pixel may differ". It is not, on
+      // its own, what it appears to be: Playwright applies the per-pixel
+      // `threshold` FIRST, and only pixels exceeding it are counted at all.
+      // That threshold defaults to 0.2 of the YIQ colour distance, and the
+      // gate ran on the default.
+      //
+      // The Wave 4 avatar correction proved the hole rather than theorising
+      // it. Moving `--primary-500` -> `--primary-600` changes 555 pixels, and
+      // a pixel-exact comparison sees every one -- but its YIQ distance is
+      // 264.89 against a maxDelta of 1408.60, i.e. 0.188, just under the
+      // default. Every tablet-800 baseline passed unchanged through a real
+      // colour change. Any drift up to that magnitude passed the whole suite
+      // silently, in the one gate whose entire job is that the client-approved
+      // UI cannot drift.
+      //
+      // 0.05 is chosen with both failure modes measured, not guessed: it
+      // refuses that 0.188 shift with a wide margin, while tolerating the
+      // 1/255 per-channel re-render antialiasing recorded in
+      // docs/ui-change-2026-09/BASELINE-DELTA.txt (~0.004), which is real and
+      // is not drift. Exactly 0 would fail on antialiasing and teach everyone
+      // to ignore the job.
+      threshold: 0.05,
       animations: 'disabled',
       caret: 'hide',
     },

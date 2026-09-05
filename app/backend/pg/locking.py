@@ -148,6 +148,16 @@ _LOCK_SQL = """
 """
 
 
+class LockOrderViolation(RuntimeError):
+    """A second cell-lock acquisition introduced a cell the transaction did not
+    already hold.
+
+    Raised rather than allowed, because the alternative is an intermittent
+    deadlock under concurrency that reproduces on nobody's machine. See
+    :func:`lock_affected_cells` for why re-entry is safe and extension is not.
+    """
+
+
 def lock_affected_cells(session: Session,
                          affected: list[tuple[str, str]]) -> list[tuple[str, str]]:
     """Lock every existing ancestor-or-self cell on every affected chain.
@@ -185,6 +195,40 @@ def lock_affected_cells(session: Session,
 
     rows = session.fetchall(_LOCK_SQL, {"wbs_ids": wbs_ids, "heads": heads})
     locked = [(row[0], row[1]) for row in rows]
+
+    # A SECOND call in one transaction may only re-acquire what is already held.
+    #
+    # §7.4's proof assumes one call, first, with the complete set. The approval
+    # write-back does not satisfy the letter of that: `decide` locks the
+    # snapshot's declared cells while revalidating the budget, then closes the
+    # instance, and the write-back re-enters `budget.approve_revision`, which
+    # locks the cells it reads off the document.
+    #
+    # A re-entry into locks this transaction already holds adds NO edge to the
+    # wait-for graph, so the proof survives it. A second call that introduces a
+    # NEW cell does not: it is acquired after the instance and document locks,
+    # and if it sorts BEFORE a cell already held, two such transactions form
+    # exactly the cycle the total order exists to forbid.
+    #
+    # `approval_writeback._assert_cells_declared` already refuses the unsafe
+    # shape, but it guards one caller. This makes the property structural, so
+    # the next caller to re-lock inherits the guarantee rather than the
+    # obligation to remember it.
+    already_held = set(session.locks_taken)
+    if already_held:
+        introduced = sorted(set(locked) - already_held)
+        if introduced:
+            raise LockOrderViolation(
+                f"lock_affected_cells was called again in a transaction that "
+                f"already holds cell locks, and this call introduces "
+                f"{introduced}, which it does not hold. Re-entering held locks "
+                f"is safe and adds no wait-for edge; acquiring a NEW cell after "
+                f"the document and instance locks does not, because a cell "
+                f"ordered before one already held closes the cycle the "
+                f"(wbs_path, budget_head_id) total order exists to prevent. "
+                f"Declare the complete affected set on the FIRST call."
+            )
+
     session.locks_taken.extend(locked)
     return locked
 

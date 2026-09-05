@@ -1324,15 +1324,23 @@ def submit_revision(session: Session, *, revision_id: str, actor: str,
     if row is None:
         _err("REVISION_NOT_FOUND", f"Revision {revision_id} does not exist.", status=404)
     status, created_by, version_no = row
-    if status != "DRAFT":
-        _err("REVISION_NOT_DRAFT",
-             f"Revision {revision_id} is {status}, not DRAFT; only a draft can "
-             f"be submitted for approval.", status=409)
+    # The live-instance check comes FIRST, and the order is the message.
+    #
+    # Since migration 009 a routed document is SUBMITTED, not DRAFT, so a
+    # second submission now fails the status check too -- and would be
+    # refused as "REVISION_NOT_DRAFT", which is true but useless: it names the
+    # state without naming the cause. "ALREADY_SUBMITTED" names the instance the
+    # caller is actually waiting on. A refusal should say the most
+    # specific true thing, not the first true thing.
     live = live_approval_instance(session, OBJECT_TYPE_REVISION, revision_id)
     if live is not None:
         _err("ALREADY_SUBMITTED",
              f"Revision {revision_id} is already under approval instance "
              f"{live['instance_id']} ({live['status']}).", status=409)
+    if status != "DRAFT":
+        _err("REVISION_NOT_DRAFT",
+             f"Revision {revision_id} is {status}, not DRAFT; only a draft can "
+             f"be submitted for approval.", status=409)
 
     snapshot = revision_snapshot(session, revision_id=revision_id)
 
@@ -1375,15 +1383,23 @@ def submit_transfer(session: Session, *, transfer_id: str, actor: str,
     if row is None:
         _err("TRANSFER_NOT_FOUND", f"Transfer {transfer_id} does not exist.", status=404)
     status, created_by, version_no = row
-    if status != "DRAFT":
-        _err("TRANSFER_NOT_DRAFT",
-             f"Transfer {transfer_id} is {status}, not DRAFT; only a draft can "
-             f"be submitted for approval.", status=409)
+    # The live-instance check comes FIRST, and the order is the message.
+    #
+    # Since migration 009 a routed document is SUBMITTED, not DRAFT, so a
+    # second submission now fails the status check too -- and would be
+    # refused as "TRANSFER_NOT_DRAFT", which is true but useless: it names the
+    # state without naming the cause. "ALREADY_SUBMITTED" names the instance the
+    # caller is actually waiting on. A refusal should say the most
+    # specific true thing, not the first true thing.
     live = live_approval_instance(session, OBJECT_TYPE_TRANSFER, transfer_id)
     if live is not None:
         _err("ALREADY_SUBMITTED",
              f"Transfer {transfer_id} is already under approval instance "
              f"{live['instance_id']} ({live['status']}).", status=409)
+    if status != "DRAFT":
+        _err("TRANSFER_NOT_DRAFT",
+             f"Transfer {transfer_id} is {status}, not DRAFT; only a draft can "
+             f"be submitted for approval.", status=409)
 
     snapshot = transfer_snapshot(session, transfer_id=transfer_id)
     audit_mod.append(session, actor, "TRANSFER_SUBMIT", OBJECT_TYPE_TRANSFER,

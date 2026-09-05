@@ -114,7 +114,22 @@ __all__ = ["apply_outcome", "INSTANCE_TO_BUSINESS_STATUS", "CLOSED_STATUSES"]
 BIZ_DRAFT = "DRAFT"
 BIZ_APPROVED = "APPROVED"
 BIZ_REJECTED = "REJECTED"
+BIZ_SUBMITTED = "SUBMITTED"
 BIZ_RETURNED = "RETURNED"
+
+#: The document states from which a closing instance may legitimately write.
+#:
+#: This guard read `status != DRAFT`, which encoded the assumption that a
+#: document under approval stays DRAFT. Migration 009 ended that: `submit_*`
+#: now writes SUBMITTED, so every single approval write-back began refusing
+#: itself as "two different decisions recorded against one document version".
+#:
+#: These are exactly `ck_*_decision`'s undecided set, and deliberately the same
+#: two values -- a document that has not been decided is the only kind a
+#: decision may land on. APPROVED, REJECTED and RETURNED are real conflicts and
+#: are still refused, because a second decision arriving on an already-decided
+#: document is the case this guard exists for.
+_UNDECIDED_STATUSES = frozenset({BIZ_DRAFT, BIZ_SUBMITTED})
 
 #: Approval-instance status -> the C3 business status to put on the document,
 #: or ``None`` for "this closure changes no business status".
@@ -385,7 +400,7 @@ def _apply_budget_revision(session: Session, instance: Mapping[str, Any],
 
     if status == target and target != BIZ_DRAFT:
         return                              # already applied; idempotent
-    if status != BIZ_DRAFT:
+    if status not in _UNDECIDED_STATUSES:
         raise WritebackError(
             ERR_CONFLICT,
             f"Budget revision {revision_id} is already {status}, and approval "
@@ -465,7 +480,7 @@ def _apply_budget_transfer(session: Session, instance: Mapping[str, Any],
 
     if status == target and target != BIZ_DRAFT:
         return                              # already applied; idempotent
-    if status != BIZ_DRAFT:
+    if status not in _UNDECIDED_STATUSES:
         raise WritebackError(
             ERR_CONFLICT,
             f"Budget transfer {transfer_id} is already {status}, and approval "

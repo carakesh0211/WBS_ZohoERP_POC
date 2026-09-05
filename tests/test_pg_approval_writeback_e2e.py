@@ -218,10 +218,25 @@ def _one_stage_definition(pg_connection, suffix, ids,
 # ==========================================================================
 # The happy path, end to end
 # ==========================================================================
-def test_a_submitted_revision_opens_an_instance_and_stays_draft(
+def test_a_submitted_revision_opens_an_instance_and_says_it_is_submitted(
         pg_connection, pg_database, approval_schema):
     """Task 1. The whole engine was unreachable from the application before
-    this: `open_instance` was called from tests and nowhere else."""
+    this: `open_instance` was called from tests and nowhere else.
+
+    This asserted the document STAYS DRAFT, because migration 003's CHECK
+    constraint had no SUBMITTED value to move it to. The claim it carried --
+    "a revision under approval must create no spending capacity" -- is true and
+    is still asserted below, but DRAFT was never the thing that made it true:
+    the budget line is written by `approve_revision`, and no status on the
+    document creates capacity by itself. What DRAFT actually did was leave the
+    row's own status asserting something false about it, with
+    `_assert_not_under_approval` as the only guard against a second approval
+    down the direct route.
+
+    `009_document_approval_states.sql` widened the domain, so the row now says
+    SUBMITTED and the guard is no longer alone. The no-capacity claim is
+    checked directly rather than inferred from a status.
+    """
     suffix = uuid.uuid4().hex[:10]
     ids = _seed_estate(pg_connection, suffix)
     _seed_users(pg_connection, {"U-MAKER": ["Requestor"], "U-A": ["Finance"]})
@@ -232,7 +247,7 @@ def test_a_submitted_revision_opens_an_instance_and_stays_draft(
 
     assert result["submitted"] is True
     assert result["refusal"] is None
-    assert result["status"] == "DRAFT"
+    assert result["status"] == "SUBMITTED"
 
     instance_status = pg_connection.execute(
         "SELECT status FROM approval_instance WHERE instance_id = %s",
@@ -241,8 +256,28 @@ def test_a_submitted_revision_opens_an_instance_and_stays_draft(
     document_status = pg_connection.execute(
         "SELECT status FROM budget_revision WHERE revision_id = %s",
         (revision_id,)).fetchone()[0]
-    assert document_status == "DRAFT", (
-        "a revision under approval must create no spending capacity")
+    assert document_status == "SUBMITTED", (
+        "a routed revision must say so; leaving it DRAFT makes the row's own "
+        "status false and leaves one Python guard holding a property the "
+        "schema can state")
+
+    # The claim the old assertion stood in for, checked directly: routing
+    # creates no spending capacity, and the database refuses to record any.
+    line = pg_connection.execute(
+        "SELECT budget_line_id FROM budget_revision WHERE revision_id = %s",
+        (revision_id,)).fetchone()[0]
+    assert line is None, (
+        "a revision under approval carries a budget_line; routing a document "
+        "must create no spending capacity")
+
+    # And no decision has been fabricated to satisfy the status change:
+    # ck_budget_revision_decision puts SUBMITTED on the UNDECIDED side.
+    decided = pg_connection.execute(
+        "SELECT decided_at, decided_by FROM budget_revision "
+        "WHERE revision_id = %s", (revision_id,)).fetchone()
+    assert decided == (None, None), (
+        f"submission recorded a decision {decided}; a submission is not a "
+        f"decision, and 009's CHECK constraint says so")
 
 
 def test_an_approved_instance_writes_the_budget_line_and_moves_the_cell(
