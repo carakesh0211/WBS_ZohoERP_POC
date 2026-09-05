@@ -843,24 +843,38 @@ class TestTheWriteBackFiresOnceWhenAnInstanceCloses:
             return []
 
     def _install_stub(self, monkeypatch, apply_outcome):
-        """Put a stub ``app.backend.pg.approval_writeback`` on the import path.
+        """Put a stub ``app.backend.pg.approval_writeback`` in the engine's way.
 
-        ``_apply_writeback`` does ``from . import approval_writeback``, which
-        consults ``sys.modules`` first, so a module object registered under the
-        full dotted name is what the engine will find.
+        BOTH bindings are replaced, and both are necessary.
+        ``_apply_writeback`` does ``from . import approval_writeback``. That
+        consults ``sys.modules``, but once anything has imported the real
+        submodule the import system finds it as an ATTRIBUTE of the
+        ``app.backend.pg`` package and returns that instead -- so patching
+        ``sys.modules`` alone leaves the real module in place.
+
+        This was written when stream A2's module did not yet exist, where
+        ``sys.modules`` alone worked. It stopped working the moment the real
+        module landed, and it stopped working SILENTLY: these tests passed on
+        their own and failed only in a full run, because whether the stub bit
+        depended on whether some earlier test had imported the real thing.
+        A double that intercepts sometimes is worse than one that never does.
         """
         import sys
         import types
+
+        from app.backend import pg as pg_package
 
         stub = types.ModuleType("app.backend.pg.approval_writeback")
         stub.apply_outcome = apply_outcome
         monkeypatch.setitem(sys.modules,
                             "app.backend.pg.approval_writeback", stub)
+        monkeypatch.setattr(pg_package, "approval_writeback", stub,
+                            raising=False)
         return stub
 
     def test_closing_an_instance_calls_apply_outcome_exactly_once(self, monkeypatch):
         calls = []
-        self._install_stub(monkeypatch, lambda session, instance: calls.append(instance))
+        self._install_stub(monkeypatch, lambda session, instance, **kw: calls.append(instance))
 
         session = self.FakeSession(status=rules.INST_APPROVED)
         engine._set_instance_status(session, "AINS-1", rules.INST_APPROVED,
@@ -873,7 +887,7 @@ class TestTheWriteBackFiresOnceWhenAnInstanceCloses:
 
     def test_it_is_handed_the_instance_as_it_now_stands_closed(self, monkeypatch):
         seen = []
-        self._install_stub(monkeypatch, lambda session, instance: seen.append(instance))
+        self._install_stub(monkeypatch, lambda session, instance, **kw: seen.append(instance))
 
         session = self.FakeSession(status=rules.INST_REJECTED)
         engine._set_instance_status(session, "AINS-1", rules.INST_REJECTED,
@@ -892,7 +906,7 @@ class TestTheWriteBackFiresOnceWhenAnInstanceCloses:
 
     def test_a_status_change_that_does_not_close_calls_nothing(self, monkeypatch):
         calls = []
-        self._install_stub(monkeypatch, lambda session, instance: calls.append(instance))
+        self._install_stub(monkeypatch, lambda session, instance, **kw: calls.append(instance))
 
         session = self.FakeSession()
         engine._set_instance_status(session, "AINS-1", rules.INST_OPEN,
@@ -905,10 +919,35 @@ class TestTheWriteBackFiresOnceWhenAnInstanceCloses:
 
     def test_a_deployment_without_the_module_still_closes_the_instance(self, monkeypatch):
         """The import is guarded because stream A2's module is an ADDITION."""
+        import builtins
         import sys
 
+        from app.backend import pg as pg_package
+
+        # Both bindings again, and the attribute one matters most: with the
+        # real module present, deleting the sys.modules entry alone just lets
+        # `from . import approval_writeback` find the package attribute.
         monkeypatch.setitem(sys.modules, "app.backend.pg.approval_writeback",
                             None)   # `import` of a None entry raises ImportError
+        monkeypatch.delattr(pg_package, "approval_writeback", raising=False)
+
+        # And the module file is on disk here, so a fresh import would succeed
+        # on the filesystem even with both bindings cleared. Refusing it at
+        # `__import__` is what actually reproduces a deployment that has not
+        # shipped stream A2.
+        real_import = builtins.__import__
+
+        def refuse(name, globals=None, locals=None, fromlist=(), level=0):
+            # `from . import approval_writeback` compiles to
+            # __import__('', globals, locals, ('approval_writeback',), 1) --
+            # the name is EMPTY and the target is in fromlist, which is why
+            # matching on `name` alone would never fire.
+            if name.endswith("approval_writeback") or                     "approval_writeback" in (fromlist or ()):
+                raise ImportError("simulated: stream A2's module is not deployed")
+            return real_import(name, globals, locals, fromlist, level)
+
+        monkeypatch.setattr(builtins, "__import__", refuse)
+
         session = self.FakeSession(status=rules.INST_CANCELLED)
         engine._set_instance_status(session, "AINS-1", rules.INST_CANCELLED,
                                     closed=True)
@@ -922,7 +961,7 @@ class TestTheWriteBackFiresOnceWhenAnInstanceCloses:
         caller's transaction, so letting the exception propagate is what rolls
         the approval back with it.
         """
-        def boom(session, instance):
+        def boom(session, instance, **kw):
             raise RuntimeError("document layer refused the transition")
 
         self._install_stub(monkeypatch, boom)

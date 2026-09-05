@@ -23,14 +23,29 @@ transfers. Domain-controls.md is explicit that "a revision creates no
 spending capacity until approved", which needs an approval step somewhere.
 This router therefore ADDS, beyond the frozen text::
 
+    POST /api/budget/revisions/{revision_id}/submit
     POST /api/budget/revisions/{revision_id}/approve
     POST /api/budget/revisions/{revision_id}/reject   {"reason"}
+    POST /api/budget/transfers/{transfer_id}/submit
     POST /api/budget/transfers/{transfer_id}/approve
     POST /api/budget/transfers/{transfer_id}/reject   {"reason"}
 
 Additive only -- nothing here conflicts with a frontend built against the
 documented shape; see ``app/backend/pg/budget.py``'s module docstring for the
 same note.
+
+The two ``/submit`` routes are Wave 4's: they raise a DRAFT into the
+configurable approval workflow (``pg/approvals.open_instance``), which before
+them nothing in the application ever called. ``/approve`` and ``/reject``
+remain, for objects no workflow routes; ``pg/budget._assert_not_under_approval``
+stops them being used to step around a live instance.
+
+A submission that cannot be ROUTED answers 409 and still commits. That looks
+wrong at a glance and is the whole point: the engine records the unroutable
+object as an EXCEPTION_PENDING instance and returns rather than raising,
+because ``Database.session`` rolls back on an exception and an exception
+thrown to report the problem deleted the record of it. See
+``_raise_if_refused``.
 
 ``router = APIRouter()`` is exported and mounted by ``app/backend/main.py``,
 which this module does not touch. Its routes carry their full
@@ -328,6 +343,60 @@ def post_revision(
     return result
 
 
+def _raise_if_refused(result: dict[str, Any]) -> dict[str, Any]:
+    """Turn a submission ``refusal`` into an HTTP error -- AFTER the commit.
+
+    This must be called OUTSIDE the ``with database.session(...)`` block, and
+    the reason is the whole point of the shape.
+    ``approvals.open_instance`` does not raise on an unroutable object: it
+    writes an EXCEPTION_PENDING instance plus an audit action naming why, and
+    returns. That was a deliberate change from raising, because
+    ``Database.session`` rolls back on any exception, so an exception thrown to
+    report the exception destroyed the evidence of it.
+
+    A refusal is therefore reported by VALUE through the service layer, the
+    transaction commits with the instance row in it, and only then does this
+    turn it into a 409. Raising a beat earlier would put the rollback back.
+    """
+    refusal = result.get("refusal")
+    if not refusal:
+        return result
+    raise _problem(refusal.get("status", 409), refusal["code"],
+                   str(refusal["code"]).replace("_", " ").title(),
+                   refusal.get("message"))
+
+
+@router.post("/api/budget/revisions/{revision_id}/submit",
+             dependencies=[Depends(_requires("revision.create"))])
+def post_revision_submit(
+    revision_id: str, response: Response, request: Request,
+    database: Database = Depends(_get_database),
+) -> dict[str, Any]:
+    """Raise a DRAFT revision into the configurable approval workflow.
+
+    Additive, like the approve/reject routes above and for the same reason: the
+    frozen contract documents only DRAFT creation, and a revision that creates
+    no spending capacity until approved needs somewhere for the approval to
+    happen. Without this route the whole of ``pg/approvals.py`` was unreachable
+    from the application.
+    """
+    # Resolved ONCE. `_correlation_id` mints a fresh uuid4 when the caller
+    # sends no header, so calling it twice -- once for the response header,
+    # once for the audit row -- would tell the caller one id and record
+    # another, and the correlation would be unfollowable in exactly the case
+    # it matters.
+    correlation_id = _correlation_id(request)
+    response.headers[_CORRELATION_HEADER] = correlation_id
+    try:
+        with database.session(_scope_for(request, database)) as session:
+            result = budget_svc.submit_revision(
+                session, revision_id=revision_id, actor=_actor(request),
+                correlation_id=correlation_id)
+    except budget_svc.BudgetServiceError as exc:
+        raise _service_error_to_http(exc)
+    return _raise_if_refused(result)
+
+
 class _DecisionIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     reason: str | None = None
@@ -391,6 +460,25 @@ def post_transfer(
     except budget_svc.BudgetServiceError as exc:
         raise _service_error_to_http(exc)
     return result
+
+
+@router.post("/api/budget/transfers/{transfer_id}/submit",
+             dependencies=[Depends(_requires("revision.create"))])
+def post_transfer_submit(
+    transfer_id: str, response: Response, request: Request,
+    database: Database = Depends(_get_database),
+) -> dict[str, Any]:
+    """As `post_revision_submit`, for a transfer."""
+    correlation_id = _correlation_id(request)   # once; see post_revision_submit
+    response.headers[_CORRELATION_HEADER] = correlation_id
+    try:
+        with database.session(_scope_for(request, database)) as session:
+            result = budget_svc.submit_transfer(
+                session, transfer_id=transfer_id, actor=_actor(request),
+                correlation_id=correlation_id)
+    except budget_svc.BudgetServiceError as exc:
+        raise _service_error_to_http(exc)
+    return _raise_if_refused(result)
 
 
 @router.post("/api/budget/transfers/{transfer_id}/approve", dependencies=[Depends(_requires("revision.approve"))])

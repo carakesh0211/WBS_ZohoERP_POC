@@ -1185,7 +1185,8 @@ def _open_wave(session: Session, *, instance_id: str, wave: Sequence[int],
 
 
 def _set_instance_status(session: Session, instance_id: str, status: str, *,
-                          closed: bool, current_stage_no: int | None = None) -> None:
+                          closed: bool, current_stage_no: int | None = None,
+                          closing_actor: str | None = None) -> None:
     """The ONE place an instance's status moves -- and therefore the one place
     a closure can be observed.
 
@@ -1208,16 +1209,17 @@ def _set_instance_status(session: Session, instance_id: str, status: str, *,
         {"status": status, "closed": closed, "stage": current_stage_no,
          "id": instance_id})
     if closed:
-        _apply_writeback(session, instance_id)
+        _apply_writeback(session, instance_id, closing_actor=closing_actor)
 
 
-def _apply_writeback(session: Session, instance_id: str) -> None:
+def _apply_writeback(session: Session, instance_id: str, *,
+                      closing_actor: str | None = None) -> None:
     """Tell the document its approval closed -- in THIS transaction.
 
     The seam with the document layer (Wave 4 stream A2), which owns
     ``pg/approval_writeback.py`` and exports exactly::
 
-        def apply_outcome(session, instance: Mapping[str, Any]) -> None
+        def apply_outcome(session, instance, *, closing_actor=None) -> None
 
     It is handed a CLOSED instance -- read back after the UPDATE, so
     ``status`` and ``closed_at`` are the committed-to values and not the ones
@@ -1249,7 +1251,21 @@ def _apply_writeback(session: Session, instance_id: str) -> None:
     apply_outcome = getattr(approval_writeback, "apply_outcome", None)
     if not callable(apply_outcome):
         return
-    apply_outcome(session, get_instance(session, instance_id))
+    # `closing_actor` is passed, not inferred.
+    #
+    # The write-back can infer an actor from the instance's own rows, and it
+    # gets it wrong here if left to: this function runs BEFORE `decide`
+    # appends the closing `approval_action` row, so on a multi-stage approval
+    # the newest closing action in the log belongs to the PREVIOUS stage's
+    # approver. The document would be attributed to somebody who did not close
+    # it -- and `budget.approve_revision` compares that attributed actor
+    # against the maker, so the self-approval control would be evaluated
+    # against the wrong identity.
+    #
+    # `decide` knows who is acting. Telling the write-back beats making it
+    # guess from a table this function has deliberately not finished writing.
+    apply_outcome(session, get_instance(session, instance_id),
+                   closing_actor=closing_actor)
 
 
 # ==========================================================================
@@ -1550,7 +1566,8 @@ def _apply_decision(session: Session, *, instance: Mapping[str, Any], stage_no: 
         # Everybody else's assignment is withdrawn: the decision is taken and
         # asking them to act would be asking for a decision that cannot matter.
         _withdraw_open_assignments(session, instance_id)
-        _set_instance_status(session, instance_id, instance_status, closed=True)
+        _set_instance_status(session, instance_id, instance_status, closed=True,
+                              closing_actor=actor_user_id)
         return DecisionResult(instance_id=instance_id, action=action,
                                stage_no=stage_no, stage_status=stage_status,
                                instance_status=instance_status,
@@ -1575,7 +1592,8 @@ def _apply_decision(session: Session, *, instance: Mapping[str, Any], stage_no: 
         f"AND state = %s", (ASSIGN_WITHDRAWN, stage_instance_id, ASSIGN_PENDING))
 
     if all_waves_settled(waves, projected):
-        _set_instance_status(session, instance_id, INST_APPROVED, closed=True)
+        _set_instance_status(session, instance_id, INST_APPROVED, closed=True,
+                              closing_actor=actor_user_id)
         return DecisionResult(instance_id=instance_id, action=action,
                                stage_no=stage_no, stage_status=STAGE_APPROVED,
                                instance_status=INST_APPROVED,
@@ -1662,7 +1680,8 @@ def _terminate(session: Session, *, instance_id: str, actor_user_id: str,
         f"WHERE instance_id = %s AND status = ANY(%s)",
         (STAGE_RETURNED, instance_id, list(STAGE_OPEN_STATUSES)))
     _withdraw_open_assignments(session, instance_id)
-    _set_instance_status(session, instance_id, status, closed=True)
+    _set_instance_status(session, instance_id, status, closed=True,
+                          closing_actor=actor_user_id)
     _append_action(session, instance_id=instance_id, stage_instance_id=None,
                     actor_user_id=actor_user_id, acting_for_user_id=None,
                     action=action, object_type=instance["object_type"],
