@@ -313,38 +313,56 @@ test.describe('SPA routing — every SCR-nn screen is reachable from the shell',
     // that "the approved navigation" stays a fact with a value, not a
     // direction of travel.
     //
-    // WAVE 4 ADDS SEVEN MORE, AND THAT IS A THIRD CHANGE TO THIS RAIL.
-    // M4b's eight approval screens are listed under the same permission-gated
-    // mechanism. The Administrator session below sees seven of them: Contract
-    // 4 withholds approval.delegate from Administrator, so Delegation
-    // Management is correctly absent, and its absence here is an assertion
-    // about the gate rather than an oversight.
+    // WAVE 4 ADDS NOTHING TO THIS RAIL, AND THAT IS THE POINT.
+    // M4b's eight approval screens were spliced in here in 69f45e1 as change
+    // A3. A3 was INSTRUCTED by the lead but never APPROVED by the product
+    // owner, unlike A1 and A2 — and measurement showed it broke the approved
+    // layout rather than extending it. Measured from the running application
+    // as U-ADM, who saw seven of the eight:
     //
-    // It is recorded in docs/ui-change-2026-09/A3-approval-navigation.md --
-    // deliberately NOT in that directory's README.md, which is the record of
-    // the two changes the product owner approved in writing. A3 is
-    // lead-instructed and unapproved, it moves 46 baselines, and it is called
-    // out rather than folded quietly into "the approved navigation".
+    //     viewport        rail    content   overflow
+    //     desktop-1440    856px   1050px    194px
+    //     laptop-1024     713px   1050px    336px
+    //
+    // The whole Governance group — including `settings`, one of the five
+    // entries A1 WAS approved to add — fell below the fold of a scroll
+    // container with no visual cue that it scrolls. The eight are therefore
+    // reachable BY ROUTE ONLY, which costs them nothing: every one still
+    // deep-links, stays permission-gated and stays bookmarkable, and
+    // `viewAllowed()` resolves an SCR_ROUTES id whether or not it is listed
+    // here. See docs/ui-change-2026-09/A3-approval-navigation.md.
+    //
+    // The expectation below is therefore back to exactly the A1-approved rail.
+    // This is a RESTORATION, not a relaxation: it is still an exact ordered
+    // sequence, so an unexpected entry, a reordering or a silent removal all
+    // still fail here.
     await settleShell(page);
     const ids = await page.evaluate(
       () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
     );
     expect(ids).toEqual([
       'home', 'approvals', 'alerts',
-      'approval-inbox', 'approval-request', 'approval-sla',
       'projects', 'wbs', 'budget', 'check', 'revisions',
       'budget-grid', 'budget-compare', 'budget-availability',
       'prs', 'pos', 'grns', 'bills', 'recon',
       'cap',
       'zoho', 'inventory',
       'audit', 'audit-trail',
-      'approval-timeline', 'approval-matrix', 'approval-versions', 'approval-simulator',
       'settings',
     ]);
-    // Delegation Management needs approval.delegate, which an Administrator
-    // does not hold. Absent for this principal, by design.
-    expect(ids, 'Delegation Management was listed for a principal without approval.delegate')
-      .not.toContain('approval-delegations');
+    // STRONGER than the assertion this replaces, which excluded only
+    // Delegation Management. No approval screen belongs in the rail at all
+    // now, for ANY principal, so all eight are named — including the seven an
+    // Administrator does hold the permission for. A permission-gated entry
+    // that reappears because someone re-splices SCR_ROUTES into NAV would
+    // otherwise be invisible to this test for exactly the principal that can
+    // see it.
+    for (const id of ['approval-inbox', 'approval-request', 'approval-sla',
+      'approval-timeline', 'approval-matrix', 'approval-versions',
+      'approval-simulator', 'approval-delegations']) {
+      expect(ids, `"${id}" is a route, not a rail entry: listing it re-lands the unapproved A3`)
+        .not.toContain(id);
+    }
     // Every one of the five is now reachable from the rail, not merely by URL.
     for (const s of SCREENS) {
       expect(ids, `${s.scr} is missing from the approved navigation`).toContain(s.hash);

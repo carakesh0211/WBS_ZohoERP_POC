@@ -190,3 +190,65 @@ assertions about the literal contents of `_CONTRACT4_PERMISSIONS` have no
 subject left to assert against.
 
 **Approved by:** engagement lead, Wave 4 integration pass.
+
+## 2026-09-05 — three VRT navigation assertions, re-pointed from the rail to the route
+
+**Tests:**
+`tests/vrt/spa-routing.spec.js::the primary navigation is exactly the approved navigation`,
+`tests/vrt/approvals.spec.js::every approval screen is listed in the primary navigation, permission-gated`
+(renamed to `…is ROUTE-gated on its own permission, and listed in no rail`), and the rail-label
+half of `tests/vrt/approvals.spec.js::the engine-backed inbox and the pre-engine shell view are
+distinct screens`.
+
+**Category:** Target adaptation — the assertions are re-pointed from the navigation rail to the
+hash router. No case is dropped and no tolerance is loosened.
+
+**What changed.** All three asserted that the eight M4b approval screens APPEAR in the primary
+navigation rail. They no longer do. Change A3 spliced them into `NAV` in `69f45e1`; A3 was
+INSTRUCTED by the Wave 4 lead but never APPROVED by the product owner, unlike A1 and A2, and it
+measurably broke the layout the client did approve. Measured from the running application as
+`U-ADM`, who saw seven of the eight:
+
+| viewport | rail | content | overflow |
+|---|---|---|---|
+| desktop-1440 | 856px | 1050px | **194px** |
+| laptop-1024 | 713px | 1050px | **336px** |
+| tablet-800 | rail is `display:none` | — | — |
+
+The entire Governance group fell below the fold of a scroll container that gives no cue it
+scrolls — including `Settings & Master Data`, one of the five entries A1 *was* approved to expose.
+Removing the eight returns the content to 840px, which fits desktop-1440 (856px) again. The eight
+screens are now reachable BY ROUTE ONLY; every one still deep-links, stays permission-gated and
+stays bookmarkable, because `viewAllowed()` resolves an `SCR_ROUTES` id whether or not `NAV` lists
+it. Recorded in `docs/ui-change-2026-09/A3-approval-navigation.md`.
+
+**Why this is not a weakening — the rail was never the gate.** `approvals.spec.js`'s own Auditor
+test states the principle: *"an unlisted but reachable route is a URL away from being no gate at
+all"*. A rail-membership check can only ever observe a courtesy. It cannot fail when a screen is
+hidden from the rail but still opens on its hash, which is the failure that would actually matter.
+The re-pointed assertions drive the router directly — for each screen, as the principal that holds
+its permission and as one that does not — and assert both the resolved hash and the presence or
+absence of `#content .scr-host`. That is a strictly larger set of observable outcomes than the
+membership check it replaces.
+
+**What was added, not removed.** Each of the three now also asserts that NO approval screen appears
+in the rail, for BOTH principals — the Administrator and the approver — rather than the single
+`not.toContain('approval-delegations')` the first test previously carried. The entry most likely to
+reappear is the one whose permission the principal actually holds, and that is precisely the case
+the old assertions could not see. `spa-routing.spec.js` keeps its exact ordered `toEqual` on the
+full rail, restored to the A1-approved sequence, so an unexpected entry, a reordering or a silent
+removal all still fail there.
+
+**The duplicate-title defect is still pinned.** Both `#approvals` and `#approval-inbox` still assert
+the page title "My Approval Inbox" (finding 4 in `WAVE4_FRONTEND_FINDINGS.md`, open for the lead).
+Only the *distinguishing* signal moved: the rail carried both under different labels and can now
+speak only for the placeholder, so the breadcrumb carries it instead — which is the better signal,
+being on the screen the user is looking at.
+
+**Not approved by anyone yet, and deliberately so.** The nav question is referred to the lead with
+the measurements above. This stream landed the routes and left the rail as the client approved it,
+on the standing rule that a working route the lead can approve an entry for is safer than an
+unapproved entry that breaks the approved layout.
+
+**Approved by:** *pending* — engagement lead, Wave 4 stream A3. Raised with measurements rather
+than taken; see the report accompanying this commit.

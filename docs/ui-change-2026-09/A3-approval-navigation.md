@@ -1,7 +1,43 @@
 # A3 — the approval engine's eight screens in the primary navigation
 
-**STATUS: implemented, NOT signed off, and NOT yet re-baselined. It needs a
-decision from the lead and the product owner before it can go green.**
+**STATUS (2026-09-05, stream A3): WITHDRAWN FROM THE RAIL, LANDED AS ROUTES.**
+**No decision is outstanding for the baselines; one is outstanding for the nav.**
+
+The eight rail entries this document described have been REMOVED. The eight
+screens are reachable by hash route, permission-gated and deep-linkable,
+exactly as §1 said they would be if the entries were deleted. Consequences,
+all measured rather than argued:
+
+- **The 46 baselines in §3 are green again, and NONE was regenerated.** They
+  differed *only* because of these entries. Removing them restored every one:
+  `approved-ui.spec.js` and `spa-routing.spec.js` now pass at desktop-1440 and
+  laptop-1024 with the committed, approved snapshots untouched. That is the
+  confinement proof §3 asked for, obtained by reverting the cause instead of
+  re-recording the evidence.
+- **The rail fits desktop-1440 again**: content 840px against an 856px rail.
+  `Settings & Master Data` is back above the fold.
+- **laptop-1024 still overflows by 127px.** That is A1, not A3, and it is
+  untouched and still open — see §5.
+- **A single consolidated "Approvals" entry was measured, and does not fit
+  either**: it takes the content to 870px against an 856px rail, overflowing
+  desktop-1440 by 14px and pushing `Settings & Master Data` back below the
+  fold. That is the cheapest possible version of this change — one row, in an
+  existing group, with no new group header — so no smaller nav addition
+  exists to try.
+
+**What the lead is asked to decide** is therefore the navigation question
+alone, with the numbers above: whether to approve one "Approvals" entry and
+accept 14px of desktop-1440 overflow, or to fix the rail first (collapsible
+groups, a denser rail), or to leave the eight as routes. The routes work
+either way, and adding an entry later is one `scr('…')` splice per row.
+
+The original text follows, unchanged, because it is the record of why the
+entries were landed and what they cost.
+
+---
+
+**ORIGINAL STATUS: implemented, NOT signed off, and NOT yet re-baselined. It
+needs a decision from the lead and the product owner before it can go green.**
 
 `README.md` in this directory records A1 (five navigation entries) and A2 (the
 `#userAvatar` contrast correction). Both were approved in writing on

@@ -245,9 +245,9 @@ const NAV = [
   { id: 'home', ico: '▣', label: 'Executive Dashboard' },
   { id: 'approvals', ico: '✔', label: 'My Approvals', badge: 'approvals' },
   { id: 'alerts', ico: '⚠', label: 'Alerts & Exceptions', badge: 'alerts' },
-  scr('approval-inbox'),
-  scr('approval-request'),
-  scr('approval-sla'),
+  /* The eight approval screens are ROUTES ONLY — deliberately absent from this
+     table. See the Governance group below and docs/ui-change-2026-09/
+     A3-approval-navigation.md for the measurements that decided it. */
   { g: 'Project Control' },
   { id: 'projects', ico: '▤', label: 'CAPEX Projects' },
   { id: 'wbs', ico: '⌗', label: 'WBS Explorer' },
@@ -271,11 +271,32 @@ const NAV = [
   { g: 'Governance' },
   { id: 'audit', ico: '⎙', label: 'Audit Trail', need: ['audit.read'] },
   scr('audit-trail'),
-  scr('approval-timeline'),
-  scr('approval-matrix'),
-  scr('approval-versions'),
-  scr('approval-simulator'),
-  scr('approval-delegations'),
+  /* THE APPROVAL ENGINE'S EIGHT SCREENS ARE REACHABLE BY ROUTE, NOT BY RAIL.
+
+     They were listed here in 69f45e1 as change A3. A3 was INSTRUCTED by the
+     lead but never APPROVED by the product owner, unlike A1 (the five Wave 2/3
+     entries) and A2 (the avatar contrast fix), and measurement showed it broke
+     the approved layout rather than extending it. Measured from the running
+     application as U-ADM, who sees seven of the eight:
+
+         viewport        rail    content   overflow
+         desktop-1440    856px   1050px    194px
+         laptop-1024     714px   1050px    336px
+         tablet-800      rail is display:none
+
+     The whole Governance group — including `Settings & Master Data`, one of
+     the five entries A1 WAS approved to expose — fell below the fold of a
+     scroll container that gives no visual cue it scrolls. Removing these eight
+     returns the content to 840px, which fits desktop-1440 again.
+
+     Even a SINGLE consolidated "Approvals" entry was measured and does not
+     fit: it takes the content to 870px against an 856px rail. So no nav entry
+     is landed here at all, and the decision is referred to the lead with the
+     numbers rather than taken by this stream. Nothing else is lost by that —
+     `viewAllowed()` resolves any SCR_ROUTES id whether or not it appears in
+     this table, so all eight hashes deep-link, stay permission-gated and stay
+     bookmarkable exactly as they did before. Adding a rail entry later is one
+     `scr('…')` splice per row, and needs only the approval, not a redesign. */
   scr('settings'),
 ];
 
