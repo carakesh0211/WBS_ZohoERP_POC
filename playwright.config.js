@@ -71,7 +71,20 @@ module.exports = defineConfig({
     // removed.
     command: `python -m app.backend.migrate --fresh --seed && python app/run.py`,
     url: `http://127.0.0.1:${PORT}/api/health`,
-    reuseExistingServer: !process.env.CI,
+    // OPT-IN, and off by default even locally.
+    //
+    // This was `!process.env.CI`, so any local run attached to whatever was
+    // already listening on the port. During Wave 4, three worktrees were
+    // building concurrently and a six-minute run silently graded one stream's
+    // change against a stale server owned by another -- it reported green, and
+    // the green was about somebody else's code. A gate whose entire purpose is
+    // to detect a difference must not be able to test the wrong build; a
+    // developer's saved startup time is not worth a result that cannot be
+    // trusted.
+    //
+    // Set CAPEX_VRT_REUSE=1 to attach to a server you started yourself, and
+    // CAPEX_VRT_PORT to keep concurrent worktrees off each other's port.
+    reuseExistingServer: process.env.CAPEX_VRT_REUSE === '1',
     timeout: 60_000,
     env: {
       CAPEX_PROFILE: 'local-demo',

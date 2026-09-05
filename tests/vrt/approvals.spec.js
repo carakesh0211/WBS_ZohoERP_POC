@@ -675,35 +675,69 @@ test.describe('Approval screens — routing and navigation', () => {
     for (const s of approverScreens) await open(page, s);
   });
 
-  test('every approval screen is listed in the primary navigation, permission-gated', async ({ page }) => {
-    // Each screen must appear for the principal that holds its permission --
-    // and the same loop is what proves it is ABSENT for the one that does not,
-    // because the two identities between them cover all eight.
+  test('every approval screen is ROUTE-gated on its own permission, and listed in no rail', async ({ page }) => {
+    // RE-POINTED FROM THE RAIL TO THE ROUTE, AND THAT IS THE STRONGER HALF.
+    //
+    // This used to assert that each screen APPEARED in the primary navigation
+    // for the principal holding its permission. The eight are now reachable by
+    // route only — change A3 was never approved by the product owner and
+    // measurably broke the approved layout (194px of rail overflow at
+    // desktop-1440, 336px at laptop-1024), so the rail entries are gone and
+    // the hashes remain. See docs/ui-change-2026-09/A3-approval-navigation.md.
+    //
+    // The control this test exists to protect is the PERMISSION GATE, not the
+    // rail, and the gate was never the rail: this file's own Auditor test
+    // records that "an unlisted but reachable route is a URL away from being
+    // no gate at all". So the assertion moves to where the gate actually is.
+    // Nothing is weakened — a rail-membership check could never have caught a
+    // screen that was hidden but still routable, and this one does.
     const listed = async (p) => p.evaluate(
       () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
     );
+    /** Does this hash open for the current principal, or correct to #home? */
+    const resolves = async (p, hash) => {
+      await p.goto(`/#${hash}`);
+      await settleShell(p);
+      return new URL(p.url()).hash === `#${hash}`;
+    };
 
     await settleShell(page);
     const adminIds = await listed(page);
+
     for (const s of SCREENS.filter((s2) => s2.as === ADMIN)) {
-      expect(adminIds, `${s.hash} is not listed for the principal that holds ${s.need}`)
-        .toContain(s.hash);
+      expect(await resolves(page, s.hash),
+        `${s.hash} did not resolve for the principal that holds ${s.need}`).toBe(true);
+      await expect(page.locator('#content .scr-host')).toHaveCount(1);
     }
     for (const s of SCREENS.filter((s2) => s2.as === APPROVER)) {
-      expect(adminIds, `${s.hash} was listed for a principal without ${s.need}`)
-        .not.toContain(s.hash);
+      expect(await resolves(page, s.hash),
+        `${s.hash} resolved for a principal without ${s.need}`).toBe(false);
+      await expect(page.locator('#content .scr-host')).toHaveCount(0);
     }
 
     await reauthenticate(page, APPROVER, ['approval.delegate']);
     await settleShell(page);
     const approverIds = await listed(page);
+
     for (const s of SCREENS.filter((s2) => s2.as === APPROVER)) {
-      expect(approverIds, `${s.hash} is not listed for the principal that holds ${s.need}`)
-        .toContain(s.hash);
+      expect(await resolves(page, s.hash),
+        `${s.hash} did not resolve for the principal that holds ${s.need}`).toBe(true);
+      await expect(page.locator('#content .scr-host')).toHaveCount(1);
     }
     // And the configuration screens stay shut for an approver.
     for (const s of SCREENS.filter((s2) => s2.need.includes('approval.configure'))) {
-      expect(approverIds, `${s.hash} was listed for a principal without approval.configure`)
+      expect(await resolves(page, s.hash),
+        `${s.hash} resolved for a principal without approval.configure`).toBe(false);
+      await expect(page.locator('#content .scr-host')).toHaveCount(0);
+    }
+
+    // The rail half, kept and inverted: no approval screen is listed for
+    // EITHER principal. Asserted for both, because the entry that would
+    // reappear first is the one whose permission the principal actually holds.
+    for (const s of SCREENS) {
+      expect(adminIds, `${s.hash} is a route, not a rail entry (Administrator)`)
+        .not.toContain(s.hash);
+      expect(approverIds, `${s.hash} is a route, not a rail entry (approver)`)
         .not.toContain(s.hash);
     }
   });
@@ -767,21 +801,34 @@ test.describe('Approval screens — routing and navigation', () => {
     await requireApprovalPermissions(reader, ['approval.read', 'approval.act']);
     await settleShell(reader);
 
+    // Re-pointed from the rail to the route, for the same reason as the
+    // route-gating test above: the eight are reachable by hash only, so the
+    // rail can no longer answer "did this screen open for this principal?".
+    // The four checks below are the same four, asked of the router.
+    const opens = async (hash) => {
+      await reader.goto(`/#${hash}`);
+      await settleShell(reader);
+      return new URL(reader.url()).hash === `#${hash}`;
+    };
+
+    expect(await opens('approval-inbox'),
+      'the inbox did not open for a principal holding approval.read').toBe(true);
+    expect(await opens('approval-sla'),
+      'the SLA monitor did not open for a principal holding approval.read').toBe(true);
+    expect(await opens('approval-matrix'),
+      'the matrix opened for a principal without approval.configure').toBe(false);
+    expect(await opens('approval-simulator'),
+      'the simulator opened for a principal without approval.configure').toBe(false);
+    expect(await opens('approval-delegations'),
+      'delegations opened for a principal without approval.delegate').toBe(false);
+
+    // approval.read alone must not put anything in the rail either.
     const ids = await reader.evaluate(
       () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
     );
-    expect(ids).toContain('approval-inbox');
-    expect(ids).toContain('approval-sla');
-    expect(ids, 'the matrix opened for a principal without approval.configure')
-      .not.toContain('approval-matrix');
-    expect(ids, 'the simulator opened for a principal without approval.configure')
-      .not.toContain('approval-simulator');
-    expect(ids, 'delegations opened for a principal without approval.delegate')
-      .not.toContain('approval-delegations');
-
-    await reader.goto('/#approval-delegations');
-    await settleShell(reader);
-    expect(new URL(reader.url()).hash).toBe('#home');
+    for (const s of SCREENS) {
+      expect(ids, `${s.hash} is a route, not a rail entry`).not.toContain(s.hash);
+    }
     await reader.close();
   });
 
@@ -861,16 +908,35 @@ test.describe('Approval screens — routing and navigation', () => {
     expect(engineTitle, 'the engine-backed inbox is not using SCR-03\'s verbatim name')
       .toBe('My Approval Inbox');
 
-    // They are nonetheless different screens, and the rail distinguishes them:
-    // 'My Approvals' for the placeholder, 'My Approval Inbox' for the engine.
-    const labels = await page.evaluate(() => {
-      const byId = (id) => document.querySelector(`#nav .nav-item[data-nav="${id}"]`);
-      const label = (el) => (el ? el.querySelector('.nav-label').textContent : null);
-      return { placeholder: label(byId('approvals')), engine: label(byId('approval-inbox')) };
+    // They are nonetheless different screens, and something must still say so.
+    // It used to be the rail, which carried both under different labels
+    // ('My Approvals' vs 'My Approval Inbox'). The engine screen is now a
+    // route with no rail entry (A3 was never approved — see the route-gating
+    // test above), so the rail can only speak for the placeholder. The
+    // BREADCRUMB is what distinguishes them now, and it is the better signal
+    // anyway: it is on the screen the user is actually looking at, whereas the
+    // rail label is on a row that is not even highlighted for a route-only
+    // screen. The duplicate TITLE — the actual defect — stays pinned above.
+    const placeholderRail = await page.evaluate(() => {
+      const el = document.querySelector('#nav .nav-item[data-nav="approvals"]');
+      return el ? el.querySelector('.nav-label').textContent : null;
     });
-    expect(labels.placeholder).toBe('My Approvals');
-    expect(labels.engine).toBe('My Approval Inbox');
-    expect(labels.placeholder).not.toBe(labels.engine);
+    expect(placeholderRail, 'the placeholder lost its distinct rail label')
+      .toBe('My Approvals');
+    expect(await page.evaluate(
+      () => !!document.querySelector('#nav .nav-item[data-nav="approval-inbox"]')),
+    'the engine inbox is a route, not a rail entry').toBe(false);
+
+    await page.goto('/#approvals');
+    await settleShell(page);
+    const placeholderCrumb = await page.locator('#breadcrumb').innerText();
+    await gotoScreen(page, 'approval-inbox');
+    const engineCrumb = await page.locator('#breadcrumb').innerText();
+
+    expect(engineCrumb, 'the engine inbox lost the Approvals breadcrumb that names it')
+      .toContain('Approvals');
+    expect(placeholderCrumb, 'two screens with one title are no longer distinguishable at all')
+      .not.toBe(engineCrumb);
   });
 
   test('the shell never scrolls horizontally on any approval route', async ({ page }) => {
