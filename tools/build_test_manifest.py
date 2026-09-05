@@ -73,6 +73,11 @@ POST_BASELINE_FILES = {
     "test_pg_approval_concurrency.py", "test_approvals_api_guard.py",
     "test_approval_negative_matrix.py", "test_approval_e2e.py",
     "test_approval_maker_checker.py",
+    # Wave 4 stream A1: the static check on the api/approvals.py engine seam.
+    # Post-baseline like every other Wave 4 file -- the 220 counts the POC's
+    # audit-remediation suite and inflating it would make the removal guard
+    # meaningless.
+    "test_approvals_api_seam.py",
 }
 
 

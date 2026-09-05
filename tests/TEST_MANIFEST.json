@@ -211,6 +211,14 @@
         "assertions": 6,
         "body_sha": "13af5c1b1a3ab99a"
       },
+      "test_a_parallel_group_with_one_inapplicable_stage_routes_rather_than_stalling": {
+        "assertions": 5,
+        "body_sha": "5d2e055395f912fa"
+      },
+      "test_a_parallel_group_whose_every_stage_is_inapplicable_still_fails_closed": {
+        "assertions": 2,
+        "body_sha": "075e5766dba2a745"
+      },
       "test_the_decide_route_moves_the_ledger": {
         "assertions": 3,
         "body_sha": "85209f9907edb851"
@@ -300,12 +308,12 @@
         "body_sha": "55ffea6164eb4330"
       },
       "test_a_self_approval_by_the_maker_is_a_403_and_says_so": {
-        "assertions": 3,
-        "body_sha": "3925c746dcfc82a1"
+        "assertions": 4,
+        "body_sha": "34d78e73e3a018ca"
       },
       "test_a_delegation_cannot_launder_a_self_approval": {
-        "assertions": 3,
-        "body_sha": "f70a20e128203241"
+        "assertions": 4,
+        "body_sha": "a15e77b33672928f"
       },
       "test_an_idempotent_replay_is_a_200_carrying_the_original_outcome": {
         "assertions": 4,
@@ -492,6 +500,24 @@
       "test_a_decision_body_cannot_nominate_the_actor": {
         "assertions": 3,
         "body_sha": "55a3a1f13962e43e"
+      }
+    },
+    "test_approvals_api_seam.py": {
+      "test_the_router_has_call_sites_to_check": {
+        "assertions": 1,
+        "body_sha": "86e76e9965b34d0a"
+      },
+      "test_engine_module_map_matches_the_router": {
+        "assertions": 1,
+        "body_sha": "c22a9bcb31a6f9e7"
+      },
+      "test_every_engine_call_site_resolves_to_a_real_function": {
+        "assertions": 1,
+        "body_sha": "06e3d20327505dcb"
+      },
+      "test_every_engine_call_site_passes_arguments_the_engine_accepts": {
+        "assertions": 1,
+        "body_sha": "82b7e5710fb2ca28"
       }
     },
     "test_audit.py": {
@@ -2603,6 +2629,46 @@
         "assertions": 1,
         "body_sha": "ebb349dadec7ebfa"
       },
+      "test_a_wave_with_one_skipped_and_one_unopened_member_opens": {
+        "assertions": 2,
+        "body_sha": "3b1b33fd2b0d71d0"
+      },
+      "test_the_skipped_member_is_never_returned_for_opening": {
+        "assertions": 2,
+        "body_sha": "2a2f1033cc523c57"
+      },
+      "test_a_wave_that_is_entirely_skipped_is_stepped_over_not_opened": {
+        "assertions": 1,
+        "body_sha": "076221adbb3f6eb4"
+      },
+      "test_a_definition_whose_every_stage_is_skipped_still_stalls": {
+        "assertions": 2,
+        "body_sha": "090219800727ee9f"
+      },
+      "test_a_mixed_wave_still_blocks_the_waves_behind_it": {
+        "assertions": 3,
+        "body_sha": "8966356fcdf0706f"
+      },
+      "test_closing_an_instance_calls_apply_outcome_exactly_once": {
+        "assertions": 1,
+        "body_sha": "0d72ca4022565877"
+      },
+      "test_it_is_handed_the_instance_as_it_now_stands_closed": {
+        "assertions": 5,
+        "body_sha": "20edfe52899602b3"
+      },
+      "test_a_status_change_that_does_not_close_calls_nothing": {
+        "assertions": 1,
+        "body_sha": "7747285aead61646"
+      },
+      "test_a_deployment_without_the_module_still_closes_the_instance": {
+        "assertions": 1,
+        "body_sha": "509bc88d6ce7255f"
+      },
+      "test_a_write_back_that_raises_takes_the_approval_down_with_it": {
+        "assertions": 1,
+        "body_sha": "92e3e3081651d35c"
+      },
       "test_the_lower_bound_is_inclusive": {
         "assertions": 1,
         "body_sha": "995925abad4cc9cf"
@@ -4583,10 +4649,11 @@
   },
   "counts": {
     "test_api_auth.py": 27,
-    "test_approval_e2e.py": 24,
+    "test_approval_e2e.py": 26,
     "test_approval_maker_checker.py": 18,
     "test_approval_negative_matrix.py": 23,
     "test_approvals_api_guard.py": 26,
+    "test_approvals_api_seam.py": 4,
     "test_audit.py": 17,
     "test_budget_api_guard.py": 10,
     "test_capitalisation.py": 18,
@@ -4607,7 +4674,7 @@
     "test_pg_adoption.py": 16,
     "test_pg_approval_concurrency.py": 12,
     "test_pg_approval_schema.py": 66,
-    "test_pg_approvals.py": 148,
+    "test_pg_approvals.py": 158,
     "test_pg_audit.py": 20,
     "test_pg_audit_api_e2e.py": 7,
     "test_pg_budget.py": 22,
@@ -4635,10 +4702,11 @@
   },
   "assertions": {
     "test_api_auth.py": 50,
-    "test_approval_e2e.py": 117,
+    "test_approval_e2e.py": 124,
     "test_approval_maker_checker.py": 46,
-    "test_approval_negative_matrix.py": 63,
+    "test_approval_negative_matrix.py": 65,
     "test_approvals_api_guard.py": 51,
+    "test_approvals_api_seam.py": 4,
     "test_audit.py": 39,
     "test_budget_api_guard.py": 17,
     "test_capitalisation.py": 58,
@@ -4659,7 +4727,7 @@
     "test_pg_adoption.py": 39,
     "test_pg_approval_concurrency.py": 53,
     "test_pg_approval_schema.py": 96,
-    "test_pg_approvals.py": 219,
+    "test_pg_approvals.py": 238,
     "test_pg_audit.py": 62,
     "test_pg_audit_api_e2e.py": 24,
     "test_pg_budget.py": 57,

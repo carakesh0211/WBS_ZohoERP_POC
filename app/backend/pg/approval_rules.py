@@ -1,9 +1,19 @@
-"""The approval predicate AST, route resolution, quorum and the assignee set.
+"""The approval predicate AST, route resolution, quorum and the assignee set,
+plus the definition lifecycle behind Contract 3's ``/definitions`` routes.
 
-Everything in this module is **pure logic with no database access**. It takes
-plain Python data -- candidate definitions, a snapshot, role membership,
-delegations, the contributor set -- and returns a decision about how an object
-routes. ``approvals.py`` does the fetching and the writing; this module decides.
+Everything down to :func:`group_complete` is **pure logic with no database
+access**. It takes plain Python data -- candidate definitions, a snapshot, role
+membership, delegations, the contributor set -- and returns a decision about
+how an object routes. ``approvals.py`` does the instance fetching and writing;
+this module decides.
+
+Below :func:`group_complete` is a clearly-fenced **persistence** section added
+at integration: ``list_definitions``, ``create_definition``,
+``activate_definition``, ``simulate`` and ``list_versions``. Those are the
+CONFIGURATION half of the engine (``approval.configure``, Administrator only),
+they are what ``api/approvals.py`` looks up on this module by name, and they do
+no routing arithmetic of their own -- every judgement is delegated back up to
+the pure half, so the tests that pin the hard parts still need no server.
 
 That split is deliberate. The parts of the approval engine that are easy to get
 wrong -- a predicate that silently coerces money through a float, a quorum that
@@ -30,10 +40,13 @@ forgetting to check something.
 """
 from __future__ import annotations
 
+import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, Iterable
+
+from psycopg.types.json import Jsonb
 
 # ==========================================================================
 # STAND-IN FOR ``app/backend/pg/approval_schema.py`` (stream 1).
@@ -1103,3 +1116,596 @@ def group_complete(stage_states: Iterable[Mapping[str, Any]]) -> bool:
         or quorum_met(int(state.get("quorum_required") or 0),
                       int(state.get("quorum_met") or 0))
         for state in states)
+
+
+# ==========================================================================
+# Persistence: the definition lifecycle behind Contract 3's five
+# ``/api/approvals/definitions...`` routes.
+#
+# Everything ABOVE this line is pure logic and needs no database; everything
+# below it needs one. The split is narrowed rather than abandoned -- the
+# functions here do no routing arithmetic of their own. They read and write
+# rows and delegate every judgement to ``build_definition``, ``build_stage``,
+# ``compile_predicate``, ``candidate_definitions`` and ``required_quorum``
+# above, so the tests that pin the hard parts still need no server.
+#
+# They live in this module rather than in ``approvals.py`` because they are
+# the CONFIGURATION half of the engine (``approval.configure``, Administrator
+# only) and ``approvals.py`` is the INSTANCE half. ``api/approvals.py`` looks
+# all five up on this module by name, which is the seam Contract 3 declares.
+#
+# Contract 1's immutability is the DATABASE's, not this module's: migration
+# 008 carries ``assert_approval_definition_immutable()`` and its child
+# trigger, so editing an ACTIVE or RETIRED definition raises SQLSTATE 42501
+# whatever a Python caller intended. What is written here is the readable
+# ``DEFINITION_IMMUTABLE`` in front of that -- never the only line of defence.
+# ==========================================================================
+
+_DEFINITION_COLUMNS = (
+    "definition_id, object_type, code, version, status, entity_id, "
+    "effective_from, effective_to, created_at, created_by, activated_at, "
+    "activated_by, retired_at, retired_by"
+)
+
+_DEFINITION_KEYS = (
+    "definition_id", "object_type", "code", "version", "status", "entity_id",
+    "effective_from", "effective_to", "created_at", "created_by",
+    "activated_at", "activated_by", "retired_at", "retired_by",
+)
+
+#: Contract 6, for the definition list. ``approval_definition`` carries only
+#: ``entity_id``; the other three dimensions have no column on this table and
+#: are waived EXPLICITLY (mapped to ``None``) rather than omitted, because
+#: ``repo.compile_scope`` refuses a restricted dimension a caller merely forgot
+#: and silently widening is the failure that rule exists to prevent.
+_DEFINITION_SCOPE_COLUMNS: dict[str, str | None] = {
+    "entity": "d.entity_id",
+    "project": None,
+    "plant": None,
+    "location": None,
+}
+
+#: Page-size ceiling, mirroring ``api/approvals.py``'s own cap so a caller that
+#: reaches the engine directly cannot ask for an unbounded page.
+MAX_PAGE = 200
+DEFAULT_PAGE = 50
+
+
+def _page_size(limit: int | None) -> int:
+    try:
+        value = int(limit) if limit is not None else DEFAULT_PAGE
+    except (TypeError, ValueError):
+        value = DEFAULT_PAGE
+    return min(max(value, 1), MAX_PAGE)
+
+
+def _iso(value: Any) -> Any:
+    return value.isoformat() if hasattr(value, "isoformat") else value
+
+
+def _new_id(prefix: str) -> str:
+    return f"{prefix}-{uuid.uuid4().hex[:12].upper()}"
+
+
+def paginate(items: list[dict[str, Any]], limit: int, cursor_of) -> dict[str, Any]:
+    """The cursor-paginated envelope Contract 3 requires on EVERY list.
+
+    ``items`` is one row longer than the page when a next page exists -- every
+    caller below fetches ``limit + 1`` -- so "is there more" is answered by a
+    fact rather than by comparing a returned count against the page size, which
+    is wrong on the exact-multiple boundary and reports a spurious extra page.
+
+    The cursor produced here is PLAIN text. ``api/approvals.py`` base64-encodes
+    it on the way out and decodes it on the way back in, so the value a client
+    holds is opaque to the client and never composed by one.
+    """
+    has_more = len(items) > limit
+    page = items[:limit]
+    next_cursor = cursor_of(page[-1]) if (has_more and page) else None
+    return {"items": page, "next_cursor": next_cursor, "has_more": has_more}
+
+
+def _definition_row(row: Sequence[Any]) -> dict[str, Any]:
+    out = dict(zip(_DEFINITION_KEYS, row))
+    for key in ("effective_from", "effective_to", "created_at", "activated_at",
+                "retired_at"):
+        out[key] = _iso(out[key])
+    return out
+
+
+def load_definition_rules(session, definition_id: str) -> list[dict[str, Any]]:
+    """Every rule of one definition, priority ascending."""
+    rows = session.fetchall(
+        "SELECT rule_id, priority, predicate, description FROM approval_rule "
+        "WHERE definition_id = %s ORDER BY priority",
+        (definition_id,))
+    return [{"rule_id": r[0], "priority": r[1], "predicate": r[2],
+             "description": r[3]} for r in rows]
+
+
+def load_definition_stages(session, definition_id: str) -> list[dict[str, Any]]:
+    """Every stage of one definition WITH its approver slots, stage_no ascending.
+
+    Shaped so the result can be handed straight to :func:`build_stage`, which is
+    what :func:`simulate` does -- a simulation must compile the stored
+    configuration through exactly the code that routes a real object, or it
+    simulates something else.
+    """
+    rows = session.fetchall(
+        """
+        SELECT stage_id, stage_no, name, parallel_group, quorum_type, quorum_n,
+               applies_when, sla_hours, escalate_after_hours, escalate_to,
+               allow_delegation, requires_reason, reason_code_set
+        FROM approval_stage WHERE definition_id = %s ORDER BY stage_no
+        """,
+        (definition_id,))
+    keys = ("stage_id", "stage_no", "name", "parallel_group", "quorum_type",
+            "quorum_n", "applies_when", "sla_hours", "escalate_after_hours",
+            "escalate_to", "allow_delegation", "requires_reason",
+            "reason_code_set")
+    stages = [dict(zip(keys, row)) for row in rows]
+    if not stages:
+        return []
+
+    approvers = session.fetchall(
+        "SELECT stage_id, ordinal, approver_kind, approver_ref, scope_expr "
+        "FROM approval_stage_approver WHERE stage_id = ANY(%s) "
+        "ORDER BY stage_id, ordinal",
+        ([s["stage_id"] for s in stages],))
+    by_stage: dict[str, list[dict[str, Any]]] = {}
+    for stage_id, ordinal, kind, ref, scope_expr in approvers:
+        by_stage.setdefault(stage_id, []).append(
+            {"ordinal": ordinal, "approver_kind": kind, "approver_ref": ref,
+             "scope_expr": scope_expr})
+    for stage in stages:
+        stage["approvers"] = by_stage.get(stage["stage_id"], [])
+    return stages
+
+
+def list_definitions(session, *, object_type: str | None = None,
+                      status: str | None = None, cursor: str | None = None,
+                      limit: int | None = None) -> dict[str, Any]:
+    """``GET /api/approvals/definitions?object_type=&status=``.
+
+    Scoped through ``repo.query``'s ``{scope}`` token (Contract 6). An
+    organisation-wide definition -- ``entity_id IS NULL`` -- stays visible to
+    every caller who may configure at all: it governs their entity too, and
+    hiding it from an entity-restricted administrator would show them a
+    workflow list that does not explain how their own objects route.
+
+    The cursor is a keyset over ``(code, version)``, which
+    ``uq_approval_definition_version`` makes unique, so a page boundary cannot
+    repeat or drop a row when a new version is minted mid-walk -- which OFFSET
+    pagination would.
+    """
+    from . import repo
+
+    size = _page_size(limit)
+    params: dict[str, Any] = {"lim": size + 1}
+    clauses = ["(d.entity_id IS NULL OR {scope})"]
+    if object_type:
+        clauses.append("d.object_type = %(otype)s")
+        params["otype"] = object_type
+    if status:
+        clauses.append("d.status = %(status)s")
+        params["status"] = status
+    if cursor:
+        code, _, version = str(cursor).partition("\x1f")
+        clauses.append("(d.code, d.version) > (%(c_code)s, %(c_version)s)")
+        params["c_code"] = code
+        try:
+            params["c_version"] = int(version)
+        except (TypeError, ValueError):
+            params["c_version"] = 0
+
+    rows = repo.query(
+        session,
+        f"""
+        SELECT d.definition_id, d.object_type, d.code, d.version, d.status,
+               d.entity_id, d.effective_from, d.effective_to, d.created_at,
+               d.created_by, d.activated_at, d.activated_by, d.retired_at,
+               d.retired_by
+        FROM approval_definition d
+        WHERE {' AND '.join(clauses)}
+        ORDER BY d.code, d.version
+        LIMIT %(lim)s
+        """,
+        params,
+        columns=_DEFINITION_SCOPE_COLUMNS,
+    )
+    items = [_definition_row(row) for row in rows]
+    if items:
+        counts = session.fetchall(
+            """
+            SELECT d.definition_id,
+                   (SELECT count(*) FROM approval_stage s
+                     WHERE s.definition_id = d.definition_id),
+                   (SELECT count(*) FROM approval_rule r
+                     WHERE r.definition_id = d.definition_id)
+            FROM approval_definition d WHERE d.definition_id = ANY(%s)
+            """,
+            ([i["definition_id"] for i in items],))
+        counted = {row[0]: (int(row[1]), int(row[2])) for row in counts}
+        for item in items:
+            stages, rules = counted.get(item["definition_id"], (0, 0))
+            item["stage_count"], item["rule_count"] = stages, rules
+
+    return paginate(items, size, lambda row: f"{row['code']}\x1f{row['version']}")
+
+
+def get_definition(session, definition_id: str) -> dict[str, Any]:
+    """One definition row, or ``APPROVAL_DEFINITION_NOT_FOUND``."""
+    row = session.fetchone(
+        f"SELECT {_DEFINITION_COLUMNS} FROM approval_definition "
+        f"WHERE definition_id = %s",
+        (definition_id,))
+    if row is None:
+        raise ApprovalError("APPROVAL_DEFINITION_NOT_FOUND",
+                             f"Approval definition {definition_id} does not exist.",
+                             status=404)
+    return _definition_row(row)
+
+
+def list_versions(session, *, definition_id: str, cursor: str | None = None,
+                   limit: int | None = None) -> dict[str, Any]:
+    """``GET /api/approvals/definitions/{id}/versions``.
+
+    Every version of the SAME ``(object_type, code)`` as ``definition_id``, not
+    only the row the caller named: Contract 1 makes a change a new *version*,
+    so "the versions of this workflow" is a question about the code, and
+    answering it with the single row already in hand answers a different one.
+    """
+    anchor = get_definition(session, definition_id)
+    size = _page_size(limit)
+    params: dict[str, Any] = {"otype": anchor["object_type"],
+                              "code": anchor["code"], "lim": size + 1}
+    where = "object_type = %(otype)s AND code = %(code)s"
+    if cursor:
+        try:
+            params["c_version"] = int(cursor)
+        except (TypeError, ValueError):
+            params["c_version"] = 0
+        where += " AND version > %(c_version)s"
+    rows = session.fetchall(
+        f"SELECT {_DEFINITION_COLUMNS} FROM approval_definition "
+        f"WHERE {where} ORDER BY version LIMIT %(lim)s",
+        params)
+    items = [_definition_row(row) for row in rows]
+    return paginate(items, size, lambda row: str(row["version"]))
+
+
+def _next_version(session, object_type: str, code: str) -> int:
+    (highest,) = session.fetchone(
+        "SELECT COALESCE(MAX(version), 0) FROM approval_definition "
+        "WHERE object_type = %s AND code = %s",
+        (object_type, code))
+    return int(highest) + 1
+
+
+def create_definition(session, *, actor_user_id: str,
+                       payload: Mapping[str, Any]) -> dict[str, Any]:
+    """``POST /api/approvals/definitions`` -- always a **DRAFT** version.
+
+    The version is minted here and is never the caller's to choose (Contract
+    1); the request model in ``api/approvals.py`` does not even carry the
+    field. A code that already exists gets the next version number, which is
+    what "change = a new version, the old row is retired" means in practice.
+
+    Everything is COMPILED before anything is written. ``build_definition`` and
+    ``build_stage`` are the same functions routing uses, so a predicate that
+    would fail at 2am against a live document fails here instead, at the moment
+    somebody typed it, and no half-written workflow is left behind.
+    ``created_by`` is supplied on all three tables (NOT NULL, no default); none
+    of them has an ``updated_by``, so none is written.
+
+    No ``correlation_id``, deliberately
+    -----------------------------------
+    This function used to accept one and echo it back in the response dict
+    without storing it anywhere. ``approval_definition``, ``approval_rule`` and
+    ``approval_stage`` have no correlation column, this path writes no
+    ``audit_log`` row, and migration 008 is lead-owned. A parameter that is
+    accepted, carried the length of the function and then dropped reads at the
+    call site as though the id were recorded -- which is worse than not
+    offering it, because the next person to look for the trace believes one
+    exists. The router still returns ``X-Correlation-Id`` on the response, and
+    that is honestly the whole of the trace this path has.
+    """
+    object_type = (payload.get("object_type") or "").strip()
+    code = (payload.get("code") or "").strip()
+    if not object_type or not code:
+        raise ApprovalError(
+            "APPROVAL_DEFINITION_INVALID",
+            "A definition needs both an object_type and a code.", status=400)
+
+    rules_in = list(payload.get("rules") or [])
+    stages_in = list(payload.get("stages") or [])
+
+    # ---- shape, before compilation --------------------------------------
+    # `build_definition` and `build_stage` subscript `priority`, `predicate`
+    # and `stage_no` directly, which is right for the internal callers that
+    # build them from a row they just SELECTed. This one builds them from a
+    # request body, and a bare `KeyError` reaching `api/approvals.py` has no
+    # `.code` -- `_raise_for_engine_error` re-raises it and the caller is told
+    # their malformed rule was a server fault. Checked here rather than by
+    # loosening `build_*`, so the compilers stay strict for the paths that
+    # cannot get this wrong.
+    for index, raw in enumerate(rules_in):
+        missing = [key for key in ("priority", "predicate")
+                   if not isinstance(raw, Mapping) or key not in raw]
+        if missing:
+            raise ApprovalError(
+                "APPROVAL_DEFINITION_INVALID",
+                f"rules[{index}] is missing {', '.join(missing)}. A rule needs "
+                f"a priority (routing is 'first matching rule, priority ASC') "
+                f"and a predicate (a rule that matches nothing routes nothing).",
+                status=400)
+    for index, raw in enumerate(stages_in):
+        if not isinstance(raw, Mapping) or "stage_no" not in raw:
+            raise ApprovalError(
+                "APPROVAL_DEFINITION_INVALID",
+                f"stages[{index}] is missing stage_no, which is what orders the "
+                f"waves and what UNIQUE (definition_id, stage_no) is declared "
+                f"on. There is no defensible default for it.",
+                status=400)
+
+    if not stages_in:
+        raise ApprovalError(
+            "APPROVAL_DEFINITION_INVALID",
+            "A definition with no stages approves nothing and is not a licence "
+            "to approve everything (Contract 2). Declare at least one stage.",
+            status=400)
+
+    version = _next_version(session, object_type, code)
+    definition_id = _new_id("APD")
+    effective_from = _as_date(payload.get("effective_from"),
+                               label="effective_from") or date.today()
+    effective_to = _as_date(payload.get("effective_to"), label="effective_to")
+
+    # ---- compile first, write second ------------------------------------
+    build_definition({
+        "definition_id": definition_id, "object_type": object_type, "code": code,
+        "version": version, "status": DEF_DRAFT,
+        "entity_id": payload.get("entity_id"),
+        "effective_from": effective_from, "effective_to": effective_to,
+        "rules": rules_in,
+    })
+    compiled_stages = [build_stage(stage) for stage in stages_in]
+    seen_stage_nos: set[int] = set()
+    for stage in compiled_stages:
+        if stage.stage_no in seen_stage_nos:
+            raise ApprovalError(
+                "APPROVAL_DEFINITION_INVALID",
+                f"Two stages share stage_no {stage.stage_no}; UNIQUE "
+                f"(definition_id, stage_no) forbids it and the wave order would "
+                f"be undefined.", status=400)
+        seen_stage_nos.add(stage.stage_no)
+        if not stage.approvers:
+            raise ApprovalError(
+                "APPROVAL_DEFINITION_INVALID",
+                f"Stage {stage.stage_no} ({stage.name}) names no approver. A "
+                f"stage nobody is asked to act on cannot meet a quorum, and a "
+                f"quorum that cannot be met is not a route to approval.",
+                status=400)
+
+    session.execute(
+        """
+        INSERT INTO approval_definition
+            (definition_id, object_type, code, version, status, entity_id,
+             effective_from, effective_to, created_by)
+        VALUES (%(id)s, %(otype)s, %(code)s, %(version)s, %(status)s, %(entity)s,
+                %(eff_from)s, %(eff_to)s, %(by)s)
+        """,
+        {"id": definition_id, "otype": object_type, "code": code,
+         "version": version, "status": DEF_DRAFT,
+         "entity": payload.get("entity_id"), "eff_from": effective_from,
+         "eff_to": effective_to, "by": actor_user_id},
+    )
+    for raw in rules_in:
+        session.execute(
+            """
+            INSERT INTO approval_rule
+                (rule_id, definition_id, priority, predicate, description,
+                 created_by)
+            VALUES (%(id)s, %(def)s, %(priority)s, %(predicate)s, %(desc)s,
+                    %(by)s)
+            """,
+            {"id": _new_id("APR"), "def": definition_id,
+             "priority": int(raw["priority"]),
+             "predicate": Jsonb(raw["predicate"]),
+             "desc": raw.get("description"), "by": actor_user_id},
+        )
+    for index, raw in enumerate(stages_in):
+        stage = compiled_stages[index]
+        stage_id = _new_id("APS")
+        session.execute(
+            """
+            INSERT INTO approval_stage
+                (stage_id, definition_id, stage_no, name, parallel_group,
+                 quorum_type, quorum_n, applies_when, sla_hours,
+                 escalate_after_hours, escalate_to, allow_delegation,
+                 requires_reason, reason_code_set, created_by)
+            VALUES (%(id)s, %(def)s, %(no)s, %(name)s, %(group)s, %(qtype)s,
+                    %(qn)s, %(applies)s, %(sla)s, %(esc_after)s, %(esc_to)s,
+                    %(delegable)s, %(reason)s, %(reason_set)s, %(by)s)
+            """,
+            {"id": stage_id, "def": definition_id, "no": stage.stage_no,
+             "name": stage.name, "group": stage.parallel_group,
+             "qtype": stage.quorum_type, "qn": stage.quorum_n,
+             "applies": (None if raw.get("applies_when") is None
+                          else Jsonb(raw["applies_when"])),
+             "sla": stage.sla_hours, "esc_after": stage.escalate_after_hours,
+             "esc_to": (None if stage.escalate_to is None
+                         else Jsonb(dict(stage.escalate_to))),
+             "delegable": stage.allow_delegation,
+             "reason": stage.requires_reason,
+             "reason_set": stage.reason_code_set, "by": actor_user_id},
+        )
+        for ordinal, approver in enumerate(stage.approvers, start=1):
+            session.execute(
+                """
+                INSERT INTO approval_stage_approver
+                    (stage_id, ordinal, approver_kind, approver_ref, scope_expr)
+                VALUES (%(stage)s, %(ordinal)s, %(kind)s, %(ref)s, %(scope)s)
+                """,
+                {"stage": stage_id,
+                 "ordinal": int(approver.get("ordinal") or ordinal),
+                 "kind": approver.get("approver_kind"),
+                 "ref": approver.get("approver_ref"),
+                 "scope": (None if approver.get("scope_expr") is None
+                            else Jsonb(approver["scope_expr"]))},
+            )
+
+    return get_definition(session, definition_id)
+
+
+def activate_definition(session, *, definition_id: str,
+                         actor_user_id: str) -> dict[str, Any]:
+    """``POST /api/approvals/definitions/{id}/activate`` -- DRAFT -> ACTIVE.
+
+    Retiring the version this one supersedes happens in the SAME transaction,
+    not as a follow-up call. Two ACTIVE versions of one ``(object_type, code)``
+    would both be candidates at routing, and which one won would be decided by
+    ``candidate_definitions``' tie-break rather than by anybody -- so leaving
+    the predecessor ACTIVE is not a smaller change, it is a worse one.
+
+    ``DEFINITION_IMMUTABLE`` for anything that is not a DRAFT: an ACTIVE version
+    is already live and a RETIRED one is terminal. Migration 008's trigger says
+    the same in SQLSTATE 42501; this is the readable refusal in front of it.
+    """
+    row = session.fetchone(
+        "SELECT status, object_type, code, version, entity_id "
+        "FROM approval_definition WHERE definition_id = %s FOR UPDATE",
+        (definition_id,))
+    if row is None:
+        raise ApprovalError("APPROVAL_DEFINITION_NOT_FOUND",
+                             f"Approval definition {definition_id} does not exist.",
+                             status=404)
+    status, object_type, code, _version, _entity_id = row
+    if status != DEF_DRAFT:
+        raise ApprovalError(
+            ERR_DEFINITION_IMMUTABLE,
+            f"Approval definition {definition_id} is {status}, not DRAFT. An "
+            f"ACTIVE version is already live and a RETIRED one is terminal; a "
+            f"change means a new version (Contract 1).",
+            status=409, detail={"status": status})
+
+    (stage_count,) = session.fetchone(
+        "SELECT count(*) FROM approval_stage WHERE definition_id = %s",
+        (definition_id,))
+    if not stage_count:
+        raise ApprovalError(
+            "APPROVAL_DEFINITION_INVALID",
+            f"Approval definition {definition_id} defines no stages. Activating "
+            f"it would put a workflow live that approves nothing and holds "
+            f"every object it routes in EXCEPTION_PENDING.",
+            status=409)
+
+    superseded = [
+        r[0] for r in session.fetchall(
+            "SELECT definition_id FROM approval_definition "
+            "WHERE object_type = %s AND code = %s AND status = %s "
+            "AND definition_id <> %s ORDER BY version",
+            (object_type, code, DEF_ACTIVE, definition_id))
+    ]
+    for previous in superseded:
+        session.execute(
+            "UPDATE approval_definition SET status = %s, retired_at = now(), "
+            "retired_by = %s WHERE definition_id = %s",
+            (DEF_RETIRED, actor_user_id, previous))
+
+    session.execute(
+        "UPDATE approval_definition SET status = %s, activated_at = now(), "
+        "activated_by = %s WHERE definition_id = %s",
+        (DEF_ACTIVE, actor_user_id, definition_id))
+
+    activated = get_definition(session, definition_id)
+    activated["retired_definition_ids"] = superseded
+    return activated
+
+
+def simulate(session, *, definition_id: str, obj: Mapping[str, Any],
+              actor_user_id: str | None = None,
+              business_date: date | None = None) -> dict[str, Any]:
+    """``POST /api/approvals/definitions/{id}/simulate`` -- a DRY RUN.
+
+    Reads configuration and role membership, writes nothing at all, and answers
+    the two questions an administrator has before activating a workflow: **would
+    this object route here**, and **which stages, and whose names, would it put
+    in front of the object**.
+
+    It deliberately does NOT apply the contributor filter. Contract 5 removes
+    the maker, the editors and the prior actors of a REAL document, and a
+    simulated object has none of those -- a simulation that pretended otherwise
+    would either invent a maker or report an approver population no actual
+    submission will see. The route is answered as configured; who is barred from
+    it is a property of the document, decided at ``open_instance`` and again at
+    ``decide``. The payload says ``contributor_filter_applied: false`` so
+    nobody reads the list as a promise about a particular document.
+    """
+    from . import approvals as approvals_mod
+
+    definition = get_definition(session, definition_id)
+    business_date = business_date or date.today()
+    snapshot = dict(obj or {})
+    entity_id = snapshot.get("entity_id") or definition["entity_id"]
+
+    spec = build_definition({**definition,
+                              "rules": load_definition_rules(session, definition_id)})
+
+    matched_rule = None
+    for rule in spec.rules:
+        if rule.predicate.evaluate(snapshot):
+            matched_rule = rule
+            break
+
+    eligible = bool(candidate_definitions(
+        [spec], object_type=definition["object_type"],
+        business_date=business_date, entity_id=entity_id))
+
+    stages_out: list[dict[str, Any]] = []
+    for raw in load_definition_stages(session, definition_id):
+        stage = build_stage(raw)
+        applies, skip_reason = stage_applies(stage, snapshot)
+        entry: dict[str, Any] = {
+            "stage_no": stage.stage_no, "name": stage.name,
+            "parallel_group": stage.parallel_group,
+            "quorum_type": stage.quorum_type, "quorum_n": stage.quorum_n,
+            "applies": applies, "skip_reason": skip_reason,
+            "requires_reason": stage.requires_reason,
+            "sla_hours": stage.sla_hours,
+            "assignees": [], "assignee_count": 0, "quorum_required": None,
+        }
+        if applies:
+            # The engine's own resolver, not a reimplementation of it: a
+            # simulation computed a different way simulates different code.
+            resolved = approvals_mod.resolve_stage_assignees(
+                session, stage, snapshot, ())
+            entry["assignees"] = [
+                {"user_id": a.user_id, "assigned_via": a.assigned_via,
+                 "delegated_from": a.delegated_from} for a in resolved.assignees]
+            entry["assignee_count"] = len(resolved)
+            entry["quorum_required"] = required_quorum(
+                stage.quorum_type, stage.quorum_n, len(resolved))
+        stages_out.append(entry)
+
+    return {
+        "definition_id": definition_id,
+        "object_type": definition["object_type"],
+        "code": definition["code"],
+        "version": definition["version"],
+        "status": definition["status"],
+        "eligible_on_date": eligible,
+        "business_date": business_date.isoformat(),
+        "would_route": bool(matched_rule) and eligible,
+        "matched_rule_priority": matched_rule.priority if matched_rule else None,
+        "matched_rule_id": matched_rule.rule_id if matched_rule else None,
+        "route_unresolved_reason": (
+            None if (matched_rule and eligible)
+            else ("no rule of this definition matches the object" if eligible
+                  else f"this definition is {definition['status']} or not in "
+                       f"effect on {business_date.isoformat()} for entity "
+                       f"{entity_id!r}")),
+        "stages": stages_out,
+        "contributor_filter_applied": False,
+        "simulated_by": actor_user_id,
+    }

@@ -331,19 +331,41 @@ def compute_waves(stages: Sequence[StageSpec]) -> list[list[int]]:
 
 def next_wave(waves: Sequence[Sequence[int]],
                stage_states: Mapping[int, str]) -> list[int] | None:
-    """The next wave to open, or ``None`` when every wave is settled.
+    """The stages of the next wave to open, or ``None`` when none can open.
 
     A wave is settled when each of its stages is APPROVED or SKIPPED. A wave
     containing a stage still PENDING or ESCALATED is the current wave and
-    nothing beyond it opens; a wave whose stages have no state yet is the one to
-    open next.
+    nothing beyond it opens; a wave none of whose stages has yet been *opened*
+    is the one to open next, and what is returned is the members that still
+    need opening -- never the ones already recorded.
+
+    A SKIPPED member does not block its own wave
+    --------------------------------------------
+    This used to require every member of a candidate wave to have NO state at
+    all, which is wrong for the one shape :func:`open_instance` actually
+    produces. ``open_instance`` writes the SKIPPED row for every non-applicable
+    stage FIRST, and only then asks which wave to open -- so a parallel group
+    holding an ``applies_when`` member arrives here as, say, ``{2: SKIPPED}``
+    for the wave ``[1, 2]``. The old test was False for "all settled" (stage 1
+    has no state) and False for "all unstarted" (stage 2 is SKIPPED), so the
+    function fell through to ``None``; ``open_instance`` read that as "every
+    stage was skipped" and held the object EXCEPTION_PENDING. A workflow whose
+    parallel group contained a conditional stage was therefore unroutable.
+
+    A SKIPPED stage is settled, not in progress: it recorded a control that did
+    not fire, took no assignment and can never be acted on. So a wave qualifies
+    to open when none of its members is in an OPEN or decided state, and the
+    stages returned are exactly those with no row yet -- which is also what
+    keeps :func:`_open_wave` from re-inserting a stage instance over the
+    SKIPPED row it would collide with on ``UNIQUE (instance_id, stage_no)``.
     """
     for wave in waves:
         states = [stage_states.get(stage_no) for stage_no in wave]
         if all(state in (STAGE_APPROVED, STAGE_SKIPPED) for state in states):
             continue
-        if all(state is None for state in states):
-            return list(wave)
+        if all(state is None or state == STAGE_SKIPPED for state in states):
+            return [stage_no for stage_no in wave
+                    if stage_states.get(stage_no) is None]
         return None                     # this wave is still in progress
     return None
 
@@ -662,6 +684,7 @@ def _append_action(session: Session, *, instance_id: str, stage_instance_id: str
                     object_type: str, object_id: str, detail: str,
                     reason_code: str | None = None, reason_text: str | None = None,
                     idempotency_key: str | None = None,
+                    correlation_id: str | None = None,
                     outcome: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Write one ``approval_action``, chained on ``approval:{instance_id}``.
 
@@ -675,6 +698,21 @@ def _append_action(session: Session, *, instance_id: str, stage_instance_id: str
     ``prev_hash`` is read, which is the ordering ``audit.append``'s docstring
     explains: two writers to one stream that both read the same ``prev_hash``
     each mint a successor to it and the chain forks.
+
+    Where ``correlation_id`` goes, and where it deliberately does not
+    ----------------------------------------------------------------
+    It is written into ``outcome``, which is a real stored ``jsonb`` column, so
+    the request that caused an action can be traced to the action it caused.
+
+    It is **not** hashed. Contract 9 freezes the payload as
+    ``prev|at|actor|action|type|id|detail`` and ``chain_detail`` builds the
+    ``detail`` component from stored columns only, precisely so verification
+    recomputes each digest from the row it is checking. Folding a correlation
+    id into the digest would either change the frozen format or hash a value
+    the verifier cannot read back -- and the second is how a hash chain becomes
+    a decoration. ``approval_action`` has no ``correlation_id`` column of its
+    own (migration 008 is lead-owned and not this stream's to alter), so
+    ``outcome`` is where it can live truthfully.
     """
     stream_key = f"approval:{instance_id}"
     audit_mod.advisory_audit_lock(session, stream_key)      # LAST lock, before the read
@@ -697,6 +735,8 @@ def _append_action(session: Session, *, instance_id: str, stage_instance_id: str
     # the digest, which has no column to be recomputed from. See chain_detail().
     outcome_payload = dict(outcome or {})
     outcome_payload.setdefault("detail", detail)
+    if correlation_id:
+        outcome_payload.setdefault("correlation_id", correlation_id)
 
     # No fabricated id. The row's identity is whatever the database mints, and
     # returning a made-up one would hand every caller -- the timeline, the API,
@@ -980,6 +1020,15 @@ def open_instance(session: Session, *, object_type: str, object_id: str,
         # exception that announced it.
         return get_instance(session, instance_id)
 
+    # `current_stage_no` was set to `waves[0][0]` at INSERT time, before the
+    # SKIPPED rows were known. The wave that actually opened may begin at a
+    # later stage_no -- a parallel group whose first member is conditional and
+    # did not apply -- so it is corrected here to the first stage a person was
+    # actually asked to act on.
+    if first[0] != waves[0][0]:
+        _set_instance_status(session, instance_id, INST_OPEN, closed=False,
+                              current_stage_no=first[0])
+
     _append_action(session, instance_id=instance_id, stage_instance_id=None,
                     actor_user_id=maker_user_id, acting_for_user_id=None,
                     action=ACTION_RESUBMIT if supersedes_instance_id else "OPEN",
@@ -1044,6 +1093,19 @@ def _write_exception_instance(session: Session, *, instance_id: str, object_type
 def _insert_stage_instance(session: Session, *, instance_id: str, stage: StageSpec,
                             status: str, skip_reason: str | None,
                             quorum_required: int, opened: bool) -> str:
+    # `status` and `opened` are two arguments describing one fact, and the
+    # database now says so: `ck_approval_stage_instance_opened_at` is
+    # biconditional -- a stage has an open time IF AND ONLY IF it is not
+    # SKIPPED. Disagreeing here is a `CheckViolation` naming a row, raised
+    # three frames from the call site that got it wrong; this says which
+    # argument was wrong, at the call that passed it.
+    if (status == STAGE_SKIPPED) is not (not opened):
+        raise ValueError(
+            f"_insert_stage_instance({status=!r}, {opened=!r}) contradicts "
+            f"itself: a SKIPPED stage never opened, and a stage in any other "
+            f"status did. The database refuses the row either way -- see "
+            f"ck_approval_stage_instance_opened_at.")
+
     stage_instance_id = _new_id("ASTG")
     # None for a stage that never opened. `approval_stage_instance.opened_at`
     # is nullable precisely so a SKIPPED stage can say "this never ran"
@@ -1124,6 +1186,17 @@ def _open_wave(session: Session, *, instance_id: str, wave: Sequence[int],
 
 def _set_instance_status(session: Session, instance_id: str, status: str, *,
                           closed: bool, current_stage_no: int | None = None) -> None:
+    """The ONE place an instance's status moves -- and therefore the one place
+    a closure can be observed.
+
+    Every terminal transition in this module funnels through here with
+    ``closed=True``: APPROVED and REJECTED/RETURNED from :func:`_apply_decision`,
+    RECALLED and CANCELLED from :func:`_terminate`, SUPERSEDED from
+    :func:`resubmit` and :func:`supersede_if_changed`. That is why the
+    document write-back hangs off this function rather than off each of them:
+    a sixth terminal path added later inherits the write-back by construction
+    instead of by somebody remembering.
+    """
     session.execute(
         f"""
         UPDATE approval_instance
@@ -1134,6 +1207,49 @@ def _set_instance_status(session: Session, instance_id: str, status: str, *,
         """,
         {"status": status, "closed": closed, "stage": current_stage_no,
          "id": instance_id})
+    if closed:
+        _apply_writeback(session, instance_id)
+
+
+def _apply_writeback(session: Session, instance_id: str) -> None:
+    """Tell the document its approval closed -- in THIS transaction.
+
+    The seam with the document layer (Wave 4 stream A2), which owns
+    ``pg/approval_writeback.py`` and exports exactly::
+
+        def apply_outcome(session, instance: Mapping[str, Any]) -> None
+
+    It is handed a CLOSED instance -- read back after the UPDATE, so
+    ``status`` and ``closed_at`` are the committed-to values and not the ones
+    the caller intended -- and maps that to the document's business status
+    through a registry keyed on ``object_type``. It is a no-op for an
+    ``object_type`` it does not know, which is what lets this engine route a
+    document type before the write-back for it exists.
+
+    Same transaction, no exception handling
+    ---------------------------------------
+    The call is made inside the caller's transaction and its failures are NOT
+    swallowed. An approval that commits while the document it approved stays
+    DRAFT is precisely the split-brain a write-back exists to prevent, so if
+    the write-back raises, the approval rolls back with it.
+
+    The IMPORT is guarded and the failure to import is not
+    ------------------------------------------------------
+    ``ImportError`` is tolerated because a deployment that has not shipped
+    stream A2's module must still be able to approve things -- the module is
+    an addition, not a dependency. Everything else propagates: a module that
+    exists and is broken is a defect, and degrading it to "no write-back
+    happened" would hide it behind exactly the silence this seam is meant to
+    remove.
+    """
+    try:
+        from . import approval_writeback
+    except ImportError:
+        return
+    apply_outcome = getattr(approval_writeback, "apply_outcome", None)
+    if not callable(apply_outcome):
+        return
+    apply_outcome(session, get_instance(session, instance_id))
 
 
 # ==========================================================================
@@ -1189,6 +1305,7 @@ def decide(session: Session, *, instance_id: str, actor_user_id: str, action: st
             idempotency_key: str, object_version: Any,
             reason_code: str | None = None, reason_text: str | None = None,
             acting_for_user_id: str | None = None,
+            correlation_id: str | None = None,
             principal: Mapping[str, Any] | None = None,
             permission: str | None = None) -> DecisionResult:
     """Apply one APPROVE / REJECT / RETURN to the caller's open stage.
@@ -1354,7 +1471,7 @@ def decide(session: Session, *, instance_id: str, actor_user_id: str, action: st
                 f"({result.quorum_met}/{result.quorum_required}); "
                 f"instance -> {result.instance_status}"),
         reason_code=reason_code, reason_text=reason_text, idempotency_key=key,
-        outcome=result.as_dict())
+        correlation_id=correlation_id, outcome=result.as_dict())
     return result
 
 
@@ -1515,7 +1632,8 @@ def _withdraw_open_assignments(session: Session, instance_id: str) -> None:
 
 def _terminate(session: Session, *, instance_id: str, actor_user_id: str,
                 action: str, status: str, reason_text: str | None,
-                require_maker: bool) -> DecisionResult:
+                require_maker: bool,
+                correlation_id: str | None = None) -> DecisionResult:
     preview = get_instance(session, instance_id)
     lock_affected_cells(session, _affected_cells(preview["snapshot"] or {}))
     instance = get_instance(session, instance_id, for_update=True)
@@ -1550,21 +1668,24 @@ def _terminate(session: Session, *, instance_id: str, actor_user_id: str,
                     action=action, object_type=instance["object_type"],
                     object_id=instance["object_id"],
                     detail=f"{action} by {actor_user_id}: {reason_text}",
-                    reason_text=reason_text)
+                    reason_text=reason_text, correlation_id=correlation_id)
     return DecisionResult(instance_id=instance_id, action=action, stage_no=None,
                            stage_status=None, instance_status=status)
 
 
 def recall(session: Session, *, instance_id: str, actor_user_id: str,
-            reason_text: str) -> DecisionResult:
+            reason_text: str,
+            correlation_id: str | None = None) -> DecisionResult:
     """The maker withdraws their own object from approval. Maker only."""
     return _terminate(session, instance_id=instance_id, actor_user_id=actor_user_id,
                        action=ACTION_RECALL, status=INST_RECALLED,
-                       reason_text=reason_text, require_maker=True)
+                       reason_text=reason_text, require_maker=True,
+                       correlation_id=correlation_id)
 
 
 def cancel(session: Session, *, instance_id: str, actor_user_id: str,
-            reason_text: str) -> DecisionResult:
+            reason_text: str,
+            correlation_id: str | None = None) -> DecisionResult:
     """An administrator ends an instance. Not maker-restricted, by design.
 
     Cancellation is the escape hatch for an ``EXCEPTION_PENDING`` instance
@@ -1572,12 +1693,13 @@ def cancel(session: Session, *, instance_id: str, actor_user_id: str,
     """
     return _terminate(session, instance_id=instance_id, actor_user_id=actor_user_id,
                        action=ACTION_CANCEL, status=INST_CANCELLED,
-                       reason_text=reason_text, require_maker=False)
+                       reason_text=reason_text, require_maker=False,
+                       correlation_id=correlation_id)
 
 
 def resubmit(session: Session, *, instance_id: str, actor_user_id: str,
-              snapshot: Mapping[str, Any], object_version: Any,
-              reason_text: str, business_date: date | None = None,
+              reason_text: str, snapshot: Mapping[str, Any] | None = None,
+              object_version: Any = None, business_date: date | None = None,
               correlation_id: str | None = None) -> dict[str, Any]:
     """Re-route a returned, recalled or superseded object as a NEW instance.
 
@@ -1586,6 +1708,30 @@ def resubmit(session: Session, *, instance_id: str, actor_user_id: str,
     and re-using the instance would silently re-point that pin. So the new
     instance carries ``supersedes_instance_id`` and the two are readable as a
     chain.
+
+    Two callers, one of which cannot supply a snapshot
+    --------------------------------------------------
+    The document layer calls this after an EDIT and passes the corrected
+    ``snapshot`` and its new ``object_version``; that is the case Contract 1 is
+    written for and nothing about it changes.
+
+    ``POST /api/approvals/{id}/resubmit`` cannot. Contract 3 freezes that
+    request body as ``{"reason_text"}``, the approvals screen codes against it,
+    and this router has no way to build a ``BUDGET_REVISION`` snapshot -- that
+    is the document layer's knowledge, not the engine's. Its real use is the
+    other resubmission: an object held EXCEPTION_PENDING because its
+    *configuration* was wrong, re-routed once an administrator has fixed the
+    workflow. The document did not change; the route it should take did.
+
+    So both are omissible, and omitting them means "re-route the SAME document,
+    unchanged". The engine then re-reads the document row and refuses through
+    :func:`assert_object_version_fresh` if its version has moved -- the same
+    frozen ``OBJECT_VERSION_STALE`` a decision gets, for the same reason. That
+    refusal is the load-bearing part: without it, a document edited since it
+    was returned would be re-routed on the stale snapshot the old instance
+    carried, which is precisely the "approved the amount nobody looked at"
+    failure :func:`supersede_if_changed` exists to prevent. The caller who has
+    a fresh snapshot passes one; the caller who has none is told to.
     """
     instance = get_instance(session, instance_id, for_update=True)
     if instance["status"] not in (INST_RETURNED, INST_RECALLED, INST_SUPERSEDED,
@@ -1596,6 +1742,37 @@ def resubmit(session: Session, *, instance_id: str, actor_user_id: str,
             f"RETURNED, RECALLED, SUPERSEDED or EXCEPTION_PENDING instance can "
             f"be resubmitted.",
             status=409, detail={"instance_status": instance["status"]})
+
+    if snapshot is None:
+        # "Re-route this document unchanged." Read the document's CURRENT
+        # version under the same binding `decide` uses and refuse if it has
+        # moved: the snapshot on the old instance describes the document as it
+        # was, and re-routing an edited document on it would decide the route
+        # from numbers nobody has seen since.
+        binding = binding_for(instance["object_type"])
+        row = session.fetchone(  # scope-exempt: reads ONE row by primary key, through a table name from the closed OBJECT_BINDINGS allow-list, named by an approval_instance get_instance has already scope-checked; reads only its version
+            f"SELECT {binding.version_column} FROM {binding.table} "
+            f"WHERE {binding.pk_column} = %s",
+            (instance["object_id"],))
+        if row is None:
+            raise ApprovalError(
+                "OBJECT_NOT_FOUND",
+                f"{instance['object_type']} {instance['object_id']} no longer "
+                f"exists and cannot be resubmitted.",
+                status=404)
+        assert_object_version_fresh(instance["object_version"], row[0],
+                                     instance_id=instance_id)
+        snapshot = instance["snapshot"] or {}
+        if object_version is None:
+            object_version = instance["object_version"]
+    elif object_version is None:
+        raise ApprovalError(
+            "APPROVAL_RESUBMIT_INVALID",
+            "A resubmission that supplies a corrected snapshot must also say "
+            "which object_version that snapshot is of; an instance pinned to "
+            "no version cannot be checked for staleness later (Contract 1).",
+            status=400)
+
     if instance["status"] != INST_SUPERSEDED:
         _set_instance_status(session, instance_id, INST_SUPERSEDED, closed=True)
     _append_action(session, instance_id=instance_id, stage_instance_id=None,
@@ -1603,7 +1780,7 @@ def resubmit(session: Session, *, instance_id: str, actor_user_id: str,
                     action=ACTION_RESUBMIT, object_type=instance["object_type"],
                     object_id=instance["object_id"],
                     detail=f"Resubmitted by {actor_user_id}: {reason_text}",
-                    reason_text=reason_text)
+                    reason_text=reason_text, correlation_id=correlation_id)
     return open_instance(
         session, object_type=instance["object_type"], object_id=instance["object_id"],
         object_version=object_version, snapshot=snapshot,
@@ -1766,3 +1943,311 @@ def overdue_stages(session: Session, *, now: datetime | None = None) -> list[dic
     keys = ("instance_id", "stage_no", "status", "opened_at", "due_at",
             "escalated_at", "object_type", "object_id", "entity_id", "project_id")
     return [{k: _iso(v) for k, v in zip(keys, row)} for row in rows]
+
+
+# ==========================================================================
+# The read surface: inbox, SLA report, timeline (contract 3 + contract 6)
+#
+# These three are what `api/approvals.py` calls for `GET /inbox`, `GET /sla`
+# and `GET /{id}/timeline`. Each returns the SAME envelope the router's
+# `_page` normalises -- `{"items", "next_cursor", "has_more"}` -- with a
+# PLAIN-text cursor the router base64-encodes on the way out and decodes on
+# the way back in, so a client never composes one.
+#
+# Contract 6, both halves, and they are different halves:
+#
+#   * scope    -- compiled by `repo.query`'s `{scope}` token, from the
+#                 session's own resolved grants. `approval_instance` carries
+#                 `entity_id` and `project_id` denormalised at creation
+#                 exactly so this is a direct predicate rather than a join
+#                 through the document.
+#   * audience -- `assigned_to`. A caller sees their OWN assignments, not the
+#                 estate's, unless they hold `approval.configure`; the router
+#                 passes `assigned_to=None` only for such a caller, and that
+#                 view is still scope-bounded. `approval.read` is held by
+#                 every role, so an unfiltered default would have turned a
+#                 personal inbox into an estate-wide one for everybody.
+#
+# Plant and location have no column on `approval_instance`. They are reached
+# through a LEFT JOIN to `project` rather than waived, because waiving them
+# would let a caller restricted to one plant read every plant's approvals. An
+# instance with no `project_id` therefore has a NULL plant and location, and
+# `(column = ANY(...))` is NULL -- so it does not match, and a plant-scoped
+# caller does not see it. That is fail-closed, which is the direction to fail.
+# ==========================================================================
+
+#: The scope mapping every read below compiles. All four dimensions are named:
+#: `repo.compile_scope` refuses a restricted dimension the query merely forgot,
+#: and that refusal is the reason a forgotten dimension cannot widen access.
+_INSTANCE_SCOPE_COLUMNS: dict[str, str | None] = {
+    "entity": "i.entity_id",
+    "project": "i.project_id",
+    "plant": "p.plant_id",
+    "location": "p.location_id",
+}
+
+DEFAULT_PAGE = 50
+MAX_PAGE = 200
+
+
+def _page_size(limit: int | None) -> int:
+    try:
+        value = int(limit) if limit is not None else DEFAULT_PAGE
+    except (TypeError, ValueError):
+        value = DEFAULT_PAGE
+    return min(max(value, 1), MAX_PAGE)
+
+
+#: Instance statuses a person can still do something about. `state=` on the
+#: inbox accepts either one of these literal statuses or the word `OPEN` used
+#: loosely for "anything still live", which is what a screen's default tab
+#: means; anything else is passed through as an exact status match.
+_LIVE_INSTANCE_STATUSES = (INST_OPEN, INST_EXCEPTION_PENDING)
+
+
+def list_inbox(session: Session, *, actor_user_id: str | None = None,
+                assigned_to: str | None = None, state: str | None = None,
+                object_type: str | None = None, cursor: str | None = None,
+                limit: int | None = None) -> dict[str, Any]:
+    """``GET /api/approvals/inbox`` -- the instances this caller must act on.
+
+    ``assigned_to`` restricts to instances carrying a PENDING assignment for
+    that user on a stage that is still open. Not "an assignment of any state":
+    an approver who has already acted has nothing left to do, and leaving their
+    own acted-on instances in their inbox is how an inbox stops being read.
+
+    ``actor_user_id`` is accepted and used only to report whose inbox this is
+    (and, when ``assigned_to`` is omitted, it is NOT silently substituted --
+    that decision belongs to the router, which knows whether the caller holds
+    ``approval.configure``). It is spelled ``actor_user_id`` and not ``actor``
+    because the requesting user has exactly one name across this engine; see
+    the note at the top of ``api/approvals.py``'s engine adapter.
+
+    The cursor is a keyset over ``(opened_at, instance_id)`` descending, which
+    is unique because ``instance_id`` is the primary key. Newest first, because
+    an inbox is read from the top.
+    """
+    from . import repo
+
+    size = _page_size(limit)
+    params: dict[str, Any] = {"lim": size + 1}
+    clauses: list[str] = ["{scope}"]
+
+    if object_type:
+        clauses.append("i.object_type = %(otype)s")
+        params["otype"] = object_type
+    if state:
+        wanted = str(state).strip().upper()
+        if wanted in ("OPEN", "LIVE", "PENDING"):
+            clauses.append("i.status = ANY(%(states)s)")
+            params["states"] = list(_LIVE_INSTANCE_STATUSES)
+        else:
+            clauses.append("i.status = %(state)s")
+            params["state"] = wanted
+    if assigned_to:
+        clauses.append(
+            """EXISTS (SELECT 1
+                       FROM approval_assignment a
+                       JOIN approval_stage_instance s
+                         ON s.stage_instance_id = a.stage_instance_id
+                       WHERE s.instance_id = i.instance_id
+                         AND a.assignee_user_id = %(assignee)s
+                         AND a.state = %(pending)s
+                         AND s.status = ANY(%(open_stages)s))""")
+        params["assignee"] = assigned_to
+        params["pending"] = ASSIGN_PENDING
+        params["open_stages"] = list(STAGE_OPEN_STATUSES)
+    if cursor:
+        at, _, instance_id = str(cursor).partition("\x1f")
+        clauses.append(
+            "(i.opened_at, i.instance_id) < (%(c_at)s::timestamptz, %(c_id)s)")
+        params["c_at"] = at
+        params["c_id"] = instance_id
+
+    rows = repo.query(
+        session,
+        f"""
+        SELECT i.instance_id, i.object_type, i.object_id, i.object_version,
+               i.status, i.current_stage_no, i.definition_id,
+               i.definition_version, i.maker_user_id, i.entity_id, i.project_id,
+               i.opened_at, i.closed_at, i.correlation_id
+        FROM approval_instance i
+        LEFT JOIN project p ON p.project_id = i.project_id
+        WHERE {' AND '.join(clauses)}
+        ORDER BY i.opened_at DESC, i.instance_id DESC
+        LIMIT %(lim)s
+        """,
+        params,
+        columns=_INSTANCE_SCOPE_COLUMNS,
+    )
+    keys = ("instance_id", "object_type", "object_id", "object_version",
+            "status", "current_stage_no", "definition_id", "definition_version",
+            "maker_user_id", "entity_id", "project_id", "opened_at",
+            "closed_at", "correlation_id")
+    items = [{k: _iso(v) for k, v in zip(keys, row)} for row in rows]
+    for item in items:
+        item["inbox_of"] = assigned_to or actor_user_id
+    return _paginate(items, size,
+                      lambda row: f"{row['opened_at']}\x1f{row['instance_id']}")
+
+
+def list_sla(session: Session, *, actor_user_id: str | None = None,
+              assigned_to: str | None = None, overdue: bool = False,
+              cursor: str | None = None, limit: int | None = None,
+              now: datetime | None = None) -> dict[str, Any]:
+    """``GET /api/approvals/sla?overdue=true`` -- open stages against their clock.
+
+    ``overdue=False`` reports every open stage that HAS a clock, not only the
+    ones that have run out. A stage due in an hour is the one worth chasing;
+    reporting only breaches turns an SLA report into a post-mortem.
+
+    ``overdue_at`` is computed against ``due_at`` in the database rather than in
+    Python, so the report cannot disagree with itself between two rows read a
+    moment apart, and ``escalated_at`` is carried so a reader can tell a stage
+    that has already been escalated from one that is simply late.
+    """
+    from . import repo
+
+    size = _page_size(limit)
+    moment = now or datetime.now(timezone.utc)
+    params: dict[str, Any] = {"lim": size + 1, "now": moment,
+                              "open_stages": list(STAGE_OPEN_STATUSES),
+                              "live": list(_LIVE_INSTANCE_STATUSES)}
+    clauses = ["{scope}", "s.status = ANY(%(open_stages)s)",
+               "i.status = ANY(%(live)s)", "s.due_at IS NOT NULL"]
+    if overdue:
+        clauses.append("s.due_at < %(now)s")
+    if assigned_to:
+        clauses.append(
+            """EXISTS (SELECT 1 FROM approval_assignment a
+                       WHERE a.stage_instance_id = s.stage_instance_id
+                         AND a.assignee_user_id = %(assignee)s
+                         AND a.state = %(pending)s)""")
+        params["assignee"] = assigned_to
+        params["pending"] = ASSIGN_PENDING
+    if cursor:
+        at, _, stage_instance_id = str(cursor).partition("\x1f")
+        clauses.append(
+            "(s.due_at, s.stage_instance_id) > (%(c_at)s::timestamptz, %(c_id)s)")
+        params["c_at"] = at
+        params["c_id"] = stage_instance_id
+
+    rows = repo.query(
+        session,
+        f"""
+        SELECT s.stage_instance_id, s.instance_id, s.stage_no, s.status,
+               s.opened_at, s.due_at, s.escalated_at, (s.due_at < %(now)s),
+               i.object_type, i.object_id, i.entity_id, i.project_id,
+               i.maker_user_id
+        FROM approval_stage_instance s
+        JOIN approval_instance i ON i.instance_id = s.instance_id
+        LEFT JOIN project p ON p.project_id = i.project_id
+        WHERE {' AND '.join(clauses)}
+        ORDER BY s.due_at, s.stage_instance_id
+        LIMIT %(lim)s
+        """,
+        params,
+        columns=_INSTANCE_SCOPE_COLUMNS,
+    )
+    keys = ("stage_instance_id", "instance_id", "stage_no", "status",
+            "opened_at", "due_at", "escalated_at", "overdue", "object_type",
+            "object_id", "entity_id", "project_id", "maker_user_id")
+    items = [{k: _iso(v) for k, v in zip(keys, row)} for row in rows]
+    for item in items:
+        item["overdue"] = bool(item["overdue"])
+        item["reported_for"] = assigned_to or actor_user_id
+    return _paginate(items, size,
+                      lambda row: f"{row['due_at']}\x1f{row['stage_instance_id']}")
+
+
+def get_timeline(session: Session, *, instance_id: str,
+                  actor_user_id: str | None = None,
+                  cursor: str | None = None,
+                  limit: int | None = None) -> dict[str, Any]:
+    """``GET /api/approvals/{id}/timeline`` -- what happened, and what did not.
+
+    Two kinds of entry, merged chronologically:
+
+    * ``kind="ACTION"``  -- one ``approval_action`` row. The append-only,
+      hash-chained record: who acted, for whom, with what reason.
+    * ``kind="STAGE"``   -- one ``approval_stage_instance`` row that never ran.
+      Contract 2 is explicit that a stage whose ``applies_when`` was false is
+      **recorded SKIPPED with a skip_reason, never omitted**, because an
+      auditor must see the control that did not fire. A SKIPPED stage writes no
+      action, so if the timeline were the action stream alone the one thing
+      Contract 2 insists on being visible would be the one thing missing.
+
+    Scope is enforced by reading the instance through :func:`get_instance`
+    first, which is where :func:`assert_instance_in_scope` lives -- so an
+    out-of-scope instance is refused before any history is assembled, rather
+    than being assembled and then filtered.
+
+    The cursor is an OFFSET, not a keyset, and that is defensible here and
+    nowhere else in this module: a timeline is one instance's own history,
+    ``approval_action`` is append-only by trigger AND by privilege, and a
+    SKIPPED stage row is written once at routing and never moved. Entries
+    therefore cannot be deleted or reordered underneath a walk, which is the
+    only thing offset pagination is unsafe against.
+    """
+    instance = get_instance(session, instance_id)
+    size = _page_size(limit)
+
+    actions = session.fetchall(
+        """
+        SELECT seq, at, actor_user_id, acting_for_user_id, action, reason_code,
+               reason_text, stage_instance_id, idempotency_key, outcome,
+               entry_hash
+        FROM approval_action WHERE instance_id = %s ORDER BY seq
+        """,
+        (instance_id,))
+    entries: list[dict[str, Any]] = [
+        {"kind": "ACTION", "seq": row[0], "at": _iso(row[1]),
+         "actor_user_id": row[2], "acting_for_user_id": row[3],
+         "action": row[4], "reason_code": row[5], "reason_text": row[6],
+         "stage_instance_id": row[7], "idempotency_key": row[8],
+         "outcome": row[9], "entry_hash": row[10]}
+        for row in actions
+    ]
+
+    for stage_no, state in sorted(_stage_states(session, instance_id).items()):
+        if state["status"] != STAGE_SKIPPED:
+            continue
+        entries.append({
+            "kind": "STAGE", "seq": None,
+            "at": _iso(state["closed_at"] or state["opened_at"]),
+            "actor_user_id": None, "acting_for_user_id": None,
+            "action": STAGE_SKIPPED, "stage_no": stage_no,
+            "stage_instance_id": state["stage_instance_id"],
+            "skip_reason": state["skip_reason"],
+            "reason_code": None, "reason_text": None,
+        })
+
+    # A SKIPPED stage and the routing action that recorded it share an instant,
+    # so `seq` breaks the tie and puts the action -- which has one -- first.
+    entries.sort(key=lambda e: (e["at"] or "", e["seq"] if e["seq"] else 0))
+
+    offset = 0
+    if cursor:
+        try:
+            offset = max(int(cursor), 0)
+        except (TypeError, ValueError):
+            offset = 0
+    window = entries[offset:offset + size + 1]
+    page = _paginate(window, size, lambda _row: str(offset + size))
+    page["instance_id"] = instance_id
+    page["instance_status"] = instance["status"]
+    page["object_type"] = instance["object_type"]
+    page["object_id"] = instance["object_id"]
+    page["viewed_by"] = actor_user_id
+    return page
+
+
+def _paginate(items: list[dict[str, Any]], limit: int, cursor_of) -> dict[str, Any]:
+    """The Contract 3 list envelope. See ``approval_rules.paginate`` -- same
+    rule, restated here rather than imported across the two halves of the
+    engine, because ``approvals.py`` already imports enough from that module
+    that one more name would obscure which half owns what."""
+    has_more = len(items) > limit
+    page = items[:limit]
+    next_cursor = cursor_of(page[-1]) if (has_more and page) else None
+    return {"items": page, "next_cursor": next_cursor, "has_more": has_more}

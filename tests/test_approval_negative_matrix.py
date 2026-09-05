@@ -272,7 +272,14 @@ def test_a_self_approval_by_the_maker_is_a_403_and_says_so(harness, acting_clien
 
     # And the identity the engine compared is the SESSION's, not anything the
     # request offered -- which is the whole basis on which the refusal stands.
-    assert harness.last["kwargs"]["actor"] == acting_client.user_id
+    #
+    # The keyword is `actor_user_id`. That is the ONE name the engine uses for
+    # the requesting user, everywhere, with no aliases -- it is the column name
+    # in `approval_action` and the identity Contract 5's maker-checker
+    # compares. `actor` is asserted ABSENT rather than merely not read: an
+    # alias left behind is how two spellings of one identity start to disagree.
+    assert harness.last["kwargs"]["actor_user_id"] == acting_client.user_id
+    assert "actor" not in harness.last["kwargs"]
 
 
 def test_a_delegation_cannot_launder_a_self_approval(harness, acting_client):
@@ -289,7 +296,8 @@ def test_a_delegation_cannot_launder_a_self_approval(harness, acting_client):
     forged = acting_client.decide(
         **{"reason_text": "approving on behalf of the requestor"})
     assert forged.status_code == 403
-    assert harness.last["kwargs"]["actor"] == acting_client.user_id
+    assert harness.last["kwargs"]["actor_user_id"] == acting_client.user_id
+    assert "actor" not in harness.last["kwargs"]
 
     # A body naming the second identity is refused outright by `extra="forbid"`
     # rather than being quietly dropped: a caller must never be able to believe

@@ -710,6 +710,228 @@ class TestParallelGroups:
         assert engine.all_waves_settled([], {}) is False
 
 
+class TestAMixedParallelWaveOpensRatherThanStalling:
+    """A parallel group holding one applying and one non-applying stage.
+
+    This is the exact shape ``open_instance`` produces and the one that used to
+    stall. ``open_instance`` writes the SKIPPED row for every non-applicable
+    stage FIRST and only then asks which wave to open, so ``next_wave`` sees a
+    wave like ``[1, 2]`` with state ``{2: SKIPPED}``. The old test required
+    every member of a candidate wave to have NO state at all, so this wave was
+    neither "settled" (stage 1 has no state) nor "unstarted" (stage 2 is
+    SKIPPED); it fell through to ``None``, ``open_instance`` read that as
+    "every stage was skipped", and the object was held EXCEPTION_PENDING with
+    an approvable stage that nobody had ever been asked to act on.
+
+    The pair of assertions matters more than either alone. Opening a mixed wave
+    is the fix; still refusing an ALL-skipped wave is what stops the fix from
+    turning the fail-closed branch into an auto-approval.
+    """
+
+    #: `open_instance` maps `next_wave(...) is None` to EXCEPTION_PENDING and a
+    #: non-None result to "open these stages, instance OPEN". Naming the two
+    #: outcomes here keeps the assertions below readable as statements about
+    #: the instance, which is what they are really about.
+    STALLED = None
+
+    def test_a_wave_with_one_skipped_and_one_unopened_member_opens(self):
+        opened = engine.next_wave([[1, 2]], {2: rules.STAGE_SKIPPED})
+        assert opened is not self.STALLED, (
+            "next_wave reported nothing to open for a wave that still holds an "
+            "unopened stage. open_instance reads that as 'every stage was "
+            "skipped' and sets EXCEPTION_PENDING -- an approvable stage exists "
+            "and would never be opened.")
+        assert opened == [1], (
+            f"the wave to open is {opened}. It must name the unopened member "
+            f"and ONLY the unopened member: _open_wave INSERTs a row per stage "
+            f"it is given, so naming the SKIPPED stage again collides with the "
+            f"row already written under UNIQUE (instance_id, stage_no).")
+
+    def test_the_skipped_member_is_never_returned_for_opening(self):
+        """Whichever member is conditional, only the unopened ones come back."""
+        assert engine.next_wave([[1, 2]], {1: rules.STAGE_SKIPPED}) == [2]
+        assert engine.next_wave([[1, 2, 3]],
+                                 {1: rules.STAGE_SKIPPED,
+                                  3: rules.STAGE_SKIPPED}) == [2]
+
+    def test_a_wave_that_is_entirely_skipped_is_stepped_over_not_opened(self):
+        """A SKIPPED stage settles its wave; it does not become an approval."""
+        assert engine.next_wave([[1, 2], [3]],
+                                 {1: rules.STAGE_SKIPPED,
+                                  2: rules.STAGE_SKIPPED}) == [3]
+
+    def test_a_definition_whose_every_stage_is_skipped_still_stalls(self):
+        """The fail-closed branch survives the fix.
+
+        With no stage left to open, ``next_wave`` returns None and
+        ``open_instance`` holds the object EXCEPTION_PENDING. That is the
+        correct outcome and the one the fix must not erode: a definition whose
+        ``applies_when`` predicates exclude this snapshot class entirely
+        approves nothing, and "nothing to do" must never resolve to "approved".
+        """
+        waves = [[1, 2], [3]]
+        every_stage_skipped = {1: rules.STAGE_SKIPPED, 2: rules.STAGE_SKIPPED,
+                               3: rules.STAGE_SKIPPED}
+        assert engine.next_wave(waves, every_stage_skipped) is self.STALLED, (
+            "a definition whose every stage was skipped reported a wave to "
+            "open. open_instance would mark the instance OPEN with no "
+            "assignment on it, which is worse than the EXCEPTION_PENDING it "
+            "replaces -- an object waiting on nobody, forever.")
+        assert engine.all_waves_settled(waves, every_stage_skipped) is True, (
+            "sanity: all-SKIPPED IS settled. That is precisely why "
+            "EXCEPTION_PENDING -- rather than APPROVED -- has to be the "
+            "outcome open_instance chooses, and why it chooses it from "
+            "next_wave rather than from all_waves_settled.")
+
+    def test_a_mixed_wave_still_blocks_the_waves_behind_it(self):
+        """Opening a mixed wave must not also skip past it.
+
+        Once stage 1 is PENDING the wave is in progress, and nothing beyond it
+        opens -- the SKIPPED sibling does not make the group complete.
+        """
+        waves = [[1, 2], [3]]
+        assert engine.next_wave(
+            waves, {1: rules.STAGE_PENDING, 2: rules.STAGE_SKIPPED}) is None
+        assert engine.all_waves_settled(
+            waves, {1: rules.STAGE_PENDING, 2: rules.STAGE_SKIPPED}) is False
+        # ... and once it is approved, the wave behind it opens normally.
+        assert engine.next_wave(
+            waves, {1: rules.STAGE_APPROVED, 2: rules.STAGE_SKIPPED}) == [3]
+
+
+class TestTheWriteBackFiresOnceWhenAnInstanceCloses:
+    """Wave 4 stream A2's seam: ``approval_writeback.apply_outcome``.
+
+    The engine calls it at the point an instance CLOSES, inside the same
+    transaction, so an approval cannot commit while the document it approved
+    stays DRAFT. Every terminal transition in ``approvals.py`` funnels through
+    ``_set_instance_status(..., closed=True)`` -- APPROVED and
+    REJECTED/RETURNED from ``_apply_decision``, RECALLED and CANCELLED from
+    ``_terminate``, SUPERSEDED from ``resubmit`` and ``supersede_if_changed``
+    -- which is why the call hangs off that one function rather than off six
+    call sites that a seventh could later fail to join.
+
+    ``approval_writeback.py`` is stream A2's file and may not exist here, so
+    these tests inject a stub module rather than importing one.
+    """
+
+    class FakeSession:
+        """Answers the two statements a close performs and records the rest.
+
+        ``_set_instance_status`` issues one UPDATE; ``_apply_writeback`` then
+        re-reads the instance through ``get_instance``, which is one SELECT.
+        Nothing else is needed, and emulating more would be emulating the
+        database rather than testing the seam.
+        """
+
+        def __init__(self, status="APPROVED"):
+            self.scope = Scope(user_id="U-TEST", principal_kind="USER",
+                               read_all=True)
+            self.status = status
+            self.executed = []
+
+        def execute(self, sql, params=None):
+            self.executed.append((sql, params))
+
+        def fetchone(self, sql, params=None):
+            # The 17 columns `get_instance` selects, in its order.
+            return ("AINS-1", "BUDGET_REVISION", "REV-1", "1", "sha",
+                    "APD-1", 1, self.status, None, {}, None, "U-MAKER",
+                    "ENT-01", "PRJ-01", None, None, "corr-1")
+
+        def fetchall(self, sql, params=None):
+            return []
+
+    def _install_stub(self, monkeypatch, apply_outcome):
+        """Put a stub ``app.backend.pg.approval_writeback`` on the import path.
+
+        ``_apply_writeback`` does ``from . import approval_writeback``, which
+        consults ``sys.modules`` first, so a module object registered under the
+        full dotted name is what the engine will find.
+        """
+        import sys
+        import types
+
+        stub = types.ModuleType("app.backend.pg.approval_writeback")
+        stub.apply_outcome = apply_outcome
+        monkeypatch.setitem(sys.modules,
+                            "app.backend.pg.approval_writeback", stub)
+        return stub
+
+    def test_closing_an_instance_calls_apply_outcome_exactly_once(self, monkeypatch):
+        calls = []
+        self._install_stub(monkeypatch, lambda session, instance: calls.append(instance))
+
+        session = self.FakeSession(status=rules.INST_APPROVED)
+        engine._set_instance_status(session, "AINS-1", rules.INST_APPROVED,
+                                    closed=True)
+
+        assert len(calls) == 1, (
+            f"apply_outcome fired {len(calls)} times for one closure. Once is "
+            f"the contract: twice would re-apply a business status transition "
+            f"the document layer has every right to treat as a state machine.")
+
+    def test_it_is_handed_the_instance_as_it_now_stands_closed(self, monkeypatch):
+        seen = []
+        self._install_stub(monkeypatch, lambda session, instance: seen.append(instance))
+
+        session = self.FakeSession(status=rules.INST_REJECTED)
+        engine._set_instance_status(session, "AINS-1", rules.INST_REJECTED,
+                                    closed=True)
+
+        assert seen, "apply_outcome was never called on a closing instance"
+        instance = seen[0]
+        assert instance["instance_id"] == "AINS-1"
+        assert instance["object_type"] == "BUDGET_REVISION"
+        assert instance["object_id"] == "REV-1"
+        assert instance["status"] == rules.INST_REJECTED, (
+            f"apply_outcome was handed status {instance['status']!r}. It must "
+            f"receive the instance as it now STANDS -- read back after the "
+            f"UPDATE -- not the status the caller intended, or a write-back "
+            f"that inspects the status maps the wrong outcome.")
+
+    def test_a_status_change_that_does_not_close_calls_nothing(self, monkeypatch):
+        calls = []
+        self._install_stub(monkeypatch, lambda session, instance: calls.append(instance))
+
+        session = self.FakeSession()
+        engine._set_instance_status(session, "AINS-1", rules.INST_OPEN,
+                                    closed=False, current_stage_no=2)
+
+        assert calls == [], (
+            "apply_outcome fired for an instance that merely advanced a stage. "
+            "The seam is defined on CLOSURE; firing on every status write "
+            "would map an open instance onto a terminal document status.")
+
+    def test_a_deployment_without_the_module_still_closes_the_instance(self, monkeypatch):
+        """The import is guarded because stream A2's module is an ADDITION."""
+        import sys
+
+        monkeypatch.setitem(sys.modules, "app.backend.pg.approval_writeback",
+                            None)   # `import` of a None entry raises ImportError
+        session = self.FakeSession(status=rules.INST_CANCELLED)
+        engine._set_instance_status(session, "AINS-1", rules.INST_CANCELLED,
+                                    closed=True)
+        assert session.executed, "the closing UPDATE did not run"
+
+    def test_a_write_back_that_raises_takes_the_approval_down_with_it(self, monkeypatch):
+        """NOT swallowed, deliberately.
+
+        An approval that commits while its document stays DRAFT is the exact
+        split-brain a write-back exists to prevent. The call is inside the
+        caller's transaction, so letting the exception propagate is what rolls
+        the approval back with it.
+        """
+        def boom(session, instance):
+            raise RuntimeError("document layer refused the transition")
+
+        self._install_stub(monkeypatch, boom)
+        session = self.FakeSession(status=rules.INST_APPROVED)
+        with pytest.raises(RuntimeError):
+            engine._set_instance_status(session, "AINS-1", rules.INST_APPROVED,
+                                        closed=True)
+
+
 # ==========================================================================
 # Delegation
 # ==========================================================================
