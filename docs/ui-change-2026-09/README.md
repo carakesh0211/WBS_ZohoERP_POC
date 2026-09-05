@@ -12,6 +12,14 @@ design-token registry.
 Source: `docs/WAVE4_CONTRACTS.md`, section "The two APPROVED UI changes —
 stream 4 only".
 
+> **There is now a THIRD change to this rail, and it is not one of these two.**
+> Wave 4's frontend-completion pass listed the eight approval-engine screens in
+> the primary navigation, on the lead's instruction. It has **no product-owner
+> approval**, it moves 46 baselines, and it is recorded separately in
+> `A3-approval-navigation.md` — deliberately not in this document, so that
+> "approved" keeps meaning approved. Read that file before accepting any
+> re-baseline of the snapshots accounted for below.
+
 ---
 
 ## A1 — Primary-navigation entries for the five completed screens

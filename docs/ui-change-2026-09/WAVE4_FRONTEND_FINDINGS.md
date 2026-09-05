@@ -5,6 +5,22 @@ files you do not own". Ordered by severity.
 
 ---
 
+## STATUS AFTER THE FRONTEND-COMPLETION PASS (2026-09-04)
+
+| # | Was | Now |
+|---|---|---|
+| 1 | `approval.*` absent from `auth.PERMISSIONS` — BLOCKING | **CLOSED.** All four landed in `1224b83`. The `grantApprovalPermissions` stub is gone and `requireApprovalPermissions` asserts instead. See §1a for what the fix changed underneath. |
+| 2 | `--warning` fails AA | open — unchanged, `C6_tokens.json` is not this stream's file |
+| 2b | `--n500` fails AA on a hovered row | open — unchanged, `styles.css` is byte-frozen |
+| 3 | `playwright.config.js` `threshold: 0.2` | open — unchanged; re-verified at HEAD |
+| 4 | Two screens both titled "My Approval Inbox" | open — unchanged, still pinned by a test |
+| 5 | Six of eight screens absent from `C8_screens.json` | open — unchanged, still `scr: null` |
+| 6 | `<dt>`/`<dd>` outside a `<dl>` in `app.js` | open — unchanged; the four occurrences are in client-approved shell views |
+
+Three findings are NEW and follow at §8, §9 and §10.
+
+---
+
 ## 1. `approval.*` permissions are absent from `auth.PERMISSIONS` — BLOCKING
 
 **File:** `app/backend/auth.py` (lead-owned, frozen)
@@ -235,3 +251,158 @@ branches on `writeShaped` and asserts the write-path behaviour explicitly.
 
 **Action (lead):** decide whether `simulate` should be a GET, or whether
 `classifyStatus` should key off intent rather than verb.
+
+---
+
+## 1a. `approval.read` excludes Auditor — closed as a decision, restated as a consequence
+
+**File:** `app/backend/auth.py:50-58` (lead-owned)
+
+Contract 4's prose says `approval.read` is held by "every role".
+`auth.PERMISSIONS` deliberately excludes **Auditor**, with the reasoning
+recorded in the file: granting it would widen
+`test_aud_c_006_auditor_is_read_only`, and that is a D-12 call rather than an
+implementation one.
+
+This stream has taken that as authoritative and built to it, not around it:
+
+- No navigation entry and no approval route resolves for an Auditor. All eight
+  hashes correct to `#home`.
+- `approvals.spec.js` uses the Auditor as the **negative control** for the whole
+  gate — a principal the server genuinely refuses, rather than one manufactured
+  by withholding a stub. If the gate were absent, that test fails.
+
+**The consequence, stated plainly so nobody has to rediscover it:** an Auditor
+cannot see any approval instance, timeline or SLA screen at all. The contract
+says an auditor reads approval history through the audit chain instead. Whether
+that is acceptable to the client is a D-12 question that is still open, and it
+is the *only* place where the implementation and Contract 4's prose disagree.
+
+---
+
+## 8. `approvals.py`'s Contract 4 fallback now disagrees with the authoritative table, and fails OPEN
+
+**File:** `app/backend/api/approvals.py:121-131` (stream 3's file)
+
+`_CONTRACT4_PERMISSIONS` is a verbatim transcription of Contract 4, consulted
+by `_holders_of()` only for a permission `auth.PERMISSIONS` does not define. It
+was correct and necessary while the permissions were missing. They have landed,
+so **all four entries are now unreachable** — with one exception that matters:
+
+```python
+"approval.read": ("Requestor", "BudgetController", "ProcurementApprover",
+                  "FinanceApprover", "CapitalisationApprover", "Auditor",
+                  "Administrator"),
+```
+
+The fallback **includes Auditor**. `auth.PERMISSIONS` **excludes** it (§1a).
+The two tables disagree on exactly the D-12 decision, and the disagreement is
+currently masked because `auth.PERMISSIONS` is consulted first.
+
+**Why that is a defect and not just dead code:** the fallback fails OPEN
+relative to the authoritative table. If `approval.read` were ever removed from
+`auth.PERMISSIONS` — a revert, a bad merge, a deliberate revisit of D-12 — the
+API would not fail closed. It would silently resume serving the inbox to every
+role, Auditor included, off a frozen copy that no longer reflects any decision
+anyone made. A removal intended to *narrow* access would *widen* it.
+
+**Action (stream 3 / lead):** delete `_CONTRACT4_PERMISSIONS` and let
+`_holders_of()` return `None` for an undefined permission — which every caller
+already treats as a refusal, and which `_authorise()` already turns into a
+500 `UNKNOWN_PERMISSION`. That is the fail-closed behaviour the module docstring
+says it wants. At minimum, correct the `approval.read` row so the two tables
+cannot disagree.
+
+---
+
+## 9. The primary navigation rail no longer fits its viewport
+
+**File:** `app/frontend/styles.css` (byte-frozen) plus the size of `NAV`
+
+Measured from the running application at HEAD as `U-ADM` (29 rail entries):
+
+| Viewport | Rail height | Content | Overflow | Entries below the fold |
+|---|---|---|---|---|
+| desktop-1440 | 856px | 1050px | **194px** | `audit`, `audit-trail`, `approval-timeline`, `approval-matrix`, `approval-versions`, `approval-simulator`, `settings` |
+| laptop-1024 | 713px | 1050px | **337px** | the above plus `cap`, `zoho`, `inventory` |
+| tablet-800 | — | — | — | rail is `display:none`; the drawer scrolls |
+
+`.nav` is `overflow-y: auto`, so nothing breaks and the page never widens —
+AUD-M-004 still holds. But the whole **Governance** group is now below the fold
+at both desktop widths, and that includes `Settings & Master Data`, one of the
+five entries APPROVED UI CHANGE 1 was added to expose. It is reachable only by
+scrolling a column that gives the user no visual cue that it scrolls.
+
+From the same measurements: removing the seven approval entries an
+Administrator sees returns the content to 840px — which fits desktop-1440
+(856px) and still overflows laptop-1024 (713px) by 127px. So **A1 alone already
+put laptop-1024 into overflow**; the approval entries are what push
+desktop-1440 over as well.
+
+Not fixed here. The fix is a navigation pattern — collapsible groups, a denser
+rail, or not listing all eight — and inventing one is far outside "the two
+approved UI changes". See `A3-approval-navigation.md`.
+
+---
+
+## 10. `--update-snapshots` is unavailable to this stream, and 49 baselines are stale because of it
+
+**Files:** `tests/vrt/approved-ui.spec.js-snapshots/` (36),
+`tests/vrt/spa-routing.spec.js-snapshots/` (10),
+`tests/vrt/approvals.spec.js-snapshots/` (3)
+
+Listing the eight approval screens in the rail moves every desktop and laptop
+baseline, because three of the entries sit near the top of the rail and shift
+everything below them. `approval-delegations` moves for a different and
+unrelated reason: its committed baseline was captured under an Administrator
+holding `approval.delegate`, which Contract 4 does not grant, so it depicts a
+principal that cannot exist.
+
+The full accounting, the reason for each, and the confinement proof that must
+be run before any of them is accepted are in `A3-approval-navigation.md`.
+
+**Nothing was regenerated.** The wave rule forbids re-baselining an approved
+screenshot without written approval, and the working environment blocks
+`--update-snapshots` outright. The suite is therefore RED on those 49 rather
+than green on overwritten evidence, which is the intended failure mode.
+
+---
+
+## 11. A swallowed mount failure was reported as a rendered screen — FIXED, in a file this stream owns
+
+**File:** `app/frontend/app.js` (this stream's file, so fixed rather than reported)
+
+Recorded here because it is the root cause of the `spa-routing.spec.js`
+keyboard-traversal failure that looked like flakiness.
+
+`render()` used to do this:
+
+```js
+try { await result.mount(el); }
+catch (e) { el.appendChild(errorNode(...)); }   // error OUTSIDE the host
+result.node.dataset.mounted = '1';              // ...and mounted anyway
+```
+
+`data-mounted` is the whole application's "this screen has rendered" signal.
+Setting it after a failed `mount()` meant a screen whose feature module failed
+to load was announced as rendered while being empty, and the error box was
+appended to `#content` — outside the `.scr-host` that every screen-scoped
+assertion and every screen-scoped stylesheet is written against.
+
+Proven, not inferred. Aborting the dynamic import of one feature module and
+measuring what the application does:
+
+| | `data-mounted` | `data-mount-failed` | error inside the host | focusable controls |
+|---|---|---|---|---|
+| before | `"1"` | — | no | **0** |
+| after | — | `"1"` | yes | 0 |
+
+A test waiting on `data-mounted` therefore proceeded happily and then failed on
+the next thing it looked at — "this screen rendered no focusable control",
+which describes the design rather than the fault, and which reads as flakiness
+rather than as a load error.
+
+Now a failed mount sets `data-mount-failed`, renders the error inside the host,
+and `settleScreen()` in both VRT specs ends its wait on either marker and
+throws naming the real failure.
+

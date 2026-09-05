@@ -26,47 +26,79 @@
 //   * the rendered result does not drift, at 1440 / 1024 / 800 px.
 //
 // ---------------------------------------------------------------------------
-// TWO CROSS-STREAM STUBS, BOTH DELIBERATE, BOTH DOCUMENTED
+// ONE CROSS-STREAM STUB, DELIBERATE AND DOCUMENTED
 // ---------------------------------------------------------------------------
 //
-// 1. /api/approvals/**  — app/backend/api/approvals.py is stream 3's file and
-//    does not exist at this stream's baseline. These screens are coded against
-//    Wave 4 Contract 3's FROZEN routes and payloads, and every one of those
-//    routes is stubbed here with page.route(). That is the intended
-//    arrangement for concurrent streams.
+// /api/approvals/** — the eight screens are coded against Wave 4 Contract 3's
+// FROZEN routes and payloads, and every one of those routes is stubbed here
+// with page.route() so that a rendering assertion is about the rendering and
+// not about the engine's current seed data. That is the intended arrangement.
 //
-// 2. /api/bootstrap     — Contract 4 adds approval.read / approval.act /
-//    approval.configure / approval.delegate to auth.PERMISSIONS.
-//    app/backend/auth.py is LEAD-OWNED and frozen, and at this stream's
-//    baseline it carries none of them, so a real bootstrap returns a
-//    permission set in which every approval screen is correctly invisible.
+// THE BOOTSTRAP IS NOT STUBBED, AND MUST NEVER BE AGAIN.
 //
-//    Rather than fake the whole bootstrap, the REAL server response is fetched
-//    and the four contract-frozen permissions are added to it. Everything else
-//    — the session, the identity, the entities, the projects — is the real
-//    server's. What is being proved is that the shell's gate opens for exactly
-//    those permissions and stays shut without them, and the negative half of
-//    that pair is proved against an UNMODIFIED bootstrap, so the gate cannot
-//    pass by being absent.
+// An earlier revision of this file carried `grantApprovalPermissions`, which
+// fetched the real /api/bootstrap and ADDED the four Contract 4 permissions to
+// the response, because at that point `auth.PERMISSIONS` defined none of them.
+// The permissions have since landed. The stub is gone, and what replaces it —
+// `requireApprovalPermissions` — only ever ASSERTS: it fails, naming what is
+// missing, if the signed-in principal does not genuinely hold what the test
+// needs. A test that needs a permission its role does not hold signs in as a
+// role that does, or is asserting the wrong thing.
 //
-//    THIS STUB MUST BE DELETED once the approval permissions land in
-//    auth.PERMISSIONS. It is reported in this stream's hand-off.
+// WHICH MEANS NO SINGLE PRINCIPAL SEES ALL EIGHT SCREENS, AND THAT IS CORRECT.
+// Contract 4 splits them three ways, and the roles are disjoint in exactly the
+// way least privilege intends:
+//
+//   approval.read      Requestor, BudgetController, ProcurementApprover,
+//                      FinanceApprover, CapitalisationApprover, Administrator
+//   approval.act       the five above, NOT Administrator
+//   approval.configure Administrator ONLY
+//   approval.delegate  the four approver roles, NOT Administrator, NOT Requestor
+//
+// So Administrator reaches the four read screens and the three configuration
+// screens but NOT Delegation Management, and an approver reaches Delegation
+// Management but none of the configuration screens. Every screen below
+// therefore names the demo identity that genuinely holds its permission, and
+// the suite signs in as that identity rather than manufacturing a principal
+// that cannot exist.
+//
+// AUDITOR HOLDS NONE OF THE FOUR, DELIBERATELY. Contract 4's prose says
+// approval.read is held by "every role"; `auth.PERMISSIONS` excludes Auditor,
+// because granting it would widen `test_aud_c_006_auditor_is_read_only` — a
+// D-12 decision, not an implementation one. That makes Auditor the honest
+// negative control for the gate, and it is used as one below.
 
 const { test, expect } = require('@playwright/test');
 const AxeBuilder = require('@axe-core/playwright').default;
 
-/* ---------------- identities ---------------- */
+/* ---------------- identities ----------------
+   Demo credentials are user_id + '!demo' (auth.provision_dev_identities), and
+   the permission comments are read off auth.PERMISSIONS + auth.DEV_USERS. */
 
+// Administrator: approval.read + approval.configure. NOT act, NOT delegate.
 const ADMIN = { user: 'U-ADM', password: 'U-ADM!demo' };
+// BudgetController + FinanceApprover: approval.read + act + delegate.
+// NOT configure — no approver role administers the workflow registry.
+const APPROVER = { user: 'U-PFC', password: 'U-PFC!demo' };
+// Requestor: approval.read + act only. The positive control for "a screen is
+// gated on its OWN permission, not on approval.read alone".
+const REQUESTOR = { user: 'U-REQ', password: 'U-REQ!demo' };
+// Auditor: none of the four. The negative control for the whole gate.
+const AUDITOR = { user: 'U-AUD', password: 'U-AUD!demo' };
 
 /* ---------------- the eight screens ---------------- */
 
+/* `as` is the demo identity that GENUINELY holds this screen's `need`. It is
+   not a convenience: no principal holds all four approval permissions, so a
+   suite that signed in once and visited all eight would be asserting against a
+   principal the permission model does not allow to exist. */
 const SCREENS = [
   {
     hash: 'approval-inbox',
     title: 'My Approval Inbox',
     navLabel: 'My Approval Inbox',
     need: ['approval.read'],
+    as: ADMIN,
     statusHost: '#approvalInboxStatusHost',
     // The endpoint whose failure drives this screen's error / permission state.
     primary: '**/api/approvals/inbox**',
@@ -76,6 +108,7 @@ const SCREENS = [
     title: 'Approval Request Detail',
     navLabel: 'Approval Request Detail',
     need: ['approval.read'],
+    as: ADMIN,
     statusHost: '#approvalDetailStatusHost',
     primary: '**/api/approvals/INST-001',
     // With no ?instance in the URL this screen falls back to the caller's own
@@ -88,6 +121,7 @@ const SCREENS = [
     title: 'Approval Timeline and Audit History',
     navLabel: 'Approval Timeline',
     need: ['approval.read'],
+    as: ADMIN,
     statusHost: '#approvalTimelineStatusHost',
     primary: '**/api/approvals/INST-001/timeline**',
   },
@@ -96,6 +130,7 @@ const SCREENS = [
     title: 'Approval Matrix Configuration',
     navLabel: 'Approval Matrix Configuration',
     need: ['approval.configure'],
+    as: ADMIN,
     statusHost: '#approvalMatrixStatusHost',
     primary: '**/api/approvals/definitions?**',
   },
@@ -104,6 +139,7 @@ const SCREENS = [
     title: 'Workflow Version History',
     navLabel: 'Workflow Version History',
     need: ['approval.configure'],
+    as: ADMIN,
     statusHost: '#workflowVersionsStatusHost',
     primary: '**/api/approvals/definitions/*/versions**',
   },
@@ -112,6 +148,7 @@ const SCREENS = [
     title: 'Approval Rule Simulator',
     navLabel: 'Approval Rule Simulator',
     need: ['approval.configure'],
+    as: ADMIN,
     statusHost: '#simulatorStatusHost',
     primary: '**/api/approvals/definitions/*/simulate',
     // The simulator does not load on mount; it starts in its empty state and
@@ -128,6 +165,10 @@ const SCREENS = [
     title: 'Delegation Management',
     navLabel: 'Delegation Management',
     need: ['approval.delegate'],
+    // NOT the Administrator: Contract 4 gives approval.delegate to the four
+    // approver roles and withholds it from Administrator, so this is the one
+    // screen the admin session genuinely cannot see.
+    as: APPROVER,
     statusHost: '#delegationsStatusHost',
     primary: '**/api/approvals/delegations**',
   },
@@ -136,6 +177,7 @@ const SCREENS = [
     title: 'Escalation and SLA Monitor',
     navLabel: 'Escalation and SLA Monitor',
     need: ['approval.read'],
+    as: ADMIN,
     statusHost: '#slaStatusHost',
     primary: '**/api/approvals/sla**',
   },
@@ -150,6 +192,8 @@ const EXISTING_SCREENS = [
   { hash: 'settings', title: 'Settings and Master Data' },
 ];
 
+/* Contract 4's four, used to assert that a principal holds NONE of them. There
+   is deliberately no "grant these" anywhere in this file. */
 const APPROVAL_PERMISSIONS = [
   'approval.read', 'approval.act', 'approval.configure', 'approval.delegate',
 ];
@@ -400,8 +444,33 @@ async function routeJson(page, pattern, body, status = 200) {
 }
 
 /**
- * The four Contract-4 approval permissions now exist in `auth.PERMISSIONS`,
- * so this NO LONGER GRANTS ANYTHING. It verifies.
+ * The permission set the SERVER reports for the live session, read from inside
+ * the page. Runs in the browser, so it is written as a self-contained function.
+ *
+ * The application authenticates with a server-issued session id kept in
+ * sessionStorage and sent as `X-Session` (app.js: "never written to
+ * localStorage"). There is no auth cookie, so a bare `fetch('/api/bootstrap')`
+ * is a 401 — which is what made the first version of this helper report
+ * "bootstrap failed" for a perfectly good session.
+ *
+ * @returns {string[]|null} the permission list, or null if the call failed.
+ */
+async function bootstrapPermissions() {
+  const sid = (() => {
+    try { return sessionStorage.getItem('capex.session_id') || ''; } catch { return ''; }
+  })();
+  const res = await fetch('/api/bootstrap', {
+    credentials: 'same-origin',
+    headers: sid ? { 'X-Session': sid } : {},
+  });
+  if (!res.ok) return null;
+  const body = await res.json();
+  return body.permissions || [];
+}
+
+/**
+ * The four Contract-4 approval permissions exist in `auth.PERMISSIONS`, so
+ * this NO LONGER GRANTS ANYTHING. It verifies.
  *
  * It used to augment the real bootstrap response, because at the Wave 4
  * baseline no principal held any approval permission and every screen was
@@ -413,16 +482,21 @@ async function routeJson(page, pattern, body, status = 200) {
  * Now it asserts the signed-in principal genuinely holds what the test needs,
  * and fails loudly naming what is missing. A test that needs a permission the
  * server does not grant should fail, not quietly receive it.
+ *
+ * @param {import('@playwright/test').Page} page - already signed in.
+ * @param {string[]} permissions - named explicitly; there is no default.
  */
-async function requireApprovalPermissions(page, permissions = APPROVAL_PERMISSIONS) {
-  const held = await page.evaluate(async () => {
-    const res = await fetch('/api/bootstrap', { credentials: 'same-origin' });
-    if (!res.ok) return null;
-    const body = await res.json();
-    return body.permissions || [];
-  });
+async function requireApprovalPermissions(page, permissions) {
+  if (!Array.isArray(permissions) || permissions.length === 0) {
+    throw new Error('requireApprovalPermissions: name the permissions the test '
+      + 'depends on. There is no "all four" default, because no role holds all '
+      + 'four -- see the header note on Contract 4.');
+  }
+  const held = await page.evaluate(bootstrapPermissions);
   if (held === null) {
-    throw new Error('bootstrap failed; cannot verify approval permissions');
+    throw new Error('bootstrap failed; cannot verify approval permissions. '
+      + 'Sign in FIRST — this reads the SERVER\'s answer for the live session, '
+      + 'which does not exist before signIn().');
   }
   const missing = permissions.filter((p) => !held.includes(p));
   if (missing.length) {
@@ -464,6 +538,18 @@ async function stubApprovalApis(page) {
 
 async function signIn(page, who = ADMIN) {
   await page.goto('/');
+  // index.html ships BOTH #authScreen and #shell hidden and app.js unhides one
+  // of them only after it has resolved any stored session. `body[data-ready]`
+  // is the signal it sets when that is done — asking which one is visible
+  // before then is a race, and the answer would be "neither".
+  await page.waitForSelector('body[data-ready="1"]', { timeout: 15_000 });
+  // No principal holds all four approval permissions, so several tests have to
+  // change identity. A live session renders the shell instead of the login
+  // form, so end it first rather than timing out waiting for a form that is
+  // correctly not there.
+  if (!(await page.locator('#loginForm').isVisible())) {
+    await page.locator('#signOutBtn').click();
+  }
   await page.waitForSelector('#loginForm', { state: 'visible' });
   await page.fill('#loginUser', who.user);
   await page.fill('#loginPass', who.password);
@@ -489,8 +575,17 @@ async function settleShell(page) {
  */
 async function settleScreen(page) {
   await settleShell(page);
-  await page.waitForSelector('#content .scr-host[data-mounted="1"]',
+  //
+  // BOTH outcomes end the wait: app.js marks a screen whose mount() threw with
+  // data-mount-failed rather than announcing it as mounted, so a module that
+  // failed to load is reported as a module that failed to load.
+  await page.waitForSelector(
+    '#content .scr-host[data-mounted="1"], #content .scr-host[data-mount-failed="1"]',
     { state: 'attached', timeout: 15_000 });
+  const failed = page.locator('#content .scr-host[data-mount-failed="1"]');
+  if (await failed.count()) {
+    throw new Error(`the screen's mount() threw, so it never rendered: ${(await failed.innerText()).trim()}`);
+  }
   await page.waitForFunction(() => {
     const host = document.querySelector('#content .scr-host[data-mounted="1"]');
     return !!host && !host.querySelector('.audit-skel-row') && !host.querySelector('.loading');
@@ -503,10 +598,42 @@ async function gotoScreen(page, hash) {
   await settleScreen(page);
 }
 
-async function prepared(page, { permissions } = {}) {
+/**
+ * Sign in, then PROVE the session holds what the test is about to rely on.
+ *
+ * The order matters and used to be wrong. `requireApprovalPermissions` reads
+ * /api/bootstrap from inside the page, so it is meaningless — and, on a page
+ * that has not navigated yet, throws on a relative URL against `about:blank` —
+ * before a session exists. Verification is a post-condition of signing in.
+ *
+ * @param {Object} [opts]
+ * @param {{user:string,password:string}} [opts.as] - who to sign in as.
+ * @param {string[]} [opts.permissions] - what that identity must hold. Defaults
+ *   to `approval.read`, the floor every approval screen needs; a caller that
+ *   depends on more names it.
+ */
+async function prepared(page, { as = ADMIN, permissions = ['approval.read'] } = {}) {
   await stubApprovalApis(page);
+  await signIn(page, as);
   await requireApprovalPermissions(page, permissions);
-  await signIn(page);
+}
+
+/** `prepared` for one screen, as the identity that holds that screen's need. */
+async function preparedFor(page, s) {
+  await prepared(page, { as: s.as, permissions: s.need });
+}
+
+/**
+ * Change identity mid-test WITHOUT re-registering the API stubs.
+ *
+ * Several tests have to cover all eight screens and therefore both principals.
+ * Calling `prepared` again would push a second copy of every route handler in
+ * front of any override the test had already installed, so the session change
+ * is separated from the stub setup.
+ */
+async function reauthenticate(page, who, permissions) {
+  await signIn(page, who);
+  await requireApprovalPermissions(page, permissions);
 }
 
 /* ============================================================ navigation */
@@ -515,42 +642,97 @@ test.describe('Approval screens — routing and navigation', () => {
   test.beforeEach(async ({ page }) => { await prepared(page); });
 
   test('all thirteen routable screens are reachable and deep-linkable', async ({ page }) => {
-    const all = [
+    // THIRTEEN SCREENS, TWO PRINCIPALS, AND THAT IS THE POINT.
+    //
+    // The Administrator reaches the five Wave 2/3 screens and seven of the
+    // eight approval screens. Delegation Management is the exception:
+    // Contract 4 gives approval.delegate to the four approver roles and
+    // withholds it from Administrator. So the thirteen are asserted as
+    // twelve-plus-one rather than by inventing a principal that holds
+    // everything — which is exactly the shortcut the retired bootstrap stub
+    // used to take.
+    const adminScreens = [
       ...EXISTING_SCREENS,
-      ...SCREENS.map((s) => ({ hash: s.hash, title: s.title })),
+      ...SCREENS.filter((s) => s.as === ADMIN).map((s) => ({ hash: s.hash, title: s.title })),
     ];
-    expect(all).toHaveLength(13);
+    const approverScreens = SCREENS.filter((s) => s.as === APPROVER)
+      .map((s) => ({ hash: s.hash, title: s.title }));
+    expect(adminScreens.length + approverScreens.length).toBe(13);
 
-    for (const s of all) {
+    const open = async (p, s) => {
       // A COLD load of the hash, which is what a bookmark or a pasted link is.
-      await page.goto(`/#${s.hash}`);
-      await settleScreen(page);
-      await expect(page.locator('#pageTitle'), `${s.hash} did not open`).toHaveText(s.title);
+      await p.goto(`/#${s.hash}`);
+      await settleScreen(p);
+      await expect(p.locator('#pageTitle'), `${s.hash} did not open`).toHaveText(s.title);
       // Not silently corrected to the dashboard.
-      expect(new URL(page.url()).hash).toBe(`#${s.hash}`);
-      await expect(page.locator('#content .scr-host')).toHaveCount(1);
-    }
+      expect(new URL(p.url()).hash).toBe(`#${s.hash}`);
+      await expect(p.locator('#content .scr-host')).toHaveCount(1);
+    };
+
+    for (const s of adminScreens) await open(page, s);
+
+    await reauthenticate(page, APPROVER, ['approval.delegate']);
+    for (const s of approverScreens) await open(page, s);
   });
 
   test('every approval screen is listed in the primary navigation, permission-gated', async ({ page }) => {
-    await settleShell(page);
-    const ids = await page.evaluate(
+    // Each screen must appear for the principal that holds its permission --
+    // and the same loop is what proves it is ABSENT for the one that does not,
+    // because the two identities between them cover all eight.
+    const listed = async (p) => p.evaluate(
       () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
     );
-    for (const s of SCREENS) {
-      expect(ids, `${s.hash} is not listed in the primary navigation`).toContain(s.hash);
+
+    await settleShell(page);
+    const adminIds = await listed(page);
+    for (const s of SCREENS.filter((s2) => s2.as === ADMIN)) {
+      expect(adminIds, `${s.hash} is not listed for the principal that holds ${s.need}`)
+        .toContain(s.hash);
+    }
+    for (const s of SCREENS.filter((s2) => s2.as === APPROVER)) {
+      expect(adminIds, `${s.hash} was listed for a principal without ${s.need}`)
+        .not.toContain(s.hash);
+    }
+
+    await reauthenticate(page, APPROVER, ['approval.delegate']);
+    await settleShell(page);
+    const approverIds = await listed(page);
+    for (const s of SCREENS.filter((s2) => s2.as === APPROVER)) {
+      expect(approverIds, `${s.hash} is not listed for the principal that holds ${s.need}`)
+        .toContain(s.hash);
+    }
+    // And the configuration screens stay shut for an approver.
+    for (const s of SCREENS.filter((s2) => s2.need.includes('approval.configure'))) {
+      expect(approverIds, `${s.hash} was listed for a principal without approval.configure`)
+        .not.toContain(s.hash);
     }
   });
 
   test('an approval screen is NOT listed, and NOT routable, without its permission', async ({ page }) => {
-    // The negative half of the pair, proved against an UNMODIFIED bootstrap:
-    // no approval permission is granted at all, so the gate must be shut. If
-    // the gate were simply absent, this test would fail — which is exactly why
-    // it is run without the permission stub rather than with a narrowed one.
+    // THE NEGATIVE HALF, AND THE AUDITOR IS A REAL ONE.
+    //
+    // `auth.PERMISSIONS` grants an Auditor NONE of the four approval
+    // permissions. Contract 4's prose says approval.read is held by "every
+    // role"; the implementation excludes Auditor deliberately, because
+    // granting a fifth permission would widen
+    // `test_aud_c_006_auditor_is_read_only` -- a D-12 decision. An Auditor
+    // reads approval history through the audit chain instead.
+    //
+    // That makes the Auditor the honest negative control: a principal the
+    // server really does refuse, rather than one manufactured by withholding
+    // a stub. If the gate were absent, every assertion below would fail.
     const bare = await page.context().newPage();
     await stubApprovalApis(bare);
-    await signIn(bare);
+    await signIn(bare, AUDITOR);
     await settleShell(bare);
+
+    const held = await bare.evaluate(bootstrapPermissions);
+    expect(held, 'the Auditor session could not be read back from the server')
+      .not.toBeNull();
+    for (const p of APPROVAL_PERMISSIONS) {
+      expect(held, `the Auditor now holds ${p}; this test's premise has changed`)
+        .not.toContain(p);
+    }
 
     const ids = await bare.evaluate(
       () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
@@ -562,11 +744,13 @@ test.describe('Approval screens — routing and navigation', () => {
 
     // And the route itself is refused, not merely unlisted. An unlisted but
     // reachable route is a URL away from being no gate at all.
-    await bare.goto('/#approval-matrix');
-    await settleShell(bare);
-    expect(new URL(bare.url()).hash, 'an ungranted approval route resolved')
-      .toBe('#home');
-    await expect(bare.locator('#content .scr-host')).toHaveCount(0);
+    for (const hash of ['approval-matrix', 'approval-inbox']) {
+      await bare.goto(`/#${hash}`);
+      await settleShell(bare);
+      expect(new URL(bare.url()).hash, `#${hash} resolved for a principal without it`)
+        .toBe('#home');
+      await expect(bare.locator('#content .scr-host')).toHaveCount(0);
+    }
     await bare.close();
   });
 
@@ -574,10 +758,13 @@ test.describe('Approval screens — routing and navigation', () => {
     // approval.read is held by every role (Contract 4), so gating a
     // configuration screen on it would be gating on nothing. Granting read
     // only must still leave the configure and delegate screens shut.
+    // The Requestor really does hold approval.read and approval.act and
+    // really does not hold approval.configure or approval.delegate, so this
+    // is the server's own answer rather than a narrowed stub.
     const reader = await page.context().newPage();
     await stubApprovalApis(reader);
+    await signIn(reader, REQUESTOR);
     await requireApprovalPermissions(reader, ['approval.read', 'approval.act']);
-    await signIn(reader);
     await settleShell(reader);
 
     const ids = await reader.evaluate(
@@ -687,7 +874,19 @@ test.describe('Approval screens — routing and navigation', () => {
   });
 
   test('the shell never scrolls horizontally on any approval route', async ({ page }) => {
-    for (const s of SCREENS) {
+    // All eight, which means both principals: the admin session cannot open
+    // Delegation Management. AUD-M-004 applies to every route, so the loop
+    // must genuinely cover every route rather than the seven that happen to
+    // share a session.
+    for (const s of SCREENS.filter((x) => x.as === ADMIN)) {
+      await gotoScreen(page, s.hash);
+      const overflows = await page.evaluate(
+        () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+      );
+      expect(overflows, `${s.hash} scrolls horizontally`).toBe(false);
+    }
+    await reauthenticate(page, APPROVER, ['approval.delegate']);
+    for (const s of SCREENS.filter((x) => x.as === APPROVER)) {
       await gotoScreen(page, s.hash);
       const overflows = await page.evaluate(
         () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
@@ -703,7 +902,6 @@ test.describe('Approval screens — the four required states', () => {
   for (const s of SCREENS) {
     test(`${s.hash} — loading shows an indicator, never a blank panel`, async ({ page }) => {
       await stubApprovalApis(page);
-      await requireApprovalPermissions(page);
       // Hold the primary request open so the loading state is observable.
       let release;
       const held = new Promise((resolve) => { release = resolve; });
@@ -711,7 +909,8 @@ test.describe('Approval screens — the four required states', () => {
         await held;
         await route.fulfill(json({ items: [], next_cursor: null, has_more: false }));
       });
-      await signIn(page);
+      await signIn(page, s.as);
+      await requireApprovalPermissions(page, s.need);
 
       await page.goto(`/#${s.hash}`);
       await page.waitForSelector('#content .scr-host', { state: 'attached', timeout: 15_000 });
@@ -733,9 +932,9 @@ test.describe('Approval screens — the four required states', () => {
 
     test(`${s.hash} — empty says so, and says what would appear`, async ({ page }) => {
       await stubApprovalApis(page);
-      await requireApprovalPermissions(page);
       await routeJson(page, s.emptyRoute || s.primary, emptyBodyFor(s));
-      await signIn(page);
+      await signIn(page, s.as);
+      await requireApprovalPermissions(page, s.need);
       await page.goto(`/#${s.hash}`);
       await settleScreen(page);
 
@@ -755,11 +954,11 @@ test.describe('Approval screens — the four required states', () => {
 
     test(`${s.hash} — a server error is shown, actionable, never a traceback`, async ({ page }) => {
       await stubApprovalApis(page);
-      await requireApprovalPermissions(page);
       await routeJson(page, s.primary, {
         code: 'INTERNAL', message: 'The approval service is temporarily unavailable.',
       }, 503);
-      await signIn(page);
+      await signIn(page, s.as);
+      await requireApprovalPermissions(page, s.need);
       await page.goto(`/#${s.hash}`);
       await settleScreen(page);
       if (s.runsOnSubmit) {
@@ -782,11 +981,11 @@ test.describe('Approval screens — the four required states', () => {
       // in wording as well as in status: a differently worded message is an
       // existence oracle just as surely as a different status code is.
       await stubApprovalApis(page);
-      await requireApprovalPermissions(page);
       await routeJson(page, s.primary, {
         code: 'FORBIDDEN', message: 'No approval records were found for these filters.',
       }, 403);
-      await signIn(page);
+      await signIn(page, s.as);
+      await requireApprovalPermissions(page, s.need);
       await page.goto(`/#${s.hash}`);
       await settleScreen(page);
       if (s.runsOnSubmit) {
@@ -822,12 +1021,12 @@ test.describe('Approval screens — the four required states', () => {
       const render = async (status) => {
         const p = await page.context().newPage();
         await stubApprovalApis(p);
-        await requireApprovalPermissions(p);
         await routeJson(p, s.primary, {
           code: status === 403 ? 'FORBIDDEN' : 'NOT_FOUND',
           message: 'No approval records were found for these filters.',
         }, status);
-        await signIn(p);
+        await signIn(p, s.as);
+        await requireApprovalPermissions(p, s.need);
         await p.goto(`/#${s.hash}`);
         await settleScreen(p);
         if (s.runsOnSubmit) {
@@ -1011,6 +1210,10 @@ test.describe('Approval screens — engine invariants that must reach the user',
   });
 
   test('a revoked delegation stays on the list as a record', async ({ page }) => {
+    // Delegation Management needs approval.delegate, which the Administrator
+    // does not hold. Re-authenticate rather than assert against a session that
+    // could not open this screen in production.
+    await reauthenticate(page, APPROVER, ['approval.delegate']);
     await gotoScreen(page, 'approval-delegations');
     const row = page.locator('table tbody tr', { hasText: 'DLG-002' }).first();
     await expect(page.locator('table tbody')).toContainText('U-PM');
@@ -1079,10 +1282,11 @@ test.describe('Approval screens — engine invariants that must reach the user',
 /* ==================================================== accessibility */
 
 test.describe('Approval screens — accessibility', () => {
-  test.beforeEach(async ({ page }) => { await prepared(page); });
-
+  // Signed in per screen as the identity that holds that screen's permission,
+  // rather than once as a principal that could not exist.
   for (const s of SCREENS) {
     test(`axe-core: ${s.hash} has no violations`, async ({ page }) => {
+      await preparedFor(page, s);
       await gotoScreen(page, s.hash);
 
       // The mounted screen itself.
@@ -1096,6 +1300,7 @@ test.describe('Approval screens — accessibility', () => {
     });
 
     test(`${s.hash} — Tab alone reaches every control, with visible focus`, async ({ page }) => {
+      await preparedFor(page, s);
       await gotoScreen(page, s.hash);
 
       // Focus is checked on the element Tab ACTUALLY LANDS ON, never by calling
@@ -1178,6 +1383,7 @@ test.describe('Approval screens — accessibility', () => {
     });
 
     test(`${s.hash} — every status is distinguishable without colour`, async ({ page }) => {
+      await preparedFor(page, s);
       await gotoScreen(page, s.hash);
       const statuses = page.locator('#content .scr-host .status');
       const n = await statuses.count();
@@ -1202,6 +1408,7 @@ test.describe('Approval screens — accessibility', () => {
     // The reason approval-status-badge.js exists at all: two statuses with the
     // same semantic role must not be indistinguishable to someone who cannot
     // separate them by colour, and RETURNED / ESCALATED are both 'warning'.
+    await prepared(page);
     await gotoScreen(page, 'approval-request');
     const glyphs = await page.evaluate(async () => {
       const mod = await import('/static/src/components/approvals/approval-status-badge.js');
@@ -1253,9 +1460,17 @@ test.describe('Approval screens — the CSP contract', () => {
         window.__cspViolations.push(`${e.violatedDirective} ${e.blockedURI} ${e.sourceFile || ''}`);
       });
     });
+    // All eight routes, which means both principals: the admin session cannot
+    // open Delegation Management, and a CSP contract asserted over seven of
+    // eight screens is a CSP contract with a hole in it.
     await prepared(page);
-
-    for (const s of SCREENS) {
+    for (const s of SCREENS.filter((x) => x.as === ADMIN)) {
+      await gotoScreen(page, s.hash);
+      const inPage = await page.evaluate(() => window.__cspViolations || []);
+      expect(inPage, `${s.hash}: ${inPage.join('; ')}`).toEqual([]);
+    }
+    await reauthenticate(page, APPROVER, ['approval.delegate']);
+    for (const s of SCREENS.filter((x) => x.as === APPROVER)) {
       await gotoScreen(page, s.hash);
       const inPage = await page.evaluate(() => window.__cspViolations || []);
       expect(inPage, `${s.hash}: ${inPage.join('; ')}`).toEqual([]);
@@ -1316,10 +1531,13 @@ test.describe('Approval screens — the CSP contract', () => {
 /* ==================================================== visual regression */
 
 test.describe('Approval screens — visual regression', () => {
-  test.beforeEach(async ({ page }) => { await prepared(page); });
-
+  // Each baseline is captured under the identity that can actually reach the
+  // screen, so the navigation rail in the shot is the rail that principal
+  // really sees. A baseline captured under a manufactured all-permissions
+  // principal would be a picture of a state the application cannot produce.
   for (const s of SCREENS) {
     test(`${s.hash} renders identically`, async ({ page }) => {
+      await preparedFor(page, s);
       await gotoScreen(page, s.hash);
       await expect(page).toHaveScreenshot(`approvals-${s.hash}.png`, { fullPage: true });
     });
