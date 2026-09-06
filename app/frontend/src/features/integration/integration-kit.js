@@ -276,6 +276,18 @@ const SOURCE_TEXT = {
     + `Shown from the Wave 4 connector surface (${template}) instead, which answers the same `
     + `question from the verified endpoint inventory — it is NOT the integration platform and `
     + `carries no inbox, outbox, job or rate-budget state.`,
+  /* The THIRD source, and the one whose caveat is sharpest. The Wave 4
+     connector surface at least answers a connector question. This one answers
+     a LEDGER question — what this application itself holds — and is being read
+     on a screen whose subject is what reached Zoho. Every screen that renders
+     it also states, in its own words, which question it cannot answer from
+     here; this line states the general form of that limit so a reader who
+     skims only the source line still gets it. */
+  'ledger-compat': (template) => `The Wave 5 endpoint for this screen is not mounted in this build. `
+    + `Shown from this application's own ledger (${template}) instead. That is OUR record of these `
+    + `documents, not Zoho's: it says what exists here and says NOTHING about what was sent, `
+    + `received, queued, retried or acknowledged. No integration state on this screen is measured; `
+    + `the columns that would carry it are marked as not available rather than filled in.`,
 };
 
 /**
@@ -289,7 +301,7 @@ export function sourceLine(result) {
   if (!result) return null;
   const build = SOURCE_TEXT[result.source];
   if (!build) return null;
-  const compat = result.source === 'wave4-compat';
+  const compat = result.source !== 'wave5';
   return h('p', {
     class: `xs muted integration-source${compat ? ' integration-source-compat' : ''}`,
     'data-source': result.source,
@@ -297,6 +309,32 @@ export function sourceLine(result) {
     h('span', { class: 'sym', 'aria-hidden': 'true' }, compat ? '!' : '·'),
     text(' '),
     text(build(result.template)),
+  ]);
+}
+
+/**
+ * A cell whose value CANNOT BE MEASURED from the source that answered.
+ *
+ * The three transaction-queue screens fall back to this application's own
+ * ledger, which knows every purchase order, receipt and bill it holds and
+ * knows NOTHING about whether any of them reached Zoho. The integration-state
+ * columns on those screens are therefore not empty and not zero — either would
+ * read as a measurement — but explicitly unmeasurable, with the reason
+ * attached.
+ *
+ * An em-dash alone was rejected for exactly this reason: on a table where
+ * other rows DO carry a value, a dash reads as "this one has none", which is a
+ * different and false claim.
+ *
+ * @param {string} why - the reason, rendered in the title and to a screen
+ *   reader. Written as a full sentence.
+ */
+export function notMeasured(why) {
+  return h('span', { class: 'integration-unmeasured', title: why }, [
+    h('span', { class: 'sym', 'aria-hidden': 'true' }, '?'),
+    text(' '),
+    h('span', { class: 'xs muted' }, 'not measured'),
+    h('span', { class: 'sr-only' }, ` — ${why}`),
   ]);
 }
 

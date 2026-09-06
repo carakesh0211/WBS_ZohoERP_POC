@@ -230,48 +230,6 @@ const SCR_ROUTES = [
   { id: 'approval-versions', ico: '⎘', label: 'Workflow Version History', need: ['approval.configure'] },
   { id: 'approval-simulator', ico: '⊛', label: 'Approval Rule Simulator', need: ['approval.configure'] },
   { id: 'approval-delegations', ico: '⇌', label: 'Delegation Management', need: ['approval.delegate'] },
-
-  /* Wave 5 — the integration platform's seven screens (SCR-31, 32, 33, 34, 26,
-     38, 39), on the same footing again: routes and permission gates, and NOT
-     ONE ENTRY IN THE NAV TABLE BELOW.
-
-     The rail was already over its budget before this stream started. A3 left
-     desktop-1440 fitting at 840px of content against an 856px rail, with only
-     16px of headroom, and laptop-1024 still overflowing by 127px. Measured
-     from the running application after these seven landed as routes, the rail
-     is UNCHANGED at every viewport — 840px content, 856px rail at
-     desktop-1440; 840px against 713px at laptop-1024; display:none at
-     tablet-800 — because nothing was added to it.
-
-     Adding them would not fit and this stream did not try to make it fit.
-     Seven rows at the measured 30px each is 210px, which takes desktop-1440
-     from 16px of headroom to 194px of overflow, and laptop-1024 from 127px of
-     overflow to 337px. Even a single consolidated "Integration platform" row
-     costs 30px and takes desktop-1440 to 870px against an 856px rail — the
-     same 14px overflow A3 measured for a single consolidated "Approvals" row,
-     and for the same reason. There is no smaller nav addition to try.
-
-     So the navigation question is referred to the lead with numbers, exactly
-     as A3 referred it, and nothing here depends on the answer:
-     `viewAllowed()` resolves any SCR_ROUTES id whether or not it appears in
-     NAV, so all seven hashes deep-link, stay permission-gated and stay
-     bookmarkable today. Adding a rail entry later is one `scr('…')` splice per
-     row.
-
-     PERMISSIONS. The three configuration screens take `connector.manage`
-     (Administrator alone); the four read surfaces take `connector.read`
-     (Administrator and Auditor). SCR-39 offers a WRITE — the manual retry —
-     from a screen gated on `connector.read`, deliberately: an Auditor must be
-     able to see what is dead-lettered, and the retry itself is refused by the
-     server for a caller without `connector.manage`. As above, these are
-     PRESENTATIONAL gates. The server decides. */
-  { id: 'integration-setup', ico: '⊕', label: 'Connection Setup Wizard', need: ['connector.manage'] },
-  { id: 'integration-oauth', ico: '⚿', label: 'OAuth Authorisation & Consent', need: ['connector.manage'] },
-  { id: 'integration-organisation', ico: '⌾', label: 'Organisation Selection & Mapping', need: ['connector.manage'] },
-  { id: 'integration-scopes', ico: '⊙', label: 'API Scope & Permission Validation', need: ['connector.read'] },
-  { id: 'integration-events', ico: '⇄', label: 'Integration Event Monitor', need: ['connector.read'] },
-  { id: 'integration-health', ico: '◔', label: 'Integration Health & API Usage', need: ['connector.read'] },
-  { id: 'integration-retry', ico: '⇩', label: 'Failed Sync & Retry Queue', need: ['connector.read'] },
 ];
 
 /** The SCR_ROUTES row for an id, spliced into NAV by reference. */

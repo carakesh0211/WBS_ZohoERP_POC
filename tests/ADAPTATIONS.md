@@ -956,3 +956,138 @@ SQLite-era modules were previously exempt only by never having been walked,
 which is indistinguishable from an oversight; that is now a written decision.
 
 **Approved by:** engagement lead, Wave 5 integration pass.
+
+## 2026-09-06 — `tests/vrt/integration.spec.js`, rewritten for Wave 5 stream 3
+
+**No test was weakened or deleted.** The file existed only on the abandoned
+`wave5/stream7-screens-wip` branch — it was never merged, never run to
+completion, and was recorded on that branch as unverified. This entry records
+what changed between that draft and the version that now runs green, because
+the draft is preserved in git and somebody comparing the two must be able to
+see which differences are additions and which are retreats. Three are
+retreats, and all three are recorded below.
+
+**Additions.** The suite went from 7 screens to 12 and from 41 draft tests to 97
+per project (291 across the three viewports), plus a new
+`tests/vrt/nav-rail-budget.spec.js` at 3 per project. New coverage: the
+outbound purchase-order queue, the inbound GRN and vendor-bill acquisition
+screens, SCR-18's reconciliation arithmetic, SCR-27's exception queue, control
+totals, the `ledger-compat` source label, the manifest-to-`SCR_ROUTES` drift
+gate, and a twelve-test sweep that walks every screen against the REAL build
+with nothing stubbed and requires each to render either a named source or an
+explicit "not available in this build" — never a bare empty state.
+
+**Retreat 1 — the rail assertion stopped pinning absolute pixels.** The draft
+asserted `content === 840`, `rail === 856` and `overflow === -16` at
+desktop-1440 and `713 / 127` at laptop-1024. Those figures are still MEASURED
+and still reported — `tests/vrt/nav-rail-budget.spec.js` is a **new** file that
+takes them at all three viewports, writes them to the run output, and derives
+the row pitch from the live elements rather than restating a remembered 30px.
+What the integration suite now asserts is the INVARIANT: that registering
+twelve routes changed neither the row count nor the rail's id sequence, and
+that twelve further rows would not fit. The absolute content height moves
+whenever an approved label rewraps, and a suite that fails for that reason
+teaches everyone to ignore it — which is how a real overflow ships. The budget
+file asserts the two facts that decide the question (laptop-1024 already
+overflows; a further twelve rows do not fit) and fails if either stops being
+true.
+
+**Retreat 2 — the exact 22-entry rail count moved out of this file.** The draft
+asserted `ids.toHaveLength(22)`. The authoritative sequence assertion lives in
+`tests/vrt/spa-routing.spec.js`, which is not this stream's file; duplicating
+the count here made an unrelated approved nav change fail two suites and be
+fixed in neither. This file still asserts the property it owns — that none of
+its twelve ids reached the rail, checked as the principal who holds every
+permission they are gated on, so a gated entry that reappeared cannot hide.
+
+**Retreat 3 — two assertions that would have passed vacuously were replaced.**
+`expect(locator('#content .status')).not.toContainText('PENDING')` PASSES when
+the locator resolves to nothing, so it reported success both on a screen with
+no chips and on a screen with a hundred wrong ones. It is now a collected list
+compared against `[]`. Separately, the draft's `.first()` on
+`.integration-source[data-source="wave5"]` became ambiguous once SCR-26 grew a
+second loader; it is now scoped to the sync-history loader by id, so it cannot
+silently assert about the other card.
+
+**Four draft assertions were briefly relaxed during the rewrite and then put
+back, unchanged.** `'1800 of 2000 calls'`, `'90.0%'`, `'does not count toward
+the breaker'` and `'300 s'` were weakened on the assumption that
+`health-dashboard.js` did not emit that wording. It does — `meter()` prints the
+figures and the percentage as text precisely because a bar whose only signal is
+its length is unreadable to a screen reader, and the circuit and watermark
+panels print the other two. All four are restored verbatim. Recorded because a
+weakening reasoned from an assumption rather than from the source is the exact
+failure this file exists to catch, and it should be visible that it happened
+even though it did not ship.
+
+**Why this file could be rewritten at all.** `tools/build_test_manifest.py`
+inventories Python test functions only, so no manifest entry covers a
+Playwright spec. That is a real gap in the protection and is REPORTED to the
+lead rather than papered over here: a JavaScript test can currently be deleted
+without any gate noticing.
+
+**Approved by:** pending engagement-lead review — Wave 5 stream 3 (integration
+screens).
+
+## 2026-09-06 — `app/frontend/app.js` and `src/core/router.js` reverted on this branch
+
+**Change:** the WIP branch this stream started from had edited both files to
+register seven integration routes. Both are reverted to their
+`full-application/build` state and this stream ships
+`app/frontend/src/features/integration/manifest.js` instead.
+
+**Reason:** route registration and the navigation rail are the lead's, and this
+stream owns `app/frontend/src/features/integration/**` and nothing else in the
+frontend. The manifest declares the twelve route entries `router.js` spreads
+into `SCREENS` and the twelve gate rows `app.js` pastes into `SCR_ROUTES`, in
+one place, with the two splices written out verbatim.
+
+**Not a weakening: the wiring is still proven, against the real shell.**
+`installRoutes()` in `tests/vrt/integration.spec.js` applies exactly those two
+splices to the running page from that same manifest, before the shell's first
+render, so all twelve screens deep-link, mount and stay permission-gated in the
+suite. A manifest that does not work there will not work when the lead applies
+it. `the app.js paste still matches the manifest` compares the pasted rows back
+against `INTEGRATION_NAV_ROWS`, so a manifest edit nobody carried into app.js
+fails the suite rather than shipping a route with the wrong gate.
+
+**Approved by:** pending engagement-lead review — Wave 5 stream 3.
+
+## 2026-09-06 — a C15/C16 name collision cost the outbound queue a filter option
+
+**No test was changed.** This records a PRODUCT change made to satisfy an
+existing gate, and the gate defect behind it, because the change is otherwise
+invisible and would look like an oversight.
+
+**The collision.** `C15_approval_statuses.json` and
+`C16_integration_statuses.json` both declare a state called `PENDING` — the
+approval engine's, and the outbox's. They are different facts in different
+registries that happen to share a spelling.
+
+**The gate.**
+`tests/test_contracts_integration_statuses.py::test_no_approval_status_is_rendered_outside_the_approval_screens`
+scans every frontend `.js` for C15 codes as quoted literals and exempts only
+`features/approvals/**`. Its sibling,
+`test_no_integration_status_is_rendered_by_a_business_screen`, exempts
+`features/integration/**` for the mirror-image rule. The approval gate does
+not, so an integration screen naming the OUTBOX's own state is
+indistinguishable, to it, from a business screen leaking approval state. No
+integration file had tripped it before because none had reason to name that
+state; an outbound emission queue is the first that does.
+
+**What was done.** `outbound-po-queue.js` drops the one-click filter for that
+state. Its "Every state" default still lists those rows, and each row renders
+its real status through `operationalChip('outbox', …)` from the SERVER's value,
+which the gate does not constrain — so nothing is hidden from an operator.
+
+**What was deliberately NOT done.** Editing the gate to carry the exemption its
+sibling carries is the correct fix and is not this stream's file. Splitting the
+string literal so the regex misses it would have kept the feature and defeated
+the gate by obfuscation, which is worse than the leak the gate exists to catch.
+
+**REPORTED to the lead:** the approval gate needs the same
+`features/integration/**` exemption its sibling has, scoped to codes that
+appear in BOTH registries. The filter option can be restored in the same
+commit.
+
+**Approved by:** pending engagement-lead review — Wave 5 stream 3.

@@ -123,6 +123,16 @@ const wave5 = createApiClient({
 const wave4 = createApiClient({
   basePath: '/api/zoho', ErrorClass: IntegrationApiError, messages: MESSAGES,
 });
+/* A THIRD base path, for the Wave 2/3 TRANSACTION surface — /api/purchase-orders,
+   /api/grns, /api/bills, /api/reconciliation. It is not the connector surface
+   and it is not the integration platform: it is this application's own ledger,
+   which is exactly what the three transaction-queue screens and the two
+   reconciliation screens fall back to when the Wave 5 inbox/outbox routes are
+   absent. Naming it separately keeps a stack trace able to say which of the
+   three surfaces answered. */
+const ledger = createApiClient({
+  basePath: '/api', ErrorClass: IntegrationApiError, messages: MESSAGES,
+});
 
 /* ------------------------------------------------------------------ *
  * 1. Endpoint presence
@@ -495,4 +505,143 @@ export async function getGlobalMode() {
     // wrong in: it understates rather than overstates how live this is.
     return { mode: 'MOCK', note: 'The connector mode could not be read; assuming MOCK.' };
   }
+}
+
+/* ------------------------------------------------------------------ *
+ * 4. The transaction queues and the reconciliation surfaces
+ *
+ * These five screens have the same problem as the seven above and one extra
+ * wrinkle: their Wave 5 routes do not exist, AND the question each one asks
+ * has a genuinely honest answer available from this application's OWN ledger.
+ *
+ * That is a different kind of fallback from the Wave 4 one, and it is labelled
+ * differently ('ledger-compat', not 'wave4-compat') because it means something
+ * different. /api/purchase-orders answers "what have we ordered"; it does NOT
+ * answer "did the purchase order reach Zoho", which is the question the
+ * outbound queue exists to ask. Rendering the first as though it were the
+ * second is exactly the dishonesty this module is built to prevent, so every
+ * screen using this fallback says on screen which question it is answering and
+ * which one it cannot.
+ * ------------------------------------------------------------------ */
+
+/**
+ * The outbound emission queue: what we have tried to send to Zoho, and what
+ * happened. Falls back to the local purchase-order ledger, which knows what
+ * exists but not what was emitted.
+ */
+export function listOutbox(params) {
+  return firstAvailable([
+    {
+      source: 'wave5',
+      template: '/api/integrations/outbox',
+      call: () => wave5.get('/outbox', params),
+    },
+    {
+      source: 'ledger-compat',
+      template: '/api/purchase-orders',
+      call: () => ledger.get('/purchase-orders'),
+    },
+  ], WAVE5_NOTE);
+}
+
+/**
+ * Inbound Purchase Receive / GRN acquisition status.
+ *
+ * OAS-02 is why this screen is not a simple list: Zoho ERP publishes NO list
+ * endpoint for Purchase Receives, so acquisition is PO-anchored — each PO is
+ * walked for its receives. A screen that showed a flat "GRNs received" count
+ * without saying that would imply a completeness the mechanism cannot offer.
+ */
+export function listInboundGrn(params) {
+  return firstAvailable([
+    {
+      source: 'wave5',
+      template: '/api/integrations/inbox',
+      call: () => wave5.get('/inbox', { ...(params || {}), module: 'purchasereceives' }),
+    },
+    { source: 'ledger-compat', template: '/api/grns', call: () => ledger.get('/grns') },
+  ], WAVE5_NOTE);
+}
+
+/** Inbound vendor-bill acquisition status. */
+export function listInboundBills(params) {
+  return firstAvailable([
+    {
+      source: 'wave5',
+      template: '/api/integrations/inbox',
+      call: () => wave5.get('/inbox', { ...(params || {}), module: 'bills' }),
+    },
+    { source: 'ledger-compat', template: '/api/bills', call: () => ledger.get('/bills') },
+  ], WAVE5_NOTE);
+}
+
+/**
+ * SCR-18: commitment against actual, line by line, with the summary the
+ * workbench leads on.
+ *
+ * The ledger route is not a degraded source here — it IS the reconciliation,
+ * computed by domain.reconciliation() from this application's own commitments
+ * and actuals. What the Wave 5 route would add is the integration_state of
+ * each side, so the screen says which of the two it is showing.
+ */
+export function getReconciliation(projectId) {
+  const params = projectId ? { project_id: projectId } : undefined;
+  return firstAvailable([
+    {
+      source: 'wave5',
+      template: '/api/integrations/reconciliation',
+      call: () => wave5.get('/reconciliation', params),
+    },
+    {
+      source: 'ledger-compat',
+      template: '/api/reconciliation',
+      call: () => ledger.get('/reconciliation', params),
+    },
+  ], WAVE5_NOTE);
+}
+
+/**
+ * SCR-27: the unmatched-document exception queue.
+ *
+ * A QUARANTINED inbox payload — one that could not be attributed to a purchase
+ * order, or whose raw external status has no mapping — raises a
+ * reconciliation_exception rather than being guessed at, spread pro-rata or
+ * dropped. This is where those land.
+ */
+export function listReconciliationExceptions(params) {
+  return firstAvailable([
+    {
+      source: 'wave5',
+      template: '/api/integrations/exceptions',
+      call: () => wave5.get('/exceptions', params),
+    },
+    {
+      source: 'ledger-compat',
+      template: '/api/reconciliation/exceptions',
+      call: () => ledger.get('/reconciliation/exceptions'),
+    },
+  ], WAVE5_NOTE);
+}
+
+/**
+ * SCR-26's control totals: what we sent, what we received, and whether the two
+ * sides agree for a sync window.
+ *
+ * THERE IS NO FALLBACK, DELIBERATELY. A control total is a statement that the
+ * count and value on OUR side equals the count and value on ZOHO's side. No
+ * local endpoint knows the second half of that sentence, so a "control total"
+ * synthesised from the ledger alone would be a tautology dressed as an
+ * assurance — the most dangerous single number this application could render.
+ * Absent means absent.
+ */
+export function getControlTotals(params) {
+  return firstAvailable([
+    {
+      source: 'wave5',
+      template: '/api/integrations/control-totals',
+      call: () => wave5.get('/control-totals', params),
+    },
+  ], 'A control total compares OUR count and value against ZOHO\'s for the same window. No local '
+    + 'endpoint knows Zoho\'s side, so nothing here is synthesised from the ledger: a control total '
+    + 'that only ever compares us with ourselves would always balance.');
 }

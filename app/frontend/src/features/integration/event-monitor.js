@@ -1,5 +1,25 @@
 /* app/frontend/src/features/integration/event-monitor.js
-   SCR-26 — Integration Event Monitor.
+   SCR-26 — Integration Event Monitor: SYNC HISTORY AND CONTROL TOTALS.
+
+   The screen has two halves and they answer two different questions.
+
+   The SYNC HISTORY is the event log below: every inbound payload, every
+   outbound emission, every job, in order, with the correlation id that ties
+   one document's whole life together. It answers "what happened".
+
+   The CONTROL TOTALS band at the top answers "and does it add up" — our count
+   and value for a window against Zoho's count and value for the same window.
+   That is a fundamentally harder question, and this screen must not be allowed
+   to pretend otherwise: SEE getControlTotals() in integration-api.js. There is
+   NO fallback for it and there deliberately never will be one, because no
+   local endpoint knows Zoho's side of the comparison. A control total
+   synthesised from our own ledger would compare us with ourselves and would
+   therefore always balance — an assurance that is worse than no assurance,
+   because somebody would sign it.
+
+   So when that route is absent, the band renders "not available in this build"
+   and names the route. It does not render zeros, it does not render "in
+   balance", and it does not quietly disappear.
 
    ONE CORRELATION ID TRACES A ZOHO BILL FROM HTTP RESPONSE TO LEDGER MOVEMENT.
    §11.9: "correlation_id propagates from the existing middleware through job →
@@ -29,7 +49,7 @@
 */
 
 import { h, text } from '../../core/dom.js';
-import { formatAuditTimestamp } from '../../core/format.js';
+import { formatAuditTimestamp, formatINR } from '../../core/format.js';
 import { createDataTable } from '../../components/capex-datatable.js';
 import { statusChip } from '../../components/capex-statuschip.js';
 import { createPagination } from '../../components/approvals/screen-kit.js';
@@ -38,7 +58,7 @@ import {
   INTEGRATION_STATES, createAnnouncer, card, field, integrationStateBadge, modeBanner,
   operationalChip, queryParam, selectInput, textInput,
 } from './integration-kit.js';
-import { getGlobalMode, listEvents } from './integration-api.js';
+import { getControlTotals, getGlobalMode, listEvents } from './integration-api.js';
 
 const PAGE_SIZE = 50;
 
@@ -126,7 +146,15 @@ export function mountEventMonitor(root) {
     field('eventsCorrelation', 'Correlation id', correlationInput,
       { hint: 'One id traces a document from HTTP response to ledger movement to audit entry.' }).el,
     h('div', { class: 'field field-action' },
-      h('button', { type: 'button', class: 'btn-primary btn-sm', onClick: () => load(true) }, 'Apply')),
+      h('button', {
+        type: 'button',
+        class: 'btn-primary btn-sm',
+        // The module filter narrows BOTH halves, so Apply reloads both. The
+        // control totals for "all modules" and for "bills" are different
+        // questions and leaving the band stale after a filter change would
+        // show one screen answering two.
+        onClick: () => { load(true); loadTotals(); },
+      }, 'Apply')),
   ]);
 
   const table = createDataTable({
@@ -204,8 +232,85 @@ export function mountEventMonitor(root) {
 
   const pagination = createPagination({ id: 'eventsPagination', onMore: () => load(false) });
 
+  /* ---------------- control totals ---------------- */
+
+  const totalsTiles = h('div', { id: 'eventsControlTotals' });
+
+  const totalsLoader = createLoader({
+    id: 'eventsTotalsStatus',
+    glyph: '∑',
+    what: 'Control totals',
+    emptyMessage: 'The control-total endpoint returned no window. Nothing has been reconciled '
+      + 'against Zoho for the period selected.',
+    loadingMessage: 'Comparing our counts and values against Zoho’s…',
+    onRetry: () => loadTotals(),
+    announce,
+  });
+
+  /**
+   * One side of a control total.
+   *
+   * `ours` and `theirs` are rendered as two separate figures and the
+   * difference as a third, never as a single "variance". Which side is short
+   * is the first question anyone asks of a control total, and a single signed
+   * number loses it.
+   */
+  function totalsTile(title, ours, theirs, { money = false } = {}) {
+    const known = ours !== null && ours !== undefined && theirs !== null && theirs !== undefined;
+    const diff = known ? Number(ours) - Number(theirs) : null;
+    const fmt = (v) => (v === null || v === undefined ? '—' : (money ? formatINR(v) : String(v)));
+    return h('div', {
+      class: `tile ${known && diff === 0 ? 'accent-safe' : known ? 'accent-watch' : 'accent-info'} integration-tile-wide`,
+    }, [
+      h('div', { class: 'k' }, title),
+      h('div', { class: 'v' }, known ? fmt(diff) : 'not comparable'),
+      h('div', { class: 'sub' }, known
+        ? `ours ${fmt(ours)} · Zoho ${fmt(theirs)} · ${diff === 0 ? 'in balance' : 'OUT OF BALANCE'}`
+        : 'one of the two sides was not reported, so no comparison is claimed'),
+    ]);
+  }
+
+  function renderTotals(data) {
+    while (totalsTiles.firstChild) totalsTiles.removeChild(totalsTiles.firstChild);
+    const windows = Array.isArray(data && data.windows) ? data.windows
+      : Array.isArray(data) ? data : (data ? [data] : []);
+    if (!windows.length) return false;
+    for (const w of windows) {
+      totalsTiles.appendChild(h('div', { class: 'tiles integration-tiles' }, [
+        h('div', { class: 'tile accent-info' }, [
+          h('div', { class: 'k' }, 'Window'),
+          h('div', { class: 'v integration-tile-badge' },
+            h('span', { class: 'mono' }, String(w.module ?? 'all modules'))),
+          h('div', { class: 'sub' }, w.window_start
+            ? `${formatAuditTimestamp(w.window_start)} onward`
+            : 'the server reported no window bound'),
+        ]),
+        totalsTile('Document count', w.local_count, w.external_count),
+        totalsTile('Document value', w.local_paise, w.external_paise, { money: true }),
+      ]));
+    }
+    return true;
+  }
+
+  async function loadTotals() {
+    while (totalsTiles.firstChild) totalsTiles.removeChild(totalsTiles.firstChild);
+    await totalsLoader.run(() => getControlTotals({
+      module: moduleInput.value.trim() || undefined,
+    }), {
+      render: (data) => renderTotals(data),
+    });
+  }
+
   root.appendChild(banner);
-  root.appendChild(card('eventsTitle', 'Integration Event Monitor', [
+  root.appendChild(card('eventsTotalsTitle', 'Control totals', [
+    h('p', { class: 'muted small' },
+      'A control total compares OUR count and value for a window against ZOHO’s for the same '
+      + 'window. Nothing here is synthesised from our own ledger: a total that compared us with '
+      + 'ourselves would always balance, and would be signed off as though it meant something. '
+      + 'Where the comparison cannot be made, this panel says so instead of showing a figure.'),
+    totalsLoader.el, totalsTiles,
+  ]));
+  root.appendChild(card('eventsTitle', 'Sync history', [
     h('p', { class: 'muted small' },
       'Operational statuses (C16) are shown here and only here. An object’s business status is a '
       + 'separate fact on a separate screen; the QUEUED / SENT / FAILED badge in the '
@@ -269,6 +374,7 @@ export function mountEventMonitor(root) {
     state.mode = globalMode.mode;
     state.modeNote = globalMode.note;
     renderBanner();
+    await loadTotals();
     await load(true);
   })();
 }

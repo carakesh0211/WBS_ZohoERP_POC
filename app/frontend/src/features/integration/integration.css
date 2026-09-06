@@ -115,6 +115,16 @@
   word-break: break-all;
 }
 
+/* A cell that could not be measured from the source that answered. Layout
+   only: the glyph and the words "not measured" are in the markup, so the
+   signal survives greyscale and a screen reader alike. */
+.integration-unmeasured {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  white-space: nowrap;
+}
+
 /* ---------------- steps list (SCR-32) ---------------- */
 
 .integration-steps {
