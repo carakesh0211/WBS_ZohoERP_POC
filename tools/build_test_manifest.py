@@ -112,6 +112,15 @@ POST_BASELINE_FILES = {
     # properties of our code, and are proved with an injected clock rather
     # than by waiting twelve minutes.
     "test_integration_jobs.py", "test_integration_sweeps.py",
+    # --- Wave 5 stream 6: outbound PO emission and idempotency -------------
+    # Post-baseline like every other wave. All three run with no database and
+    # no network: the properties they hold -- a Function killed mid-send, a
+    # tenant without the Z-01 unique field, a detective control whose table is
+    # missing -- are exactly the ones a PostgreSQL-gated test would skip past
+    # on every dev machine, and they are the ones that decide whether a
+    # commitment gets counted twice.
+    "test_outbound_chaos.py", "test_outbound_emission.py",
+    "test_outbound_unsanctioned.py",
 }
 
 

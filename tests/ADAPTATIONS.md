@@ -771,3 +771,60 @@ allocation is undeliverable and a backfill can starve an operator. The circuit
 breaker likewise needs five durable columns; it is expressed as a
 `CircuitStore` port with a deliberately non-durable in-memory implementation so
 that shipping without the durable one is visible rather than silent.
+## 2026-09-06 — additions, Wave 5 stream 6 (outbound PO emission and idempotency)
+
+**No test was weakened, removed, renamed or re-pointed.** Every entry below is
+additive, and no `ADAPT-` row is required. `tests/TEST_MANIFEST.json` was
+regenerated, and the three new files were registered in
+`tools/build_test_manifest.py`'s `POST_BASELINE_FILES` set — Wave 5 files are
+post-baseline by the same rule as every wave before them, and leaving them out
+would have inflated the 220-function baseline the removal guard is measured
+against. That set is the only line touched outside this stream's own files.
+
+| Added in | Tests | Purpose |
+|---|---|---|
+| Wave 5 S6 | `tests/test_outbound_chaos.py` | **The chaos test.** A Catalyst Function killed at every point between "request sent" and "response recorded", plus 100 randomised kill schedules, producing zero duplicate purchase orders. Closes the Definition-of-Done clause "Retries cannot create duplicate POs (chaos-tested)" |
+| Wave 5 S6 | `tests/test_outbound_chaos.py` (negative controls) | Each of the three parts of the synthesised idempotency removed in turn — the Z-01 unique field, the deterministic key, the resolve-before-create — and the duplicate observed. §18.5 Z-01's stated verification, mechanised |
+| Wave 5 S6 | `tests/test_outbound_emission.py` | The dedupe key's bounds and collision-freedom; D-7 read from `Capabilities` rather than assumed, both shapes exercised; the header-only split reported as a procurement process change (§18.5 Z-02); integer-paise discipline; the §11.6 rate budget with the **daily** ceiling binding on ERP Standard; draft→open refused while our approval instance is open (§11.7) |
+| Wave 5 S6 | `tests/test_outbound_emission.py` (chunk tests) | `emit_chunk`, the entry point stream 5's chunked job calls: over-budget checkpoints rather than fails, one bad row does not abandon the chunk, and a re-run over settled rows costs zero API calls |
+| Wave 5 S6 | `tests/test_outbound_unsanctioned.py` | §11.7's detective control: a purchase order raised directly in Zoho against a CAPEX dimension raises `UNSANCTIONED_COMMITMENT`, carries the `entity_id`/`status='Open'` pair `periods.py` reads, and blocks period close. Includes the refusal to report success when the exception table is absent |
+| Wave 5 S6 | `tests/outbound_tenant_fake.py` | Helper, not a test module (so it is absent from the manifest by design): the in-process Zoho tenant that owns the `cf_capex_ref` unique index, the C1 adapter, and `integration_outbox` with its lease |
+
+**Two properties are asserted about the suite itself**, because a chaos test can
+pass by no longer being a chaos test.
+`test_the_emission_passes_through_the_window_the_whole_design_is_about` fails if
+"request sent" and "response received" ever stop being distinct steps — at which
+point there would be no window to be killed in and every kill test would pass
+vacuously. `_enumerate_steps` derives the kill points by running a real emission
+rather than from a hand-written list, so a new durable step is killed at
+automatically.
+
+**One negative control had to be moved below the code under test.** The
+generated-key control originally drove `emit_purchase_order`, which refused it
+via the `DEDUPE_KEY_COLLISION` guard before a duplicate could be created — the
+guard working, but the control measuring the wrong layer. It now drives the
+adapter directly, and the guard has its own test
+(`test_a_dedupe_key_that_no_longer_derives_the_same_way_is_quarantined`).
+
+**One defect in the tests was found and fixed before commit.** The two Z-01
+negative controls indexed a step list built from a *different* adapter class,
+so they killed at the intended point only by coincidence; `_kill_at(name, cls)`
+now resolves the kill point by name per adapter.
+
+**One finding is carried as a passing test rather than smoothed over.**
+`test_a_frozen_c1_adapter_cannot_recover_an_unnamed_duplicate_and_says_so`
+records that C1 **as frozen** cannot express an idempotent retry: with an
+adapter implementing only `create_purchase_order` / `capabilities`, and a
+tenant whose unique-field error does not name the record it already holds, a
+lost response is unrecoverable — the purchase order exists and there is no
+call in C1 that reads a record by custom field. Z-01 still prevents the
+duplicate; what is lost is the link. The row goes DEAD after the documented
+eight attempts rather than retrying for ever against a 2,000 call/day ceiling,
+its error states that the purchase order EXISTS, and
+`orphaned_emission_finding` raises an `ORPHANED_EMISSION` exception that blocks
+period close. The paired test
+`test_the_same_row_recovers_the_moment_the_adapter_can_resolve_by_key` shows
+one added adapter call closes it. Reported to stream 1, not patched into
+`adapter.py`.
+
+**Approved by:** engagement lead, Wave 5 integration pass.

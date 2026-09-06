@@ -3364,6 +3364,312 @@
         "body_sha": "518d53788140ba93"
       }
     },
+    "test_outbound_chaos.py": {
+      "test_the_emission_passes_through_the_window_the_whole_design_is_about": {
+        "assertions": 7,
+        "body_sha": "b60f785bc5ccafc9"
+      },
+      "test_the_worst_kill_leaves_a_purchase_order_we_can_still_find": {
+        "assertions": 8,
+        "body_sha": "406c3a640e1c5457"
+      },
+      "test_a_function_killed_at_every_point_between_send_and_record_makes_one_po": {
+        "assertions": 4,
+        "body_sha": "1fe043a8ceb00b2a"
+      },
+      "test_one_hundred_kills_produce_zero_duplicate_purchase_orders": {
+        "assertions": 1,
+        "body_sha": "068e53c5e72d80e7"
+      },
+      "test_a_row_already_sent_is_never_sent_again": {
+        "assertions": 4,
+        "body_sha": "b8a0b08d92d36a5d"
+      },
+      "test_a_live_lease_stops_a_second_worker_claiming_an_in_flight_row": {
+        "assertions": 4,
+        "body_sha": "2dab44f8e564827b"
+      },
+      "test_negative_control_without_z01_the_unique_field_a_kill_duplicates_the_po": {
+        "assertions": 2,
+        "body_sha": "7ba1f7fde233914a"
+      },
+      "test_negative_control_with_z01_present_the_same_kill_makes_one_po": {
+        "assertions": 4,
+        "body_sha": "0f29f19a0929e110"
+      },
+      "test_negative_control_a_generated_dedupe_key_duplicates_the_po": {
+        "assertions": 3,
+        "body_sha": "c22310e318f2a5ca"
+      },
+      "test_the_dedupe_key_is_the_same_in_every_process_that_derives_it": {
+        "assertions": 4,
+        "body_sha": "dabd4ad906bb3cf8"
+      },
+      "test_negative_control_a_read_before_write_does_not_replace_the_unique_index": {
+        "assertions": 5,
+        "body_sha": "a01d52e91bb3ed83"
+      },
+      "test_a_duplicate_the_tenant_will_not_name_is_not_recorded_as_a_failure": {
+        "assertions": 5,
+        "body_sha": "efcb7379405b613c"
+      },
+      "test_a_dedupe_key_that_no_longer_derives_the_same_way_is_quarantined": {
+        "assertions": 4,
+        "body_sha": "f0323822c5be1a1e"
+      },
+      "test_a_frozen_c1_adapter_cannot_recover_an_unnamed_duplicate_and_says_so": {
+        "assertions": 11,
+        "body_sha": "b83fe2e05b5a9410"
+      },
+      "test_the_same_row_recovers_the_moment_the_adapter_can_resolve_by_key": {
+        "assertions": 5,
+        "body_sha": "7d279b48d9479bc7"
+      },
+      "test_a_dead_row_that_never_reached_the_tenant_is_not_called_an_orphan": {
+        "assertions": 4,
+        "body_sha": "a1a41b9f60857a91"
+      }
+    },
+    "test_outbound_emission.py": {
+      "test_the_dedupe_key_stays_inside_a_zoho_single_line_text_field": {
+        "assertions": 2,
+        "body_sha": "26afd296d2041413"
+      },
+      "test_the_dedupe_key_survives_identifiers_zoho_would_not_accept": {
+        "assertions": 2,
+        "body_sha": "497cded7c5745ee2"
+      },
+      "test_a_key_cannot_be_derived_from_a_missing_identifier": {
+        "assertions": 1,
+        "body_sha": "003919bed0f8f5a5"
+      },
+      "test_with_line_level_custom_fields_one_requisition_is_one_purchase_order": {
+        "assertions": 6,
+        "body_sha": "69fbbe216aa75af8"
+      },
+      "test_with_line_level_custom_fields_the_shape_is_marked_unverified": {
+        "assertions": 2,
+        "body_sha": "455fa9b5a5fce2b2"
+      },
+      "test_header_only_dimensions_force_one_purchase_order_per_control_cell": {
+        "assertions": 7,
+        "body_sha": "afaa2b74d6953b26"
+      },
+      "test_the_header_only_split_is_reported_as_a_procurement_process_change": {
+        "assertions": 6,
+        "body_sha": "0c47a4d9229ed914"
+      },
+      "test_a_single_cell_requisition_does_not_pretend_to_be_a_process_change": {
+        "assertions": 2,
+        "body_sha": "332c6503caf20c98"
+      },
+      "test_each_split_purchase_order_gets_its_own_dedupe_key": {
+        "assertions": 1,
+        "body_sha": "c1ac04f133e28f78"
+      },
+      "test_the_plan_is_the_same_every_time_it_is_built": {
+        "assertions": 2,
+        "body_sha": "d949d341e9bd0c8b"
+      },
+      "test_a_header_only_draft_spanning_two_cells_is_refused_outright": {
+        "assertions": 1,
+        "body_sha": "d6ebacb176716ded"
+      },
+      "test_a_purchase_order_cannot_be_constructed_already_open": {
+        "assertions": 1,
+        "body_sha": "5d498878f26b2728"
+      },
+      "test_a_purchase_order_with_no_lines_is_refused": {
+        "assertions": 1,
+        "body_sha": "1e1c0a7c7d97426b"
+      },
+      "test_a_line_with_no_control_cell_cannot_exist": {
+        "assertions": 1,
+        "body_sha": "91ec6b62d8822006"
+      },
+      "test_money_reaching_a_purchase_order_line_must_already_be_integer_paise": {
+        "assertions": 2,
+        "body_sha": "423ae0a453f6d995"
+      },
+      "test_a_negative_line_amount_is_refused": {
+        "assertions": 1,
+        "body_sha": "dd3736c73d316096"
+      },
+      "test_no_float_reaches_the_payload_handed_to_the_adapter": {
+        "assertions": 3,
+        "body_sha": "aa344e68bd5124bc"
+      },
+      "test_the_outbound_source_never_converts_money_through_a_float": {
+        "assertions": 1,
+        "body_sha": "1ec86ba935593664"
+      },
+      "test_outbound_gets_thirty_of_the_hundred_calls_a_minute": {
+        "assertions": 1,
+        "body_sha": "2536e66ea2eec3b1"
+      },
+      "test_on_erp_standard_the_daily_ceiling_binds_and_not_the_per_minute_one": {
+        "assertions": 4,
+        "body_sha": "56e4470d71d617cf"
+      },
+      "test_being_over_budget_defers_the_row_and_costs_neither_a_call_nor_an_attempt": {
+        "assertions": 8,
+        "body_sha": "a4fe7ee403598e39"
+      },
+      "test_the_daily_window_refuses_before_the_minute_window_is_touched": {
+        "assertions": 3,
+        "body_sha": "f316d94c593def35"
+      },
+      "test_the_postgres_budget_charges_the_daily_window_first": {
+        "assertions": 5,
+        "body_sha": "30018a6618b48743"
+      },
+      "test_the_postgres_budget_reads_its_daily_ceiling_from_capabilities": {
+        "assertions": 3,
+        "body_sha": "c444eb06edcc4a83"
+      },
+      "test_backoff_stays_inside_the_documented_envelope": {
+        "assertions": 2,
+        "body_sha": "d5d4c12a00afc496"
+      },
+      "test_a_row_goes_dead_rather_than_retrying_for_ever": {
+        "assertions": 4,
+        "body_sha": "ce70abb9edf49604"
+      },
+      "test_an_emitted_purchase_order_lands_in_the_tenant_as_a_draft": {
+        "assertions": 1,
+        "body_sha": "4fb201fb593534da"
+      },
+      "test_a_draft_is_not_opened_while_our_approval_instance_is_still_open": {
+        "assertions": 2,
+        "body_sha": "2233e5afd010303c"
+      },
+      "test_a_draft_is_opened_by_our_own_call_once_the_approval_has_closed": {
+        "assertions": 2,
+        "body_sha": "c26ba9cadfd7dbb6"
+      },
+      "test_a_row_that_never_reached_the_tenant_cannot_be_opened": {
+        "assertions": 1,
+        "body_sha": "ee82e17ec3321a54"
+      },
+      "test_an_adapter_that_cannot_transition_says_so_instead_of_pretending": {
+        "assertions": 2,
+        "body_sha": "1ecda882decdef71"
+      },
+      "test_no_zoho_endpoint_base_url_or_scope_string_appears_in_outbound": {
+        "assertions": 1,
+        "body_sha": "6ac26681a1c975c8"
+      },
+      "test_outbound_imports_nothing_from_the_other_streams_files": {
+        "assertions": 1,
+        "body_sha": "aa8654777a6d564b"
+      },
+      "test_the_adapter_extensions_outbound_needs_are_declared_not_assumed": {
+        "assertions": 5,
+        "body_sha": "5f0a0e2044e64036"
+      },
+      "test_an_adapter_with_only_frozen_c1_still_emits_and_says_what_it_lost": {
+        "assertions": 4,
+        "body_sha": "abe0082edf50bb88"
+      },
+      "test_a_chunk_sends_every_row_it_is_given": {
+        "assertions": 4,
+        "body_sha": "81c57dd1cc4998be"
+      },
+      "test_running_out_of_budget_checkpoints_the_chunk_rather_than_failing_it": {
+        "assertions": 8,
+        "body_sha": "078f26c8ada98d2c"
+      },
+      "test_one_bad_row_does_not_abandon_the_rest_of_the_chunk": {
+        "assertions": 5,
+        "body_sha": "4d0e5ec144796cf6"
+      },
+      "test_a_chunk_re_run_over_rows_it_already_sent_creates_nothing": {
+        "assertions": 3,
+        "body_sha": "f4a5af7ef571fb08"
+      }
+    },
+    "test_outbound_unsanctioned.py": {
+      "test_a_purchase_order_raised_in_zoho_against_a_capex_cell_is_an_exception": {
+        "assertions": 10,
+        "body_sha": "ee6719e66d432099"
+      },
+      "test_a_purchase_order_we_emitted_is_not_flagged": {
+        "assertions": 1,
+        "body_sha": "36b4c0bf9fe2db01"
+      },
+      "test_a_purchase_order_with_no_capex_dimension_is_not_ours_to_flag": {
+        "assertions": 1,
+        "body_sha": "4257cc83e2d5c02d"
+      },
+      "test_an_empty_custom_field_is_not_a_capex_dimension": {
+        "assertions": 1,
+        "body_sha": "df7a6460fbaa1741"
+      },
+      "test_the_control_cannot_be_configured_to_see_nothing": {
+        "assertions": 1,
+        "body_sha": "5c8ec723a8953d89"
+      },
+      "test_reporting_tags_work_as_well_as_custom_fields": {
+        "assertions": 1,
+        "body_sha": "620839d1c4b1e0dc"
+      },
+      "test_every_unsanctioned_purchase_order_is_reported_not_just_the_first": {
+        "assertions": 1,
+        "body_sha": "5d9013bd89b2508b"
+      },
+      "test_detection_takes_no_argument_saying_whether_prevention_is_on": {
+        "assertions": 1,
+        "body_sha": "ab93f5acb1e3f181"
+      },
+      "test_the_control_refuses_to_report_success_when_it_cannot_persist": {
+        "assertions": 3,
+        "body_sha": "76dafe0ab11fe4ec"
+      },
+      "test_findings_are_written_as_open_exceptions_carrying_their_entity": {
+        "assertions": 7,
+        "body_sha": "3316a56680fb5e76"
+      },
+      "test_nothing_is_written_when_there_is_nothing_to_write": {
+        "assertions": 2,
+        "body_sha": "92e4ce446ac4520d"
+      },
+      "test_re_running_the_sweep_does_not_raise_the_same_exception_twice": {
+        "assertions": 4,
+        "body_sha": "b47e0aa28608b7d7"
+      },
+      "test_the_finding_carries_exactly_what_the_period_gate_reads": {
+        "assertions": 5,
+        "body_sha": "41eebdb0dfcd19f4"
+      },
+      "test_period_close_blockers_are_the_open_blocking_findings": {
+        "assertions": 2,
+        "body_sha": "58b5194db27d7ce3"
+      },
+      "test_someone_opening_our_draft_in_zoho_is_an_exception_not_a_state_update": {
+        "assertions": 4,
+        "body_sha": "819765ec6f463f07"
+      },
+      "test_a_purchase_order_we_opened_ourselves_raises_nothing": {
+        "assertions": 1,
+        "body_sha": "afa3446838e5b19a"
+      },
+      "test_a_status_we_have_no_mapping_for_is_reported_and_never_guessed": {
+        "assertions": 2,
+        "body_sha": "85406937c18e1e61"
+      },
+      "test_a_mapped_status_matching_our_intent_raises_nothing": {
+        "assertions": 1,
+        "body_sha": "64fe6ab1d2cbbb3b"
+      },
+      "test_a_purchase_order_we_never_emitted_is_not_a_transition_finding": {
+        "assertions": 1,
+        "body_sha": "179b2e895c28c914"
+      },
+      "test_a_sweep_separates_our_purchase_orders_from_the_ones_we_never_made": {
+        "assertions": 6,
+        "body_sha": "d7fb9de1820d7859"
+      }
+    },
     "test_pg_adoption.py": {
       "test_parser_finds_001_function": {
         "assertions": 1,
@@ -6178,6 +6484,9 @@
     "test_negative_access_matrix.py": 9,
     "test_no_undefined_names.py": 5,
     "test_observability.py": 40,
+    "test_outbound_chaos.py": 16,
+    "test_outbound_emission.py": 39,
+    "test_outbound_unsanctioned.py": 20,
     "test_pg_adoption.py": 16,
     "test_pg_approval_concurrency.py": 12,
     "test_pg_approval_schema.py": 66,
@@ -6243,6 +6552,9 @@
     "test_negative_access_matrix.py": 29,
     "test_no_undefined_names.py": 7,
     "test_observability.py": 77,
+    "test_outbound_chaos.py": 75,
+    "test_outbound_emission.py": 111,
+    "test_outbound_unsanctioned.py": 55,
     "test_pg_adoption.py": 39,
     "test_pg_approval_concurrency.py": 53,
     "test_pg_approval_schema.py": 96,
