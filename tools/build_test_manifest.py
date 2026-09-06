@@ -81,6 +81,24 @@ POST_BASELINE_FILES = {
     # Wave 5 integration pass: the gate that reads the package's SQL against
     # migration 010's actual columns. Post-baseline like every Wave 4/5 file.
     "test_integration_sql_matches_schema.py",
+    # --- Wave 5 stream 1 (integration): ONE rate-budget implementation -----
+    # Wave 5 shipped THREE implementations of the same reservation; two could
+    # not execute, and every unit test over both passed because both talked to
+    # in-memory doubles. These two files are the halves that a double cannot
+    # provide:
+    #   * test_pg_integration_rate_budget.py EXECUTES the repaired path
+    #     against a live server (reserve, conflict/upsert, ceiling refusal,
+    #     release). Gated on CAPEX_DB_URL and therefore skipped everywhere
+    #     except CI's pg_tests job -- which is the point, and a skip is not a
+    #     pass.
+    #   * test_one_rate_budget_implementation.py fails if a FOURTH one ever
+    #     appears. Source-level, so it holds whether or not the statement is
+    #     ever executed -- which is what all three defects had in common.
+    # Post-baseline like every Wave 2-5 file: the 220 counts the POC's
+    # audit-remediation suite, and inflating it would make the removal guard
+    # stop meaning anything the moment the product grows.
+    "test_pg_integration_rate_budget.py",
+    "test_one_rate_budget_implementation.py",
 
     # Wave 4 stream A2: submission (the engine's missing front end) and the
     # outcome write-back (its missing back end). Two of the three run with no

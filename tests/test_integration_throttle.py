@@ -44,8 +44,10 @@ PostgreSQL.
 """
 from __future__ import annotations
 
+import ast
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 
@@ -55,6 +57,7 @@ from app.backend.integration.throttle import (
     FailureKind, InMemoryCircuitStore, Lane, Parallelism, RetryPolicy,
     WindowKind,
 )
+from app.backend.pg import integration_store as store
 from app.backend.pg import repo
 from app.backend.pg.engine import Scope
 
@@ -102,28 +105,90 @@ class FrozenRandom:
         return a + self.fraction * (b - a)
 
 
+class _FakeSavepoint:
+    """`psycopg.Connection.transaction()`, modelled.
+
+    `integration_store.reserve_calls` wraps its reservation in one of these,
+    and that savepoint is the whole reason a partial reservation is not
+    representable: if the statement charges one window and not the other, the
+    block exits by RAISING and everything it did is undone. A double that let
+    the rows survive the rollback would model a database that does not exist,
+    and would make the released-reservation tests below pass for the wrong
+    reason.
+    """
+
+    def __init__(self, session: "FakeBudgetSession") -> None:
+        self._session = session
+
+    def __enter__(self):
+        self._snapshot = {k: dict(v) for k, v in self._session.rows.items()}
+        self._session.savepoints.append("SAVEPOINT")
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        if exc_type is not None:
+            self._session.rows = self._snapshot
+            self._session.rollbacks.append("ROLLBACK TO SAVEPOINT")
+        return False        # never swallow; the store re-raises deliberately
+
+
+class _FakeConnection:
+    """Just enough `psycopg.Connection` for the store's savepoint."""
+
+    def __init__(self, session: "FakeBudgetSession") -> None:
+        self._session = session
+
+    def transaction(self):
+        return _FakeSavepoint(self._session)
+
+
 class FakeBudgetSession:
-    """An in-process model of the two rate-budget statements.
+    """An in-process model of the rate-budget statements `integration_store`
+    issues, and of migration 010's table.
 
     Implements the SQL's semantics, deliberately without reference to the
     module's own logic:
 
-    * the reserve is an insert-or-add guarded by the lane ceiling on BOTH
-      halves, so a first-ever call over the ceiling inserts nothing and a
-      subsequent one that would cross the ceiling adds nothing;
-    * a refused reserve returns no rows, which is how the caller learns;
-    * the release subtracts, floored at zero;
+    * the seeding ``INSERT ... SELECT FROM integration_connection ... ON
+      CONFLICT DO NOTHING`` opens a window row and copies the connection's
+      ceiling onto it, floored at 1 -- so the ceiling this double enforces is
+      the DATABASE's, exactly as it is in production, and not a number the
+      caller passed in;
+    * the reservation is ONE ``UPDATE`` matching BOTH window rows, guarded by
+      ``used + count <= ceiling``, so an over-budget row is simply not updated
+      and returns no row, which is how the caller learns;
+    * `exhausted_at` is stamped by the same statement that makes it true and
+      cleared when it is not, because
+      ``ck_integration_rate_budget_exhausted_stamp`` is BICONDITIONAL and a
+      double that only ever set it would hide a row the real table refuses;
+    * the reservation runs inside a savepoint (:class:`_FakeSavepoint`), so a
+      reservation granted in one window and refused in the other survives in
+      neither;
     * every statement is filtered by the scope predicate ``repo.query``
       compiled into it, so a denied scope returns nothing here too.
+
+    Keyed on ``(connection_id, window_kind, allocation, window_start_key)`` --
+    migration 010's actual primary key. The previous version of this double was
+    keyed on ``(connection_id, window_kind, lane, window_start)``, which is the
+    constraint `throttle.py` believed in and which has never existed. A double
+    that models the statement its own module wrote will agree with that module
+    about anything, including a statement the server cannot parse.
     """
 
     def __init__(self, *, scope: Scope | None = None,
-                 connections: dict[str, str] | None = None) -> None:
+                 connections: dict[str, str] | None = None,
+                 per_minute_call_ceiling: int = 100,
+                 daily_call_ceiling: int = 2000) -> None:
         self.scope = scope or Scope.system("SVC-THROTTLE-TEST")
         self.connections = dict(connections or {CONNECTION: ENTITY})
-        self.rows: dict[tuple, int] = {}
+        self.per_minute_call_ceiling = per_minute_call_ceiling
+        self.daily_call_ceiling = daily_call_ceiling
+        self.rows: dict[tuple, dict] = {}
         self.statements: list[tuple[str, dict]] = []
         self.locks_taken: list = []
+        self.savepoints: list[str] = []
+        self.rollbacks: list[str] = []
+        self.connection = _FakeConnection(self)
 
     # -- scope, as the compiled predicate expresses it ---------------------
     def _visible(self, flat: str, params: dict) -> bool:
@@ -138,9 +203,9 @@ class FakeBudgetSession:
         return True                       # compiled to TRUE
 
     @staticmethod
-    def _key(params: dict) -> tuple:
-        return (params["connection_id"], params["window_kind"],
-                params["lane"], params["window_start"])
+    def _stamp(row: dict, now) -> None:
+        """`ck_integration_rate_budget_exhausted_stamp`, which is an equality."""
+        row["exhausted_at"] = now if row["used"] >= row["ceiling"] else None
 
     def fetchall(self, statement, params=None):
         flat = " ".join(statement.split())
@@ -150,23 +215,59 @@ class FakeBudgetSession:
         if not self._visible(flat, params):
             return []
 
+        # --- the seeder: one window row, ceiling copied off the connection
         if "INSERT INTO integration_rate_budget" in flat:
-            key, cost = self._key(params), int(params["cost"])
-            ceiling = int(params["lane_ceiling"])
-            current = self.rows.get(key)
-            proposed = cost if current is None else current + cost
-            if proposed > ceiling:
-                return []
-            self.rows[key] = proposed
-            return [(proposed,)]
+            total = (self.per_minute_call_ceiling
+                     if "c.per_minute_call_ceiling" in flat
+                     else self.daily_call_ceiling)
+            key = (params["connection_id"], params["kind"],
+                   params["allocation"], params["key"])
+            if key in self.rows:
+                return []                 # ON CONFLICT DO NOTHING
+            self.rows[key] = {
+                "used": 0,
+                "ceiling": max(1, (total * int(params["share"])) // 100),
+                "exhausted_at": None,
+                "window_start": params["start"],
+                "window_seconds": int(params["seconds"]),
+                "window_tz": params["tz"],
+            }
+            return [(params["kind"],)]
 
+        # --- the reservation: ONE statement, BOTH windows, guarded
         if "UPDATE integration_rate_budget" in flat:
-            key, cost = self._key(params), int(params["cost"])
-            self.rows[key] = max(self.rows.get(key, 0) - cost, 0)
-            return [(self.rows[key],)]
+            count = int(params["count"])
+            granted = []
+            for kind, key_param in (("MINUTE", "minute_key"), ("DAY", "day_key")):
+                key = (params["connection_id"], kind, params["allocation"],
+                       params[key_param])
+                row = self.rows.get(key)
+                if row is None or row["used"] + count > row["ceiling"]:
+                    continue              # the WHERE excludes it; no row back
+                row["used"] += count
+                self._stamp(row, params["now"])
+                granted.append((kind, row["used"], row["ceiling"]))
+            return granted
 
-        if "SELECT COALESCE(b.used" in flat:
-            return [(self.rows.get(self._key(params), 0),)]
+        # --- read_rate_budget
+        if "SELECT b.window_kind, b.used, b.ceiling" in flat:
+            out = []
+            for kind, key_param in (("MINUTE", "minute_key"), ("DAY", "day_key")):
+                key = (params["connection_id"], kind, params["allocation"],
+                       params[key_param])
+                row = self.rows.get(key)
+                if row is not None:
+                    out.append((kind, row["used"], row["ceiling"],
+                                row["exhausted_at"]))
+            return out
+
+        # --- get_connection: the visibility probe on the refusal path
+        if "FROM integration_connection" in flat and flat.startswith("SELECT"):
+            return [(params["connection_id"],
+                     self.connections[params["connection_id"]],
+                     "ZOHO_BOOKS", "in", "ORG-1", "books", "MOCK",
+                     self.per_minute_call_ceiling, self.daily_call_ceiling,
+                     True)]
 
         raise AssertionError("unexpected statement: " + flat)
 
@@ -177,21 +278,22 @@ class FakeBudgetSession:
     # -- inspection helpers -----------------------------------------------
     def used(self, kind: WindowKind, lane: Lane, moment: datetime,
              connection_id: str = CONNECTION) -> int:
+        minute_key, day_key, _, _ = store.window_keys(
+            moment, throttle.RATE_BUDGET_TZ)
         key = (connection_id, kind.value, lane.value,
-               throttle.window_start(kind, moment))
-        return self.rows.get(key, 0)
+               minute_key if kind is WindowKind.MINUTE else day_key)
+        row = self.rows.get(key)
+        return 0 if row is None else row["used"]
 
     def issued(self, needle: str) -> list[tuple[str, dict]]:
         return [(sql, params) for sql, params in self.statements if needle in sql]
 
 
 def reserve(session, clock, *, lane=Lane.POLLING, cost=1,
-            scope=None, daily_ceiling=throttle.DEFAULT_DAILY_CALL_CEILING,
-            connection_id=CONNECTION) -> BudgetVerdict:
+            scope=None, connection_id=CONNECTION) -> BudgetVerdict:
     return throttle.reserve(
         session, connection_id=connection_id, lane=lane, cost=cost,
-        actor="SVC-POLLER", clock=clock, scope=scope,
-        daily_ceiling=daily_ceiling)
+        actor="SVC-POLLER", clock=clock, scope=scope)
 
 
 # ==========================================================================
@@ -278,18 +380,38 @@ def test_a_granted_reservation_spends_from_both_windows():
     assert session.used(WindowKind.DAY, Lane.POLLING, T0) == 1
 
 
-def test_the_reservation_is_one_atomic_upsert_per_window():
+def test_the_reservation_is_one_atomic_statement_across_both_windows():
     """Read-test-increment as three statements is a race two Functions win
-    together. It has to be one statement with a RETURNING."""
+    together. It has to be one statement with a RETURNING.
+
+    ADAPTED (see tests/ADAPTATIONS.md ADAPT-INT-005). This asserted two
+    upserts conflicting on ``(connection_id, window_kind, lane,
+    window_start)`` -- a constraint that has never existed, on a statement
+    PostgreSQL cannot parse. The delegated implementation is STRICTLY
+    stronger: the two ``INSERT``s only OPEN the window rows (``DO NOTHING``),
+    and the spend is a SINGLE guarded ``UPDATE`` covering both windows, so the
+    atomicity is now across the pair rather than merely within each one.
+    """
     session, clock = FakeBudgetSession(), ManualClock()
     reserve(session, clock)
 
-    inserts = session.issued("INSERT INTO integration_rate_budget")
-    assert len(inserts) == 2
-    for sql, _ in inserts:
-        assert "ON CONFLICT (connection_id, window_kind, lane, window_start)" in sql
-        assert "DO UPDATE" in sql
-        assert "RETURNING" in sql
+    seeds = session.issued("INSERT INTO integration_rate_budget")
+    assert len(seeds) == 2, "one window row opened per window kind"
+    for sql, _ in seeds:
+        assert ("ON CONFLICT (connection_id, window_kind, allocation, "
+                "window_start_key) DO NOTHING") in sql, (
+            "the seeder must conflict on migration 010's REAL primary key")
+        assert "DO UPDATE" not in sql, "opening a window must never spend one"
+
+    spends = session.issued("UPDATE integration_rate_budget")
+    assert len(spends) == 1, (
+        "the spend is ONE statement for BOTH windows; two statements can "
+        "leave the minute charged for a call the day refused")
+    sql, params = spends[0]
+    assert "b.used + %(count)s <= b.ceiling" in sql, "the guard is in the WHERE"
+    assert "RETURNING b.window_kind, b.used, b.ceiling" in sql
+    assert params["minute_key"] and params["day_key"]
+    assert session.savepoints, "the reservation runs inside a savepoint"
 
 
 def test_the_minute_lane_refuses_at_its_allocation_not_the_org_ceiling():
@@ -328,12 +450,27 @@ def test_a_refused_reservation_releases_the_window_it_had_already_taken():
         reserve(session, clock)
     assert session.used(WindowKind.DAY, Lane.POLLING, T0) == 60
 
+    rollbacks_before = len(session.rollbacks)
     refused = reserve(session, clock)
     assert not refused
 
-    releases = session.issued("UPDATE integration_rate_budget")
-    assert len(releases) == 1
-    assert releases[0][1]["window_kind"] == WindowKind.DAY.value
+    # ADAPTED (tests/ADAPTATIONS.md ADAPT-INT-005). This asserted that ONE
+    # compensating `UPDATE` was issued naming the DAY window. There is no
+    # compensating statement any more, and that is the improvement rather
+    # than a loss: the day charge and the minute refusal are one statement
+    # inside a SAVEPOINT, so the day's call is released by the rollback and a
+    # partial reservation is not representable rather than merely undone. The
+    # property the old assertion existed to hold -- the day did not keep a
+    # call for a request never made -- is asserted below, unchanged.
+    assert len(session.rollbacks) == rollbacks_before + 1, (
+        "the refused reservation must unwind its savepoint")
+    spends = session.issued("UPDATE integration_rate_budget")
+    assert len(spends) == 61, (
+        "61 attempts, 61 reservation statements, and NOT ONE compensating "
+        "statement among them -- the release is the rollback")
+    assert all("GREATEST" not in sql for sql, _ in spends), (
+        "a subtracting compensation has come back; a reservation that can be "
+        "partially taken is a reservation that can leak")
     assert session.used(WindowKind.DAY, Lane.POLLING, T0) == 60
     # And the verdict says 60 too. Reporting the pre-release 61 would tell an
     # operator the day has spent a call it has not -- an off-by-one that
@@ -344,13 +481,43 @@ def test_a_refused_reservation_releases_the_window_it_had_already_taken():
 
 def test_a_release_can_never_drive_a_counter_negative():
     """A negative `used` would silently hand the next caller free calls --
-    the exact failure a throttle exists to prevent."""
+    the exact failure a throttle exists to prevent.
+
+    ADAPTED (tests/ADAPTATIONS.md ADAPT-INT-005). This called
+    ``throttle._release``, a subtracting ``UPDATE`` floored with
+    ``GREATEST(..., 0)`` against columns that do not exist. There is no
+    subtracting statement any more -- a release is a savepoint rollback -- so
+    the property is held by two things that are stronger than a floor, and
+    this test asserts both:
+
+      1. a rollback restores the PRIOR value, so ``used`` cannot pass below
+         where it started however many reservations are refused;
+      2. ``ck_integration_rate_budget_used_within_ceiling`` is declared
+         ``used >= 0 AND used <= ceiling``, so a negative counter is refused
+         by the database even if some future caller invents a way to write
+         one. That half is proved against a live server in
+         ``tests/test_pg_integration_rate_budget.py``.
+    """
     session, clock = FakeBudgetSession(), ManualClock()
-    throttle._release(session, connection_id=CONNECTION, kind=WindowKind.DAY,
-                      lane=Lane.POLLING,
-                      window_start_at=throttle.window_start(WindowKind.DAY, T0),
-                      cost=5, actor="SVC", now=T0, scope=None)
-    assert session.used(WindowKind.DAY, Lane.POLLING, T0) == 0
+    for _ in range(3):
+        assert reserve(session, clock)
+    assert session.used(WindowKind.DAY, Lane.POLLING, T0) == 3
+
+    # Refuse ten reservations in a row against an exhausted minute lane. Each
+    # one takes the day charge and gives it back; none may push the day below
+    # the three calls actually spent.
+    for _ in range(57):
+        reserve(session, clock)
+    for _ in range(10):
+        assert not reserve(session, clock)
+    assert session.used(WindowKind.DAY, Lane.POLLING, T0) == 60
+    assert all(row["used"] >= 0 for row in session.rows.values())
+
+    migration = (Path(__file__).resolve().parents[1]
+                 / "migrations" / "pg" / "010_integration.sql").read_text(
+                     encoding="utf-8")
+    assert "CHECK (used >= 0 AND used <= ceiling)" in migration, (
+        "the non-negative floor is the database's, and must stay declared")
 
 
 def test_a_new_minute_window_starts_a_fresh_budget():
@@ -382,10 +549,17 @@ def test_the_daily_ceiling_is_the_binding_one_on_erp_standard():
     assert not refused
     assert refused.binding is WindowKind.DAY
     assert refused.resume_at == datetime(2026, 9, 7, tzinfo=timezone.utc)
-    # The minute window was never touched: the day refused first, so there is
-    # nothing to compensate and no minute budget was spent discovering it.
+    # The minute window was never charged: the day refused inside the same
+    # statement, so the whole reservation rolled back and no minute budget was
+    # spent discovering it.
+    #
+    # ADAPTED (tests/ADAPTATIONS.md ADAPT-INT-005). This asserted that NO
+    # `UPDATE integration_rate_budget` had been issued, which was a proxy for
+    # "no compensation was needed" back when the spend was an INSERT and only
+    # a release was an UPDATE. The spend itself is now the UPDATE, so the
+    # proxy no longer means what it said; the property is asserted directly.
     assert session.used(WindowKind.MINUTE, Lane.POLLING, clock.now()) == 0
-    assert session.issued("UPDATE integration_rate_budget") == []
+    assert session.rollbacks, "the refused reservation unwound its savepoint"
 
 
 def test_an_exhausted_polling_lane_does_not_starve_the_interactive_operator():
@@ -437,12 +611,101 @@ def test_a_reservation_must_be_for_at_least_one_call():
 # ==========================================================================
 # The budget goes through the scoped-query chokepoint
 # ==========================================================================
-def test_every_budget_statement_carries_the_literal_scope_token():
-    """`repo.query` refuses SQL without it, so this is belt and braces on the
-    three constants -- and it fails at review time, not at runtime."""
-    for sql in (throttle._RESERVE_SQL, throttle._RELEASE_SQL, throttle._READ_SQL):
-        assert repo.SCOPE_TOKEN in sql
-        repo.require_scope_token(sql)
+def _sql_literals(module) -> list[str]:
+    """Every string a module EXECUTES, docstrings and comments excluded.
+
+    Parsed rather than grepped, and the distinction is the whole point here:
+    this module's prose quotes the very SQL it no longer contains, so a text
+    search would report the fix as the defect. A docstring is a string
+    constant that is the first statement of a module, class or function; an
+    f-string is a `JoinedStr` whose literal parts still carry the column
+    names. Both are handled.
+    """
+    tree = ast.parse(Path(module.__file__).read_text(encoding="utf-8"))
+    docstrings = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef,
+                             ast.AsyncFunctionDef)):
+            body = getattr(node, "body", None)
+            if (body and isinstance(body[0], ast.Expr)
+                    and isinstance(body[0].value, ast.Constant)
+                    and isinstance(body[0].value.value, str)):
+                docstrings.add(id(body[0].value))
+
+    found: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            if id(node) not in docstrings:
+                found.append(node.value)
+        elif isinstance(node, ast.JoinedStr):
+            found.append(" ".join(
+                part.value for part in node.values
+                if isinstance(part, ast.Constant) and isinstance(part.value, str)))
+    return found
+
+
+def test_this_module_owns_no_sql_of_its_own_at_all():
+    """ADAPTED (tests/ADAPTATIONS.md ADAPT-INT-005), and made stronger.
+
+    This used to check that ``_RESERVE_SQL``, ``_RELEASE_SQL`` and
+    ``_READ_SQL`` each carried the literal ``{scope}`` token. All three passed
+    that check for the whole of Wave 5 while naming three columns that do not
+    exist: a scope token proves the predicate was not forgotten, and proves
+    nothing whatever about whether the statement can execute.
+
+    There are no constants to check now, and the absence is the assertion. A
+    module with no SQL cannot drift from the schema, which is the only
+    guarantee that would have prevented this defect.
+    """
+    for literal in _sql_literals(throttle):
+        upper = literal.upper()
+        for verb in ("INSERT INTO", "UPDATE ", "SELECT ", "ON CONFLICT"):
+            assert verb not in upper, (
+                f"throttle.py has grown SQL again ({verb!r} in {literal[:60]!r}). "
+                f"The reservation belongs in integration_store.reserve_calls "
+                f"-- one implementation.")
+    assert not [name for name in vars(throttle) if name.endswith("_SQL")]
+
+
+def test_every_delegated_budget_statement_is_scoped_when_it_reaches_the_server():
+    """The token check, re-homed onto the statements that actually run -- and
+    asserted on the COMPILED text rather than the source.
+
+    `repo.query` calls `require_scope_token` on every statement it is handed
+    and refuses one without it, so a missing token is already a raise rather
+    than a silent widening. What that does NOT prove is that the token was
+    compiled into a predicate which actually filters: `{scope}` can sit in a
+    statement and be replaced by `TRUE`. So this asserts on the SQL as the
+    double received it -- after substitution -- and requires the entity
+    predicate to be present in every rate-budget statement the reservation
+    issues, under a scope that genuinely restricts.
+
+    ADAPTED (tests/ADAPTATIONS.md ADAPT-INT-005) from
+    `test_every_budget_statement_carries_the_literal_scope_token`, which
+    checked three now-deleted constants. It is stronger in the way that
+    matters: the old test passed for all of Wave 5 against SQL that could not
+    execute.
+    """
+    scope = Scope(user_id="U-OPS", entity_ids=frozenset({ENTITY}))
+    session = FakeBudgetSession(scope=scope)
+    assert reserve(session, ManualClock(), scope=scope)
+
+    budget = [(sql, params) for sql, params in session.statements
+              if "integration_rate_budget" in sql]
+    assert len(budget) >= 3, (
+        f"expected the two seeders and the reservation; got {len(budget)}")
+    for sql, params in budget:
+        assert "c.entity_id" in sql, (
+            f"a rate-budget statement reached the server with no entity "
+            f"predicate: {sql[:140]}")
+        assert any(key.startswith("__scope_entity") for key in params), (
+            "the predicate is parameterised, never interpolated")
+
+    # And the raw sources still carry the token repo.query demands: strip it
+    # out of any one of them and repo.query raises before the server is asked.
+    with pytest.raises(repo.ScopeTokenMissing):
+        repo.require_scope_token(
+            "UPDATE integration_rate_budget SET used = used + 1")
 
 
 def test_the_column_mapping_names_every_dimension():

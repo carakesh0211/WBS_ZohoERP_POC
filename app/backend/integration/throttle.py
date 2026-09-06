@@ -16,11 +16,15 @@ AppSail scales to zero and reclaims an instance after five minutes of
 inactivity (§2.1). There is no resident process, so there is no place to hold
 a token bucket: two cron ticks a minute apart are two different containers, and
 between them the only thing that remembers anything is the database. The budget
-is therefore an ``integration_rate_budget`` row, reserved with a single
-``INSERT ... ON CONFLICT ... DO UPDATE ... WHERE ... RETURNING`` so that the
-read, the test against the ceiling and the increment are one atomic statement.
-Two concurrent Functions racing for the last call in the window cannot both
-win, because only one of them gets a row back.
+is therefore an ``integration_rate_budget`` row, reserved by a single
+``UPDATE ... SET used = used + n WHERE used + n <= ceiling ... RETURNING`` so
+that the read, the test against the ceiling and the increment are one atomic
+statement. Two concurrent Functions racing for the last call in the window
+cannot both win, because only one of them gets a row back.
+
+That statement lives in :func:`app.backend.pg.integration_store.reserve_calls`
+and **not in this module**, which issues no SQL at all -- see the block comment
+above :func:`reserve` for what that repaired.
 
 **Over budget is not an error.** :func:`reserve` returns a falsy
 :class:`BudgetVerdict`; the job checkpoints and returns, and the next cron tick
@@ -49,23 +53,39 @@ lets a backfill eat all 2,000 daily calls by mid-morning does not protect the
 operator at all -- it just moves the starvation from minutes to hours. The
 ratio lives in one place and both windows read it.
 
-What this module needs from stream 2 (REPORTED, not made)
-----------------------------------------------------------
-``migrations/pg/010_integration.sql`` is stream 2's file. C2 freezes
-``integration_rate_budget(connection_id, window_kind, window_start, used, ...)``.
-This module writes the columns below, and the trailing ``...`` of the frozen
-signature is where three of them have to live:
+What this module needed from stream 2, and what actually shipped
+----------------------------------------------------------------
+``migrations/pg/010_integration.sql`` is stream 2's file, and C2 froze
+``integration_rate_budget(connection_id, window_kind, window_start, used, ...)``
+with a trailing ellipsis. This module was written against a GUESS at what that
+ellipsis contained, and the guess was wrong in every particular:
 
-* ``lane text NOT NULL`` -- ``POLLING|OUTBOUND|INTERACTIVE``, **part of the
-  key**. A single ``used`` counter per window cannot express "polling is capped
-  at 60": enforcing a per-lane ceiling requires knowing what that lane spent.
-  Without this column the allocation above is undeliverable, and the honest
-  consequence is that a backfill can starve an operator.
-* ``created_by text NOT NULL`` / ``updated_by text``, ``updated_at timestamptz``
-  -- the audit columns every other table in this schema carries.
-* ``UNIQUE (connection_id, window_kind, lane, window_start)`` -- the conflict
-  target the atomic reserve arbitrates on. Without it the upsert is not atomic
-  and two Functions can both spend the last call.
+============================  =================================================
+this module used to write     what migration 010 actually declares
+============================  =================================================
+``lane``                      ``allocation`` -- same concept, schema's name wins
+``created_by`` / ``updated_by``  neither exists; there is ``updated_at``
+``UNIQUE (connection_id,      ``PRIMARY KEY (connection_id, window_kind,
+window_kind, lane,            allocation, window_start_key)``
+window_start)``
+(nothing)                     ``window_start_key``, ``window_seconds``,
+                              ``window_tz``, ``ceiling`` -- all NOT NULL,
+                              none with a default
+============================  =================================================
+
+The concept this module argued for was right and is in the shipped schema:
+``allocation`` IS part of the primary key, so "polling is capped at 60" is
+enforceable, because enforcing a per-lane ceiling requires knowing what that
+lane spent. What was wrong was writing SQL against the guess and never
+executing it. Renaming ``lane`` to ``allocation`` would have satisfied a
+column-name gate and still failed at runtime on the four NOT NULL columns the
+insert omitted.
+
+So the reservation now delegates to
+:func:`app.backend.pg.integration_store.reserve_calls`, written by the author
+of the migration against its real columns. One implementation, and the
+statement is exercised against a live server by
+``tests/test_pg_integration_rate_budget.py`` rather than only against a double.
 
 The circuit breaker likewise needs somewhere durable to live -- see
 :class:`CircuitStore`. It is expressed here as a port with an explicitly
@@ -80,7 +100,7 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Mapping, Protocol
 
-from ..pg import repo
+from ..pg import integration_store as store
 from ..pg.engine import Scope, Session
 
 # ===========================================================================
@@ -278,206 +298,187 @@ class ConnectionNotVisible(LookupError):
 # ---------------------------------------------------------------------------
 #: `integration_rate_budget` carries no scope dimension of its own; it is
 #: reachable from one, through `integration_connection.entity_id` (C2). Every
-#: statement below therefore joins the connection and maps `entity` to it.
+#: statement therefore joins the connection and maps `entity` to it.
+#:
+#: This is `integration_store.VIA_CONNECTION_SCOPE_COLUMNS` **by identity, not
+#: by copy**. A second mapping with the same contents was the smaller sibling
+#: of the defect this module just had: two files agreeing about a name until
+#: one of them changed. There is one mapping, it lives beside the statements it
+#: scopes, and this alias exists so a reader of this module can still see which
+#: mapping the reservation goes through.
 #:
 #: The other three dimensions are waived EXPLICITLY (mapped to None) rather
 #: than omitted, which `repo.compile_scope` requires and which is the point:
 #: an omission compiles to TRUE and nobody notices, a waiver is a decision
-#: somebody signed. The decision here is that an integration connection is an
+#: somebody signed. The decision is that an integration connection is an
 #: entity-level object -- it has no plant, project or location -- so there is
 #: no column those dimensions could filter on and no narrower predicate to
 #: write. A principal restricted to a project sees the connections of the
 #: entities it is granted, which is the same answer the connection screen gives.
-RATE_BUDGET_SCOPE_COLUMNS: dict[str, str | None] = {
-    "entity": "c.entity_id",
-    "plant": None,
-    "project": None,
-    "location": None,
-}
+RATE_BUDGET_SCOPE_COLUMNS: Mapping[str, str | None] = \
+    store.VIA_CONNECTION_SCOPE_COLUMNS
+
+#: The zone the budget's window buckets are computed in.
+#:
+#: `integration_rate_budget.window_start_key` is the bucket identity as the
+#: APPLICATION computed it, and `window_tz` records which midnight that
+#: computation assumed -- see migration 010's header for why no CHECK in that
+#: table derives a boundary (every PostgreSQL timestamptz truncation is STABLE,
+#: not IMMUTABLE, so a constraint built on one is true only for the session
+#: that evaluates it).
+#:
+#: This module's `window_start` truncates in UTC, so the two must agree or the
+#: verdict would report a window the reservation did not charge. UTC is the
+#: choice for the reason `integration_store.window_keys` gives: whose midnight
+#: Zoho's daily quota resets at is a tenant fact Phase 0B-2 has not verified,
+#: and UTC is the only option that is honestly arbitrary rather than falsely
+#: specific.
+RATE_BUDGET_TZ = "UTC"
+
+#: Reported in this order: DAY first, because on ERP Standard the daily ceiling
+#: is the binding one and it is the window an operator reads first.
+_WINDOW_REPORT_ORDER = (WindowKind.DAY, WindowKind.MINUTE)
 
 
-# The atomic reserve.
+# ===========================================================================
+# The reservation
+# ===========================================================================
 #
-# One statement, so that the read of `used`, the test against the ceiling and
-# the increment cannot be interleaved. Two Functions racing for the last call
-# in a window both execute this; exactly one gets a row back, because the
-# second one's `ON CONFLICT ... WHERE` sees the first one's increment.
+# THIS MODULE ISSUES NO SQL OF ITS OWN, AND THAT IS THE FIX.
 #
-# Both halves guard the ceiling, and they have to:
-#   * the `WHERE ... <= lane_ceiling` on the SELECT stops a first-ever call
-#     whose cost already exceeds the lane's whole allocation from inserting a
-#     row over budget (there is no conflict to arbitrate on that path);
-#   * the `WHERE` on the DO UPDATE stops every subsequent one.
-# Dropping either leaves a hole that only shows up under exactly one ordering.
+# It used to. `_RESERVE_SQL` inserted into `integration_rate_budget` naming
+# `lane`, `created_by` and `updated_by` and conflicting on
+# `(connection_id, window_kind, lane, window_start)`. The shipped table
+# (migration 010) has `allocation`, has `updated_at`, has neither `_by` column,
+# and its primary key is `(connection_id, window_kind, allocation,
+# window_start_key)`. The statement could not execute. Every test over this
+# module passed anyway, because they all ran against an in-memory double:
+# **SQL is a string until something executes it.**
 #
-# Every parameter is cast explicitly. In an `INSERT ... SELECT` nothing gives
-# PostgreSQL a column to infer a bare placeholder's type from, and
-# `%(cost)s <= %(lane_ceiling)s` compares two placeholders to each other with
-# no typed column anywhere near them -- "could not determine data type of
-# parameter" is a failure that appears only against a real server, which is
-# the one place this suite cannot reach.
+# Wave 5 shipped THREE such statements -- here, in `outbound.py`, and (fixed)
+# in `jobs.py` -- because three file-disjoint streams each wrote SQL against a
+# frozen column list that ended in an ellipsis. The repair is not a fourth
+# patched statement. Renaming the three columns would have satisfied the
+# column-name gate and STILL failed at runtime, because the insert omitted
+# `window_start_key`, `window_seconds`, `window_tz` and `ceiling` -- all NOT
+# NULL with no default. A gate that goes green on a statement that cannot
+# execute is worse than one that stays red.
 #
-# No f-string: the literal `{scope}` token must survive to `repo.query`.
-_RESERVE_SQL = """
-INSERT INTO integration_rate_budget AS b
-            (connection_id, window_kind, lane, window_start, used,
-             created_by, updated_at, updated_by)
-SELECT c.connection_id, %(window_kind)s::text, %(lane)s::text,
-       %(window_start)s::timestamptz, %(cost)s::int,
-       %(actor)s::text, %(now)s::timestamptz, %(actor)s::text
-  FROM integration_connection c
- WHERE c.connection_id = %(connection_id)s
-   AND %(cost)s::int <= %(lane_ceiling)s::int
-   AND {scope}
-ON CONFLICT (connection_id, window_kind, lane, window_start) DO UPDATE
-   SET used       = b.used + EXCLUDED.used,
-       updated_at = %(now)s::timestamptz,
-       updated_by = %(actor)s::text
- WHERE b.used + EXCLUDED.used <= %(lane_ceiling)s::int
-RETURNING b.used
-"""
-
-# Compensation for a partially-taken reservation. See `reserve`.
+# `integration_store.reserve_calls` was written by the author of migration 010,
+# against its actual columns, and it is now the only implementation. What it
+# gives this module beyond correct names:
 #
-# GREATEST(..., 0) because a release must never drive a counter negative: a
-# negative `used` would silently hand the next caller free calls, which is the
-# failure mode a throttle exists to prevent.
-_RELEASE_SQL = """
-UPDATE integration_rate_budget AS b
-   SET used       = GREATEST(b.used - %(cost)s::int, 0),
-       updated_at = %(now)s::timestamptz,
-       updated_by = %(actor)s::text
-  FROM integration_connection c
- WHERE c.connection_id = b.connection_id
-   AND b.connection_id = %(connection_id)s
-   AND b.window_kind   = %(window_kind)s
-   AND b.lane          = %(lane)s
-   AND b.window_start  = %(window_start)s
-   AND {scope}
-RETURNING b.used
-"""
-
-# What the refusing window currently holds, so a refusal can say how much is
-# left and when it resets rather than just "no". Also the probe that tells a
-# refusal apart from an invisible connection: this returns a row (with used 0)
-# for a visible connection that has never spent a call in this window.
-_READ_SQL = """
-SELECT COALESCE(b.used, 0)
-  FROM integration_connection c
-  LEFT JOIN integration_rate_budget b
-         ON b.connection_id = c.connection_id
-        AND b.window_kind   = %(window_kind)s
-        AND b.lane          = %(lane)s
-        AND b.window_start  = %(window_start)s
- WHERE c.connection_id = %(connection_id)s
-   AND {scope}
-"""
-
-#: Reserved in this order deliberately. On ERP Standard the DAY window is the
-#: binding one, so trying it first means the common exhaustion case refuses
-#: without ever touching the minute window -- and there is nothing to
-#: compensate. The order also decides which window can be left holding a
-#: reservation for a call that never happens; see `reserve`.
-_RESERVE_ORDER = (WindowKind.DAY, WindowKind.MINUTE)
+#   * ONE `UPDATE` touching BOTH windows, not two statements. A partial
+#     reservation is therefore not something to compensate for -- it is not
+#     representable. The old code took the day window, then discovered the
+#     minute window refused, then issued a compensating `UPDATE` to give the
+#     day's call back. Every step of that was correct and the whole of it was
+#     unnecessary.
+#   * The whole reservation runs inside a SAVEPOINT, so a reservation that
+#     cannot be granted in both windows survives in neither -- and the caller's
+#     transaction is still usable afterwards, which is what lets a poller
+#     checkpoint and return rather than lose the work it had already done.
+#   * `ceiling` comes from `integration_connection`'s own
+#     `per_minute_call_ceiling` / `daily_call_ceiling`, copied onto the budget
+#     row when the window opened. That is why `reserve` no longer takes a
+#     `daily_ceiling`: it had nowhere honest to put one. A parameter that looks
+#     like it sets a limit and does not is the same class of defect as SQL that
+#     looks like it executes. `lane_ceiling()` keeps the argument, because it
+#     is a pure calculation a caller may legitimately want to do without a
+#     database.
+#
+# What this module still owns is the VERDICT: section 11.6 says over-budget is
+# a normal outcome a job checkpoints and returns on, not an exception. The
+# store raises `RateBudgetExhausted`; that is the right shape for the store's
+# other callers and the wrong shape here, so `reserve` catches it and answers
+# with a falsy `BudgetVerdict` naming the binding window and when it resets.
 
 
 def reserve(session: Session, *, connection_id: str, lane: Lane, cost: int = 1,
-            actor: str, clock: Clock, scope: Scope | None = None,
-            daily_ceiling: int = DEFAULT_DAILY_CALL_CEILING) -> BudgetVerdict:
+            actor: str, clock: Clock,
+            scope: Scope | None = None) -> BudgetVerdict:
     """Atomically reserve `cost` calls in **both** windows, or reserve nothing.
 
     Returns a falsy :class:`BudgetVerdict` when either window refuses. It does
     not raise, does not sleep and does not retry: over budget is a normal
     outcome, and the job's response to it is to checkpoint and return.
 
-    The two windows are two statements, so a reservation can be taken in the
-    day window and then refused by the minute window. That partial reservation
-    is **released**, not left behind. Leaving it would burn a call from the
-    day's 2,000 for a request that was never made -- a leak of exactly one
-    call per throttled attempt, which on a busy backfill is how a daily quota
-    evaporates against nothing.
+    Delegates the reservation to `integration_store.reserve_calls`, which is
+    the one implementation of this write -- see the block comment above for
+    what that fixed and what it removed. Because that function reserves both
+    windows in a single statement inside a savepoint, a day reservation taken
+    ahead of a minute refusal is released by the rollback rather than by a
+    compensating `UPDATE`, and the figures this verdict reports are read
+    afterwards, on a healthy transaction, so they are the post-release ones.
+    Reporting the pre-release count would tell an operator the day had spent a
+    call it had not -- an off-by-one that compounds once per throttled attempt
+    across a backfill.
+
+    `actor` is accepted and deliberately not written to the budget row: the
+    shipped table has no `created_by`/`updated_by` column, and inventing one
+    here is how this module got into trouble. Who spent the call belongs on the
+    `integration_event` trail, which is append-only and already carries it.
+
+    Raises :class:`ConnectionNotVisible` when the connection does not exist or
+    is out of `scope` -- one exception for both, on purpose.
     """
     if cost < 1:
         raise ValueError("a reservation must be for at least one call; got "
                          + repr(cost))
     now = _require_aware(clock.now(), what="clock.now()")
 
-    taken: list[tuple[WindowKind, datetime]] = []
-    states: list[WindowState] = []
+    try:
+        granted = store.reserve_calls(
+            session, connection_id=connection_id, allocation=lane.value,
+            count=cost, tz=RATE_BUDGET_TZ, now=now, scope=scope)
+    except store.RateBudgetExhausted as refused:
+        return _refused_verdict(
+            session, connection_id=connection_id, lane=lane, cost=cost,
+            now=now, scope=scope, binding=WindowKind(refused.window_kind))
+    except store.IntegrationStoreError as exc:
+        # Both windows absent after `ensure_rate_budget_windows` ran means the
+        # seeding `INSERT ... SELECT FROM integration_connection` matched no
+        # connection. Out of scope and nonexistent are the same answer here for
+        # the reason `ConnectionNotVisible` exists: telling them apart is an
+        # existence oracle. Anything else the store raises is not ours to
+        # reinterpret.
+        if getattr(exc, "code", None) != "RATE_BUDGET_WINDOWS_MISSING":
+            raise
+        if store.get_connection(session, connection_id, scope=scope) is None:
+            raise ConnectionNotVisible(
+                "no integration_connection " + repr(connection_id)
+                + " is visible to this scope") from exc
+        raise
 
-    for kind in _RESERVE_ORDER:
-        start = window_start(kind, now)
-        ceiling = lane_ceiling(kind, lane, daily_ceiling=daily_ceiling)
-        row = repo.query_one(
-            session, _RESERVE_SQL,
-            {"connection_id": connection_id, "window_kind": kind.value,
-             "lane": lane.value, "window_start": start, "cost": cost,
-             "lane_ceiling": ceiling, "actor": actor, "now": now},
-            scope=scope, columns=RATE_BUDGET_SCOPE_COLUMNS)
-
-        if row is not None:
-            taken.append((kind, start))
-            states.append(WindowState(kind=kind, lane=lane, window_start=start,
-                                      used=int(row[0]), ceiling=ceiling))
-            continue
-
-        # Refused. Give back whatever was already taken FIRST -- before the
-        # read that works out why -- so that no path between here and the
-        # return can leave a reservation standing for a call that will not be
-        # made.
-        released: dict[WindowKind, int] = {}
-        for done_kind, done_start in taken:
-            released[done_kind] = _release(
-                session, connection_id=connection_id, kind=done_kind,
-                lane=lane, window_start_at=done_start, cost=cost,
-                actor=actor, now=now, scope=scope)
-        # The states recorded on the way in are now stale for any window that
-        # was rolled back: they hold the count including a reservation that no
-        # longer exists. Reporting that would tell an operator the day has
-        # spent a call it has not.
-        states = [replace(state, used=released[state.kind])
-                  if state.kind in released else state
-                  for state in states]
-
-        # Refused, or invisible? One scoped read tells those apart, and it
-        # only runs on the refusal path.
-        used = _read_used(session, connection_id=connection_id, kind=kind,
-                          lane=lane, window_start_at=start, scope=scope)
-        states.append(WindowState(kind=kind, lane=lane, window_start=start,
-                                  used=used, ceiling=ceiling))
-        return BudgetVerdict(granted=False, lane=lane, cost=cost,
-                             windows=tuple(states), binding=kind)
-
-    return BudgetVerdict(granted=True, lane=lane, cost=cost,
-                         windows=tuple(states), binding=None)
+    return BudgetVerdict(
+        granted=True, lane=lane, cost=cost, binding=None,
+        windows=tuple(
+            WindowState(kind=kind, lane=lane,
+                        window_start=window_start(kind, now),
+                        used=int(granted[kind.value]["used"]),
+                        ceiling=int(granted[kind.value]["ceiling"]))
+            for kind in _WINDOW_REPORT_ORDER if kind.value in granted))
 
 
-def _read_used(session: Session, *, connection_id: str, kind: WindowKind,
-               lane: Lane, window_start_at: datetime,
-               scope: Scope | None) -> int:
-    row = repo.query_one(
-        session, _READ_SQL,
-        {"connection_id": connection_id, "window_kind": kind.value,
-         "lane": lane.value, "window_start": window_start_at},
-        scope=scope, columns=RATE_BUDGET_SCOPE_COLUMNS)
-    if row is None:
-        raise ConnectionNotVisible(
-            "no integration_connection " + repr(connection_id)
-            + " is visible to this scope")
-    return int(row[0])
+def _refused_verdict(session: Session, *, connection_id: str, lane: Lane,
+                     cost: int, now: datetime, scope: Scope | None,
+                     binding: WindowKind) -> BudgetVerdict:
+    """The falsy verdict, carrying what each window holds AFTER the rollback.
 
-
-def _release(session: Session, *, connection_id: str, kind: WindowKind,
-             lane: Lane, window_start_at: datetime, cost: int, actor: str,
-             now: datetime, scope: Scope | None) -> int:
-    """Give `cost` calls back to a window, and report what it now holds."""
-    row = repo.query_one(
-        session, _RELEASE_SQL,
-        {"connection_id": connection_id, "window_kind": kind.value,
-         "lane": lane.value, "window_start": window_start_at, "cost": cost,
-         "actor": actor, "now": now},
-        scope=scope, columns=RATE_BUDGET_SCOPE_COLUMNS)
-    return 0 if row is None else int(row[0])
+    The read runs outside the store's savepoint, on a transaction the refusal
+    left healthy, so it sees the figures as they stand once nothing was spent.
+    """
+    state = store.read_rate_budget(
+        session, connection_id=connection_id, allocation=lane.value,
+        tz=RATE_BUDGET_TZ, now=now, scope=scope)
+    return BudgetVerdict(
+        granted=False, lane=lane, cost=cost, binding=binding,
+        windows=tuple(
+            WindowState(kind=kind, lane=lane,
+                        window_start=window_start(kind, now),
+                        used=int(state[kind.value]["used"]),
+                        ceiling=int(state[kind.value]["ceiling"]))
+            for kind in _WINDOW_REPORT_ORDER if kind.value in state))
 
 
 # ===========================================================================

@@ -2727,9 +2727,9 @@
         "assertions": 5,
         "body_sha": "77dd2f88bcc840ac"
       },
-      "test_the_reservation_is_one_atomic_upsert_per_window": {
-        "assertions": 4,
-        "body_sha": "291ee042f1c21919"
+      "test_the_reservation_is_one_atomic_statement_across_both_windows": {
+        "assertions": 8,
+        "body_sha": "618734592e0df5c1"
       },
       "test_the_minute_lane_refuses_at_its_allocation_not_the_org_ceiling": {
         "assertions": 5,
@@ -2740,12 +2740,12 @@
         "body_sha": "a1b119113bcd1fab"
       },
       "test_a_refused_reservation_releases_the_window_it_had_already_taken": {
-        "assertions": 7,
-        "body_sha": "16f8c85a38c2d058"
+        "assertions": 8,
+        "body_sha": "f61e740a24265537"
       },
       "test_a_release_can_never_drive_a_counter_negative": {
-        "assertions": 1,
-        "body_sha": "9ab85f7f0732dce5"
+        "assertions": 6,
+        "body_sha": "5f42655982add17d"
       },
       "test_a_new_minute_window_starts_a_fresh_budget": {
         "assertions": 4,
@@ -2753,7 +2753,7 @@
       },
       "test_the_daily_ceiling_is_the_binding_one_on_erp_standard": {
         "assertions": 7,
-        "body_sha": "9e682ce1f3be531a"
+        "body_sha": "f1bd49370adf539d"
       },
       "test_an_exhausted_polling_lane_does_not_starve_the_interactive_operator": {
         "assertions": 3,
@@ -2771,9 +2771,13 @@
         "assertions": 1,
         "body_sha": "56039762317681c7"
       },
-      "test_every_budget_statement_carries_the_literal_scope_token": {
-        "assertions": 1,
-        "body_sha": "33a2786675ccd09a"
+      "test_this_module_owns_no_sql_of_its_own_at_all": {
+        "assertions": 2,
+        "body_sha": "0a60bba6c033be99"
+      },
+      "test_every_delegated_budget_statement_is_scoped_when_it_reaches_the_server": {
+        "assertions": 5,
+        "body_sha": "2f0ecf8af0e57cc8"
       },
       "test_the_column_mapping_names_every_dimension": {
         "assertions": 2,
@@ -3558,6 +3562,32 @@
       "test_stdlib_logging_refuses_to_overwrite_its_own_record_attributes": {
         "assertions": 1,
         "body_sha": "518d53788140ba93"
+      }
+    },
+    "test_one_rate_budget_implementation.py": {
+      "test_only_the_canonical_store_writes_the_rate_budget": {
+        "assertions": 1,
+        "body_sha": "a177a06568aa09bd"
+      },
+      "test_the_canonical_store_really_does_write_it": {
+        "assertions": 1,
+        "body_sha": "e5c7b854b5b97be9"
+      },
+      "test_the_waiver_has_not_outlived_the_defect": {
+        "assertions": 1,
+        "body_sha": "ea60705f16e222c3"
+      },
+      "test_throttle_no_longer_writes_the_budget_at_all": {
+        "assertions": 3,
+        "body_sha": "1d056235426c26a7"
+      },
+      "test_the_detector_resolves_f_strings_through_module_constants": {
+        "assertions": 2,
+        "body_sha": "5c0812f6bf55afda"
+      },
+      "test_the_detector_ignores_reads_and_prose": {
+        "assertions": 1,
+        "body_sha": "df2ba956462a7bef"
       }
     },
     "test_outbound_chaos.py": {
@@ -5184,6 +5214,72 @@
       "test_refusal_names_the_offending_database": {
         "assertions": 1,
         "body_sha": "845de295e197eada"
+      }
+    },
+    "test_pg_integration_rate_budget.py": {
+      "test_live_a_reservation_executes_and_charges_both_windows": {
+        "assertions": 10,
+        "body_sha": "b2f283b30179b353"
+      },
+      "test_live_every_not_null_column_is_supplied": {
+        "assertions": 4,
+        "body_sha": "8cd1ff5ae5b3f042"
+      },
+      "test_live_the_scope_predicate_really_filters": {
+        "assertions": 2,
+        "body_sha": "df82be1dc63c557f"
+      },
+      "test_live_a_second_reservation_in_the_same_window_adds_to_the_same_row": {
+        "assertions": 5,
+        "body_sha": "77262b4b008a6c5b"
+      },
+      "test_live_a_new_minute_window_is_a_new_row_and_the_old_one_survives": {
+        "assertions": 2,
+        "body_sha": "25f5e8c84e99a5bd"
+      },
+      "test_live_the_lanes_do_not_share_a_row": {
+        "assertions": 8,
+        "body_sha": "c502ed72838fcf85"
+      },
+      "test_live_the_minute_lane_refuses_at_its_allocation": {
+        "assertions": 7,
+        "body_sha": "1ad59e101cc361ad"
+      },
+      "test_live_a_full_window_stamps_exhausted_at_in_the_same_statement": {
+        "assertions": 5,
+        "body_sha": "91878166611b2a83"
+      },
+      "test_live_an_oversized_reservation_cannot_buy_out_a_lane": {
+        "assertions": 4,
+        "body_sha": "9c6f7abda3cc9975"
+      },
+      "test_live_the_daily_ceiling_is_the_binding_one_on_erp_standard": {
+        "assertions": 5,
+        "body_sha": "0291d6874cfff5ae"
+      },
+      "test_live_an_exhausted_polling_lane_does_not_starve_the_operator": {
+        "assertions": 3,
+        "body_sha": "02ff1f0a3b7885df"
+      },
+      "test_live_the_ceiling_check_still_refuses_a_hand_written_overspend": {
+        "assertions": 4,
+        "body_sha": "095f22cbb3cb78c4"
+      },
+      "test_live_a_day_reservation_is_released_when_the_minute_refuses": {
+        "assertions": 8,
+        "body_sha": "e5e3c0e8ec4680f0"
+      },
+      "test_live_a_refusal_leaves_the_transaction_usable": {
+        "assertions": 4,
+        "body_sha": "a0ef7ae4fe8e79ce"
+      },
+      "test_live_two_concurrent_reservations_cannot_both_take_the_last_call": {
+        "assertions": 3,
+        "body_sha": "8649e78994a9aad7"
+      },
+      "test_live_the_repaired_module_names_only_columns_that_exist": {
+        "assertions": 3,
+        "body_sha": "c654b5aff2cd3de0"
       }
     },
     "test_pg_integration_schema.py": {
@@ -7001,7 +7097,7 @@
     "test_integration_statuses.py": 41,
     "test_integration_store.py": 47,
     "test_integration_sweeps.py": 40,
-    "test_integration_throttle.py": 75,
+    "test_integration_throttle.py": 76,
     "test_known_defects.py": 5,
     "test_manifest.py": 10,
     "test_masters_settings_api_guard.py": 9,
@@ -7012,6 +7108,7 @@
     "test_negative_access_matrix.py": 9,
     "test_no_undefined_names.py": 5,
     "test_observability.py": 40,
+    "test_one_rate_budget_implementation.py": 6,
     "test_outbound_chaos.py": 16,
     "test_outbound_emission.py": 39,
     "test_outbound_unsanctioned.py": 20,
@@ -7025,6 +7122,7 @@
     "test_pg_budget.py": 22,
     "test_pg_constraints.py": 8,
     "test_pg_fixture_guard.py": 3,
+    "test_pg_integration_rate_budget.py": 16,
     "test_pg_integration_schema.py": 81,
     "test_pg_locking.py": 17,
     "test_pg_locking_order.py": 19,
@@ -7072,7 +7170,7 @@
     "test_integration_statuses.py": 94,
     "test_integration_store.py": 92,
     "test_integration_sweeps.py": 110,
-    "test_integration_throttle.py": 228,
+    "test_integration_throttle.py": 244,
     "test_known_defects.py": 13,
     "test_manifest.py": 15,
     "test_masters_settings_api_guard.py": 15,
@@ -7083,6 +7181,7 @@
     "test_negative_access_matrix.py": 29,
     "test_no_undefined_names.py": 7,
     "test_observability.py": 77,
+    "test_one_rate_budget_implementation.py": 9,
     "test_outbound_chaos.py": 75,
     "test_outbound_emission.py": 111,
     "test_outbound_unsanctioned.py": 55,
@@ -7096,6 +7195,7 @@
     "test_pg_budget.py": 57,
     "test_pg_constraints.py": 13,
     "test_pg_fixture_guard.py": 3,
+    "test_pg_integration_rate_budget.py": 77,
     "test_pg_integration_schema.py": 131,
     "test_pg_locking.py": 36,
     "test_pg_locking_order.py": 28,
