@@ -1,0 +1,30 @@
+{
+  "cassette_version": 1,
+  "product": "ERP",
+  "service": "erp",
+  "api_version": "v3",
+  "provenance": "INVENTED-SANITISED",
+  "provenance_note": "Hand-authored; no tenant contacted. NO WRITE HAS EVER BEEN MADE against a Zoho tenant from this repository. This records the shape a create WOULD return, so that the outbound dedupe path can be tested in process. Zoho documents no idempotency header on any of the three products, so the returned record echoes the synthesised cf_capex_ref key -- that echo is what makes a retry after an unrecorded send an update rather than a duplicate commitment. The PO is returned in Zoho's default draft state: our own later call transitions it to open, after our approval instance closes.",
+  "request": {
+    "method": "POST",
+    "base_url": "https://www.zohoapis.in/erp/v3",
+    "path": "/purchaseorders",
+    "scope": "ERP.purchaseorders.ALL",
+    "page": 1
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "code": 0,
+      "message": "The purchase order has been created.",
+      "purchaseorder": {
+        "purchaseorder_id": "PO-ERP-5099",
+        "purchaseorder_number": "PO-2026-0119",
+        "status": "draft",
+        "custom_fields": [
+          {"api_name": "cf_capex_ref", "value": "CAPEX-PO-000119"}
+        ]
+      }
+    }
+  }
+}

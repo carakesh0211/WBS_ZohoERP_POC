@@ -1,0 +1,55 @@
+{
+  "cassette_version": 1,
+  "product": "ERP",
+  "service": "erp",
+  "api_version": "v3",
+  "provenance": "INVENTED-SANITISED",
+  "provenance_note": "Hand-authored; no tenant contacted. Single page. PO-ERP-5002 carries no cf_capex_ref custom field, which is what a PO created directly in Zoho looks like -- the UNSANCTIONED_COMMITMENT case that Sweep A exists to detect and that blocks period close.",
+  "request": {
+    "method": "GET",
+    "base_url": "https://www.zohoapis.in/erp/v3",
+    "path": "/purchaseorders",
+    "scope": "ERP.purchaseorders.ALL",
+    "page": 1
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "code": 0,
+      "message": "success",
+      "purchaseorders": [
+        {
+          "purchaseorder_id": "PO-ERP-5001",
+          "purchaseorder_number": "PO-2026-0117",
+          "vendor_id": "VEN-ERP-3001",
+          "vendor_name": "Northgate Structural Works",
+          "date": "2026-08-10",
+          "last_modified_time": "2026-08-26T11:40:12+0530",
+          "currency_code": "INR",
+          "sub_total": 500000.00,
+          "tax_total": 90000.00,
+          "total": 590000.00,
+          "status": "open",
+          "custom_fields": [
+            {"api_name": "cf_capex_ref", "value": "CAPEX-PO-000117"}
+          ]
+        },
+        {
+          "purchaseorder_id": "PO-ERP-5002",
+          "purchaseorder_number": "PO-2026-0118",
+          "vendor_id": "VEN-ERP-3002",
+          "vendor_name": "Meridian Electricals",
+          "date": "2026-08-19",
+          "last_modified_time": "2026-08-26T16:02:55+0530",
+          "currency_code": "INR",
+          "sub_total": 210000.00,
+          "tax_total": 37800.00,
+          "total": 247800.00,
+          "status": "open",
+          "custom_fields": []
+        }
+      ],
+      "page_context": {"page": 1, "per_page": 2, "has_more_page": false}
+    }
+  }
+}

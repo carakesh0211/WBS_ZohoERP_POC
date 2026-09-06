@@ -1,0 +1,54 @@
+{
+  "cassette_version": 1,
+  "product": "BOOKS_INVENTORY",
+  "service": "books",
+  "api_version": "v3",
+  "provenance": "INVENTED-SANITISED",
+  "provenance_note": "Hand-authored; no tenant contacted. Books bill detail, with the line_items the list response omitted.",
+  "request": {
+    "method": "GET",
+    "base_url": "https://www.zohoapis.in/books/v3",
+    "path": "/bills/BILL-BKS-2001",
+    "scope": "ZohoBooks.bills.READ",
+    "page": 1
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "code": 0,
+      "message": "success",
+      "bill": {
+        "bill_id": "BILL-BKS-2001",
+        "bill_number": "BB-2026-0091",
+        "vendor_id": "VEN-BKS-4001",
+        "vendor_name": "Cavendish Precision Tools",
+        "date": "2026-08-22",
+        "last_modified_time": "2026-08-27T09:30:00+0530",
+        "currency_code": "INR",
+        "sub_total": 76500.25,
+        "tax_total": 13770.05,
+        "total": 90270.30,
+        "status": "open",
+        "purchaseorder_ids": ["PO-BKS-6001"],
+        "line_items": [
+          {
+            "line_item_id": "BLN-BKS-2001-1",
+            "line_number": 1,
+            "item_id": "ITM-BKS-8001",
+            "description": "CNC tooling package",
+            "quantity": 5,
+            "rate": 15300.05,
+            "item_total": 76500.25,
+            "tax_total": 13770.05,
+            "purchaseorder_item_id": "POL-BKS-6001-1",
+            "reporting_tags_map": {
+              "capex_code": "CX-2026-021",
+              "wbs_code": "WBS-4.1.2",
+              "budget_head": "BH-PLANT"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

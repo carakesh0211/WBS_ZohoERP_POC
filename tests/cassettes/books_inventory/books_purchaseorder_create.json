@@ -1,0 +1,30 @@
+{
+  "cassette_version": 1,
+  "product": "BOOKS_INVENTORY",
+  "service": "books",
+  "api_version": "v3",
+  "provenance": "INVENTED-SANITISED",
+  "provenance_note": "Hand-authored; no tenant contacted. NO WRITE HAS EVER BEEN MADE against a Zoho tenant from this repository. Same synthesised-idempotency shape as the ERP create: no product documents an idempotency header, so cf_capex_ref carries the dedupe key and is echoed back.",
+  "request": {
+    "method": "POST",
+    "base_url": "https://www.zohoapis.in/books/v3",
+    "path": "/purchaseorders",
+    "scope": "ZohoBooks.purchaseorders.ALL",
+    "page": 1
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "code": 0,
+      "message": "The purchase order has been created.",
+      "purchaseorder": {
+        "purchaseorder_id": "PO-BKS-6099",
+        "purchaseorder_number": "BPO-2026-0045",
+        "status": "draft",
+        "custom_fields": [
+          {"api_name": "cf_capex_ref", "value": "CAPEX-PO-000045"}
+        ]
+      }
+    }
+  }
+}
