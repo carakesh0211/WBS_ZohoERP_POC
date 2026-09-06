@@ -112,7 +112,19 @@ module.exports = defineConfig({
       CAPEX_PROFILE: 'local-demo',
       // An isolated database, so capturing baselines never touches the
       // developer's own demo data.
-      CAPEX_DB_PATH: 'app/data/capex_vrt.db',
+      //
+      // PER-PORT, for the same reason `reuseExistingServer` is opt-in. That
+      // fix stopped a run ATTACHING to another worktree's server, but the
+      // database path stayed fixed, so two concurrent runs still met in
+      // app/data/capex_vrt.db: `migrate --fresh` renames the existing file
+      // out of the way, and on Windows that fails outright against the other
+      // run's open handle ("WinError 32 ... used by another process"), taking
+      // the whole webServer down with it. On a platform with looser file
+      // locking it would not fail -- it would succeed, and one run would seed
+      // a fresh database under the other's feet, which is the silent version
+      // of the same collision. CAPEX_VRT_PORT is already the thing that makes
+      // concurrent runs distinct, so the database follows it.
+      CAPEX_DB_PATH: `app/data/capex_vrt-${PORT}.db`,
       PORT: String(PORT),
       X_ZOHO_CATALYST_LISTEN_PORT: String(PORT),
     },

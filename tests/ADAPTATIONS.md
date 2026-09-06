@@ -1468,3 +1468,103 @@ this stream's file. Making the test wiring reproduce production's identity was
 the smaller and more honest change.
 
 **Approved by:** pending engagement-lead review — Wave 6 stream A1.
+## 2026-09-06 — the Visual regression job: 40 failures, three causes, one left standing
+
+Run 34043629921 on `bfda74c` failed with **40** screenshot assertions, 944
+passing. A prior stream attributed them as "17 nav-rail + 24 avatar", which is
+41 — it counted `approval-delegations` at tablet-800 into BOTH buckets. That
+one snapshot is neither, and it is the only one still failing.
+
+**The measured split.**
+
+| # | Where | Cause |
+|---|---|---|
+| 14 | `approvals.spec.js`, desktop-1440 + laptop-1024, seven screens each | nav rail |
+| 23 | tablet-800: 18 in `approved-ui.spec.js`, 5 in `spa-routing.spec.js` | avatar |
+| 3 | `approvals-approval-delegations`, all three viewports | **left failing** |
+
+*Nav rail (14).* Baselines were written at `69f45e1`; `23aaf24` then withdrew
+eight unapproved nav entries. The rail is the approved change's own column and
+`display:none` below 900px, which is why no tablet-800 rail baseline moved.
+
+*Avatar (23).* `1382250` recaptured 1440 and 1024 for the approved
+`--primary-500`→`--primary-600` contrast fix and left tablet-800, which still
+passed under the then-default per-pixel `threshold: 0.2`. `f53ed86` tightened it
+to `0.05` and they have failed since. Each is 555 px of `#2E8A9A`→`#24707E`
+inside the avatar circle — the approved 4.02:1→5.685:1 correction.
+
+**Re-baselined: 37, with `prove-baseline-delta.py` as the evidence.** 37
+changed, 0 added, 0 removed, largest per-channel difference anywhere outside the
+approved regions 1/255. Every re-recorded render was additionally checked
+byte-for-byte against the CI run's own attachment for the same test, so these
+are the bytes CI produces and not this machine's opinion of them.
+
+### `approval-delegations` is NOT re-baselined — two stacked defects
+
+**1. The baseline depicts a principal that cannot open the screen.** At
+`69f45e1` the VRT block called `prepared(page)`, whose default identity is
+`ADMIN`, so all eight baselines were captured as the Administrator. `8e64565`
+then introduced `preparedFor(page, s)` and `as: APPROVER` for this screen —
+because Contract 4 withholds `approval.delegate` from the Administrator — and
+did not recapture. So the committed baseline shows `SA / System Administrator`
+where the app now correctly renders `NR / N. Rout, BudgetController`. The
+spec's own comment says a baseline captured under a manufactured principal
+"would be a picture of a state the application cannot produce"; this baseline
+is exactly that. **The app is right and the baseline is wrong**, but correcting
+it is not one of the two approved changes, so it is the product owner's call,
+not this stream's.
+
+**2. The screen is not reproducible across machines, and cannot be made so
+from the Playwright side.** CI reported 1463 px; this machine reports a stable
+969 px across four runs. The extra region is `(10,407)-(122,751)`: the native
+`<input type="date">` placeholder, which CI renders `mm/dd/yyyy` and an `en-IN`
+host renders `dd-mm-yyyy`. `use.locale: 'en-IN'` does **not** control it —
+measured directly, `locale` sets `navigator.language` and `Intl` correctly
+while the date widget is pixel-identical under `locale` en-IN/en-US and under
+`--lang` en-IN/en-US alike. It follows the **host OS locale** only. Re-recording
+it here would therefore bake in this machine's locale and fail CI anyway.
+
+**REPORTED to the lead / product owner:**
+* the delegations baseline needs recapturing under `APPROVER`, which is a
+  fixture correction, not a UI change — please confirm it is wanted;
+* the date-input dependence needs an application-side fix (render the date
+  through the app's own formatter, as the delegation table's `From` column
+  already does, rather than relying on the native widget's chrome) or a pinned
+  runner locale. Masking the field in the assertion would hide a real
+  cross-machine difference and was deliberately not done.
+
+### Two determinism defects fixed here
+
+**`CAPEX_DB_PATH` was fixed while `CAPEX_VRT_PORT` was not.** Making
+`reuseExistingServer` opt-in stopped a run *attaching* to another worktree's
+server, but every run still seeded `app/data/capex_vrt.db`. Two concurrent runs
+therefore met in one file: `migrate --fresh` renames it aside, and on Windows
+that fails against the other run's open handle — observed here as
+`WinError 32 ... used by another process`, which killed the webServer outright.
+On a platform with looser locking it would instead succeed silently and reseed
+one run's database under the other. The database now follows the port.
+
+**`prove-baseline-delta.py` failed a correctly re-recorded baseline.**
+`after-regions.json` records one `avatarRect` per viewport, measured on the home
+screen on 2026-09-03. At tablet-800 the density toggle moves `#userAvatar` from
+x=106.6 to **x=10** — the state `wbs-cosy.png` depicts — so that baseline's
+avatar change fell outside the only region the prover knew about and was
+reported as a regression. The allowance was not widened by guess: the other
+positions are now MEASURED by `tests/vrt/avatar-regions.spec.js`, which
+asserts them on every run and fails if the avatar moves, and the prover reads
+them via `--avatar-regions`.
+
+### The manifest gate covers no JavaScript at all
+
+`tools/build_test_manifest.py` inventories `TESTS.rglob("test_*.py")`. Every
+Playwright spec and every committed baseline PNG could be deleted today and the
+suite would report green with fewer tests. Closing that properly belongs in
+that shared tool. `tests/vrt/vrt-inventory.spec.js` is the same protection
+scoped to what this stream owns: the spec and baseline inventory is committed
+and asserted whole, in both directions, so a deleted baseline — a screen that
+stopped being checked — and an unrecorded new one both fail and are named.
+
+**REPORTED to the lead:** `tools/build_test_manifest.py` should inventory
+`tests/**/*.spec.js` too; the VRT-scoped guard is a stopgap, not the fix.
+
+**Approved by:** pending engagement-lead review — CI-repair wave stream A3.

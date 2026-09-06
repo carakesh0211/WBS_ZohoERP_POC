@@ -145,6 +145,12 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--ref", default="HEAD", help="git ref holding the previous baselines")
     ap.add_argument("--regions", default="docs/ui-change-2026-09/after-regions.json")
+    ap.add_argument(
+        "--avatar-regions", default="tests/vrt/evidence/avatar-regions.json",
+        help="additional MEASURED #userAvatar rects, one set per project, covering the "
+             "states the baselines depict beyond the home screen `--regions` was captured "
+             "on. Written by tests/vrt/avatar-regions.spec.js, which also asserts it is "
+             "still true. Pass an empty string to consider only `--regions`.")
     ap.add_argument("--noise", type=int, default=1,
                     help="largest per-channel difference outside the approved regions that "
                          "is treated as re-render antialiasing rather than a regression "
@@ -158,17 +164,41 @@ def main() -> int:
         return 2
     regions = json.loads(regions_path.read_text(encoding="utf-8"))
 
+    # The avatar does not sit in one place. `--regions` was captured on the home
+    # screen, but the shell bar lays #userAvatar out differently in other states
+    # a baseline depicts -- at tablet-800 the density toggle moves it from
+    # x=106.6 to x=10, which is exactly the state wbs-cosy.png records. Those
+    # extra positions are MEASURED (tests/vrt/avatar-regions.spec.js, which also
+    # fails if they stop being true) rather than allowed for by widening the box,
+    # so this stays an account of where the avatar is and not a bigger hole.
+    extra_avatars: dict = {}
+    if args.avatar_regions:
+        extra_path = REPO / args.avatar_regions
+        if extra_path.exists():
+            extra_avatars = json.loads(extra_path.read_text(encoding="utf-8"))
+        else:
+            print(f"note: {extra_path} not found; considering --regions only",
+                  file=sys.stderr)
+
+    def avatar_box(av):
+        # One pixel of slack on each side: a border-radius edge antialiases
+        # against its neighbour, so the visibly-changed area can be a
+        # fraction wider than the element box.
+        return (int(av["x"]) - 2, int(av["y"]) - 2,
+                int(av["x"] + av["width"]) + 2, int(av["y"] + av["height"]) + 2)
+
     def allowed_boxes(project: str):
         """The union of boxes this project's snapshots may differ inside."""
         r = regions.get("viewports", {}).get(project, {})
         boxes = []
         av = r.get("avatarRect")
         if av:
-            # One pixel of slack on each side: a border-radius edge antialiases
-            # against its neighbour, so the visibly-changed area can be a
-            # fraction wider than the element box.
-            boxes.append((int(av["x"]) - 2, int(av["y"]) - 2,
-                          int(av["x"] + av["width"]) + 2, int(av["y"] + av["height"]) + 2))
+            boxes.append(avatar_box(av))
+        for state_rect in (extra_avatars.get(project) or {}).values():
+            if state_rect:
+                box = avatar_box(state_rect)
+                if box not in boxes:
+                    boxes.append(box)
         nav = r.get("navRect")
         if nav and r.get("navRailRendered"):
             boxes.append((int(nav["x"]), int(nav["y"]),
