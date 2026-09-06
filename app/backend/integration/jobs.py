@@ -778,7 +778,7 @@ RETURNING job_id
 
 RECORD_EVENT_SQL = """
 INSERT INTO integration_event
-       (event_id, connection_id, correlation_id, kind, detail, created_at)
+       (event_id, connection_id, correlation_id, kind, detail, at)
 SELECT %(event_id)s, %(connection_id)s, %(correlation_id)s, %(kind)s,
        %(detail)s, %(now)s
  WHERE {scope}

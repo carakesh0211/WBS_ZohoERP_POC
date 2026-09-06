@@ -185,7 +185,47 @@ to the tip before starting. Every stream should verify its base is the intended
 commit rather than assume it, and the integration pass should check what each
 branch is actually rooted on before merging.
 
-## A5 — one concept, two names: `lane` vs `allocation` (found at integration)
+## A5 — CORRECTED. Not a naming mismatch: SQL that cannot execute
+
+**The first version of this amendment was wrong, and wrong in the direction
+that matters.** It said the `lane`/`allocation` difference "has not bitten yet
+because throttle talks to a port whose only implementation is in-memory". That
+conclusion came from reading the PORT and not the SQL.
+
+`throttle.py` has real SQL. `_RESERVE_SQL` names **`lane`, `created_by` and
+`updated_by`** — none of which exists in the shipped table — and conflicts on
+`(connection_id, window_kind, lane, window_start)`, which is not a constraint
+that exists. It cannot execute.
+
+`outbound.py` has a second, private implementation whose `ON CONFLICT
+(connection_id, window_kind, window_start)` matches no constraint either, and
+whose INSERT omits five NOT NULL columns with no defaults.
+
+`jobs.py` had a third defect of the same family — `integration_event.created_at`
+where the column is `at` — **fixed**.
+
+So THREE modules wrote SQL against C2's frozen column list, which ended in a
+trailing `…` that stream 2 correctly filled in. Every unit test over all three
+passed throughout, because all three talk to in-memory doubles. **SQL is a
+string until something executes it.**
+
+`tests/test_integration_sql_matches_schema.py` now parses migration 010 and
+every SQL literal in the package and fails on a column the table does not
+define. `throttle.py` is marked `xfail(strict=True)`, so it cannot be forgotten
+and cannot be silently "fixed" without removing the marker.
+
+**The fix is delegation, not another patched statement.**
+`integration_store.reserve_calls` already reserves against this table
+correctly, computes `window_start_key`, and was written by the schema's author.
+`throttle.reserve` should call it; `_RESERVE_SQL` and `outbound.py`'s
+`_UPSERT` should both be deleted. One implementation.
+
+Renaming three columns would satisfy the new gate and still fail at runtime,
+because the insert would still omit the NOT NULL columns — a gate going green
+on a statement that cannot execute is worse than one that stays red.
+
+### The original entry, kept because the reasoning it got right still stands
+
 
 Streams 2 and 4 independently invented the same column and gave it different
 names. Neither could see the other, and both were right about the concept.

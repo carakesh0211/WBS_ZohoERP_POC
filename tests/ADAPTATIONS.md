@@ -921,3 +921,38 @@ than the one this edit removes.
 **Approved by:** engagement lead, Wave 5 stream 2 - flagged for review together
 with the `app/backend/pg/scope_inventory.py` entry above; the two are the same
 decision.
+
+## 2026-09-06 — `test_the_gate_catches_sql_held_in_a_variable`
+
+**Change:** it asserted the gate reports `"statically"` for SQL held in a
+variable. It now asserts the gate names the TABLE and the missing `{scope}`
+token instead.
+
+**Reason:** `_sql_of` now resolves module- and class-level string constants, so
+a literal held in a constant is read rather than merely reported as
+unreadable. `outbound.py` builds its statement exactly that way, and "cannot
+read this" was true but useless there — it hid which table was being read.
+
+**Not a weakening — this is strictly more.** The old assertion was satisfied by
+the word "statically" appearing; the new one requires the gate to have
+identified `budget_line` and the missing token. A gate that resolves the
+constant and then fails to notice the unscoped read would have passed the old
+assertion and fails the new one.
+
+**Guarded against the obvious regression.** Resolution must not become licence
+to assume, so a **new** companion test,
+`test_sql_the_gate_still_cannot_read_is_still_reported`, plants a COMPUTED
+statement and requires it to be reported as unreadable. Only plain literal
+assignments are resolved; anything computed stays a finding, because a
+resolver that guessed would turn "I cannot see this" into a confident wrong
+answer — worse than the false positive it replaced.
+
+**Also in this pass:** `_modules()` stopped naming directories. It walked `pg/`
+only (routers escaped), then `pg/` + `api/` (Wave 5's whole `integration/`
+package escaped) — three blind spots in a row is a pattern, not three
+accidents. It now walks all of `app/backend/`, and anything skipped must be
+named in `INFRASTRUCTURE` or the new `LEGACY_SQLITE` with a reason. The
+SQLite-era modules were previously exempt only by never having been walked,
+which is indistinguishable from an oversight; that is now a written decision.
+
+**Approved by:** engagement lead, Wave 5 integration pass.

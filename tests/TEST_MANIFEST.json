@@ -2170,6 +2170,12 @@
         "body_sha": "e31cb353bbc02308"
       }
     },
+    "test_integration_sql_matches_schema.py": {
+      "test_every_column_named_in_sql_exists_in_the_migration": {
+        "assertions": 1,
+        "body_sha": "dbdbea16a2fb2113"
+      }
+    },
     "test_integration_statuses.py": {
       "test_the_registries_are_read_from_the_contract_files_not_rebuilt": {
         "assertions": 2,
@@ -6724,8 +6730,12 @@
         "body_sha": "197215fc89009719"
       },
       "test_the_gate_catches_sql_held_in_a_variable": {
+        "assertions": 2,
+        "body_sha": "d3b61f41fb89a0a3"
+      },
+      "test_sql_the_gate_still_cannot_read_is_still_reported": {
         "assertions": 1,
-        "body_sha": "d0ee1f5e12ecad8d"
+        "body_sha": "009c1eb120d46795"
       },
       "test_an_exempt_comment_is_required_to_state_a_reason": {
         "assertions": 1,
@@ -6987,6 +6997,7 @@
     "test_integration_jobs.py": 35,
     "test_integration_no_hardcoded_endpoints.py": 6,
     "test_integration_product_isolation.py": 16,
+    "test_integration_sql_matches_schema.py": 1,
     "test_integration_statuses.py": 41,
     "test_integration_store.py": 47,
     "test_integration_sweeps.py": 40,
@@ -7031,7 +7042,7 @@
     "test_pg_settings.py": 17,
     "test_pg_transactions.py": 4,
     "test_runtime_startup.py": 11,
-    "test_scope_enforcement.py": 8,
+    "test_scope_enforcement.py": 9,
     "test_scope_negative_matrix.py": 25,
     "test_scope_sentinel.py": 29
   },
@@ -7057,6 +7068,7 @@
     "test_integration_jobs.py": 96,
     "test_integration_no_hardcoded_endpoints.py": 8,
     "test_integration_product_isolation.py": 36,
+    "test_integration_sql_matches_schema.py": 1,
     "test_integration_statuses.py": 94,
     "test_integration_store.py": 92,
     "test_integration_sweeps.py": 110,
@@ -7101,7 +7113,7 @@
     "test_pg_settings.py": 46,
     "test_pg_transactions.py": 10,
     "test_runtime_startup.py": 31,
-    "test_scope_enforcement.py": 9,
+    "test_scope_enforcement.py": 11,
     "test_scope_negative_matrix.py": 82,
     "test_scope_sentinel.py": 54
   }

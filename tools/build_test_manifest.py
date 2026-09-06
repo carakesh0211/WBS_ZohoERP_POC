@@ -78,6 +78,10 @@ POST_BASELINE_FILES = {
     # audit-remediation suite and inflating it would make the removal guard
     # meaningless.
     "test_approvals_api_seam.py",
+    # Wave 5 integration pass: the gate that reads the package's SQL against
+    # migration 010's actual columns. Post-baseline like every Wave 4/5 file.
+    "test_integration_sql_matches_schema.py",
+
     # Wave 4 stream A2: submission (the engine's missing front end) and the
     # outcome write-back (its missing back end). Two of the three run with no
     # database, deliberately -- the properties they hold are the ones a
