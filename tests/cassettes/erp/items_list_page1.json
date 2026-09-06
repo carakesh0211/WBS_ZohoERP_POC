@@ -1,0 +1,58 @@
+{
+  "cassette_version": 1,
+  "product": "ERP",
+  "service": "erp",
+  "api_version": "v3",
+  "provenance": "INVENTED-SANITISED",
+  "provenance_note": "Hand-authored; no tenant contacted. ERP GET /items has NO last_modified_time filter (plan section 11.3), so this is what a WEEKLY FULL REFRESH returns, not a delta. ITM-ERP-7003 deliberately carries no last_modified_time at all, which is legitimate on an unfiltered master-data endpoint and must map to None rather than to 'now' -- a watermark advanced past unread records loses them silently. Rates are strings so money never becomes a float. This is evidence for OUR mapping and pagination, not for how a real tenant behaves.",
+  "request": {
+    "method": "GET",
+    "base_url": "https://www.zohoapis.in/erp/v3",
+    "path": "/items",
+    "scope": "ERP.settings.READ",
+    "page": 1
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "code": 0,
+      "message": "success",
+      "items": [
+        {
+          "item_id": "ITM-ERP-7001",
+          "name": "Structural steel beam 305x165",
+          "sku": "STL-305-165",
+          "description": "Grade S355 universal beam",
+          "rate": 48500.0,
+          "currency_code": "INR",
+          "status": "active",
+          "item_type": "inventory",
+          "last_modified_time": "2026-08-24T09:15:02+0530"
+        },
+        {
+          "item_id": "ITM-ERP-7002",
+          "name": "Site electrical installation",
+          "sku": "SVC-ELEC-01",
+          "description": "Contracted installation service",
+          "rate": 275000.5,
+          "currency_code": "INR",
+          "status": "active",
+          "item_type": "service",
+          "last_modified_time": "2026-08-25T17:40:44+0530"
+        },
+        {
+          "item_id": "ITM-ERP-7003",
+          "name": "Assorted fixings (legacy master row)",
+          "sku": "MSC-FIX-00",
+          "description": "",
+          "status": "inactive"
+        }
+      ],
+      "page_context": {
+        "page": 1,
+        "per_page": 3,
+        "has_more_page": false
+      }
+    }
+  }
+}

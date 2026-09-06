@@ -1,0 +1,22 @@
+{
+  "cassette_version": 1,
+  "product": "ERP",
+  "service": "erp",
+  "api_version": "v3",
+  "provenance": "INVENTED-SANITISED",
+  "provenance_note": "Hand-authored; no tenant contacted. Section 11.7: a PO is emitted draft and moved to open by OUR OWN call, after our approval instance closes. A Zoho-side status change we did not initiate is an exception, not an outcome -- which is why only the transitions we perform are implemented and this is the only status cassette.",
+  "request": {
+    "method": "POST",
+    "base_url": "https://www.zohoapis.in/erp/v3",
+    "path": "/purchaseorders/PO-ERP-5001/status/open",
+    "scope": "ERP.purchaseorders.ALL",
+    "page": 1
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "code": 0,
+      "message": "Purchase order status has been changed to open."
+    }
+  }
+}

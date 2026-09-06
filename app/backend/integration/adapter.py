@@ -40,6 +40,8 @@ from urllib.parse import quote, urlsplit
 from app.backend.integration.dto import (
     PRODUCTS,
     BillDTO,
+    ContactDTO,
+    ItemDTO,
     Page,
     Product,
     PurchaseOrderDTO,
@@ -48,6 +50,7 @@ from app.backend.integration.dto import (
 
 __all__ = [
     "CassetteError",
+    "DEDUPE_SCAN_PAGE_LIMIT",
     "CassetteTransport",
     "Capabilities",
     "CapabilityError",
@@ -57,10 +60,12 @@ __all__ = [
     "POLL_OVERLAP_SECONDS",
     "ProcurementAdapter",
     "ProductMixingError",
+    "RecoverableProcurementAdapter",
     "Transport",
     "UnsupportedDataCentre",
     "acquire_receives",
     "encode_query",
+    "verified_dedupe_match",
     "page_context",
     "window_params",
 ]
@@ -79,6 +84,16 @@ POLL_OVERLAP_SECONDS = 300
 #: after an unrecorded send updates by this field's unique value rather than
 #: creating a second commitment.
 DEDUPE_CUSTOM_FIELD = "cf_capex_ref"
+
+#: How many purchase-order pages :meth:`resolve_by_dedupe_key` may walk when
+#: the product documents no server-side search on the dedupe custom field.
+#:
+#: A hard stop, for the same reason :func:`walk_pages` has one: a resolve runs
+#: on the outbound retry path, and an unbounded scan there would spend the
+#: whole daily ceiling (2,000 calls on ERP Standard) trying to recover a single
+#: purchase order. Running out of pages returns ``None`` -- "not found within
+#: the budget", which the caller must not read as "does not exist".
+DEDUPE_SCAN_PAGE_LIMIT = 10
 
 
 # ================================================================== exceptions
@@ -151,6 +166,13 @@ class Capabilities:
     So §11.4 -- ERP Purchase Receives having no collection endpoint at all --
     is handled as a declared capability gap, and switching target products
     after D-14 is a configuration change plus one adapter, not a redesign.
+
+    **Amended after the freeze** with a seventh field, ``po_dedupe_search``.
+    The six frozen fields keep their names, their order and their positional
+    meaning; the new one carries a default, so every existing construction --
+    positional or keyword -- still compiles and still means what it meant. The
+    freeze existed to stop the first six shifting under callers, and they have
+    not. See ``tests/ADAPTATIONS.md``.
     """
     receives_listable: bool          # ERP: False.  Inventory: True
     bills_delta_filter: bool         # both: True
@@ -158,6 +180,22 @@ class Capabilities:
     items_delta_filter: bool         # Inventory: True.  ERP/Books: False
     line_level_custom_fields: bool   # D-7, tenant-verified -- assume False
     daily_call_ceiling: int          # plan-derived -- assume ERP Standard 2000
+    # --- added after the freeze; see the class docstring and ADAPTATIONS.md ---
+    #: Whether the product documents a *server-side* search of the purchase
+    #: order list by the unique dedupe custom field (``cf_capex_ref``).
+    #:
+    #: ERP: True -- Zoho's own published OpenAPI bundle documents a
+    #: ``custom_field`` query parameter on ``GET /purchaseorders``.
+    #: BOOKS_INVENTORY: False -- no such parameter is documented for Books in
+    #: this repository, and sending one that is not documented would be
+    #: *ignored rather than rejected*, turning an unfiltered first page into
+    #: something a caller would read as "the PO carrying this key".
+    #:
+    #: False does NOT mean the key cannot be resolved. It means resolution
+    #: costs a bounded scan instead of one call -- and, either way, a candidate
+    #: is adopted only after :func:`verified_dedupe_match` confirms it actually
+    #: carries the key.
+    po_dedupe_search: bool = False
 
 
 # =============================================================== the transport
@@ -425,7 +463,7 @@ def _scope_prefix(scope: str) -> str:
 # ==================================================================== the C1 seam
 @runtime_checkable
 class ProcurementAdapter(Protocol):
-    """Wave 5 seam C1. FROZEN -- streams 2 through 7 build against this.
+    """Wave 5 seam C1. Streams 2 through 7 build against this.
 
     Note what is deliberately *absent*: there is no ``list_receives``. A
     product that has one exposes it as an extra method and declares
@@ -433,6 +471,24 @@ class ProcurementAdapter(Protocol):
     method at all. :func:`acquire_receives` is the only sanctioned way to ask
     for receives, and it refuses to reconcile a capability flag that disagrees
     with the surface it is looking at.
+
+    **Amended after the freeze, twice, and both were this contract's errors
+    rather than a caller's.**
+
+    * ``list_items`` and ``list_contacts`` were missing. Plan §11.5 requires
+      ``poll_items`` and ``poll_contacts`` jobs, and two streams independently
+      hit the gap; ``sweeps.py`` raised ``AdapterMethodMissing`` with the seam
+      named rather than substituting a silent no-op, because a master-data
+      poll that fetches nothing is indistinguishable from one that found
+      nothing.
+    * There was no call that **read a record back by its dedupe key**, even
+      though ``create_purchase_order`` took one. Those three calls live on
+      :class:`RecoverableProcurementAdapter` rather than here, so that this
+      protocol keeps meaning exactly what it meant to the streams already
+      isinstance-checking against it.
+
+    Nothing was removed or renamed, so an implementation that satisfied the
+    frozen six still satisfies them. See ``tests/ADAPTATIONS.md``.
     """
     product: Product
 
@@ -446,6 +502,94 @@ class ProcurementAdapter(Protocol):
     def create_purchase_order(self, po: PurchaseOrderDTO, dedupe_key: str) -> str: ...
     def receives_for_po(self, po_external_id: str) -> list[ReceiveDTO]: ...
     def capabilities(self) -> Capabilities: ...
+    # -- added after the freeze; §11.5 required these all along. See below. --
+    def list_items(self, since: datetime, until: datetime, page: int) -> Page[ItemDTO]: ...
+    def list_contacts(
+        self, since: datetime, until: datetime, page: int
+    ) -> Page[ContactDTO]: ...
+
+
+@runtime_checkable
+class RecoverableProcurementAdapter(Protocol):
+    """C1 plus the three calls that make a lost PO response recoverable.
+
+    **Why this is a separate protocol rather than three more methods on C1.**
+    :class:`ProcurementAdapter` is ``runtime_checkable`` and is isinstance-
+    checked against both shipped adapters. Folding these in would make that
+    check a claim about recovery as well as about acquisition, and an adapter
+    that legitimately cannot resolve a key would stop being a procurement
+    adapter at all -- which is the "invent parity" failure §11 exists to
+    prevent. Separating them lets a caller ask the narrower question it
+    actually has: ``isinstance(adapter, RecoverableProcurementAdapter)``.
+
+    **What the three calls are for.** ``create_purchase_order`` takes a
+    ``dedupe_key`` and C1 had no call that READ a record back by it. Zoho
+    documents no idempotency header (§11.6), so ``cf_capex_ref`` is the only
+    handle on an emitted purchase order -- and without a read path, a response
+    lost between "sent" and "recorded" left a PO that **exists in the tenant
+    and can never be linked**. Z-01's unique constraint still prevented the
+    duplicate; what was lost was the link, and an unlinked commitment blocks
+    period close as ``ORPHANED_EMISSION``.
+
+    * ``resolve_by_dedupe_key(key)`` -- the read half of §11.6's
+      "update-by-custom-field-unique-value". Returns the external id of the
+      purchase order carrying ``key``, or ``None``. It must return ``None``
+      rather than a best guess: adopting the wrong id links a commitment to
+      somebody else's document, which is worse than not linking it at all.
+    * ``update_purchase_order(external_id, payload, dedupe_key)`` -- applies
+      the current draft onto an adopted id.
+    * ``transition_purchase_order(external_id, state, actor)`` -- §11.7's
+      draft-to-open step, performed by our own call after our approval
+      instance closes.
+    """
+    product: Product
+
+    def resolve_by_dedupe_key(self, dedupe_key: str) -> str | None: ...
+    def update_purchase_order(
+        self, external_id: str, payload: Any, dedupe_key: str
+    ) -> str: ...
+    def transition_purchase_order(
+        self, external_id: str, state: str, actor: str
+    ) -> str: ...
+
+
+def verified_dedupe_match(
+    rows: Iterable[Mapping[str, Any]],
+    *,
+    dedupe_key: str,
+    id_field: str,
+    custom_field: str = DEDUPE_CUSTOM_FIELD,
+) -> str | None:
+    """The id of the row that **actually carries** ``dedupe_key``, or ``None``.
+
+    This is the guard that makes :meth:`resolve_by_dedupe_key` safe to call on
+    a product whose search parameter we are not certain of, and it is the
+    reason the Books adapter can offer the method at all.
+
+    An unrecognised query parameter on these APIs is **ignored, not rejected**
+    -- the same fact that makes :data:`INVENTORY_PURCHASE_ORDER_LIST_PARAMS`
+    worth recording. So a filtered search that silently degrades to an
+    unfiltered one returns page 1 of every purchase order in the tenant, and a
+    caller that trusted the filter would adopt an arbitrary document's id and
+    link this commitment to it. Re-reading the custom field off the row makes
+    that failure mode impossible: the filter becomes an optimisation, and
+    correctness comes from the value, not from the query.
+
+    Exact string equality, never a prefix or a substring: Zoho's documented
+    ``custom_field`` variants include ``_startswith`` and ``_contains``, and
+    ``CAPEX-PO-000117`` is a prefix of ``CAPEX-PO-0001170``.
+    """
+    if not dedupe_key:
+        return None
+    for row in rows:
+        for field in row.get("custom_fields") or ():
+            if field.get("api_name") != custom_field:
+                continue
+            if field.get("value") == dedupe_key:
+                found = row.get(id_field)
+                if found:
+                    return str(found)
+    return None
 
 
 # ============================================ the capability-driven dispatcher

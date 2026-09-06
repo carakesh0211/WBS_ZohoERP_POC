@@ -1,0 +1,33 @@
+{
+  "cassette_version": 1,
+  "product": "BOOKS_INVENTORY",
+  "service": "books",
+  "api_version": "v3",
+  "provenance": "INVENTED-SANITISED",
+  "provenance_note": "Hand-authored; no tenant contacted. Updates by id, after resolve_by_dedupe_key named PO-BKS-6001 by scanning. Plan section 11.2's Books Purchase Order row confirms POST/PUT on this product's own evidence. What is NOT used here is the ERP bundle's PUT /purchaseorders upsert-by-unique-custom-field: that is ERP evidence and is inadmissible for Books.",
+  "request": {
+    "method": "PUT",
+    "base_url": "https://www.zohoapis.in/books/v3",
+    "path": "/purchaseorders/PO-BKS-6001",
+    "scope": "ZohoBooks.purchaseorders.ALL",
+    "page": 1
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "code": 0,
+      "message": "Purchase Order has been updated.",
+      "purchaseorder": {
+        "purchaseorder_id": "PO-BKS-6001",
+        "purchaseorder_number": "PO-BKS-2026-0044",
+        "status": "draft",
+        "custom_fields": [
+          {
+            "api_name": "cf_capex_ref",
+            "value": "CAPEX-PO-000044"
+          }
+        ]
+      }
+    }
+  }
+}

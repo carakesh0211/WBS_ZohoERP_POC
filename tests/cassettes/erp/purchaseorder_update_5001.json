@@ -1,0 +1,33 @@
+{
+  "cassette_version": 1,
+  "product": "ERP",
+  "service": "erp",
+  "api_version": "v3",
+  "provenance": "INVENTED-SANITISED",
+  "provenance_note": "Hand-authored; no tenant contacted. The UPDATE half of section 11.6's 'update-by-custom-field-unique-value'. Reached only after resolve_by_dedupe_key named PO-ERP-5001, so it updates by id. The response echoes cf_capex_ref because an update must never be the thing that strips the only handle the retry path has on this document.",
+  "request": {
+    "method": "PUT",
+    "base_url": "https://www.zohoapis.in/erp/v3",
+    "path": "/purchaseorders/PO-ERP-5001",
+    "scope": "ERP.purchaseorders.ALL",
+    "page": 1
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "code": 0,
+      "message": "Purchase Order has been updated.",
+      "purchaseorder": {
+        "purchaseorder_id": "PO-ERP-5001",
+        "purchaseorder_number": "PO-2026-0117",
+        "status": "draft",
+        "custom_fields": [
+          {
+            "api_name": "cf_capex_ref",
+            "value": "CAPEX-PO-000117"
+          }
+        ]
+      }
+    }
+  }
+}
