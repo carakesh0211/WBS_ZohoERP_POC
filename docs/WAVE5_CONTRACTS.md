@@ -184,3 +184,36 @@ Stream 4's worktree was created at `ce7f3c5`, a pre-Wave-4 commit, and it reset
 to the tip before starting. Every stream should verify its base is the intended
 commit rather than assume it, and the integration pass should check what each
 branch is actually rooted on before merging.
+
+## A5 — one concept, two names: `lane` vs `allocation` (found at integration)
+
+Streams 2 and 4 independently invented the same column and gave it different
+names. Neither could see the other, and both were right about the concept.
+
+* **Stream 4** (`throttle.py`) writes `lane` — `POLLING|OUTBOUND|INTERACTIVE`.
+* **Stream 2** (`010_integration.sql`, `integration_store.py`) writes
+  `allocation`, and puts it in the primary key exactly as amendment A1
+  required: `PRIMARY KEY (connection_id, window_kind, allocation, window_start_key)`.
+
+**Both amendments A1 and A2 were satisfied before either stream saw them**,
+which is the freeze working. A3 too: stream 2 applied the 60/30/10 split to the
+day window and gave the same reasoning stream 4 did — a backfill that spends
+2,000 calls before lunch starves the operator all afternoon however politely it
+paced itself minute by minute.
+
+**The decision: the column is `allocation`.** The schema is the shared
+artefact; Python follows it. `lane` survives only as prose in `throttle.py`'s
+docstrings.
+
+**Why this has not bitten yet, and when it will.** `throttle.py` talks to a
+`RateBudgetStore` **port** whose only implementation is in-memory, so nothing
+currently joins the two names and 75 throttle tests pass against a store that
+never sees the schema. The mismatch surfaces the moment someone writes the
+PostgreSQL implementation of that port — which is the next task in this area,
+and is where the rename belongs.
+
+**Not renamed now, deliberately.** A mechanical rename through a 1,056-line
+module at the end of a long session, verifiable only through a 25-minute CI
+loop, is the shape of change that has already had to be reverted once this
+engagement. The seam is documented instead, and the port's implementer cannot
+miss it.

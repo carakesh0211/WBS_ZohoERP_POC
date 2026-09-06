@@ -121,6 +121,15 @@ POST_BASELINE_FILES = {
     # commitment gets counted twice.
     "test_outbound_chaos.py", "test_outbound_emission.py",
     "test_outbound_unsanctioned.py",
+    # --- Wave 5 stream 2: the integration schema and its repository --------
+    # `test_pg_integration_schema.py` is split the way
+    # `test_pg_approval_schema.py` is: a thorough database-free half that runs
+    # everywhere, and a `@pytest.mark.pg` half that runs for the first time in
+    # CI. `test_integration_store.py` is database-free ENTIRELY -- redaction,
+    # window arithmetic and the scoped-query discipline are all properties of
+    # the source, and a PostgreSQL-gated test would skip past every one of
+    # them on the machine the module was written on.
+    "test_pg_integration_schema.py", "test_integration_store.py",
 }
 
 

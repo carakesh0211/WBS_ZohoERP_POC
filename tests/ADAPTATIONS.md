@@ -828,3 +828,96 @@ one added adapter call closes it. Reported to stream 1, not patched into
 `adapter.py`.
 
 **Approved by:** engagement lead, Wave 5 integration pass.
+## 2026-09-06 — Wave 5 stream 2: two new test files, and one file touched outside the stream's boundary
+
+**No existing test was changed, weakened, retargeted or removed.** This entry
+records two additions and one boundary crossing, so both are on the record
+rather than discovered in a diff.
+
+**Two new test files, both registered as post-baseline.**
+`tests/test_pg_integration_schema.py` and `tests/test_integration_store.py`
+are added to `POST_BASELINE_FILES` in `tools/build_test_manifest.py`, for the
+reason every Wave 2-4 file was: the 220 baseline counts the POC's
+audit-remediation suite and its purpose is to catch a baseline test being
+REMOVED. Inflating that number stops the guard meaning anything.
+
+The schema file is split the way `test_pg_approval_schema.py` is — a thorough
+database-free half plus a `@pytest.mark.pg` half — and the store file is
+database-free entirely, because redaction, the rate-budget window arithmetic
+and the scoped-query discipline are properties of the source that a
+PostgreSQL-gated test would skip past on every developer machine. **None of
+the 22 live tests has executed.** They are written on the assumption that
+their first run is in CI and that nobody will be watching when it happens; the
+database-free half is deliberately heavier than 008's equivalent to
+compensate, and `tests/test_pg_integration_schema.py`'s assertions were
+checked against six deliberate mutations of the migration (mode default,
+idempotency key, overlap floor, a timezone-dependent CHECK, a dropped
+restricted key, an added money column) to prove they are not vacuous.
+
+**One file touched outside this stream's declared boundary:
+`app/backend/pg/scope_inventory.py`.** The stream's brief named
+`migrations/pg/010_integration.sql`, `app/backend/pg/integration_store.py` and
+its own new tests. Adding 010 makes
+`test_pg_rls_coverage.py::test_every_table_in_the_schema_is_classified_scoped_or_deliberately_not`
+fail: that test sweeps every migration's `CREATE TABLE` and requires each
+table to be classified in the inventory, and it is the ONLY check that can
+catch a new table added with no RLS and no registry entry. It was working
+exactly as designed.
+
+The change is eight new `ScopedTable` entries and three occurrences of
+`001..008` becoming `001..010`. Nothing existing was altered. It was made
+rather than merely reported because (a) the module's own documented
+maintenance rule addresses the migration's author — "when a migration adds a
+table, add it here by hand, from the `CREATE TABLE`, before looking at any
+policy" — (b) 008 set the precedent, its entries having been written by the
+stream that wrote 008, and (c) `docs/WAVE5_CONTRACTS.md` assigns the file to
+no Wave 5 stream, so "no stream edits another's files" has no other stream to
+name. All eight are `status="protected_pending_registry"`, exactly as 008's
+are: 010 does enable, force and policy every one of them, and `rls.py`'s
+registry is lead-owned and does not yet name them.
+
+**Approved by:** engagement lead, Wave 5 stream 2 — recorded here for review;
+revert the `scope_inventory.py` hunk and the eight tables become an
+unclassified sweep failure again, which is the state the lead would be
+choosing.
+
+## 2026-09-06 - Wave 5 stream 2: one assertion re-pointed, not weakened
+
+`tests/test_pg_approval_schema.py::test_the_pending_registry_handoff_is_enumerable`
+read:
+
+    assert set(scope_inventory.pending_registry_tables()) == set(
+        approval_schema.RLS_POLICIES)
+
+That asserted TWO things at once: that every table `008_approval_engine.sql`
+protects is awaiting the `rls.py` registry, and - because it compared the
+GLOBAL pending list against 008's tables - that 008 is the only migration with
+tables in that state. The second was incidentally true when it was written and
+stopped being true the moment `010_integration.sql` put eight more tables in
+exactly the same in-between state that `status="protected_pending_registry"`
+exists to record.
+
+**Category: target adaptation, not a weakening.** The equality over 008's own
+tables is unchanged and still exact - the pending list is intersected with
+`scope_inventory.tables_for_migration("008_approval_engine.sql")` before the
+comparison, so a table 008 protects that goes missing from the handoff list
+still fails, and a spurious one still fails. Nothing about 008 is asserted less
+strongly.
+
+**And nothing is lost, because the dropped half is asserted elsewhere and more
+precisely.** `tests/test_pg_integration_schema.py::test_the_rls_handoff_for_this_migration_is_enumerable`
+holds the same property for 010's eight tables, in both directions, including
+that the inventory attributes exactly 010's tables to 010. The estate-wide
+invariant - that every table any migration creates is classified as scoped or
+deliberately unscoped - was never this test's and remains
+`tests/test_pg_rls_coverage.py::test_every_table_in_the_schema_is_classified_scoped_or_deliberately_not`'s.
+
+The alternative was to leave 010's tables unclassified, which fails that
+coverage sweep, or to call them "covered", which is false while `rls.py`
+(lead-owned) does not name them and would break
+`test_covered_tables_match_the_rls_registry`. Both would have been a worse lie
+than the one this edit removes.
+
+**Approved by:** engagement lead, Wave 5 stream 2 - flagged for review together
+with the `app/backend/pg/scope_inventory.py` entry above; the two are the same
+decision.

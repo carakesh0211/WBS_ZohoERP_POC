@@ -2336,6 +2336,196 @@
         "body_sha": "188c214c927978d7"
       }
     },
+    "test_integration_store.py": {
+      "test_a_regulated_key_is_removed_at_the_top_level": {
+        "assertions": 4,
+        "body_sha": "0e285aa04a1ee867"
+      },
+      "test_a_regulated_key_is_removed_at_any_depth_including_inside_arrays": {
+        "assertions": 4,
+        "body_sha": "17f514338e74103e"
+      },
+      "test_restricted_outranks_regulated": {
+        "assertions": 2,
+        "body_sha": "8f9223bb1f503f1f"
+      },
+      "test_a_clean_payload_is_confidential_and_untouched": {
+        "assertions": 3,
+        "body_sha": "e8ea7d8e7f64953a"
+      },
+      "test_redaction_normalises_case_but_the_sql_backstop_does_not": {
+        "assertions": 2,
+        "body_sha": "cea826eb4c33fa39"
+      },
+      "test_redaction_removes_the_key_rather_than_blanking_it": {
+        "assertions": 3,
+        "body_sha": "7bb671fc730dc697"
+      },
+      "test_the_redactor_output_satisfies_the_sql_backstop": {
+        "assertions": 1,
+        "body_sha": "ed3bb77ffc50a7fa"
+      },
+      "test_redaction_does_not_mutate_the_callers_payload": {
+        "assertions": 1,
+        "body_sha": "729be214805f8faa"
+      },
+      "test_the_two_key_lists_partition_the_whole": {
+        "assertions": 2,
+        "body_sha": "f894cd87343697a3"
+      },
+      "test_no_classified_key_is_hashed_by_this_module": {
+        "assertions": 1,
+        "body_sha": "80a3549a1e6635bb"
+      },
+      "test_the_payload_hash_is_insensitive_to_key_order_and_spacing": {
+        "assertions": 1,
+        "body_sha": "62cec343ed1e57ef"
+      },
+      "test_the_payload_hash_changes_when_the_document_does": {
+        "assertions": 1,
+        "body_sha": "66d6fe651f417e5d"
+      },
+      "test_the_hash_is_taken_before_redaction_not_after": {
+        "assertions": 2,
+        "body_sha": "b70ef613176d7e82"
+      },
+      "test_the_minute_and_day_keys_bucket_the_same_instant": {
+        "assertions": 4,
+        "body_sha": "cd39378b4216ba61"
+      },
+      "test_the_day_boundary_follows_the_named_timezone": {
+        "assertions": 2,
+        "body_sha": "6ea0cd83ac57db62"
+      },
+      "test_a_naive_datetime_is_refused": {
+        "assertions": 2,
+        "body_sha": "3801cd39aa0d5b3e"
+      },
+      "test_an_unknown_timezone_is_refused_rather_than_defaulted": {
+        "assertions": 2,
+        "body_sha": "a00bdd48b237c578"
+      },
+      "test_the_allocation_shares_are_section_11_6s_sixty_thirty_ten": {
+        "assertions": 3,
+        "body_sha": "c7acc3b106b94c97"
+      },
+      "test_the_daily_ceiling_is_split_by_the_same_shares_as_the_minute": {
+        "assertions": 4,
+        "body_sha": "65f6b14d67824072"
+      },
+      "test_an_allocation_ceiling_is_never_zero": {
+        "assertions": 1,
+        "body_sha": "597f6ff14884a65b"
+      },
+      "test_an_unknown_allocation_is_refused": {
+        "assertions": 1,
+        "body_sha": "948d684bf0f1024f"
+      },
+      "test_the_poll_window_starts_before_the_watermark": {
+        "assertions": 2,
+        "body_sha": "a244d01e6cfa8742"
+      },
+      "test_a_shortened_overlap_is_refused_rather_than_clamped": {
+        "assertions": 2,
+        "body_sha": "11ddf85d36048350"
+      },
+      "test_the_backoff_is_bounded_by_the_exponential_and_by_the_cap": {
+        "assertions": 1,
+        "body_sha": "5ec849b70c38dfd0"
+      },
+      "test_the_backoff_is_full_jitter_not_a_fixed_exponential": {
+        "assertions": 1,
+        "body_sha": "aecc001190537923"
+      },
+      "test_the_backoff_never_exceeds_the_documented_cap": {
+        "assertions": 1,
+        "body_sha": "d91ebfbd0a44915c"
+      },
+      "test_negative_attempts_are_refused": {
+        "assertions": 1,
+        "body_sha": "0dd27c33ab48d97a"
+      },
+      "test_a_live_mode_is_refused_before_the_session_is_touched": {
+        "assertions": 3,
+        "body_sha": "73871e409edc3114"
+      },
+      "test_a_live_mode_with_an_authoriser_but_no_note_is_still_refused": {
+        "assertions": 2,
+        "body_sha": "58bc27503cae9c5e"
+      },
+      "test_an_unknown_product_is_refused": {
+        "assertions": 2,
+        "body_sha": "1cdecdd98b1cade5"
+      },
+      "test_mock_and_sandbox_need_no_authorisation": {
+        "assertions": 1,
+        "body_sha": "a81c4dcc09071ae3"
+      },
+      "test_the_platform_ceiling_bounds_the_soft_deadline_argument": {
+        "assertions": 2,
+        "body_sha": "c680766f67af9452"
+      },
+      "test_the_plan_constants_are_the_plan_constants": {
+        "assertions": 5,
+        "body_sha": "3e974ca43036d3b8"
+      },
+      "test_the_module_actually_uses_the_chokepoint": {
+        "assertions": 1,
+        "body_sha": "0699f0434cd589dc"
+      },
+      "test_every_repo_query_carries_the_scope_token": {
+        "assertions": 1,
+        "body_sha": "d9409fb2fb57630d"
+      },
+      "test_every_repo_query_maps_all_four_scope_dimensions": {
+        "assertions": 3,
+        "body_sha": "5209289f3de7e011"
+      },
+      "test_every_published_scope_mapping_names_all_four_dimensions": {
+        "assertions": 1,
+        "body_sha": "0d354b4ec06e6fd5"
+      },
+      "test_every_waived_dimension_is_explained_in_the_source": {
+        "assertions": 1,
+        "body_sha": "a5503505bb800f9d"
+      },
+      "test_every_sql_placeholder_has_a_parameter_behind_it": {
+        "assertions": 4,
+        "body_sha": "ee5794e093417cdb"
+      },
+      "test_every_statement_is_paren_balanced_and_carries_exactly_one_scope_token": {
+        "assertions": 2,
+        "body_sha": "59b40775555ddf18"
+      },
+      "test_every_writing_statement_returns_something": {
+        "assertions": 1,
+        "body_sha": "5e654e7c8ede8da9"
+      },
+      "test_no_sql_in_this_module_names_a_money_column": {
+        "assertions": 1,
+        "body_sha": "30bbed93836bb446"
+      },
+      "test_no_sql_in_this_module_hardcodes_a_zoho_url_or_endpoint": {
+        "assertions": 1,
+        "body_sha": "16870b23ad6c0e2c"
+      },
+      "test_the_event_id_is_never_supplied_by_this_module": {
+        "assertions": 2,
+        "body_sha": "ff8b1ab85d69f76e"
+      },
+      "test_the_reservation_savepoint_unwinds_by_raising_not_by_returning": {
+        "assertions": 2,
+        "body_sha": "c09dbda302ce1a7b"
+      },
+      "test_the_reservation_guard_is_in_the_statement": {
+        "assertions": 1,
+        "body_sha": "c3c2e0198b990259"
+      },
+      "test_both_windows_are_created_together_or_not_at_all": {
+        "assertions": 2,
+        "body_sha": "a1ba67aa9778d097"
+      }
+    },
     "test_integration_sweeps.py": {
       "test_po_anchored_discovery_is_the_sole_grn_mechanism_when_receives_cannot_be_listed": {
         "assertions": 4,
@@ -3929,7 +4119,7 @@
       },
       "test_the_pending_registry_handoff_is_enumerable": {
         "assertions": 1,
-        "body_sha": "b1c9d517bb619bbe"
+        "body_sha": "73129f7b64680b0e"
       },
       "test_the_seed_fragment_is_discovered_by_the_loader": {
         "assertions": 1,
@@ -4988,6 +5178,332 @@
       "test_refusal_names_the_offending_database": {
         "assertions": 1,
         "body_sha": "845de295e197eada"
+      }
+    },
+    "test_pg_integration_schema.py": {
+      "test_every_table_the_contract_names_is_created": {
+        "assertions": 1,
+        "body_sha": "0dcf22df50e77581"
+      },
+      "test_the_store_module_and_the_migration_name_the_same_tables": {
+        "assertions": 1,
+        "body_sha": "0bde09a06f668ba0"
+      },
+      "test_every_column_seam_c2_freezes_is_declared": {
+        "assertions": 1,
+        "body_sha": "daa4bbd356df638b"
+      },
+      "test_inbound_idempotency_is_a_named_unique_constraint": {
+        "assertions": 2,
+        "body_sha": "508b8701c6ea27dc"
+      },
+      "test_the_store_targets_the_idempotency_constraint_by_name": {
+        "assertions": 2,
+        "body_sha": "f3f24283bd5805f8"
+      },
+      "test_mode_defaults_to_mock": {
+        "assertions": 1,
+        "body_sha": "914a18fe19732b7e"
+      },
+      "test_a_live_mode_requires_a_recorded_authorisation": {
+        "assertions": 2,
+        "body_sha": "74217f921b49fa1a"
+      },
+      "test_no_base_url_or_endpoint_is_persisted_anywhere": {
+        "assertions": 2,
+        "body_sha": "8e03742b4207dbb8"
+      },
+      "test_job_carries_the_three_columns_section_2_2_names": {
+        "assertions": 3,
+        "body_sha": "5961517347efb2b6"
+      },
+      "test_the_resume_ceiling_is_terminal": {
+        "assertions": 3,
+        "body_sha": "647172c12d96f2a6"
+      },
+      "test_a_dead_job_must_carry_its_alert": {
+        "assertions": 2,
+        "body_sha": "b9458f489c76d320"
+      },
+      "test_a_checkpointed_job_must_carry_a_cursor": {
+        "assertions": 2,
+        "body_sha": "dcd23ab06f7b3904"
+      },
+      "test_the_soft_deadline_is_bounded_by_the_platform_ceiling": {
+        "assertions": 3,
+        "body_sha": "c368bc153b0aa32c"
+      },
+      "test_both_windows_exist_and_share_one_shape": {
+        "assertions": 3,
+        "body_sha": "60ad82f97c5924cc"
+      },
+      "test_the_budget_is_binding_not_advisory": {
+        "assertions": 2,
+        "body_sha": "6be869cc6b5c5290"
+      },
+      "test_the_window_length_is_an_immutable_integer": {
+        "assertions": 2,
+        "body_sha": "787390b39573e09b"
+      },
+      "test_the_daily_question_has_its_own_index": {
+        "assertions": 1,
+        "body_sha": "d281880ea77b2fbe"
+      },
+      "test_the_connection_carries_a_per_connection_daily_ceiling": {
+        "assertions": 2,
+        "body_sha": "52deec6ef6db1f05"
+      },
+      "test_the_poll_overlap_is_a_floor_not_a_default": {
+        "assertions": 2,
+        "body_sha": "5984793772b4cfb0"
+      },
+      "test_a_watermark_rewind_needs_a_reason": {
+        "assertions": 2,
+        "body_sha": "03de1443c31fc785"
+      },
+      "test_the_restricted_key_list_is_one_list_in_two_places_that_agree": {
+        "assertions": 2,
+        "body_sha": "0c7db6e4aab1ee3f"
+      },
+      "test_every_stored_json_column_carries_the_restricted_key_backstop": {
+        "assertions": 1,
+        "body_sha": "1929b6e54e267e2c"
+      },
+      "test_the_redaction_policy_version_has_no_default": {
+        "assertions": 3,
+        "body_sha": "dadd69968a1f05e2"
+      },
+      "test_a_classified_payload_must_show_what_it_did_about_it": {
+        "assertions": 3,
+        "body_sha": "34a3b9985be0902a"
+      },
+      "test_an_encryption_envelope_records_its_key_id": {
+        "assertions": 1,
+        "body_sha": "ed834a62bd9c1f3b"
+      },
+      "test_no_classified_field_is_hashed_anywhere": {
+        "assertions": 4,
+        "body_sha": "7e707fa6f5e93bb7"
+      },
+      "test_no_check_constraint_depends_on_the_session_timezone": {
+        "assertions": 1,
+        "body_sha": "169de7fa3ab6c34e"
+      },
+      "test_the_helper_functions_are_declared_immutable": {
+        "assertions": 1,
+        "body_sha": "4553c6dd8b66e45d"
+      },
+      "test_the_restricted_key_predicate_is_plpgsql": {
+        "assertions": 1,
+        "body_sha": "bb5384ae3037d264"
+      },
+      "test_no_money_column_exists_in_this_migration": {
+        "assertions": 1,
+        "body_sha": "0efbd604f7b76821"
+      },
+      "test_the_event_trail_is_append_only_by_trigger_and_by_privilege": {
+        "assertions": 4,
+        "body_sha": "423d9ddad86e4bc1"
+      },
+      "test_the_receipt_columns_are_frozen_by_trigger": {
+        "assertions": 4,
+        "body_sha": "6d5cb277c25826ba"
+      },
+      "test_every_table_is_enabled_forced_and_policied": {
+        "assertions": 3,
+        "body_sha": "156f5c8bd3394acd"
+      },
+      "test_every_policy_has_both_using_and_with_check": {
+        "assertions": 3,
+        "body_sha": "3af4548557a850e8"
+      },
+      "test_every_policy_calls_the_frozen_scope_function": {
+        "assertions": 3,
+        "body_sha": "2b05235c0ea827f3"
+      },
+      "test_states_are_transcribed_from_c16_not_invented": {
+        "assertions": 3,
+        "body_sha": "9a75ee46f005c14a"
+      },
+      "test_the_circuit_codes_keep_their_prefix": {
+        "assertions": 1,
+        "body_sha": "9e2636bf8764337a"
+      },
+      "test_the_business_visible_badge_is_the_only_bridge": {
+        "assertions": 6,
+        "body_sha": "d1703b0980715871"
+      },
+      "test_the_rls_handoff_for_this_migration_is_enumerable": {
+        "assertions": 2,
+        "body_sha": "5d8046e1aae75579"
+      },
+      "test_the_migration_is_discovered_by_the_runner": {
+        "assertions": 2,
+        "body_sha": "52f955973fcf83d0"
+      },
+      "test_the_rollback_section_undoes_everything_the_migration_creates": {
+        "assertions": 4,
+        "body_sha": "e5eeffa580865c4c"
+      },
+      "test_the_migration_is_expand_only": {
+        "assertions": 4,
+        "body_sha": "1691488ab958b964"
+      },
+      "test_the_migration_is_pure_ascii": {
+        "assertions": 1,
+        "body_sha": "04da6282d88e0d96"
+      },
+      "test_live_mode_defaults_to_mock": {
+        "assertions": 1,
+        "body_sha": "a31a9fc420c71449"
+      },
+      "test_live_a_live_mode_without_authorisation_is_refused": {
+        "assertions": 0,
+        "body_sha": "07ec3f7c6e6cd8f4"
+      },
+      "test_live_a_live_mode_with_an_authoriser_but_no_note_is_refused": {
+        "assertions": 0,
+        "body_sha": "837d259cf8c9554a"
+      },
+      "test_live_a_fully_authorised_live_mode_is_accepted": {
+        "assertions": 1,
+        "body_sha": "7508953dbe33142a"
+      },
+      "test_live_the_inbox_unique_deduplicates_a_redelivery": {
+        "assertions": 3,
+        "body_sha": "773ea9741fd25934"
+      },
+      "test_live_a_different_payload_for_one_external_id_is_a_new_receipt": {
+        "assertions": 1,
+        "body_sha": "a55023e990a47013"
+      },
+      "test_live_a_payload_carrying_a_regulated_key_is_refused": {
+        "assertions": 0,
+        "body_sha": "bd9268258c18238b"
+      },
+      "test_live_a_restricted_key_is_caught_at_any_nesting_depth": {
+        "assertions": 0,
+        "body_sha": "ce446ec7ebddb01c"
+      },
+      "test_live_a_payload_the_redactor_produced_is_accepted": {
+        "assertions": 3,
+        "body_sha": "3b7153ff05fbb7e8"
+      },
+      "test_live_a_regulated_row_showing_no_treatment_is_refused": {
+        "assertions": 0,
+        "body_sha": "22fc12f62f0760dd"
+      },
+      "test_live_a_receipt_without_a_redaction_policy_is_refused": {
+        "assertions": 0,
+        "body_sha": "9febdc0a08b12121"
+      },
+      "test_live_the_raw_external_status_cannot_be_overwritten": {
+        "assertions": 0,
+        "body_sha": "22f627dbe8774c11"
+      },
+      "test_live_processing_a_receipt_is_still_permitted": {
+        "assertions": 1,
+        "body_sha": "a780ef52f7856372"
+      },
+      "test_live_a_processed_receipt_must_say_when": {
+        "assertions": 0,
+        "body_sha": "eccf16a5d6d36ad3"
+      },
+      "test_live_a_rate_budget_cannot_exceed_its_ceiling": {
+        "assertions": 0,
+        "body_sha": "f2a4d3ab7524ae3b"
+      },
+      "test_live_a_full_window_must_stamp_its_exhaustion": {
+        "assertions": 0,
+        "body_sha": "d187665cbd129cdb"
+      },
+      "test_live_a_minute_window_cannot_claim_a_days_length": {
+        "assertions": 0,
+        "body_sha": "c3143f79656b5f0f"
+      },
+      "test_live_a_job_at_its_resume_ceiling_cannot_be_claimable": {
+        "assertions": 1,
+        "body_sha": "9a670489a7f0c2f4"
+      },
+      "test_live_a_dead_job_without_an_alert_is_refused": {
+        "assertions": 0,
+        "body_sha": "3990fae9f2cc3cf6"
+      },
+      "test_live_a_checkpointed_job_without_a_cursor_is_refused": {
+        "assertions": 0,
+        "body_sha": "393bfa102346f041"
+      },
+      "test_live_a_claimed_job_must_be_bounded_and_owned": {
+        "assertions": 0,
+        "body_sha": "a5c0521afb40d401"
+      },
+      "test_live_a_soft_deadline_past_the_platform_ceiling_is_refused": {
+        "assertions": 0,
+        "body_sha": "116991632903c14d"
+      },
+      "test_live_a_watermark_cannot_rewind_without_a_reason": {
+        "assertions": 0,
+        "body_sha": "ce524d841407711b"
+      },
+      "test_live_a_declared_rewind_is_permitted": {
+        "assertions": 1,
+        "body_sha": "e98da4e302d04a4f"
+      },
+      "test_live_an_overlap_below_the_floor_is_refused": {
+        "assertions": 0,
+        "body_sha": "f262f58a789a523b"
+      },
+      "test_live_a_closed_circuit_may_still_be_accumulating_failures": {
+        "assertions": 1,
+        "body_sha": "4f3a89de0b08f56d"
+      },
+      "test_live_a_failure_count_without_a_start_time_is_refused": {
+        "assertions": 0,
+        "body_sha": "99ddf377ee34bffd"
+      },
+      "test_live_an_open_circuit_must_schedule_a_probe": {
+        "assertions": 0,
+        "body_sha": "2421106d98ab65da"
+      },
+      "test_live_the_event_trail_refuses_update_and_delete": {
+        "assertions": 0,
+        "body_sha": "9526659ae55b1ddf"
+      },
+      "test_live_the_event_id_is_minted_by_the_database": {
+        "assertions": 1,
+        "body_sha": "98073bcb8bfd25a6"
+      },
+      "test_live_an_event_detail_carrying_a_restricted_key_is_refused": {
+        "assertions": 0,
+        "body_sha": "cfeb414b41b3e38b"
+      },
+      "test_live_an_outbox_row_cannot_be_sent_without_an_external_id": {
+        "assertions": 0,
+        "body_sha": "c9cbd3de9aec3e8b"
+      },
+      "test_live_a_failed_outbox_row_must_schedule_its_retry": {
+        "assertions": 0,
+        "body_sha": "152af0de2c4a1131"
+      },
+      "test_live_two_outbox_rows_cannot_share_a_dedupe_key": {
+        "assertions": 0,
+        "body_sha": "22824eb61c33cfda"
+      },
+      "test_live_rls_hides_another_entitys_receipts": {
+        "assertions": 1,
+        "body_sha": "e1c4374fe4882d5a"
+      },
+      "test_live_record_inbound_tells_a_duplicate_from_an_unknown_connection": {
+        "assertions": 5,
+        "body_sha": "69be1ca6d9fba6f7"
+      },
+      "test_live_reserve_calls_charges_both_windows_or_neither": {
+        "assertions": 7,
+        "body_sha": "fb31691cf1ce9cf5"
+      },
+      "test_live_a_job_that_exhausts_its_resumes_dies_alerting": {
+        "assertions": 7,
+        "body_sha": "b6229874039f4a56"
       }
     },
     "test_pg_locking.py": {
@@ -6472,6 +6988,7 @@
     "test_integration_no_hardcoded_endpoints.py": 6,
     "test_integration_product_isolation.py": 16,
     "test_integration_statuses.py": 41,
+    "test_integration_store.py": 47,
     "test_integration_sweeps.py": 40,
     "test_integration_throttle.py": 75,
     "test_known_defects.py": 5,
@@ -6497,6 +7014,7 @@
     "test_pg_budget.py": 22,
     "test_pg_constraints.py": 8,
     "test_pg_fixture_guard.py": 3,
+    "test_pg_integration_schema.py": 81,
     "test_pg_locking.py": 17,
     "test_pg_locking_order.py": 19,
     "test_pg_masters.py": 32,
@@ -6540,6 +7058,7 @@
     "test_integration_no_hardcoded_endpoints.py": 8,
     "test_integration_product_isolation.py": 36,
     "test_integration_statuses.py": 94,
+    "test_integration_store.py": 92,
     "test_integration_sweeps.py": 110,
     "test_integration_throttle.py": 228,
     "test_known_defects.py": 13,
@@ -6565,6 +7084,7 @@
     "test_pg_budget.py": 57,
     "test_pg_constraints.py": 13,
     "test_pg_fixture_guard.py": 3,
+    "test_pg_integration_schema.py": 131,
     "test_pg_locking.py": 36,
     "test_pg_locking_order.py": 28,
     "test_pg_masters.py": 82,
