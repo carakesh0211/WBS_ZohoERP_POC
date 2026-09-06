@@ -1055,3 +1055,57 @@ correct on the strength of a suite that has never touched a database — which i
 the precise mistake being closed.
 
 **Approved by:** Rakesh Kumar, engagement lead (Wave 5 integration pass).
+
+## 2026-09-06 — `test_has_open_reconciliation_exceptions_is_vacuously_false_without_the_table`
+
+**Change:** renamed to `test_the_reconciliation_gate_refuses_when_it_cannot_be_evaluated`,
+and it now asserts a raise where it asserted `False`.
+
+**Reason.** The test pinned the defect. Its brief asked for a check "trivially
+satisfied now and correct when the table lands", and the implementation
+returned `False` when `reconciliation_exception` was absent. But `False` is not
+a neutral answer from that function — `transition_period` reads it as "nothing
+blocks this close", and the `and` short-circuits. The table exists in no
+migration (010 records that in its own header), so §11.8's gate could never
+fire on the shipped schema. The check was not trivially satisfied; it was
+trivially **bypassed**.
+
+Found by adversarial review, and confirmed by probe against the real function.
+
+**Not a weakening — three assertions where there was one.** The replacement
+requires the refusal to name the missing table (an operator cannot act
+otherwise) and to say the answer is UNKNOWN rather than implying no exceptions
+exist — those are different facts and only one is true. A **new** companion,
+`test_no_falsy_return_can_reach_the_close_gate_for_a_missing_table`, fails on
+ANY return value, so a later "simplification" back to `return False` cannot
+silently restore the fail-open.
+
+Migration `011_reconciliation_exception.sql` creates the table, so the refusal
+is the transient state between "cannot be evaluated" and "evaluated", not a
+permanent block.
+
+**Approved by:** engagement lead, Wave 5 integration pass.
+
+## 2026-09-06 — `FakeLine` reshaped, and `test_the_gate_catches_sql_held_in_a_variable`
+
+**`FakeLine`** carried the docstring "in the shape `sweeps.normalise` reads",
+and its fields were named to match what the READER looked for. That is the
+property that makes a double worthless: it agrees with the code under test by
+construction, so every sweeps test asserted the reader reads what the reader
+expects, and the join between the adapters' output and the sweeps' input was
+never tested.
+
+It hid a money defect. The reader searched for six names `LineDTO` does not
+have, so a receive line carrying `purchase_order_line_external_id='PO-LINE-77'`
+and `line_total_paise=25000000` read back as `None` and `0` — every line
+quarantined as unattributed even where the tenant HAD populated the linkage,
+and the quarantine bucket accumulating zero while its docstring promised "full
+value". Verified by probe against the real DTO and the real reader.
+
+`FakeLine`'s fields are now `LineDTO`'s. Call sites moved with them. **Not a
+weakening:** the same assertions now run against the shape production really
+produces. A new file, `tests/test_integration_dto_reader_contract.py`, tests
+the JOIN with no double anywhere, and asserts a double may be PARTIAL but may
+never invent a name the real object lacks.
+
+**Approved by:** engagement lead, Wave 5 integration pass.

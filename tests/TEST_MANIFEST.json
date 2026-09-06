@@ -1936,6 +1936,24 @@
         "body_sha": "b7bc2cf7cfd58084"
       }
     },
+    "test_integration_dto_reader_contract.py": {
+      "test_the_reader_finds_the_po_line_linkage_on_a_real_dto": {
+        "assertions": 1,
+        "body_sha": "af2dfcbe9856f16a"
+      },
+      "test_the_reader_finds_the_full_value_on_a_real_dto": {
+        "assertions": 2,
+        "body_sha": "92f8ad804a347abd"
+      },
+      "test_no_candidate_name_list_can_miss_every_real_dto_field": {
+        "assertions": 1,
+        "body_sha": "9bb608c934ad1871"
+      },
+      "test_the_double_is_not_shaped_to_the_reader": {
+        "assertions": 1,
+        "body_sha": "9f2aff6c8bfbbc97"
+      }
+    },
     "test_integration_jobs.py": {
       "test_the_soft_deadline_is_eighty_percent_of_the_function_ceiling": {
         "assertions": 3,
@@ -2174,6 +2192,10 @@
       "test_every_column_named_in_sql_exists_in_the_migration": {
         "assertions": 1,
         "body_sha": "dbdbea16a2fb2113"
+      },
+      "test_no_statement_sets_or_filters_on_a_column_no_table_defines": {
+        "assertions": 1,
+        "body_sha": "fd68361824134411"
       }
     },
     "test_integration_statuses.py": {
@@ -2555,11 +2577,11 @@
       },
       "test_an_unattributed_receive_line_is_quarantined_at_full_value": {
         "assertions": 6,
-        "body_sha": "70e26ddb13442398"
+        "body_sha": "6651310a06e979e8"
       },
       "test_a_receive_line_with_no_line_identifier_is_quarantined_never_guessed": {
         "assertions": 2,
-        "body_sha": "b13893645515c6e4"
+        "body_sha": "21ab13a270e6ad62"
       },
       "test_re_walking_the_same_pos_does_not_inflate_the_unattributed_bucket": {
         "assertions": 2,
@@ -2683,7 +2705,7 @@
       },
       "test_two_identifierless_lines_on_one_receive_are_two_exceptions": {
         "assertions": 3,
-        "body_sha": "c473328e34fce2fb"
+        "body_sha": "3b315439e2672ebc"
       },
       "test_a_recurring_sweep_keeps_its_cursor_across_ticks": {
         "assertions": 5,
@@ -3400,6 +3422,12 @@
       "test_no_function_references_a_name_bound_in_no_scope": {
         "assertions": 1,
         "body_sha": "26e0e3a1ae7e83eb"
+      }
+    },
+    "test_no_version_sensitive_defaults.py": {
+      "test_no_dataclass_default_would_be_rejected_by_python_311": {
+        "assertions": 1,
+        "body_sha": "ac5b35c0a3fd245e"
       }
     },
     "test_observability.py": {
@@ -5991,9 +6019,13 @@
         "assertions": 1,
         "body_sha": "0509776c61d1c1c8"
       },
-      "test_has_open_reconciliation_exceptions_is_vacuously_false_without_the_table": {
-        "assertions": 2,
-        "body_sha": "35fd14132519a1f9"
+      "test_the_reconciliation_gate_refuses_when_it_cannot_be_evaluated": {
+        "assertions": 4,
+        "body_sha": "9d2f930352d30597"
+      },
+      "test_no_falsy_return_can_reach_the_close_gate_for_a_missing_table": {
+        "assertions": 0,
+        "body_sha": "99a9ecf872593b7c"
       },
       "test_transition_future_to_open_succeeds": {
         "assertions": 2,
@@ -7090,10 +7122,11 @@
     "test_financial_controls.py": 61,
     "test_integration_adapter_contract.py": 39,
     "test_integration_capabilities.py": 19,
+    "test_integration_dto_reader_contract.py": 4,
     "test_integration_jobs.py": 35,
     "test_integration_no_hardcoded_endpoints.py": 6,
     "test_integration_product_isolation.py": 16,
-    "test_integration_sql_matches_schema.py": 1,
+    "test_integration_sql_matches_schema.py": 2,
     "test_integration_statuses.py": 41,
     "test_integration_store.py": 47,
     "test_integration_sweeps.py": 40,
@@ -7107,6 +7140,7 @@
     "test_money_sql_discipline.py": 4,
     "test_negative_access_matrix.py": 9,
     "test_no_undefined_names.py": 5,
+    "test_no_version_sensitive_defaults.py": 1,
     "test_observability.py": 40,
     "test_one_rate_budget_implementation.py": 6,
     "test_outbound_chaos.py": 16,
@@ -7129,7 +7163,7 @@
     "test_pg_masters.py": 32,
     "test_pg_migrations_runner.py": 11,
     "test_pg_period_concurrency.py": 9,
-    "test_pg_periods.py": 14,
+    "test_pg_periods.py": 15,
     "test_pg_principal_scope.py": 37,
     "test_pg_repo.py": 23,
     "test_pg_rls.py": 18,
@@ -7163,10 +7197,11 @@
     "test_financial_controls.py": 159,
     "test_integration_adapter_contract.py": 97,
     "test_integration_capabilities.py": 56,
+    "test_integration_dto_reader_contract.py": 5,
     "test_integration_jobs.py": 96,
     "test_integration_no_hardcoded_endpoints.py": 8,
     "test_integration_product_isolation.py": 36,
-    "test_integration_sql_matches_schema.py": 1,
+    "test_integration_sql_matches_schema.py": 2,
     "test_integration_statuses.py": 94,
     "test_integration_store.py": 92,
     "test_integration_sweeps.py": 110,
@@ -7180,6 +7215,7 @@
     "test_money_sql_discipline.py": 4,
     "test_negative_access_matrix.py": 29,
     "test_no_undefined_names.py": 7,
+    "test_no_version_sensitive_defaults.py": 1,
     "test_observability.py": 77,
     "test_one_rate_budget_implementation.py": 9,
     "test_outbound_chaos.py": 75,
@@ -7202,7 +7238,7 @@
     "test_pg_masters.py": 82,
     "test_pg_migrations_runner.py": 32,
     "test_pg_period_concurrency.py": 28,
-    "test_pg_periods.py": 35,
+    "test_pg_periods.py": 37,
     "test_pg_principal_scope.py": 83,
     "test_pg_repo.py": 37,
     "test_pg_rls.py": 34,

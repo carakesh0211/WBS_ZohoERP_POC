@@ -136,12 +136,45 @@ def _table_exists(session: Session, table_name: str) -> bool:
     return row is not None
 
 
+class ReconciliationGateUnavailable(RuntimeError):
+    """The open-exception check could not be evaluated, so the close is refused.
+
+    Raised rather than returning a boolean, because there is no boolean that
+    is honest here. See :func:`_has_open_reconciliation_exceptions`.
+    """
+
+
 def _has_open_reconciliation_exceptions(session: Session, entity_id: str) -> bool:
-    """True only if ``reconciliation_exception`` exists AND carries an Open
-    row scoped to ``entity_id``. Vacuously False while the table does not
-    exist -- see the module docstring."""
+    """True if ``reconciliation_exception`` carries an Open row for `entity_id`.
+
+    RAISES when the table is absent. It does not return False.
+
+    It used to, with the docstring "vacuously False while the table does not
+    exist". That reasoning is the defect: `False` is not a neutral answer from
+    this function, it is the PERMISSIVE one. `transition_period` reads it as
+    "nothing blocks this close", and `and` short-circuits, so the whole gate
+    became unreachable. The table exists in no migration -- `010_integration.sql`
+    records that at its own line 196 -- so on the shipped schema this control
+    could never fire even once.
+
+    Section 11.8 is explicit that an Open exception blocks the close, and the
+    scenario it exists for is precisely this one: a sweep raises
+    GRN_LINE_UNATTRIBUTED for a real sum, there is nowhere to write it, finance
+    closes the period, and CWIP publishes a number nobody can stand behind.
+
+    A control that cannot be evaluated must refuse, not proceed.
+    `integration/outbound.py` already does exactly this -- it raises
+    `DetectiveControlUnavailable` rather than reporting zero unsanctioned
+    commitments -- and the two now agree.
+    """
     if not _table_exists(session, _RECONCILIATION_EXCEPTION_TABLE):
-        return False
+        raise ReconciliationGateUnavailable(
+            f"cannot close: {_RECONCILIATION_EXCEPTION_TABLE!r} does not exist, "
+            f"so whether this entity has open reconciliation exceptions is "
+            f"UNKNOWN. Section 11.8 blocks a close on an open exception, and a "
+            f"gate that cannot be evaluated must refuse rather than permit. "
+            f"Create the table (it is referenced by pg/periods.py and by the "
+            f"integration sweeps) and re-run the close.")
     row = session.fetchone(  # scope-exempt: table name is a module constant, and entity_id comes from a period already scope-gated by transition_period
         f"SELECT 1 FROM {_RECONCILIATION_EXCEPTION_TABLE} "  # noqa: S608 -- fixed name, existence checked above
         f"WHERE entity_id = %s AND status = 'Open' LIMIT 1",

@@ -311,6 +311,23 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
              "carries `mode`, so an unscoped read would enumerate which "
              "entities have a LIVE connection."),
     ScopedTable(
+        table="reconciliation_exception", dimensions=("entity", "project"),
+        reach="direct",
+        path="reconciliation_exception.entity_id / .project_id",
+        status="protected_pending_registry",
+        migration="011_reconciliation_exception.sql",
+        note="Both dimensions are columns on the row, so the reach is direct "
+             "rather than joined. It is scoped because an exception NAMES a "
+             "discrepancy -- which purchase order, which receive line, and "
+             "the two paise figures that disagree -- so an unscoped read "
+             "hands one entity a description of another's commitments and "
+             "the exact amount by which their books do not tie out. The "
+             "dimensions are nullable on purpose (an unsanctioned commitment "
+             "can be discovered on a PO we hold no local record of), and a "
+             "NULL dimension is unrestricted-by-that-dimension, which is "
+             "correct here: an exception nobody can attribute must stay "
+             "visible to whoever can resolve it."),
+    ScopedTable(
         table="integration_inbox", dimensions=("entity",), reach="joined",
         path="integration_inbox.connection_id -> "
              "integration_connection.entity_id",

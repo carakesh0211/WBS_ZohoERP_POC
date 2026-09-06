@@ -729,7 +729,7 @@ WITH claimable AS (
      WHERE kind = %(kind)s
        AND state = ANY(%(claimable_states)s)
        AND (locked_until IS NULL OR locked_until <= %(now)s)
-       AND (next_attempt_at IS NULL OR next_attempt_at <= %(now)s)
+       AND (run_after IS NULL OR run_after <= %(now)s)
      ORDER BY created_at
      FOR UPDATE SKIP LOCKED
      LIMIT %(limit)s
@@ -738,6 +738,13 @@ UPDATE job AS j
    SET state = %(claimed_state)s,
        locked_until = %(lease_until)s,
        soft_deadline_at = %(soft_deadline_at)s,
+       -- locked_by and started_at are NOT optional. ck_job_claimed_is_bounded
+       -- requires all four together, and a CLAIMED row with no owner and no
+       -- start time describes a lease nobody holds -- exactly the state that
+       -- constraint exists to forbid. Omitting them raised 23514 on EVERY
+       -- claim, so no job could ever be claimed.
+       locked_by = %(locked_by)s,
+       started_at = COALESCE(j.started_at, %(now)s),
        updated_at = %(now)s
   FROM claimable AS c
  WHERE j.job_id = c.job_id
@@ -767,7 +774,7 @@ FINISH_JOB_SQL = """
 UPDATE job
    SET checkpoint = %(checkpoint)s,
        state = %(state)s,
-       note = %(note)s,
+       last_error = %(note)s,
        locked_until = NULL,
        finished_at = %(now)s,
        updated_at = %(now)s
@@ -778,9 +785,9 @@ RETURNING job_id
 
 RECORD_EVENT_SQL = """
 INSERT INTO integration_event
-       (event_id, connection_id, correlation_id, kind, detail, at)
-SELECT %(event_id)s, %(connection_id)s, %(correlation_id)s, %(kind)s,
-       %(detail)s, %(now)s
+       (connection_id, correlation_id, kind, detail, at, actor)
+SELECT %(connection_id)s, %(correlation_id)s, %(kind)s,
+       %(detail)s, %(now)s, %(actor)s
  WHERE {scope}
 RETURNING event_id
 """
@@ -798,7 +805,7 @@ class PostgresJobStore:
     and an explicit four-dimension waiver -- see :data:`JOB_SCOPE_COLUMNS`.
 
     Columns this depends on beyond the C2 minimum, reported to stream 2 rather
-    than assumed silently: ``job.locked_until``, ``job.next_attempt_at``,
+    than assumed silently: ``job.locked_until``, ``job.run_after``,
     ``job.created_at``, ``job.updated_at``, ``job.finished_at``, ``job.note``,
     ``job.connection_id``.
     """
@@ -814,7 +821,17 @@ class PostgresJobStore:
         return repo
 
     def claim_job(self, *, kind: str, now: datetime, lease_seconds: int,
-                  soft_deadline_at: datetime, limit: int = 1) -> ClaimedJob | None:
+                  soft_deadline_at: datetime, limit: int = 1,
+                  locked_by: str | None = None) -> ClaimedJob | None:
+        # `locked_by` identifies the lease HOLDER, and the database requires it:
+        # ck_job_claimed_is_bounded demands a non-blank owner alongside
+        # locked_until, soft_deadline_at and started_at. It defaults to the
+        # session's principal rather than to a constant, because "who holds
+        # this lease" is the question an operator asks about a stuck job, and
+        # a constant answers it with the name of the code instead of the name
+        # of the worker.
+        holder = locked_by or getattr(
+            getattr(self.session, "scope", None), "user_id", None) or "SVC-JOBS"
         rows = self._repo().query(
             self.session, CLAIM_JOB_SQL,
             {"kind": kind,
@@ -823,6 +840,7 @@ class PostgresJobStore:
              "now": now,
              "lease_until": now + timedelta(seconds=lease_seconds),
              "soft_deadline_at": soft_deadline_at,
+             "locked_by": holder,
              "limit": limit},
             columns=JOB_SCOPE_COLUMNS)
         if not rows:
@@ -858,9 +876,17 @@ class PostgresJobStore:
                      detail: Mapping[str, Any]) -> None:
         self._repo().query(
             self.session, RECORD_EVENT_SQL,
-            {"event_id": f"EVT-{uuid.uuid4()}", "connection_id": connection_id,
+            # No `event_id`: `integration_event.event_id` is
+            # `bigint GENERATED ALWAYS AS IDENTITY`, so supplying one raises
+            # 428C9 unless the statement says OVERRIDING SYSTEM VALUE -- and
+            # it should not, because the database issuing the id is the point.
+            # `actor` is NOT NULL with no default and was omitted entirely
+            # (23502), so the event trail could not record a single row.
+            {"connection_id": connection_id,
              "correlation_id": correlation_id, "kind": kind,
              "detail": json.dumps(dict(detail)),
+             "actor": (getattr(getattr(self.session, "scope", None),
+                               "user_id", None) or "SVC-JOBS"),
              "now": datetime.now(timezone.utc)},
             columns=JOB_SCOPE_COLUMNS)
 

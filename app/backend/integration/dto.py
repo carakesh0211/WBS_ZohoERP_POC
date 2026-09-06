@@ -29,7 +29,7 @@ its origin.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from types import MappingProxyType
 from typing import Any, Generic, Literal, Mapping, TypeVar
@@ -67,6 +67,24 @@ class DtoError(ValueError):
 
 
 # ============================================================ value conversion
+#: An immutable empty mapping, built per instance.
+#:
+#: These were `= MappingProxyType({})` as direct dataclass defaults. Python
+#: 3.11's dataclasses reject that: it decides mutability by hashability, and a
+#: mappingproxy is unhashable, so every one of these raised
+#: `ValueError: mutable default ... use default_factory` AT IMPORT.
+#:
+#: Nothing local caught it because this machine runs 3.14, where the check was
+#: relaxed. CI runs 3.11 -- which the setup instructions specify -- so the
+#: ENTIRE integration package failed to import there and every integration
+#: test errored during collection. The package had never once been imported in
+#: CI. Same class as the `ast.dump` instability this project hit before:
+#: a stdlib behaviour that differs across versions, hidden by a version gap
+#: between the dev machine and the build.
+def _EMPTY_MAPPING() -> Mapping[str, Any]:
+    return MappingProxyType({})
+
+
 def paise(value: Any, *, field: str, allow_missing: bool = False) -> int:
     """A source monetary value as integer paise.
 
@@ -216,8 +234,8 @@ class LineDTO:
     tax_paise: int
     item_external_id: str | None = None
     purchase_order_line_external_id: str | None = None
-    dimensions: Mapping[str, Any] = MappingProxyType({})
-    raw: Mapping[str, Any] = MappingProxyType({})
+    dimensions: Mapping[str, Any] = field(default_factory=_EMPTY_MAPPING)
+    raw: Mapping[str, Any] = field(default_factory=_EMPTY_MAPPING)
 
 
 @dataclass(frozen=True)
@@ -245,7 +263,7 @@ class BillDTO:
     purchase_order_external_ids: tuple[str, ...] = ()
     lines: tuple[LineDTO, ...] = ()
     lines_hydrated: bool = False
-    raw: Mapping[str, Any] = MappingProxyType({})
+    raw: Mapping[str, Any] = field(default_factory=_EMPTY_MAPPING)
 
 
 @dataclass(frozen=True)
@@ -272,7 +290,7 @@ class PurchaseOrderDTO:
     lines: tuple[LineDTO, ...] = ()
     lines_hydrated: bool = False
     dedupe_key: str | None = None
-    raw: Mapping[str, Any] = MappingProxyType({})
+    raw: Mapping[str, Any] = field(default_factory=_EMPTY_MAPPING)
 
 
 @dataclass(frozen=True)
@@ -286,4 +304,4 @@ class ReceiveDTO:
     purchase_order_external_id: str | None
     external_status_raw: str
     lines: tuple[LineDTO, ...] = ()
-    raw: Mapping[str, Any] = MappingProxyType({})
+    raw: Mapping[str, Any] = field(default_factory=_EMPTY_MAPPING)

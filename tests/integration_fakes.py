@@ -93,10 +93,25 @@ class CountingBudget:
 
 @dataclass(frozen=True)
 class FakeLine:
-    """One receive or bill line, in the shape `sweeps.normalise` reads."""
+    """One receive or bill line, in the shape the ADAPTERS EMIT.
 
-    line_item_id: str | None
-    amount_paise: int
+    The field names are `LineDTO`'s, deliberately. This docstring used to say
+    "in the shape `sweeps.normalise` reads", and the fields were named to match
+    what the reader looked for -- so every sweeps test asserted that the reader
+    reads what the reader expects, and the join between the adapters' output
+    and the sweeps' input was never tested at all.
+
+    It hid a real defect: the reader searched for `line_item_id` and
+    `amount_paise`, `LineDTO` carries `purchase_order_line_external_id` and
+    `line_total_paise`, and against a real line the attribution resolved to
+    `None` and `0` -- every receive line quarantined, at zero value.
+
+    A double may be PARTIAL. It may not invent a name the real object lacks.
+    `tests/test_integration_dto_reader_contract.py` enforces that.
+    """
+
+    purchase_order_line_external_id: str | None
+    line_total_paise: int
     quantity: int = 1
 
 
@@ -137,7 +152,7 @@ def bill(n: int, *, modified: datetime, total_paise: int = 100_000,
         document_number=number if number is not None else f"BILL-{n:04d}",
         document_date=modified.date(), status="open", total_paise=total_paise,
         entity_id=entity_id, project_id=project_id,
-        lines=(FakeLine(line_item_id=f"BL-{n}", amount_paise=total_paise),)
+        lines=(FakeLine(purchase_order_line_external_id=f"BL-{n}", line_total_paise=total_paise),)
         if with_lines else ())
 
 

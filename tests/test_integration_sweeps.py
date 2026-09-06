@@ -67,7 +67,7 @@ def _po_estate(clock, *, pos=3, receives_each=1, resolvable=True,
             project_id="PRJ-1"))
         made = []
         for r in range(receives_each):
-            line = FakeLine(line_item_id=f"POL-{n}", amount_paise=250_000)
+            line = FakeLine(purchase_order_line_external_id=f"POL-{n}", line_total_paise=250_000)
             made.append(receive(n * 10 + r, lines=[line]))
             if resolvable:
                 store.po_lines[(external, f"POL-{n}")] = f"POLINE-{n}"
@@ -175,8 +175,8 @@ def test_an_unattributed_receive_line_is_quarantined_at_full_value():
         project_id="PRJ-1"))
     store.po_lines[("PO-EXT-1", "GOOD")] = "POLINE-GOOD"
     adapter = FakeAdapter(clock, receives={"PO-EXT-1": [receive(
-        1, lines=[FakeLine(line_item_id="GOOD", amount_paise=300_000),
-                  FakeLine(line_item_id="ORPHAN", amount_paise=700_000)])]},
+        1, lines=[FakeLine(purchase_order_line_external_id="GOOD", line_total_paise=300_000),
+                  FakeLine(purchase_order_line_external_id="ORPHAN", line_total_paise=700_000)])]},
         seconds_per_call=1)
     job = sweeps.SweepPoAnchored(adapter, store, store.connection_id)
     _run(job, store, clock)
@@ -204,7 +204,7 @@ def test_a_receive_line_with_no_line_identifier_is_quarantined_never_guessed():
         project_id="PRJ-1"))
     store.po_lines[("PO-EXT-1", "POL-1")] = "POLINE-1"   # the only candidate
     adapter = FakeAdapter(clock, receives={"PO-EXT-1": [receive(
-        1, lines=[FakeLine(line_item_id=None, amount_paise=123_456)])]},
+        1, lines=[FakeLine(purchase_order_line_external_id=None, line_total_paise=123_456)])]},
         seconds_per_call=1)
     _run(sweeps.SweepPoAnchored(adapter, store, store.connection_id), store,
          clock)
@@ -717,8 +717,8 @@ def test_two_identifierless_lines_on_one_receive_are_two_exceptions():
         po_id="PO-1", external_id="PO-EXT-1", entity_id="ENT-1",
         project_id="PRJ-1"))
     adapter = FakeAdapter(clock, receives={"PO-EXT-1": [receive(
-        1, lines=[FakeLine(line_item_id=None, amount_paise=100_000),
-                  FakeLine(line_item_id=None, amount_paise=250_000)])]},
+        1, lines=[FakeLine(purchase_order_line_external_id=None, line_total_paise=100_000),
+                  FakeLine(purchase_order_line_external_id=None, line_total_paise=250_000)])]},
         seconds_per_call=1)
     _run(sweeps.SweepPoAnchored(adapter, store, store.connection_id), store,
          clock)

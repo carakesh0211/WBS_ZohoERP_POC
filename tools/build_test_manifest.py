@@ -81,6 +81,12 @@ POST_BASELINE_FILES = {
     # Wave 5 integration pass: the gate that reads the package's SQL against
     # migration 010's actual columns. Post-baseline like every Wave 4/5 file.
     "test_integration_sql_matches_schema.py",
+    # Wave 5 integration pass, lead: the DTO/reader join (a double had been
+    # shaped to the reader, hiding a money defect) and the 3.11 dataclass
+    # default check (the package could not import in CI at all).
+    "test_integration_dto_reader_contract.py",
+    "test_no_version_sensitive_defaults.py",
+
     # --- Wave 5 stream 1 (integration): ONE rate-budget implementation -----
     # Wave 5 shipped THREE implementations of the same reservation; two could
     # not execute, and every unit test over both passed because both talked to

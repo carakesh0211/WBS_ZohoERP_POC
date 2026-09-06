@@ -160,3 +160,77 @@ def test_every_column_named_in_sql_exists_in_the_migration(module: Path) -> None
         f"unit test over this module passes, because it talks to an in-memory "
         f"double -- the SQL is a string until something executes it:\n  "
         + "\n  ".join(dict.fromkeys(problems)))
+
+
+def _all_known_columns(tables: dict[str, set[str]]) -> set[str]:
+    """Every column name defined anywhere in the migration."""
+    known: set[str] = set()
+    for columns in tables.values():
+        known |= columns
+    return known
+
+
+def _unmarked_modules() -> list[Path]:
+    """Plain paths, with no xfail markers.
+
+    `_modules()` marks `throttle.py` xfail for the column-list check it was
+    written for. Reusing that list here applied the marker to a DIFFERENT
+    assertion, so a module that passes this check reports XPASS(strict) and
+    fails for the wrong reason. A waiver must name the claim it waives.
+    """
+    return sorted(p for p in PACKAGE.glob("*.py") if not p.name.startswith("__"))
+
+
+@pytest.mark.parametrize("module", _unmarked_modules(), ids=lambda p: p.name)
+def test_no_statement_sets_or_filters_on_a_column_no_table_defines(module: Path) -> None:
+    """The half the INSERT check does not reach: SET and WHERE columns.
+
+    Two of the five execution-fatal defects an adversarial review found in
+    `jobs.py` were exactly this -- `CLAIM_JOB_SQL` filtering on
+    `next_attempt_at` and `FINISH_JOB_SQL` setting `note`, neither of which
+    `job` has. Both are plain missing column names, the class the INSERT check
+    claims to close, sitting in positions it never looked at.
+
+    DELIBERATELY CONSERVATIVE. A name is reported only when NO table in the
+    migration defines it, so a legitimate cross-table reference this crude
+    parser cannot resolve stays quiet. That under-reports on purpose: a noisy
+    gate is a gate somebody switches off, and every statement here is
+    multi-table.
+    """
+    tables = _tables()
+    if not tables:
+        pytest.skip("no CREATE TABLE found in the migration")
+    known = _all_known_columns(tables)
+    problems: list[str] = []
+
+    for statement in _sql_literals(module):
+        # Only statements that touch a table this migration defines.
+        touched = {t.lower() for t in re.findall(
+            r"(?:INSERT INTO|UPDATE|FROM|JOIN)\s+(\w+)", statement, re.I)}
+        if not (touched & set(tables)):
+            continue
+
+        candidates: list[tuple[str, str]] = []
+        for chunk in re.findall(r"\bSET\b(.*?)(?:\bWHERE\b|\bRETURNING\b|$)",
+                                statement, re.I | re.S):
+            for assign in chunk.split(","):
+                name = assign.split("=")[0].strip().split(".")[-1].strip().lower()
+                if name:
+                    candidates.append((name, "SET"))
+        for chunk in re.findall(
+                r"\b(?:WHERE|AND|OR)\s+([a-z_][a-z0-9_]*)\s*(?:=|<|>|<=|>=|<>|!=|IS\b|IN\b)",
+                statement, re.I):
+            candidates.append((chunk.strip().lower(), "WHERE"))
+
+        for name, position in candidates:
+            if (not name or name in _NOT_COLUMNS or not name.isidentifier()
+                    or name in known):
+                continue
+            problems.append(f"{name!r} in a {position} position is defined by "
+                            f"no table in the migration")
+
+    assert not problems, (
+        f"{module.name} filters or assigns on names migration 010 defines "
+        f"nowhere. PostgreSQL raises 42703 the first time the statement runs, "
+        f"and no in-memory double can tell you:\n  "
+        + "\n  ".join(dict.fromkeys(problems)))

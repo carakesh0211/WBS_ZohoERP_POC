@@ -785,9 +785,14 @@ class SweepPoAnchored:
         project-level bucket, visible on SCR-16 and SCR-27, and blocking
         capitalisation.
         """
+        # `purchase_order_line_external_id` FIRST, because that is the field
+        # `LineDTO` actually carries. The other spellings are kept only for a
+        # raw mapping that has not been through the adapter yet; they are
+        # aliases for foreign shapes, NOT for our own DTO, and reading them
+        # first is what made this read `None` on every well-formed line.
         line_external_id = _first_attr(
-            line, ("po_line_external_id", "line_item_id", "purchaseorder_item_id",
-                   "line_id"))
+            line, ("purchase_order_line_external_id", "po_line_external_id",
+                   "line_item_id", "purchaseorder_item_id", "line_id"))
         # The exception's identity falls back to the line's ORDINAL when the
         # source gave it no identifier -- which on ERP is the expected case,
         # not the exotic one. Keying two identifierless lines of the same
@@ -795,7 +800,11 @@ class SweepPoAnchored:
         # and the second line's value would vanish from the bucket: a silent
         # drop, arriving through the very code that exists to prevent one.
         line_key = str(line_external_id) if line_external_id else f"#{index}"
-        amount_paise = _first_attr(line, ("amount_paise", "total_paise"), 0) or 0
+        # `line_total_paise` FIRST, for the same reason. Reading a name the
+        # DTO does not have returned the default 0, so the bucket this whole
+        # branch exists to fill accumulated nothing while reporting success.
+        amount_paise = _first_attr(
+            line, ("line_total_paise", "amount_paise", "total_paise"), 0) or 0
         po_line_id = self.store.resolve_po_line(
             po_external_id=po.external_id,
             line_external_id=str(line_external_id) if line_external_id else None)

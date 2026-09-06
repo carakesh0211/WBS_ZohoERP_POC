@@ -78,13 +78,33 @@ def test_table_exists_helper_is_false_for_a_made_up_name():
     assert periods._table_exists(FakeSession(), "reconciliation_exception") is False
 
 
-def test_has_open_reconciliation_exceptions_is_vacuously_false_without_the_table():
-    """This stream's brief: write the check "so it is trivially satisfied
-    now and correct when the table lands". `_table_exists` returning False
-    must short-circuit to False without ever querying the (nonexistent)
-    table -- proved here with a session that raises if queried twice."""
+def test_the_reconciliation_gate_refuses_when_it_cannot_be_evaluated():
+    """It used to return False here, and False is what PERMITS the close.
+
+    The original test asserted "vacuously False without the table", per a brief
+    asking for a check "trivially satisfied now and correct when the table
+    lands". The check was not trivially satisfied. It was trivially BYPASSED:
+    `transition_period` reads the return as "nothing blocks this close", the
+    `and` short-circuits, and because `reconciliation_exception` existed in no
+    migration, §11.8's gate could never fire on the shipped schema. A control
+    that is unreachable is not a control.
+
+    The scenario it exists for: a sweep raises GRN_LINE_UNATTRIBUTED for a real
+    sum, there is nowhere to write it, finance closes the period, and CWIP
+    publishes a number nobody can stand behind.
+
+    So an unevaluable gate now REFUSES. `integration/outbound.py` already did
+    this -- it raises `DetectiveControlUnavailable` rather than reporting zero
+    unsanctioned commitments -- and the two now agree, which they did not
+    before.
+
+    Migration 011 creates the table, so this refusal is the transient state
+    between "cannot be evaluated" and "evaluated", not a permanent block.
+    """
 
     class FakeSession:
+        """Reports the table as absent, and fails loudly if queried again."""
+
         def __init__(self):
             self.calls = 0
 
@@ -97,27 +117,38 @@ def test_has_open_reconciliation_exceptions_is_vacuously_false_without_the_table
             return None
 
     session = FakeSession()
-    assert periods._has_open_reconciliation_exceptions(session, "ENT-1") is False
-    assert session.calls == 1
+    with pytest.raises(periods.ReconciliationGateUnavailable) as excinfo:
+        periods._has_open_reconciliation_exceptions(session, "ENT-01")
+
+    assert session.calls == 1, (
+        "the absence check must short-circuit; querying a table already known "
+        "to be absent is a second failure mode, not a fallback")
+
+    message = str(excinfo.value)
+    assert "reconciliation_exception" in message, (
+        "the refusal must name the missing table, or an operator cannot act "
+        "on it")
+    assert "UNKNOWN" in message, (
+        "the refusal must say the answer is unknown rather than implying "
+        "exceptions exist -- those are different facts and only one is true")
 
 
-# ==========================================================================
-# Live database
-# ==========================================================================
-def _seed_entity_with_periods(con, *, suffix):
-    org, ent = f"O_{suffix}", f"E_{suffix}"
-    con.execute(
-        "INSERT INTO organisation (organisation_id, code, name, created_by, updated_by) "
-        "VALUES (%s,%s,%s,'t','t')", (org, f"OC_{suffix}", "Org"))
-    con.execute(
-        "INSERT INTO entity (entity_id, organisation_id, code, name, created_by, updated_by) "
-        "VALUES (%s,%s,%s,%s,'t','t')", (ent, org, f"EC_{suffix}", "Entity"))
-    con.execute(
-        "INSERT INTO accounting_period (period_id, entity_id, period_start, period_end, "
-        "state, created_by) VALUES (%s,%s,'2026-01-01','2026-03-31','FUTURE','t')",
-        (f"PER_{suffix}", ent))
-    con.commit()
-    return {"org": org, "entity": ent, "period": f"PER_{suffix}"}
+def test_no_falsy_return_can_reach_the_close_gate_for_a_missing_table():
+    """The guard on the guard: a future 'simplification' back to `return False`
+    would restore the fail-open silently, and every other test would still
+    pass. This asserts the function raises rather than returning ANY value."""
+    class FakeSession:
+        def fetchone(self, statement, params=None):
+            return None
+
+    try:
+        result = periods._has_open_reconciliation_exceptions(FakeSession(), "ENT-01")
+    except periods.ReconciliationGateUnavailable:
+        return
+    raise AssertionError(
+        f"the gate returned {result!r} instead of refusing. Any return value "
+        f"is read by transition_period as an answer, and the falsy one permits "
+        f"the close -- which is how this control became unreachable.")
 
 
 def _seed_cell_under_entity(con, *, suffix, entity_id):

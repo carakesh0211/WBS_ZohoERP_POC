@@ -109,7 +109,25 @@ NO_ROW_SCOPE = {
 }
 
 #: Tables carrying, or reachable from, a row-level scope dimension.
+#:
+#: THE WAVE 5 TABLES WERE MISSING FROM THIS SET UNTIL AN ADVERSARIAL REVIEW
+#: PLANTED AN UNSCOPED READ ON `integration_circuit` AND THE GATE REPORTED
+#: CLEAN. Commit 9985ccd widened `_modules()` to walk `app/backend/integration/`
+#: precisely so that package could not escape -- and then the gate walked it
+#: while being blind to its tables, which is the widening proving less than it
+#: appeared to. All eight are declared scope-bearing by migration 010 itself,
+#: which gives each a `capex_scope_permits(...)` RLS policy, and `job` carries
+#: literal `entity_id`/`project_id` columns.
+#:
+#: Adding them found no live defect. That is the point: a gate is worth having
+#: before something exploits the hole, not after.
 SCOPABLE = {
+    # Migration 010, all eight carrying a capex_scope_permits RLS policy.
+    "integration_connection", "integration_inbox", "integration_outbox",
+    "integration_watermark", "integration_rate_budget", "integration_event",
+    "integration_circuit", "job",
+    # Migration 011.
+    "reconciliation_exception",
     "entity", "division", "branch", "zone", "department", "plant", "location",
     "project", "wbs_element", "budget_control_cell", "budget_ledger_cell",
     "budget_line", "budget_revision", "budget_transfer", "budget_version",
