@@ -1552,26 +1552,47 @@ def test_live_reserve_calls_charges_both_windows_or_neither(
         "INSERT INTO integration_connection (connection_id, entity_id, product,"
         " dc, organization_id, connector_name, per_minute_call_ceiling,"
         " daily_call_ceiling, created_by, updated_by) VALUES ('CONN-A',"
-        " 'ENT-A', 'ERP', 'in', 'ORG-A', 'zoho', 100, 20, 'T', 'T')")
+        " 'ENT-A', 'ERP', 'in', 'ORG-A', 'zoho', 20, 20, 'T', 'T')")
     con.commit()
 
-    # POLLING gets 60% of the minute (60) and 60% of the day (12).
+    # POLLING gets 60% of each window: 12 of the minute's 20, 12 of the day's.
+    #
+    # THE DAY IS EXHAUSTED IN THE FIRST MINUTE, ON PURPOSE. The constraint
+    # `daily_call_ceiling >= per_minute_call_ceiling` means a FRESH minute can
+    # never have a smaller ceiling than the day, so with both windows fresh the
+    # minute always binds first or ties. A day that refuses what the minute
+    # would allow is only reachable once earlier minutes have spent the day --
+    # which is also the only way it arises in production, where a backfill
+    # consumes the daily quota by mid-morning and every later minute is
+    # individually well within its own limit.
     database, scope = _scoped_session(pg_url, pg_disposable_db_name, {"ENT-A"})
-    moment = datetime(2026, 9, 6, 14, 23, tzinfo=timezone.utc)
+    minute_one = datetime(2026, 9, 6, 14, 23, tzinfo=timezone.utc)
+    minute_two = datetime(2026, 9, 6, 14, 24, tzinfo=timezone.utc)
     try:
         with database.session(scope) as session:
             granted = store.reserve_calls(
                 session, connection_id="CONN-A", allocation="POLLING",
-                count=10, now=moment)
-            assert granted["MINUTE"]["used"] == 10
-            assert granted["DAY"]["used"] == 10
+                count=12, now=minute_one)
+            assert granted["MINUTE"]["used"] == 12
+            assert granted["DAY"]["used"] == 12
             assert granted["DAY"]["ceiling"] == 12
 
-            # Five more fits the minute (60) and not the day (12).
+            # A NEW minute, so the minute window is empty and has all 12 free.
+            # Asserted rather than assumed: if the minute had no room either,
+            # this test would pass for the wrong reason and prove nothing about
+            # which window was named.
+            fresh = store.read_rate_budget(
+                session, connection_id="CONN-A", allocation="POLLING",
+                now=minute_two)
+            assert fresh["MINUTE"]["used"] == 0, (
+                "the second minute is not a fresh window, so this test cannot "
+                "distinguish a day refusal from a minute refusal")
+
+            # One call: the minute has 12 free, the day has none.
             with pytest.raises(store.RateBudgetExhausted) as excinfo:
                 store.reserve_calls(
                     session, connection_id="CONN-A", allocation="POLLING",
-                    count=5, now=moment)
+                    count=1, now=minute_two)
             assert excinfo.value.window_kind == "DAY", (
                 "the wrong window was named: a MINUTE exhaustion checkpoints "
                 "and resumes on the next tick, a DAY exhaustion opens the "
@@ -1580,10 +1601,10 @@ def test_live_reserve_calls_charges_both_windows_or_neither(
             # The transaction survived, and neither window was charged.
             state = store.read_rate_budget(
                 session, connection_id="CONN-A", allocation="POLLING",
-                now=moment)
-            assert state["MINUTE"]["used"] == 10, (
+                now=minute_two)
+            assert state["MINUTE"]["used"] == 0, (
                 "the minute window was charged for a call the day refused")
-            assert state["DAY"]["used"] == 10
+            assert state["DAY"]["used"] == 12
     finally:
         database.close()
 

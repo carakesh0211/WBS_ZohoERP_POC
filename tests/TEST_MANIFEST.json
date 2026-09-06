@@ -5812,8 +5812,8 @@
         "body_sha": "69be1ca6d9fba6f7"
       },
       "test_live_reserve_calls_charges_both_windows_or_neither": {
-        "assertions": 7,
-        "body_sha": "fb31691cf1ce9cf5"
+        "assertions": 8,
+        "body_sha": "b048f400e8db519f"
       },
       "test_live_a_job_that_exhausts_its_resumes_dies_alerting": {
         "assertions": 7,
@@ -7495,7 +7495,7 @@
     "test_pg_constraints.py": 13,
     "test_pg_fixture_guard.py": 3,
     "test_pg_integration_rate_budget.py": 109,
-    "test_pg_integration_schema.py": 131,
+    "test_pg_integration_schema.py": 132,
     "test_pg_locking.py": 36,
     "test_pg_locking_order.py": 28,
     "test_pg_masters.py": 82,

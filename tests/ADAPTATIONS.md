@@ -1711,3 +1711,36 @@ FUTURE` legal fails two more; setting the fixture's daily ceiling to 50, or to
 mutation-tested, for the same reason they could not be run.
 
 **Approved by:** pending engagement-lead review — CI-repair wave, stream A2.
+
+## 2026-09-07 — `test_a_day_exhaustion_leaves_the_minute_window_with_room`
+
+**Change:** the connection fixture goes from `per_minute=100, daily=20` to
+`20, 20`, and the day is exhausted across a **first** minute before the second
+minute asks. Assertion counts move with it (12 rather than 10).
+
+**Reason — the test was unreachable, twice over.** `100, 20` violates
+`ck_integration_connection_daily_exceeds_minute` (`daily >= per_minute`), so
+the fixture never inserted; it surfaced the moment the live suite stopped
+skipping and started executing all 953 tests.
+
+Simply raising `daily` does not rescue it. With both windows **fresh** and
+`daily >= per_minute`, a minute ceiling is never larger than the day's, so the
+minute binds first or ties — and the scenario this test exists for, the day
+refusing a call the minute would allow, cannot occur. It is only reachable
+once **earlier minutes have consumed the day**, which is also the only way it
+arises in production: a backfill spends the daily quota by mid-morning and
+every later minute is individually well within its own limit.
+
+**Not a weakening — one assertion added.** The test now proves the second
+minute is genuinely fresh (`MINUTE.used == 0`) before asserting which window
+refused. Without that, a run where the minute had no room either would pass
+for entirely the wrong reason and prove nothing about which window was named —
+and naming the window is the whole point, since a MINUTE exhaustion
+checkpoints and resumes on the next tick while a DAY exhaustion opens the
+circuit until the day boundary and alerts.
+
+**Found by:** CI, on the first run where the live PostgreSQL suite executed
+every collected test (953 collected, 953 executed, 0 skipped) rather than
+skipping most of them.
+
+**Approved by:** engagement lead, Wave 5 CI repair.
