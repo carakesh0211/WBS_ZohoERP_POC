@@ -1,0 +1,41 @@
+{
+  "cassette_version": 1,
+  "product": "ERP",
+  "service": "erp",
+  "api_version": "v3",
+  "provenance": "INVENTED-SANITISED",
+  "provenance_note": "Hand-authored; no tenant contacted. Fetch-one is the ONLY read ERP offers on Purchase Receives. Its line resolves to a known PO line, so this is the attributable case.",
+  "request": {
+    "method": "GET",
+    "base_url": "https://www.zohoapis.in/erp/v3",
+    "path": "/purchasereceives/GRN-ERP-9001",
+    "scope": "ERP.purchasereceives.READ",
+    "page": 1
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "code": 0,
+      "message": "success",
+      "purchasereceive": {
+        "receive_id": "GRN-ERP-9001",
+        "receive_number": "GRN-2026-0301",
+        "purchaseorder_id": "PO-ERP-5001",
+        "date": "2026-08-20",
+        "last_modified_time": "2026-08-20T10:11:00+0530",
+        "status": "received",
+        "line_items": [
+          {
+            "line_item_id": "POL-ERP-5001-1",
+            "line_number": 1,
+            "item_id": "ITM-ERP-7001",
+            "description": "Structural steel fabrication, grade E350",
+            "quantity": 25,
+            "rate": 11500.05,
+            "item_total": 287501.25
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,162 @@
+"""Every column the integration package names must exist in migration 010.
+
+WHY THIS EXISTS
+===============
+
+Wave 5's seven streams were file-disjoint and could not see each other. That
+prevented edit collisions and prevented nothing else: three of them
+independently implemented the same rate-budget reservation, against a column
+list that was frozen in `docs/WAVE5_CONTRACTS.md` with a trailing `...`.
+
+Stream 2 owned the migration and filled that ellipsis in correctly -- it added
+`allocation` to the primary key, which is exactly what amendment A1 said the
+60/30/10 split cannot be enforced without. Streams 4 and 6 had already written
+SQL against the shorter frozen list. The result:
+
+* `throttle.py` names `lane`, `created_by` and `updated_by`. **None of the
+  three exists.** It also conflicts on `(connection_id, window_kind, lane,
+  window_start)`, and no such constraint exists either.
+* `outbound.py` conflicts on `(connection_id, window_kind, window_start)`,
+  which is not the primary key, and its INSERT omits five NOT NULL columns
+  that have no default.
+
+Every unit test over both modules passed throughout, because both talk to
+in-memory doubles. The SQL is a string until something executes it.
+
+The lead recorded this as "a naming mismatch that has not bitten yet". That
+was wrong, and wrong in the direction that matters: it was checked by looking
+at the port (in-memory, so nothing joins the names) and not at the SQL. This
+test is what checking the SQL looks like.
+
+WHAT IT DOES NOT DO
+===================
+
+It compares column NAMES against the migration. It is not a SQL parser and it
+does not verify types, constraint satisfaction, or that an `ON CONFLICT`
+target matches a real unique index -- that last one needs a live server, and
+`tests/test_pg_integration_schema.py` is where it belongs. A name that exists
+can still be used wrongly. This closes the crudest failure, which is the one
+that actually happened.
+"""
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+MIGRATION = ROOT / "migrations" / "pg" / "010_integration.sql"
+PACKAGE = ROOT / "app" / "backend" / "integration"
+
+#: Words that appear in a column position but are SQL, not identifiers.
+_NOT_COLUMNS = {
+    "select", "from", "where", "and", "or", "not", "null", "insert", "into",
+    "values", "on", "conflict", "do", "update", "set", "returning", "as",
+    "case", "when", "then", "else", "end", "true", "false", "default",
+    "excluded", "coalesce", "now", "text", "int", "integer", "timestamptz",
+    "jsonb", "boolean", "bigint", "interval", "distinct", "order", "by",
+    "limit", "offset", "group", "having", "join", "left", "inner", "using",
+    "with", "scope", "count", "sum", "min", "max", "greatest", "least",
+}
+
+
+def _tables() -> dict[str, set[str]]:
+    """`{table: {column, ...}}` parsed from the migration's CREATE TABLEs."""
+    sql = MIGRATION.read_text(encoding="utf-8")
+    tables: dict[str, set[str]] = {}
+    for match in re.finditer(
+            r"CREATE TABLE (?:IF NOT EXISTS )?(\w+)\s*\((.*?)\n\);", sql, re.S):
+        name, body = match.group(1), match.group(2)
+        columns: set[str] = set()
+        for line in body.split("\n"):
+            line = line.strip()
+            if not line or line.startswith("--"):
+                continue
+            if re.match(r"(PRIMARY|CONSTRAINT|CHECK|UNIQUE|FOREIGN|REFERENCES|"
+                        r"EXCLUDE|ON)\b", line, re.I):
+                continue
+            token = line.split()[0]
+            if token.isidentifier():
+                columns.add(token.lower())
+        tables[name.lower()] = columns
+    return tables
+
+
+def _sql_literals(path: Path) -> list[str]:
+    """Every triple- or single-quoted string in the module that looks like SQL."""
+    source = path.read_text(encoding="utf-8")
+    found: list[str] = []
+    for match in re.finditer(r'"""(.*?)"""', source, re.S):
+        found.append(match.group(1))
+    # Adjacent single-line string literals concatenated across lines, which is
+    # how `outbound.py` builds its statement.
+    for match in re.finditer(r'((?:\s*"[^"\n]*"\s*\n?){2,})', source):
+        found.append(" ".join(re.findall(r'"([^"\n]*)"', match.group(1))))
+    return [s for s in found if re.search(r"\b(INSERT INTO|UPDATE|SELECT)\b", s)]
+
+
+#: `throttle.py` is a KNOWN, UNFIXED defect, marked strict so it cannot be
+#: forgotten and cannot be quietly "fixed" without removing this marker.
+#:
+#: Its `_RESERVE_SQL` names `lane`, `created_by` and `updated_by`; the shipped
+#: table has `allocation`, `updated_at` and neither `_by` column. Renaming the
+#: three would satisfy THIS test and still fail at runtime, because the insert
+#: would omit `window_start_key`, `window_seconds`, `window_tz` and `ceiling`
+#: -- all NOT NULL with no default. A gate that goes green on a statement that
+#: cannot execute is worse than one that stays red.
+#:
+#: The fix is not another patched statement. `integration_store.reserve_calls`
+#: already reserves against this table correctly, computes the window key and
+#: was written by the author of the schema. `throttle.reserve` should call it
+#: and `_RESERVE_SQL` should be deleted -- one implementation, which is what
+#: amendment A5 should have said.
+_KNOWN_BROKEN = {
+    "throttle.py": "names lane/created_by/updated_by; see A5. Fix by "
+                   "delegating to integration_store.reserve_calls.",
+}
+
+
+def _modules() -> list[Path]:
+    modules = sorted(p for p in PACKAGE.glob("*.py")
+                     if not p.name.startswith("__"))
+    return [
+        pytest.param(
+            p, marks=pytest.mark.xfail(strict=True, reason=_KNOWN_BROKEN[p.name]))
+        if p.name in _KNOWN_BROKEN else p
+        for p in modules
+    ]
+
+
+@pytest.mark.parametrize("module", _modules(), ids=lambda p: getattr(p, "name", str(p)))
+def test_every_column_named_in_sql_exists_in_the_migration(module: Path) -> None:
+    tables = _tables()
+    problems: list[str] = []
+
+    for statement in _sql_literals(module):
+        for table in re.findall(r"(?:INSERT INTO|UPDATE)\s+(\w+)", statement):
+            known = tables.get(table.lower())
+            if known is None:
+                continue                      # not a 010 table; out of scope
+            # The parenthesised column list of an INSERT, and the ON CONFLICT
+            # target -- the two places a wrong name is fatal rather than
+            # merely unused.
+            for group in re.findall(
+                    r"INSERT INTO\s+%s\s+(?:AS\s+\w+\s+)?\(([^)]*)\)" % table,
+                    statement, re.I) + re.findall(
+                    r"ON CONFLICT\s*\(([^)]*)\)", statement, re.I):
+                for raw in group.split(","):
+                    name = raw.strip().split(".")[-1].strip().lower()
+                    if (not name or name in _NOT_COLUMNS
+                            or not name.isidentifier()):
+                        continue
+                    if name not in known:
+                        problems.append(
+                            f"{table}.{name} does not exist "
+                            f"(has: {', '.join(sorted(known))})")
+
+    assert not problems, (
+        f"{module.name} names columns migration 010 does not define. Every "
+        f"unit test over this module passes, because it talks to an in-memory "
+        f"double -- the SQL is a string until something executes it:\n  "
+        + "\n  ".join(dict.fromkeys(problems)))

@@ -131,3 +131,129 @@ No stream edits another's files. A needed change is **reported**, not made.
    a unique custom field `cf_capex_ref` (Z-01) with retries using
    update-by-custom-field-unique-value. A function killed after sending but
    before recording must UPDATE, not duplicate.
+
+---
+
+# Amendments raised by streams in flight
+
+## A1 — `integration_rate_budget` needs a `lane` in its key (raised by stream 4)
+
+C2 froze the column list with a trailing `…`; this pins what has to be there.
+
+```
+UNIQUE (connection_id, window_kind, lane, window_start)
+```
+plus `created_by`, `updated_at`, `updated_by`.
+
+**Why it is not optional.** A single `used` counter per window cannot express
+"polling is capped at 60 of the 100". Enforcing a per-lane ceiling requires
+knowing what that lane has spent. Without the column, the 60/30/10 allocation
+is undeliverable and `throttle.reserve()` fails at runtime — an operator
+clicking "Test connection" would starve behind a backfill, which is the exact
+thing the allocation exists to prevent.
+
+**Stream 4 did not touch the migration.** Stream 2 owns it. If the migration
+lands without `lane`, the integration pass adds it.
+
+## A2 — the circuit breaker has no durable home (raised by stream 4)
+
+C2 froze no table for it, so stream 4 shipped a `CircuitStore` protocol with an
+explicitly **non-durable** in-memory implementation — the gap is a named object
+rather than silence.
+
+It needs five columns — `state`, `consecutive_failures`, `window_started_at`,
+`open_until`, `probe_in_flight` — on `integration_connection` or a small table
+of its own.
+
+**Why in-memory cannot stand.** AppSail scales to zero and reclaims instances
+after five minutes. A daily-quota circuit (429 code 45) stays open until the
+next day boundary — hours after the instance that opened it is gone. An
+in-memory breaker therefore forgets it is open and resumes hammering a quota
+that is still exhausted.
+
+## A3 — lane allocation applies to BOTH windows (decided by stream 4)
+
+The plan states 60/30/10 against the per-minute figure. Stream 4 applied the
+same ratio to the daily window and recorded the reasoning: protecting the
+operator for sixty seconds while a backfill eats all 2,000 daily calls by
+mid-morning **moves** the starvation rather than preventing it. Accepted.
+
+## A4 — worktrees may be created from a stale base (observed by stream 4)
+
+Stream 4's worktree was created at `ce7f3c5`, a pre-Wave-4 commit, and it reset
+to the tip before starting. Every stream should verify its base is the intended
+commit rather than assume it, and the integration pass should check what each
+branch is actually rooted on before merging.
+
+## A5 — CORRECTED. Not a naming mismatch: SQL that cannot execute
+
+**The first version of this amendment was wrong, and wrong in the direction
+that matters.** It said the `lane`/`allocation` difference "has not bitten yet
+because throttle talks to a port whose only implementation is in-memory". That
+conclusion came from reading the PORT and not the SQL.
+
+`throttle.py` has real SQL. `_RESERVE_SQL` names **`lane`, `created_by` and
+`updated_by`** — none of which exists in the shipped table — and conflicts on
+`(connection_id, window_kind, lane, window_start)`, which is not a constraint
+that exists. It cannot execute.
+
+`outbound.py` has a second, private implementation whose `ON CONFLICT
+(connection_id, window_kind, window_start)` matches no constraint either, and
+whose INSERT omits five NOT NULL columns with no defaults.
+
+`jobs.py` had a third defect of the same family — `integration_event.created_at`
+where the column is `at` — **fixed**.
+
+So THREE modules wrote SQL against C2's frozen column list, which ended in a
+trailing `…` that stream 2 correctly filled in. Every unit test over all three
+passed throughout, because all three talk to in-memory doubles. **SQL is a
+string until something executes it.**
+
+`tests/test_integration_sql_matches_schema.py` now parses migration 010 and
+every SQL literal in the package and fails on a column the table does not
+define. `throttle.py` is marked `xfail(strict=True)`, so it cannot be forgotten
+and cannot be silently "fixed" without removing the marker.
+
+**The fix is delegation, not another patched statement.**
+`integration_store.reserve_calls` already reserves against this table
+correctly, computes `window_start_key`, and was written by the schema's author.
+`throttle.reserve` should call it; `_RESERVE_SQL` and `outbound.py`'s
+`_UPSERT` should both be deleted. One implementation.
+
+Renaming three columns would satisfy the new gate and still fail at runtime,
+because the insert would still omit the NOT NULL columns — a gate going green
+on a statement that cannot execute is worse than one that stays red.
+
+### The original entry, kept because the reasoning it got right still stands
+
+
+Streams 2 and 4 independently invented the same column and gave it different
+names. Neither could see the other, and both were right about the concept.
+
+* **Stream 4** (`throttle.py`) writes `lane` — `POLLING|OUTBOUND|INTERACTIVE`.
+* **Stream 2** (`010_integration.sql`, `integration_store.py`) writes
+  `allocation`, and puts it in the primary key exactly as amendment A1
+  required: `PRIMARY KEY (connection_id, window_kind, allocation, window_start_key)`.
+
+**Both amendments A1 and A2 were satisfied before either stream saw them**,
+which is the freeze working. A3 too: stream 2 applied the 60/30/10 split to the
+day window and gave the same reasoning stream 4 did — a backfill that spends
+2,000 calls before lunch starves the operator all afternoon however politely it
+paced itself minute by minute.
+
+**The decision: the column is `allocation`.** The schema is the shared
+artefact; Python follows it. `lane` survives only as prose in `throttle.py`'s
+docstrings.
+
+**Why this has not bitten yet, and when it will.** `throttle.py` talks to a
+`RateBudgetStore` **port** whose only implementation is in-memory, so nothing
+currently joins the two names and 75 throttle tests pass against a store that
+never sees the schema. The mismatch surfaces the moment someone writes the
+PostgreSQL implementation of that port — which is the next task in this area,
+and is where the rename belongs.
+
+**Not renamed now, deliberately.** A mechanical rename through a 1,056-line
+module at the end of a long session, verifiable only through a 25-minute CI
+loop, is the shape of change that has already had to be reverted once this
+engagement. The seam is documented instead, and the port's implementer cannot
+miss it.

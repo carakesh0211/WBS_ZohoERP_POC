@@ -78,12 +78,62 @@ POST_BASELINE_FILES = {
     # audit-remediation suite and inflating it would make the removal guard
     # meaningless.
     "test_approvals_api_seam.py",
+    # Wave 5 integration pass: the gate that reads the package's SQL against
+    # migration 010's actual columns. Post-baseline like every Wave 4/5 file.
+    "test_integration_sql_matches_schema.py",
+
     # Wave 4 stream A2: submission (the engine's missing front end) and the
     # outcome write-back (its missing back end). Two of the three run with no
     # database, deliberately -- the properties they hold are the ones a
     # PostgreSQL-gated test would have skipped past on every dev machine.
     "test_budget_submission.py", "test_approval_writeback.py",
     "test_pg_approval_writeback_e2e.py",
+    # --- Wave 5 stream 1: the product-agnostic adapter boundary ------------
+    # D-14 is unresolved, so these hold the two candidate implementations to
+    # one frozen interface and hold the "products are never mixed" rule to a
+    # build failure. Post-baseline like every Wave 2-4 file: the 220 counts the
+    # POC's audit-remediation suite, and inflating it would make the removal
+    # guard stop meaning anything the moment the product grows.
+    "test_integration_adapter_contract.py",
+    "test_integration_capabilities.py",
+    "test_integration_product_isolation.py",
+    "test_integration_no_hardcoded_endpoints.py",
+    # --- Wave 5: the integration platform ---------------------------------
+    # Stream 3: the C16 integration status registry, the C17 raw-Zoho status
+    # map and the module that applies them. Neither file touches a database,
+    # the network or a tenant.
+    "test_contracts_integration_statuses.py", "test_integration_statuses.py",
+    # --- Wave 5 stream 4: rate budget, retry, backoff, circuit breaker ----
+    # Runs with no database and no network: an injected clock, a seeded
+    # jitter source and an in-process model of the two rate-budget
+    # statements. Post-baseline like every other new file -- the 220 counts
+    # the POC's audit-remediation suite, and inflating it would make the
+    # removal guard meaningless.
+    "test_integration_throttle.py",
+    # --- Wave 5 stream 5: the chunked job framework and the sweeps ---------
+    # Both run with no database and no network: the properties they hold --
+    # a 12-minute soft deadline, a resumable cursor, idempotent replay -- are
+    # properties of our code, and are proved with an injected clock rather
+    # than by waiting twelve minutes.
+    "test_integration_jobs.py", "test_integration_sweeps.py",
+    # --- Wave 5 stream 6: outbound PO emission and idempotency -------------
+    # Post-baseline like every other wave. All three run with no database and
+    # no network: the properties they hold -- a Function killed mid-send, a
+    # tenant without the Z-01 unique field, a detective control whose table is
+    # missing -- are exactly the ones a PostgreSQL-gated test would skip past
+    # on every dev machine, and they are the ones that decide whether a
+    # commitment gets counted twice.
+    "test_outbound_chaos.py", "test_outbound_emission.py",
+    "test_outbound_unsanctioned.py",
+    # --- Wave 5 stream 2: the integration schema and its repository --------
+    # `test_pg_integration_schema.py` is split the way
+    # `test_pg_approval_schema.py` is: a thorough database-free half that runs
+    # everywhere, and a `@pytest.mark.pg` half that runs for the first time in
+    # CI. `test_integration_store.py` is database-free ENTIRELY -- redaction,
+    # window arithmetic and the scoped-query discipline are all properties of
+    # the source, and a PostgreSQL-gated test would skip past every one of
+    # them on the machine the module was written on.
+    "test_pg_integration_schema.py", "test_integration_store.py",
 }
 
 

@@ -1,0 +1,41 @@
+{
+  "cassette_version": 1,
+  "product": "BOOKS_INVENTORY",
+  "service": "books",
+  "api_version": "v3",
+  "provenance": "INVENTED-SANITISED",
+  "provenance_note": "Hand-authored; no tenant contacted. Purchase orders are read from BOOKS, not from Inventory. Inventory's own GET /purchaseorders accepts organization_id, page and per_page and nothing else -- no last_modified_time filter and no sort column -- so an Inventory-anchored PO poll could only ever be a full re-pull. Books documents the filter, so that is where the poll goes. Note also that a Books PO detail never names its receives: Books has no purchase receives module at all.",
+  "request": {
+    "method": "GET",
+    "base_url": "https://www.zohoapis.in/books/v3",
+    "path": "/purchaseorders",
+    "scope": "ZohoBooks.purchaseorders.ALL",
+    "page": 1
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "code": 0,
+      "message": "success",
+      "purchaseorders": [
+        {
+          "purchaseorder_id": "PO-BKS-6001",
+          "purchaseorder_number": "BPO-2026-0044",
+          "vendor_id": "VEN-BKS-4001",
+          "vendor_name": "Cavendish Precision Tools",
+          "date": "2026-08-11",
+          "last_modified_time": "2026-08-26T12:00:00+0530",
+          "currency_code": "INR",
+          "sub_total": 306000.00,
+          "tax_total": 55080.00,
+          "total": 361080.00,
+          "status": "open",
+          "custom_fields": [
+            {"api_name": "cf_capex_ref", "value": "CAPEX-PO-000044"}
+          ]
+        }
+      ],
+      "page_context": {"page": 1, "per_page": 2, "has_more_page": false}
+    }
+  }
+}

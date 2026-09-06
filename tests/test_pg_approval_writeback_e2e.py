@@ -427,17 +427,22 @@ def test_a_rejected_instance_rejects_the_document_and_writes_no_line(
         (revision_id,)).fetchone()
     assert status == "REJECTED"
     assert line_id is None
+    # REVISION lines only. `_seed_estate` now seeds the ORIGINAL grant behind
+    # the control cell -- it has to, because the cell is materialised from
+    # `budget_line` and a cell with no ledger behind it is a state that cannot
+    # exist. Counting every kind would assert that the estate has no budget at
+    # all, which is not what this test is about.
     lines = pg_connection.execute(
-        "SELECT count(*) FROM budget_line WHERE wbs_id = %s", (ids["wbs"],)
-    ).fetchone()[0]
-    assert lines == 0
+        "SELECT count(*) FROM budget_line WHERE wbs_id = %s AND kind = 'REVISION'",
+        (ids["wbs"],)).fetchone()[0]
+    assert lines == 0, "no spending capacity may be created by this outcome"
 
 
 def test_a_returned_instance_leaves_the_document_editable_and_says_why(
         pg_connection, pg_database, approval_schema):
-    """C15 maps instance RETURNED to business RETURNED, and migration 003's
-    CHECK constraint has no such value, so the write-back writes DRAFT -- C3's
-    "editable, no control effect" -- and records the reason in decision_note,
+    """C15 maps instance RETURNED to business RETURNED, and since migration 009
+    the column can hold it, so the write-back writes RETURNED and records the
+    reason in decision_note,
     which ck_budget_revision_decision permits on a DRAFT row where it forbids
     decided_at/decided_by. Reported to the lead as a schema gap."""
     suffix = uuid.uuid4().hex[:10]
@@ -451,13 +456,28 @@ def test_a_returned_instance_leaves_the_document_editable_and_says_why(
             action=rules.ACTION_RETURN, reason_text="add a quote")
     _write_back(pg_database, submitted["approval_instance_id"])
 
-    status, note, decided_at = pg_connection.execute(
-        "SELECT status, decision_note, decided_at FROM budget_revision "
+    status, note, decided_at, decided_by = pg_connection.execute(
+        "SELECT status, decision_note, decided_at, decided_by FROM budget_revision "
         "WHERE revision_id = %s", (revision_id,)).fetchone()
-    assert status == "DRAFT"
-    assert decided_at is None
+
+    # RETURNED, not DRAFT, and this is the point of migration 009.
+    #
+    # 003's CHECK constraint had no RETURNED value, so the write-back wrote
+    # DRAFT and kept the real outcome in `decision_note` prose -- true, but a
+    # reader could not tell a revision sent back for correction from one never
+    # submitted. 009 widened the domain; the status now says it.
+    assert status == "RETURNED"
     assert submitted["approval_instance_id"] in note
     assert "RETURNED" in note
+
+    # And a return IS a decision, so it names who and when. `ck_*_decision`
+    # puts RETURNED on the decided side and refuses the row otherwise.
+    assert decided_at is not None, (
+        "a returned revision carries no decision time; an approver did decide "
+        "to send it back, at a known moment")
+    assert decided_by == "U-A", (
+        f"the return is attributed to {decided_by!r} rather than the approver "
+        f"who took it")
 
 
 def test_an_approved_transfer_moves_budget_between_both_cells(
@@ -550,10 +570,15 @@ def test_an_unroutable_document_never_becomes_an_approved_document(
         "SELECT status FROM budget_revision WHERE revision_id = %s",
         (revision_id,)).fetchone()[0]
     assert status == "DRAFT"
+    # REVISION lines only. `_seed_estate` now seeds the ORIGINAL grant behind
+    # the control cell -- it has to, because the cell is materialised from
+    # `budget_line` and a cell with no ledger behind it is a state that cannot
+    # exist. Counting every kind would assert that the estate has no budget at
+    # all, which is not what this test is about.
     lines = pg_connection.execute(
-        "SELECT count(*) FROM budget_line WHERE wbs_id = %s", (ids["wbs"],)
-    ).fetchone()[0]
-    assert lines == 0
+        "SELECT count(*) FROM budget_line WHERE wbs_id = %s AND kind = 'REVISION'",
+        (ids["wbs"],)).fetchone()[0]
+    assert lines == 0, "no spending capacity may be created by this outcome"
 
 
 def test_the_direct_route_cannot_approve_a_revision_under_an_open_instance(
@@ -585,32 +610,42 @@ def test_a_stale_write_back_refuses_rather_than_overwriting(
     revision_id = _seed_revision(pg_connection, suffix, ids)
 
     submitted = _submit_revision(pg_database, revision_id)
+    instance_id = submitted["approval_instance_id"]
 
-    # The document moves BEFORE the decision, not after.
+    # WHERE THIS GUARD IS REACHABLE, which is not where this test used to look.
     #
-    # This test used to decide first and bump afterwards, which no longer
-    # constructs a stale write-back at all: the engine now calls the write-back
-    # itself at closure, so by the time the version moved the outcome had
-    # already been applied and the second call returned early as idempotent --
-    # "DID NOT RAISE", for the right reason.
+    # Two earlier shapes of this test both failed, for opposite reasons, and
+    # both are worth recording because they map the guard's real position:
     #
-    # The window that exists now is between the approvers reading the snapshot
-    # and the decision landing, which is exactly the case the guard is for:
-    # they decided text that is no longer there.
+    #   * decide, THEN move the document, then write back -- the engine now
+    #     calls the write-back itself at closure, so the outcome was already
+    #     applied and the second call returned early as idempotent.
+    #   * move the document, THEN decide -- `decide` runs
+    #     `assert_object_version_fresh` of its own and raises
+    #     OBJECT_VERSION_STALE before the write-back is ever entered.
+    #
+    # So in the decide path the write-back's `_assert_version_matches` is
+    # unreachable: the engine's own check fires first, and after closure
+    # idempotency fires. The guard is defence in depth for a caller that drives
+    # `apply_outcome` DIRECTLY -- a retry or a replayed decision, which is
+    # exactly what the module documents it for. That is the case tested here.
+    #
+    # The instance is closed by statement rather than by `decide` precisely so
+    # the write-back has NOT run: this is an instance that closed and whose
+    # outcome is being re-driven later, with the document having moved in
+    # between.
+    pg_connection.execute(
+        "UPDATE approval_instance SET status = %s, closed_at = now() "
+        "WHERE instance_id = %s", (rules.INST_APPROVED, instance_id))
     pg_connection.execute(
         "UPDATE budget_revision SET version_no = version_no + 1 WHERE revision_id = %s",
         (revision_id,))
     pg_connection.commit()
 
     with pytest.raises(wb.WritebackError) as exc:
-        _decide(pg_database, submitted["approval_instance_id"], actor="U-A")
+        _write_back(pg_database, instance_id)
     assert exc.value.code == wb.ERR_STALE
 
-    # And the refusal took the APPROVAL down with it, which is the property
-    # `_apply_writeback` exists to provide: the write-back runs inside the
-    # decision's transaction and its failures are not swallowed, because an
-    # approval that commits while its document stays behind is the split-brain
-    # the whole seam is there to prevent.
     status, line_id = pg_connection.execute(
         "SELECT status, budget_line_id FROM budget_revision WHERE revision_id = %s",
         (revision_id,)).fetchone()
@@ -619,13 +654,10 @@ def test_a_stale_write_back_refuses_rather_than_overwriting(
         f"exactly as the approvers found it")
     assert line_id is None, "a refused write-back must create no spending capacity"
 
-    instance_status = pg_connection.execute(
-        "SELECT status FROM approval_instance WHERE instance_id = %s",
-        (submitted["approval_instance_id"],)).fetchone()[0]
-    assert instance_status == rules.INST_OPEN, (
-        f"the instance closed as {instance_status!r} while its document was "
-        f"left undecided -- the approval committed and the write-back did not, "
-        f"which is precisely the split-brain this seam prevents")
+    lines = pg_connection.execute(
+        "SELECT count(*) FROM budget_line WHERE wbs_id = %s AND kind = 'REVISION'",
+        (ids["wbs"],)).fetchone()[0]
+    assert lines == 0
 
 
 def test_a_revision_cannot_be_submitted_twice(

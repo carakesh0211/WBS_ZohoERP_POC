@@ -14,7 +14,7 @@ registry. Both sides agree, both sides are wrong, every test passes.
 sat in exactly that hole from Wave 2 until Wave 3.
 
 This module is the second, *independent* source: written from
-``migrations/pg/001..008``'s **CREATE TABLE** statements -- the schema, not the
+``migrations/pg/001..010``'s **CREATE TABLE** statements -- the schema, not the
 policies -- asking of each table only "does a row of this carry, or reach, a
 scope dimension?". A table that must be protected appears here whether or not
 any migration protects it, which is what makes "protected nowhere" detectable.
@@ -89,7 +89,7 @@ class ScopedTable:
     note: str = ""
 
 
-#: Every table in `migrations/pg/001..008` whose rows carry or reach a scope
+#: Every table in `migrations/pg/001..010` whose rows carry or reach a scope
 #: dimension. Hand-maintained from the CREATE TABLE statements -- see the
 #: module docstring. Ordered by migration, then by table name.
 SCOPED_TABLES: tuple[ScopedTable, ...] = (
@@ -289,11 +289,108 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
         note="Reached through instance_id, NOT stage_instance_id: the latter "
              "is NULL for RECALL and CANCEL, so joining through it would make "
              "exactly those two action kinds invisible."),
+
+    # -------------------------------------------- 010_integration.sql
+    # Written from 010's CREATE TABLE statements, before reading its policies
+    # -- the maintenance rule in this module's docstring. All eight ARE
+    # protected by 010; none is yet in `rls.py`'s registry, which is
+    # lead-owned. Hence `protected_pending_registry`, exactly as 008's are.
+    #
+    # `integration_circuit` is 010's one table beyond seam C2's frozen seven;
+    # 010's own header declares it and says why. It is inventoried here on the
+    # same terms as the rest, because a table's need for RLS does not depend
+    # on which document named it first.
+    ScopedTable(
+        table="integration_connection", dimensions=("entity",), reach="direct",
+        path="integration_connection.entity_id",
+        status="protected_pending_registry",
+        migration="010_integration.sql",
+        note="The row names the tenant's Zoho organisation_id, its data "
+             "centre and its connector -- which is what tells an out-of-scope "
+             "caller WHERE another entity's financial data lives. It also "
+             "carries `mode`, so an unscoped read would enumerate which "
+             "entities have a LIVE connection."),
+    ScopedTable(
+        table="integration_inbox", dimensions=("entity",), reach="joined",
+        path="integration_inbox.connection_id -> "
+             "integration_connection.entity_id",
+        status="protected_pending_registry",
+        migration="010_integration.sql",
+        note="The one where this matters most and is least obvious: `payload` "
+             "holds another entity's supplier invoices. Leaving it bare "
+             "because it looks like integration plumbing would put every "
+             "entity's purchase ledger behind a table nobody thought of as "
+             "financial."),
+    ScopedTable(
+        table="integration_outbox", dimensions=("entity",), reach="joined",
+        path="integration_outbox.connection_id -> "
+             "integration_connection.entity_id",
+        status="protected_pending_registry",
+        migration="010_integration.sql",
+        note="`payload` is a purchase order about to be created in the "
+             "tenant, amounts included, and `dedupe_key` is the value written "
+             "into Zoho's unique custom field."),
+    ScopedTable(
+        table="job", dimensions=("entity", "project"), reach="direct",
+        path="job.entity_id, job.project_id",
+        status="protected_pending_registry",
+        migration="010_integration.sql",
+        note="Scoped DIRECTLY rather than through a connection, and that is "
+             "necessary rather than convenient: `job.connection_id` is "
+             "nullable, so scoping through it would scope by a column that is "
+             "NULL on exactly the estate-wide jobs. Both dimension columns "
+             "are nullable; a NULL waives that dimension, which is deliberate "
+             "for `verify_audit_chains` and `sweep_control_totals` -- their "
+             "rows carry a kind, a checkpoint cursor and an error string "
+             "rather than any entity's data. plant/location are waived: no "
+             "column for either, and project carries its own policy."),
+    ScopedTable(
+        table="integration_watermark", dimensions=("entity",), reach="joined",
+        path="integration_watermark.connection_id -> "
+             "integration_connection.entity_id",
+        status="protected_pending_registry",
+        migration="010_integration.sql",
+        note="Low-sensitivity content, but writable: an unscoped UPDATE of "
+             "another entity's hwm would silently skip or re-pull its "
+             "inbound feed, which is why the policy carries WITH CHECK as "
+             "well as USING."),
+    ScopedTable(
+        table="integration_rate_budget", dimensions=("entity",), reach="joined",
+        path="integration_rate_budget.connection_id -> "
+             "integration_connection.entity_id",
+        status="protected_pending_registry",
+        migration="010_integration.sql",
+        note="Same shape and the same reason as the watermark: spending "
+             "another entity's daily budget is a denial of service on its "
+             "connector that leaves no trace anywhere else."),
+    ScopedTable(
+        table="integration_circuit", dimensions=("entity",), reach="joined",
+        path="integration_circuit.connection_id -> "
+             "integration_connection.entity_id",
+        status="protected_pending_registry",
+        migration="010_integration.sql",
+        note="Beyond seam C2's seven; see 010's header. Writable state that "
+             "can stop another entity's connector outright."),
+    ScopedTable(
+        table="integration_event", dimensions=("entity",), reach="joined",
+        path="integration_event.connection_id -> "
+             "integration_connection.entity_id",
+        status="protected_pending_registry",
+        migration="010_integration.sql",
+        note="`connection_id` is NULLABLE -- an event may be raised before a "
+             "connection is resolved, and an estate-wide job's events belong "
+             "to no connection -- so a NULL waives the dimension and the row "
+             "is visible to any established principal. That waiver is real, "
+             "and what keeps `detail` from becoming an unscoped copy of "
+             "somebody's vendor record is the separate "
+             "`ck_integration_event_detail_carries_no_restricted_key` CHECK. "
+             "The two controls are complementary; neither substitutes for the "
+             "other."),
 )
 
 #: Tables deliberately left WITHOUT a scope policy, each with the reason.
 #: Kept here so "not in SCOPED_TABLES" is a decision on record rather than an
-#: omission nobody ever looked at. Reviewed against `001..008`'s full
+#: omission nobody ever looked at. Reviewed against `001..010`'s full
 #: CREATE TABLE list; every table in the schema appears in exactly one of
 #: these two structures.
 UNSCOPED_TABLES: dict[str, str] = {

@@ -56,6 +56,34 @@ INFRASTRUCTURE = {
     "api/health.py",     # liveness and readiness only
 }
 
+#: The POC's SQLite-era modules, which this gate deliberately does not walk.
+#:
+#: They were exempt before only because nobody walked `app/backend/*.py` at
+#: all -- an omission, not a decision, and indistinguishable from an oversight
+#: by anyone reading the file. Written down now so the distinction is legible.
+#:
+#: The reason is that row-level scope is a PostgreSQL construct: it is carried
+#: by `repo.query`'s `{scope}` token, by `SET LOCAL capex.*`, and by the RLS
+#: policies in migrations 004 and 006. None of that exists on the SQLite path.
+#: These modules are retained because the plan retains them -- `compute_ledger`
+#: is the oracle the materialised cells are proved against (plan section 7.7)
+#: -- and because the SQLite build stays deployable until the cutover.
+#:
+#: THE MOMENT ANY OF THEM IS PORTED TO POSTGRESQL, ITS ENTRY MUST GO. An entry
+#: here on a module that issues `repo`-less PostgreSQL reads would suppress
+#: exactly the finding this gate exists to make.
+LEGACY_SQLITE = {
+    "services.py": "SQLite service layer; retained until cutover",
+    "domain.py": "compute_ledger, the oracle the cell path is proved against",
+    "db.py": "SQLite schema and connection helper",
+    "auth.py": "development identity provider on the SQLite path",
+    "zoho.py": "the MOCK connector; superseded by app/backend/integration/",
+    "main.py": "the SQLite FastAPI app; the PG app is app/backend/pg + api",
+    "migrate.py": "the SQLite migration runner",
+    "money.py": "pure arithmetic; no database access at all",
+    "observability.py": "logging and metrics; no business rows",
+}
+
 #: Modules whose data carries no row-level scope dimension, with the reason.
 #: These still authenticate and still check permissions -- the permission IS
 #: the control for them -- but there is no per-row restriction to apply.
@@ -98,16 +126,69 @@ UNRESOLVED = "<expr>"
 
 
 def _modules() -> list[Path]:
-    everything = sorted(PG_DIR.glob("*.py")) + sorted(API_DIR.glob("*.py"))
+    """Every module under `app/backend/`, minus the named exemptions.
+
+    This walked `PG_DIR` and `API_DIR` explicitly, and that shape is what
+    produced three blind spots in a row: `pg/` only (routers escaped), then
+    `pg/` + `api/` (Wave 5's whole `integration/` package escaped). Naming one
+    more directory each time guarantees the next package is missed the same
+    way, because the list is maintained by whoever remembers.
+
+    Walking everything inverts the burden: a module is covered unless someone
+    writes down why it is not, and `test_every_exemption_names_a_real_module`
+    below fails when an exemption stops matching a real file.
+    """
+    everything = sorted(
+        path for path in BACKEND.rglob("*.py")
+        if "__pycache__" not in path.parts and not path.name.startswith("__")
+    )
     return [p for p in everything
-            if _key(p) not in INFRASTRUCTURE and not p.name.startswith("__")]
+            if _key(p) not in INFRASTRUCTURE
+            and _key(p) not in LEGACY_SQLITE]
 
 
 def _key(path: Path) -> str:
+    """`<dir>/<file>.py`, or just `<file>.py` for a module directly in backend.
+
+    Modules at the top of `app/backend/` have `backend` as their parent, and
+    keying those as `backend/services.py` would read as though `backend` were
+    a package alongside `pg` and `api`. The bare filename is what every
+    exemption below already uses.
+    """
+    if path.parent == BACKEND:
+        return path.name
     return f"{path.parent.name}/{path.name}"
 
 
-def _sql_of(node: ast.Call) -> str | None:
+def _string_constants(tree: ast.Module) -> dict[str, str]:
+    """`{name: value}` for every module- or class-level string constant.
+
+    Only plain literal assignments are resolved -- `X = "..."`, including
+    implicit concatenation across lines, which is how `outbound.py` builds its
+    statement. A computed value is deliberately NOT resolved: this gate's
+    contract is that unreadable SQL is reported, and a resolver that guessed
+    would convert a "cannot read" into a confident wrong answer.
+
+    Class and module scopes share one namespace here. That is imprecise in
+    principle and sufficient in practice: these are SQL constants, and a name
+    collision between two SQL constants in one module would be a defect of its
+    own.
+    """
+    constants: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Assign, ast.AnnAssign)):
+            continue
+        value = node.value
+        if not isinstance(value, ast.Constant) or not isinstance(value.value, str):
+            continue
+        targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+        for target in targets:
+            if isinstance(target, ast.Name):
+                constants[target.id] = value.value
+    return constants
+
+
+def _sql_of(node: ast.Call, constants: dict[str, str] | None = None) -> str | None:
     """The SQL text of a call, with non-literal pieces marked `<expr>`.
 
     Returns None when the argument is not a string expression at all (a bare
@@ -123,6 +204,15 @@ def _sql_of(node: ast.Call) -> str | None:
             value.value if isinstance(value, ast.Constant)
             and isinstance(value.value, str) else f" {UNRESOLVED} "
             for value in first.values)
+
+    # A named constant: `_UPSERT`, `self._UPSERT`, `Cls._UPSERT`. Resolved only
+    # when the module assigns it a literal string; anything else falls through
+    # to None and is reported as unreadable, which is the honest answer.
+    if constants:
+        if isinstance(first, ast.Name):
+            return constants.get(first.id)
+        if isinstance(first, ast.Attribute):
+            return constants.get(first.attr)
     return None
 
 
@@ -132,6 +222,7 @@ def _findings(path: Path) -> list[str]:
     lines = source.splitlines()
     tree = ast.parse(source)
     name = path.name
+    constants = _string_constants(tree)
 
     found: list[str] = []
     for node in ast.walk(tree):
@@ -145,7 +236,7 @@ def _findings(path: Path) -> list[str]:
         if "scope-exempt:" in line_text:
             continue
 
-        sql = _sql_of(node)
+        sql = _sql_of(node, constants)
 
         if sql is None:
             # A bare variable or a computed expression. Only flagged when the
@@ -212,7 +303,13 @@ def test_the_gate_catches_a_computed_table_name(tmp_path):
 
 
 def test_the_gate_catches_sql_held_in_a_variable(tmp_path):
-    """The second blind spot: unanalysable is not the same as safe."""
+    """The second blind spot: unanalysable is not the same as safe.
+
+    A literal held in a constant is now RESOLVED rather than merely reported
+    as unreadable, so this asserts the stronger finding: the table is named
+    and the missing token is named. `outbound.py` builds its statement exactly
+    this way, and reporting "cannot read" there was true but useless.
+    """
     planted = tmp_path / "planted.py"
     planted.write_text(
         "SQL = 'SELECT * FROM budget_line'\n"
@@ -220,7 +317,28 @@ def test_the_gate_catches_sql_held_in_a_variable(tmp_path):
         "    return session.fetchall(SQL)\n",
         encoding="utf-8")
     findings = _findings(planted)
-    assert findings and "statically" in findings[0]
+    assert findings, "a constant holding scopable SQL escaped the gate entirely"
+    assert "budget_line" in findings[0] and "{scope}" in findings[0], (
+        f"expected the resolved table and the missing token, got: {findings[0]}")
+
+
+def test_sql_the_gate_still_cannot_read_is_still_reported(tmp_path):
+    """Resolution must not become a licence to assume.
+
+    Only a plain literal assignment is resolved. A COMPUTED statement stays
+    unreadable, and unreadable must stay a finding -- a gate that guessed at a
+    value would turn "I cannot see this" into a confident wrong answer, which
+    is worse than the false positive it replaced.
+    """
+    planted = tmp_path / "planted.py"
+    planted.write_text(
+        "def rows(session, table):\n"
+        "    sql = build(table)\n"
+        "    return session.fetchall(sql)\n",
+        encoding="utf-8")
+    findings = _findings(planted)
+    assert findings and "statically" in findings[0], (
+        f"computed SQL was not reported as unreadable: {findings}")
 
 
 def test_an_exempt_comment_is_required_to_state_a_reason(tmp_path):

@@ -1,97 +1,277 @@
 {
   "frozen_at": "2026-08-28",
+  "version": "1.1.0",
+  "version_history": [
+    {
+      "version": "1.0.0",
+      "effective_from": "2026-08-28",
+      "note": "Mapping rows as drafted from plan v1.2.1 section 8.4."
+    },
+    {
+      "version": "1.1.0",
+      "effective_from": "2026-09-06",
+      "note": "Wave 5 stream 3. No mapping TARGET changed. What changed is that every row now carries (a) an effective window, (b) an explicit mapping_kind so that 'maps to nothing' can no longer be confused with 'not yet mapped', and (c) an evidence class naming the document that sources the raw literal. Rows whose raw spelling is not sourced are marked UNVERIFIED - REQUIRES ZOHO CONFIRMATION and are INACTIVE: the resolver refuses them and raises UNMAPPED_EXTERNAL_STATUS rather than applying an unsourced guess."
+    }
+  ],
   "rule": "Raw Zoho status values are stored VERBATIM and NEVER overwritten, in external_status_raw, alongside the product and API version that produced them. This registry maps them to a C3 business status. An UNMAPPED raw value never guesses: the record is accepted, the raw value preserved, and a reconciliation_exception of kind UNMAPPED_EXTERNAL_STATUS is raised. Same fail-closed philosophy as domain.lifecycle_permits.",
-  "product_separation_rule": "Every mapping row names its product. A Books mapping is NOT evidence for an ERP mapping and must never be applied to one. The adapter selects the mapping set by integration_connection.product.",
+  "product_separation_rule": "Every mapping row names its product. A Books mapping is NOT evidence for an ERP mapping and must never be applied to one. The adapter selects the mapping set by integration_connection.product. There is no fallback between products and no product-agnostic row.",
   "target_registry": "C3_statuses.json - every maps_to value in this file must exist there. Enforced by a contract test.",
   "provisional_note": "ERP rows are marked provisional pending client decision D-14. Zoho ERP v3 is the provisional target; the client may be running Books + Inventory. Both mapping sets are maintained to the same standard.",
+  "unverified_marker": "UNVERIFIED - REQUIRES ZOHO CONFIRMATION",
+  "mapping_kinds": {
+    "BUSINESS_STATUS": "maps_to names a C3 business status. The mirrored object's business status is set from it.",
+    "NO_BUSINESS_STATUS": "A POSITIVE assertion, reviewed and deliberate: this raw value has no business-status meaning at all. maps_to is null BECAUSE nothing should be set, not because nobody has decided yet. An Inventory purchase receive in transit is the canonical case - it is operational, and rendering it as a document lifecycle label would misrepresent it.",
+    "ACCOUNTING_STATUS_ONLY": "The raw value drives accounting_status (Draft | Approved | Void | Reversal) and NOT a business status. Bill status is the canonical case: accounting_status in {Approved, Reversal} is the accounting-effective set, preserved exactly from AUD-C-004."
+  },
+  "coverage_kinds": {
+    "COMPLETE_PER_VENDOR_SPEC": "Every raw value the captured vendor specification documents for this (product, object, field) has a row. A value outside this set is a genuine surprise and must raise UNMAPPED_EXTERNAL_STATUS.",
+    "INCOMPLETE_UNVERIFIED": "The value set for this (product, object, field) is NOT known. Rows here are partial or absent. This is 'not yet mapped' and is categorically different from NO_BUSINESS_STATUS. Every lookup against such a block that misses raises UNMAPPED_EXTERNAL_STATUS, and the block must be closed out in Phase 0B-2."
+  },
+  "evidence_classes": {
+    "DOCUMENTED_RAW_VALUE": "The literal lowercase raw value appears in the captured vendor OpenAPI specification. Active.",
+    "PLAN_APPROVED": "The row is stated in section 8.4 of the approved implementation plan. Active.",
+    "UNVERIFIED": "The state is believed to exist (an endpoint implies it) but its raw literal spelling is not sourced anywhere available offline. INACTIVE - the resolver will not apply it."
+  },
+  "evidence_sources": {
+    "erp_openapi": {
+      "id": "erp_openapi_v3_2026-08-05",
+      "description": "Zoho's own published OpenAPI bundle for ERP v3, captured offline and verified deterministically.",
+      "url": "https://www.zoho.com/erp/api/v3/openapi-all.zip",
+      "sha256": "E95A039969F5C2FC2A44C47CFF77E41BACFF18957DCA1C870D48DDDA15C447F8",
+      "captured_at": "2026-08-05",
+      "local_path": "research/00_intake/openapi/spec/",
+      "corroboration": "research/20_verified/zoho_spec_verification.json"
+    },
+    "plan_8_4": {
+      "id": "plan_v1.2.1_section_8.4",
+      "description": "The approved production implementation plan's raw-Zoho-status table.",
+      "local_path": "docs/APPROVED_PRODUCTION_IMPLEMENTATION_PLAN.md"
+    }
+  },
+  "no_evidence_captured_for": {
+    "BOOKS": "No Zoho Books OpenAPI bundle has been captured. Every BOOKS row below is UNVERIFIED except the one the approved plan states directly (bill void). Books documentation was NOT inferred from the ERP bundle - that inference is exactly what product_separation_rule forbids.",
+    "INVENTORY": "No Zoho Inventory OpenAPI bundle has been captured. Only the two Inventory rows stated in plan section 8.4 are active."
+  },
   "mappings": [
     {
       "product": "ERP", "api_version": "v3", "provisional": true,
       "object": "purchase_order", "field": "status",
+      "effective_from": "2026-08-28", "effective_to": null,
+      "coverage": "COMPLETE_PER_VENDOR_SPEC",
+      "coverage_evidence": "erp_openapi: GET /purchaseorders query parameter 'status' - \"Allowed values: draft, open, billed, cancelled\". The four documented values all have rows. pending_approval and approved are additional states inferred from the /submit, /approve and /reject endpoints; they are carried below as INACTIVE because their raw spelling is not documented.",
       "rows": [
-        {"raw": "draft", "maps_to": "DRAFT"},
-        {"raw": "open", "maps_to": "RELEASED"},
-        {"raw": "billed", "maps_to": "FULLY_ACTUALISED"},
-        {"raw": "cancelled", "maps_to": "CLOSED"},
-        {"raw": "pending_approval", "maps_to": "SUBMITTED"},
-        {"raw": "approved", "maps_to": "APPROVED"}
+        {"raw": "draft", "maps_to": "DRAFT", "mapping_kind": "BUSINESS_STATUS", "active": true,
+         "effective_from": "2026-08-28", "effective_to": null,
+         "evidence": {"class": "DOCUMENTED_RAW_VALUE", "source": "erp_openapi_v3_2026-08-05", "locator": "spec/purchase-order.yml GET /purchaseorders param 'status'", "corroborated_by": "plan_v1.2.1_section_8.4"}},
+        {"raw": "open", "maps_to": "RELEASED", "mapping_kind": "BUSINESS_STATUS", "active": true,
+         "effective_from": "2026-08-28", "effective_to": null,
+         "evidence": {"class": "DOCUMENTED_RAW_VALUE", "source": "erp_openapi_v3_2026-08-05", "locator": "spec/purchase-order.yml GET /purchaseorders param 'status'; POST /purchaseorders/{id}/status/open", "corroborated_by": "plan_v1.2.1_section_8.4"}},
+        {"raw": "billed", "maps_to": "FULLY_ACTUALISED", "mapping_kind": "BUSINESS_STATUS", "active": true,
+         "effective_from": "2026-08-28", "effective_to": null,
+         "evidence": {"class": "DOCUMENTED_RAW_VALUE", "source": "erp_openapi_v3_2026-08-05", "locator": "spec/purchase-order.yml GET /purchaseorders param 'status'; POST /purchaseorders/{id}/status/billed", "corroborated_by": "plan_v1.2.1_section_8.4"}},
+        {"raw": "cancelled", "maps_to": "CLOSED", "mapping_kind": "BUSINESS_STATUS", "active": true,
+         "effective_from": "2026-08-28", "effective_to": null,
+         "evidence": {"class": "DOCUMENTED_RAW_VALUE", "source": "erp_openapi_v3_2026-08-05", "locator": "spec/purchase-order.yml GET /purchaseorders param 'status'; POST /purchaseorders/{id}/status/cancelled", "corroborated_by": "plan_v1.2.1_section_8.4"}},
+        {"raw": "pending_approval", "maps_to": "SUBMITTED", "mapping_kind": "BUSINESS_STATUS", "active": false,
+         "effective_from": null, "effective_to": null,
+         "evidence": {"class": "UNVERIFIED", "marker": "UNVERIFIED - REQUIRES ZOHO CONFIRMATION",
+                      "reasoning": "POST /purchaseorders/{id}/submit exists, so a submitted-awaiting-approval state exists. Its raw literal is NOT in the documented allowed-values list, which names only draft, open, billed and cancelled. The spelling 'pending_approval' is a guess and is therefore not applied.",
+                      "confirm_by": "Phase 0B-2: submit a PO in the tenant and read back the status field verbatim."}},
+        {"raw": "approved", "maps_to": "APPROVED", "mapping_kind": "BUSINESS_STATUS", "active": false,
+         "effective_from": null, "effective_to": null,
+         "evidence": {"class": "UNVERIFIED", "marker": "UNVERIFIED - REQUIRES ZOHO CONFIRMATION",
+                      "reasoning": "POST /purchaseorders/{id}/approve and /reject exist. Whether approval produces a distinct status value, or simply moves the PO to 'open', is not documented. Two different mappings follow from that answer, so it is not guessed.",
+                      "confirm_by": "Phase 0B-2: approve a PO in the tenant and read back the status field verbatim."}}
       ],
-      "verification_required": "Enumerate the actual status values present in the tenant during Phase 0B-2. Zoho does not publish an exhaustive enum for purchase order status; these rows are derived from the documented status-transition endpoints and MUST be confirmed against live data."
+      "verification_required": "The four active rows are documented; the two inactive rows are not. Zoho does not publish an exhaustive enum for purchase order status, so Phase 0B-2 must still enumerate the values actually present in the tenant before this block can be called COMPLETE against live data rather than against the specification."
     },
     {
       "product": "BOOKS", "api_version": "v3",
       "object": "purchase_order", "field": "status",
+      "effective_from": "2026-08-28", "effective_to": null,
+      "coverage": "INCOMPLETE_UNVERIFIED",
+      "coverage_evidence": "No Zoho Books OpenAPI bundle has been captured. The rows below mirror the ERP shape, which is precisely what product_separation_rule forbids relying on - so every one of them is INACTIVE until Books is confirmed in its own right.",
       "rows": [
-        {"raw": "draft", "maps_to": "DRAFT"},
-        {"raw": "open", "maps_to": "RELEASED"},
-        {"raw": "billed", "maps_to": "FULLY_ACTUALISED"},
-        {"raw": "cancelled", "maps_to": "CLOSED"},
-        {"raw": "pending_approval", "maps_to": "SUBMITTED"},
-        {"raw": "approved", "maps_to": "APPROVED"}
+        {"raw": "draft", "maps_to": "DRAFT", "mapping_kind": "BUSINESS_STATUS", "active": false,
+         "effective_from": null, "effective_to": null,
+         "evidence": {"class": "UNVERIFIED", "marker": "UNVERIFIED - REQUIRES ZOHO CONFIRMATION",
+                      "reasoning": "Believed identical to ERP, but an ERP mapping is not evidence for Books.",
+                      "confirm_by": "Phase 0B-2, only if D-14 resolves to Books + Inventory."}},
+        {"raw": "open", "maps_to": "RELEASED", "mapping_kind": "BUSINESS_STATUS", "active": false,
+         "effective_from": null, "effective_to": null,
+         "evidence": {"class": "UNVERIFIED", "marker": "UNVERIFIED - REQUIRES ZOHO CONFIRMATION",
+                      "reasoning": "Believed identical to ERP, but an ERP mapping is not evidence for Books.",
+                      "confirm_by": "Phase 0B-2, only if D-14 resolves to Books + Inventory."}},
+        {"raw": "billed", "maps_to": "FULLY_ACTUALISED", "mapping_kind": "BUSINESS_STATUS", "active": false,
+         "effective_from": null, "effective_to": null,
+         "evidence": {"class": "UNVERIFIED", "marker": "UNVERIFIED - REQUIRES ZOHO CONFIRMATION",
+                      "reasoning": "Believed identical to ERP, but an ERP mapping is not evidence for Books.",
+                      "confirm_by": "Phase 0B-2, only if D-14 resolves to Books + Inventory."}},
+        {"raw": "cancelled", "maps_to": "CLOSED", "mapping_kind": "BUSINESS_STATUS", "active": false,
+         "effective_from": null, "effective_to": null,
+         "evidence": {"class": "UNVERIFIED", "marker": "UNVERIFIED - REQUIRES ZOHO CONFIRMATION",
+                      "reasoning": "Believed identical to ERP, but an ERP mapping is not evidence for Books.",
+                      "confirm_by": "Phase 0B-2, only if D-14 resolves to Books + Inventory."}},
+        {"raw": "pending_approval", "maps_to": "SUBMITTED", "mapping_kind": "BUSINESS_STATUS", "active": false,
+         "effective_from": null, "effective_to": null,
+         "evidence": {"class": "UNVERIFIED", "marker": "UNVERIFIED - REQUIRES ZOHO CONFIRMATION",
+                      "reasoning": "Neither the state nor its spelling is sourced for Books.",
+                      "confirm_by": "Phase 0B-2, only if D-14 resolves to Books + Inventory."}},
+        {"raw": "approved", "maps_to": "APPROVED", "mapping_kind": "BUSINESS_STATUS", "active": false,
+         "effective_from": null, "effective_to": null,
+         "evidence": {"class": "UNVERIFIED", "marker": "UNVERIFIED - REQUIRES ZOHO CONFIRMATION",
+                      "reasoning": "Neither the state nor its spelling is sourced for Books.",
+                      "confirm_by": "Phase 0B-2, only if D-14 resolves to Books + Inventory."}}
       ],
-      "verification_required": "Same caveat as ERP. Documented transitions are /status/open, /status/billed, /status/cancelled, /submit, /approve, /reject."
+      "verification_required": "Capture the Books v3 specification, or enumerate against a Books tenant. Until then this whole block is inert and every Books purchase order status raises UNMAPPED_EXTERNAL_STATUS."
     },
     {
       "product": "INVENTORY", "api_version": "v1",
       "object": "purchase_receive", "field": "received_status",
+      "effective_from": "2026-08-28", "effective_to": null,
+      "coverage": "INCOMPLETE_UNVERIFIED",
+      "coverage_evidence": "No Zoho Inventory specification has been captured. Only in_transit is sourced - plan section 8.4 states it explicitly. draft and received are believed to exist but are not sourced.",
+      "note": "received_status intentionally maps to no C3 business status. Receipt state affects the LEDGER (received, received_not_billed), not a document lifecycle label. Mapping it to a business status would misrepresent it. Note carefully that this is a NO_BUSINESS_STATUS assertion for in_transit and an INCOMPLETE_UNVERIFIED coverage statement for the field as a whole - the two are different facts and are recorded separately.",
       "rows": [
-        {"raw": "draft", "maps_to": null, "note": "operational only - a draft receive has no business-status consequence"},
-        {"raw": "in_transit", "maps_to": null, "note": "operational only - shown as an integration badge, not a business status"},
-        {"raw": "received", "maps_to": null, "note": "drives the received_paise ledger component, not a document business status"}
+        {"raw": "in_transit", "maps_to": null, "mapping_kind": "NO_BUSINESS_STATUS", "active": true,
+         "effective_from": "2026-08-28", "effective_to": null,
+         "note": "Operational only. Shown as an integration badge, never as a business status pill.",
+         "evidence": {"class": "PLAN_APPROVED", "source": "plan_v1.2.1_section_8.4", "locator": "Inventory | Purchase Receive | received_status=in_transit | (no business status - operational only)"}},
+        {"raw": "draft", "maps_to": null, "mapping_kind": "NO_BUSINESS_STATUS", "active": false,
+         "effective_from": null, "effective_to": null,
+         "note": "A draft receive would have no business-status consequence - but the raw literal is not sourced.",
+         "evidence": {"class": "UNVERIFIED", "marker": "UNVERIFIED - REQUIRES ZOHO CONFIRMATION",
+                      "reasoning": "No Inventory specification captured; 'draft' is assumed from the ERP/Books convention.",
+                      "confirm_by": "Phase 0B-2, only if D-14 resolves to Books + Inventory."}},
+        {"raw": "received", "maps_to": null, "mapping_kind": "NO_BUSINESS_STATUS", "active": false,
+         "effective_from": null, "effective_to": null,
+         "note": "Would drive the received_paise ledger component, not a document business status.",
+         "evidence": {"class": "UNVERIFIED", "marker": "UNVERIFIED - REQUIRES ZOHO CONFIRMATION",
+                      "reasoning": "No Inventory specification captured; the raw literal is assumed.",
+                      "confirm_by": "Phase 0B-2, only if D-14 resolves to Books + Inventory."}}
       ],
-      "note": "received_status intentionally maps to no C3 business status. Receipt state affects the LEDGER (received, received_not_billed), not a document lifecycle label. Mapping it to a business status would misrepresent it."
+      "verification_required": "Enumerate received_status against an Inventory tenant in Phase 0B-2."
     },
     {
       "product": "INVENTORY", "api_version": "v1",
       "object": "purchase_receive", "field": "billed_status",
+      "effective_from": "2026-08-28", "effective_to": null,
+      "coverage": "INCOMPLETE_UNVERIFIED",
+      "coverage_evidence": "Only partially_billed is sourced - plan section 8.4 states it explicitly. unbilled and billed are believed to exist but are not sourced.",
       "rows": [
-        {"raw": "unbilled", "maps_to": null},
-        {"raw": "partially_billed", "maps_to": "PARTIALLY_ACTUALISED"},
-        {"raw": "billed", "maps_to": "FULLY_ACTUALISED"}
-      ]
+        {"raw": "partially_billed", "maps_to": "PARTIALLY_ACTUALISED", "mapping_kind": "BUSINESS_STATUS", "active": true,
+         "effective_from": "2026-08-28", "effective_to": null,
+         "evidence": {"class": "PLAN_APPROVED", "source": "plan_v1.2.1_section_8.4", "locator": "Inventory | Purchase Receive | billed_status=partially_billed | PARTIALLY_ACTUALISED"}},
+        {"raw": "unbilled", "maps_to": null, "mapping_kind": "NO_BUSINESS_STATUS", "active": false,
+         "effective_from": null, "effective_to": null,
+         "evidence": {"class": "UNVERIFIED", "marker": "UNVERIFIED - REQUIRES ZOHO CONFIRMATION",
+                      "reasoning": "No Inventory specification captured; the raw literal is assumed.",
+                      "confirm_by": "Phase 0B-2, only if D-14 resolves to Books + Inventory."}},
+        {"raw": "billed", "maps_to": "FULLY_ACTUALISED", "mapping_kind": "BUSINESS_STATUS", "active": false,
+         "effective_from": null, "effective_to": null,
+         "evidence": {"class": "UNVERIFIED", "marker": "UNVERIFIED - REQUIRES ZOHO CONFIRMATION",
+                      "reasoning": "No Inventory specification captured. This one matters more than the others - it would move an object to FULLY_ACTUALISED, so an unsourced spelling is not applied.",
+                      "confirm_by": "Phase 0B-2, only if D-14 resolves to Books + Inventory."}}
+      ],
+      "verification_required": "Enumerate billed_status against an Inventory tenant in Phase 0B-2."
     },
     {
       "product": "ERP", "api_version": "v3", "provisional": true,
       "object": "purchase_receive", "field": "received_status",
+      "effective_from": "2026-08-28", "effective_to": null,
+      "coverage": "INCOMPLETE_UNVERIFIED",
+      "coverage_evidence": "erp_openapi: spec/purchasereceives.yml declares exactly two paths - POST /purchasereceives and GET|PUT|DELETE /purchasereceives/{id} - and carries NO status field of any kind in its schemas. There is nothing to map yet. An empty rows list here means NOT YET MAPPED, never 'maps to nothing'.",
       "rows": [],
       "verification_required": "MUST be enumerated in Phase 0B-2. Zoho ERP Purchase Receives has only four endpoints and NO list endpoint, so status values cannot be surveyed by enumeration. They must be observed through PO-anchored detail reads."
     },
     {
       "product": "ERP", "api_version": "v3", "provisional": true,
       "object": "bill", "field": "status",
+      "effective_from": "2026-08-28", "effective_to": null,
+      "coverage": "COMPLETE_PER_VENDOR_SPEC",
+      "coverage_evidence": "erp_openapi: GET /bills query parameter 'status' - \"Filter bills by status: paid, open, overdue, void, or partially_paid\". All five documented values have rows. 'draft' is carried below as INACTIVE because it is not in that list.",
+      "note": "Bill status drives accounting_status, NOT a C3 business status. accounting_status in {Approved, Reversal} is the accounting-effective set - preserved exactly from AUD-C-004. Payment state (paid, partially_paid, overdue) is out of scope: this system does not process payments, and the payment states are mapped only so that they do not raise a spurious exception on every poll.",
       "rows": [
-        {"raw": "draft", "maps_to": null, "accounting_status": "Draft", "note": "not accounting-effective"},
-        {"raw": "open", "maps_to": null, "accounting_status": "Approved", "note": "accounting-effective; moves actual CWIP"},
-        {"raw": "paid", "maps_to": null, "accounting_status": "Approved"},
-        {"raw": "partially_paid", "maps_to": null, "accounting_status": "Approved"},
-        {"raw": "overdue", "maps_to": null, "accounting_status": "Approved"},
-        {"raw": "void", "maps_to": null, "accounting_status": "Void", "note": "excluded from actual; commitment restored"}
+        {"raw": "open", "maps_to": null, "accounting_status": "Approved", "mapping_kind": "ACCOUNTING_STATUS_ONLY", "active": true,
+         "effective_from": "2026-08-28", "effective_to": null,
+         "note": "Accounting-effective; moves actual CWIP.",
+         "evidence": {"class": "DOCUMENTED_RAW_VALUE", "source": "erp_openapi_v3_2026-08-05", "locator": "spec/bills.yml GET /bills param 'status'; POST /bills/{id}/status/open; bill schema status example: open"}},
+        {"raw": "void", "maps_to": null, "accounting_status": "Void", "mapping_kind": "ACCOUNTING_STATUS_ONLY", "active": true,
+         "effective_from": "2026-08-28", "effective_to": null,
+         "note": "Excluded from actual; commitment restored.",
+         "evidence": {"class": "DOCUMENTED_RAW_VALUE", "source": "erp_openapi_v3_2026-08-05", "locator": "spec/bills.yml GET /bills param 'status'; POST /bills/{id}/status/void", "corroborated_by": "plan_v1.2.1_section_8.4"}},
+        {"raw": "paid", "maps_to": null, "accounting_status": "Approved", "mapping_kind": "ACCOUNTING_STATUS_ONLY", "active": true,
+         "effective_from": "2026-08-28", "effective_to": null,
+         "evidence": {"class": "DOCUMENTED_RAW_VALUE", "source": "erp_openapi_v3_2026-08-05", "locator": "spec/bills.yml GET /bills param 'status'"}},
+        {"raw": "partially_paid", "maps_to": null, "accounting_status": "Approved", "mapping_kind": "ACCOUNTING_STATUS_ONLY", "active": true,
+         "effective_from": "2026-08-28", "effective_to": null,
+         "evidence": {"class": "DOCUMENTED_RAW_VALUE", "source": "erp_openapi_v3_2026-08-05", "locator": "spec/bills.yml GET /bills param 'status'"}},
+        {"raw": "overdue", "maps_to": null, "accounting_status": "Approved", "mapping_kind": "ACCOUNTING_STATUS_ONLY", "active": true,
+         "effective_from": "2026-08-28", "effective_to": null,
+         "evidence": {"class": "DOCUMENTED_RAW_VALUE", "source": "erp_openapi_v3_2026-08-05", "locator": "spec/bills.yml GET /bills param 'status'"}},
+        {"raw": "draft", "maps_to": null, "accounting_status": "Draft", "mapping_kind": "ACCOUNTING_STATUS_ONLY", "active": false,
+         "effective_from": null, "effective_to": null,
+         "note": "Not accounting-effective.",
+         "evidence": {"class": "UNVERIFIED", "marker": "UNVERIFIED - REQUIRES ZOHO CONFIRMATION",
+                      "reasoning": "POST /bills/{id}/status/open and /submit imply a pre-open state, but 'draft' is absent from the documented status filter list, which names only paid, open, overdue, void and partially_paid. Since the row is only ever reached by a bill we would exclude from actual anyway, an exception is the safe outcome.",
+                      "confirm_by": "Phase 0B-2: create an unapproved bill and read back the status field verbatim."}}
       ],
-      "note": "Bill status drives accounting_status, NOT a C3 business status. accounting_status in {Approved, Reversal} is the accounting-effective set - preserved exactly from AUD-C-004. Payment state (paid, partially_paid, overdue) is out of scope: this system does not process payments."
+      "verification_required": "Confirm 'draft' and any approval-workflow status in Phase 0B-2."
     },
     {
       "product": "BOOKS", "api_version": "v3",
       "object": "bill", "field": "status",
+      "effective_from": "2026-08-28", "effective_to": null,
+      "coverage": "INCOMPLETE_UNVERIFIED",
+      "coverage_evidence": "No Books specification captured. Only 'void' is sourced - plan section 8.4 states the ERP/Books bill void row directly.",
       "rows": [
-        {"raw": "draft", "maps_to": null, "accounting_status": "Draft"},
-        {"raw": "open", "maps_to": null, "accounting_status": "Approved"},
-        {"raw": "paid", "maps_to": null, "accounting_status": "Approved"},
-        {"raw": "partially_paid", "maps_to": null, "accounting_status": "Approved"},
-        {"raw": "overdue", "maps_to": null, "accounting_status": "Approved"},
-        {"raw": "void", "maps_to": null, "accounting_status": "Void"}
-      ]
+        {"raw": "void", "maps_to": null, "accounting_status": "Void", "mapping_kind": "ACCOUNTING_STATUS_ONLY", "active": true,
+         "effective_from": "2026-08-28", "effective_to": null,
+         "evidence": {"class": "PLAN_APPROVED", "source": "plan_v1.2.1_section_8.4", "locator": "ERP/Books | Bill | void | (drives accounting_status=Void, not a business status)"}},
+        {"raw": "draft", "maps_to": null, "accounting_status": "Draft", "mapping_kind": "ACCOUNTING_STATUS_ONLY", "active": false,
+         "effective_from": null, "effective_to": null,
+         "evidence": {"class": "UNVERIFIED", "marker": "UNVERIFIED - REQUIRES ZOHO CONFIRMATION",
+                      "reasoning": "No Books specification captured; an ERP row is not evidence for Books.",
+                      "confirm_by": "Phase 0B-2, only if D-14 resolves to Books + Inventory."}},
+        {"raw": "open", "maps_to": null, "accounting_status": "Approved", "mapping_kind": "ACCOUNTING_STATUS_ONLY", "active": false,
+         "effective_from": null, "effective_to": null,
+         "evidence": {"class": "UNVERIFIED", "marker": "UNVERIFIED - REQUIRES ZOHO CONFIRMATION",
+                      "reasoning": "No Books specification captured; an ERP row is not evidence for Books. This one is load-bearing - it is the row that moves actual CWIP - so it is emphatically not inferred.",
+                      "confirm_by": "Phase 0B-2, only if D-14 resolves to Books + Inventory."}},
+        {"raw": "paid", "maps_to": null, "accounting_status": "Approved", "mapping_kind": "ACCOUNTING_STATUS_ONLY", "active": false,
+         "effective_from": null, "effective_to": null,
+         "evidence": {"class": "UNVERIFIED", "marker": "UNVERIFIED - REQUIRES ZOHO CONFIRMATION",
+                      "reasoning": "No Books specification captured.",
+                      "confirm_by": "Phase 0B-2, only if D-14 resolves to Books + Inventory."}},
+        {"raw": "partially_paid", "maps_to": null, "accounting_status": "Approved", "mapping_kind": "ACCOUNTING_STATUS_ONLY", "active": false,
+         "effective_from": null, "effective_to": null,
+         "evidence": {"class": "UNVERIFIED", "marker": "UNVERIFIED - REQUIRES ZOHO CONFIRMATION",
+                      "reasoning": "No Books specification captured.",
+                      "confirm_by": "Phase 0B-2, only if D-14 resolves to Books + Inventory."}},
+        {"raw": "overdue", "maps_to": null, "accounting_status": "Approved", "mapping_kind": "ACCOUNTING_STATUS_ONLY", "active": false,
+         "effective_from": null, "effective_to": null,
+         "evidence": {"class": "UNVERIFIED", "marker": "UNVERIFIED - REQUIRES ZOHO CONFIRMATION",
+                      "reasoning": "No Books specification captured.",
+                      "confirm_by": "Phase 0B-2, only if D-14 resolves to Books + Inventory."}}
+      ],
+      "verification_required": "Capture the Books v3 specification, or enumerate against a Books tenant."
     }
   ],
+  "accounting_status_values": ["Draft", "Approved", "Void", "Reversal"],
+  "accounting_effective_set": ["Approved", "Reversal"],
   "unmapped_handling": {
     "action": "accept the record, preserve external_status_raw verbatim, raise reconciliation_exception kind UNMAPPED_EXTERNAL_STATUS",
     "never": "guess a mapping, drop the record, or default to a business status",
     "visibility": "SCR-27 Reconciliation Exception Queue",
-    "blocks": "period close, and capitalisation, while OPEN"
+    "blocks": "period close, and capitalisation, while OPEN",
+    "also_raised_when": "the raw value matches a row that exists but is INACTIVE (unverified spelling) or outside its effective window. An inactive row is not a mapping; it is a note about work still to do."
   },
   "registry_rules": [
     "Every mapping is data, versioned and effective-dated - never a hardcoded dict in application code.",
     "Every maps_to value must exist in C3_statuses.json. Enforced by tests/test_contracts.py.",
-    "A null maps_to is a deliberate assertion that the raw value has no business-status meaning, not an omission. Nulls are reviewed, not defaulted.",
+    "A null maps_to is NEVER an omission. It is either NO_BUSINESS_STATUS (a reviewed assertion that the value has no business meaning) or ACCOUNTING_STATUS_ONLY (it drives accounting_status instead). mapping_kind says which, and a row may not leave it unsaid.",
+    "'Maps to nothing' and 'not yet mapped' are different facts recorded in different places: mapping_kind on the row, coverage on the block. A block with coverage INCOMPLETE_UNVERIFIED and an empty rows list is not asserting anything about the field's meaning.",
+    "A row whose evidence class is UNVERIFIED must be inactive and must carry the marker string 'UNVERIFIED - REQUIRES ZOHO CONFIRMATION'. The resolver refuses inactive rows and raises UNMAPPED_EXTERNAL_STATUS, which is the same fail-closed behaviour as an absent row.",
     "Rows marked verification_required cannot be relied upon until Phase 0B-2 confirms them against the tenant."
   ]
 }

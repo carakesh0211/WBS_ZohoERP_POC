@@ -1,0 +1,39 @@
+{
+  "cassette_version": 1,
+  "product": "BOOKS_INVENTORY",
+  "service": "books",
+  "api_version": "v3",
+  "provenance": "INVENTED-SANITISED",
+  "provenance_note": "Hand-authored; no tenant contacted. Books bills. The shape is close to ERP's on purpose -- that closeness is exactly why the product-isolation locks cannot rely on payload shape and use the recorded base_url and OAuth scope instead. A Books body that happened to satisfy an ERP mapper still cannot satisfy an ERP adapter, because /books/v3 is not /erp/v3 and ZohoBooks.bills.READ is not ERP.bills.READ.",
+  "request": {
+    "method": "GET",
+    "base_url": "https://www.zohoapis.in/books/v3",
+    "path": "/bills",
+    "scope": "ZohoBooks.bills.READ",
+    "page": 1
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "code": 0,
+      "message": "success",
+      "bills": [
+        {
+          "bill_id": "BILL-BKS-2001",
+          "bill_number": "BB-2026-0091",
+          "vendor_id": "VEN-BKS-4001",
+          "vendor_name": "Cavendish Precision Tools",
+          "date": "2026-08-22",
+          "last_modified_time": "2026-08-27T09:30:00+0530",
+          "currency_code": "INR",
+          "sub_total": 76500.25,
+          "tax_total": 13770.05,
+          "total": 90270.30,
+          "status": "open",
+          "purchaseorder_ids": ["PO-BKS-6001"]
+        }
+      ],
+      "page_context": {"page": 1, "per_page": 2, "has_more_page": false}
+    }
+  }
+}
