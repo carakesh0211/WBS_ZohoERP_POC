@@ -51,6 +51,7 @@ if str(PROJECT_ROOT) not in sys.path:                    # allow `import app.bac
 from app.backend.pg import config as pg_config            # noqa: E402
 from app.backend.pg import engine as pg_engine             # noqa: E402
 from app.backend.pg import migrate_pg                       # noqa: E402
+from app.backend.pg import rls as pg_rls                     # noqa: E402
 
 # ======================================================================== guard
 _PER_TEST_DB_RE = re.compile(r"^capex_t\d+$")
@@ -217,6 +218,103 @@ def pg_database(pg_url, pg_disposable_db_name):
     requested by the same test."""
     cfg, provider = _config_and_provider(pg_url, pg_disposable_db_name)
     database = pg_engine.Database(cfg, secret_provider=provider, min_size=1, max_size=5)
+    try:
+        yield database
+    finally:
+        database.close()
+
+
+# ============================================== the RLS-subject application role
+#
+# WHY THIS EXISTS. `.github/workflows/ci.yml` starts the service container with
+# `POSTGRES_USER: capex` and hands the suite
+# `CAPEX_DB_URL=postgresql://capex:capex@localhost:5432/postgres`. The official
+# `postgres` image creates `POSTGRES_USER` as a cluster SUPERUSER, and a
+# superuser **bypasses row-level security unconditionally** -- `FORCE ROW LEVEL
+# SECURITY` narrows the owner-vs-policy interaction only, and does not apply to
+# superusers at all. Every fixture above therefore connects as a role no policy
+# can constrain.
+#
+# `pg_database` builds its `DatabaseConfig` from that same URL, so
+# `Database.session()` -- which applies `SET LOCAL capex.*` but never
+# `SET LOCAL ROLE` -- is equally exempt. A live test that asserted "RLS hid the
+# other entity's rows" through `pg_database` was therefore asserting nothing:
+# the rows were visible, and the only reason the suite was green is that no test
+# had yet looked. `tests/test_pg_rls_integration_matrix.py` proves this
+# empirically rather than trusting this comment.
+#
+# In PRODUCTION the application connects as `capex_app` directly
+# (`app/backend/pg/config.py`'s `DatabaseConfig` default `user="capex_app"`), so
+# `current_user` is already an RLS-subject role and nothing extra is needed.
+# The gap is confined to the test wiring, and this is where it is closed:
+# `SET LOCAL ROLE capex_app` makes `current_user` in the test transaction
+# exactly what it is in production, for the duration of that transaction.
+# Transaction-scoped, so it cannot survive into the next borrower of a pooled
+# connection -- the same guarantee `Database._apply_scope` gives the scope
+# settings, and the reason `SET LOCAL` is used rather than `SET`.
+#
+# No password is involved: `capex_app` is NOLOGIN by design
+# (`migrations/pg/004_identity_scope.sql` states why), and `SET ROLE` from an
+# already-authenticated superuser session needs none. This is the mechanism
+# `app/backend/pg/rls.py::assume_scoped_role` already uses for the 004/006
+# tables; these fixtures extend it to anything that goes through a `Database`.
+
+
+class ScopedRoleDatabase(pg_engine.Database):
+    """A `Database` whose sessions run as the non-superuser application role.
+
+    Identical to `pg_engine.Database` in every other respect -- same pool, same
+    `session()` contract, same commit/rollback semantics -- so a test that
+    swaps one for the other is testing the same code path, only under an
+    identity that row-level security can actually constrain.
+
+    `SET LOCAL ROLE` is issued FIRST, before the `capex.*` settings. Either
+    order would in fact work -- a two-part custom GUC may be set by any role,
+    so switching role does not cost the session the ability to apply the
+    scope -- but this is the order `rls.assume_scoped_role` already uses, and
+    two spellings of the same sequence is one more thing to keep in step.
+    """
+
+    #: The role sessions assume. Provisioned, idempotently and NOLOGIN, by
+    #: `migrations/pg/004_identity_scope.sql`.
+    scoped_role: str = pg_rls.SCOPED_ROLE
+
+    def _apply_scope(self, con: psycopg.Connection, scope: pg_engine.Scope) -> None:
+        # `Database._apply_scope` is a staticmethod called as
+        # `self._apply_scope(...)`, so overriding it as an instance method is
+        # picked up by the inherited `session()` without touching engine.py.
+        con.execute(sql.SQL("SET LOCAL ROLE {}").format(
+            sql.Identifier(self.scoped_role)))
+        pg_engine.Database._apply_scope(con, scope)
+
+
+def scoped_role_database(url: str, dbname: str, *, min_size: int = 1,
+                         max_size: int = 2) -> ScopedRoleDatabase:
+    """A `ScopedRoleDatabase` over `dbname`, built from `url`'s host and
+    credentials -- the RLS-enforcing counterpart of the `pg_database` fixture,
+    for tests that need to construct it themselves (a second pool, a different
+    scope per session, or a database name they hold directly).
+
+    The CALLER owns closing it; every existing caller of `_config_and_provider`
+    in the live suite already does so in a `finally`.
+    """
+    cfg, provider = _config_and_provider(url, dbname)
+    return ScopedRoleDatabase(cfg, secret_provider=provider,
+                              min_size=min_size, max_size=max_size)
+
+
+@pytest.fixture()
+def pg_app_database(pg_url, pg_disposable_db_name):
+    """A `Database` over the same disposable database `pg_connection` and
+    `pg_database` use, whose sessions are SUBJECT TO row-level security.
+
+    Use this, never `pg_database`, for any assertion about what a principal can
+    or cannot SEE. `pg_database` is kept exactly as it was -- it is the right
+    fixture for everything that is not about RLS, and changing it would silently
+    re-scope tests owned by other streams -- but it connects as the CI
+    superuser and no policy applies to it.
+    """
+    database = scoped_role_database(pg_url, pg_disposable_db_name)
     try:
         yield database
     finally:

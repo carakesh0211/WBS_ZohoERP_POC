@@ -158,6 +158,16 @@ POST_BASELINE_FILES = {
     # the source, and a PostgreSQL-gated test would skip past every one of
     # them on the machine the module was written on.
     "test_pg_integration_schema.py", "test_integration_store.py",
+    # --- Wave 6 stream A1: RLS enforced, rather than merely declared -------
+    # The behavioural negative matrix for the nine tables 010/011 protect.
+    # Post-baseline like every wave file: the 220 counts the POC's
+    # audit-remediation suite, and inflating it would make the removal guard
+    # meaningless. Two of its tests are database-free (a scan for policies
+    # that pass `capex_scope_permits` its four same-typed arguments out of
+    # order, and a check on the scoped-role fixture's own emitted SQL) and
+    # run everywhere; the rest are `@pytest.mark.pg` and run for the first
+    # time in CI.
+    "test_pg_rls_integration_matrix.py",
 }
 
 
