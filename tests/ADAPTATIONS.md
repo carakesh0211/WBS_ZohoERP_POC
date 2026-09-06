@@ -731,3 +731,40 @@ first fails at collection rather than at assertion, because the registry
 refuses to load at all — which is the stronger outcome.
 
 **Approved by:** engagement lead, Wave 5 stream 3 integration pass.
+## 2026-09-06 — additions, Wave 5 stream 4 (rate budget, retry, circuit breaker)
+
+**No test was weakened, renamed or deleted.** This entry records an addition
+and one registration, so the inventory reads coherently.
+
+`tests/test_integration_throttle.py` is new (75 functions) and covers
+`app/backend/integration/throttle.py` — plan §11.6. It was registered in
+`tools/build_test_manifest.py`'s `POST_BASELINE_FILES` set and
+`tests/TEST_MANIFEST.json` was regenerated. Wave 5 files are post-baseline by
+the same rule as every wave before them: the 220-function baseline counts the
+POC's audit-remediation suite, and inflating it would make the removal guard
+stop meaning anything.
+
+| Added in | Tests | Purpose |
+|---|---|---|
+| Wave 5 S4 | `test_integration_throttle.py` — the six conditions | One test per row of §11.6's response table, each forcing exactly that condition, plus `test_the_six_conditions_produce_six_distinguishable_dispositions`, which asserts the six records are pairwise distinct on every observable field. A retry policy where two failures look alike is how a quota exhaustion is mistaken for an outage at 3am |
+| Wave 5 S4 | `test_integration_throttle.py` — the two windows | The per-minute and the daily budget, and that on ERP Standard (2,000/day) the **daily** window is the one that binds. Includes the compensating release: a day reservation taken before a minute refusal is given back, not leaked |
+| Wave 5 S4 | `test_integration_throttle.py` — the lane allocation | 60 polling / 30 outbound / 10 interactive, on **both** windows, proving an operator's "Test connection" is still answered while a backfill sits at its ceiling all day |
+| Wave 5 S4 | `test_integration_throttle.py` — backoff and the breaker | Full-jitter backoff to an exact value under a seeded jitter source, `max_attempts=8` → DEAD, and 5-in-60s → OPEN 60s → HALF_OPEN single probe |
+
+**Why none of these needs a live anything.** Time is an injected `ManualClock`
+the test advances by hand, jitter is a `FrozenRandom` returning a chosen point
+of the interval, and the rate-budget table is `FakeBudgetSession`, an
+in-process model of what the two SQL statements *do* rather than of what the
+module does. No socket is opened, no tenant is touched and nothing sleeps: the
+whole file runs in under three seconds. A backoff test that sleeps 256 seconds
+to prove it slept 256 seconds is a test nobody runs.
+
+**Reported to the lead, not made (stream 2 owns the migration).**
+`integration_rate_budget` needs `lane text NOT NULL` inside the key
+`UNIQUE (connection_id, window_kind, lane, window_start)`, plus the usual
+`created_by` / `updated_at` / `updated_by`. A single `used` counter per window
+cannot express "polling is capped at 60", so without that column the 60/30/10
+allocation is undeliverable and a backfill can starve an operator. The circuit
+breaker likewise needs five durable columns; it is expressed as a
+`CircuitStore` port with a deliberately non-durable in-memory implementation so
+that shipping without the durable one is visible rather than silent.

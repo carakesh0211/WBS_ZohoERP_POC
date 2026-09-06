@@ -99,6 +99,13 @@ POST_BASELINE_FILES = {
     # map and the module that applies them. Neither file touches a database,
     # the network or a tenant.
     "test_contracts_integration_statuses.py", "test_integration_statuses.py",
+    # --- Wave 5 stream 4: rate budget, retry, backoff, circuit breaker ----
+    # Runs with no database and no network: an injected clock, a seeded
+    # jitter source and an in-process model of the two rate-budget
+    # statements. Post-baseline like every other new file -- the 220 counts
+    # the POC's audit-remediation suite, and inflating it would make the
+    # removal guard meaningless.
+    "test_integration_throttle.py",
 }
 
 
