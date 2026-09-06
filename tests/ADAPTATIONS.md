@@ -1311,3 +1311,160 @@ appear in BOTH registries. The filter option can be restored in the same
 commit.
 
 **Approved by:** pending engagement-lead review — Wave 5 stream 3.
+
+---
+
+## 2026-09-06 — Wave 6 stream A1: RLS was not enforced in CI at all
+
+### What was actually wrong
+
+`tests/test_pg_integration_schema.py::test_live_rls_hides_another_entitys_receipts`
+failed in GitHub Actions run 34043629921 with
+`['IB-ENT-A', 'IB-ENT-B'] == ['IB-ENT-A']`.
+
+The policy was correct. The **session** was not:
+
+* `.github/workflows/ci.yml` starts the service container with
+  `POSTGRES_USER: capex` and sets
+  `CAPEX_DB_URL=postgresql://capex:capex@localhost:5432/postgres`.
+* The official `postgres` image creates `POSTGRES_USER` as a cluster
+  **SUPERUSER**.
+* A superuser **bypasses row-level security unconditionally**. `FORCE ROW LEVEL
+  SECURITY` does not help: it governs whether a table's OWNER is subject to its
+  own policies, and says nothing about superusers.
+* `tests/conftest_pg.py::_config_and_provider` takes its user from that URL, so
+  `pg_database` and every `Database` built from it inherits the exemption.
+  `Database.session()` applies the `capex.*` settings the policies read, and
+  then never reaches a policy.
+
+This is confined to the TEST WIRING. In production the application connects as
+`capex_app` directly (`app/backend/pg/config.py`'s `DatabaseConfig` default
+`user="capex_app"`), so `current_user` is already an RLS-subject role. No
+production behaviour was ever affected, and none is changed here.
+
+### How many previously-passing tests were vacuous
+
+**Zero of the 004/006 RLS tests.** `tests/test_pg_rls.py` and
+`tests/test_pg_rls_coverage.py` already route every behavioural assertion
+through `app.backend.pg.rls.scoped_transaction`, which issues
+`SET LOCAL ROLE capex_app`. Those nineteen tables have been genuinely enforced
+all along; the mechanism to do it correctly already existed in the repository.
+
+**Every RLS assertion on the nine tables from 010/011 was existence-only.**
+Before this change the integration platform's coverage was:
+
+| Test | What it proves |
+|---|---|
+| `test_every_table_is_enabled_forced_and_policied` | the migration TEXT contains ENABLE/FORCE/CREATE POLICY |
+| `test_every_policy_has_both_using_and_with_check` | the policy text has both clauses |
+| `test_every_policy_calls_the_frozen_scope_function` | the policy text names `capex_scope_permits` |
+| `test_rls_is_enabled_and_forced_for_every_registered_table_live` | `pg_class.relrowsecurity` / `relforcerowsecurity`, and only for 004/006's nineteen tables |
+
+All four are worth keeping and none is weakened. But a policy that exists,
+declares both clauses, calls the right function and is both enabled and forced
+can still enforce nothing — and on these nine tables, nothing is what it had
+ever been asked to enforce. `test_live_rls_hides_another_entitys_receipts` was
+the first behavioural one written, and it found that behaviour was absent.
+
+### The repair
+
+`tests/conftest_pg.py` gains `ScopedRoleDatabase`, a `Database` subclass whose
+`_apply_scope` issues `SET LOCAL ROLE capex_app` before the `capex.*` settings,
+plus the `pg_app_database` fixture and the `scoped_role_database()` helper.
+`SET LOCAL`, never a bare `SET`, so the privilege change is transaction-scoped
+and cannot survive into the next borrower of a pooled connection — the same
+guarantee `engine.py` states for the scope settings.
+
+No policy is weakened, no `FORCE` is dropped, no grant is widened, and no
+migration is touched. `capex_app` stays NOLOGIN and needs no password: `SET
+ROLE` from an already-authenticated session needs none. This is the mechanism
+`migrations/pg/004_identity_scope.sql`'s own header prescribes and that
+`app/backend/pg/rls.py::assume_scoped_role` already used for 004/006.
+
+`pg_database` is deliberately left **exactly as it was**. It is the correct
+fixture for everything that is not about RLS, and re-scoping it would silently
+change tests owned by other streams.
+
+### The two adapted tests, and why neither is weakened
+
+| Test | Before | After |
+|---|---|---|
+| `test_live_rls_hides_another_entitys_receipts` | built a plain `pg_engine.Database` (superuser; no policy applied) | builds a `ScopedRoleDatabase`. **Same assertion, unchanged**: exactly `["IB-ENT-A"]`. It now runs against an identity a policy can constrain, which is what it always claimed to do |
+| `_scoped_session` (helper for five live store tests) | same defect; its docstring asserted RLS enforcement it did not have | same change. The store functions carry their own `WHERE EXISTS (… capex_scope_permits …)` predicates and those were genuinely exercised, so no assertion below it was ever false — but one layer was being proven while two appeared to be. Both are now exercised |
+
+Strictly more is enforced than before, on the same assertions.
+
+### One new file
+
+`tests/test_pg_rls_integration_matrix.py` — the negative matrix over all nine
+tables carrying a `capex_scope_permits` policy in 010/011
+(`integration_connection`, `integration_inbox`, `integration_outbox`,
+`integration_event`, `integration_watermark`, `integration_rate_budget`,
+`integration_circuit`, `job`, `reconciliation_exception`).
+
+Three points per table, not one, because one is not enough: a deny-all policy
+hides the other entity's rows just as well as a correct one. Every table is
+asserted at scope `{ENT-A}` → exactly ENT-A's row, at `{ENT-A, ENT-B}` → both,
+and at `frozenset()` → nothing. Plus project restriction where the table
+carries the dimension, the `WITH CHECK` write side (and its converse, that a
+principal can still write inside its own scope), an unscoped session reading
+nothing, and the payload/amount columns that are the actual reason any of this
+matters.
+
+Plant and location are waived with a literal `NULL` in all nine policies
+because none of the nine tables carries such a column; that is asserted against
+`information_schema` rather than left as a claim in a comment, so the day one
+gains a `plant_id` the waiver stops being silent.
+
+### A real defect this found, in a file this stream does not own
+
+`migrations/pg/011_reconciliation_exception.sql:134-135` passes
+`capex_scope_permits` its arguments **out of order**:
+
+```sql
+USING      (capex_scope_permits(entity_id, NULL, project_id, NULL))
+WITH CHECK (capex_scope_permits(entity_id, NULL, project_id, NULL));
+```
+
+The signature is `(p_entity_id, p_plant_id, p_location_id, p_project_id)`. All
+four are `text`, so PostgreSQL accepts this without complaint. `project_id` is
+therefore checked against `capex.location_ids` — a dimension most principals
+are unrestricted on, so it permits every row — while the project slot receives
+`NULL` and is waived. **The project dimension is not enforced at all**, and the
+leaked columns are `local_paise` / `source_paise`: another project's
+reconciliation amounts, within the same entity.
+
+It is the only such call site in the repository; every policy in 004, 006, 008
+and 010 passes its arguments correctly.
+`test_every_policy_passes_capex_scope_permits_its_arguments_in_order` is a
+database-free scan that catches this class generally, and
+`test_live_project_restriction_confines_the_tables_that_carry_one` proves the
+consequence live. **Both fail until 011 is corrected.** The fix is one line,
+twice:
+
+```sql
+USING      (capex_scope_permits(entity_id, NULL, NULL, project_id))
+WITH CHECK (capex_scope_permits(entity_id, NULL, NULL, project_id));
+```
+
+Verified: with that substitution applied the static guard passes; reverted, it
+fails on exactly those two lines. `migrations/` is lead-owned, so this is
+reported rather than edited.
+
+### Also reported, not fixed here
+
+`migrations/pg/011_reconciliation_exception.sql` issues **no `GRANT` to
+`capex_app`** at all, unlike 008 and 010, which both state their grants
+explicitly and say why: `ALTER DEFAULT PRIVILEGES` attaches to the role that
+issued it, so a deployment whose 011 is applied by a different identity than
+its 004 leaves the application unable to read its own table. It works in CI
+only because one superuser runs every migration.
+
+### Not fixed here, deliberately
+
+`engine.Database.session()` never issues `SET LOCAL ROLE`. That is correct for
+production, where the connection is already `capex_app`, and `engine.py` is not
+this stream's file. Making the test wiring reproduce production's identity was
+the smaller and more honest change.
+
+**Approved by:** pending engagement-lead review — Wave 6 stream A1.

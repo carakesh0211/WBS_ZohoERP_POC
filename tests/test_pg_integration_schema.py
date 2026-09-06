@@ -42,8 +42,9 @@ if str(_TESTS_DIR) not in _sys.path:
     _sys.path.insert(0, str(_TESTS_DIR))
 
 from conftest_pg import (  # noqa: E402,F401  (re-exported as fixtures)
-    _config_and_provider, pg_admin_connection, pg_connection, pg_database,
-    pg_disposable_db_name, pg_scope, pg_template, pg_url,
+    _config_and_provider, pg_admin_connection, pg_app_database, pg_connection,
+    pg_database, pg_disposable_db_name, pg_scope, pg_template, pg_url,
+    scoped_role_database,
 )
 
 import json  # noqa: E402
@@ -1395,10 +1396,22 @@ def test_live_rls_hides_another_entitys_receipts(pg_connection, pg_url,
     """The policies, not merely their declaration. Two entities, one receipt
     each, then a scoped session that must see exactly one.
 
-    Run through `Database.session()` rather than the raw superuser connection,
-    because a superuser BYPASSES RLS entirely -- a version of this test written
-    on `pg_connection` would see both rows and pass only if the assertion were
-    written to expect that.
+    Run through a `ScopedRoleDatabase`, NOT a plain `pg_engine.Database`. The
+    first version of this test used the latter and failed in CI with both rows
+    visible, which was correct of it: a plain `Database` built from
+    `CAPEX_DB_URL` connects as `capex`, the CI service container's
+    `POSTGRES_USER`, which the official `postgres` image creates as a cluster
+    SUPERUSER -- and a superuser bypasses row-level security unconditionally.
+    `FORCE ROW LEVEL SECURITY` does not change that; it governs the table
+    OWNER, not superusers. Applying `SET LOCAL capex.*` to a superuser session
+    sets the settings the policies read and then never reaches a policy.
+
+    `ScopedRoleDatabase` adds `SET LOCAL ROLE capex_app` -- making
+    `current_user` in this transaction exactly what it is in production, where
+    the application connects as `capex_app` outright. See
+    `tests/conftest_pg.py`, and `tests/test_pg_rls_integration_matrix.py`,
+    which proves the superuser exemption empirically rather than asserting it
+    in prose.
     """
     con = pg_connection
     _seed_estate(con, entity_id="ENT-A")
@@ -1418,9 +1431,7 @@ def test_live_rls_hides_another_entitys_receipts(pg_connection, pg_url,
 
     from app.backend.pg import engine as pg_engine
 
-    cfg, provider = _config_and_provider(pg_url, pg_disposable_db_name)
-    database = pg_engine.Database(cfg, secret_provider=provider,
-                                  min_size=1, max_size=2)
+    database = scoped_role_database(pg_url, pg_disposable_db_name)
     scope = pg_engine.Scope(
         user_id="U-A", principal_kind="USER",
         entity_ids=frozenset({"ENT-A"}), plant_ids=None,
@@ -1447,12 +1458,21 @@ def _scoped_session(pg_url, dbname, entity_ids):
     cannot be used to test anything the policies do -- a test written on it
     would see every entity's rows and pass only if its assertions expected
     that.
+
+    That was equally true of the plain `pg_engine.Database` this helper used to
+    build: it takes its user from `CAPEX_DB_URL`, which in CI names the same
+    superuser, so `Database.session()` applied the `capex.*` settings the
+    policies read and then bypassed the policies. The store functions carry
+    their OWN `WHERE EXISTS (... capex_scope_permits ...)` predicates and those
+    were genuinely exercised, so the assertions below were never false -- but
+    they were proving one layer while appearing to prove two. A
+    `ScopedRoleDatabase` runs them under `capex_app`, so the database-side
+    backstop is exercised at the same time and a store predicate that silently
+    stopped filtering would now be caught by RLS rather than pass unnoticed.
     """
     from app.backend.pg import engine as pg_engine
 
-    cfg, provider = _config_and_provider(pg_url, dbname)
-    database = pg_engine.Database(cfg, secret_provider=provider,
-                                  min_size=1, max_size=2)
+    database = scoped_role_database(pg_url, dbname)
     scope = pg_engine.Scope(
         user_id="SVC-INTEGRATION", principal_kind="SERVICE",
         entity_ids=frozenset(entity_ids), plant_ids=None,

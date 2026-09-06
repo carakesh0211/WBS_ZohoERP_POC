@@ -98,6 +98,29 @@ jobs:
           # the disposable `capex_tmpl_*` / `capex_t<n>` databases it creates
           # from here (tests/conftest_pg.py::_assert_pg_disposable guards
           # that boundary even if CAPEX_DB_URL is ever mis-set).
+          #
+          # `capex` IS A SUPERUSER, and that is not incidental. The official
+          # `postgres` image creates POSTGRES_USER as a cluster superuser, and
+          # a superuser BYPASSES ROW-LEVEL SECURITY UNCONDITIONALLY - `FORCE
+          # ROW LEVEL SECURITY` governs the table's OWNER and says nothing
+          # about superusers. So no policy applies to any connection made with
+          # the URL below, and for one wave that meant every RLS assertion on
+          # the integration tables passed without enforcing anything.
+          #
+          # It is left a superuser DELIBERATELY: the migration runner needs
+          # DDL, and `capex_app` (migrations/pg/004_identity_scope.sql) is
+          # NOLOGIN by design, because a login password would have to ship in
+          # git. The suite reaches the restricted identity from this
+          # already-authenticated session instead, with `SET LOCAL ROLE
+          # capex_app` - transaction-scoped, no password, and exactly the
+          # `current_user` production runs as, since the application connects
+          # as `capex_app` outright. See tests/conftest_pg.py's
+          # `ScopedRoleDatabase` and `app/backend/pg/rls.py`.
+          #
+          # THEREFORE: any test asserting what a principal can or cannot SEE
+          # must go through `pg_app_database` / `scoped_role_database()`, never
+          # `pg_database`. tests/test_pg_rls_integration_matrix.py proves the
+          # bypass empirically rather than trusting this comment.
           POSTGRES_USER: capex
           POSTGRES_PASSWORD: capex
           POSTGRES_DB: postgres

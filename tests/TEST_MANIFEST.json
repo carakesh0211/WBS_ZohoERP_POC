@@ -5785,7 +5785,7 @@
       },
       "test_live_rls_hides_another_entitys_receipts": {
         "assertions": 1,
-        "body_sha": "e1c4374fe4882d5a"
+        "body_sha": "7f8c868d1292976e"
       },
       "test_live_record_inbound_tells_a_duplicate_from_an_unknown_connection": {
         "assertions": 5,
@@ -6680,6 +6680,72 @@
         "body_sha": "65d3e2a8281e2903"
       }
     },
+    "test_pg_rls_integration_matrix.py": {
+      "test_the_call_site_scan_finds_the_policies_it_is_meant_to_audit": {
+        "assertions": 2,
+        "body_sha": "ea0a7b687ac022c9"
+      },
+      "test_every_policy_passes_capex_scope_permits_its_arguments_in_order": {
+        "assertions": 1,
+        "body_sha": "7de98a4706236bca"
+      },
+      "test_the_scoped_role_database_switches_role_before_applying_scope": {
+        "assertions": 4,
+        "body_sha": "c12b894043b82787"
+      },
+      "test_the_matrix_covers_every_scope_policied_table_in_010_and_011": {
+        "assertions": 1,
+        "body_sha": "c3fd64cf42d2461e"
+      },
+      "test_the_project_dimension_list_names_every_table_whose_policy_uses_one": {
+        "assertions": 1,
+        "body_sha": "fecc43004fcf8da7"
+      },
+      "test_live_the_connecting_role_bypasses_rls_exactly_when_it_claims_to": {
+        "assertions": 3,
+        "body_sha": "0c625a8b077deeb7"
+      },
+      "test_live_the_scoped_role_is_neither_superuser_nor_bypassrls": {
+        "assertions": 4,
+        "body_sha": "7a983b52999185f0"
+      },
+      "test_live_entity_restriction_confines_every_scope_policied_table": {
+        "assertions": 3,
+        "body_sha": "357bb934bfe2b940"
+      },
+      "test_live_an_unscoped_session_reads_nothing_from_any_integration_table": {
+        "assertions": 1,
+        "body_sha": "03519da53d6fe8d1"
+      },
+      "test_live_project_restriction_confines_the_tables_that_carry_one": {
+        "assertions": 3,
+        "body_sha": "99495c895bbb7e7e"
+      },
+      "test_live_no_integration_table_carries_a_plant_or_location_column": {
+        "assertions": 1,
+        "body_sha": "78d1393728b473c1"
+      },
+      "test_live_another_entitys_supplier_invoices_are_unreadable": {
+        "assertions": 3,
+        "body_sha": "2a28838ad498e196"
+      },
+      "test_live_another_entitys_reconciliation_amounts_are_unreadable": {
+        "assertions": 2,
+        "body_sha": "095218d9c9471ab6"
+      },
+      "test_live_with_check_refuses_a_write_into_another_entitys_scope": {
+        "assertions": 3,
+        "body_sha": "ae64a48016a516e5"
+      },
+      "test_live_a_principal_may_still_write_inside_its_own_scope": {
+        "assertions": 1,
+        "body_sha": "b7d5ae505206059b"
+      },
+      "test_live_an_event_with_no_connection_is_visible_to_any_scoped_principal": {
+        "assertions": 1,
+        "body_sha": "b2d340c2528ad2e1"
+      }
+    },
     "test_pg_roles.py": {
       "test_roles_match_frozen_c9_contract": {
         "assertions": 2,
@@ -7332,6 +7398,7 @@
     "test_pg_repo.py": 23,
     "test_pg_rls.py": 18,
     "test_pg_rls_coverage.py": 34,
+    "test_pg_rls_integration_matrix.py": 16,
     "test_pg_roles.py": 19,
     "test_pg_scope_leakage.py": 5,
     "test_pg_seed.py": 23,
@@ -7407,6 +7474,7 @@
     "test_pg_repo.py": 37,
     "test_pg_rls.py": 34,
     "test_pg_rls_coverage.py": 72,
+    "test_pg_rls_integration_matrix.py": 34,
     "test_pg_roles.py": 50,
     "test_pg_scope_leakage.py": 12,
     "test_pg_seed.py": 56,
