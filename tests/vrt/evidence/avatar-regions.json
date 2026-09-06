@@ -1,0 +1,44 @@
+{
+  "desktop-1440": {
+    "wbsDefault": {
+      "x": 1208.296875,
+      "y": 9,
+      "width": 26,
+      "height": 26
+    },
+    "wbsCosy": {
+      "x": 1208.296875,
+      "y": 9,
+      "width": 26,
+      "height": 26
+    }
+  },
+  "laptop-1024": {
+    "wbsDefault": {
+      "x": 12,
+      "y": 29,
+      "width": 26,
+      "height": 26
+    },
+    "wbsCosy": {
+      "x": 12,
+      "y": 29,
+      "width": 26,
+      "height": 26
+    }
+  },
+  "tablet-800": {
+    "wbsDefault": {
+      "x": 106.609375,
+      "y": 33,
+      "width": 26,
+      "height": 26
+    },
+    "wbsCosy": {
+      "x": 10,
+      "y": 33,
+      "width": 26,
+      "height": 26
+    }
+  }
+}
