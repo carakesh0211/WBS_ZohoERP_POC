@@ -84,6 +84,15 @@ POST_BASELINE_FILES = {
     # PostgreSQL-gated test would have skipped past on every dev machine.
     "test_budget_submission.py", "test_approval_writeback.py",
     "test_pg_approval_writeback_e2e.py",
+    # --- Wave 5 stream 6: outbound PO emission and idempotency -------------
+    # Post-baseline like every other wave. All three run with no database and
+    # no network: the properties they hold -- a Function killed mid-send, a
+    # tenant without the Z-01 unique field, a detective control whose table is
+    # missing -- are exactly the ones a PostgreSQL-gated test would skip past
+    # on every dev machine, and they are the ones that decide whether a
+    # commitment gets counted twice.
+    "test_outbound_chaos.py", "test_outbound_emission.py",
+    "test_outbound_unsanctioned.py",
 }
 
 
