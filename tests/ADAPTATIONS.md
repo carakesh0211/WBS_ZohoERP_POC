@@ -656,3 +656,46 @@ original through `budget.record_original` and passed throughout, which is what
 isolated the difference. The helper now seeds the ORIGINAL line behind the cell.
 
 **Approved by:** engagement lead, Wave 4 integration pass.
+
+## 2026-09-06 — the four remaining live failures, and where the staleness guard actually lives
+
+**`test_a_rejected_instance_...` and `test_an_unroutable_document_...`** counted
+`budget_line` rows for the WBS and asserted zero. `_seed_estate` now seeds the
+ORIGINAL grant behind the control cell — it must, because the cell is
+materialised from `budget_line` and a cell with no ledger behind it describes a
+state that cannot exist. Both counts are now scoped to `kind = 'REVISION'`.
+**Not a weakening:** the claim was always "this outcome created no spending
+capacity", and counting every kind asserted the stronger and wrong thing, that
+the estate has no budget at all.
+
+**`test_a_returned_instance_leaves_the_document_editable_and_says_why`**
+expected `DRAFT` and `decided_at IS NULL`. Migration 009 lets the column hold
+RETURNED, and the write-back now writes it. **Three assertions added**: the
+status is RETURNED, and `decided_at`/`decided_by` are populated — a return IS a
+decision, taken by a named approver at a known time, and `ck_*_decision` puts
+RETURNED on the decided side.
+
+**`test_a_stale_write_back_refuses_rather_than_overwriting`** — rewritten
+twice, and the two failures map the guard's real position:
+
+  * *decide, then move the document, then write back* — the engine now calls
+    the write-back at closure, so the outcome was already applied and the
+    second call returned early as idempotent. "DID NOT RAISE".
+  * *move the document, then decide* — `decide` runs its own
+    `assert_object_version_fresh` and raises `OBJECT_VERSION_STALE` before the
+    write-back is entered at all.
+
+**So in the decide path the write-back's `_assert_version_matches` is
+unreachable**: the engine's check fires first, and after closure idempotency
+fires. That is not a defect — the guard is defence in depth for a caller
+driving `apply_outcome` directly, a retry or replayed decision, which is what
+the module documents it for. The test now constructs exactly that: an instance
+closed by statement (so the write-back has not run), a document that moved in
+between, and `apply_outcome` driven directly. It additionally asserts the
+document is left as the approvers found it and no REVISION line was written.
+
+**Recorded because it is easy to lose:** the finding that this guard has only
+one reachable caller belongs with the guard, not in a commit message nobody
+re-reads.
+
+**Approved by:** engagement lead, Wave 4 integration pass.

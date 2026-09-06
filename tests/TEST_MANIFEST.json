@@ -2571,11 +2571,11 @@
       },
       "test_a_rejected_instance_rejects_the_document_and_writes_no_line": {
         "assertions": 3,
-        "body_sha": "bf18fab3ce84f27e"
+        "body_sha": "1ddfb83a428ed420"
       },
       "test_a_returned_instance_leaves_the_document_editable_and_says_why": {
-        "assertions": 4,
-        "body_sha": "1988ba1445857530"
+        "assertions": 5,
+        "body_sha": "967fa4f37b4b49b0"
       },
       "test_an_approved_transfer_moves_budget_between_both_cells": {
         "assertions": 4,
@@ -2587,7 +2587,7 @@
       },
       "test_an_unroutable_document_never_becomes_an_approved_document": {
         "assertions": 6,
-        "body_sha": "48f4887585013f1a"
+        "body_sha": "c64eba8cbf3b0b60"
       },
       "test_the_direct_route_cannot_approve_a_revision_under_an_open_instance": {
         "assertions": 2,
@@ -2595,7 +2595,7 @@
       },
       "test_a_stale_write_back_refuses_rather_than_overwriting": {
         "assertions": 5,
-        "body_sha": "bfd4a7458c64c49a"
+        "body_sha": "f5713c7a6f1714d5"
       },
       "test_a_revision_cannot_be_submitted_twice": {
         "assertions": 3,
@@ -5034,7 +5034,7 @@
     "test_pg_adoption.py": 39,
     "test_pg_approval_concurrency.py": 53,
     "test_pg_approval_schema.py": 96,
-    "test_pg_approval_writeback_e2e.py": 56,
+    "test_pg_approval_writeback_e2e.py": 57,
     "test_pg_approvals.py": 238,
     "test_pg_audit.py": 62,
     "test_pg_audit_api_e2e.py": 24,
