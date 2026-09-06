@@ -5467,7 +5467,7 @@
       },
       "test_live_two_concurrent_reservations_cannot_both_take_the_last_call": {
         "assertions": 8,
-        "body_sha": "47fc965776ee6ae7"
+        "body_sha": "36d96b0b63961133"
       },
       "test_live_a_refusal_on_a_fresh_connection_charges_neither_window": {
         "assertions": 4,
