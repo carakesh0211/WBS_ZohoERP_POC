@@ -84,6 +84,12 @@ POST_BASELINE_FILES = {
     # PostgreSQL-gated test would have skipped past on every dev machine.
     "test_budget_submission.py", "test_approval_writeback.py",
     "test_pg_approval_writeback_e2e.py",
+    # --- Wave 5 stream 5: the chunked job framework and the sweeps ---------
+    # Both run with no database and no network: the properties they hold --
+    # a 12-minute soft deadline, a resumable cursor, idempotent replay -- are
+    # properties of our code, and are proved with an injected clock rather
+    # than by waiting twelve minutes.
+    "test_integration_jobs.py", "test_integration_sweeps.py",
 }
 
 

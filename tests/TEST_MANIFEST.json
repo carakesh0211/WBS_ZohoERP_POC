@@ -1606,6 +1606,310 @@
         "body_sha": "61fee1e08beccf7c"
       }
     },
+    "test_integration_jobs.py": {
+      "test_the_soft_deadline_is_eighty_percent_of_the_function_ceiling": {
+        "assertions": 3,
+        "body_sha": "a50dd30697a38a2a"
+      },
+      "test_batch_work_is_never_scheduled_through_the_thirty_second_http_tier": {
+        "assertions": 2,
+        "body_sha": "710febb5df21bad0"
+      },
+      "test_a_soft_deadline_past_the_ceiling_is_refused": {
+        "assertions": 1,
+        "body_sha": "560a2d8f025c7450"
+      },
+      "test_job_states_are_exactly_the_c16_job_namespace": {
+        "assertions": 1,
+        "body_sha": "f1853d96fd3a1e34"
+      },
+      "test_the_chunk_sizes_are_the_ones_the_plan_tabulates": {
+        "assertions": 5,
+        "body_sha": "7551ac6a1da3c62c"
+      },
+      "test_the_claim_takes_a_bounded_batch_with_for_update_skip_locked": {
+        "assertions": 5,
+        "body_sha": "5bd0797f11e76f96"
+      },
+      "test_every_job_statement_carries_the_scope_token_and_waives_all_four": {
+        "assertions": 2,
+        "body_sha": "bd1a4af74754afb0"
+      },
+      "test_a_checkpoint_write_releases_the_lease_unless_the_job_is_still_running": {
+        "assertions": 2,
+        "body_sha": "56daeb5918a69dc4"
+      },
+      "test_a_second_tick_skips_a_leased_job_instead_of_doubling_the_work": {
+        "assertions": 1,
+        "body_sha": "dbaeeff065461560"
+      },
+      "test_an_expired_lease_is_reaped_so_a_killed_function_is_not_stranded": {
+        "assertions": 1,
+        "body_sha": "765bc7276a03b25f"
+      },
+      "test_nothing_to_claim_is_an_ordinary_outcome_not_an_error": {
+        "assertions": 1,
+        "body_sha": "8522bce304f14821"
+      },
+      "test_a_job_that_finishes_inside_the_deadline_is_done": {
+        "assertions": 2,
+        "body_sha": "5a576e37e25b1e3d"
+      },
+      "test_a_job_with_more_work_than_fits_in_twelve_minutes_checkpoints_and_resumes": {
+        "assertions": 13,
+        "body_sha": "6e72eff532a37992"
+      },
+      "test_the_cursor_is_committed_after_every_step_not_only_at_the_end": {
+        "assertions": 1,
+        "body_sha": "4503704cee059088"
+      },
+      "test_a_checkpoint_that_could_not_survive_jsonb_is_refused_at_the_step": {
+        "assertions": 2,
+        "body_sha": "fc54a56466bb7597"
+      },
+      "test_a_job_that_raises_is_recorded_failed_rather_than_crashing_the_tick": {
+        "assertions": 5,
+        "body_sha": "d4d8d220590e78fd"
+      },
+      "test_a_failed_job_is_claimable_again_so_a_transient_fault_is_not_terminal": {
+        "assertions": 3,
+        "body_sha": "f7bf5cca29dc93ed"
+      },
+      "test_a_claimed_row_is_reclaimable_only_through_its_expired_lease": {
+        "assertions": 3,
+        "body_sha": "1ffa7430906c66cb"
+      },
+      "test_running_out_of_rate_budget_checkpoints_and_never_reports_done": {
+        "assertions": 4,
+        "body_sha": "a5a5d3b62edbc3bf"
+      },
+      "test_a_job_that_checkpoints_too_many_times_goes_dead_and_alerts": {
+        "assertions": 4,
+        "body_sha": "c02a830297ad4656"
+      },
+      "test_a_permanently_failing_job_goes_dead_rather_than_retrying_forever": {
+        "assertions": 3,
+        "body_sha": "b3078c9171eef10e"
+      },
+      "test_a_checkpoint_that_cannot_be_stored_never_becomes_the_cursor": {
+        "assertions": 2,
+        "body_sha": "c29e3d82e7894467"
+      },
+      "test_run_until_complete_drives_a_long_job_to_done_over_many_ticks": {
+        "assertions": 3,
+        "body_sha": "6afc579011abba0c"
+      },
+      "test_re_running_from_the_last_checkpoint_produces_identical_state": {
+        "assertions": 6,
+        "body_sha": "0fe0ddeab9b2ebf2"
+      },
+      "test_the_watermark_never_moves_on_a_run_that_only_checkpointed": {
+        "assertions": 2,
+        "body_sha": "7b0476ff8170ebe0"
+      },
+      "test_next_watermark_holds_still_unless_the_window_was_exhausted": {
+        "assertions": 3,
+        "body_sha": "acaa158dbbda2185"
+      },
+      "test_a_stale_window_can_never_drag_the_watermark_backwards": {
+        "assertions": 1,
+        "body_sha": "e283807c474ee104"
+      },
+      "test_one_correlation_id_traces_the_job_through_inbox_and_event": {
+        "assertions": 3,
+        "body_sha": "06c451e848c5ace3"
+      },
+      "test_a_job_row_carrying_a_correlation_id_keeps_it_rather_than_minting_one": {
+        "assertions": 1,
+        "body_sha": "fab5a1b0536446ac"
+      },
+      "test_a_job_with_no_correlation_id_anywhere_mints_one": {
+        "assertions": 2,
+        "body_sha": "8b9dd40b3e697b99"
+      },
+      "test_a_windowed_poll_re_reads_three_hundred_seconds_behind_its_watermark": {
+        "assertions": 3,
+        "body_sha": "ef52d92f2354ad48"
+      },
+      "test_a_window_is_bounded_so_one_invocation_can_finish_it": {
+        "assertions": 2,
+        "body_sha": "1bbed7f29b218051"
+      },
+      "test_no_delta_filter_means_a_full_repull_and_says_so": {
+        "assertions": 1,
+        "body_sha": "7d7b4dba0734aa92"
+      },
+      "test_the_first_ever_run_is_a_full_pull_not_an_empty_window": {
+        "assertions": 1,
+        "body_sha": "9979bd0f97097ad7"
+      },
+      "test_a_window_survives_a_round_trip_through_a_jsonb_checkpoint": {
+        "assertions": 2,
+        "body_sha": "73f40e6a7b3556c4"
+      }
+    },
+    "test_integration_sweeps.py": {
+      "test_po_anchored_discovery_is_the_sole_grn_mechanism_when_receives_cannot_be_listed": {
+        "assertions": 4,
+        "body_sha": "57da2d937263f677"
+      },
+      "test_the_sweep_never_tries_to_enumerate_receives": {
+        "assertions": 2,
+        "body_sha": "bb888768409ff98e"
+      },
+      "test_the_cost_scales_with_open_po_count_and_not_with_receive_volume": {
+        "assertions": 3,
+        "body_sha": "05211fc1e2737643"
+      },
+      "test_the_walk_stops_at_the_rate_budget_instead_of_breaching_the_daily_ceiling": {
+        "assertions": 4,
+        "body_sha": "725e40077fb24748"
+      },
+      "test_the_walk_cycles_so_a_deleted_receive_can_still_be_detected": {
+        "assertions": 2,
+        "body_sha": "678536decfd3916e"
+      },
+      "test_an_unattributed_receive_line_is_quarantined_at_full_value": {
+        "assertions": 6,
+        "body_sha": "70e26ddb13442398"
+      },
+      "test_a_receive_line_with_no_line_identifier_is_quarantined_never_guessed": {
+        "assertions": 2,
+        "body_sha": "b13893645515c6e4"
+      },
+      "test_re_walking_the_same_pos_does_not_inflate_the_unattributed_bucket": {
+        "assertions": 2,
+        "body_sha": "2df2bf9ade233eee"
+      },
+      "test_an_open_exception_blocks_the_period_close": {
+        "assertions": 4,
+        "body_sha": "350c4953805785d2"
+      },
+      "test_the_unattributed_bucket_blocks_capitalisation_at_any_value": {
+        "assertions": 2,
+        "body_sha": "8f6e1888f419dbbf"
+      },
+      "test_every_kind_a_sweep_can_raise_is_one_the_registry_declares": {
+        "assertions": 2,
+        "body_sha": "2bce34ec268d6d73"
+      },
+      "test_the_poll_re_reads_three_hundred_seconds_behind_the_watermark": {
+        "assertions": 3,
+        "body_sha": "423e7b7e85df4770"
+      },
+      "test_the_overlap_is_free_because_the_inbox_discards_the_duplicate": {
+        "assertions": 2,
+        "body_sha": "9ad211765cff4edb"
+      },
+      "test_the_window_boundary_is_the_checkpoint_and_the_watermark_follows_it": {
+        "assertions": 4,
+        "body_sha": "bbd3ae6fc9f93e0d"
+      },
+      "test_a_page_limit_pauses_the_walk_without_moving_the_watermark": {
+        "assertions": 4,
+        "body_sha": "4a63a950e95ce64d"
+      },
+      "test_the_strategy_is_read_from_capabilities_never_from_a_product_name": {
+        "assertions": 3,
+        "body_sha": "940971ce791255b0"
+      },
+      "test_items_follow_the_same_declared_capability_split": {
+        "assertions": 1,
+        "body_sha": "01c7a15a65c90b8e"
+      },
+      "test_contacts_fall_back_to_a_full_refresh_because_no_filter_exists": {
+        "assertions": 2,
+        "body_sha": "033322229e1dd3ee"
+      },
+      "test_a_record_with_no_external_id_is_refused_rather_than_dropped": {
+        "assertions": 1,
+        "body_sha": "3adb2700844f2a08"
+      },
+      "test_an_unknown_page_shape_assumes_another_page_rather_than_stopping_early": {
+        "assertions": 3,
+        "body_sha": "6112ec69fdb143e3"
+      },
+      "test_a_missing_adapter_method_names_the_seam_instead_of_returning_nothing": {
+        "assertions": 2,
+        "body_sha": "bbc5d33d61fa452f"
+      },
+      "test_a_capex_po_with_no_local_record_is_an_unsanctioned_commitment": {
+        "assertions": 3,
+        "body_sha": "193198fd72419ccb"
+      },
+      "test_bill_detail_hydration_fetches_the_lines_the_list_response_omits": {
+        "assertions": 4,
+        "body_sha": "3d6b71a1c97c5429"
+      },
+      "test_a_detail_fetch_that_returns_no_lines_is_reported_not_marked_done": {
+        "assertions": 1,
+        "body_sha": "4872869233e102dc"
+      },
+      "test_an_empty_detail_queue_is_a_completion_not_a_failure": {
+        "assertions": 1,
+        "body_sha": "e05d770fa69d23c2"
+      },
+      "test_control_totals_catch_what_a_working_delta_filter_cannot_prove": {
+        "assertions": 6,
+        "body_sha": "125065b4cd1f9026"
+      },
+      "test_matching_totals_raise_nothing": {
+        "assertions": 1,
+        "body_sha": "bb950b759e32d347"
+      },
+      "test_only_one_period_is_reconciled_per_invocation": {
+        "assertions": 5,
+        "body_sha": "d600ba36caee7ad4"
+      },
+      "test_document_number_gaps_are_detected_per_series": {
+        "assertions": 1,
+        "body_sha": "55c3298901d8ff76"
+      },
+      "test_gap_detection_does_not_cry_wolf": {
+        "assertions": 3,
+        "body_sha": "295eb2d0452c2af9"
+      },
+      "test_a_gap_in_the_series_is_raised_against_the_period": {
+        "assertions": 2,
+        "body_sha": "000a50cff92339a9"
+      },
+      "test_a_document_dated_into_a_closed_period_raises_late_arrival": {
+        "assertions": 3,
+        "body_sha": "6631c1a81126f6f2"
+      },
+      "test_a_document_in_an_open_period_is_not_a_late_arrival": {
+        "assertions": 1,
+        "body_sha": "072014af01b6d4a9"
+      },
+      "test_the_completeness_sweep_is_idempotent_across_a_resume": {
+        "assertions": 1,
+        "body_sha": "cfb03086397a1c63"
+      },
+      "test_all_eight_jobs_are_declared_with_the_cadence_the_plan_gives_them": {
+        "assertions": 5,
+        "body_sha": "1783a6d7a3b866d9"
+      },
+      "test_every_job_kind_has_a_chunk_size_the_framework_knows_about": {
+        "assertions": 1,
+        "body_sha": "3c7462a4424a773d"
+      },
+      "test_the_correlation_id_reaches_the_reconciliation_exception": {
+        "assertions": 3,
+        "body_sha": "8e5e570e8b05ab89"
+      },
+      "test_two_identifierless_lines_on_one_receive_are_two_exceptions": {
+        "assertions": 3,
+        "body_sha": "c473328e34fce2fb"
+      },
+      "test_a_recurring_sweep_keeps_its_cursor_across_ticks": {
+        "assertions": 5,
+        "body_sha": "e2baa7e55fe1d72e"
+      },
+      "test_a_dead_job_is_never_revived_by_the_scheduler": {
+        "assertions": 3,
+        "body_sha": "350897e3424abda4"
+      }
+    },
     "test_known_defects.py": {
       "test_def_01_a_legacy_v1_database_can_be_upgraded": {
         "assertions": 5,
@@ -4965,6 +5269,8 @@
     "test_contracts.py": 47,
     "test_domain_invariants.py": 34,
     "test_financial_controls.py": 61,
+    "test_integration_jobs.py": 35,
+    "test_integration_sweeps.py": 40,
     "test_known_defects.py": 5,
     "test_manifest.py": 10,
     "test_masters_settings_api_guard.py": 9,
@@ -5021,6 +5327,8 @@
     "test_contracts.py": 73,
     "test_domain_invariants.py": 94,
     "test_financial_controls.py": 159,
+    "test_integration_jobs.py": 96,
+    "test_integration_sweeps.py": 110,
     "test_known_defects.py": 13,
     "test_manifest.py": 15,
     "test_masters_settings_api_guard.py": 15,
