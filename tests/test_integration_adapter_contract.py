@@ -24,16 +24,22 @@ from app.backend.integration import (
     POLL_OVERLAP_SECONDS,
     BillDTO,
     Capabilities,
+    CapabilityError,
+    ContactDTO,
     DEDUPE_CUSTOM_FIELD,
+    DEDUPE_SCAN_PAGE_LIMIT,
     IntegrationError,
+    ItemDTO,
     LineDTO,
     NetworkForbidden,
     NoNetworkTransport,
     Page,
     ProcurementAdapter,
     PurchaseOrderDTO,
+    RecoverableProcurementAdapter,
     UnsupportedDataCentre,
     adapter_for,
+    verified_dedupe_match,
     walk_pages,
 )
 from app.backend.integration import books_inventory as bi
@@ -76,6 +82,20 @@ C1_METHODS = {
     "create_purchase_order": ("po", "dedupe_key"),
     "receives_for_po": ("po_external_id",),
     "capabilities": (),
+    # Added after the freeze. Plan §11.5 required poll_items and poll_contacts
+    # all along; C1 declared neither, so sweeps.py routed around them by
+    # raising AdapterMethodMissing. Same (since, until, page) shape as the
+    # other two list calls, because the poll invokes all four identically.
+    "list_items": ("since", "until", "page"),
+    "list_contacts": ("since", "until", "page"),
+}
+
+#: The recovery surface. Separate from C1 because it answers a different
+#: question -- see RecoverableProcurementAdapter.
+RECOVERY_METHODS = {
+    "resolve_by_dedupe_key": ("dedupe_key",),
+    "update_purchase_order": ("external_id", "payload", "dedupe_key"),
+    "transition_purchase_order": ("external_id", "state", "actor"),
 }
 
 
@@ -96,13 +116,69 @@ def test_both_implementations_satisfy_the_frozen_c1_signature(product):
             f"{name}{params}. Streams 2-7 are building against that signature.")
 
 
-def test_the_capabilities_dataclass_has_exactly_the_six_frozen_fields():
-    """Adding a seventh would break every stream constructing one positionally."""
-    assert [f for f in Capabilities.__dataclass_fields__] == [
-        "receives_listable", "bills_delta_filter", "po_delta_filter",
-        "items_delta_filter", "line_level_custom_fields", "daily_call_ceiling",
-    ]
+#: The six fields frozen by the Wave 5 C1 seam, in their frozen order.
+FROZEN_CAPABILITY_FIELDS = [
+    "receives_listable", "bills_delta_filter", "po_delta_filter",
+    "items_delta_filter", "line_level_custom_fields", "daily_call_ceiling",
+]
+
+
+def test_the_six_frozen_capability_fields_are_still_the_first_six_in_order():
+    """The freeze, stated as what it was actually protecting.
+
+    The original assertion was "exactly six fields", and its stated reason was
+    that "adding a seventh would break every stream constructing one
+    positionally". That reason is the real requirement, and it is the one kept
+    here: the six may not be renamed, reordered, or displaced.
+
+    A seventh field was added after the freeze (``po_dedupe_search``) because
+    C1 had no way to say whether a product can search purchase orders by the
+    dedupe custom field, and a caller that assumed one either burns a scan it
+    did not need or sends a filter that is not documented. See
+    ``tests/ADAPTATIONS.md``.
+    """
+    fields = list(Capabilities.__dataclass_fields__)
+    assert fields[:6] == FROZEN_CAPABILITY_FIELDS, (
+        "The six frozen C1 capability fields have been renamed, reordered or "
+        "displaced. Streams 2-7 construct these positionally.")
     assert Capabilities.__dataclass_params__.frozen is True
+
+
+def test_every_capability_field_added_after_the_freeze_carries_a_default():
+    """Which is what makes adding one safe, and is now enforced rather than argued.
+
+    A field appended *with* a default cannot break a positional construction:
+    every existing call site still supplies exactly the six it always did, in
+    the same order, and still means what it meant. A field appended *without*
+    one breaks every such call site at import time. So the rule is not "never
+    add a field", it is "never add one that can silently reposition or newly
+    require an argument" -- and that is checkable.
+    """
+    import dataclasses
+
+    for field in dataclasses.fields(Capabilities)[len(FROZEN_CAPABILITY_FIELDS):]:
+        has_default = (field.default is not dataclasses.MISSING
+                       or field.default_factory is not dataclasses.MISSING)
+        assert has_default, (
+            f"Capabilities.{field.name} was added after the C1 freeze with no "
+            f"default. Every stream that constructs Capabilities with the six "
+            f"frozen fields would fail at import.")
+
+
+def test_the_six_frozen_fields_can_still_be_supplied_positionally():
+    """The freeze's promise, exercised rather than asserted about.
+
+    If this ever fails, a stream that wrote ``Capabilities(False, True, True,
+    False, False, 2000)`` in Wave 5 is broken -- which is precisely the
+    breakage the original "exactly six" test existed to prevent.
+    """
+    caps = Capabilities(False, True, True, False, False, 2000)
+    assert caps.receives_listable is False
+    assert caps.bills_delta_filter is True
+    assert caps.po_delta_filter is True
+    assert caps.items_delta_filter is False
+    assert caps.line_level_custom_fields is False
+    assert caps.daily_call_ceiling == 2000
 
 
 def test_an_unknown_product_is_refused_rather_than_defaulted():
@@ -504,3 +580,457 @@ def test_a_bill_dto_is_what_comes_back_not_a_zoho_dictionary(adapter):
     assert all(isinstance(b, BillDTO) for b in page.items)
     assert all(isinstance(b.document_date, date) for b in page.items)
     assert all(b.last_modified.tzinfo is not None for b in page.items)
+
+
+# ============================================== §11.5 master data: the C1 gap
+#
+# Two Wave 5 streams independently reported that C1 declared no `list_items`
+# and no `list_contacts` while plan §11.5 requires `poll_items` and
+# `poll_contacts`. `sweeps.py` raised `AdapterMethodMissing` rather than
+# papering over it with a no-op, because a master-data poll that fetches
+# nothing looks exactly like one that found nothing. These close that gap.
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_both_products_can_list_items_and_contacts(product):
+    """The gap sweeps.py reported, closed on both implementations."""
+    instance = build(product)
+    items = instance.list_items(SINCE, FAR_FUTURE, page=1)
+    contacts = instance.list_contacts(SINCE, FAR_FUTURE, page=1)
+    assert items.items and contacts.items
+    assert all(isinstance(i, ItemDTO) for i in items.items)
+    assert all(isinstance(c, ContactDTO) for c in contacts.items)
+
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_master_data_pages_carry_the_uniform_page_context(product):
+    """§11.2: `page`/`per_page` in, `has_more_page` out. The one uniform thing."""
+    instance = build(product)
+    for page in (instance.list_items(SINCE, FAR_FUTURE, page=1),
+                 instance.list_contacts(SINCE, FAR_FUTURE, page=1)):
+        assert isinstance(page, Page)
+        assert page.page == 1
+        assert isinstance(page.has_more, bool)
+        for entry in instance.transport.request_log:
+            assert "page" in entry["params"] and "per_page" in entry["params"]
+
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_master_data_requests_carry_organization_id(product):
+    """The boundary rule, held on the two new endpoints as well."""
+    instance = build(product)
+    instance.list_items(SINCE, FAR_FUTURE, page=1)
+    instance.list_contacts(SINCE, FAR_FUTURE, page=1)
+    assert instance.transport.request_log
+    for entry in instance.transport.request_log:
+        assert entry["params"]["organization_id"] == "60000000001"
+
+
+def test_erp_items_are_a_full_refresh_and_inventory_items_are_a_true_delta():
+    """The asymmetry §11.3 records, asserted rather than assumed equal.
+
+    This is the "do not invent parity" rule in one test. ERP `GET /items` has
+    no `last_modified_time` filter, so the poll is a weekly full refresh and
+    the adapter must NOT send a window it was not promised. Inventory's items
+    endpoint is the one true delta in the whole matrix and does send one.
+    """
+    erp = build("ERP")
+    erp.list_items(SINCE, FAR_FUTURE, page=1)
+    erp_params = erp.transport.request_log[-1]["params"]
+    assert erp.capabilities().items_delta_filter is False
+    assert "last_modified_time" not in erp_params, (
+        "ERP GET /items documents no last_modified_time filter. An "
+        "unrecognised parameter is ignored rather than rejected, so sending "
+        "one would return everything while looking like a delta.")
+
+    books = build("BOOKS_INVENTORY")
+    books.list_items(SINCE, FAR_FUTURE, page=1)
+    inv_params = books.transport.request_log[-1]["params"]
+    assert books.capabilities().items_delta_filter is True
+    assert "last_modified_time" in inv_params
+    # Inventory's own format, not the offset-bearing Books/ERP one.
+    assert inv_params["last_modified_time"].endswith("Z")
+
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_contacts_never_send_a_delta_filter_on_any_product(product):
+    """§11.3: contacts are sort-only on all three. There is no filter to send.
+
+    And there is deliberately no `contacts_delta_filter` in `Capabilities` to
+    read: naming a capability that does not exist would be a lie that reads as
+    a bug, so `sweeps.poll_contacts` looks one up, finds nothing, and gets the
+    full refresh the plan prescribes.
+    """
+    instance = build(product)
+    instance.list_contacts(SINCE, FAR_FUTURE, page=1)
+    params = instance.transport.request_log[-1]["params"]
+    assert "last_modified_time" not in params or params.get("sort_column")
+    assert not hasattr(instance.capabilities(), "contacts_delta_filter")
+    # Sort IS documented here, and is what makes an early stop possible.
+    assert params["sort_column"] == "last_modified_time"
+
+
+def test_inventory_purchase_orders_still_accept_neither_filter_nor_sort():
+    """The constraint that must survive somebody "optimising" the PO poll.
+
+    Inventory's `GET /purchaseorders` takes `organization_id`, `page` and
+    `per_page` and nothing else, which is why POs are read from Books. Adding
+    master-data calls to this adapter must not have loosened it.
+    """
+    assert bi.SORT_COLUMNS[(bi.SERVICE_INVENTORY, bi.PATH_PURCHASE_ORDERS)] == frozenset()
+    books = build("BOOKS_INVENTORY")
+    with pytest.raises(CapabilityError):
+        books._get(bi.SERVICE_INVENTORY, bi.PATH_PURCHASE_ORDERS,
+                   "ZohoInventory.purchaseorders.READ",
+                   {"last_modified_time": "2026-08-26T00:00:00Z"})
+
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_a_master_data_row_with_no_timestamp_maps_to_none_not_to_now(product):
+    """Because these endpoints have no delta filter, a row may carry no stamp.
+
+    Turning that into `now` would let a watermark advance past records nobody
+    read -- the silent-loss failure mode. `None` is the honest answer and the
+    poll treats it as "keep".
+    """
+    instance = build(product)
+    items = instance.list_items(SINCE, FAR_FUTURE, page=1)
+    for item in items.items:
+        assert item.last_modified is None or item.last_modified.tzinfo is not None
+
+
+def test_the_erp_item_fixture_actually_exercises_the_missing_timestamp():
+    """A guard nobody has seen fire is a guard nobody trusts."""
+    erp = build("ERP")
+    items = erp.list_items(SINCE, FAR_FUTURE, page=1)
+    assert any(i.last_modified is None for i in items.items), (
+        "The ERP items cassette no longer contains a row without "
+        "last_modified_time, so the None-not-now mapping is untested.")
+
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_master_data_money_is_integer_paise(product):
+    """Never a float, never a Decimal -- on the new DTOs too."""
+    instance = build(product)
+    for item in instance.list_items(SINCE, FAR_FUTURE, page=1).items:
+        assert isinstance(item.rate_paise, int)
+        assert not isinstance(item.rate_paise, bool)
+    # 48500.00 -> 4_850_000 paise, exactly, via the decimal string.
+    erp_rates = {i.external_id: i.rate_paise
+                 for i in build("ERP").list_items(SINCE, FAR_FUTURE, page=1).items}
+    assert erp_rates["ITM-ERP-7001"] == 4_850_000
+    assert erp_rates["ITM-ERP-7002"] == 27_500_050
+
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_the_adapter_does_not_decide_what_a_vendor_is(product):
+    """`contact_type` is carried, not filtered on.
+
+    The same tenant can legitimately bill a party it also buys from, and
+    burying that business rule inside a transport-shaped module is how it stops
+    being reviewable.
+    """
+    instance = build(product)
+    contacts = instance.list_contacts(SINCE, FAR_FUTURE, page=1)
+    assert all(c.contact_type is not None for c in contacts.items)
+
+
+def test_the_erp_contact_fixture_includes_a_non_vendor():
+    """Otherwise the previous test proves nothing."""
+    contacts = build("ERP").list_contacts(SINCE, FAR_FUTURE, page=1)
+    types = {c.contact_type for c in contacts.items}
+    assert "vendor" in types and "customer" in types
+
+
+# ======================================== the money-relevant gap: lost responses
+#
+# `create_purchase_order(po, dedupe_key)` took the key and C1 had NO call that
+# read a record back by it. So a response lost between "sent" and "recorded"
+# left a purchase order that EXISTS in the tenant and could never be linked.
+# Z-01's unique `cf_capex_ref` still prevented the duplicate; the LINK was what
+# was lost, and an unlinked commitment blocks period close.
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_both_products_expose_the_recovery_surface(product):
+    """Same names, same parameter names, both implementations."""
+    instance = build(product)
+    assert isinstance(instance, RecoverableProcurementAdapter)
+    for name, params in RECOVERY_METHODS.items():
+        method = getattr(instance, name, None)
+        assert callable(method), f"{product} cannot recover: no {name}()"
+        actual = tuple(p for p in inspect.signature(method).parameters
+                       if p != "self")
+        assert actual[:len(params)] == params
+
+
+@pytest.mark.parametrize("product,key,expected", [
+    ("ERP", "CAPEX-PO-000117", "PO-ERP-5001"),
+    ("BOOKS_INVENTORY", "CAPEX-PO-000044", "PO-BKS-6001"),
+])
+def test_a_purchase_order_can_be_found_by_its_dedupe_key(product, key, expected):
+    """The one call that closes the gap, on both products."""
+    assert build(product).resolve_by_dedupe_key(key) == expected
+
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_resolving_an_absent_key_returns_none_rather_than_a_candidate(product):
+    """`None` means "not found", and must never be the nearest row.
+
+    Adopting the wrong id links this commitment to somebody else's document.
+    That is worse than not linking it: the orphan is loud and blocks period
+    close, the mislink is silent and wrong.
+    """
+    assert build(product).resolve_by_dedupe_key("CAPEX-PO-NOT-PRESENT") is None
+
+
+@pytest.mark.parametrize("product,prefix_of_real", [
+    ("ERP", "CAPEX-PO-00011"),
+    ("BOOKS_INVENTORY", "CAPEX-PO-00004"),
+])
+def test_a_prefix_of_a_real_key_never_matches(product, prefix_of_real):
+    """Exact equality, never a prefix.
+
+    Zoho's documented `custom_field` variants include `_startswith` and
+    `_contains`, and `CAPEX-PO-000117` is a prefix of `CAPEX-PO-0001170`. A
+    resolver that accepted either would adopt the wrong purchase order for a
+    key that merely looks similar.
+    """
+    assert build(product).resolve_by_dedupe_key(prefix_of_real) is None
+
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_resolving_on_an_empty_key_is_refused_outright(product):
+    """An empty key would match whatever the tenant happened to return first."""
+    with pytest.raises(IntegrationError):
+        build(product).resolve_by_dedupe_key("")
+
+
+def test_only_erp_claims_a_documented_server_side_dedupe_search():
+    """The honest cost difference, declared instead of assumed.
+
+    Zoho's published ERP bundle documents a `custom_field` parameter on
+    `GET /purchaseorders`. Nothing in this repository documents one for Books,
+    and §11's first line forbids reading ERP documentation as Books evidence.
+    So Books resolves by a bounded scan and SAYS so, rather than sending a
+    parameter that would be ignored rather than rejected.
+    """
+    assert build("ERP").capabilities().po_dedupe_search is True
+    assert build("BOOKS_INVENTORY").capabilities().po_dedupe_search is False
+
+
+def test_the_books_resolver_sends_no_undocumented_search_parameter():
+    """The rule, checked on the wire rather than in the docstring."""
+    books = build("BOOKS_INVENTORY")
+    books.resolve_by_dedupe_key("CAPEX-PO-000044")
+    assert books.transport.request_log
+    for entry in books.transport.request_log:
+        assert set(entry["params"]) <= {"organization_id", "page", "per_page"}, (
+            f"Books resolve sent {sorted(entry['params'])}. An undocumented "
+            f"query parameter is ignored, not rejected -- which would make an "
+            f"unfiltered first page look like a filtered match.")
+
+
+def test_the_erp_resolver_does_use_its_documented_search_parameter():
+    """Otherwise ERP would silently be paying for a scan it does not need."""
+    erp = build("ERP")
+    erp.resolve_by_dedupe_key("CAPEX-PO-000117")
+    first = erp.transport.request_log[0]
+    assert erp_module.DEDUPE_SEARCH_PARAM in first["params"]
+    assert DEDUPE_CUSTOM_FIELD in first["params"][erp_module.DEDUPE_SEARCH_PARAM]
+
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_a_resolve_is_bounded_and_cannot_burn_the_daily_ceiling(product):
+    """A resolve runs on the retry path against 2,000 calls/day on ERP Standard.
+
+    An unbounded scan there would spend the whole budget trying to recover one
+    purchase order. The bound is a hard stop, and the fixtures terminate long
+    before it -- so this asserts the ceiling exists and that the walk honours
+    `has_more_page` rather than always paying for it.
+    """
+    instance = build(product)
+    instance.resolve_by_dedupe_key("CAPEX-PO-NOT-PRESENT")
+    assert len(instance.transport.request_log) <= DEDUPE_SCAN_PAGE_LIMIT + 1
+    assert DEDUPE_SCAN_PAGE_LIMIT > 0
+
+
+def test_verified_dedupe_match_is_what_makes_an_ignored_filter_survivable():
+    """The guard, exercised directly on the failure it exists to stop.
+
+    If a search parameter is misencoded the API ignores it and returns page 1
+    of everything. Re-reading the custom field off the row makes the filter an
+    optimisation and the value the authority.
+    """
+    unfiltered_page = [
+        {"purchaseorder_id": "PO-OTHER-1",
+         "custom_fields": [{"api_name": DEDUPE_CUSTOM_FIELD, "value": "CAPEX-X"}]},
+        {"purchaseorder_id": "PO-OTHER-2", "custom_fields": []},
+        {"purchaseorder_id": "PO-WANTED",
+         "custom_fields": [{"api_name": DEDUPE_CUSTOM_FIELD, "value": "CAPEX-WANT"}]},
+    ]
+    assert verified_dedupe_match(
+        unfiltered_page, dedupe_key="CAPEX-WANT",
+        id_field="purchaseorder_id") == "PO-WANTED"
+    assert verified_dedupe_match(
+        unfiltered_page, dedupe_key="CAPEX-ABSENT",
+        id_field="purchaseorder_id") is None
+    # A different custom field carrying the same value is not a match.
+    assert verified_dedupe_match(
+        [{"purchaseorder_id": "PO-X",
+          "custom_fields": [{"api_name": "cf_other", "value": "CAPEX-WANT"}]}],
+        dedupe_key="CAPEX-WANT", id_field="purchaseorder_id") is None
+
+
+def test_the_verification_guard_actually_fires_when_broken():
+    """MUTATION TEST. Break the guard deliberately; prove the suite notices.
+
+    Substring matching is the plausible wrong implementation -- Zoho documents
+    `custom_field_contains`, so reaching for it is a small step. This shows
+    what it would cost.
+    """
+    rows = [{"purchaseorder_id": "PO-LONGER",
+             "custom_fields": [{"api_name": DEDUPE_CUSTOM_FIELD,
+                                "value": "CAPEX-PO-0001170"}]}]
+
+    def broken_substring_match(rows, *, dedupe_key, id_field):
+        for row in rows:
+            for field in row.get("custom_fields") or ():
+                if dedupe_key in str(field.get("value")):
+                    return str(row[id_field])
+        return None
+
+    # The broken version adopts a DIFFERENT purchase order for a key that is
+    # merely a prefix. That is the mislink.
+    assert broken_substring_match(
+        rows, dedupe_key="CAPEX-PO-000117", id_field="purchaseorder_id") == "PO-LONGER"
+    # The real one refuses.
+    assert verified_dedupe_match(
+        rows, dedupe_key="CAPEX-PO-000117", id_field="purchaseorder_id") is None
+
+
+@pytest.mark.parametrize("product,external_id,key", [
+    ("ERP", "PO-ERP-5001", "CAPEX-PO-000117"),
+    ("BOOKS_INVENTORY", "PO-BKS-6001", "CAPEX-PO-000044"),
+])
+def test_an_update_re_sends_the_dedupe_key(product, external_id, key):
+    """An update must never strip the only handle the retry path has.
+
+    If it did, the next lost response would have nothing to resolve by and the
+    purchase order would become unlinkable again -- the same defect, reopened
+    by the very call that was meant to close it.
+    """
+    instance = build(product)
+    instance.update_purchase_order(external_id, _draft_po(product), key)
+    sent = instance.transport.request_log[-1]
+    assert sent["method"] == "PUT"
+    assert external_id in sent["path"]
+    assert {"api_name": DEDUPE_CUSTOM_FIELD, "value": key} in sent["body"]["custom_fields"]
+
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_an_update_without_an_id_or_a_key_is_refused(product):
+    """Both refusals are the same refusal: never act on an unnamed record."""
+    instance = build(product)
+    with pytest.raises(IntegrationError):
+        instance.update_purchase_order("", _draft_po(product), "CAPEX-1")
+    with pytest.raises(IntegrationError):
+        instance.update_purchase_order("PO-1", _draft_po(product), "")
+
+
+@pytest.mark.parametrize("product,external_id", [
+    ("ERP", "PO-ERP-5001"),
+    ("BOOKS_INVENTORY", "PO-BKS-6001"),
+])
+def test_the_draft_to_open_transition_is_ours_to_make(product, external_id):
+    """§11.7: emitted draft, moved to open by OUR call after approval closes."""
+    instance = build(product)
+    assert instance.transition_purchase_order(external_id, "open", actor="U-1") == "open"
+    sent = instance.transport.request_log[-1]
+    assert sent["method"] == "POST"
+    assert sent["path"].endswith("/status/open")
+
+
+@pytest.mark.parametrize("product,external_id", [
+    ("ERP", "PO-ERP-5001"),
+    ("BOOKS_INVENTORY", "PO-BKS-6001"),
+])
+def test_an_unsupported_transition_is_refused_not_synthesised(product, external_id):
+    """`billed` and `cancelled` exist on the product and are the tenant's to set.
+
+    A Zoho-side status change we did not initiate is an exception, not an
+    outcome -- so this adapter must not offer a path to make one.
+    """
+    instance = build(product)
+    with pytest.raises(CapabilityError):
+        instance.transition_purchase_order(external_id, "billed", actor="U-1")
+    assert not instance.transport.request_log, (
+        "A refused transition must not have reached the wire first.")
+
+
+@pytest.mark.parametrize("product,external_id", [
+    ("ERP", "PO-ERP-5001"),
+    ("BOOKS_INVENTORY", "PO-BKS-6001"),
+])
+def test_a_transition_requires_an_attributable_actor(product, external_id):
+    """Zoho attributes the change to the OAuth identity; our audit needs ours."""
+    with pytest.raises(IntegrationError):
+        build(product).transition_purchase_order(external_id, "open", actor="")
+
+
+def test_the_books_transition_path_is_labelled_not_confirmed():
+    """The evidence status, kept where it cannot be mistaken for a fact.
+
+    §11.2's Books row confirms create and update and is silent on status
+    operations, and the ERP bundle that documents `status/open` is inadmissible
+    for Books. The control is implemented so it exists; the label says it needs
+    the tenant.
+    """
+    assert "NOT CONFIRMED" in bi.PO_TRANSITION_EVIDENCE
+    assert "0B" in bi.PO_TRANSITION_EVIDENCE
+
+
+# ================================================ nothing sensitive is logged
+def test_no_adapter_call_puts_a_token_or_a_full_payload_in_an_exception(adapter):
+    """Errors are read by people who are not entitled to the payload.
+
+    The cassette transport's own error names the request key, never the body,
+    and no adapter error interpolates a credential. Asserted because the
+    tempting debug aid -- printing the response -- is exactly the leak.
+    """
+    with pytest.raises(IntegrationError) as exc:
+        adapter.get_bill("NO-SUCH-BILL")
+    message = str(exc.value)
+    for secret in ("Zoho-oauthtoken", "refresh_token", "client_secret",
+                   "access_token", "Authorization"):
+        assert secret not in message
+
+
+def test_the_adapter_modules_never_log_and_never_hold_a_credential():
+    """Source-level, so it holds for paths no test exercised.
+
+    A logger reached for during a 3 a.m. incident is how a token ends up in a
+    log aggregator. There is no logging in these modules at all, which is the
+    easiest version of this rule to keep true.
+    """
+    import app.backend.integration.adapter as adapter_mod
+
+    for module in (adapter_mod, erp_module, bi):
+        source = Path(module.__file__).read_text(encoding="utf-8")
+        for banned in ("logging.getLogger", "logger.", "print(",
+                       "client_secret", "refresh_token", "access_token"):
+            assert banned not in source, (
+                f"{Path(module.__file__).name} contains {banned!r}. Tokens, "
+                f"credentials and full payloads must never be logged.")
+
+
+def test_no_cassette_contains_a_credential():
+    """The fixtures are checked in. A token in one is a token in the repository."""
+    import json
+
+    for path in sorted(CASSETTES.rglob("*.json")):
+        text = path.read_text(encoding="utf-8")
+        for banned in ("Zoho-oauthtoken", "client_secret", "refresh_token",
+                       "access_token", "Authorization"):
+            assert banned not in text, f"{path} carries {banned!r}."
+        # And every one still declares it was invented, including the new ones.
+        assert json.loads(text)["provenance"] == "INVENTED-SANITISED", path
+

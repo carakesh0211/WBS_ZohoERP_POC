@@ -39,7 +39,9 @@ from app.backend.money import MoneyError, to_paise
 __all__ = [
     "PRODUCTS",
     "BillDTO",
+    "ContactDTO",
     "DtoError",
+    "ItemDTO",
     "LineDTO",
     "Page",
     "Product",
@@ -286,4 +288,62 @@ class ReceiveDTO:
     purchase_order_external_id: str | None
     external_status_raw: str
     lines: tuple[LineDTO, ...] = ()
+    raw: Mapping[str, Any] = MappingProxyType({})
+
+
+@dataclass(frozen=True)
+class ItemDTO:
+    """One row of the item master.
+
+    Master data, not a document: an item has no ``document_date`` and no
+    monetary total, so it deliberately carries neither. ``rate_paise`` is the
+    item's list rate and is integer paise like every other monetary value here;
+    it is ``0`` when the source omitted it, because an item with no rate is
+    ordinary (a service line priced per order) whereas a *bill* with no total
+    is a mapping failure.
+
+    ``last_modified`` is ``None`` when the source omitted it. That is not
+    cosmetic: on ERP and Books ``GET /items`` there is **no**
+    ``last_modified_time`` filter (plan §11.3), so those products get a weekly
+    full refresh and the field may simply be absent. A poll that treated a
+    missing timestamp as "modified now" would advance a watermark past records
+    it never saw.
+    """
+    source: SourceRef
+    external_id: str
+    name: str
+    external_status_raw: str
+    last_modified: datetime | None = None
+    sku: str | None = None
+    description: str = ""
+    rate_paise: int = 0
+    currency_code: str = "INR"
+    item_type: str | None = None
+    raw: Mapping[str, Any] = MappingProxyType({})
+
+
+@dataclass(frozen=True)
+class ContactDTO:
+    """One row of the contact master -- for us, the vendor master.
+
+    ``contact_type`` is stored as the source sent it (``vendor``, ``customer``)
+    and is **not** filtered on inside the adapter: the poll ingests the whole
+    contact population and the platform decides what a vendor is. Deciding it
+    here would bury a business rule inside a transport-shaped module, and the
+    same tenant can legitimately bill a party it also buys from.
+
+    Like :class:`ItemDTO`, ``last_modified`` may be ``None``: ``GET /contacts``
+    is sort-only on all three products (plan §11.3) -- it has no
+    ``last_modified_time`` *filter* at all -- so contacts are acquired by a
+    full refresh and the timestamp is informational rather than a cursor.
+    """
+    source: SourceRef
+    external_id: str
+    contact_name: str
+    external_status_raw: str
+    company_name: str = ""
+    contact_type: str | None = None
+    last_modified: datetime | None = None
+    email: str | None = None
+    currency_code: str = "INR"
     raw: Mapping[str, Any] = MappingProxyType({})

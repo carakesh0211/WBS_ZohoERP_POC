@@ -1,0 +1,22 @@
+{
+  "cassette_version": 1,
+  "product": "BOOKS_INVENTORY",
+  "service": "books",
+  "api_version": "v3",
+  "provenance": "INVENTED-SANITISED",
+  "provenance_note": "Hand-authored; no tenant contacted. NOTE THE EVIDENCE STATUS: the Books status-transition path is NOT CONFIRMED in this repository. Section 11.2's Books row confirms create and update and is silent on status operations, and the ERP bundle that does document status/open is inadmissible for Books. This cassette records the shape the adapter sends so the section 11.7 control is testable; it is NOT evidence that the path exists. Phase 0B-2 must confirm it. See PO_TRANSITION_EVIDENCE in books_inventory.py.",
+  "request": {
+    "method": "POST",
+    "base_url": "https://www.zohoapis.in/books/v3",
+    "path": "/purchaseorders/PO-BKS-6001/status/open",
+    "scope": "ZohoBooks.purchaseorders.ALL",
+    "page": 1
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "code": 0,
+      "message": "Purchase order status has been changed to open."
+    }
+  }
+}

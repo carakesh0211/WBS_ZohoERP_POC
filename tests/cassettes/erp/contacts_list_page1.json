@@ -1,0 +1,59 @@
+{
+  "cassette_version": 1,
+  "product": "ERP",
+  "service": "erp",
+  "api_version": "v3",
+  "provenance": "INVENTED-SANITISED",
+  "provenance_note": "Hand-authored; no tenant contacted. GET /contacts is SORT-ONLY on all three products: last_modified_time is an allowed sort_column and NOT a filter, which is the opposite problem to bills. So this is a full refresh sorted descending, and there is deliberately no contacts_delta_filter in Capabilities for a caller to read. Both a vendor and a customer are present on purpose: the adapter does not filter by contact_type, because deciding what counts as a vendor is the platform's business rule and not this module's.",
+  "request": {
+    "method": "GET",
+    "base_url": "https://www.zohoapis.in/erp/v3",
+    "path": "/contacts",
+    "scope": "ERP.contacts.READ",
+    "page": 1
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "code": 0,
+      "message": "success",
+      "contacts": [
+        {
+          "contact_id": "VEN-ERP-3001",
+          "contact_name": "Northgate Structural Works",
+          "company_name": "Northgate Structural Works Pvt Ltd",
+          "contact_type": "vendor",
+          "email": "accounts@northgate.example",
+          "currency_code": "INR",
+          "status": "active",
+          "last_modified_time": "2026-08-26T08:05:19+0530"
+        },
+        {
+          "contact_id": "VEN-ERP-3002",
+          "contact_name": "Meridian Electricals",
+          "company_name": "Meridian Electricals LLP",
+          "contact_type": "vendor",
+          "email": "ap@meridian.example",
+          "currency_code": "INR",
+          "status": "active",
+          "last_modified_time": "2026-08-22T13:44:01+0530"
+        },
+        {
+          "contact_id": "CUS-ERP-3900",
+          "contact_name": "Atha Group Facilities",
+          "company_name": "Atha Group Facilities Ltd",
+          "contact_type": "customer",
+          "email": "billing@atha.example",
+          "currency_code": "INR",
+          "status": "active",
+          "last_modified_time": "2026-08-21T10:00:00+0530"
+        }
+      ],
+      "page_context": {
+        "page": 1,
+        "per_page": 3,
+        "has_more_page": false
+      }
+    }
+  }
+}

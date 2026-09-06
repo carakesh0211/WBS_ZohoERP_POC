@@ -1,0 +1,51 @@
+{
+  "cassette_version": 1,
+  "product": "BOOKS_INVENTORY",
+  "service": "inventory",
+  "api_version": "v1",
+  "provenance": "INVENTED-SANITISED",
+  "provenance_note": "Hand-authored; no tenant contacted. Inventory GET /items is the ONE TRUE DELTA in the whole matrix: last_modified_time is both filterable and sortable here, which is why items_delta_filter is True on this product and False on ERP. Note the timestamp format -- yyyy-MM-ddTHH:mm:ssZ, NOT the offset-bearing stamp Books bills and POs take. Two formats on two services, held apart on purpose. Books also has an item list and is deliberately not used for this poll: it has no delta filter, so routing here would make a full scan look like a window.",
+  "request": {
+    "method": "GET",
+    "base_url": "https://www.zohoapis.in/inventory/v1",
+    "path": "/items",
+    "scope": "ZohoInventory.items.READ",
+    "page": 1
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "code": 0,
+      "message": "success",
+      "items": [
+        {
+          "item_id": "ITM-INV-8001",
+          "name": "Structural steel beam 305x165",
+          "sku": "STL-305-165",
+          "description": "Grade S355 universal beam",
+          "rate": 48500.0,
+          "currency_code": "INR",
+          "status": "active",
+          "item_type": "inventory",
+          "last_modified_time": "2026-08-26T04:15:02Z"
+        },
+        {
+          "item_id": "ITM-INV-8002",
+          "name": "Cable tray 300mm",
+          "sku": "ELE-CTR-300",
+          "description": "Perforated, hot-dip galvanised",
+          "rate": 1899.75,
+          "currency_code": "INR",
+          "status": "active",
+          "item_type": "inventory",
+          "last_modified_time": "2026-08-26T05:02:41Z"
+        }
+      ],
+      "page_context": {
+        "page": 1,
+        "per_page": 2,
+        "has_more_page": false
+      }
+    }
+  }
+}

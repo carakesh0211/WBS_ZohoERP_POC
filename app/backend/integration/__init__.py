@@ -22,6 +22,7 @@ from typing import Any
 
 from app.backend.integration.adapter import (
     DEDUPE_CUSTOM_FIELD,
+    DEDUPE_SCAN_PAGE_LIMIT,
     POLL_OVERLAP_SECONDS,
     Capabilities,
     CapabilityError,
@@ -32,17 +33,21 @@ from app.backend.integration.adapter import (
     NoNetworkTransport,
     ProcurementAdapter,
     ProductMixingError,
+    RecoverableProcurementAdapter,
     Transport,
     UnsupportedDataCentre,
     acquire_receives,
     receives_strategy,
+    verified_dedupe_match,
     walk_pages,
 )
 from app.backend.integration.books_inventory import BooksInventoryAdapter
 from app.backend.integration.dto import (
     PRODUCTS,
     BillDTO,
+    ContactDTO,
     DtoError,
+    ItemDTO,
     LineDTO,
     Page,
     Product,
@@ -60,10 +65,13 @@ __all__ = [
     "CapabilityError",
     "CassetteError",
     "CassetteTransport",
+    "ContactDTO",
     "DEDUPE_CUSTOM_FIELD",
+    "DEDUPE_SCAN_PAGE_LIMIT",
     "DtoError",
     "ErpAdapter",
     "IntegrationError",
+    "ItemDTO",
     "LineDTO",
     "NetworkForbidden",
     "NoNetworkTransport",
@@ -75,12 +83,14 @@ __all__ = [
     "ProductMixingError",
     "PurchaseOrderDTO",
     "ReceiveDTO",
+    "RecoverableProcurementAdapter",
     "SourceRef",
     "Transport",
     "UnsupportedDataCentre",
     "acquire_receives",
     "adapter_for",
     "receives_strategy",
+    "verified_dedupe_match",
     "walk_pages",
 ]
 

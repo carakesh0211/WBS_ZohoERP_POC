@@ -43,15 +43,19 @@ from app.backend.integration.adapter import (
     Capabilities,
     CapabilityError,
     DEDUPE_CUSTOM_FIELD,
+    DEDUPE_SCAN_PAGE_LIMIT,
     IntegrationError,
     NoNetworkTransport,
     Transport,
     UnsupportedDataCentre,
     page_context,
+    verified_dedupe_match,
     window_params,
 )
 from app.backend.integration.dto import (
     BillDTO,
+    ContactDTO,
+    ItemDTO,
     LineDTO,
     Page,
     PurchaseOrderDTO,
@@ -69,7 +73,9 @@ __all__ = [
     "API_HOST_BY_DC",
     "API_VERSION",
     "DAILY_CALL_CEILING_STANDARD",
+    "DEDUPE_SEARCH_PARAM",
     "ErpAdapter",
+    "PO_STATE_PATHS",
     "PRODUCT",
     "SCOPE_EVIDENCE",
     "SERVICE",
@@ -104,6 +110,42 @@ PATH_PURCHASE_ORDER = "/purchaseorders/{external_id}"
 PATH_PURCHASE_RECEIVE = "/purchasereceives/{external_id}"
 PATH_CONTACTS = "/contacts"
 PATH_ITEMS = "/items"
+
+#: Update one purchase order by id. Vendor-authoritative: Zoho's own published
+#: ERP OpenAPI bundle, recorded with its digest in
+#: ``research/20_verified/openapi_registry.json``, documents
+#: ``PUT /purchaseorders/{purchaseorder_id}``.
+#:
+#: That bundle ALSO documents ``PUT /purchaseorders`` -- "update a purchase
+#: order using a custom field's unique value" -- driven by the
+#: ``X-Unique-Identifier-Key`` / ``X-Unique-Identifier-Value`` headers, with an
+#: optional ``X-Upsert``. That is section 11.6's mechanism in a single call, and
+#: it is deliberately NOT used here: the Transport seam carries no headers, and
+#: widening it belongs to the stream that owns it, not to this one.
+#: Resolve-then-update-by-id reaches the same outcome with the seam unchanged.
+#: Recorded so the better call is not lost.
+PATH_PURCHASE_ORDER_UPDATE = "/purchaseorders/{external_id}"
+
+#: Section 11.7: a PO is emitted draft and moved to open **by our own call**,
+#: after our approval instance closes. Only the transitions we actually perform
+#: are listed; ``billed`` and ``cancelled`` exist in the bundle but are the
+#: tenant's to make, and a Zoho-side status change we did not initiate is an
+#: exception rather than an outcome.
+PO_STATE_PATHS: Mapping[str, str] = {
+    "open": "/purchaseorders/{external_id}/status/open",
+}
+
+#: Search the purchase-order list by a custom field's value. Documented in the
+#: ERP bundle on ``GET /purchaseorders`` (variants ``custom_field_startswith``,
+#: ``custom_field_contains``).
+#:
+#: The bundle documents the parameter but not the exact encoding of its value,
+#: so the ``api_name:value`` form built below is **our reading, not a
+#: quotation**. That uncertainty is survivable precisely because nothing trusts
+#: it: ``verified_dedupe_match`` re-reads the dedupe custom field off each
+#: returned row, so a filter that is misencoded -- and therefore ignored --
+#: degrades to a scan rather than to a wrong answer.
+DEDUPE_SEARCH_PARAM = "custom_field"
 
 #: What each list endpoint will actually accept as ``sort_column``.
 #: ``last_modified_time`` is absent from bills and purchase orders on purpose:
@@ -250,6 +292,10 @@ class ErpAdapter:
             items_delta_filter=False,       # ERP items: no filter -> weekly full refresh
             line_level_custom_fields=self.line_level_custom_fields,
             daily_call_ceiling=self.plan_daily_ceiling,
+            # Zoho's own ERP bundle documents a `custom_field` search on
+            # GET /purchaseorders, so a lost response costs one call to
+            # recover here rather than a scan.
+            po_dedupe_search=True,
         )
 
     # --------------------------------------------------------------- fetching
@@ -350,13 +396,7 @@ class ErpAdapter:
                 "A purchase order may not be emitted without a dedupe_key: "
                 "Zoho offers no idempotency header, so this field is the only "
                 "thing standing between a retry and a duplicate commitment.")
-        body = {
-            "vendor_id": po.vendor_external_id,
-            "date": po.document_date.isoformat(),
-            "currency_code": po.currency_code,
-            "line_items": [_outbound_line(line) for line in po.lines],
-            "custom_fields": [{"api_name": DEDUPE_CUSTOM_FIELD, "value": dedupe_key}],
-        }
+        body = _emission_body(po, dedupe_key)
         response = self.transport.request(
             method="POST", base_url=self.base, path=PATH_PURCHASE_ORDERS,
             scope="ERP.purchaseorders.ALL",
@@ -366,6 +406,173 @@ class ErpAdapter:
             raise IntegrationError(
                 f"Purchase order creation returned no purchaseorder_id: {response!r}")
         return str(created)
+
+    # ------------------------------------------------------------ master data
+    def list_items(self, since: datetime, until: datetime, page: int = 1) -> Page[ItemDTO]:
+        """The item master. **A full refresh, not a delta.**
+
+        Plan section 11.3 is explicit: on ERP and Books ``GET /items`` has no
+        ``last_modified_time`` filter, which is why ``items_delta_filter`` is
+        ``False`` here and why the plan schedules a *weekly full refresh*
+        rather than the 15-minute delta Inventory gets.
+
+        So ``since`` is accepted and deliberately not sent. It is kept in the
+        signature because the seam is shared with ``list_bills`` and the poll
+        calls all four the same way -- and because dropping the parameter
+        would hide the asymmetry rather than state it. ``until`` is still
+        applied locally to records that carry a timestamp, so a caller asking
+        for a window never receives records from beyond it; records with no
+        timestamp at all are kept, because a full refresh that silently
+        discarded undated master data would under-report the item master.
+        """
+        params = {"page": page, "per_page": self.per_page}
+        params.update(window_params(
+            enabled=self.capabilities().items_delta_filter,
+            since=since, parameter=DELTA_FILTER_PARAM, formatter=_format_delta))
+        body = self._get(PATH_ITEMS, "ERP.settings.READ", params)
+        source = self._source(PATH_ITEMS)
+        items = tuple(
+            item for item in
+            (_item(row, source) for row in body.get("items", []))
+            if item.last_modified is None or item.last_modified <= until)
+        got_page, per_page, has_more = page_context(body, page=page, per_page=self.per_page)
+        return Page(items=items, page=got_page, per_page=per_page, has_more=has_more)
+
+    def list_contacts(
+        self, since: datetime, until: datetime, page: int = 1
+    ) -> Page[ContactDTO]:
+        """The vendor master. Sort-only, so again a full refresh.
+
+        ``GET /contacts`` is the opposite problem to bills: section 11.3 records
+        ``last_modified_time`` as an allowed *sort column* here and not as a
+        filter, on all three products. There is deliberately no
+        ``contacts_delta_filter`` in ``Capabilities`` to read -- naming a
+        capability that does not exist would be a lie that reads as a bug -- so
+        no window is sent and the poll performs the full refresh the plan
+        prescribes.
+
+        The sort IS requested, descending, because it is documented here and
+        it lets a caller stop early. It is checked against ``SORT_COLUMNS``
+        like every other sort on this adapter.
+        """
+        params = {"page": page, "per_page": self.per_page,
+                  "sort_column": DELTA_FILTER_PARAM, "sort_order": "D"}
+        body = self._get(PATH_CONTACTS, "ERP.contacts.READ", params)
+        source = self._source(PATH_CONTACTS)
+        contacts = tuple(
+            contact for contact in
+            (_contact(row, source) for row in body.get("contacts", []))
+            if contact.last_modified is None or contact.last_modified <= until)
+        got_page, per_page, has_more = page_context(body, page=page, per_page=self.per_page)
+        return Page(items=contacts, page=got_page, per_page=per_page, has_more=has_more)
+
+    # ------------------------------------------------------- lost-response recovery
+    def resolve_by_dedupe_key(self, dedupe_key: str) -> str | None:
+        """The id of the purchase order carrying ``dedupe_key``, or ``None``.
+
+        This is the call C1 was missing, and the reason a lost response used to
+        cost a link. Zoho documents no idempotency header (section 11.6), so
+        ``cf_capex_ref`` is the only handle on a purchase order we may or may
+        not have created; without a way to read a record back by it, the PO
+        existed in the tenant and could never be named.
+
+        Two mechanisms, and the second is what makes the first safe to trust:
+
+        1. the documented ``custom_field`` search, which should return the one
+           matching purchase order in a single call;
+        2. ``verified_dedupe_match``, which re-reads ``cf_capex_ref`` off every
+           returned row and returns an id only on **exact** equality.
+
+        If the search returns nothing verifiable -- because the value encoding
+        is wrong and the parameter was ignored, because the field is not
+        configured unique in this tenant, or because the PO genuinely is not
+        there -- this falls back to a **bounded** scan of the list and then
+        gives up. ``None`` means "not found within the budget", never "does not
+        exist": the caller must not read it as licence to create a second
+        commitment, and ``emit_purchase_order`` does not.
+        """
+        if not dedupe_key:
+            raise IntegrationError(
+                "resolve_by_dedupe_key() requires a dedupe_key. Resolving on an "
+                "empty key would match whatever the tenant returned first.")
+
+        filtered = self._get(PATH_PURCHASE_ORDERS, "ERP.purchaseorders.ALL", {
+            "page": 1, "per_page": self.per_page,
+            DEDUPE_SEARCH_PARAM: f"{DEDUPE_CUSTOM_FIELD}:{dedupe_key}"})
+        found = verified_dedupe_match(
+            filtered.get("purchaseorders") or (),
+            dedupe_key=dedupe_key, id_field="purchaseorder_id")
+        if found:
+            return found
+
+        for page in range(1, DEDUPE_SCAN_PAGE_LIMIT + 1):
+            body = self._get(PATH_PURCHASE_ORDERS, "ERP.purchaseorders.ALL",
+                             {"page": page, "per_page": self.per_page})
+            rows = body.get("purchaseorders") or ()
+            found = verified_dedupe_match(
+                rows, dedupe_key=dedupe_key, id_field="purchaseorder_id")
+            if found:
+                return found
+            if not page_context(body, page=page, per_page=self.per_page)[2]:
+                return None
+        return None
+
+    def update_purchase_order(self, external_id: str, payload: Any,
+                              dedupe_key: str) -> str:
+        """Apply the current draft onto a purchase order we have adopted.
+
+        Called only after ``resolve_by_dedupe_key`` (or the tenant's own
+        duplicate error) has named the record, so this updates by id. The
+        dedupe key is re-sent in ``custom_fields``: it is already on the record
+        by definition, and re-sending it means an update can never be the thing
+        that strips the only handle we have on the document.
+        """
+        if not external_id:
+            raise IntegrationError(
+                "update_purchase_order() requires an external_id; adopting an "
+                "unnamed record is exactly what resolve_by_dedupe_key exists "
+                "to prevent.")
+        if not dedupe_key:
+            raise IntegrationError(
+                "update_purchase_order() requires the dedupe_key, so an update "
+                "cannot strip the field the retry path depends on.")
+        body = _emission_body(payload, dedupe_key)
+        path = PATH_PURCHASE_ORDER_UPDATE.format(external_id=external_id)
+        response = self.transport.request(
+            method="PUT", base_url=self.base, path=path,
+            scope="ERP.purchaseorders.ALL",
+            params={"organization_id": self.organization_id}, body=body)
+        updated = (response.get("purchaseorder") or {}).get("purchaseorder_id")
+        return str(updated or external_id)
+
+    def transition_purchase_order(self, external_id: str, state: str,
+                                  actor: str) -> str:
+        """Section 11.7's draft-to-open step, performed by our own call.
+
+        The state is looked up in ``PO_STATE_PATHS`` rather than interpolated,
+        so an unsupported transition is a refusal here and not a POST to a
+        synthesised path. ``actor`` is not sent -- Zoho attributes the change
+        to the OAuth identity and there is no field to carry ours -- it is
+        required so the caller records who asked for it in our own audit trail.
+        """
+        if not actor:
+            raise IntegrationError(
+                "transition_purchase_order() requires an actor: a commitment "
+                "moving to open is an approved act and must be attributable in "
+                "our audit trail, whatever Zoho attributes it to.")
+        template = PO_STATE_PATHS.get(state)
+        if template is None:
+            raise CapabilityError(
+                f"This adapter performs only {sorted(PO_STATE_PATHS)} "
+                f"transitions, not {state!r}. Other statuses exist on the "
+                f"product but are the tenant's to set; a Zoho-side status "
+                f"change we did not initiate is an exception, not an outcome.")
+        path = template.format(external_id=external_id)
+        self.transport.request(
+            method="POST", base_url=self.base, path=path,
+            scope="ERP.purchaseorders.ALL",
+            params={"organization_id": self.organization_id}, body={})
+        return state
 
     # --------------------------------------------------------------- receives
     #
@@ -480,6 +687,70 @@ def _receive(row: Mapping[str, Any], source: SourceRef, *, fallback_po: str) -> 
         lines=_lines(row.get("line_items") or (), po_line_key="line_item_id"),
         raw=freeze(row),
     )
+
+
+def _item(row: Mapping[str, Any], source: SourceRef) -> ItemDTO:
+    return ItemDTO(
+        source=source,
+        external_id=str(row["item_id"]),
+        name=str(row.get("name") or ""),
+        external_status_raw=str(row.get("status") or ""),
+        last_modified=_opt_datetime(row.get("last_modified_time"),
+                                    field="item.last_modified_time"),
+        sku=_opt_str(row.get("sku")),
+        description=str(row.get("description") or ""),
+        rate_paise=paise(row.get("rate"), field="item.rate", allow_missing=True),
+        currency_code=str(row.get("currency_code") or "INR"),
+        item_type=_opt_str(row.get("item_type") or row.get("product_type")),
+        raw=freeze(row),
+    )
+
+
+def _contact(row: Mapping[str, Any], source: SourceRef) -> ContactDTO:
+    return ContactDTO(
+        source=source,
+        external_id=str(row["contact_id"]),
+        contact_name=str(row.get("contact_name") or ""),
+        external_status_raw=str(row.get("status") or ""),
+        company_name=str(row.get("company_name") or ""),
+        # Kept as the source sent it. Deciding what counts as a vendor is the
+        # platform's business rule, not this module's.
+        contact_type=_opt_str(row.get("contact_type")),
+        last_modified=_opt_datetime(row.get("last_modified_time"),
+                                    field="contact.last_modified_time"),
+        email=_opt_str(row.get("email")),
+        currency_code=str(row.get("currency_code") or "INR"),
+        raw=freeze(row),
+    )
+
+
+def _emission_body(po: Any, dedupe_key: str) -> dict[str, Any]:
+    """The wire body for a create or an update, built once.
+
+    Shared so a retry that updates cannot drift from the create it is standing
+    in for -- if the two built different bodies, an adopted purchase order
+    would end up holding different values from the one we thought we sent.
+    """
+    return {
+        "vendor_id": po.vendor_external_id,
+        "date": po.document_date.isoformat(),
+        "currency_code": po.currency_code,
+        "line_items": [_outbound_line(line) for line in po.lines],
+        "custom_fields": [{"api_name": DEDUPE_CUSTOM_FIELD, "value": dedupe_key}],
+    }
+
+
+def _opt_datetime(value: Any, *, field: str) -> datetime | None:
+    """A timestamp, or None when the source omitted it.
+
+    Master-data endpoints on this product carry no delta filter, so a row may
+    legitimately arrive with no modification time. That is not a mapping
+    failure and must not be turned into one -- nor into "now", which would let
+    a watermark advance past records nobody read.
+    """
+    if value is None or value == "":
+        return None
+    return parse_zoho_datetime(value, field=field)
 
 
 def _outbound_line(line: LineDTO) -> dict[str, Any]:

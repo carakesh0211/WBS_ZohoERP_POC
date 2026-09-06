@@ -48,15 +48,19 @@ from app.backend.integration.adapter import (
     Capabilities,
     CapabilityError,
     DEDUPE_CUSTOM_FIELD,
+    DEDUPE_SCAN_PAGE_LIMIT,
     IntegrationError,
     NoNetworkTransport,
     Transport,
     UnsupportedDataCentre,
     page_context,
+    verified_dedupe_match,
     window_params,
 )
 from app.backend.integration.dto import (
     BillDTO,
+    ContactDTO,
+    ItemDTO,
     LineDTO,
     Page,
     PurchaseOrderDTO,
@@ -73,6 +77,8 @@ __all__ = [
     "API_HOST_BY_DC",
     "BOOKS_API_VERSION",
     "BooksInventoryAdapter",
+    "PO_STATE_PATHS",
+    "PO_TRANSITION_EVIDENCE",
     "INVENTORY_API_VERSION",
     "INVENTORY_PURCHASE_ORDER_LIST_PARAMS",
     "PRODUCT",
@@ -135,6 +141,39 @@ PATH_ITEMS = "/items"
 #: the whole difference between this product's GRN design and ERP's.
 PATH_PURCHASE_RECEIVES = "/purchasereceives"
 PATH_PURCHASE_RECEIVE = "/purchasereceives/{external_id}"
+
+#: Update one purchase order by id, on Books. Plan section 11.2's Books
+#: Purchase Order row records ``POST/PUT`` as confirmed, so updating a named
+#: record is documented for this product on this product's own evidence.
+#:
+#: Note what is NOT borrowed. Zoho's published **ERP** OpenAPI bundle documents
+#: a ``PUT /purchaseorders`` that upserts by a unique custom field's value via
+#: ``X-Unique-Identifier-*`` headers. That bundle is ERP evidence. Section 11
+#: opens by forbidding exactly this inference -- "Books and Inventory
+#: documentation is inadmissible as evidence for ERP, and vice versa" -- so it
+#: buys this adapter nothing, and this module resolves by scanning instead.
+PATH_PURCHASE_ORDER_UPDATE = "/purchaseorders/{external_id}"
+
+#: Section 11.7's draft-to-open transition.
+PO_STATE_PATHS: Mapping[str, str] = {
+    "open": "/purchaseorders/{external_id}/status/open",
+}
+
+#: **NOT CONFIRMED for this product, and said so rather than implied.**
+#:
+#: Section 11.7 requires that a PO be emitted draft and moved to open by our
+#: own call -- that is a control, not a convenience, and it holds whichever
+#: product D-14 names. But this repository holds no Books evidence for the
+#: transition *path*: section 11.2's Books row confirms create and update and
+#: is silent on status operations, and the ERP bundle that does document
+#: ``status/open`` is inadmissible here.
+#:
+#: The path is therefore implemented so the control exists, and flagged so
+#: nobody mistakes it for a verified fact. Phase 0B-2 must confirm it against
+#: the tenant. If it is wrong the failure is loud and immediate -- a 404 on a
+#: transition we initiated, on a PO we can name -- which is the failure mode to
+#: prefer over silently leaving commitments in draft.
+PO_TRANSITION_EVIDENCE = "NOT CONFIRMED - Books status path unverified (Phase 0B-2)"
 
 #: Everything Inventory's ``GET /purchaseorders`` accepts. Recorded as data so
 #: the constraint outlives the sentence in the plan that states it.
@@ -279,6 +318,14 @@ class BooksInventoryAdapter:
             items_delta_filter=True,        # Inventory items: filter AND sort
             line_level_custom_fields=self.line_level_custom_fields,
             daily_call_ceiling=DAILY_CALL_CEILING_BY_PLAN.get(self.plan, 1000),
+            # No custom-field search is documented for Books purchase orders
+            # in this repository, and an undocumented query parameter is
+            # ignored rather than rejected -- which would turn an unfiltered
+            # first page into something a caller reads as a match. So the
+            # answer is False, and resolve_by_dedupe_key pays a bounded scan
+            # instead of sending a guess. This is the honest cost difference
+            # between the two products, not a missing feature.
+            po_dedupe_search=False,
         )
 
     # --------------------------------------------------------------- fetching
@@ -373,13 +420,7 @@ class BooksInventoryAdapter:
                 "Zoho offers no idempotency header on any of the three "
                 "products, so this field is the only thing standing between a "
                 "retry and a duplicate commitment.")
-        body = {
-            "vendor_id": po.vendor_external_id,
-            "date": po.document_date.isoformat(),
-            "currency_code": po.currency_code,
-            "line_items": [_outbound_line(line) for line in po.lines],
-            "custom_fields": [{"api_name": DEDUPE_CUSTOM_FIELD, "value": dedupe_key}],
-        }
+        body = _emission_body(po, dedupe_key)
         response = self.transport.request(
             method="POST", base_url=self.books_base, path=PATH_PURCHASE_ORDERS,
             scope="ZohoBooks.purchaseorders.ALL",
@@ -389,6 +430,147 @@ class BooksInventoryAdapter:
             raise IntegrationError(
                 f"Purchase order creation returned no purchaseorder_id: {response!r}")
         return str(created)
+
+    # ------------------------------------------------------------ master data
+    def list_items(self, since: datetime, until: datetime, page: int = 1) -> Page[ItemDTO]:
+        """The item master, **from Inventory** -- the one true delta.
+
+        This is the single endpoint in the whole matrix where
+        ``last_modified_time`` is both filterable and sortable (section 11.3),
+        which is why ``items_delta_filter`` is ``True`` on this product and
+        ``False`` on ERP. Note the format: Inventory documents
+        ``yyyy-MM-ddTHH:mm:ssZ``, not the offset-bearing stamp Books bills and
+        POs take, and the two formatters are held apart deliberately.
+
+        Books also exposes an item list, and it is deliberately NOT used: it
+        has no delta filter, so routing this poll through Books would throw
+        away the one real delta the product has and make a full scan look like
+        a window.
+        """
+        params = {"page": page, "per_page": self.per_page,
+                  "sort_column": DELTA_FILTER_PARAM, "sort_order": "D"}
+        params.update(window_params(
+            enabled=self.capabilities().items_delta_filter,
+            since=since, parameter=DELTA_FILTER_PARAM,
+            formatter=_format_inventory_delta))
+        body = self._get(SERVICE_INVENTORY, PATH_ITEMS,
+                         "ZohoInventory.items.READ", params)
+        source = self._source(SERVICE_INVENTORY, PATH_ITEMS)
+        items = tuple(
+            item for item in
+            (_item(row, source) for row in body.get("items", []))
+            if item.last_modified is None or item.last_modified <= until)
+        got_page, per_page, has_more = page_context(body, page=page, per_page=self.per_page)
+        return Page(items=items, page=got_page, per_page=per_page, has_more=has_more)
+
+    def list_contacts(
+        self, since: datetime, until: datetime, page: int = 1
+    ) -> Page[ContactDTO]:
+        """The vendor master, from Books. Sort-only, so a full refresh.
+
+        ``GET /contacts`` carries no ``last_modified_time`` *filter* on any of
+        the three products -- it is a sort column, which is the opposite
+        problem. There is no ``contacts_delta_filter`` in ``Capabilities`` to
+        read and none is invented, so ``since`` is accepted and not sent, and
+        the poll does the full refresh section 11.3 prescribes.
+
+        Books is the right service for this: it is the ledger of record and
+        carries the vendors the bills and POs reference.
+        """
+        params = {"page": page, "per_page": self.per_page,
+                  "sort_column": DELTA_FILTER_PARAM, "sort_order": "D"}
+        body = self._get(SERVICE_BOOKS, PATH_CONTACTS,
+                         "ZohoBooks.contacts.READ", params)
+        source = self._source(SERVICE_BOOKS, PATH_CONTACTS)
+        contacts = tuple(
+            contact for contact in
+            (_contact(row, source) for row in body.get("contacts", []))
+            if contact.last_modified is None or contact.last_modified <= until)
+        got_page, per_page, has_more = page_context(body, page=page, per_page=self.per_page)
+        return Page(items=contacts, page=got_page, per_page=per_page, has_more=has_more)
+
+    # ------------------------------------------------------- lost-response recovery
+    def resolve_by_dedupe_key(self, dedupe_key: str) -> str | None:
+        """The id of the purchase order carrying ``dedupe_key``, or ``None``.
+
+        Same guarantee as on ERP, reached at a different price. ERP documents a
+        ``custom_field`` search and resolves in one call; nothing in this
+        repository documents one for Books, so this walks the purchase-order
+        list and reads ``cf_capex_ref`` off the rows.
+
+        **Why a scan and not a guessed filter.** An undocumented query
+        parameter on these APIs is ignored, not rejected -- the same fact
+        ``INVENTORY_PURCHASE_ORDER_LIST_PARAMS`` exists to record. A guessed
+        ``custom_field`` parameter would therefore return page 1 of every
+        purchase order in the tenant while looking like a filtered result, and
+        adopting that first id would link this commitment to an unrelated
+        document. A wrong link is worse than no link: the orphan is visible and
+        blocks period close, the mislink is silent and wrong.
+
+        The walk is bounded by ``DEDUPE_SCAN_PAGE_LIMIT`` because it runs on
+        the retry path against a daily ceiling. ``None`` means "not found
+        within the budget", never "does not exist".
+        """
+        if not dedupe_key:
+            raise IntegrationError(
+                "resolve_by_dedupe_key() requires a dedupe_key. Resolving on an "
+                "empty key would match whatever the tenant returned first.")
+
+        for page in range(1, DEDUPE_SCAN_PAGE_LIMIT + 1):
+            body = self._get(SERVICE_BOOKS, PATH_PURCHASE_ORDERS,
+                             "ZohoBooks.purchaseorders.ALL",
+                             {"page": page, "per_page": self.per_page})
+            rows = body.get("purchaseorders") or ()
+            found = verified_dedupe_match(
+                rows, dedupe_key=dedupe_key, id_field="purchaseorder_id")
+            if found:
+                return found
+            if not page_context(body, page=page, per_page=self.per_page)[2]:
+                return None
+        return None
+
+    def update_purchase_order(self, external_id: str, payload: Any,
+                              dedupe_key: str) -> str:
+        """Apply the current draft onto a purchase order we have adopted."""
+        if not external_id:
+            raise IntegrationError(
+                "update_purchase_order() requires an external_id; adopting an "
+                "unnamed record is exactly what resolve_by_dedupe_key exists "
+                "to prevent.")
+        if not dedupe_key:
+            raise IntegrationError(
+                "update_purchase_order() requires the dedupe_key, so an update "
+                "cannot strip the field the retry path depends on.")
+        body = _emission_body(payload, dedupe_key)
+        path = PATH_PURCHASE_ORDER_UPDATE.format(external_id=external_id)
+        response = self.transport.request(
+            method="PUT", base_url=self.books_base, path=path,
+            scope="ZohoBooks.purchaseorders.ALL",
+            params={"organization_id": self.organization_id}, body=body)
+        updated = (response.get("purchaseorder") or {}).get("purchaseorder_id")
+        return str(updated or external_id)
+
+    def transition_purchase_order(self, external_id: str, state: str,
+                                  actor: str) -> str:
+        """Section 11.7's draft-to-open step. See ``PO_TRANSITION_EVIDENCE``."""
+        if not actor:
+            raise IntegrationError(
+                "transition_purchase_order() requires an actor: a commitment "
+                "moving to open is an approved act and must be attributable in "
+                "our audit trail, whatever Zoho attributes it to.")
+        template = PO_STATE_PATHS.get(state)
+        if template is None:
+            raise CapabilityError(
+                f"This adapter performs only {sorted(PO_STATE_PATHS)} "
+                f"transitions, not {state!r}. Other statuses are the tenant's "
+                f"to set; a Zoho-side status change we did not initiate is an "
+                f"exception, not an outcome.")
+        path = template.format(external_id=external_id)
+        self.transport.request(
+            method="POST", base_url=self.books_base, path=path,
+            scope="ZohoBooks.purchaseorders.ALL",
+            params={"organization_id": self.organization_id}, body={})
+        return state
 
     # --------------------------------------------------------------- receives
     def list_receives(self, page: int = 1) -> Page[ReceiveDTO]:
@@ -519,6 +701,68 @@ def _receive(row: Mapping[str, Any], source: SourceRef, *, fallback_po: str | No
         lines=_lines(row.get("line_items") or (), po_line_key="line_item_id"),
         raw=freeze(row),
     )
+
+
+def _item(row: Mapping[str, Any], source: SourceRef) -> ItemDTO:
+    return ItemDTO(
+        source=source,
+        external_id=str(row["item_id"]),
+        name=str(row.get("name") or ""),
+        external_status_raw=str(row.get("status") or ""),
+        last_modified=_opt_datetime(row.get("last_modified_time"),
+                                    field="item.last_modified_time"),
+        sku=_opt_str(row.get("sku")),
+        description=str(row.get("description") or ""),
+        rate_paise=paise(row.get("rate"), field="item.rate", allow_missing=True),
+        currency_code=str(row.get("currency_code") or "INR"),
+        item_type=_opt_str(row.get("item_type") or row.get("product_type")),
+        raw=freeze(row),
+    )
+
+
+def _contact(row: Mapping[str, Any], source: SourceRef) -> ContactDTO:
+    return ContactDTO(
+        source=source,
+        external_id=str(row["contact_id"]),
+        contact_name=str(row.get("contact_name") or ""),
+        external_status_raw=str(row.get("status") or ""),
+        company_name=str(row.get("company_name") or ""),
+        contact_type=_opt_str(row.get("contact_type")),
+        last_modified=_opt_datetime(row.get("last_modified_time"),
+                                    field="contact.last_modified_time"),
+        email=_opt_str(row.get("email")),
+        currency_code=str(row.get("currency_code") or "INR"),
+        raw=freeze(row),
+    )
+
+
+def _emission_body(po: Any, dedupe_key: str) -> dict[str, Any]:
+    """The wire body for a create or an update, built once.
+
+    Shared so a retry that updates cannot drift from the create it stands in
+    for: two builders would let an adopted purchase order end up holding
+    different values from the one we believed we sent.
+    """
+    return {
+        "vendor_id": po.vendor_external_id,
+        "date": po.document_date.isoformat(),
+        "currency_code": po.currency_code,
+        "line_items": [_outbound_line(line) for line in po.lines],
+        "custom_fields": [{"api_name": DEDUPE_CUSTOM_FIELD, "value": dedupe_key}],
+    }
+
+
+def _opt_datetime(value: Any, *, field: str) -> datetime | None:
+    """A timestamp, or None when the source omitted it.
+
+    Contacts carry no delta filter on any product, so a row may legitimately
+    arrive with no modification time. That is not a mapping failure, and it
+    must not become "now" -- which would advance a watermark past records
+    nobody read.
+    """
+    if value is None or value == "":
+        return None
+    return parse_zoho_datetime(value, field=field)
 
 
 def _outbound_line(line: LineDTO) -> dict[str, Any]:

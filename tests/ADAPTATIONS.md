@@ -956,3 +956,73 @@ SQLite-era modules were previously exempt only by never having been walked,
 which is indistinguishable from an oversight; that is now a written decision.
 
 **Approved by:** engagement lead, Wave 5 integration pass.
+
+## 2026-09-06 — `test_the_capabilities_dataclass_has_exactly_the_six_frozen_fields`
+
+**Change:** replaced by three tests —
+`test_the_six_frozen_capability_fields_are_still_the_first_six_in_order`,
+`test_every_capability_field_added_after_the_freeze_carries_a_default`, and
+`test_the_six_frozen_fields_can_still_be_supplied_positionally`. A seventh
+field, `po_dedupe_search`, was added to `Capabilities` with a default.
+
+**Reason.** C1 froze six capability flags and had no way to say whether a
+product can search purchase orders by the unique dedupe custom field. That
+matters because the two products differ and the difference is not cosmetic:
+Zoho's own published ERP OpenAPI bundle documents a `custom_field` parameter on
+`GET /purchaseorders`, and nothing in this repository documents one for Books.
+§11's first line forbids reading ERP documentation as Books evidence. Without a
+declared flag a caller must either assume parity — sending Books a parameter
+that is *ignored rather than rejected*, which turns an unfiltered first page
+into something that reads as a match — or assume the worst for both and make
+ERP pay for a scan it does not need.
+
+**Not a weakening — this is strictly more.** The old test asserted a field
+*count*, and its stated reason was that "adding a seventh would break every
+stream constructing one positionally". That reason is the real requirement, and
+it is now enforced directly rather than approximated:
+
+* the six frozen fields must still be the **first six, in their frozen order**
+  (the old test could not distinguish a rename from a reorder; this one can);
+* every field added after the freeze must carry a **default**, which is the
+  property that actually makes an addition safe — checked mechanically, so the
+  next person cannot append a required field;
+* a six-argument positional construction is **executed**, not argued about, so
+  the breakage the original test feared is now demonstrated not to happen.
+
+A change that renamed, reordered or displaced any of the six, or appended a
+field without a default, passes none of the three. The old assertion caught
+only the last of those, and only by accident of counting.
+
+**Approved by:** engagement lead, Wave 5 stream 2 (adapter gaps) — the seventh
+field is reported for review together with the two new C1 methods below, which
+are the same decision.
+
+## 2026-09-06 — `C1_METHODS` gains `list_items` and `list_contacts`
+
+**Change:** the frozen C1 method table in
+`tests/test_integration_adapter_contract.py` now requires `list_items` and
+`list_contacts` on both implementations, and
+`ProcurementAdapter` declares them.
+
+**Reason.** Plan §11.5 requires `poll_items` and `poll_contacts` jobs. The
+frozen C1 protocol declared neither, so `sweeps.py` routed around both by
+raising `AdapterMethodMissing` — deliberately, and with the seam named, rather
+than papering over it with a silent no-op, because a master-data poll that
+fetches nothing looks exactly like one that found nothing. Two streams reported
+the gap independently. It is the contract's error, not theirs.
+
+**Not a weakening.** This only adds required surface: every assertion the table
+previously made is unchanged, and two more implementations must now satisfy the
+same signature check. The parameter shape `(since, until, page)` matches the
+existing list calls because `sweeps.WindowedPoll` invokes all four identically.
+
+**The capability differences are asserted, not smoothed over.** New tests
+require that ERP items send **no** delta filter (§11.3: ERP/Books `GET /items`
+has none — weekly full refresh), that Inventory items send **both** filter and
+sort in Inventory's own `yyyy-MM-ddTHH:mm:ssZ` format, and that contacts send
+no filter on either product. `contacts_delta_filter` is deliberately **not**
+added to `Capabilities`: it does not exist on any of the three products, and
+naming a capability that does not exist would be a lie that reads as a bug.
+
+**Approved by:** engagement lead, Wave 5 stream 2 (adapter gaps).
+

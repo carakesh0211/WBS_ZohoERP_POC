@@ -1,0 +1,49 @@
+{
+  "cassette_version": 1,
+  "product": "BOOKS_INVENTORY",
+  "service": "books",
+  "api_version": "v3",
+  "provenance": "INVENTED-SANITISED",
+  "provenance_note": "Hand-authored; no tenant contacted. Vendors are read from BOOKS -- the ledger of record, and the service carrying the vendors that bills and POs reference. Sort-only, exactly as on ERP: no last_modified_time filter exists on contacts on any of the three products, so this is a full refresh and no window is sent.",
+  "request": {
+    "method": "GET",
+    "base_url": "https://www.zohoapis.in/books/v3",
+    "path": "/contacts",
+    "scope": "ZohoBooks.contacts.READ",
+    "page": 1
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "code": 0,
+      "message": "success",
+      "contacts": [
+        {
+          "contact_id": "VEN-BKS-4001",
+          "contact_name": "Northgate Structural Works",
+          "company_name": "Northgate Structural Works Pvt Ltd",
+          "contact_type": "vendor",
+          "email": "accounts@northgate.example",
+          "currency_code": "INR",
+          "status": "active",
+          "last_modified_time": "2026-08-26T08:05:19+0530"
+        },
+        {
+          "contact_id": "VEN-BKS-4002",
+          "contact_name": "Harbour Plant Hire",
+          "company_name": "Harbour Plant Hire Pvt Ltd",
+          "contact_type": "vendor",
+          "email": "ap@harbourplant.example",
+          "currency_code": "INR",
+          "status": "active",
+          "last_modified_time": "2026-08-23T19:12:37+0530"
+        }
+      ],
+      "page_context": {
+        "page": 1,
+        "per_page": 2,
+        "has_more_page": false
+      }
+    }
+  }
+}

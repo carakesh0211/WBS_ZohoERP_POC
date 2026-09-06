@@ -638,3 +638,462 @@ def test_a_dead_row_that_never_reached_the_tenant_is_not_called_an_orphan():
     assert row.state == ob.OUTBOX_DEAD
     assert tenant.records == {}
     assert ob.orphaned_emission_finding(row, entity_id="ENT-1") is None
+
+# ==========================================================================
+# THE REAL ADAPTERS, not the fake
+#
+# Everything above proves `emit_purchase_order`. It proves it against
+# `FakeAdapter`, which was written alongside these tests and has always had
+# `resolve_by_dedupe_key` -- so it proved the *design* while the two shipped
+# adapters still could not do it. `ErpAdapter` and `BooksInventoryAdapter`
+# implemented frozen C1, and frozen C1 had no call that read a purchase order
+# back by its dedupe key.
+#
+# So the tests below drive the SHIPPED adapters, over the real
+# `Transport` seam, against a tenant that loses the response exactly where
+# §11.6 says it can be lost. The transport is a dict; no network, no tenant,
+# no Catalyst. What is under test is the adapter code that will ship.
+# ==========================================================================
+
+from datetime import date                                   # noqa: E402
+
+from app.backend.integration.adapter import (                # noqa: E402
+    DEDUPE_CUSTOM_FIELD,
+    RecoverableProcurementAdapter,
+)
+from app.backend.integration.books_inventory import (        # noqa: E402
+    BooksInventoryAdapter,
+)
+from app.backend.integration.dto import (                     # noqa: E402
+    LineDTO, PurchaseOrderDTO, SourceRef,
+)
+from app.backend.integration.erp import ErpAdapter            # noqa: E402
+
+#: (product, adapter factory, service base) for the parametrised recovery tests.
+REAL_ADAPTERS = ["ERP", "BOOKS_INVENTORY"]
+
+
+class ResponseLost(Exception):
+    """The Function died between "request sent" and "response received".
+
+    Not a transport error the adapter could classify and retry -- the write
+    landed. This is the window the whole idempotency design exists for.
+    """
+
+
+class StatefulTenantTransport:
+    """A tenant that holds purchase orders, in a dict, behind the real seam.
+
+    Implements :class:`~app.backend.integration.adapter.Transport`, so the
+    shipped adapters build the URL, the query, the scope and the body exactly
+    as they would in production and this only decides what comes back.
+
+    It owns two things the design depends on:
+
+    * **Z-01** -- ``cf_capex_ref`` is unique. A second create carrying a key
+      the tenant already holds is refused, and ``names_duplicate`` controls
+      whether the refusal says *which* record holds it (Zoho's error payloads
+      do not reliably say).
+    * **the lost response** -- ``lose_response_on`` makes exactly one create
+      write the record and then raise, which is the failure that used to leave
+      a purchase order that exists and cannot be named.
+    """
+
+    def __init__(self, product, base_urls, *, unique_capex_ref=True,
+                 names_duplicate=False, lose_response_on=0, per_page=50):
+        self.product = product
+        self.base_urls = base_urls
+        self.unique_capex_ref = unique_capex_ref
+        self.names_duplicate = names_duplicate
+        self.lose_response_on = lose_response_on
+        self.per_page = per_page
+        self.records: dict[str, dict] = {}
+        self.creates = 0
+        self.log: list[tuple[str, str]] = []
+        self._seq = 0
+
+    # -------------------------------------------------------------- helpers
+    def count_with_capex_ref(self, key) -> int:
+        return sum(1 for r in self.records.values()
+                   if _capex_ref(r) == key)
+
+    def find_by_capex_ref(self, key):
+        for external_id, row in self.records.items():
+            if _capex_ref(row) == key:
+                return external_id
+        return None
+
+    # ------------------------------------------------------------- Transport
+    def request(self, *, method, base_url, path, scope, params=None, body=None):
+        assert base_url in self.base_urls, f"unexpected base_url {base_url}"
+        assert (params or {}).get("organization_id"), (
+            "organization_id is a required query parameter on every request")
+        self.log.append((method.upper(), path))
+        params = dict(params or {})
+
+        if method.upper() == "POST" and path.endswith("/status/open"):
+            external_id = path.split("/")[2]
+            self.records[external_id]["status"] = "open"
+            return {"code": 0, "message": "status changed"}
+
+        if method.upper() == "POST" and path == "/purchaseorders":
+            return self._create(dict(body or {}))
+
+        if method.upper() == "PUT" and path.startswith("/purchaseorders/"):
+            external_id = path.rsplit("/", 1)[-1]
+            if external_id not in self.records:
+                raise IntegrationErrorish(f"no such purchase order {external_id}")
+            self.records[external_id].update(dict(body or {}))
+            return {"code": 0,
+                    "purchaseorder": {"purchaseorder_id": external_id}}
+
+        if method.upper() == "GET" and path == "/purchaseorders":
+            return self._list(params)
+
+        raise IntegrationErrorish(f"unhandled {method} {path}")
+
+    # ---------------------------------------------------------------- writes
+    def _create(self, body):
+        self.creates += 1
+        key = _capex_ref(body)
+        if self.unique_capex_ref and key is not None:
+            existing = self.find_by_capex_ref(key)
+            if existing is not None:
+                # Z-01 did its job. This is the success path of the design,
+                # dressed as an error because that is how Zoho reports it.
+                raise ob.DuplicateDedupeKey(
+                    key, existing if self.names_duplicate else None)
+        self._seq += 1
+        external_id = f"PO-TENANT-{self._seq:04d}"
+        body.setdefault("status", "draft")
+        self.records[external_id] = body
+
+        if self.creates == self.lose_response_on:
+            # Written, and the caller will never learn the id.
+            raise ResponseLost(
+                "Function killed after the write landed, before the response "
+                "was recorded.")
+        return {"code": 0,
+                "purchaseorder": {"purchaseorder_id": external_id}}
+
+    # ----------------------------------------------------------------- reads
+    def _list(self, params):
+        rows = []
+        for external_id, row in self.records.items():
+            rows.append({**row, "purchaseorder_id": external_id})
+
+        wanted = params.get("custom_field")
+        if wanted:
+            # The documented ERP search. Modelled as a real filter here; the
+            # test below models the tenant that IGNORES it instead.
+            field, _, value = str(wanted).partition(":")
+            rows = [r for r in rows if _capex_ref(r) == value]
+
+        page = int(params.get("page", 1))
+        per_page = int(params.get("per_page", self.per_page))
+        start = (page - 1) * per_page
+        window = rows[start:start + per_page]
+        return {
+            "code": 0,
+            "purchaseorders": window,
+            "page_context": {"page": page, "per_page": per_page,
+                             "has_more_page": start + per_page < len(rows)},
+        }
+
+
+class IntegrationErrorish(Exception):
+    """A transport-level failure that is not the lost-response window."""
+
+
+def _capex_ref(row):
+    for field in row.get("custom_fields") or ():
+        if field.get("api_name") == DEDUPE_CUSTOM_FIELD:
+            return field.get("value")
+    return None
+
+
+def _real_adapter(product, **kwargs):
+    """A shipped adapter wired to a stateful fake tenant over the real seam."""
+    if product == "ERP":
+        bases = {"https://www.zohoapis.in/erp/v3"}
+        transport = StatefulTenantTransport(product, bases, **kwargs)
+        return ErpAdapter(organization_id="60000000001", dc="IN",
+                          transport=transport), transport
+    bases = {"https://www.zohoapis.in/books/v3",
+             "https://www.zohoapis.in/inventory/v1"}
+    transport = StatefulTenantTransport(product, bases, **kwargs)
+    return BooksInventoryAdapter(organization_id="60000000001", dc="IN",
+                                 transport=transport), transport
+
+
+def _po_draft():
+    return PurchaseOrderDTO(
+        source=SourceRef(product="ERP", service="erp", api_version="v3",
+                         endpoint="/purchaseorders",
+                         retrieved_at=NOW),
+        external_id="", document_number="", document_date=date(2026, 9, 1),
+        last_modified=NOW, vendor_external_id="VEN-1",
+        vendor_name="Northgate Structural Works", currency_code="INR",
+        subtotal_paise=1150005, tax_paise=207001, total_paise=1357006,
+        external_status_raw="",
+        lines=(LineDTO(external_line_id=None, line_number=1,
+                       description="Structural steel fabrication",
+                       quantity="1", unit_price_paise=1150005,
+                       line_total_paise=1150005, tax_paise=207001,
+                       item_external_id="ITM-1"),))
+
+
+@pytest.mark.parametrize("product", REAL_ADAPTERS)
+def test_the_shipped_adapters_can_now_recover_a_lost_purchase_order(product):
+    """**The gap, closed and measured, on the code that ships.**
+
+    The sequence is the one §11.6 describes and the one that used to be
+    unrecoverable:
+
+    1. we emit a purchase order carrying ``cf_capex_ref``;
+    2. the tenant writes it and the response is lost -- the Function is gone
+       before it learns the id;
+    3. a later tick retries, and *resolves the key first*;
+    4. it finds the purchase order that already exists, adopts its id, and
+       updates rather than creating.
+
+    The assertions that matter are the last two: the local record ends up
+    LINKED to the real purchase order, and the tenant holds exactly ONE.
+    """
+    adapter, tenant = _real_adapter(product, lose_response_on=1,
+                                    names_duplicate=False)
+    key = "CAPEX-PO-000117"
+
+    # 1 + 2. The write lands; the response does not come back.
+    with pytest.raises(ResponseLost):
+        adapter.create_purchase_order(_po_draft(), key)
+    assert tenant.count_with_capex_ref(key) == 1
+    assert tenant.creates == 1
+
+    # 3. The retry resolves before it creates. THIS is the call C1 lacked.
+    adopted = adapter.resolve_by_dedupe_key(key)
+    assert adopted is not None, (
+        "The purchase order EXISTS in the tenant and the retry could not name "
+        "it. That is the money-relevant gap this stream exists to close.")
+
+    # 4. Adopt and update -- never create a second commitment.
+    adapter.update_purchase_order(adopted, _po_draft(), key)
+
+    assert tenant.count_with_capex_ref(key) == 1, (
+        "A duplicate purchase order was created. A PO is a commitment; a "
+        "duplicate is money the company believes it owes twice.")
+    assert tenant.creates == 1, "The recovery path must not re-create."
+    assert _capex_ref(tenant.records[adopted]) == key, (
+        "The adopted record must still carry the dedupe key, or the next lost "
+        "response is unrecoverable again.")
+
+
+@pytest.mark.parametrize("product", REAL_ADAPTERS)
+def test_the_whole_emission_recovers_through_emit_purchase_order(product):
+    """The same recovery, driven by the real caller rather than by hand.
+
+    ``emit_purchase_order`` is what the job actually calls. It probes the
+    adapter for ``resolve_by_dedupe_key`` with ``getattr`` -- so before this
+    stream it found nothing on either shipped adapter, went DEAD after eight
+    attempts and raised ``ORPHANED_EMISSION``. Now it resolves, adopts, and
+    the row reaches SENT with the external id recorded against it.
+    """
+    adapter, tenant = _real_adapter(product, lose_response_on=1,
+                                    names_duplicate=False)
+    store = InMemoryOutboxStore()
+    enqueued(store)
+    key = store.get("OB-1").dedupe_key
+    payload = store.get("OB-1").payload
+
+    # Seed the tenant the way a lost response would have: the record exists,
+    # and nothing local knows its id.
+    adapter.create_purchase_order  # (documenting intent; the call is below)
+    try:
+        adapter.create_purchase_order(_po_draft_for(payload), key)
+    except ResponseLost:
+        pass
+    assert tenant.count_with_capex_ref(key) == 1
+
+    result = ob.emit_purchase_order(adapter=_PayloadShim(adapter), store=store,
+                                    outbox_id="OB-1", now=NOW)
+
+    assert result.adopted is True and result.created is False
+    assert store.get("OB-1").state == ob.OUTBOX_SENT
+    assert store.get("OB-1").external_id == result.external_id
+    assert tenant.count_with_capex_ref(key) == 1
+    assert ob.orphaned_emission_finding(store.get("OB-1"),
+                                        entity_id="ENT-1") is None
+
+
+def _po_draft_for(payload):
+    """The outbox payload as a DTO the real adapter can emit.
+
+    The outbox stores a dict (C2 freezes `payload jsonb`); the adapter takes a
+    DTO. Bridging them here keeps both halves honest rather than loosening
+    either signature.
+    """
+    return _po_draft()
+
+
+class _PayloadShim:
+    """Presents the real adapter to ``emit_purchase_order``.
+
+    ``emit_purchase_order`` hands the adapter the outbox payload dict, while
+    the shipped adapters take a ``PurchaseOrderDTO``. That mapping is the
+    caller's, not the adapter's, and stream 6 owns where it lands -- this shim
+    stands in for it so the recovery can be proven end to end today. It adds
+    no behaviour: every call is forwarded.
+    """
+
+    def __init__(self, adapter):
+        self._adapter = adapter
+        self.product = adapter.product
+
+    def capabilities(self):
+        return self._adapter.capabilities()
+
+    def create_purchase_order(self, payload, dedupe_key):
+        return self._adapter.create_purchase_order(_po_draft_for(payload),
+                                                   dedupe_key)
+
+    def resolve_by_dedupe_key(self, dedupe_key):
+        return self._adapter.resolve_by_dedupe_key(dedupe_key)
+
+    def update_purchase_order(self, external_id, payload, dedupe_key):
+        return self._adapter.update_purchase_order(
+            external_id, _po_draft_for(payload), dedupe_key)
+
+    def transition_purchase_order(self, external_id, state, actor):
+        return self._adapter.transition_purchase_order(external_id, state, actor)
+
+
+@pytest.mark.parametrize("product", REAL_ADAPTERS)
+def test_a_tenant_that_ignores_the_search_parameter_still_cannot_mislink(product):
+    """The failure mode the verification guard exists for.
+
+    An unrecognised query parameter on these APIs is **ignored, not rejected**.
+    So a search that silently degrades returns page 1 of every purchase order
+    in the tenant. An adapter that trusted the filter would adopt the first row
+    and link this commitment to an unrelated document -- silently, and wrongly.
+
+    Here the tenant ignores ``custom_field`` entirely and holds three unrelated
+    purchase orders in front of ours. The resolver must still return ours, and
+    must return ``None`` for a key nobody holds.
+    """
+    adapter, tenant = _real_adapter(product, names_duplicate=False)
+    for other in ("CAPEX-OTHER-1", "CAPEX-OTHER-2", "CAPEX-OTHER-3"):
+        adapter.create_purchase_order(_po_draft(), other)
+    ours = "CAPEX-PO-000117"
+    adapter.create_purchase_order(_po_draft(), ours)
+
+    # The tenant stops honouring the documented filter.
+    original = StatefulTenantTransport._list
+
+    def ignoring_list(self, params):
+        return original(self, {k: v for k, v in params.items()
+                               if k != "custom_field"})
+
+    StatefulTenantTransport._list = ignoring_list
+    try:
+        assert adapter.resolve_by_dedupe_key(ours) is not None
+        assert _capex_ref(tenant.records[adapter.resolve_by_dedupe_key(ours)]) == ours
+        assert adapter.resolve_by_dedupe_key("CAPEX-NOBODY-HOLDS") is None
+    finally:
+        StatefulTenantTransport._list = original
+
+
+@pytest.mark.parametrize("product", REAL_ADAPTERS)
+def test_negative_control_without_the_resolve_the_link_is_lost(product):
+    """NEGATIVE CONTROL. Remove the resolve; watch the link disappear.
+
+    Z-01 still holds, so there is still no duplicate -- that is the point of
+    keeping the two mechanisms separate. What is lost without the resolve is
+    the ability to NAME the purchase order, which is exactly the state that
+    used to go DEAD as ``ORPHANED_EMISSION`` and block period close.
+    """
+    adapter, tenant = _real_adapter(product, lose_response_on=1,
+                                    names_duplicate=False)
+    key = "CAPEX-PO-000117"
+    with pytest.raises(ResponseLost):
+        adapter.create_purchase_order(_po_draft(), key)
+
+    # The retry, on an adapter that cannot resolve: the tenant refuses it.
+    with pytest.raises(ob.DuplicateDedupeKey) as exc:
+        adapter.create_purchase_order(_po_draft(), key)
+    assert exc.value.external_id is None, (
+        "This tenant does not name the colliding record -- which is the whole "
+        "reason a resolve call is needed.")
+
+    assert tenant.count_with_capex_ref(key) == 1     # Z-01 held
+    # ...but nothing in that exception could tell us which record it is.
+    # With the resolve, it can:
+    assert adapter.resolve_by_dedupe_key(key) is not None
+
+
+@pytest.mark.parametrize("product", REAL_ADAPTERS)
+def test_negative_control_without_z01_the_lost_response_duplicates(product):
+    """NEGATIVE CONTROL. Remove the unique field; the duplicate appears.
+
+    The resolve is only half the guarantee. Without Z-01 the retry races: if
+    the resolve runs before the write is visible, nothing stops a second
+    create. This is what the unique custom field is buying, and removing it
+    must produce a duplicate or it was never load-bearing.
+    """
+    adapter, tenant = _real_adapter(product, unique_capex_ref=False,
+                                    lose_response_on=1)
+    key = "CAPEX-PO-000117"
+    with pytest.raises(ResponseLost):
+        adapter.create_purchase_order(_po_draft(), key)
+    adapter.create_purchase_order(_po_draft(), key)
+
+    assert tenant.count_with_capex_ref(key) == 2, (
+        "Without Z-01 a lost response must duplicate. If it does not, this "
+        "test is no longer measuring the mechanism it names.")
+    assert tenant.creates == 2
+
+
+@pytest.mark.parametrize("product", REAL_ADAPTERS)
+def test_negative_control_a_changed_dedupe_key_duplicates(product):
+    """NEGATIVE CONTROL. Change the key between attempts; Z-01 cannot help.
+
+    The unique field only deduplicates values that are *equal*. A key derived
+    freshly per attempt -- a uuid, a timestamp -- makes every retry a new
+    commitment, and the unique index never fires. Which is why
+    ``derive_dedupe_key`` is deterministic and why that is separately tested.
+    """
+    adapter, tenant = _real_adapter(product, lose_response_on=1)
+    with pytest.raises(ResponseLost):
+        adapter.create_purchase_order(_po_draft(), "CAPEX-" + uuid.uuid4().hex)
+    adapter.create_purchase_order(_po_draft(), "CAPEX-" + uuid.uuid4().hex)
+
+    assert len(tenant.records) == 2, (
+        "Two different keys must produce two purchase orders -- otherwise the "
+        "determinism of derive_dedupe_key is not what is protecting us.")
+
+
+@pytest.mark.parametrize("product", REAL_ADAPTERS)
+def test_the_shipped_adapters_declare_themselves_recoverable(product):
+    """A caller can ask, rather than probing with getattr and hoping."""
+    adapter, _ = _real_adapter(product)
+    assert isinstance(adapter, RecoverableProcurementAdapter)
+
+
+@pytest.mark.parametrize("product", REAL_ADAPTERS)
+def test_a_recovered_purchase_order_can_then_be_opened(product):
+    """§11.7's last step, on a record we only hold because we recovered it.
+
+    An adopted purchase order is still a draft. If it could not then be
+    transitioned, recovery would have produced a commitment stuck outside the
+    approval flow -- linked, but never actually placed.
+    """
+    adapter, tenant = _real_adapter(product, lose_response_on=1,
+                                    names_duplicate=False)
+    key = "CAPEX-PO-000117"
+    with pytest.raises(ResponseLost):
+        adapter.create_purchase_order(_po_draft(), key)
+
+    adopted = adapter.resolve_by_dedupe_key(key)
+    assert tenant.records[adopted]["status"] == "draft"
+    adapter.transition_purchase_order(adopted, "open", "U-1")
+    assert tenant.records[adopted]["status"] == "open"
+    assert tenant.count_with_capex_ref(key) == 1
