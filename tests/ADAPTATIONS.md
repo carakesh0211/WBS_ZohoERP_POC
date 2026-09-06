@@ -598,3 +598,61 @@ path alongside the id in `locks_taken`, which several ordering tests read.
 premise, once to disprove the ordering key. Neither was visible locally.
 
 **Approved by:** engagement lead, Wave 4 integration pass.
+
+## 2026-09-06 — the write-back's five live failures: four fixtures and one real defect
+
+CI's PostgreSQL job reported five failures in the write-back path. They became
+reachable only when the decision gates were widened to admit SUBMITTED — before
+that every approval was refused outright, so the write-back never ran and none
+of this was observable.
+
+**One production defect.**
+`_apply_budget_revision` / `_apply_budget_transfer`'s final branch handled
+RETURNED, RECALLED and CANCELLED on the reasoning that all three map to DRAFT
+and the document is *already* DRAFT, so only the reason needed writing.
+Migration 009 falsified both halves: a routed document is SUBMITTED, and
+RETURNED maps to RETURNED. **A returned revision was therefore left SUBMITTED —
+stuck under an approval that had closed, and editable by nobody.** Both branches
+now write the status through `_write_undecided`, which also moves
+`decided_at`/`decided_by` with it, because `ck_*_decision` puts RETURNED on the
+decided side and DRAFT on the undecided side and the database refuses either
+mistake.
+
+**Tests changed, and why none of these is a weakening:**
+
+* `test_a_return_to_the_maker_records_why_without_inventing_a_status` ->
+  `..._writes_the_status_and_the_reason`. It asserted that NO status is
+  written, which was correct pre-009 and is now the defect above. The
+  replacement asserts more: the status, the reason, and both directions of the
+  decision-column rule (RETURNED must name who and when; DRAFT must clear
+  them).
+* `test_a_second_return_rewrites_the_same_note_rather_than_a_new_one` ->
+  `test_a_second_return_writes_nothing`. Its fixture carried the note but not
+  the status, which since 009 is a HALF-applied outcome, not an applied one —
+  so "assert no writes" was asserting that the write-back leaves a returned
+  document stuck. The fixture now carries both and the no-write assertion is
+  unchanged.
+* `test_a_stale_write_back_refuses_rather_than_overwriting` — rewritten around
+  the window that now exists. It decided first and bumped the version
+  afterwards, which no longer constructs a stale write-back at all: the engine
+  calls the write-back itself at closure, so the outcome was already applied
+  and the second call returned early as idempotent. The version now moves
+  BEFORE the decision — the real case, where approvers decided text that is no
+  longer there. **Three assertions are added**: the document is left exactly as
+  the approvers found it, no spending capacity was created, and the INSTANCE is
+  still OPEN — proving the refusal rolled the approval back rather than
+  committing an approval whose document never moved.
+
+**Four failures were one fixture defect, not production defects.** `_seed_estate`
+wrote `budget_control_cell.budget_paise = 100_000_000` directly and created no
+`budget_line` behind it. That cell is MATERIALISED — `budget.recompute_cell`
+derives it by summing `budget_line` — so the first recompute after an approved
+revision correctly discarded the fabricated figure and left only the revision.
+It presented as "the write-back moves the cell to the wrong number"
+(`assert 5000000 == 105000000`). The write-back was right; the fixture had
+described a state that cannot exist.
+`test_the_original_grant_row_is_untouched_by_an_approved_revision` seeds its
+original through `budget.record_original` and passed throughout, which is what
+isolated the difference. The helper now seeds the ORIGINAL line behind the cell.
+
+**Approved by:** engagement lead, Wave 4 integration pass.

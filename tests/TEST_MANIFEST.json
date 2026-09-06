@@ -489,9 +489,9 @@
         "assertions": 2,
         "body_sha": "ff453e4fbb9515fa"
       },
-      "test_a_return_to_the_maker_records_why_without_inventing_a_status": {
-        "assertions": 3,
-        "body_sha": "2fe136f24155bda8"
+      "test_a_return_to_the_maker_writes_the_status_and_the_reason": {
+        "assertions": 6,
+        "body_sha": "96e23421b516d75a"
       },
       "test_a_second_application_after_approval_writes_nothing": {
         "assertions": 2,
@@ -501,9 +501,9 @@
         "assertions": 2,
         "body_sha": "53b401c662381ee2"
       },
-      "test_a_second_return_rewrites_the_same_note_rather_than_a_new_one": {
+      "test_a_second_return_writes_nothing": {
         "assertions": 1,
-        "body_sha": "aad31477f3e33a0d"
+        "body_sha": "c0293efd8bf98c4e"
       },
       "test_the_already_applied_check_precedes_the_staleness_check": {
         "assertions": 1,
@@ -2594,8 +2594,8 @@
         "body_sha": "6fc536019b973d13"
       },
       "test_a_stale_write_back_refuses_rather_than_overwriting": {
-        "assertions": 3,
-        "body_sha": "7f83fbda32760fa0"
+        "assertions": 5,
+        "body_sha": "bfd4a7458c64c49a"
       },
       "test_a_revision_cannot_be_submitted_twice": {
         "assertions": 3,
@@ -5010,7 +5010,7 @@
     "test_approval_e2e.py": 124,
     "test_approval_maker_checker.py": 46,
     "test_approval_negative_matrix.py": 65,
-    "test_approval_writeback.py": 60,
+    "test_approval_writeback.py": 63,
     "test_approvals_api_guard.py": 51,
     "test_approvals_api_seam.py": 4,
     "test_audit.py": 39,
@@ -5034,7 +5034,7 @@
     "test_pg_adoption.py": 39,
     "test_pg_approval_concurrency.py": 53,
     "test_pg_approval_schema.py": 96,
-    "test_pg_approval_writeback_e2e.py": 54,
+    "test_pg_approval_writeback_e2e.py": 56,
     "test_pg_approvals.py": 238,
     "test_pg_audit.py": 62,
     "test_pg_audit_api_e2e.py": 24,

@@ -488,20 +488,51 @@ class TestApplication:
         assert exc.value.code == wb.ERR_CELLS_DISAGREE
 
     @pytest.mark.parametrize("status", ["RETURNED", "RECALLED", "CANCELLED"])
-    def test_a_return_to_the_maker_records_why_without_inventing_a_status(
+    def test_a_return_to_the_maker_writes_the_status_and_the_reason(
             self, status):
-        """All three targets are DRAFT, which `status` alone cannot distinguish
-        from "never submitted". The note is what preserves the fact, and the
-        schema's ck_..._decision constraint permits it on a DRAFT row where it
-        forbids decided_at/decided_by."""
+        """Since migration 009 these targets have a status to write, and the
+        decision columns move with it.
+
+        All three used to map to DRAFT, and the document was already DRAFT, so
+        only the note was written -- `status` alone could not distinguish
+        "returned for correction" from "never submitted", and the note was what
+        preserved the fact. 009 changed both halves: a routed document is
+        SUBMITTED, and RETURNED maps to RETURNED. Writing nothing would now
+        leave a returned revision SUBMITTED, stuck under an approval that has
+        closed and editable by nobody.
+
+        `decided_at`/`decided_by` are not optional decoration here. 009's
+        `ck_*_decision` puts RETURNED on the DECIDED side -- an approver did
+        decide to send it back, at a known time -- and DRAFT on the undecided
+        side, so a recall or an administrative cancel must CLEAR them rather
+        than leave a decision standing on a document that is editable again.
+        The database refuses either mistake, so both directions are asserted.
+        """
         session = FakeSession(rules=[
             (REVISION_READ, revision_row()),
             (ACTION_READ, [("U-APPROVER",)]),
         ])
         wb.apply_outcome(session, instance(status))
+
         assert len(session.writes) == 1
-        assert "UPDATE budget_revision SET decision_note" in session.writes[0]
-        assert "status" not in session.writes[0].split("WHERE")[0].lower()
+        written = session.writes[0]
+        assert "UPDATE budget_revision SET status" in written
+        assert "decision_note" in written, (
+            "the reason is still written; it is what an administrator reads "
+            "when the status alone does not say which decision this was")
+
+        expected = "RETURNED" if status == "RETURNED" else "DRAFT"
+        assert wb.INSTANCE_TO_BUSINESS_STATUS[status] == expected
+
+        if expected == "RETURNED":
+            assert "decided_at = now()" in written and "decided_by = %(actor)s" in written, (
+                "a RETURNED document sits on ck_*_decision's DECIDED side and "
+                "must name who returned it and when")
+        else:
+            assert "decided_at = NULL" in written and "decided_by = NULL" in written, (
+                "a document returned to DRAFT is undecided again; leaving a "
+                "decision on it violates ck_*_decision and tells an auditor "
+                "something untrue")
 
 
 # ==========================================================================
@@ -534,12 +565,20 @@ class TestIdempotence:
         assert called == []
         assert session.writes == []
 
-    def test_a_second_return_rewrites_the_same_note_rather_than_a_new_one(self):
-        """The note is derived from the instance, so it is the same string on
-        every application. A second call finds it already there and stops."""
+    def test_a_second_return_writes_nothing(self):
+        """A genuinely already-applied return is a no-op.
+
+        The fixture now carries the STATUS as well as the note. It used to
+        carry only the note, which since migration 009 is not an already-
+        applied state at all: RETURNED maps to RETURNED, so a row still showing
+        SUBMITTED has had the outcome half-applied and the second call is right
+        to finish it. Asserting "no writes" against that fixture would have
+        been asserting that the write-back leaves a returned document stuck
+        under a closed approval.
+        """
         note = wb._note(instance("RETURNED"))
         session = FakeSession(rules=[
-            (REVISION_READ, revision_row(note=note)),
+            (REVISION_READ, revision_row(status="RETURNED", note=note)),
             (ACTION_READ, [("U-APPROVER",)]),
         ])
         wb.apply_outcome(session, instance("RETURNED"))

@@ -104,6 +104,26 @@ def _seed_estate(con, suffix, *, budget_paise=100_000_000, commitment=0):
            (node, prj, node, "n", node))
         ex("INSERT INTO budget_control_cell (wbs_id, budget_head_id, budget_paise, "
            "updated_by) VALUES (%s,%s,%s,'t')", (node, head, budget_paise))
+        # ...and the ORIGINAL grant it summarises.
+        #
+        # `budget_control_cell` is MATERIALISED, not authoritative:
+        # `budget.recompute_cell` derives `budget_paise` by summing
+        # `budget_line`. Seeding the cell alone produced an estate whose
+        # summary could not be re-derived from its own ledger, so the first
+        # recompute after an approved revision correctly discarded the
+        # fabricated figure -- and the resulting "the cell moved to the wrong
+        # number" failure looked like a write-back defect rather than a fixture
+        # that had described an impossible state.
+        #
+        # Inserted directly rather than through `budget.record_original`
+        # because this helper takes a raw connection, not a Session. The row is
+        # the same shape that function writes: kind ORIGINAL, positive, and
+        # effective well before any test's business date.
+        if budget_paise:
+            ex("INSERT INTO budget_line (budget_line_id, wbs_id, budget_head_id, "
+               "kind, amount_paise, effective_from, status, created_by, updated_by) "
+               "VALUES (%s,%s,%s,'ORIGINAL',%s,DATE '2020-01-01','Approved','t','t')",
+               (f"BL_ORIG_{node}", node, head, budget_paise))
         ex("INSERT INTO budget_ledger_cell (wbs_id, budget_head_id, commitment_paise, "
            "actual_paise, pr_reserved_paise, updated_by) VALUES (%s,%s,%s,0,0,'t')",
            (node, head, commitment))
@@ -565,21 +585,47 @@ def test_a_stale_write_back_refuses_rather_than_overwriting(
     revision_id = _seed_revision(pg_connection, suffix, ids)
 
     submitted = _submit_revision(pg_database, revision_id)
-    _decide(pg_database, submitted["approval_instance_id"], actor="U-A")
 
+    # The document moves BEFORE the decision, not after.
+    #
+    # This test used to decide first and bump afterwards, which no longer
+    # constructs a stale write-back at all: the engine now calls the write-back
+    # itself at closure, so by the time the version moved the outcome had
+    # already been applied and the second call returned early as idempotent --
+    # "DID NOT RAISE", for the right reason.
+    #
+    # The window that exists now is between the approvers reading the snapshot
+    # and the decision landing, which is exactly the case the guard is for:
+    # they decided text that is no longer there.
     pg_connection.execute(
         "UPDATE budget_revision SET version_no = version_no + 1 WHERE revision_id = %s",
         (revision_id,))
     pg_connection.commit()
 
     with pytest.raises(wb.WritebackError) as exc:
-        _write_back(pg_database, submitted["approval_instance_id"])
+        _decide(pg_database, submitted["approval_instance_id"], actor="U-A")
     assert exc.value.code == wb.ERR_STALE
 
-    status = pg_connection.execute(
-        "SELECT status FROM budget_revision WHERE revision_id = %s",
-        (revision_id,)).fetchone()[0]
-    assert status == "DRAFT", "a stale write-back must not have written anything"
+    # And the refusal took the APPROVAL down with it, which is the property
+    # `_apply_writeback` exists to provide: the write-back runs inside the
+    # decision's transaction and its failures are not swallowed, because an
+    # approval that commits while its document stays behind is the split-brain
+    # the whole seam is there to prevent.
+    status, line_id = pg_connection.execute(
+        "SELECT status, budget_line_id FROM budget_revision WHERE revision_id = %s",
+        (revision_id,)).fetchone()
+    assert status == "SUBMITTED", (
+        f"the document is {status!r}; a refused write-back must leave it "
+        f"exactly as the approvers found it")
+    assert line_id is None, "a refused write-back must create no spending capacity"
+
+    instance_status = pg_connection.execute(
+        "SELECT status FROM approval_instance WHERE instance_id = %s",
+        (submitted["approval_instance_id"],)).fetchone()[0]
+    assert instance_status == rules.INST_OPEN, (
+        f"the instance closed as {instance_status!r} while its document was "
+        f"left undecided -- the approval committed and the write-back did not, "
+        f"which is precisely the split-brain this seam prevents")
 
 
 def test_a_revision_cannot_be_submitted_twice(

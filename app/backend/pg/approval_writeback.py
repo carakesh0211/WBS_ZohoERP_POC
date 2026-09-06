@@ -430,18 +430,46 @@ def _apply_budget_revision(session: Session, instance: Mapping[str, Any],
                                     approval_instance_id=instance_id)
         return
 
-    # target is DRAFT: RETURNED, RECALLED or CANCELLED. The document is already
-    # DRAFT (the branch above proved it), so there is no status to write. What
-    # is written is the reason, because `status` alone cannot say which of
-    # "never submitted" and "returned for correction" this is -- see the module
-    # docstring's note on the CHECK constraint.
-    note = _note(instance)
-    if decision_note == note:
+    # RETURNED, RECALLED or CANCELLED -- and since migration 009 there IS a
+    # status to write.
+    #
+    # This branch used to write only the reason, on the reasoning that all
+    # three map to DRAFT and the document is already DRAFT. 009 falsified both
+    # halves: a routed document is SUBMITTED, and RETURNED maps to RETURNED. A
+    # returned revision was therefore left SUBMITTED -- stuck under an approval
+    # that had closed, and editable by nobody.
+    _write_undecided(session, table="budget_revision", pk="revision_id",
+                      object_id=revision_id, target=target, actor=actor,
+                      note=_note(instance), current_note=decision_note,
+                      current_status=status)
+
+
+def _write_undecided(session: Session, *, table: str, pk: str, object_id: str,
+                      target: str, actor: str, note: str | None,
+                      current_note: str | None, current_status: str) -> None:
+    """Apply a RETURNED / RECALLED / CANCELLED outcome to a document.
+
+    `table` and `pk` reach SQL through an f-string, so both come from this
+    module's own call sites and never from a caller -- the same closed
+    allow-list rule `approvals.OBJECT_BINDINGS` follows.
+
+    The decision columns move WITH the status because 009's `ck_*_decision`
+    constraint ties them together: RETURNED sits on the decided side and must
+    carry `decided_at`/`decided_by` (an approver did decide to send it back, at
+    a known time), while DRAFT sits on the undecided side and must carry
+    neither -- so a recall or an administrative cancel CLEARS them rather than
+    leaving a decision behind on a document that is once again editable.
+    """
+    if current_status == target and current_note == note:
         return                              # idempotent
-    session.execute(  # scope-exempt: updates the single row the scoped read above returned
-        "UPDATE budget_revision SET decision_note = %(note)s "
-        "WHERE revision_id = %(id)s",
-        {"note": note, "id": revision_id})
+
+    decided = "now()" if target == BIZ_RETURNED else "NULL"
+    actor_sql = "%(actor)s" if target == BIZ_RETURNED else "NULL"
+    session.execute(  # noqa: S608 -- identifiers are this module's own literals
+        f"UPDATE {table} SET status = %(status)s, decision_note = %(note)s, "
+        f"decided_at = {decided}, decided_by = {actor_sql} "
+        f"WHERE {pk} = %(id)s",
+        {"status": target, "note": note, "actor": actor, "id": object_id})
 
 
 # ==========================================================================
@@ -512,13 +540,12 @@ def _apply_budget_transfer(session: Session, instance: Mapping[str, Any],
                                     approval_instance_id=instance_id)
         return
 
-    note = _note(instance)
-    if decision_note == note:
-        return
-    session.execute(  # scope-exempt: updates the single row the scoped read above returned
-        "UPDATE budget_transfer SET decision_note = %(note)s "
-        "WHERE transfer_id = %(id)s",
-        {"note": note, "id": transfer_id})
+    # Same as the revision's: since 009 there is a status to write here, and a
+    # returned transfer left SUBMITTED would be stuck under a closed approval.
+    _write_undecided(session, table="budget_transfer", pk="transfer_id",
+                      object_id=transfer_id, target=target, actor=actor,
+                      note=_note(instance), current_note=decision_note,
+                      current_status=status)
 
 
 # ==========================================================================
