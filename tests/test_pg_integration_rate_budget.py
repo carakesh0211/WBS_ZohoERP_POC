@@ -71,6 +71,8 @@ from conftest_pg import (  # noqa: E402,F401  (re-exported as fixtures)
 )
 
 import os  # noqa: E402
+import threading  # noqa: E402
+import time  # noqa: E402
 from datetime import datetime, timedelta, timezone  # noqa: E402
 
 import psycopg  # noqa: E402
@@ -109,7 +111,8 @@ class _Clock:
 
 
 def _seed(con: psycopg.Connection, *, per_minute: int = 100,
-          daily: int = 2000) -> None:
+          daily: int = 2000, connection_id: str = CONNECTION,
+          organization_id: str = "60000000001") -> None:
     """Organisation, entity and one `integration_connection`, committed.
 
     Raw SQL rather than `integration_store.create_connection`: the point of
@@ -121,7 +124,24 @@ def _seed(con: psycopg.Connection, *, per_minute: int = 100,
     `ensure_rate_budget_windows` copies onto the budget row -- the ceiling is a
     per-row snapshot of the connection's, not a join, so that raising a plan
     tier at noon cannot retroactively rewrite what the morning's budget was.
+
+    THE CEILING INVARIANT, ASSERTED HERE RATHER THAN ASSUMED
+    --------------------------------------------------------
+    ``daily`` must exceed ``per_minute``. A daily ceiling at or below the
+    per-minute one makes the DAY window bind on the very first minute, so
+    every minute-window assertion in this file would be satisfied by a DAY
+    refusal and the minute behaviour would never be reached -- the tests would
+    pass while testing something else. The shipped schema says the same thing
+    in ``ck_integration_connection_daily_exceeds_minute``, but that constraint
+    permits equality and this file needs the strict inequality, so it is
+    checked here too. It is checked BEFORE the insert so the failure names the
+    fixture rather than surfacing as a CheckViolation from a driver.
     """
+    assert daily > per_minute, (
+        f"fixture invariant: daily_call_ceiling ({daily}) must exceed "
+        f"per_minute_call_ceiling ({per_minute}). A day ceiling at or below "
+        f"the minute ceiling makes the DAY window bind first and hides every "
+        f"minute-window behaviour this file exists to prove.")
     con.execute(
         "INSERT INTO organisation (organisation_id, code, name, created_by,"
         " updated_by) VALUES ('ORG-B', 'ORGB', 'Budget Org', 'T', 'T')"
@@ -138,9 +158,9 @@ def _seed(con: psycopg.Connection, *, per_minute: int = 100,
         "INSERT INTO integration_connection (connection_id, entity_id,"
         " product, dc, organization_id, connector_name,"
         " per_minute_call_ceiling, daily_call_ceiling, created_by, updated_by)"
-        " VALUES (%s, %s, 'ERP', 'in', '60000000001', 'zoho_erp', %s, %s,"
+        " VALUES (%s, %s, 'ERP', 'in', %s, 'zoho_erp', %s, %s,"
         " 'T', 'T')",
-        (CONNECTION, ENTITY, per_minute, daily))
+        (connection_id, ENTITY, organization_id, per_minute, daily))
     con.commit()
 
 
@@ -156,15 +176,42 @@ def _session(con: psycopg.Connection) -> Session:
                    scope=Scope(user_id="U-BUDGET", entity_ids=frozenset({ENTITY})))
 
 
-def _rows(con: psycopg.Connection) -> dict[tuple, tuple]:
+def _rows(con: psycopg.Connection,
+          connection_id: str = CONNECTION) -> dict[tuple, tuple]:
     """`{(window_kind, allocation): (used, ceiling, exhausted_at, key)}`."""
     return {
         (r[0], r[1]): (r[2], r[3], r[4], r[5])
         for r in con.execute(
             "SELECT window_kind, allocation, used, ceiling, exhausted_at,"
             " window_start_key FROM integration_rate_budget"
-            " WHERE connection_id = %s", (CONNECTION,)).fetchall()
+            " WHERE connection_id = %s", (connection_id,)).fetchall()
     }
+
+
+def _wait_until_blocked(observer: psycopg.Connection, pid: int,
+                        *, timeout: float = 20.0) -> None:
+    """Block until backend `pid` is waiting on a lock, or fail the test.
+
+    The alternative -- a `sleep` long enough to "probably" be safe -- makes a
+    concurrency test that is either flaky or slow, and usually both. This asks
+    the server the question directly: has the contender's statement actually
+    reached the point of waiting on the row this transaction holds? Until it
+    has, there is no race to arbitrate and committing would just sequence the
+    two reservations, which is what the previous version of the race test did
+    without saying so.
+    """
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        row = observer.execute(
+            "SELECT wait_event_type, state FROM pg_stat_activity WHERE pid = %s",
+            (pid,)).fetchone()
+        if row is not None and row[0] == "Lock":
+            return
+        time.sleep(0.02)
+    raise AssertionError(
+        f"backend {pid} never blocked on a lock within {timeout}s. Either the "
+        f"contender's UPDATE never ran, or it did not contend -- and a race "
+        f"test whose two halves never actually raced proves nothing.")
 
 
 # ==========================================================================
@@ -592,14 +639,24 @@ def test_live_two_concurrent_reservations_cannot_both_take_the_last_call(
     """Section 2.1: there is no resident process, so the race between two cron
     invocations has nowhere to be arbitrated but the statement itself.
 
-    Two connections to the SAME database, both reserving the last call in the
-    lane. Exactly one may win. A read-then-check in Python is stale by the time
-    it is acted on, and stale in the direction that overspends.
+    A GENUINE RACE, not two reservations in sequence. The earlier version of
+    this test reserved on one connection, COMMITTED, and only then reserved on
+    the other. Exactly one won, so the assertion passed -- but it would have
+    passed against a read-then-check in Python too, because the two statements
+    never overlapped. It proved the arithmetic, not the arbitration.
+
+    Here the first reservation is deliberately left UNCOMMITTED, holding the
+    row locks, while the second connection's `UPDATE` is started and confirmed
+    to be *blocked on those locks* before the first commits. The second
+    statement is therefore in flight across the first's commit, which is the
+    only arrangement in which PostgreSQL's READ COMMITTED re-evaluation of
+    ``used + count <= ceiling`` against the newly committed row version is the
+    thing deciding the outcome.
     """
     from conftest_pg import _replace_dbname
 
     con = pg_connection
-    _seed(con, per_minute=100)
+    _seed(con)
     session, clock = _session(con), _Clock()
 
     for _ in range(59):                        # one call left in the lane
@@ -607,25 +664,305 @@ def test_live_two_concurrent_reservations_cannot_both_take_the_last_call(
                                 lane=Lane.POLLING, actor="SVC-BUDGET",
                                 clock=clock)
     con.commit()
+    assert _rows(con)[("MINUTE", "POLLING")][0] == 59
+
+    other = psycopg.connect(_replace_dbname(pg_url, pg_disposable_db_name),
+                            autocommit=False)
+    outcome: dict[str, object] = {}
+
+    def contender() -> None:
+        try:
+            outcome["second"] = bool(throttle.reserve(
+                _session(other), connection_id=CONNECTION, lane=Lane.POLLING,
+                actor="SVC-BUDGET", clock=clock))
+        except BaseException as exc:           # noqa: BLE001 - re-raised below
+            outcome["error"] = exc
+        finally:
+            try:
+                other.commit()
+            except Exception:                  # pragma: no cover - cleanup
+                other.rollback()
+
+    worker = threading.Thread(target=contender, name="rate-budget-contender")
+    try:
+        # A takes the last call and HOLDS it -- no commit.
+        first = throttle.reserve(session, connection_id=CONNECTION,
+                                 lane=Lane.POLLING, actor="SVC-BUDGET",
+                                 clock=clock)
+        assert con.info.transaction_status == psycopg.pq.TransactionStatus.INTRANS, (
+            "the holder must still be INSIDE its transaction -- if reserve() "
+            "had committed, there would be no lock to contend for and the "
+            "race below would silently become a sequence")
+        assert _rows(con)[("MINUTE", "POLLING")][0] == 60, (
+            "the holder must see its own uncommitted charge")
+
+        # B starts, and must end up waiting on A's row locks.
+        worker.start()
+        _wait_until_blocked(con, other.info.backend_pid)
+
+        # Only now does A commit, releasing B into a re-evaluation of the
+        # WHERE against the row A just wrote.
+        con.commit()
+        worker.join(timeout=30)
+        assert not worker.is_alive(), "the contender never finished"
+    finally:
+        # Release anything still held BEFORE joining: if the staging above
+        # failed, the contender is blocked on this transaction's locks, and
+        # closing its connection from here while its statement is in flight
+        # would replace the real failure with a driver error about the
+        # cleanup. A rollback after a successful commit is a no-op.
+        try:
+            con.rollback()
+        except Exception:                      # pragma: no cover - cleanup
+            pass
+        if worker.is_alive():                  # pragma: no cover - cleanup
+            worker.join(timeout=10)
+        try:
+            other.close()
+        except Exception:                      # pragma: no cover - cleanup
+            pass
+
+    if "error" in outcome:
+        raise AssertionError(
+            f"the contending reservation raised instead of returning a "
+            f"verdict: {outcome['error']!r}") from outcome["error"]  # type: ignore[misc]
+
+    second = outcome["second"]
+    assert bool(first) is True, "the holder took the last call and must keep it"
+    assert second is False, (
+        "the contender re-evaluated the ceiling against the committed row and "
+        "must be refused; granting it means two cron invocations both spent "
+        "the same call")
+    assert _rows(con)[("MINUTE", "POLLING")][0] == 60, (
+        "the minute window must hold exactly its ceiling, never 61")
+
+
+@PG
+@pytest.mark.pg
+def test_live_a_refusal_on_a_fresh_connection_charges_neither_window(
+        pg_connection, pg_disposable_db_name, pg_url):
+    """The savepoint release holds on a connection that did none of the
+    spending, and survives that connection's own COMMIT.
+
+    Deliberately NOT called a race -- the window is already full and committed
+    before the second connection opens, so nothing here contends. What it adds
+    over the same-session release test is the transaction boundary: the
+    refusing statement DID update the DAY row (1,140 calls were left, so that
+    half of the `UPDATE` matched), the rollback is the only thing that undid
+    it, and this connection then COMMITS. If the release depended on the
+    caller's transaction being abandoned, that commit would publish the charge.
+    """
+    from conftest_pg import _replace_dbname
+
+    con = pg_connection
+    _seed(con)
+    session, clock = _session(con), _Clock()
+    for _ in range(60):                        # the minute lane is full
+        assert throttle.reserve(session, connection_id=CONNECTION,
+                                lane=Lane.POLLING, actor="SVC-BUDGET",
+                                clock=clock)
+    con.commit()
+    day_before = _rows(con)[("DAY", "POLLING")][0]
+    assert day_before == 60
 
     other = psycopg.connect(_replace_dbname(pg_url, pg_disposable_db_name),
                             autocommit=False)
     try:
-        first = throttle.reserve(session, connection_id=CONNECTION,
-                                 lane=Lane.POLLING, actor="SVC-BUDGET",
-                                 clock=clock)
-        con.commit()
-        second = throttle.reserve(_session(other), connection_id=CONNECTION,
-                                  lane=Lane.POLLING, actor="SVC-BUDGET",
-                                  clock=clock)
+        refused = throttle.reserve(_session(other), connection_id=CONNECTION,
+                                   lane=Lane.POLLING, actor="SVC-BUDGET",
+                                   clock=clock)
+        assert not refused
         other.commit()
     finally:
         other.close()
 
-    assert bool(first) != bool(second), (
-        "exactly one of two racing reservations may take the last call; "
-        f"got first={bool(first)} second={bool(second)}")
-    assert _rows(con)[("MINUTE", "POLLING")][0] == 60
+    assert _rows(con)[("DAY", "POLLING")][0] == day_before, (
+        "the day window was charged inside the savepoint and must have been "
+        "rolled back with it")
+
+
+@PG
+@pytest.mark.pg
+def test_live_an_in_flight_charge_is_never_visible_to_another_connection(
+        pg_connection, pg_disposable_db_name, pg_url):
+    """"Unrepresentable, not merely undone."
+
+    A partial reservation is not something another session can observe and then
+    see corrected. The charge lives inside an uncommitted transaction, so a
+    concurrent reader sees the PRE-reservation figure throughout and the
+    POST-refusal figure afterwards -- and those are the same number. There is
+    no instant at which any other connection can read a window charged for a
+    call that was never granted.
+    """
+    from conftest_pg import _replace_dbname
+
+    con = pg_connection
+    _seed(con)
+    session, clock = _session(con), _Clock()
+    for _ in range(60):
+        assert throttle.reserve(session, connection_id=CONNECTION,
+                                lane=Lane.POLLING, actor="SVC-BUDGET",
+                                clock=clock)
+    con.commit()
+
+    observer = psycopg.connect(_replace_dbname(pg_url, pg_disposable_db_name),
+                               autocommit=True)
+    try:
+        def day_used() -> int:
+            return observer.execute(
+                "SELECT used FROM integration_rate_budget WHERE connection_id"
+                " = %s AND window_kind = 'DAY' AND allocation = 'POLLING'",
+                (CONNECTION,)).fetchone()[0]
+
+        assert day_used() == 60
+
+        # The refusal charges the day inside the savepoint and gives it back.
+        refused = throttle.reserve(session, connection_id=CONNECTION,
+                                   lane=Lane.POLLING, actor="SVC-BUDGET",
+                                   clock=clock)
+        assert not refused
+        assert day_used() == 60, (
+            "an outside reader saw the in-flight day charge; it must never "
+            "have been visible")
+        con.commit()
+        assert day_used() == 60, (
+            "committing the refusing transaction must not publish the charge "
+            "either")
+    finally:
+        observer.close()
+
+
+@PG
+@pytest.mark.pg
+def test_live_a_day_refusal_does_not_charge_a_minute_window_with_room(
+        pg_connection):
+    """The atomicity property in the OTHER direction, and the one no test in
+    this file reached.
+
+    Every other refusal here is the minute refusing while the day has room. The
+    mirror image -- the day exhausted, a FRESH minute window with its full
+    ceiling available -- is the case where the single `UPDATE`'s MINUTE half
+    matches and its DAY half does not. If the two windows were charged by two
+    statements, this is exactly where the minute would be left holding a call
+    the day refused, and the drift would be silent because the minute window
+    rolls over a moment later and the evidence goes with it.
+
+    Small ceilings, on their own connection, so day exhaustion costs thirteen
+    reservations instead of 1,200. ``daily`` still exceeds ``per_minute``, so
+    the minute window genuinely has room at the moment the day refuses -- the
+    whole point of the case.
+    """
+    con = pg_connection
+    # per-lane: MINUTE polling = 10*60/100 = 6, DAY polling = 20*60/100 = 12.
+    small = "CONN-SMALL"
+    _seed(con, per_minute=10, daily=20, connection_id=small,
+          organization_id="60000000002")
+    session, clock = _session(con), _Clock()
+
+    for _ in range(2):                         # two minutes x 6 = the day's 12
+        for _ in range(6):
+            assert throttle.reserve(session, connection_id=small,
+                                    lane=Lane.POLLING, actor="SVC-BUDGET",
+                                    clock=clock)
+        clock.advance(minutes=1)
+    con.commit()
+
+    day = con.execute(
+        "SELECT used, ceiling FROM integration_rate_budget WHERE connection_id"
+        " = %s AND window_kind = 'DAY' AND allocation = 'POLLING'",
+        (small,)).fetchone()
+    assert tuple(day) == (12, 12), "the day must be full"
+
+    # A third, fresh minute window: 0 of 6 used, so the MINUTE half of the
+    # reservation can be satisfied and the DAY half cannot.
+    refused = throttle.reserve(session, connection_id=small, lane=Lane.POLLING,
+                               actor="SVC-BUDGET", clock=clock)
+    assert not refused
+    assert refused.binding is WindowKind.DAY
+    assert refused.window(WindowKind.MINUTE).remaining == 6, (
+        "the fresh minute window had its whole ceiling available")
+    con.commit()
+
+    # Three minute windows exist by now, so they are read by KEY rather than
+    # through `_rows` -- which is keyed on (window_kind, allocation) and would
+    # silently collapse them to whichever the server returned last.
+    minutes = con.execute(
+        "SELECT window_start_key, used FROM integration_rate_budget WHERE"
+        " connection_id = %s AND window_kind = 'MINUTE' AND allocation ="
+        " 'POLLING' ORDER BY window_start_key", (small,)).fetchall()
+    assert [tuple(r) for r in minutes] == [
+        ("2026-09-06T11:30", 6), ("2026-09-06T11:31", 6),
+        ("2026-09-06T11:32", 0)], (
+        "the third window was opened by ensure_rate_budget_windows -- which is "
+        "not a charge -- and must hold nothing, because the day refused. A 1 "
+        "here is the partial reservation the savepoint exists to make "
+        "impossible")
+    day_after = con.execute(
+        "SELECT used FROM integration_rate_budget WHERE connection_id = %s"
+        " AND window_kind = 'DAY' AND allocation = 'POLLING'",
+        (small,)).fetchone()[0]
+    assert day_after == 12, "and the day is unchanged"
+
+
+@PG
+@pytest.mark.pg
+def test_live_reserve_calls_itself_executes_and_raises_the_typed_refusal(
+        pg_connection):
+    """`integration_store.reserve_calls` executed directly, without `throttle`.
+
+    Everything else in this file reaches the statement through
+    `throttle.reserve`, which catches `RateBudgetExhausted` and converts it to
+    a verdict. That conversion is the behaviour section 11.6 asks for and it is also
+    a filter: the store's own contract -- the return shape, the typed exception
+    and the `window_kind` it carries -- is never observed against a live server
+    by any of them. It is observed here, because the store is the module that
+    actually owns the SQL.
+    """
+    con = pg_connection
+    _seed(con)
+    session = _session(con)
+
+    granted = store.reserve_calls(session, connection_id=CONNECTION,
+                                  allocation="POLLING", count=5, now=T0)
+    assert set(granted) == {"MINUTE", "DAY"}
+    assert granted["MINUTE"] == {"used": 5, "ceiling": 60, "remaining": 55}
+    assert granted["DAY"] == {"used": 5, "ceiling": 1200, "remaining": 1195}
+
+    # Fill the minute lane exactly, then ask for one more.
+    store.reserve_calls(session, connection_id=CONNECTION,
+                        allocation="POLLING", count=55, now=T0)
+    with pytest.raises(store.RateBudgetExhausted) as caught:
+        store.reserve_calls(session, connection_id=CONNECTION,
+                            allocation="POLLING", count=1, now=T0)
+    assert caught.value.window_kind == "MINUTE"
+    assert caught.value.status == 429
+
+    # The transaction survived the typed refusal, and nothing leaked.
+    con.commit()
+    rows = _rows(con)
+    assert rows[("MINUTE", "POLLING")][0] == 60
+    assert rows[("DAY", "POLLING")][0] == 60, (
+        "the refused single call must not have been charged to the day")
+
+
+@PG
+@pytest.mark.pg
+def test_live_an_unknown_allocation_is_refused_before_any_window_opens(
+        pg_connection):
+    """`ALLOCATIONS` is a closed set, and a typo must not open a budget row.
+
+    A lane name the store does not know would otherwise reach
+    `ensure_rate_budget_windows`, which computes a share of `None` -- and an
+    allocation nobody enforces is a lane with no ceiling at all.
+    """
+    con = pg_connection
+    _seed(con)
+    with pytest.raises(store.IntegrationStoreError) as caught:
+        store.reserve_calls(_session(con), connection_id=CONNECTION,
+                            allocation="BACKFILL", count=1, now=T0)
+    assert caught.value.code == "UNKNOWN_ALLOCATION"
+    con.rollback()
+    assert _rows(con) == {}, "a rejected allocation must open no window"
 
 
 # ==========================================================================
