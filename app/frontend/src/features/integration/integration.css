@@ -1,0 +1,241 @@
+/* app/frontend/src/features/integration/integration.css
+   Additive stylesheet for the integration screens (Wave 5: SCR-31, 32, 33, 34,
+   26, 38, 39).
+
+   WHERE THIS FILE LIVES, AND WHY IT IS NOT app/frontend/integration.css
+   ---------------------------------------------------------------------
+   Every other feature stylesheet sits beside index.html (budget.css,
+   settings.css, approvals.css). This one sits inside the feature it belongs
+   to, because this stream owns app/frontend/src/features/integration/** and
+   owns nothing at the frontend root. A <link> to it is same-origin and static,
+   so `style-src 'self'` permits it exactly as it permits the others, and
+   src/core/router.js injects it per route in the same way. Nothing about its
+   location changes how it loads.
+
+   RULES THIS FILE KEEPS, and why
+   ------------------------------
+   1. NO :root block, NO custom property declared here, and NO raw hex anywhere
+      in this file. Every colour is a var() naming a token already frozen in
+      research/30_contracts/C6_tokens.json and declared in the byte-frozen
+      styles.css. A new colour belongs in the token registry, not in a feature
+      stylesheet. tests/test_contracts.py::test_no_new_off_token_colour_is_
+      introduced is the gate.
+
+   2. EVERY SELECTOR IS SCOPED to an `integration-` class. settings.css shipped
+      two UNSCOPED selectors -- `input:disabled, textarea:disabled` and
+      `.field label` -- which restyle disabled controls and label wrapping on
+      every approved shell view the moment that stylesheet loads globally. That
+      defect is why router.js injects these stylesheets per route rather than
+      linking them in index.html, and this file is written so it would be
+      harmless even if that containment failed. (The settings.css defect is
+      REPORTED, not fixed: it is not this stream's file.)
+
+   3. Layout and size only. Nothing here restyles a `.status`, a `.msg`, a
+      `.tile`, a table or a button — those are the approved design and they
+      come from styles.css unchanged. This file positions the parts the
+      integration screens add and does nothing else.
+
+   4. No `style=` attribute is ever produced by the screens that use this file.
+      The CSP is `style-src 'self'`; the one piece of computed geometry on
+      these screens (the usage meter's fill width) goes through the CSSOM via
+      core/dom.js's setGeometry(), which CSP does not govern.
+*/
+
+/* ---------------- cards ---------------- */
+
+.integration-card + .integration-card {
+  margin-top: 16px;
+}
+
+/* The card header as an <h2> rather than the frozen stylesheet's `.card > h3`.
+   The shell renders the screen name as the page <h1>, so an h3 here would skip
+   a heading level: axe flags it and a screen-reader user navigating by heading
+   loses the outline. These declarations reproduce `.card > h3` exactly, from
+   the same tokens, so the card is visually identical and only the element name
+   and the document outline differ. budget.css and approvals.css solve the same
+   problem the same way. */
+.integration-card > .integration-card-title {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--n200);
+  background: var(--n50);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.integration-card > .integration-card-title .spacer {
+  flex: 1;
+}
+
+/* The UA stylesheet gives <dl> `margin: 1em 0`; the frozen `.kv` grid was
+   written against a <div>. Removing the margin keeps the layout byte-identical
+   while the element stays a real description list, which axe's `dlitem` rule
+   requires and a screen reader needs. */
+.integration-kv {
+  margin: 0;
+}
+
+/* ---------------- toolbar and forms ---------------- */
+
+.integration-toolbar {
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.integration-form .btn-row {
+  margin-top: 10px;
+}
+
+/* ---------------- source, unavailability, redaction ---------------- */
+
+.integration-notes:empty {
+  display: none;
+}
+
+.integration-source {
+  margin: 0 0 8px;
+}
+
+/* A compatibility source is a fact the reader must not skim past: it means the
+   Wave 5 platform is not answering and something else is. The rule is a
+   non-colour signal (the `!` glyph is rendered in the markup) plus a border,
+   so it survives greyscale and a daylit plant-office screen. */
+.integration-source-compat {
+  border-left: 3px solid var(--warning);
+  padding-left: 8px;
+}
+
+.integration-unavailable code,
+.integration-redaction .mono {
+  word-break: break-all;
+}
+
+/* A cell that could not be measured from the source that answered. Layout
+   only: the glyph and the words "not measured" are in the markup, so the
+   signal survives greyscale and a screen reader alike. */
+.integration-unmeasured {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+/* ---------------- steps list (SCR-32) ---------------- */
+
+.integration-steps {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.integration-steps > li + li {
+  margin-top: 6px;
+}
+
+.integration-secret {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.integration-authurl {
+  margin-top: 6px;
+  word-break: break-all;
+}
+
+/* ---------------- tiles and meters (SCR-34, SCR-38) ---------------- */
+
+.integration-tiles {
+  margin-bottom: 0;
+}
+
+/* A tile whose value is a badge rather than a number: the frozen `.tile .v`
+   sets a 20px numeric size that a chip must not inherit. */
+.integration-tile-badge {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.integration-tile-wide {
+  grid-column: span 2;
+}
+
+.integration-meter {
+  margin-top: 6px;
+}
+
+.integration-meter-track {
+  position: relative;
+  height: 8px;
+  border-radius: var(--radius);
+  background: var(--n100);
+  overflow: hidden;
+}
+
+.integration-meter-fill {
+  display: block;
+  height: 100%;
+  /* width is assigned through the CSSOM by setGeometry(); the CSP blocks a
+     markup style attribute but does not govern CSSOM assignment. */
+  width: 0;
+}
+
+.integration-meter-safe { background: var(--positive); }
+.integration-meter-watch { background: var(--warning); }
+.integration-meter-breach { background: var(--negative); }
+
+/* ---------------- lists ---------------- */
+
+.integration-negatives,
+.integration-circuits {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.integration-negatives > li,
+.integration-circuits > li {
+  padding: 8px 0;
+  border-top: 1px solid var(--n100);
+}
+
+.integration-negatives > li:first-child,
+.integration-circuits > li:first-child {
+  border-top: 0;
+}
+
+/* ---------------- table cells ---------------- */
+
+.integration-raw,
+.integration-external {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* The integration_state badge is a SEPARATE fact from the business status and
+   is never styled to look like one: no chip background of its own, no border,
+   nothing that would let it be mistaken for a C3 status pill. It is the
+   approved `.status` chip with a screen-reader prefix naming what it is. */
+.integration-state-badge {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.integration-link {
+  word-break: break-all;
+}
+
+/* ---------------- narrow viewports ---------------- */
+
+@media (max-width: 900px) {
+  .integration-tile-wide {
+    grid-column: span 1;
+  }
+}
