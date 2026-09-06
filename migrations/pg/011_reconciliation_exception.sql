@@ -130,9 +130,25 @@ CREATE INDEX ix_reconciliation_exception_open_by_project
 ALTER TABLE reconciliation_exception ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reconciliation_exception FORCE ROW LEVEL SECURITY;
 
+-- ARGUMENT ORDER MATTERS AND IS EASY TO GET WRONG.
+--
+-- `capex_scope_permits(p_entity_id, p_plant_id, p_location_id, p_project_id)`
+-- -- see 004. All four parameters are `text`, so PostgreSQL accepts ANY order
+-- silently. This policy originally read
+-- `(entity_id, NULL, project_id, NULL)`, which put `project_id` in the
+-- LOCATION slot and left the project slot NULL: the project dimension was
+-- waived entirely, and a principal restricted to one project could read
+-- another project's `local_paise` and `source_paise` within the same entity.
+-- Caught by a scan that audits every call site against the signature; it is
+-- now the only thing standing between this and a silent re-break.
 CREATE POLICY reconciliation_exception_scope ON reconciliation_exception
-    USING (capex_scope_permits(entity_id, NULL, project_id, NULL))
-    WITH CHECK (capex_scope_permits(entity_id, NULL, project_id, NULL));
+    USING (capex_scope_permits(entity_id, NULL, NULL, project_id))
+    WITH CHECK (capex_scope_permits(entity_id, NULL, NULL, project_id));
+
+-- The application role needs its privileges stated, as 008 and 010 state
+-- theirs. Omitting this worked only because one superuser runs every
+-- migration in CI -- which is the same assumption that hid the RLS bypass.
+GRANT SELECT, INSERT, UPDATE ON reconciliation_exception TO capex_app;
 
 COMMIT;
 
