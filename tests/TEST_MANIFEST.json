@@ -1222,6 +1222,100 @@
         "body_sha": "aa332510c799c080"
       }
     },
+    "test_contracts_integration_statuses.py": {
+      "test_every_mapping_target_exists_in_the_frozen_business_registry": {
+        "assertions": 1,
+        "body_sha": "7318afcd002828f6"
+      },
+      "test_the_loaded_map_targets_the_same_registry_the_file_names": {
+        "assertions": 2,
+        "body_sha": "710ced5bb6e86e2a"
+      },
+      "test_every_row_declares_whether_it_maps_to_nothing_or_is_not_yet_mapped": {
+        "assertions": 3,
+        "body_sha": "896db1c111302009"
+      },
+      "test_every_block_declares_whether_its_value_set_is_known": {
+        "assertions": 3,
+        "body_sha": "036800e078ad1186"
+      },
+      "test_no_integration_status_is_rendered_by_a_business_screen": {
+        "assertions": 1,
+        "body_sha": "db8fdb064c4f79e2"
+      },
+      "test_no_approval_status_is_rendered_outside_the_approval_screens": {
+        "assertions": 1,
+        "body_sha": "39dc225cfec83c2a"
+      },
+      "test_the_business_status_pill_knows_nothing_of_the_other_namespaces": {
+        "assertions": 1,
+        "body_sha": "85d96cefd5d2652a"
+      },
+      "test_the_badge_is_not_a_twenty_second_business_status": {
+        "assertions": 3,
+        "body_sha": "228492bd91efc734"
+      },
+      "test_every_declared_state_is_reachable_by_driving_the_real_transition_code": {
+        "assertions": 1,
+        "body_sha": "d8f01fd83f143641"
+      },
+      "test_every_transition_names_a_writer_that_the_registry_declares": {
+        "assertions": 1,
+        "body_sha": "a1ce0d4f461490f0"
+      },
+      "test_every_declared_writer_actually_writes_something": {
+        "assertions": 2,
+        "body_sha": "5a5069716d47dd6a"
+      },
+      "test_every_namespace_has_at_least_one_writer_claiming_it": {
+        "assertions": 1,
+        "body_sha": "b96be16105c348b3"
+      },
+      "test_terminal_states_are_terminal_and_non_terminal_states_are_not": {
+        "assertions": 2,
+        "body_sha": "b923d0566d40d1ae"
+      },
+      "test_both_registries_carry_a_version_and_a_version_history": {
+        "assertions": 3,
+        "body_sha": "1b8b2a39cfe86ab1"
+      },
+      "test_every_mapping_block_and_row_carries_an_effective_window": {
+        "assertions": 3,
+        "body_sha": "d1a6afdc1de6a093"
+      },
+      "test_no_mapping_is_hardcoded_in_the_module_that_applies_it": {
+        "assertions": 1,
+        "body_sha": "ed20615261a4b7cc"
+      },
+      "test_every_unverified_row_carries_the_exact_marker_and_is_inactive": {
+        "assertions": 4,
+        "body_sha": "151d46ec04d1b5c2"
+      },
+      "test_every_active_row_names_the_document_that_sources_it": {
+        "assertions": 3,
+        "body_sha": "f93d6778f95967ac"
+      },
+      "test_no_books_or_inventory_row_is_active_without_its_own_evidence": {
+        "assertions": 1,
+        "body_sha": "0f942631ad09db8c"
+      },
+      "test_the_erp_evidence_source_is_the_bundle_actually_captured_in_the_repo": {
+        "assertions": 4,
+        "body_sha": "1d41ec865efec43c"
+      },
+      "test_the_documented_erp_purchase_order_values_are_the_ones_actually_documented": {
+        "assertions": 2,
+        "body_sha": "edd550730478a977"
+      },
+      "test_the_documented_erp_bill_values_are_the_ones_actually_documented": {
+        "assertions": 2,
+        "body_sha": "7b643307c3ee0fdb"
+      },
+      "test_erp_purchase_receive_has_no_status_rows_because_the_spec_has_no_status": {
+        "assertions": 3,
+        "body_sha": "5182e0a34ba56c3e"
+      }
+    },
     "test_domain_invariants.py": {
       "test_available_equals_budget_minus_actual_commitment_and_reservation": {
         "assertions": 2,
@@ -1932,6 +2026,172 @@
       "test_the_two_adapters_share_no_scope_and_no_base_url": {
         "assertions": 5,
         "body_sha": "e31cb353bbc02308"
+      }
+    },
+    "test_integration_statuses.py": {
+      "test_the_registries_are_read_from_the_contract_files_not_rebuilt": {
+        "assertions": 2,
+        "body_sha": "3eccb757dfb6787f"
+      },
+      "test_the_four_namespaces_are_the_four_the_plan_names": {
+        "assertions": 1,
+        "body_sha": "1f0b0251a1042828"
+      },
+      "test_a_namespace_that_does_not_exist_says_so_rather_than_returning_empty": {
+        "assertions": 1,
+        "body_sha": "af1c21dd0540898a"
+      },
+      "test_a_row_is_created_in_the_state_the_registry_declares": {
+        "assertions": 4,
+        "body_sha": "cb78c643a34623e3"
+      },
+      "test_the_declared_initial_status_is_the_one_creation_actually_produces": {
+        "assertions": 1,
+        "body_sha": "f950d44cc981d20e"
+      },
+      "test_an_undeclared_transition_raises_rather_than_defaulting": {
+        "assertions": 1,
+        "body_sha": "cf474a733360b67f"
+      },
+      "test_an_undeclared_state_is_rejected_before_the_trigger_is_considered": {
+        "assertions": 1,
+        "body_sha": "770e349976054418"
+      },
+      "test_a_quarantined_payload_is_resolved_by_an_operator_never_by_a_retry": {
+        "assertions": 3,
+        "body_sha": "5a7996462acc456a"
+      },
+      "test_a_dedupe_hit_is_a_success_and_not_a_duplicate": {
+        "assertions": 2,
+        "body_sha": "ade9cf5e9c6a6b8d"
+      },
+      "test_a_non_retryable_failure_does_not_go_round_the_backoff_loop": {
+        "assertions": 3,
+        "body_sha": "9e2a93ea05bfce64"
+      },
+      "test_a_checkpointed_job_resumes_and_a_crashed_one_is_reclaimed": {
+        "assertions": 4,
+        "body_sha": "902ac3e4355dc136"
+      },
+      "test_the_circuit_probes_before_it_closes": {
+        "assertions": 4,
+        "body_sha": "0ab4fe99325cc62a"
+      },
+      "test_the_circuit_codes_do_not_collide_with_the_business_status_closed": {
+        "assertions": 2,
+        "body_sha": "9e91d574a44eb6d8"
+      },
+      "test_an_object_with_no_outbox_row_carries_no_badge_at_all": {
+        "assertions": 1,
+        "body_sha": "dff415da2aa5c6ed"
+      },
+      "test_each_outbox_state_derives_the_badge_the_registry_declares": {
+        "assertions": 1,
+        "body_sha": "d82dff76b95698c1"
+      },
+      "test_a_failed_emission_outranks_a_queued_or_sent_one": {
+        "assertions": 4,
+        "body_sha": "cc67eea3c005a339"
+      },
+      "test_the_badge_cannot_be_derived_from_a_state_that_is_not_an_outbox_state": {
+        "assertions": 1,
+        "body_sha": "975ae1ec57a6e0b5"
+      },
+      "test_no_badge_value_is_a_business_status": {
+        "assertions": 1,
+        "body_sha": "c7c51c8915c3592e"
+      },
+      "test_the_business_screen_guard_rejects_every_operational_code": {
+        "assertions": 3,
+        "body_sha": "6570fbad47fc9717"
+      },
+      "test_a_documented_value_resolves_to_its_business_status": {
+        "assertions": 5,
+        "body_sha": "0d1e13582f7a4173"
+      },
+      "test_an_unknown_raw_value_is_accepted_and_raises_an_exception_rather_than_guessing": {
+        "assertions": 6,
+        "body_sha": "c8b1d748ff80bd7d"
+      },
+      "test_the_unmapped_result_is_a_value_not_an_exception_because_the_record_is_accepted": {
+        "assertions": 2,
+        "body_sha": "990999a750c79d87"
+      },
+      "test_a_raw_value_is_matched_verbatim_and_never_case_folded": {
+        "assertions": 3,
+        "body_sha": "ca274230f6676ccc"
+      },
+      "test_a_row_that_exists_but_is_unsourced_is_treated_as_absent": {
+        "assertions": 4,
+        "body_sha": "19533192b93d7f38"
+      },
+      "test_a_value_that_deliberately_means_nothing_is_mapped_and_sets_no_status": {
+        "assertions": 5,
+        "body_sha": "9e9fc560d750ae60"
+      },
+      "test_a_bill_status_drives_accounting_status_and_not_a_business_status": {
+        "assertions": 5,
+        "body_sha": "a232fc2749e943c7"
+      },
+      "test_an_empty_block_reports_not_yet_mapped_rather_than_no_meaning": {
+        "assertions": 3,
+        "body_sha": "0047ad7ad6be88ae"
+      },
+      "test_a_miss_against_a_complete_block_says_the_vendor_changed": {
+        "assertions": 1,
+        "body_sha": "9258737940f70f44"
+      },
+      "test_a_field_nobody_has_mapped_at_all_is_reported_as_such": {
+        "assertions": 2,
+        "body_sha": "4e264076423bc164"
+      },
+      "test_the_same_raw_value_does_not_fall_back_across_products": {
+        "assertions": 3,
+        "body_sha": "360d3030db94d584"
+      },
+      "test_an_unknown_product_gets_no_mapping_rather_than_a_default_one": {
+        "assertions": 1,
+        "body_sha": "f0ddf14ba032b9aa"
+      },
+      "test_the_inventory_row_the_plan_states_is_active_while_its_neighbours_are_not": {
+        "assertions": 2,
+        "body_sha": "d65cfbe604a74c61"
+      },
+      "test_the_adapter_product_resolves_to_the_product_that_owns_the_object": {
+        "assertions": 2,
+        "body_sha": "46b9a70b69bdc9bd"
+      },
+      "test_an_object_with_no_declared_owner_refuses_to_guess_a_product": {
+        "assertions": 1,
+        "body_sha": "e3d269155b494ae0"
+      },
+      "test_an_unknown_adapter_product_is_refused": {
+        "assertions": 1,
+        "body_sha": "0a7c14703ec9aeec"
+      },
+      "test_a_mapping_is_not_applied_before_its_effective_date": {
+        "assertions": 2,
+        "body_sha": "aa470859bef12e5a"
+      },
+      "test_a_mapping_is_applied_on_its_effective_date_itself": {
+        "assertions": 1,
+        "body_sha": "5ee38c87cc042bd2"
+      },
+      "test_resolving_without_a_date_uses_today_rather_than_ignoring_the_window": {
+        "assertions": 1,
+        "body_sha": "360a2f8ff28a8163"
+      },
+      "test_an_unreachable_state_is_rejected_when_the_registry_is_built": {
+        "assertions": 2,
+        "body_sha": "7c4b1260747c2b8a"
+      },
+      "test_a_business_status_target_outside_c3_is_rejected_when_the_map_is_built": {
+        "assertions": 1,
+        "body_sha": "a8a410e9b02ffd27"
+      },
+      "test_an_active_row_on_unverified_evidence_is_rejected_when_the_map_is_built": {
+        "assertions": 1,
+        "body_sha": "188c214c927978d7"
       }
     },
     "test_known_defects.py": {
@@ -5291,12 +5551,14 @@
     "test_capitalisation.py": 18,
     "test_connector.py": 20,
     "test_contracts.py": 47,
+    "test_contracts_integration_statuses.py": 23,
     "test_domain_invariants.py": 34,
     "test_financial_controls.py": 61,
     "test_integration_adapter_contract.py": 39,
     "test_integration_capabilities.py": 19,
     "test_integration_no_hardcoded_endpoints.py": 6,
     "test_integration_product_isolation.py": 16,
+    "test_integration_statuses.py": 41,
     "test_known_defects.py": 5,
     "test_manifest.py": 10,
     "test_masters_settings_api_guard.py": 9,
@@ -5351,12 +5613,14 @@
     "test_capitalisation.py": 58,
     "test_connector.py": 57,
     "test_contracts.py": 73,
+    "test_contracts_integration_statuses.py": 48,
     "test_domain_invariants.py": 94,
     "test_financial_controls.py": 159,
     "test_integration_adapter_contract.py": 97,
     "test_integration_capabilities.py": 56,
     "test_integration_no_hardcoded_endpoints.py": 8,
     "test_integration_product_isolation.py": 36,
+    "test_integration_statuses.py": 94,
     "test_known_defects.py": 13,
     "test_manifest.py": 15,
     "test_masters_settings_api_guard.py": 15,

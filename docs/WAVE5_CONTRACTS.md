@@ -131,3 +131,56 @@ No stream edits another's files. A needed change is **reported**, not made.
    a unique custom field `cf_capex_ref` (Z-01) with retries using
    update-by-custom-field-unique-value. A function killed after sending but
    before recording must UPDATE, not duplicate.
+
+---
+
+# Amendments raised by streams in flight
+
+## A1 — `integration_rate_budget` needs a `lane` in its key (raised by stream 4)
+
+C2 froze the column list with a trailing `…`; this pins what has to be there.
+
+```
+UNIQUE (connection_id, window_kind, lane, window_start)
+```
+plus `created_by`, `updated_at`, `updated_by`.
+
+**Why it is not optional.** A single `used` counter per window cannot express
+"polling is capped at 60 of the 100". Enforcing a per-lane ceiling requires
+knowing what that lane has spent. Without the column, the 60/30/10 allocation
+is undeliverable and `throttle.reserve()` fails at runtime — an operator
+clicking "Test connection" would starve behind a backfill, which is the exact
+thing the allocation exists to prevent.
+
+**Stream 4 did not touch the migration.** Stream 2 owns it. If the migration
+lands without `lane`, the integration pass adds it.
+
+## A2 — the circuit breaker has no durable home (raised by stream 4)
+
+C2 froze no table for it, so stream 4 shipped a `CircuitStore` protocol with an
+explicitly **non-durable** in-memory implementation — the gap is a named object
+rather than silence.
+
+It needs five columns — `state`, `consecutive_failures`, `window_started_at`,
+`open_until`, `probe_in_flight` — on `integration_connection` or a small table
+of its own.
+
+**Why in-memory cannot stand.** AppSail scales to zero and reclaims instances
+after five minutes. A daily-quota circuit (429 code 45) stays open until the
+next day boundary — hours after the instance that opened it is gone. An
+in-memory breaker therefore forgets it is open and resumes hammering a quota
+that is still exhausted.
+
+## A3 — lane allocation applies to BOTH windows (decided by stream 4)
+
+The plan states 60/30/10 against the per-minute figure. Stream 4 applied the
+same ratio to the daily window and recorded the reasoning: protecting the
+operator for sixty seconds while a backfill eats all 2,000 daily calls by
+mid-morning **moves** the starvation rather than preventing it. Accepted.
+
+## A4 — worktrees may be created from a stale base (observed by stream 4)
+
+Stream 4's worktree was created at `ce7f3c5`, a pre-Wave-4 commit, and it reset
+to the tip before starting. Every stream should verify its base is the intended
+commit rather than assume it, and the integration pass should check what each
+branch is actually rooted on before merging.

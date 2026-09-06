@@ -11,6 +11,10 @@ The only two modules that know are :mod:`.erp` and :mod:`.books_inventory`.
 Every base URL, OAuth scope and endpoint literal lives in one of them, and
 ``tests/test_integration_no_hardcoded_endpoints.py`` fails the build if one
 escapes.
+
+Nothing in this package talks to a live tenant. Phase 0B has not cleared, so
+every collaborator is a cassette or an in-process fake until the lead grants
+explicit tenant authorisation.
 """
 from __future__ import annotations
 

@@ -699,3 +699,35 @@ one reachable caller belongs with the guard, not in a commit message nobody
 re-reads.
 
 **Approved by:** engagement lead, Wave 4 integration pass.
+## 2026-09-06 — additions, Wave 5 stream 3 (integration status registries)
+
+**No test was weakened, renamed or removed.** This entry belongs under
+"Additions, as distinct from adaptations": the change is purely additive, and
+it is written down because two things outside the new files moved.
+
+1. `tools/build_test_manifest.py` — `test_contracts_integration_statuses.py`
+   and `test_integration_statuses.py` were registered in `POST_BASELINE_FILES`.
+   Wave 5 files are post-baseline by the same rule as every wave before them;
+   leaving them out would have inflated the 220-function baseline that
+   `test_manifest.py::test_the_baseline_count_is_exactly_two_hundred_and_twenty`
+   measures the removal guard against.
+2. `tests/TEST_MANIFEST.json` was regenerated, as the procedure requires.
+
+The existing C16/C17 gates in `tests/test_contracts.py` were left exactly as
+they are and still run. The new gates live in their own file because the Wave 5
+streams run in parallel and file-disjointness is what keeps them from
+colliding — not because anything in `test_contracts.py` needed relaxing.
+
+| Added in | Tests | Purpose |
+|---|---|---|
+| Wave 5 S3 | `tests/test_contracts_integration_statuses.py` | The gates plan §8 asks for: every C17 target exists in `C3_statuses.json`; no integration or approval status reaches a business-screen renderer; every C16 state is reachable by driving the real transition code; every mapping is versioned and effective-dated; an unsourced Zoho spelling is inert rather than applied |
+| Wave 5 S3 | `tests/test_integration_statuses.py` | Behaviour of `app/backend/integration/statuses.py` — verbatim raw matching, the four unmapped reasons kept distinct, product separation with no fallback, the QUEUED/SENT/FAILED badge and its precedence, and the loader's refusal of a self-contradicting registry |
+
+Each of the five contract gates was mutation-checked before commit: an
+unreachable C16 state, an integration status leaked into a business screen, an
+unverified row switched active, a mapping target outside the frozen 21, and an
+empty block relabelled as complete coverage. All five failed the suite. The
+first fails at collection rather than at assertion, because the registry
+refuses to load at all — which is the stronger outcome.
+
+**Approved by:** engagement lead, Wave 5 stream 3 integration pass.

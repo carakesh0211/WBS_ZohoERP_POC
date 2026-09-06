@@ -94,6 +94,11 @@ POST_BASELINE_FILES = {
     "test_integration_capabilities.py",
     "test_integration_product_isolation.py",
     "test_integration_no_hardcoded_endpoints.py",
+    # --- Wave 5: the integration platform ---------------------------------
+    # Stream 3: the C16 integration status registry, the C17 raw-Zoho status
+    # map and the module that applies them. Neither file touches a database,
+    # the network or a tenant.
+    "test_contracts_integration_statuses.py", "test_integration_statuses.py",
 }
 
 
