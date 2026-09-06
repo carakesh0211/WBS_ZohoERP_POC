@@ -84,6 +84,13 @@ POST_BASELINE_FILES = {
     # PostgreSQL-gated test would have skipped past on every dev machine.
     "test_budget_submission.py", "test_approval_writeback.py",
     "test_pg_approval_writeback_e2e.py",
+    # --- Wave 5 stream 4: rate budget, retry, backoff, circuit breaker ----
+    # Runs with no database and no network: an injected clock, a seeded
+    # jitter source and an in-process model of the two rate-budget
+    # statements. Post-baseline like every other new file -- the 220 counts
+    # the POC's audit-remediation suite, and inflating it would make the
+    # removal guard meaningless.
+    "test_integration_throttle.py",
 }
 
 

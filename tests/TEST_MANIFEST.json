@@ -1606,6 +1606,308 @@
         "body_sha": "61fee1e08beccf7c"
       }
     },
+    "test_integration_throttle.py": {
+      "test_the_lane_allocation_is_sixty_thirty_ten": {
+        "assertions": 4,
+        "body_sha": "8c7f3753952a5794"
+      },
+      "test_the_three_lanes_never_oversubscribe_the_organisation": {
+        "assertions": 1,
+        "body_sha": "e8554bd8a3419c03"
+      },
+      "test_the_daily_ceiling_defaults_to_erp_standards_two_thousand": {
+        "assertions": 6,
+        "body_sha": "415f81666f87c48e"
+      },
+      "test_a_tenants_own_ceiling_overrides_the_default": {
+        "assertions": 1,
+        "body_sha": "5449e5072178ee8b"
+      },
+      "test_window_boundaries_are_utc_whatever_zone_the_caller_is_in": {
+        "assertions": 4,
+        "body_sha": "188c9cc3c3a1df75"
+      },
+      "test_a_naive_timestamp_is_refused_rather_than_assumed_to_be_utc": {
+        "assertions": 1,
+        "body_sha": "7c1eace888d3e8ed"
+      },
+      "test_a_naive_clock_is_refused_by_reserve": {
+        "assertions": 1,
+        "body_sha": "eacb3a50544c83f1"
+      },
+      "test_a_granted_reservation_spends_from_both_windows": {
+        "assertions": 5,
+        "body_sha": "77dd2f88bcc840ac"
+      },
+      "test_the_reservation_is_one_atomic_upsert_per_window": {
+        "assertions": 4,
+        "body_sha": "291ee042f1c21919"
+      },
+      "test_the_minute_lane_refuses_at_its_allocation_not_the_org_ceiling": {
+        "assertions": 5,
+        "body_sha": "5e0673d6a21cba0d"
+      },
+      "test_over_budget_is_not_an_error_and_names_when_to_resume": {
+        "assertions": 2,
+        "body_sha": "a1b119113bcd1fab"
+      },
+      "test_a_refused_reservation_releases_the_window_it_had_already_taken": {
+        "assertions": 7,
+        "body_sha": "16f8c85a38c2d058"
+      },
+      "test_a_release_can_never_drive_a_counter_negative": {
+        "assertions": 1,
+        "body_sha": "9ab85f7f0732dce5"
+      },
+      "test_a_new_minute_window_starts_a_fresh_budget": {
+        "assertions": 4,
+        "body_sha": "29082e52e6e271fc"
+      },
+      "test_the_daily_ceiling_is_the_binding_one_on_erp_standard": {
+        "assertions": 7,
+        "body_sha": "9e682ce1f3be531a"
+      },
+      "test_an_exhausted_polling_lane_does_not_starve_the_interactive_operator": {
+        "assertions": 3,
+        "body_sha": "03e5e795ddc32246"
+      },
+      "test_the_daily_lanes_are_separated_too_not_only_the_minute_ones": {
+        "assertions": 2,
+        "body_sha": "e39b4c784213a3ef"
+      },
+      "test_a_lane_cannot_be_bought_out_in_one_oversized_reservation": {
+        "assertions": 3,
+        "body_sha": "df3a728adc9179d6"
+      },
+      "test_a_reservation_must_be_for_at_least_one_call": {
+        "assertions": 1,
+        "body_sha": "56039762317681c7"
+      },
+      "test_every_budget_statement_carries_the_literal_scope_token": {
+        "assertions": 1,
+        "body_sha": "33a2786675ccd09a"
+      },
+      "test_the_column_mapping_names_every_dimension": {
+        "assertions": 2,
+        "body_sha": "9e9a6109bac6a8c4"
+      },
+      "test_a_scope_restricted_to_another_entity_sees_no_connection": {
+        "assertions": 1,
+        "body_sha": "5f54d894aaa30214"
+      },
+      "test_a_scope_granting_the_owning_entity_is_served": {
+        "assertions": 1,
+        "body_sha": "c3f647409c1f16a0"
+      },
+      "test_a_scope_granting_no_entity_at_all_sees_nothing": {
+        "assertions": 1,
+        "body_sha": "d2b5bcc3313c02b4"
+      },
+      "test_a_project_restricted_scope_is_waived_explicitly_not_by_omission": {
+        "assertions": 1,
+        "body_sha": "d587eab4b173c762"
+      },
+      "test_the_three_rate_limit_codes_are_three_different_conditions": {
+        "assertions": 3,
+        "body_sha": "f07f373055ea7a3a"
+      },
+      "test_a_string_code_is_read_as_the_number_it_is": {
+        "assertions": 1,
+        "body_sha": "f0ef73ecd52eb131"
+      },
+      "test_an_unrecognised_429_code_is_flagged_rather_than_assumed": {
+        "assertions": 2,
+        "body_sha": "37f67036cf442f0f"
+      },
+      "test_a_5xx_and_a_timeout_are_both_transient": {
+        "assertions": 3,
+        "body_sha": "5ebb984dc229554e"
+      },
+      "test_invalid_token_is_auth_even_when_it_arrives_as_a_400": {
+        "assertions": 3,
+        "body_sha": "d1b8a789e3fb980d"
+      },
+      "test_an_ordinary_4xx_is_a_business_error": {
+        "assertions": 2,
+        "body_sha": "64ab711d12f4def8"
+      },
+      "test_a_success_is_refused_by_classify": {
+        "assertions": 1,
+        "body_sha": "83c82faf9863aceb"
+      },
+      "test_429_code_44_checkpoints_and_resumes_without_touching_the_circuit": {
+        "assertions": 9,
+        "body_sha": "b197122fceabc0f1"
+      },
+      "test_429_code_45_opens_the_circuit_until_the_next_day_boundary_and_alerts": {
+        "assertions": 7,
+        "body_sha": "a16503b0369ba476"
+      },
+      "test_429_code_1070_reduces_parallelism_by_one_and_retries_with_jitter": {
+        "assertions": 6,
+        "body_sha": "3332c87aaad55416"
+      },
+      "test_a_5xx_backs_off_with_full_jitter_and_counts_toward_the_circuit": {
+        "assertions": 7,
+        "body_sha": "83b2200475d4e9fc"
+      },
+      "test_a_401_refreshes_once_then_opens_the_circuit_with_a_p1": {
+        "assertions": 11,
+        "body_sha": "1708b427615b63d4"
+      },
+      "test_a_4xx_business_error_quarantines_with_a_reconciliation_exception": {
+        "assertions": 7,
+        "body_sha": "f8521619b53a3265"
+      },
+      "test_the_six_conditions_produce_six_distinguishable_dispositions": {
+        "assertions": 2,
+        "body_sha": "e47e26e80f4fd0ca"
+      },
+      "test_the_six_conditions_map_to_six_distinct_kinds": {
+        "assertions": 1,
+        "body_sha": "5106cdebb8b6554f"
+      },
+      "test_a_daily_quota_is_never_reported_as_an_outage": {
+        "assertions": 6,
+        "body_sha": "eeb0f11e0fa8ed31"
+      },
+      "test_our_own_throttle_failing_is_never_charged_to_the_vendor": {
+        "assertions": 1,
+        "body_sha": "3b8b50f541715c19"
+      },
+      "test_only_our_own_minute_throttle_spares_the_attempt_counter": {
+        "assertions": 3,
+        "body_sha": "347a623eee20fa34"
+      },
+      "test_backoff_is_full_jitter_over_two_seconds_times_two_to_the_attempts": {
+        "assertions": 3,
+        "body_sha": "b560b250aa100f58"
+      },
+      "test_the_jitter_floor_is_zero_not_half_the_interval": {
+        "assertions": 1,
+        "body_sha": "6388f3b8ab1e3d22"
+      },
+      "test_the_nine_hundred_second_cap_binds_once_attempts_are_raised": {
+        "assertions": 2,
+        "body_sha": "705f48286024a0e3"
+      },
+      "test_negative_attempts_are_refused": {
+        "assertions": 1,
+        "body_sha": "06b7781c6a5069c5"
+      },
+      "test_the_eighth_attempt_is_dead_and_visible_for_manual_retry": {
+        "assertions": 7,
+        "body_sha": "1a7148e92826c53d"
+      },
+      "test_dead_is_not_quarantined": {
+        "assertions": 3,
+        "body_sha": "fdb45cf193bf6da3"
+      },
+      "test_an_unmapped_rate_limit_code_still_alerts_on_the_backoff_path": {
+        "assertions": 3,
+        "body_sha": "63352630d4742529"
+      },
+      "test_decide_refuses_a_naive_now": {
+        "assertions": 1,
+        "body_sha": "b4a823385acb4c4b"
+      },
+      "test_five_counted_failures_in_sixty_seconds_open_the_circuit": {
+        "assertions": 3,
+        "body_sha": "bf9356b4d100628e"
+      },
+      "test_four_counted_failures_leave_the_circuit_closed": {
+        "assertions": 3,
+        "body_sha": "3794f857e9785e38"
+      },
+      "test_failures_spread_wider_than_the_window_never_open_it": {
+        "assertions": 2,
+        "body_sha": "59b9877debea4f57"
+      },
+      "test_a_success_resets_the_consecutive_counter": {
+        "assertions": 4,
+        "body_sha": "e38b2cef04900647"
+      },
+      "test_the_three_uncounted_conditions_never_move_the_breaker": {
+        "assertions": 1,
+        "body_sha": "647375e5c4310d8d"
+      },
+      "test_a_daily_quota_opens_the_circuit_on_a_single_failure": {
+        "assertions": 3,
+        "body_sha": "25f3a576987c24a9"
+      },
+      "test_a_second_auth_failure_opens_the_circuit_on_its_own": {
+        "assertions": 2,
+        "body_sha": "12561b2abcc7b3dd"
+      },
+      "test_an_open_circuit_refuses_until_its_timer_then_allows_one_probe": {
+        "assertions": 5,
+        "body_sha": "e2119866e3ff2532"
+      },
+      "test_half_open_permits_exactly_one_probe": {
+        "assertions": 3,
+        "body_sha": "bb4a2aa77cdd4e5b"
+      },
+      "test_a_failed_probe_reopens_for_a_full_interval": {
+        "assertions": 4,
+        "body_sha": "40bdc0c2c08006b1"
+      },
+      "test_a_successful_probe_closes_the_circuit": {
+        "assertions": 3,
+        "body_sha": "66ffb6eda2211d33"
+      },
+      "test_a_closed_circuit_always_allows": {
+        "assertions": 1,
+        "body_sha": "d1a76a981bfbe343"
+      },
+      "test_the_circuit_thresholds_are_the_plans_numbers": {
+        "assertions": 4,
+        "body_sha": "6e19694a654b36fd"
+      },
+      "test_the_circuit_is_a_value_that_survives_a_round_trip": {
+        "assertions": 3,
+        "body_sha": "c1a128bf8170388f"
+      },
+      "test_a_concurrency_limit_narrows_the_pipe_by_one": {
+        "assertions": 2,
+        "body_sha": "d2c148aa518cf9a4"
+      },
+      "test_parallelism_never_falls_below_its_floor": {
+        "assertions": 1,
+        "body_sha": "f144320ebec8cfc2"
+      },
+      "test_only_the_concurrency_condition_moves_parallelism": {
+        "assertions": 1,
+        "body_sha": "a89740eb1a3e61cc"
+      },
+      "test_recovery_is_one_step_at_a_time_and_capped": {
+        "assertions": 3,
+        "body_sha": "7412afc4bac343d2"
+      },
+      "test_a_parallelism_outside_its_own_bounds_is_refused": {
+        "assertions": 3,
+        "body_sha": "e2337217e768da98"
+      },
+      "test_alert_fields_are_produced_only_when_an_alert_is_due": {
+        "assertions": 5,
+        "body_sha": "fef4a82fed18f6d9"
+      },
+      "test_the_auth_p1_and_the_quota_alert_are_different_conditions": {
+        "assertions": 2,
+        "body_sha": "7e9a32c19d063b68"
+      },
+      "test_this_module_opens_no_socket_and_sleeps_for_nothing": {
+        "assertions": 1,
+        "body_sha": "ead1a18458a2f88b"
+      },
+      "test_the_module_reads_no_clock_it_was_not_handed": {
+        "assertions": 2,
+        "body_sha": "60c8734fa5e95315"
+      },
+      "test_replace_keeps_a_circuit_frozen": {
+        "assertions": 2,
+        "body_sha": "371fd9a890e605ab"
+      }
+    },
     "test_known_defects.py": {
       "test_def_01_a_legacy_v1_database_can_be_upgraded": {
         "assertions": 5,
@@ -4965,6 +5267,7 @@
     "test_contracts.py": 47,
     "test_domain_invariants.py": 34,
     "test_financial_controls.py": 61,
+    "test_integration_throttle.py": 75,
     "test_known_defects.py": 5,
     "test_manifest.py": 10,
     "test_masters_settings_api_guard.py": 9,
@@ -5021,6 +5324,7 @@
     "test_contracts.py": 73,
     "test_domain_invariants.py": 94,
     "test_financial_controls.py": 159,
+    "test_integration_throttle.py": 228,
     "test_known_defects.py": 13,
     "test_manifest.py": 15,
     "test_masters_settings_api_guard.py": 15,
