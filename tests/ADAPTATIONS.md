@@ -63,6 +63,9 @@ New tests are additive and do not need an adaptation entry, but the manifest mus
 | Phase 0A | `tests/test_manifest.py` | Guards this policy mechanically, including an assertion-count ratchet |
 | Phase 0A | `tests/test_observability.py` | Structured logging, redaction and metrics. Closes **AUD-M-007** |
 | Phase 0A | `tests/test_known_defects.py` | `xfail(strict=True)` record of DEF-01 |
+| Wave 5 (stream 5) | `tests/test_integration_jobs.py` | The §2.2 job contract: a bounded `FOR UPDATE SKIP LOCKED` claim, the 12-minute soft deadline, a resumable cursor and idempotent replay. Driven by an injected clock, so a job that needs three invocations is proved in milliseconds |
+| Wave 5 (stream 5) | `tests/test_integration_sweeps.py` | The eight polls and sweeps: PO-anchored discovery as the **sole** GRN mechanism on ERP, the 300-second poll overlap, and the completeness sweeps that a working delta filter does not make redundant |
+| Wave 5 (stream 5) | `tests/integration_fakes.py` | Support module, not a test file: the in-process store, adapter, clock and budget those two suites drive. No network, no tenant, no database |
 
 Counts are deliberately omitted here — `tests/TEST_MANIFEST.json` is the inventory of record and cannot go stale.
 

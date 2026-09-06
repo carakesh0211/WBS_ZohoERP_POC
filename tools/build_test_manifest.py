@@ -106,6 +106,12 @@ POST_BASELINE_FILES = {
     # the POC's audit-remediation suite, and inflating it would make the
     # removal guard meaningless.
     "test_integration_throttle.py",
+    # --- Wave 5 stream 5: the chunked job framework and the sweeps ---------
+    # Both run with no database and no network: the properties they hold --
+    # a 12-minute soft deadline, a resumable cursor, idempotent replay -- are
+    # properties of our code, and are proved with an injected clock rather
+    # than by waiting twelve minutes.
+    "test_integration_jobs.py", "test_integration_sweeps.py",
 }
 
 
