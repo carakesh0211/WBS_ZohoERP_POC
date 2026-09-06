@@ -94,6 +94,13 @@ const SETTINGS_STYLES = ['/static/extensions.css', '/static/settings.css'];
    is still loaded per route, because that is the rule here and a stylesheet
    that is safe today is not automatically safe after its next edit. */
 const APPROVAL_STYLES = ['/static/extensions.css', '/static/approvals.css'];
+/* Wave 5's integration screens. Their stylesheet lives INSIDE the feature
+   directory rather than beside index.html, because the stream that wrote them
+   owns app/frontend/src/features/integration/** and nothing at the frontend
+   root. A <link> to it is same-origin and static, so `style-src 'self'` permits
+   it exactly as it permits the three above; every selector in it is scoped to
+   an `integration-` class and it declares no custom property and no raw hex. */
+const INTEGRATION_STYLES = ['/static/extensions.css', '/static/src/features/integration/integration.css'];
 
 /**
  * A live region each feature module looks up by id at mount time. It has to
@@ -143,9 +150,38 @@ function approvalScreen(hostId, moduleFile, exportName) {
 }
 
 /**
- * The thirteen routable screens, in the order they appear in the primary
- * navigation: the five built in Waves 2 and 3, then the approval engine's
- * eight.
+ * The build() for an integration screen.
+ *
+ * All seven have the same host shape — one root div plus the live region the
+ * feature module looks up by id — so the seven declarations below differ only
+ * in the module they load. The same reasoning as approvalScreen() above: seven
+ * hand-written hosts would be seven chances for one of them to forget its live
+ * region, which fails SILENTLY (announce() does nothing and a screen-reader
+ * user gets no feedback on load, empty, error, unavailable or refusal).
+ *
+ * ONE live region id is shared across all seven, and that is correct: only one
+ * integration screen is mounted at a time, and app.js replaces #content
+ * wholesale on navigation.
+ */
+function integrationScreen(hostId, moduleFile, exportName) {
+  return function build() {
+    const root = h('div', { id: `${hostId}-root` });
+    const node = h('div', { class: 'scr-host' }, [root, liveRegion('integrationLiveRegion')]);
+    return {
+      node,
+      async mount() {
+        await ensureStyles(INTEGRATION_STYLES);
+        const mod = await import(`../features/integration/${moduleFile}`);
+        mod[exportName](root);
+      },
+    };
+  };
+}
+
+/**
+ * The twenty routable screens, in the order they appear in the primary
+ * navigation: the five built in Waves 2 and 3, the approval engine's eight,
+ * and Wave 5's seven integration screens.
  *
  * `need` here is the SAME permission list app.js's SCR_ROUTES declares. It has
  * to be restated because app.js's gate runs synchronously in render(), long
@@ -407,6 +443,120 @@ export const SCREENS = [
     crumbs: ['Home', 'Governance', 'Delegation Management'],
     need: ['approval.delegate'],
     build: approvalScreen('approval-delegations', 'delegations.js', 'mountDelegations'),
+  },
+
+  /* ------------------------------------------------------------------
+     Wave 5 — the integration platform's seven screens.
+
+     SCREEN NUMBERING IS COMPLETE HERE, unlike the approval block above:
+     research/30_contracts/C8_screens.json names every one of these seven
+     verbatim (SCR-26 "Integration Event Monitor", SCR-31 "Zoho ERP Connection
+     Setup Wizard", SCR-32 "Zoho OAuth Authorisation and Consent Screen",
+     SCR-33 "Zoho Organisation Selection and Mapping", SCR-34 "API Scope and
+     Permission Validation", SCR-38 "Integration Health and API Usage
+     Dashboard", SCR-39 "Failed Sync and Retry Queue"), so each carries its
+     real number and nothing is invented.
+
+     THEY ARE ROUTES, WITH NO NAVIGATION ENTRY, AND THAT IS DELIBERATE.
+     app.js's NAV table is untouched by this stream. The rail is already over
+     its budget at both desktop widths — docs/ui-change-2026-09/
+     A3-approval-navigation.md has the measurements — and this stream measured
+     it again after landing these seven (see the SCR_ROUTES comment in
+     app.js). Every hash below deep-links, stays permission-gated and stays
+     bookmarkable regardless, because viewAllowed() resolves an SCR_ROUTES id
+     whether or not it appears in NAV.
+
+     PERMISSIONS. The three configuration screens take `connector.manage`
+     (Administrator alone); the four read surfaces take `connector.read`
+     (Administrator and Auditor). SCR-39 is a read surface that offers a WRITE
+     — the manual retry — and is gated on `connector.read` rather than
+     `connector.manage` on purpose: an Auditor must be able to SEE what is
+     dead-lettered. The retry itself is refused by the server for a caller
+     without `connector.manage`, and the refusal is rendered as a refusal.
+     These are presentational gates; the server decides.
+
+     Every one of these mounts a module under features/integration/, which
+     codes against §13's `/api/integrations/*` group and, where a Wave 5 route
+     is not yet mounted, names the Wave 4 `/api/zoho/*` route it fell back to
+     on screen. Streams 1-6 own the backend; nothing here imports or assumes
+     anything about their internals.
+     ------------------------------------------------------------------ */
+  {
+    id: 'integration-setup',
+    scr: 'SCR-31',
+    group: 'Integration',
+    ico: '⊕',
+    label: 'Connection Setup Wizard',
+    title: 'Zoho ERP Connection Setup Wizard',
+    crumbs: ['Home', 'Integration', 'Connection Setup Wizard'],
+    need: ['connector.manage'],
+    build: integrationScreen('integration-setup', 'connection-setup.js', 'mountConnectionSetup'),
+  },
+  {
+    id: 'integration-oauth',
+    scr: 'SCR-32',
+    group: 'Integration',
+    ico: '⚿',
+    label: 'OAuth Authorisation & Consent',
+    title: 'Zoho OAuth Authorisation and Consent',
+    crumbs: ['Home', 'Integration', 'OAuth Authorisation and Consent'],
+    need: ['connector.manage'],
+    build: integrationScreen('integration-oauth', 'oauth-consent.js', 'mountOAuthConsent'),
+  },
+  {
+    id: 'integration-organisation',
+    scr: 'SCR-33',
+    group: 'Integration',
+    ico: '⌾',
+    label: 'Organisation Selection & Mapping',
+    title: 'Zoho Organisation Selection and Mapping',
+    crumbs: ['Home', 'Integration', 'Organisation Selection and Mapping'],
+    need: ['connector.manage'],
+    build: integrationScreen('integration-organisation', 'org-mapping.js', 'mountOrgMapping'),
+  },
+  {
+    id: 'integration-scopes',
+    scr: 'SCR-34',
+    group: 'Integration',
+    ico: '⊙',
+    label: 'API Scope & Permission Validation',
+    title: 'API Scope and Permission Validation',
+    crumbs: ['Home', 'Integration', 'API Scope and Permission Validation'],
+    need: ['connector.read'],
+    build: integrationScreen('integration-scopes', 'scope-validation.js', 'mountScopeValidation'),
+  },
+  {
+    id: 'integration-events',
+    scr: 'SCR-26',
+    group: 'Integration',
+    ico: '⇄',
+    label: 'Integration Event Monitor',
+    title: 'Integration Event Monitor',
+    crumbs: ['Home', 'Integration', 'Integration Event Monitor'],
+    need: ['connector.read'],
+    build: integrationScreen('integration-events', 'event-monitor.js', 'mountEventMonitor'),
+  },
+  {
+    id: 'integration-health',
+    scr: 'SCR-38',
+    group: 'Integration',
+    ico: '◔',
+    label: 'Integration Health & API Usage',
+    title: 'Integration Health and API Usage',
+    crumbs: ['Home', 'Integration', 'Integration Health and API Usage'],
+    need: ['connector.read'],
+    build: integrationScreen('integration-health', 'health-dashboard.js', 'mountHealthDashboard'),
+  },
+  {
+    id: 'integration-retry',
+    scr: 'SCR-39',
+    group: 'Integration',
+    ico: '⇩',
+    label: 'Failed Sync & Retry Queue',
+    title: 'Failed Sync and Retry Queue',
+    crumbs: ['Home', 'Integration', 'Failed Sync and Retry Queue'],
+    need: ['connector.read'],
+    build: integrationScreen('integration-retry', 'retry-queue.js', 'mountRetryQueue'),
   },
 ];
 
