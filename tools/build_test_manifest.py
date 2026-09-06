@@ -84,6 +84,11 @@ POST_BASELINE_FILES = {
     # PostgreSQL-gated test would have skipped past on every dev machine.
     "test_budget_submission.py", "test_approval_writeback.py",
     "test_pg_approval_writeback_e2e.py",
+    # --- Wave 5: the integration platform ---------------------------------
+    # Stream 3: the C16 integration status registry, the C17 raw-Zoho status
+    # map and the module that applies them. Neither file touches a database,
+    # the network or a tenant.
+    "test_contracts_integration_statuses.py", "test_integration_statuses.py",
 }
 
 
