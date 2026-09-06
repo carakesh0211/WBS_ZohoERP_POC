@@ -598,10 +598,28 @@ def test_the_pending_registry_handoff_is_enumerable():
     state rather than calling it 'covered' (untrue: the registry half is
     missing, and the coverage test asserts set equality against it) or 'gap'
     (untrue: the policies exist). `pending_registry_tables()` is the handoff
-    list; when `rls.py` gains them, these entries become 'covered' and this
-    test's set becomes empty."""
-    assert set(scope_inventory.pending_registry_tables()) == set(
-        approval_schema.RLS_POLICIES)
+    list; when `rls.py` gains them, 008's entries become 'covered' and this
+    test's set becomes empty.
+
+    NARROWED TO 008 in Wave 5 (ADAPT: 2026-09-06). It read
+    `set(pending_registry_tables()) == set(RLS_POLICIES)`, which asserted two
+    things at once: that every table 008 protects is awaiting the registry,
+    and that 008 is the ONLY migration with tables awaiting it. The second was
+    incidentally true when it was written and stopped being true when
+    `010_integration.sql` landed eight more in the same state.
+
+    The equality over 008's own tables is unchanged and still exact -- a
+    missing one and a spurious one both still fail. What is gone is a claim
+    about other migrations that this file is not the place to make; 010's half
+    of the same handoff is asserted by
+    `tests/test_pg_integration_schema.py`, and the global invariant that every
+    table is classified at all is `test_pg_rls_coverage.py`'s.
+    """
+    pending_from_008 = set(
+        scope_inventory.pending_registry_tables()
+    ) & set(scope_inventory.tables_for_migration(
+        approval_schema.APPROVAL_MIGRATION))
+    assert pending_from_008 == set(approval_schema.RLS_POLICIES)
 
 
 # ============================================================ the seed fragment
