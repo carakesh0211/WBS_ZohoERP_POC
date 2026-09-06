@@ -47,7 +47,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable, Mapping, Sequence
 
 from . import repo
-from .engine import Session
+from .engine import Scope, Session
 
 # ============================================================== table names
 #: One tenant connection: product, DC, organisation and MODE.
@@ -602,7 +602,8 @@ def create_connection(session: Session, *, connection_id: str, entity_id: str,
     return _connection_row(row)
 
 
-def get_connection(session: Session, connection_id: str) -> dict | None:
+def get_connection(session: Session, connection_id: str, *,
+                   scope: Scope | None = None) -> dict | None:
     """The connection, or `None` for both "no such row" and "out of scope".
 
     Indistinguishable by design: a 403 on an id lookup is an existence oracle.
@@ -617,6 +618,7 @@ def get_connection(session: Session, connection_id: str) -> dict | None:
         WHERE connection_id = %(connection_id)s AND {{scope}}
         """,
         {"connection_id": connection_id},
+        scope=scope,
         columns=CONNECTION_SCOPE_COLUMNS,
     )
     return _connection_row(row) if row else None
@@ -1652,7 +1654,8 @@ class RateBudgetExhausted(IntegrationStoreError):
 
 def ensure_rate_budget_windows(session: Session, *, connection_id: str,
                                allocation: str, moment: datetime,
-                               tz: str = "UTC") -> None:
+                               tz: str = "UTC",
+                               scope: Scope | None = None) -> None:
     """Create the MINUTE and DAY rows for `moment`'s windows if absent.
 
     BOTH, always, in one call, and there is no function anywhere in this module
@@ -1697,6 +1700,7 @@ def ensure_rate_budget_windows(session: Session, *, connection_id: str,
              "allocation": allocation, "start": start, "key": key,
              "seconds": seconds, "tz": tz,
              "share": ALLOCATION_SHARES[allocation], "now": moment},
+            scope=scope,
             columns=VIA_CONNECTION_SCOPE_COLUMNS,
         )
 
@@ -1717,7 +1721,8 @@ class _ReservationRefused(Exception):
 
 def reserve_calls(session: Session, *, connection_id: str, allocation: str,
                   count: int = 1, tz: str = "UTC",
-                  now: datetime | None = None) -> dict[str, dict[str, int]]:
+                  now: datetime | None = None,
+                  scope: Scope | None = None) -> dict[str, dict[str, int]]:
     """Reserve `count` API calls against BOTH windows, atomically.
 
     ONE `UPDATE` touching both rows, never two statements. If the day is
@@ -1759,7 +1764,8 @@ def reserve_calls(session: Session, *, connection_id: str, allocation: str,
             f"count must be at least 1; got {count}.")
     moment = now or _utcnow()
     ensure_rate_budget_windows(session, connection_id=connection_id,
-                               allocation=allocation, moment=moment, tz=tz)
+                               allocation=allocation, moment=moment, tz=tz,
+                               scope=scope)
     minute_key, day_key, _, _ = window_keys(moment, tz)
 
     try:
@@ -1801,7 +1807,8 @@ def reserve_calls(session: Session, *, connection_id: str, allocation: str,
     # Outside the savepoint, so this read runs on a healthy transaction and
     # sees the pre-reservation figures -- which are the ones an operator needs.
     state = read_rate_budget(session, connection_id=connection_id,
-                             allocation=allocation, tz=tz, now=moment)
+                             allocation=allocation, tz=tz, now=moment,
+                             scope=scope)
     absent = [window for window in blocked if window not in state]
     if absent:
         raise IntegrationStoreError(
@@ -1832,7 +1839,8 @@ def reserve_calls(session: Session, *, connection_id: str, allocation: str,
 
 def read_rate_budget(session: Session, *, connection_id: str,
                      allocation: str, tz: str = "UTC",
-                     now: datetime | None = None) -> dict[str, dict[str, int]]:
+                     now: datetime | None = None,
+                     scope: Scope | None = None) -> dict[str, dict[str, int]]:
     """What is left in each window, without spending anything."""
     moment = now or _utcnow()
     minute_key, day_key, _, _ = window_keys(moment, tz)
@@ -1849,6 +1857,7 @@ def read_rate_budget(session: Session, *, connection_id: str,
         """,
         {"connection_id": connection_id, "allocation": allocation,
          "minute_key": minute_key, "day_key": day_key},
+        scope=scope,
         columns=VIA_CONNECTION_SCOPE_COLUMNS,
     )
     return {

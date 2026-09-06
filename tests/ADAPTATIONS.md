@@ -956,3 +956,102 @@ SQLite-era modules were previously exempt only by never having been walked,
 which is indistinguishable from an oversight; that is now a written decision.
 
 **Approved by:** engagement lead, Wave 5 integration pass.
+
+
+## 2026-09-06 — Wave 5 stream 1 (integration): ONE rate-budget implementation
+
+**ADAPT-INT-005.** Wave 5 shipped **three** independent implementations of
+reserving calls against `integration_rate_budget`. Two could not execute. This
+pass closes that to one, and the four test changes below are the consequence.
+
+### What was actually wrong
+
+`docs/WAVE5_CONTRACTS.md` seam C2 froze the table's column list with a trailing
+`...`. Stream 2 owned migration 010 and filled the ellipsis in correctly —
+adding `allocation` to the primary key, which amendment A1 says the 60/30/10
+split cannot be enforced without. Streams 4 and 6 had already written SQL
+against the shorter list:
+
+* `throttle.py::_RESERVE_SQL` named `lane`, `created_by` and `updated_by` —
+  **none of the three exists** — and conflicted on `(connection_id,
+  window_kind, lane, window_start)`, which is not a constraint that exists. It
+  also omitted `window_start_key`, `window_seconds`, `window_tz` and `ceiling`,
+  all NOT NULL with no default.
+* `outbound.py::PgOutboundRateBudget._UPSERT` has the same family of defect.
+  **Not touched by this stream** — stream 2 owns that file; the lead rewires it.
+
+Every unit test over both modules passed throughout, because both talked to
+in-memory doubles. **A double written from the same misreading as its module
+agrees with that module about everything, including a statement the server
+cannot parse.**
+
+### The repair
+
+`throttle.reserve` now delegates to `integration_store.reserve_calls`, written
+by the author of migration 010 against its real columns. `_RESERVE_SQL`,
+`_RELEASE_SQL`, `_READ_SQL`, `_release` and `_read_used` are **deleted**;
+`throttle.py` now contains no SQL at all. `integration_store` gained an
+optional `scope=` passthrough on `reserve_calls`, `ensure_rate_budget_windows`,
+`read_rate_budget` and `get_connection` — additive, nothing else changed.
+
+### The four adapted tests, and why none is weakened
+
+Each one asserted the SHAPE of a statement that cannot execute. The behavioural
+assertion inside each is unchanged; only the mechanism assertion moved.
+
+| Test | Was | Now | Why this is not weaker |
+|---|---|---|---|
+| `test_the_reservation_is_one_atomic_upsert_per_window` → `..._is_one_atomic_statement_across_both_windows` | two upserts conflicting on `(…, lane, window_start)` | two `DO NOTHING` seeders + **one** guarded `UPDATE` covering both windows, inside a savepoint | Atomicity is now across the PAIR, not merely within each window. The old target matched no unique index; PostgreSQL raises `InvalidColumnReference` on it |
+| `test_a_refused_reservation_releases_the_window_it_had_already_taken` | one compensating `UPDATE` naming DAY | savepoint rollback; asserts 61 statements and **no** compensating one, plus no `GREATEST` | A partial reservation is no longer *undone* — it is **not representable**. The property (the day keeps no call for a request never made) is asserted unchanged |
+| `test_a_release_can_never_drive_a_counter_negative` | called `throttle._release`, whose `GREATEST(…, 0)` floored a subtracting UPDATE | 10 consecutive refusals cannot push `used` below what was spent, **and** `ck_integration_rate_budget_used_within_ceiling` is asserted to still declare `used >= 0` | The floor moved from a Python statement to a database CHECK, which holds against psql, a future caller and a bug in `reserve_calls`. Proved live in `test_pg_integration_rate_budget.py` |
+| `test_every_budget_statement_carries_the_literal_scope_token` → split into `test_this_module_owns_no_sql_of_its_own_at_all` + `test_every_delegated_budget_statement_is_scoped_when_it_reaches_the_server` | `{scope}` present in three now-deleted constants | (a) throttle has no SQL at all, parsed by AST so prose is not mistaken for code; (b) the entity predicate is asserted on the **compiled** statements the double received | The old check passed for all of Wave 5 on SQL that could not execute. A token proves the predicate was not forgotten; it proves nothing about whether the statement parses, or whether the token compiled to `TRUE` |
+
+`reserve()` also **lost its `daily_ceiling` parameter**. The ceiling is now a
+per-row snapshot of `integration_connection.per_minute_call_ceiling` /
+`daily_call_ceiling`, taken when the window opened, so the parameter had
+nowhere honest to go. A parameter that looks like it sets a limit and does not
+is the same class of defect as SQL that looks like it executes.
+`lane_ceiling()` keeps the argument and its tests are untouched — it is a pure
+calculation and remains one.
+
+`FakeBudgetSession` was rewritten to model migration 010's real primary key,
+the seeder, the single guarded `UPDATE`, the biconditional `exhausted_at`
+stamp and the savepoint. It previously modelled the constraint `throttle.py`
+believed in.
+
+### Two new files
+
+* **`tests/test_pg_integration_rate_budget.py`** — 16 live PostgreSQL tests
+  (reserve, conflict/upsert, ceiling refusal, release, and a two-connection
+  race), gated on `CAPEX_DB_URL` exactly as the other `test_pg_*.py` files are.
+  **All 16 skipped on the machine they were written on; none has ever run.**
+  There is no PostgreSQL and no Docker here, and a skip is not a pass. CI's
+  `pg_tests` job is the only oracle for this file.
+* **`tests/test_one_rate_budget_implementation.py`** — fails if any module
+  outside `integration_store.py` writes the table. It resolves module-level
+  constants into f-strings, so `f"INSERT INTO {INTEGRATION_RATE_BUDGET} …"` is
+  caught, and it excludes docstrings, because this file and `throttle.py` both
+  quote the SQL they are about at length. `outbound.py` is waived **by name,
+  with the reason**, and a companion test fails the moment that file stops
+  containing the statement — so the waiver cannot outlive the defect and become
+  permission.
+
+**Mutation-tested, all seven caught** (the brief notes two guards in this repo
+were written, believed, and later found inert): a plain-literal INSERT in
+`jobs.py`; an f-string UPDATE built through a module constant; the canonical
+store ceasing to write the table; `outbound.py` being repaired with the waiver
+left behind; `throttle.py` regrowing `_RESERVE_SQL`; the throttle suite's own
+no-SQL guard; and the double's savepoint ceasing to roll back.
+
+### Left open, deliberately
+
+The `xfail(strict=True)` on `throttle.py` in
+`tests/test_integration_sql_matches_schema.py` is **NOT removed**, per the
+brief. The module now passes that gate, so the strict marker reports **XPASS
+and the suite is red by exactly one test**. That is the intended, reported
+state: the lead removes the marker only after CI's live PostgreSQL job proves
+the path executes. Removing it here would be this stream declaring its own SQL
+correct on the strength of a suite that has never touched a database — which is
+the precise mistake being closed.
+
+**Approved by:** Rakesh Kumar, engagement lead (Wave 5 integration pass).
