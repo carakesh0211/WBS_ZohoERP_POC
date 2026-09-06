@@ -92,8 +92,25 @@ test('the avatar is where the recorded evidence says it is, in every captured st
   const committed = JSON.parse(fs.readFileSync(OUT, 'utf-8'))[project];
   expect(committed,
     `evidence/avatar-regions.json has no entry for ${project}`).toBeTruthy();
-  expect(measured,
-    'the avatar has moved since evidence/avatar-regions.json was captured, so the '
-    + 'region a re-baseline is allowed to touch is stale. Re-measure with '
-    + 'CAPEX_VRT_WRITE_REGIONS=1 and review the diff.').toEqual(committed);
+
+  // Compared with a sub-pixel tolerance, NOT for equality. These are
+  // getBoundingClientRect floats -- x=1208.296875 is text-layout arithmetic --
+  // and asserting them exactly would make this fail on a hairline rounding
+  // difference while claiming "the avatar has moved". What it must catch is a
+  // move that puts the avatar outside the region a re-baseline may touch, and
+  // the move that motivated this file is 106.6 -> 10 px. One pixel is far
+  // below that and far above float noise; prove-baseline-delta.py truncates to
+  // whole pixels and pads each box by 2 anyway.
+  const TOL = 1;
+  for (const state of Object.keys(measured)) {
+    const got = measured[state];
+    const want = committed[state];
+    expect(want, `evidence/avatar-regions.json has no ${state} for ${project}`).toBeTruthy();
+    for (const k of ['x', 'y', 'width', 'height']) {
+      expect(Math.abs(got[k] - want[k]),
+        `#userAvatar ${state}.${k} is ${got[k]}, recorded as ${want[k]}. The avatar has `
+        + 'moved, so the region a re-baseline is allowed to touch is stale. Re-measure '
+        + 'with CAPEX_VRT_WRITE_REGIONS=1 and review the diff.').toBeLessThanOrEqual(TOL);
+    }
+  }
 });
