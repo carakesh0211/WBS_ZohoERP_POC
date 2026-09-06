@@ -1568,3 +1568,146 @@ stopped being checked — and an unrecorded new one both fail and are named.
 `tests/**/*.spec.js` too; the VRT-scoped guard is a stopgap, not the fix.
 
 **Approved by:** pending engagement-lead review — CI-repair wave stream A3.
+
+## 2026-09-06 — a deleted fixture, and eight period tests that had never run
+
+**Restored, not weakened.** `tests/test_pg_periods.py::_seed_entity_with_periods`
+was introduced by `4cfa05f` and deleted by `11977d4` while that commit rewrote
+the reconciliation-guard tests around it. Its three call sites survived the
+deletion, so eight live tests raised `NameError` in CI's `pg_tests` job.
+
+**Why nobody saw it.** Every one of those tests is gated on `CAPEX_DB_URL`,
+which is unset on the dev machine, so their bodies never executed locally and
+the missing name was never resolved. The local suite reported green throughout.
+This is the same class of gap the `pg_tests` job's own "Prove the live tests
+actually ran" step exists to catch, one level down: a skip is not a pass, and a
+test whose body has never been executed anywhere is not evidence of anything.
+
+The helper is restored with the same tables, the same columns and the same
+`FUTURE` start state it had at `4cfa05f`. **No assertion was changed** in the
+eight tests it serves.
+
+### Changed: the reconciliation-exception close test
+
+`test_period_cannot_close_while_open_reconciliation_exception_exists` used to
+`CREATE TABLE reconciliation_exception` inline, because no migration created
+it. Migration `011_reconciliation_exception.sql` creates it now, so the inline
+DDL would raise `DuplicateTable`, and its three-column stand-in
+(`exception_id, entity_id, status`) does not satisfy the shipped table's NOT
+NULL `kind`, `object_type` and `detail`.
+
+The test now inserts into the real table, with a real
+`GRN_LINE_UNATTRIBUTED` row in C18's frozen `Open` status. **The assertion is
+unchanged and stronger**: it additionally asserts that migration 011 supplied
+the table, so a runner that loses 011 fails here — naming the cause — rather
+than surfacing as a `ReconciliationGateUnavailable` somewhere unrelated, which
+is what `periods._has_open_reconciliation_exceptions` now raises when the gate
+cannot be evaluated.
+
+### Added, not substituted (five live tests)
+
+* `test_a_resolved_exception_no_longer_blocks_the_close` — the gate's
+  `status = 'Open'` filter is load-bearing only if something proves a non-Open
+  row is ignored. Without it the guard could return True unconditionally and
+  every existing assertion would still hold.
+* `test_another_entitys_open_exception_does_not_block_this_close` — an unscoped
+  `WHERE status = 'Open'` would freeze every close in the estate the moment any
+  one entity raised an exception, and would pass the blocking test above.
+* `test_the_open_roll_covers_every_cell_in_the_entity` — the roll's cell count,
+  read from the audit trail, because `transition_period` does not return it.
+* two rate-budget atomicity tests, below.
+
+### Rewritten: the budget-roll test
+
+`test_transition_to_open_rolls_future_budget_into_current` asserted the figure
+`record_original` produced as of **wall-clock today**, and then only that the
+transition returned `OPEN`. Its own comment conceded the roll's effect was not
+visible. It now seeds two cells whose grants straddle the period start
+(2025-12-01 and 2026-02-15) and asserts the post-roll split — 500,000 paise
+CURRENT on one, 900,000 paise FUTURE on the other. The roll's `as_of` is
+`period_start`, a stored value, so this is deterministic regardless of when CI
+runs, and a roll that ignored `effective_from` (or one that never ran at all —
+`budget_control_cell.updated_by` is asserted to be the transition's actor) now
+fails.
+
+**This is a strengthening.** The previous assertion was true and proved nothing
+about the roll.
+
+## 2026-09-06 — the rate-budget suite, and a "concurrency" test that never contended
+
+`tests/test_pg_integration_rate_budget.py` had 16 tests and **none of them had
+ever executed**, on any machine. They are the only evidence that
+`integration_store.reserve_calls` can run at all, which is the precondition the
+`xfail(strict=True)` on `throttle.py` in
+`tests/test_integration_sql_matches_schema.py` was waiting on.
+
+### Rewritten: the race
+
+`test_live_two_concurrent_reservations_cannot_both_take_the_last_call`
+reserved on one connection, **committed**, and only then reserved on the other.
+Exactly one won, so it passed — but the two statements never overlapped, so it
+would have passed against a read-then-check in Python just as well. It proved
+the arithmetic and not the arbitration, which is the only thing section 2.1 is
+worried about.
+
+It now leaves the first reservation UNCOMMITTED, holding the row locks, starts
+the second on a real thread, and **waits until that backend is confirmed
+blocked on a lock** (`pg_stat_activity.wait_event_type`) before committing the
+first. The second statement is therefore in flight across the first's commit,
+so the outcome is decided by PostgreSQL's READ COMMITTED re-evaluation of
+`used + count <= ceiling` against the newly committed row version. A `sleep`
+was rejected: it makes a concurrency test flaky, slow, or both.
+
+**No assertion was removed.** `bool(first) != bool(second)` is kept and
+tightened to name which side must win.
+
+### Added: atomicity in the direction nothing reached
+
+* `test_live_a_day_refusal_does_not_charge_a_minute_window_with_room` — every
+  other refusal in the file is the MINUTE refusing while the day has room. The
+  mirror image (day exhausted, a FRESH minute window with its whole ceiling
+  free) is where a two-statement implementation would leave the minute holding
+  a call the day refused — and the minute window rolls over moments later, so
+  the evidence would go with it. Uses its own small-ceiling connection so day
+  exhaustion costs 13 reservations rather than 1,200.
+* `test_live_an_in_flight_charge_is_never_visible_to_another_connection` — the
+  brief's "unrepresentable, not merely undone". A concurrent reader sees the
+  pre-reservation figure throughout and the post-refusal figure afterwards, and
+  they are the same number.
+* `test_live_a_refusal_on_a_fresh_connection_charges_neither_window` — the
+  release survives the refusing connection's own COMMIT.
+* `test_live_reserve_calls_itself_executes_and_raises_the_typed_refusal` — every
+  other test reaches the statement through `throttle.reserve`, which converts
+  `RateBudgetExhausted` into a verdict. The store's own contract (return shape,
+  typed exception, `window_kind`, 429) is observed directly here, because the
+  store is the module that owns the SQL.
+* `test_live_an_unknown_allocation_is_refused_before_any_window_opens`.
+
+### The ceiling invariant is now asserted in the fixture
+
+`_seed` asserts `daily > per_minute` before it inserts. A day ceiling at or
+below the minute ceiling makes the DAY window bind on the first minute, so
+every minute-window assertion in the file would be satisfied by a DAY refusal
+and the minute behaviour would never be reached — the tests would pass while
+testing something else.
+
+**The fixture at `bfda74c` already satisfied this** (100 per minute, 2,000 per
+day). Nothing was corrected; the invariant was previously unstated and is now
+enforced, and it is enforced STRICTLY where the schema's
+`ck_integration_connection_daily_exceeds_minute` permits equality.
+
+### The strict marker
+
+Removed in a **separate, clearly-labelled commit** so the lead can revert it
+independently — see the constraint in that commit's message. It is obsolete
+only if the live suite above is green in `pg_tests`; that job is the sole
+oracle, because there is no PostgreSQL and no Docker on the machine this was
+written on and every test above skipped here.
+
+**Mutation-tested.** Reverting `_has_open_reconciliation_exceptions` to
+`return False` (the original fail-open) fails two tests; making `OPEN ->
+FUTURE` legal fails two more; setting the fixture's daily ceiling to 50, or to
+100, both fail the invariant before any SQL runs. The live tests could not be
+mutation-tested, for the same reason they could not be run.
+
+**Approved by:** pending engagement-lead review — CI-repair wave, stream A2.

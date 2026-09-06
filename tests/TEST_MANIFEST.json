@@ -5466,8 +5466,28 @@
         "body_sha": "a0ef7ae4fe8e79ce"
       },
       "test_live_two_concurrent_reservations_cannot_both_take_the_last_call": {
+        "assertions": 8,
+        "body_sha": "36d96b0b63961133"
+      },
+      "test_live_a_refusal_on_a_fresh_connection_charges_neither_window": {
+        "assertions": 4,
+        "body_sha": "516ad463915e1d3e"
+      },
+      "test_live_an_in_flight_charge_is_never_visible_to_another_connection": {
+        "assertions": 5,
+        "body_sha": "38496eaf98b17df0"
+      },
+      "test_live_a_day_refusal_does_not_charge_a_minute_window_with_room": {
+        "assertions": 7,
+        "body_sha": "1d08b0ef62965159"
+      },
+      "test_live_reserve_calls_itself_executes_and_raises_the_typed_refusal": {
+        "assertions": 8,
+        "body_sha": "a172088af718adbc"
+      },
+      "test_live_an_unknown_allocation_is_refused_before_any_window_opens": {
         "assertions": 3,
-        "body_sha": "8649e78994a9aad7"
+        "body_sha": "74566511e626bb38"
       },
       "test_live_the_repaired_module_names_only_columns_that_exist": {
         "assertions": 3,
@@ -6208,12 +6228,24 @@
         "body_sha": "98c225fcf85e540b"
       },
       "test_period_cannot_close_while_open_reconciliation_exception_exists": {
+        "assertions": 5,
+        "body_sha": "2377a4616b91a51c"
+      },
+      "test_a_resolved_exception_no_longer_blocks_the_close": {
+        "assertions": 2,
+        "body_sha": "3b72dd1fc5822b07"
+      },
+      "test_another_entitys_open_exception_does_not_block_this_close": {
         "assertions": 3,
-        "body_sha": "4b924b82e657f576"
+        "body_sha": "862ba778291c166f"
       },
       "test_transition_to_open_rolls_future_budget_into_current": {
+        "assertions": 5,
+        "body_sha": "8856a2f6e554190c"
+      },
+      "test_the_open_roll_covers_every_cell_in_the_entity": {
         "assertions": 2,
-        "body_sha": "e6d08eb03d0ae85f"
+        "body_sha": "994a93fb000cf3b8"
       },
       "test_roll_period_effective_budget_is_idempotent": {
         "assertions": 2,
@@ -7386,14 +7418,14 @@
     "test_pg_budget.py": 22,
     "test_pg_constraints.py": 8,
     "test_pg_fixture_guard.py": 3,
-    "test_pg_integration_rate_budget.py": 16,
+    "test_pg_integration_rate_budget.py": 21,
     "test_pg_integration_schema.py": 81,
     "test_pg_locking.py": 17,
     "test_pg_locking_order.py": 19,
     "test_pg_masters.py": 32,
     "test_pg_migrations_runner.py": 11,
     "test_pg_period_concurrency.py": 9,
-    "test_pg_periods.py": 15,
+    "test_pg_periods.py": 18,
     "test_pg_principal_scope.py": 37,
     "test_pg_repo.py": 23,
     "test_pg_rls.py": 18,
@@ -7462,14 +7494,14 @@
     "test_pg_budget.py": 57,
     "test_pg_constraints.py": 13,
     "test_pg_fixture_guard.py": 3,
-    "test_pg_integration_rate_budget.py": 77,
+    "test_pg_integration_rate_budget.py": 109,
     "test_pg_integration_schema.py": 131,
     "test_pg_locking.py": 36,
     "test_pg_locking_order.py": 28,
     "test_pg_masters.py": 82,
     "test_pg_migrations_runner.py": 32,
     "test_pg_period_concurrency.py": 28,
-    "test_pg_periods.py": 37,
+    "test_pg_periods.py": 49,
     "test_pg_principal_scope.py": 83,
     "test_pg_repo.py": 37,
     "test_pg_rls.py": 34,
