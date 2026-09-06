@@ -84,6 +84,16 @@ POST_BASELINE_FILES = {
     # PostgreSQL-gated test would have skipped past on every dev machine.
     "test_budget_submission.py", "test_approval_writeback.py",
     "test_pg_approval_writeback_e2e.py",
+    # --- Wave 5 stream 1: the product-agnostic adapter boundary ------------
+    # D-14 is unresolved, so these hold the two candidate implementations to
+    # one frozen interface and hold the "products are never mixed" rule to a
+    # build failure. Post-baseline like every Wave 2-4 file: the 220 counts the
+    # POC's audit-remediation suite, and inflating it would make the removal
+    # guard stop meaning anything the moment the product grows.
+    "test_integration_adapter_contract.py",
+    "test_integration_capabilities.py",
+    "test_integration_product_isolation.py",
+    "test_integration_no_hardcoded_endpoints.py",
 }
 
 

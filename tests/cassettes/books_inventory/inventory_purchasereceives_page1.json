@@ -1,0 +1,63 @@
+{
+  "cassette_version": 1,
+  "product": "BOOKS_INVENTORY",
+  "service": "inventory",
+  "api_version": "v1",
+  "provenance": "INVENTED-SANITISED",
+  "provenance_note": "Hand-authored; no tenant contacted. THE endpoint ERP does not have. Inventory GET /purchasereceives enumerates goods receipts, which is why Capabilities.receives_listable is True on this product and False on ERP -- and why the GRN problem that dominates the ERP design is materially easier here. The endpoint takes no last_modified_time filter, only a sort column, so the adapter walks it descending by `date` with an early stop. Note the sort is on document date, not modification time: a back-dated edit to an old receive is NOT caught by that walk, which is why the nightly completeness sweeps are retained rather than replaced by it. Two different POs appear here so that per-PO selection can be exercised -- Inventory documents no purchaseorder_id filter on this list, so the selection is done locally rather than by sending an undocumented parameter that would be ignored rather than rejected.",
+  "request": {
+    "method": "GET",
+    "base_url": "https://www.zohoapis.in/inventory/v1",
+    "path": "/purchasereceives",
+    "scope": "ZohoInventory.purchasereceives.READ",
+    "page": 1
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "code": 0,
+      "message": "success",
+      "purchasereceives": [
+        {
+          "receive_id": "GRN-INV-9501",
+          "receive_number": "IGRN-2026-0501",
+          "purchaseorder_id": "PO-BKS-6001",
+          "date": "2026-08-21",
+          "last_modified_time": "2026-08-21T11:00:00+0530",
+          "status": "received",
+          "line_items": [
+            {
+              "line_item_id": "POL-BKS-6001-1",
+              "line_number": 1,
+              "item_id": "ITM-BKS-8001",
+              "description": "CNC tooling package",
+              "quantity": 3,
+              "rate": 15300.05,
+              "item_total": 45900.15
+            }
+          ]
+        },
+        {
+          "receive_id": "GRN-INV-9502",
+          "receive_number": "IGRN-2026-0502",
+          "purchaseorder_id": "PO-BKS-6002",
+          "date": "2026-08-18",
+          "last_modified_time": "2026-08-18T17:20:30+0530",
+          "status": "received",
+          "line_items": [
+            {
+              "line_item_id": "POL-BKS-6002-1",
+              "line_number": 1,
+              "item_id": "ITM-BKS-8002",
+              "description": "Coolant recirculation unit",
+              "quantity": 1,
+              "rate": 88000.00,
+              "item_total": 88000.00
+            }
+          ]
+        }
+      ],
+      "page_context": {"page": 1, "per_page": 2, "has_more_page": false}
+    }
+  }
+}

@@ -1,0 +1,511 @@
+"""Zoho ERP v3 -- one of the two candidate implementations of seam C1.
+
+**[PROVISIONAL-ERP].** D-14 is unresolved. This module exists as a live
+candidate, not as the answer; :mod:`.books_inventory` is its equal. Every
+endpoint, scope and host literal for ERP lives here and nowhere else.
+
+The four facts this module exists to encode
+-------------------------------------------
+1. **Purchase Receives has no list endpoint.** Create, update, delete and
+   fetch-one; there is no collection. So :func:`ErpAdapter.receives_for_po` is
+   the *only* acquisition path, there is deliberately no ``list_receives``
+   method and no receives-collection constant to hardcode, and
+   ``Capabilities.receives_listable`` is ``False``. A receive against a PO we
+   do not know about is undiscoverable until its bill arrives.
+2. **``last_modified_time`` is a filter, not a sort column.** ERP bills and
+   POs accept it as a query filter and refuse it as ``sort_column``. So a
+   window can be selected but not walked as a stable keyset -- hence the 300 s
+   overlap and the retained completeness sweeps. :data:`SORT_COLUMNS` records
+   what each endpoint really allows, so nobody re-derives it from Inventory's
+   items endpoint, where the same field *is* sortable.
+3. **The filter is one-sided.** It selects records modified *after* a time.
+   There is no upper bound parameter, so the ``until`` end of a window is
+   enforced by us, locally, after the response arrives. Pretending the API
+   bounded it is how a poll silently ingests documents from outside its window.
+4. **Items live under ``ERP.settings.*``; there is no ``ERP.items`` scope.**
+   And ERP's own OAuth scope page omits two scopes the module pages document
+   -- ``ERP.purchasereceives.*`` and ``ERP.custommodules.ALL``. The consent
+   screen is therefore built from the module pages. :data:`SCOPE_EVIDENCE`
+   records which page documents each scope so that defect stays visible and
+   re-verifiable at the tenant.
+
+Base URL: ``https://www.zohoapis.in/erp/v3``, India only. Zoho publishes no DC
+table for ERP and a ``.com``/``.eu`` ERP host is NOT CONFIRMED, so any other
+data centre raises rather than being synthesised from CRM's DC table.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Any, Mapping, Sequence
+
+from app.backend.integration.adapter import (
+    Capabilities,
+    CapabilityError,
+    DEDUPE_CUSTOM_FIELD,
+    IntegrationError,
+    NoNetworkTransport,
+    Transport,
+    UnsupportedDataCentre,
+    page_context,
+    window_params,
+)
+from app.backend.integration.dto import (
+    BillDTO,
+    LineDTO,
+    Page,
+    PurchaseOrderDTO,
+    ReceiveDTO,
+    SourceRef,
+    freeze,
+    paise,
+    parse_zoho_date,
+    parse_zoho_datetime,
+    quantity,
+)
+
+__all__ = [
+    "ACCOUNTS_SERVER",
+    "API_HOST_BY_DC",
+    "API_VERSION",
+    "DAILY_CALL_CEILING_STANDARD",
+    "ErpAdapter",
+    "PRODUCT",
+    "SCOPE_EVIDENCE",
+    "SERVICE",
+    "SERVICE_PATH",
+    "SORT_COLUMNS",
+]
+
+PRODUCT = "ERP"
+SERVICE = "erp"
+API_VERSION = "v3"
+SERVICE_PATH = "/erp/v3"
+
+#: India only. Zoho publishes no DC table for ERP; every other host is
+#: NOT CONFIRMED and must not be borrowed from CRM's multi-DC documentation.
+API_HOST_BY_DC: Mapping[str, str] = {"IN": "https://www.zohoapis.in"}
+ACCOUNTS_SERVER = "https://accounts.zoho.in"
+
+#: §11.1. India offers ERP Standard and Premium only. Standard's 2,000/day --
+#: not the 100/min all three products share -- is the binding constraint on a
+#: PO-anchored GRN sweep, whose cost scales with open-PO count.
+DAILY_CALL_CEILING_STANDARD = 2000
+DAILY_CALL_CEILING_PREMIUM = 10000
+
+# ------------------------------------------------------------------ endpoints
+PATH_BILLS = "/bills"
+PATH_BILL = "/bills/{external_id}"
+PATH_PURCHASE_ORDERS = "/purchaseorders"
+PATH_PURCHASE_ORDER = "/purchaseorders/{external_id}"
+#: Detail only. There is NO ``PATH_PURCHASE_RECEIVES`` collection constant and
+#: adding one would be a fabrication: ERP Purchase Receives has four endpoints
+#: and none of them enumerates.
+PATH_PURCHASE_RECEIVE = "/purchasereceives/{external_id}"
+PATH_CONTACTS = "/contacts"
+PATH_ITEMS = "/items"
+
+#: What each list endpoint will actually accept as ``sort_column``.
+#: ``last_modified_time`` is absent from bills and purchase orders on purpose:
+#: it is filterable there and not sortable, and conflating the two is how a
+#: resumable keyset walk gets designed for an API that cannot support one.
+SORT_COLUMNS: Mapping[str, frozenset[str]] = {
+    PATH_BILLS: frozenset(
+        {"vendor_name", "bill_number", "date", "due_date", "total", "balance",
+         "created_time"}),
+    PATH_PURCHASE_ORDERS: frozenset(
+        {"vendor_name", "purchaseorder_number", "date", "total", "created_time"}),
+    PATH_CONTACTS: frozenset({"contact_name", "created_time", "last_modified_time"}),
+    PATH_ITEMS: frozenset({"name", "rate", "created_time"}),
+}
+
+#: Which endpoints accept ``last_modified_time`` as a *filter*.
+DELTA_FILTERABLE: frozenset[str] = frozenset({PATH_BILLS, PATH_PURCHASE_ORDERS})
+
+#: The filter's value format. ERP/Books take an offset-bearing stamp; a ``+``
+#: offset must reach the wire percent-encoded as ``%2B``.
+DELTA_FILTER_PARAM = "last_modified_time"
+DELTA_FILTER_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
+
+
+@dataclass(frozen=True)
+class ScopeEvidence:
+    """One OAuth scope and the Zoho page that documents it.
+
+    ``documented_on_oauth_scope_page`` is ``False`` for exactly two scopes,
+    and that is a defect in Zoho's own documentation rather than in ours. It
+    is recorded rather than smoothed over because the consequence is
+    operational: a consent screen built from the OAuth scope table would omit
+    them, and the integration would fail at runtime on the two modules that
+    matter most.
+    """
+    scope: str
+    purpose: str
+    documented_on_oauth_scope_page: bool
+    documented_on_module_page: bool
+
+
+SCOPE_EVIDENCE: tuple[ScopeEvidence, ...] = (
+    ScopeEvidence("ERP.purchaseorders.ALL",
+                  "Read POs for reconciliation; create the POs we emit.",
+                  True, True),
+    ScopeEvidence("ERP.bills.READ",
+                  "Actual CWIP.",
+                  True, True),
+    ScopeEvidence("ERP.purchasereceives.READ",
+                  "Fetch one GRN by id -- the only receives operation ERP offers "
+                  "us, since there is no collection endpoint.",
+                  False, True),      # <- omitted from Zoho's OAuth scope table
+    ScopeEvidence("ERP.contacts.READ",
+                  "Vendor master.",
+                  True, True),
+    ScopeEvidence("ERP.settings.READ",
+                  "Item master. There is no ERP.items scope: ERP files items "
+                  "under settings, unlike Inventory.",
+                  True, True),
+    ScopeEvidence("ERP.custommodules.ALL",
+                  "Carrier for the cf_capex_ref dedupe field and the custom "
+                  "module PR fallback.",
+                  False, True),      # <- omitted from Zoho's OAuth scope table
+)
+
+
+def _format_delta(moment: datetime) -> str:
+    """``2026-08-27T00:00:00+0530``. Naive input is declared UTC, not assumed."""
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.strftime(DELTA_FILTER_FORMAT)
+
+
+class ErpAdapter:
+    """Zoho ERP v3.
+
+    Note the shape of this class as much as its contents: it has
+    ``receives_for_po`` and no ``list_receives``, because the product has a
+    detail endpoint and no collection. The absent method is the capability
+    gap made structural -- a caller cannot reach a list path here even by
+    mistake, because there is nothing to call and no constant naming one.
+    """
+
+    product = PRODUCT
+
+    def __init__(
+        self,
+        *,
+        organization_id: str,
+        dc: str = "IN",
+        transport: Transport | None = None,
+        per_page: int = 50,
+        plan_daily_ceiling: int = DAILY_CALL_CEILING_STANDARD,
+        line_level_custom_fields: bool = False,
+    ) -> None:
+        self.organization_id = str(organization_id)
+        self.dc = dc
+        self.per_page = per_page
+        self.plan_daily_ceiling = plan_daily_ceiling
+        # D-7 is unverified at the tenant. The plan says assume False, and an
+        # unverified capability is assumed absent rather than present: assuming
+        # it present would let line-level CAPEX dimensions be designed against
+        # a feature that may not exist.
+        self.line_level_custom_fields = line_level_custom_fields
+        self.transport = transport or NoNetworkTransport(PRODUCT)
+        if getattr(self.transport, "product", None) != PRODUCT:
+            raise IntegrationError(
+                f"An ERP adapter was given a {getattr(self.transport, 'product', None)!r} "
+                f"transport. Products are never mixed.")
+        self.base = self.base_url(dc)
+
+    # -------------------------------------------------------------- metadata
+    def base_url(self, dc: str) -> str:
+        host = API_HOST_BY_DC.get(dc.upper())
+        if host is None:
+            raise UnsupportedDataCentre(
+                f"Zoho publishes no ERP host for data centre {dc!r}. Only IN "
+                f"({API_HOST_BY_DC['IN']}{SERVICE_PATH}) is documented; a "
+                f".com/.eu ERP host is NOT CONFIRMED and must not be inferred "
+                f"from Zoho CRM's multi-DC table.")
+        return f"{host}{SERVICE_PATH}"
+
+    def accounts_server(self, dc: str) -> str:
+        if dc.upper() != "IN":
+            raise UnsupportedDataCentre(
+                f"Only {ACCOUNTS_SERVER} is documented as the ERP accounts "
+                f"server; {dc!r} is NOT CONFIRMED.")
+        return ACCOUNTS_SERVER
+
+    def scopes_required(self) -> frozenset[str]:
+        """Built from the module pages, not from the OAuth scope table.
+
+        Zoho's ERP OAuth page omits ``ERP.purchasereceives.*`` and
+        ``ERP.custommodules.ALL``, which the module pages document. Building
+        the consent list from the scope table would silently drop both.
+        """
+        return frozenset(e.scope for e in SCOPE_EVIDENCE)
+
+    def capabilities(self) -> Capabilities:
+        return Capabilities(
+            receives_listable=False,        # §11.4 -- no collection endpoint
+            bills_delta_filter=True,        # last_modified_time filter
+            po_delta_filter=True,           # last_modified_time filter
+            items_delta_filter=False,       # ERP items: no filter -> weekly full refresh
+            line_level_custom_fields=self.line_level_custom_fields,
+            daily_call_ceiling=self.plan_daily_ceiling,
+        )
+
+    # --------------------------------------------------------------- fetching
+    def _get(self, path: str, scope: str, params: Mapping[str, Any] | None = None) -> Mapping[str, Any]:
+        query = {"organization_id": self.organization_id}
+        query.update(params or {})
+        sort_column = query.get("sort_column")
+        allowed = SORT_COLUMNS.get(path)
+        if sort_column is not None and allowed is not None and sort_column not in allowed:
+            raise CapabilityError(
+                f"{path} does not accept sort_column={sort_column!r}. Allowed: "
+                f"{sorted(allowed)}. On ERP bills and purchase orders "
+                f"last_modified_time is filterable and NOT sortable, so no "
+                f"stable keyset walk on modification time exists.")
+        return self.transport.request(
+            method="GET", base_url=self.base, path=path, scope=scope, params=query)
+
+    def _source(self, endpoint: str) -> SourceRef:
+        return SourceRef(
+            product=PRODUCT, service=SERVICE, api_version=API_VERSION,
+            endpoint=endpoint, retrieved_at=datetime.now(timezone.utc))
+
+    # ------------------------------------------------------------------ bills
+    def list_bills(self, since: datetime, until: datetime, page: int = 1) -> Page[BillDTO]:
+        """A modification window of bills.
+
+        The ``until`` bound is applied **here**, after the response arrives.
+        Zoho's ``last_modified_time`` filter is one-sided -- "search bills
+        modified after a specific time" -- so there is no upper-bound
+        parameter to send. Filtering locally is the honest implementation;
+        sending a fabricated ``last_modified_time_end`` would be worse than
+        useless, because an unrecognised query parameter is ignored rather
+        than rejected and the window would silently be unbounded.
+        """
+        params = {"page": page, "per_page": self.per_page}
+        params.update(window_params(
+            enabled=self.capabilities().bills_delta_filter,
+            since=since, parameter=DELTA_FILTER_PARAM, formatter=_format_delta))
+        body = self._get(PATH_BILLS, "ERP.bills.READ", params)
+        source = self._source(PATH_BILLS)
+        items = tuple(
+            bill for bill in
+            (_bill(row, source, hydrated=False) for row in body.get("bills", []))
+            if bill.last_modified <= until)
+        got_page, per_page, has_more = page_context(body, page=page, per_page=self.per_page)
+        return Page(items=items, page=got_page, per_page=per_page, has_more=has_more)
+
+    def get_bill(self, external_id: str) -> BillDTO:
+        """One bill, with its lines.
+
+        This is ``sweep_bill_detail``'s call. List responses omit
+        ``line_items`` on all three products, so a bill is not usable for CWIP
+        until it has been through here -- which is why :class:`BillDTO` carries
+        ``lines_hydrated`` rather than letting an empty tuple mean two things.
+        """
+        path = PATH_BILL.format(external_id=external_id)
+        body = self._get(path, "ERP.bills.READ")
+        return _bill(body.get("bill") or {}, self._source(path), hydrated=True)
+
+    # --------------------------------------------------------- purchase orders
+    def list_purchase_orders(
+        self, since: datetime, until: datetime, page: int = 1
+    ) -> Page[PurchaseOrderDTO]:
+        params = {"page": page, "per_page": self.per_page}
+        params.update(window_params(
+            enabled=self.capabilities().po_delta_filter,
+            since=since, parameter=DELTA_FILTER_PARAM, formatter=_format_delta))
+        body = self._get(PATH_PURCHASE_ORDERS, "ERP.purchaseorders.ALL", params)
+        source = self._source(PATH_PURCHASE_ORDERS)
+        items = tuple(
+            po for po in
+            (_purchase_order(row, source, hydrated=False)
+             for row in body.get("purchaseorders", []))
+            if po.last_modified <= until)
+        got_page, per_page, has_more = page_context(body, page=page, per_page=self.per_page)
+        return Page(items=items, page=got_page, per_page=per_page, has_more=has_more)
+
+    def get_purchase_order(self, external_id: str) -> PurchaseOrderDTO:
+        path = PATH_PURCHASE_ORDER.format(external_id=external_id)
+        body = self._get(path, "ERP.purchaseorders.ALL")
+        return _purchase_order(
+            body.get("purchaseorder") or {}, self._source(path), hydrated=True)
+
+    def create_purchase_order(self, po: PurchaseOrderDTO, dedupe_key: str) -> str:
+        """Emit a PO, carrying our synthesised idempotency key.
+
+        Zoho documents no idempotency header on any of the three products
+        (§11.6), so the key is written to the unique custom field
+        ``cf_capex_ref`` (Z-01) and a retry after an unrecorded send becomes an
+        update-by-unique-custom-field rather than a duplicate commitment. The
+        PO is created in Zoho's default draft state and is transitioned to open
+        only by our own later call, after our approval instance closes -- so
+        nothing here sets a status, and a Zoho-side status change we did not
+        initiate is an exception rather than an outcome.
+        """
+        if not dedupe_key:
+            raise IntegrationError(
+                "A purchase order may not be emitted without a dedupe_key: "
+                "Zoho offers no idempotency header, so this field is the only "
+                "thing standing between a retry and a duplicate commitment.")
+        body = {
+            "vendor_id": po.vendor_external_id,
+            "date": po.document_date.isoformat(),
+            "currency_code": po.currency_code,
+            "line_items": [_outbound_line(line) for line in po.lines],
+            "custom_fields": [{"api_name": DEDUPE_CUSTOM_FIELD, "value": dedupe_key}],
+        }
+        response = self.transport.request(
+            method="POST", base_url=self.base, path=PATH_PURCHASE_ORDERS,
+            scope="ERP.purchaseorders.ALL",
+            params={"organization_id": self.organization_id}, body=body)
+        created = (response.get("purchaseorder") or {}).get("purchaseorder_id")
+        if not created:
+            raise IntegrationError(
+                f"Purchase order creation returned no purchaseorder_id: {response!r}")
+        return str(created)
+
+    # --------------------------------------------------------------- receives
+    #
+    # There is deliberately no list_receives() here. See the module docstring
+    # and adapter.acquire_receives: on ERP the absence is the capability.
+
+    def receives_for_po(self, po_external_id: str) -> list[ReceiveDTO]:
+        """PO-anchored discovery -- the sole GRN mechanism on ERP (§11.4).
+
+        Two levels, and both are unavoidable: the PO detail names its receives,
+        and each receive must then be fetched individually because there is no
+        endpoint that returns more than one. Cost is therefore
+        ``1 + len(receives)`` calls per open PO, against 2,000 calls/day on ERP
+        Standard -- which is why §11.4 says GRN sync frequency may have to be
+        negotiated down with the client rather than engineered around.
+        """
+        po = self.get_purchase_order(po_external_id)
+        out: list[ReceiveDTO] = []
+        for receive_id in po.receive_external_ids:
+            path = PATH_PURCHASE_RECEIVE.format(external_id=receive_id)
+            body = self._get(path, "ERP.purchasereceives.READ")
+            out.append(_receive(
+                body.get("purchasereceive") or {}, self._source(path),
+                fallback_po=po_external_id))
+        return out
+
+
+# ================================================================== mapping
+def _lines(rows: Sequence[Mapping[str, Any]], *, po_line_key: str) -> tuple[LineDTO, ...]:
+    out = []
+    for index, row in enumerate(rows, start=1):
+        out.append(LineDTO(
+            external_line_id=_opt_str(row.get("line_item_id")),
+            line_number=int(row.get("line_number") or index),
+            description=str(row.get("description") or row.get("name") or ""),
+            quantity=quantity(row.get("quantity"), field="line.quantity"),
+            unit_price_paise=paise(row.get("rate"), field="line.rate"),
+            line_total_paise=paise(row.get("item_total"), field="line.item_total"),
+            tax_paise=paise(row.get("tax_total"), field="line.tax_total", allow_missing=True),
+            item_external_id=_opt_str(row.get("item_id")),
+            # AUD-H-004. Documented does not mean populated: when the source
+            # omits the linkage this stays None and becomes a
+            # GRN_LINE_UNATTRIBUTED exception upstream. It is never inferred
+            # from position, and never spread pro-rata.
+            purchase_order_line_external_id=_opt_str(row.get(po_line_key)),
+            dimensions=freeze(row.get("reporting_tags_map")),
+            raw=freeze(row),
+        ))
+    return tuple(out)
+
+
+def _bill(row: Mapping[str, Any], source: SourceRef, *, hydrated: bool) -> BillDTO:
+    return BillDTO(
+        source=source,
+        external_id=str(row["bill_id"]),
+        document_number=str(row.get("bill_number") or ""),
+        document_date=parse_zoho_date(row.get("date"), field="bill.date"),
+        last_modified=parse_zoho_datetime(
+            row.get("last_modified_time"), field="bill.last_modified_time"),
+        vendor_external_id=_opt_str(row.get("vendor_id")),
+        vendor_name=str(row.get("vendor_name") or ""),
+        currency_code=str(row.get("currency_code") or "INR"),
+        subtotal_paise=paise(row.get("sub_total"), field="bill.sub_total"),
+        tax_paise=paise(row.get("tax_total"), field="bill.tax_total", allow_missing=True),
+        total_paise=paise(row.get("total"), field="bill.total"),
+        # Stored verbatim and never overwritten (C3/§8.4). An unmapped raw
+        # value raises UNMAPPED_EXTERNAL_STATUS upstream; it is never guessed.
+        external_status_raw=str(row.get("status") or ""),
+        purchase_order_external_ids=tuple(
+            str(x) for x in (row.get("purchaseorder_ids") or [])),
+        lines=_lines(row.get("line_items") or (), po_line_key="purchaseorder_item_id"),
+        lines_hydrated=hydrated,
+        raw=freeze(row),
+    )
+
+
+def _purchase_order(row: Mapping[str, Any], source: SourceRef, *, hydrated: bool) -> PurchaseOrderDTO:
+    return PurchaseOrderDTO(
+        source=source,
+        external_id=str(row["purchaseorder_id"]),
+        document_number=str(row.get("purchaseorder_number") or ""),
+        document_date=parse_zoho_date(row.get("date"), field="po.date"),
+        last_modified=parse_zoho_datetime(
+            row.get("last_modified_time"), field="po.last_modified_time"),
+        vendor_external_id=_opt_str(row.get("vendor_id")),
+        vendor_name=str(row.get("vendor_name") or ""),
+        currency_code=str(row.get("currency_code") or "INR"),
+        subtotal_paise=paise(row.get("sub_total"), field="po.sub_total"),
+        tax_paise=paise(row.get("tax_total"), field="po.tax_total", allow_missing=True),
+        total_paise=paise(row.get("total"), field="po.total"),
+        external_status_raw=str(row.get("status") or ""),
+        receive_external_ids=tuple(
+            str(r.get("receive_id")) for r in (row.get("purchasereceives") or [])
+            if r.get("receive_id")),
+        lines=_lines(row.get("line_items") or (), po_line_key="line_item_id"),
+        lines_hydrated=hydrated,
+        dedupe_key=_custom_field(row, DEDUPE_CUSTOM_FIELD),
+        raw=freeze(row),
+    )
+
+
+def _receive(row: Mapping[str, Any], source: SourceRef, *, fallback_po: str) -> ReceiveDTO:
+    return ReceiveDTO(
+        source=source,
+        external_id=str(row["receive_id"]),
+        document_number=str(row.get("receive_number") or ""),
+        document_date=parse_zoho_date(row.get("date"), field="receive.date"),
+        last_modified=parse_zoho_datetime(
+            row.get("last_modified_time"), field="receive.last_modified_time"),
+        purchase_order_external_id=_opt_str(row.get("purchaseorder_id")) or fallback_po,
+        external_status_raw=str(row.get("status") or ""),
+        lines=_lines(row.get("line_items") or (), po_line_key="line_item_id"),
+        raw=freeze(row),
+    )
+
+
+def _outbound_line(line: LineDTO) -> dict[str, Any]:
+    """One line of an emitted PO.
+
+    Amounts leave as decimal strings built from integer paise. There is no
+    float here and no ``Decimal``: the value is assembled by integer division
+    so the string is exactly what the ledger holds.
+    """
+    rupees, sub = divmod(line.unit_price_paise, 100)
+    return {
+        "item_id": line.item_external_id,
+        "description": line.description,
+        "quantity": line.quantity,
+        "rate": f"{rupees}.{sub:02d}",
+    }
+
+
+def _custom_field(row: Mapping[str, Any], api_name: str) -> str | None:
+    for field in row.get("custom_fields") or ():
+        if field.get("api_name") == api_name:
+            return _opt_str(field.get("value"))
+    return None
+
+
+def _opt_str(value: Any) -> str | None:
+    if value is None or value == "":
+        return None
+    return str(value)

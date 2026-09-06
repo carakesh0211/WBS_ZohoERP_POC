@@ -1,0 +1,40 @@
+{
+  "cassette_version": 1,
+  "product": "ERP",
+  "service": "erp",
+  "api_version": "v3",
+  "provenance": "INVENTED-SANITISED",
+  "provenance_note": "Hand-authored; no tenant contacted. The AUD-H-004 unattributable case: this receive line carries NO line_item_id, so nothing links it to a PO line. Section 11.8 requires this to become a GRN_LINE_UNATTRIBUTED exception accumulating in unattributed_receipts_paise -- never spread pro-rata, never silently dropped. The DTO must therefore expose purchase_order_line_external_id=None rather than inventing one from line position.",
+  "request": {
+    "method": "GET",
+    "base_url": "https://www.zohoapis.in/erp/v3",
+    "path": "/purchasereceives/GRN-ERP-9002",
+    "scope": "ERP.purchasereceives.READ",
+    "page": 1
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "code": 0,
+      "message": "success",
+      "purchasereceive": {
+        "receive_id": "GRN-ERP-9002",
+        "receive_number": "GRN-2026-0302",
+        "purchaseorder_id": "PO-ERP-5001",
+        "date": "2026-08-23",
+        "last_modified_time": "2026-08-23T15:44:09+0530",
+        "status": "received",
+        "line_items": [
+          {
+            "line_number": 1,
+            "item_id": "ITM-ERP-7001",
+            "description": "Structural steel fabrication, grade E350",
+            "quantity": 15,
+            "rate": 11500.05,
+            "item_total": 172500.75
+          }
+        ]
+      }
+    }
+  }
+}

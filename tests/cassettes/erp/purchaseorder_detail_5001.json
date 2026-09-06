@@ -1,0 +1,59 @@
+{
+  "cassette_version": 1,
+  "product": "ERP",
+  "service": "erp",
+  "api_version": "v3",
+  "provenance": "INVENTED-SANITISED",
+  "provenance_note": "Hand-authored; no tenant contacted. This is the PO-anchored discovery payload of plan section 11.4: the PO detail names its receives, and each named receive must then be fetched one at a time because ERP Purchase Receives has create/update/delete/fetch-one and NO collection endpoint. Cost is 1 + len(purchasereceives) calls per open PO, against 2,000 calls/day on ERP Standard.",
+  "request": {
+    "method": "GET",
+    "base_url": "https://www.zohoapis.in/erp/v3",
+    "path": "/purchaseorders/PO-ERP-5001",
+    "scope": "ERP.purchaseorders.ALL",
+    "page": 1
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "code": 0,
+      "message": "success",
+      "purchaseorder": {
+        "purchaseorder_id": "PO-ERP-5001",
+        "purchaseorder_number": "PO-2026-0117",
+        "vendor_id": "VEN-ERP-3001",
+        "vendor_name": "Northgate Structural Works",
+        "date": "2026-08-10",
+        "last_modified_time": "2026-08-26T11:40:12+0530",
+        "currency_code": "INR",
+        "sub_total": 500000.00,
+        "tax_total": 90000.00,
+        "total": 590000.00,
+        "status": "open",
+        "custom_fields": [
+          {"api_name": "cf_capex_ref", "value": "CAPEX-PO-000117"}
+        ],
+        "purchasereceives": [
+          {"receive_id": "GRN-ERP-9001", "receive_number": "GRN-2026-0301"},
+          {"receive_id": "GRN-ERP-9002", "receive_number": "GRN-2026-0302"}
+        ],
+        "line_items": [
+          {
+            "line_item_id": "POL-ERP-5001-1",
+            "line_number": 1,
+            "item_id": "ITM-ERP-7001",
+            "description": "Structural steel fabrication, grade E350",
+            "quantity": 40,
+            "rate": 11500.05,
+            "item_total": 460002.00,
+            "tax_total": 82800.36,
+            "reporting_tags_map": {
+              "capex_code": "CX-2026-014",
+              "wbs_code": "WBS-2.3.1",
+              "budget_head": "BH-CIVIL"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

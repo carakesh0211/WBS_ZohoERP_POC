@@ -1606,6 +1606,334 @@
         "body_sha": "61fee1e08beccf7c"
       }
     },
+    "test_integration_adapter_contract.py": {
+      "test_both_implementations_satisfy_the_frozen_c1_signature": {
+        "assertions": 4,
+        "body_sha": "9d35b6524b701573"
+      },
+      "test_the_capabilities_dataclass_has_exactly_the_six_frozen_fields": {
+        "assertions": 2,
+        "body_sha": "d2766486a84fab26"
+      },
+      "test_an_unknown_product_is_refused_rather_than_defaulted": {
+        "assertions": 2,
+        "body_sha": "21f7016c77354eb3"
+      },
+      "test_the_poll_overlap_belongs_to_the_boundary_not_to_a_caller": {
+        "assertions": 1,
+        "body_sha": "19248d30d677e594"
+      },
+      "test_an_adapter_built_without_a_transport_cannot_fetch_anything": {
+        "assertions": 3,
+        "body_sha": "250c65bac026dfed"
+      },
+      "test_metadata_is_answerable_without_any_transport": {
+        "assertions": 3,
+        "body_sha": "f74579cc8e4b0b56"
+      },
+      "test_every_monetary_field_is_an_int_never_a_float_or_decimal": {
+        "assertions": 2,
+        "body_sha": "6c68dbded3f885c5"
+      },
+      "test_the_erp_amounts_map_to_the_exact_paise_expected": {
+        "assertions": 2,
+        "body_sha": "4f91a3c2fd59643e"
+      },
+      "test_a_half_paise_amount_rounds_half_up_not_through_binary_float": {
+        "assertions": 1,
+        "body_sha": "ecbb409ff02c0a6a"
+      },
+      "test_a_float_is_rejected_rather_than_rounded": {
+        "assertions": 2,
+        "body_sha": "bc8664c8fd46635a"
+      },
+      "test_a_quantity_is_an_exact_string_and_never_a_number": {
+        "assertions": 3,
+        "body_sha": "94f06f0062bcb1cf"
+      },
+      "test_pagination_terminates_on_has_more_page_and_nothing_else": {
+        "assertions": 2,
+        "body_sha": "3c6091ad8e4b127a"
+      },
+      "test_walking_the_pages_collects_the_window_and_stops": {
+        "assertions": 2,
+        "body_sha": "f2e898c279f155c6"
+      },
+      "test_a_server_that_never_clears_has_more_page_cannot_burn_the_budget": {
+        "assertions": 2,
+        "body_sha": "4acf132138707ed3"
+      },
+      "test_the_window_upper_bound_is_enforced_locally": {
+        "assertions": 3,
+        "body_sha": "de7f901c08ff54f4"
+      },
+      "test_a_row_outside_the_window_is_dropped_and_the_same_row_is_kept_when_it_fits": {
+        "assertions": 2,
+        "body_sha": "a55cc99e86300a9e"
+      },
+      "test_a_listed_bill_is_marked_unhydrated_and_a_fetched_one_is_not": {
+        "assertions": 3,
+        "body_sha": "8fc2d1fd4448f34e"
+      },
+      "test_an_unlinked_bill_line_reports_no_linkage_rather_than_guessing_one": {
+        "assertions": 3,
+        "body_sha": "db5a4d5eb672e68d"
+      },
+      "test_an_unlinked_receive_line_is_preserved_with_its_amount_intact": {
+        "assertions": 2,
+        "body_sha": "fb58f6e10514353f"
+      },
+      "test_the_external_status_is_carried_verbatim_and_not_translated": {
+        "assertions": 2,
+        "body_sha": "03aade8a4df583fa"
+      },
+      "test_every_dto_knows_the_product_service_and_api_version_that_made_it": {
+        "assertions": 4,
+        "body_sha": "d8e9aeec590f5392"
+      },
+      "test_the_books_inventory_product_records_two_distinct_services": {
+        "assertions": 3,
+        "body_sha": "4ec3d4fb226b132d"
+      },
+      "test_a_source_ref_cannot_name_a_product_that_does_not_exist": {
+        "assertions": 1,
+        "body_sha": "82b6950270f7a8fb"
+      },
+      "test_dtos_are_frozen_and_their_raw_payloads_are_read_only": {
+        "assertions": 2,
+        "body_sha": "0000333561993797"
+      },
+      "test_an_emitted_po_carries_the_synthesised_dedupe_key": {
+        "assertions": 3,
+        "body_sha": "4cd5f4b69e15ef18"
+      },
+      "test_a_po_cannot_be_emitted_without_a_dedupe_key": {
+        "assertions": 2,
+        "body_sha": "0a63bf119086416e"
+      },
+      "test_an_emitted_po_sets_no_status_and_claims_no_idempotency_header": {
+        "assertions": 2,
+        "body_sha": "f6cd2b04d7ea34c2"
+      },
+      "test_an_emitted_amount_is_a_decimal_string_built_from_integer_paise": {
+        "assertions": 2,
+        "body_sha": "87943bbb5e40e1ff"
+      },
+      "test_erp_publishes_exactly_one_data_centre_and_refuses_to_invent_others": {
+        "assertions": 4,
+        "body_sha": "69dda847552392b4"
+      },
+      "test_books_inventory_publishes_eight_hosts_across_two_services": {
+        "assertions": 4,
+        "body_sha": "7b99ff984a5d2e45"
+      },
+      "test_three_inventory_accounts_servers_are_refused_as_unconfirmed": {
+        "assertions": 3,
+        "body_sha": "f909dfd5b8ab72b9"
+      },
+      "test_the_erp_accounts_server_is_india_only": {
+        "assertions": 2,
+        "body_sha": "cca88aaf8ed7e49e"
+      },
+      "test_the_two_scopes_zohos_own_oauth_page_omits_are_still_requested": {
+        "assertions": 3,
+        "body_sha": "a89dc1fd5c37c72d"
+      },
+      "test_erp_items_live_under_settings_and_there_is_no_erp_items_scope": {
+        "assertions": 2,
+        "body_sha": "0876c986d8b232b0"
+      },
+      "test_inventory_never_asks_for_an_all_scope_because_it_documents_none": {
+        "assertions": 3,
+        "body_sha": "1dec398b2c4d8d18"
+      },
+      "test_a_plus_offset_reaches_the_wire_percent_encoded": {
+        "assertions": 2,
+        "body_sha": "aae122dea203802f"
+      },
+      "test_the_two_delta_formats_are_held_apart": {
+        "assertions": 4,
+        "body_sha": "7cf69ac09bc3267e"
+      },
+      "test_every_request_carries_organization_id_as_a_query_parameter": {
+        "assertions": 2,
+        "body_sha": "8e68478b7ac0d161"
+      },
+      "test_a_bill_dto_is_what_comes_back_not_a_zoho_dictionary": {
+        "assertions": 3,
+        "body_sha": "9f4245d821a4ab88"
+      }
+    },
+    "test_integration_capabilities.py": {
+      "test_the_two_products_declare_the_gap_the_plan_records": {
+        "assertions": 6,
+        "body_sha": "615f9ad1f42b4947"
+      },
+      "test_an_unverified_capability_is_assumed_absent": {
+        "assertions": 2,
+        "body_sha": "f91ba3f43ac93c84"
+      },
+      "test_the_binding_ceiling_on_erp_standard_is_the_daily_one": {
+        "assertions": 3,
+        "body_sha": "7e0e34abd37dfee0"
+      },
+      "test_the_erp_adapter_has_no_receives_list_method_at_all": {
+        "assertions": 3,
+        "body_sha": "75f1071a36313be8"
+      },
+      "test_the_erp_module_defines_no_receives_collection_constant": {
+        "assertions": 3,
+        "body_sha": "c9cdebf6cd7e77d7"
+      },
+      "test_acquiring_receives_on_erp_never_touches_a_collection_path": {
+        "assertions": 4,
+        "body_sha": "50851dbf5857fd20"
+      },
+      "test_po_anchored_discovery_costs_one_call_per_po_plus_one_per_receive": {
+        "assertions": 1,
+        "body_sha": "34a34caae8400b57"
+      },
+      "test_acquiring_receives_on_books_inventory_uses_the_list_path": {
+        "assertions": 3,
+        "body_sha": "0abcf1dbe9d0386a"
+      },
+      "test_per_po_selection_on_inventory_is_done_locally_not_by_a_filter": {
+        "assertions": 3,
+        "body_sha": "b1c0d523d19fdbbf"
+      },
+      "test_erp_receives_are_undiscoverable_without_a_known_po": {
+        "assertions": 2,
+        "body_sha": "d07eec41ca10cc28"
+      },
+      "test_declaring_a_list_capability_without_one_is_refused": {
+        "assertions": 2,
+        "body_sha": "c01451fcb904406a"
+      },
+      "test_exposing_a_list_path_on_a_product_that_has_none_is_refused": {
+        "assertions": 2,
+        "body_sha": "0e3b4f7ea7f4a1f7"
+      },
+      "test_a_disabled_delta_filter_sends_no_filter_at_all": {
+        "assertions": 2,
+        "body_sha": "126a986c0a343ea5"
+      },
+      "test_inventorys_purchase_order_list_refuses_a_parameter_it_does_not_document": {
+        "assertions": 3,
+        "body_sha": "70b1190a71b2bf55"
+      },
+      "test_the_enabled_filter_actually_reaches_the_request": {
+        "assertions": 2,
+        "body_sha": "7c32def7d0569059"
+      },
+      "test_last_modified_time_is_filterable_and_not_sortable_on_bills_and_pos": {
+        "assertions": 6,
+        "body_sha": "ecb2b50ed139a488"
+      },
+      "test_inventory_items_is_the_one_endpoint_where_it_is_both": {
+        "assertions": 2,
+        "body_sha": "372a90c50d7fd418"
+      },
+      "test_asking_to_sort_by_modification_time_is_refused": {
+        "assertions": 3,
+        "body_sha": "58971f4d1112fdb5"
+      },
+      "test_the_inventory_receives_walk_sorts_by_a_column_that_endpoint_allows": {
+        "assertions": 4,
+        "body_sha": "b7bc2cf7cfd58084"
+      }
+    },
+    "test_integration_no_hardcoded_endpoints.py": {
+      "test_no_module_outside_the_adapters_hardcodes_a_product": {
+        "assertions": 1,
+        "body_sha": "942a01cc97dd6730"
+      },
+      "test_the_two_adapter_implementations_are_where_the_literals_actually_live": {
+        "assertions": 1,
+        "body_sha": "436e7f94db00f2d1"
+      },
+      "test_the_boundary_modules_themselves_stay_product_blind": {
+        "assertions": 1,
+        "body_sha": "e63424079b18fa84"
+      },
+      "test_the_pre_existing_exception_register_is_exactly_two_files": {
+        "assertions": 3,
+        "body_sha": "4293d06c9f2bb81e"
+      },
+      "test_the_check_would_catch_a_leak": {
+        "assertions": 1,
+        "body_sha": "2ef1aafec3dfaf9c"
+      },
+      "test_the_check_ignores_prose": {
+        "assertions": 1,
+        "body_sha": "3d493f32e67871e3"
+      }
+    },
+    "test_integration_product_isolation.py": {
+      "test_a_books_cassette_filed_under_erp_is_refused_at_load": {
+        "assertions": 2,
+        "body_sha": "279f1f43059cd384"
+      },
+      "test_an_erp_cassette_filed_under_books_is_refused_at_load": {
+        "assertions": 1,
+        "body_sha": "752aa11d45f26aff"
+      },
+      "test_an_unlabelled_directory_is_refused": {
+        "assertions": 1,
+        "body_sha": "d404529b2ee58e40"
+      },
+      "test_a_relabelled_books_cassette_still_cannot_satisfy_an_erp_adapter": {
+        "assertions": 3,
+        "body_sha": "45e00859eb49d09d"
+      },
+      "test_a_relabelled_erp_cassette_still_cannot_satisfy_a_books_adapter": {
+        "assertions": 2,
+        "body_sha": "391a449a533b3da7"
+      },
+      "test_a_relabelled_rehosted_books_cassette_is_still_caught_by_its_scope": {
+        "assertions": 2,
+        "body_sha": "af1db1f8755adae6"
+      },
+      "test_a_relabelled_rehosted_erp_cassette_is_still_caught_by_its_scope": {
+        "assertions": 2,
+        "body_sha": "d9af3b75754c6884"
+      },
+      "test_forging_all_three_locks_is_what_it_takes": {
+        "assertions": 2,
+        "body_sha": "3514d4566bd8b6d9"
+      },
+      "test_the_shipped_cassette_library_is_segregated_on_disk": {
+        "assertions": 1,
+        "body_sha": "2fbf99da3b8bb9a9"
+      },
+      "test_no_erp_cassette_mentions_another_products_scope_or_host": {
+        "assertions": 3,
+        "body_sha": "f43ac95035980b05"
+      },
+      "test_no_books_inventory_cassette_is_authorised_by_an_erp_scope": {
+        "assertions": 3,
+        "body_sha": "f1d8d3d6e694a05c"
+      },
+      "test_service_and_product_are_kept_distinct_on_every_cassette": {
+        "assertions": 2,
+        "body_sha": "f9f863c261f29f7e"
+      },
+      "test_every_cassette_declares_that_it_was_invented_not_recorded": {
+        "assertions": 3,
+        "body_sha": "1b28142e5c2f8c76"
+      },
+      "test_an_adapter_refuses_a_transport_belonging_to_the_other_product": {
+        "assertions": 3,
+        "body_sha": "334f8097e76c18d6"
+      },
+      "test_a_transport_serves_only_its_own_products_cassettes": {
+        "assertions": 1,
+        "body_sha": "43b514110677a036"
+      },
+      "test_the_two_adapters_share_no_scope_and_no_base_url": {
+        "assertions": 5,
+        "body_sha": "e31cb353bbc02308"
+      }
+    },
     "test_known_defects.py": {
       "test_def_01_a_legacy_v1_database_can_be_upgraded": {
         "assertions": 5,
@@ -4965,6 +5293,10 @@
     "test_contracts.py": 47,
     "test_domain_invariants.py": 34,
     "test_financial_controls.py": 61,
+    "test_integration_adapter_contract.py": 39,
+    "test_integration_capabilities.py": 19,
+    "test_integration_no_hardcoded_endpoints.py": 6,
+    "test_integration_product_isolation.py": 16,
     "test_known_defects.py": 5,
     "test_manifest.py": 10,
     "test_masters_settings_api_guard.py": 9,
@@ -5021,6 +5353,10 @@
     "test_contracts.py": 73,
     "test_domain_invariants.py": 94,
     "test_financial_controls.py": 159,
+    "test_integration_adapter_contract.py": 97,
+    "test_integration_capabilities.py": 56,
+    "test_integration_no_hardcoded_endpoints.py": 8,
+    "test_integration_product_isolation.py": 36,
     "test_known_defects.py": 13,
     "test_manifest.py": 15,
     "test_masters_settings_api_guard.py": 15,
