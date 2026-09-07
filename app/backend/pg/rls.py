@@ -25,8 +25,9 @@ application `engine.Database._apply_scope` performs, so a raw test connection
 can be put into the same session state a real scoped request would run
 under.
 
-**Two registries, and the third source that makes them meaningful.**
-`RLS_TABLE_COLUMNS` (004) and `RLS_COVERAGE_TABLE_COLUMNS` (006) are both
+**Three registries, and the fourth source that makes them meaningful.**
+`RLS_TABLE_COLUMNS` (004), `RLS_COVERAGE_TABLE_COLUMNS` (006) and
+`RLS_PROCUREMENT_TABLE_COLUMNS` (013) are all
 *derived from the migrations* -- transcriptions of what those files do. A test
 that checks one against the other checks a migration against a restatement of
 itself, which cannot detect a table missing from BOTH. That is precisely how
@@ -90,11 +91,11 @@ JOINED_VIA_WBS_ELEMENT = frozenset({
 
 #: Every table `migrations/pg/004_identity_scope.sql` enables RLS on.
 #:
-#: Deliberately still the ELEVEN tables 004 covers, not all nineteen: the name
-#: says "004", `tests/test_pg_rls.py` reads it against 004's source text alone,
-#: and 006's tables live in `RLS_COVERAGE_TABLE_COLUMNS` below. Use
-#: :data:`ALL_RLS_TABLES` for "every RLS-protected table, whichever migration
-#: provided it".
+#: Deliberately still the ELEVEN tables 004 covers, not all twenty-seven: the
+#: name says "004", `tests/test_pg_rls.py` reads it against 004's source text
+#: alone, 006's tables live in `RLS_COVERAGE_TABLE_COLUMNS` below and 013's in
+#: `RLS_PROCUREMENT_TABLE_COLUMNS`. Use :data:`ALL_RLS_TABLES` for "every
+#: RLS-protected table, whichever migration provided it".
 RLS_TABLES: tuple[str, ...] = tuple(RLS_TABLE_COLUMNS)
 
 #: Table -> dimension column mapping for the eight tables
@@ -130,11 +131,20 @@ RLS_COVERAGE_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
 #: than (or, for `budget_version_cell`, in addition to) `wbs_element`.
 JOINED_VIA_BUDGET_VERSION = frozenset({"budget_version_cell"})
 
-#: Tables whose predicate names TWO cells and requires BOTH to be in scope.
-#: `budget_transfer` is the only one: `AND`, never `OR` -- see the policy's
-#: comment in 006 for why the wider choice leaks the far side of a
-#: cross-project transfer.
-TWO_LEGGED = frozenset({"budget_transfer"})
+#: Tables whose predicate names TWO reach paths and requires BOTH to permit the
+#: row. `AND`, never `OR`.
+#:
+#: `budget_transfer` (006) names two budget cells and may cross projects: `OR`
+#: would disclose the far side of a cross-project transfer to a caller scoped to
+#: one side -- see the policy's comment in 006.
+#:
+#: `bill_line` (013) is a different shape with the same answer. It reaches a
+#: project through its `bill` AND through its own `wbs_id`, and nothing ties the
+#: two together when `po_line_id` is NULL, because the four-column FK to
+#: `po_line` is not checked at all in that case. One path alone would let a
+#: non-PO bill line ride in on its bill's visibility while posting to another
+#: project's control cell.
+TWO_LEGGED = frozenset({"budget_transfer", "bill_line"})
 
 #: Organisation-wide reference tables. RLS-protected, but by
 #: `capex_principal_present()` -- "a principal is established" -- not by any
@@ -144,21 +154,70 @@ REFERENCE_TABLES = frozenset({"item_master", "vendor_master"})
 #: Every table 006 enables RLS on.
 RLS_COVERAGE_TABLES: tuple[str, ...] = tuple(RLS_COVERAGE_TABLE_COLUMNS)
 
-#: Every RLS-protected table, from either migration.
-ALL_RLS_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
-    **RLS_TABLE_COLUMNS, **RLS_COVERAGE_TABLE_COLUMNS,
+#: Table -> dimension column mapping for the eight procurement documents
+#: `migrations/pg/013_procurement.sql` adds, in the same shape as the two
+#: registries above.
+#:
+#: A SEPARATE DICT, not an extension of `RLS_COVERAGE_TABLE_COLUMNS`. That name
+#: means "the eight tables 006 covers" and
+#: `tests/test_pg_rls_coverage.py::test_006_covers_exactly_the_eight_tables_the_security_gate_names`
+#: asserts exactly that set; folding 013's tables into it would break a passing
+#: test that is right to fail, and `RLS_MIGRATION_BY_TABLE` below would then
+#: attribute them to 006. `ALL_RLS_TABLE_COLUMNS` is where the three registries
+#: meet, and `set(scope_inventory.covered_tables()) == set(ALL_RLS_TABLES)` --
+#: the equality CI actually asserts, in both directions -- holds through it.
+#:
+#: EVERY DIMENSION IS `None` FOR ALL EIGHT, and that is not "nobody mapped the
+#: columns" -- see :data:`JOINED_VIA_PROJECT`. Four of these tables do carry a
+#: `project_id` column, and their policies still do not filter on it directly.
+#: A predicate of the `capex_scope_permits(NULL, NULL, NULL, project_id)` shape
+#: filters the PROJECT dimension only, and dimensions are resolved
+#: independently (`principal_scope.py`, property 2): a principal restricted to
+#: one entity and to no project carries `project_ids=None`, which is
+#: unrestricted, so that predicate returns TRUE for every purchase order in the
+#: estate. 013's policies therefore reach `project` and pass all four of its
+#: dimension columns, which is why no single column of the table's own can be
+#: named here.
+RLS_PROCUREMENT_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
+    "purchase_request": {"entity": None, "plant": None, "location": None, "project": None},
+    "pr_line": {"entity": None, "plant": None, "location": None, "project": None},
+    "purchase_order": {"entity": None, "plant": None, "location": None, "project": None},
+    "po_line": {"entity": None, "plant": None, "location": None, "project": None},
+    "grn": {"entity": None, "plant": None, "location": None, "project": None},
+    "grn_line": {"entity": None, "plant": None, "location": None, "project": None},
+    "bill": {"entity": None, "plant": None, "location": None, "project": None},
+    "bill_line": {"entity": None, "plant": None, "location": None, "project": None},
 }
 
-#: Every RLS-protected table, from either migration, in registry order.
+#: Tables whose predicate reaches ALL FOUR dimensions by joining `project`,
+#: rather than filtering a dimension column of their own.
+#:
+#: This is the distinction `RLS_PROCUREMENT_TABLE_COLUMNS`' all-`None` rows
+#: cannot make on their own: "unfiltered because someone forgot" versus
+#: "filtered on entity, plant, location AND project, through a join". These are
+#: filtered harder than any table in 004 or 006, not less.
+JOINED_VIA_PROJECT = frozenset(RLS_PROCUREMENT_TABLE_COLUMNS)
+
+#: Every table 013 enables RLS on.
+RLS_PROCUREMENT_TABLES: tuple[str, ...] = tuple(RLS_PROCUREMENT_TABLE_COLUMNS)
+
+#: Every RLS-protected table, from any of the three migrations.
+ALL_RLS_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
+    **RLS_TABLE_COLUMNS, **RLS_COVERAGE_TABLE_COLUMNS,
+    **RLS_PROCUREMENT_TABLE_COLUMNS,
+}
+
+#: Every RLS-protected table, from any migration, in registry order.
 ALL_RLS_TABLES: tuple[str, ...] = tuple(ALL_RLS_TABLE_COLUMNS)
 
-#: Which migration file provides each table's coverage. Derived from the two
+#: Which migration file provides each table's coverage. Derived from the three
 #: registries above -- this module is the migration-derived side of the
 #: two-source check; `app.backend.pg.scope_inventory` is the independent,
 #: hand-maintained side, and `tests/test_pg_rls_coverage.py` cross-checks them.
 RLS_MIGRATION_BY_TABLE: dict[str, str] = {
     **{table: "004_identity_scope.sql" for table in RLS_TABLES},
     **{table: "006_rls_coverage.sql" for table in RLS_COVERAGE_TABLES},
+    **{table: "013_procurement.sql" for table in RLS_PROCUREMENT_TABLES},
 }
 
 
@@ -230,6 +289,58 @@ def version_cell_permits(scope: Scope, *, version_project_id: str | None,
         return False
     return (permits(scope, project_id=version_project_id)
             and permits(scope, project_id=wbs_project_id))
+
+
+#: The four dimension values of a joined `project` row, in
+#: `capex_scope_permits`' own argument order:
+#: ``(entity_id, plant_id, location_id, project_id)``. `None` in place of the
+#: whole tuple means the join found no row.
+ProjectDimensions = tuple[str | None, str | None, str | None, str | None] | None
+
+
+def project_join_permits(scope: Scope, dimensions: ProjectDimensions) -> bool:
+    """Mirror of every 013 policy's inner predicate: reach `project`, then pass
+    ALL FOUR of its dimension columns to `capex_scope_permits`.
+
+    `dimensions` is the joined row as
+    ``(entity_id, plant_id, location_id, project_id)`` -- the SAME left-to-right
+    order as the SQL call, so a transposition here is as visible as one there.
+    Migration 011 put `project_id` in the location slot and the project
+    dimension went unenforced for a whole wave; a mirror that scrambled the
+    order would agree with a broken policy and prove nothing.
+
+    `None` means the join matched no `project` row. That DENIES, like
+    :func:`transfer_permits`, and does not take :func:`permits`' "column waived
+    for this row shape" path: the SQL side is `EXISTS (...)`, which is false for
+    a missing row.
+    """
+    if scope.read_all:
+        return True
+    if dimensions is None:
+        return False
+    entity_id, plant_id, location_id, project_id = dimensions
+    return permits(scope, entity_id=entity_id, plant_id=plant_id,
+                   location_id=location_id, project_id=project_id)
+
+
+def bill_line_permits(scope: Scope, *, bill_project: ProjectDimensions,
+                      wbs_project: ProjectDimensions) -> bool:
+    """Mirror of `bill_line_scope` (013): BOTH reach paths must permit the row.
+
+    `bill_project` comes from `bill_id -> bill.project_id -> project`
+    (FK-enforced); `wbs_project` from `wbs_id -> wbs_element.project_id ->
+    project`. Nothing ties the two together when `po_line_id` is NULL, because
+    the four-column FK to `po_line` is not checked at all in that case -- so the
+    bill path alone would let a non-PO bill line ride in on its bill's
+    visibility while posting to another project's control cell.
+
+    Either side being `None` denies, for the same reason it does in
+    :func:`project_join_permits`.
+    """
+    if scope.read_all:
+        return True
+    return (project_join_permits(scope, bill_project)
+            and project_join_permits(scope, wbs_project))
 
 
 def reference_permits(scope: Scope) -> bool:
@@ -305,8 +416,9 @@ def fetch_rls_status(connection: psycopg.Connection,
     LEVEL SECURITY` is silently inert.
 
     The default widened from `RLS_TABLES` (004's eleven) to `ALL_RLS_TABLES`
-    (all nineteen) when 006 landed. Callers asserting over the default now
-    cover strictly more tables than before; none cover fewer.
+    when 006 landed -- nineteen then, twenty-seven since 013 added the eight
+    procurement documents. Callers asserting over the default cover strictly
+    more tables each time; none cover fewer.
 
     `forced` is not a formality. Without `FORCE ROW LEVEL SECURITY` the
     table's OWNER -- the deploy identity that ran the migrations, which in

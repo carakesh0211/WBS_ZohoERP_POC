@@ -14,7 +14,7 @@ registry. Both sides agree, both sides are wrong, every test passes.
 sat in exactly that hole from Wave 2 until Wave 3.
 
 This module is the second, *independent* source: written from
-``migrations/pg/001..010``'s **CREATE TABLE** statements -- the schema, not the
+``migrations/pg/001..013``'s **CREATE TABLE** statements -- the schema, not the
 policies -- asking of each table only "does a row of this carry, or reach, a
 scope dimension?". A table that must be protected appears here whether or not
 any migration protects it, which is what makes "protected nowhere" detectable.
@@ -89,7 +89,7 @@ class ScopedTable:
     note: str = ""
 
 
-#: Every table in `migrations/pg/001..010` whose rows carry or reach a scope
+#: Every table in `migrations/pg/001..013` whose rows carry or reach a scope
 #: dimension. Hand-maintained from the CREATE TABLE statements -- see the
 #: module docstring. Ordered by migration, then by table name.
 SCOPED_TABLES: tuple[ScopedTable, ...] = (
@@ -403,11 +403,115 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
              "`ck_integration_event_detail_carries_no_restricted_key` CHECK. "
              "The two controls are complementary; neither substitutes for the "
              "other."),
+
+    # ------------------------------------------- 013_procurement.sql
+    # Written from 013's CREATE TABLE statements, before reading its policies
+    # -- the maintenance rule in this module's docstring. All eight are
+    # `covered`, not `protected_pending_registry`, because 013's stream owns
+    # BOTH halves and lands them in one commit: the policies in the migration
+    # and `rls.RLS_PROCUREMENT_TABLE_COLUMNS` in `rls.py`. 008's and 010's
+    # tables sit in the in-between state precisely because their registry half
+    # was somebody else's to write; there is no such handoff here.
+    #
+    # EVERY ONE OF THESE REACHES ALL FOUR DIMENSIONS through `project`, which
+    # is stronger than the project-only waiver `wbs_element` and the two cell
+    # tables take. The reason is in 013's header and is worth repeating where
+    # someone reviewing scope will read it: dimensions resolve independently,
+    # so a principal restricted to one ENTITY and to no project carries
+    # `project_ids=None` -- unrestricted -- and a project-only predicate would
+    # hand that principal every other entity's purchase orders. For a WBS
+    # element the primary control covers it; for the commitments and the money
+    # the backstop has to hold on its own.
+    ScopedTable(
+        table="purchase_request",
+        dimensions=("entity", "plant", "location", "project"), reach="joined",
+        path="purchase_request.project_id -> project.{entity_id, plant_id, "
+             "location_id, project_id}",
+        status="covered", migration="013_procurement.sql",
+        note="A request names a control cell and a sum before anyone has "
+             "approved either. Unfiltered it tells a caller restricted to one "
+             "entity what every other entity is about to spend."),
+    ScopedTable(
+        table="pr_line",
+        dimensions=("entity", "plant", "location", "project"), reach="joined",
+        path="pr_line.project_id -> project.{entity_id, plant_id, "
+             "location_id, project_id}",
+        status="covered", migration="013_procurement.sql",
+        note="`project_id` is DENORMALISED and is not an independent claim: "
+             "`fk_pr_line_pr_project` forces it to equal the header's, so "
+             "reaching `project` through it reaches the parent's project by "
+             "construction. One join, FK-guaranteed -- unlike "
+             "budget_version_cell, which needs both its paths precisely "
+             "because 003 declares no FK on its wbs_id."),
+    ScopedTable(
+        table="purchase_order",
+        dimensions=("entity", "plant", "location", "project"), reach="joined",
+        path="purchase_order.project_id -> project.{entity_id, plant_id, "
+             "location_id, project_id}",
+        status="covered", migration="013_procurement.sql",
+        note="The committed value. `vendor_name`, `external_id` and the "
+             "amendment history together describe who another entity buys "
+             "from and on what terms."),
+    ScopedTable(
+        table="po_line",
+        dimensions=("entity", "plant", "location", "project"), reach="joined",
+        path="po_line.project_id -> project.{entity_id, plant_id, "
+             "location_id, project_id}",
+        status="covered", migration="013_procurement.sql",
+        note="As pr_line: `fk_po_line_po_project` binds the denormalised "
+             "project to the order's. This is the (wbs_id, budget_head_id) "
+             "grain the whole ordered/received/billed reconciliation is "
+             "computed at, so an unfiltered read is another entity's budget "
+             "consumption cell by cell."),
+    ScopedTable(
+        table="grn",
+        dimensions=("entity", "plant", "location", "project"), reach="joined",
+        path="grn.po_id -> purchase_order.project_id -> project.{entity_id, "
+             "plant_id, location_id, project_id}",
+        status="covered", migration="013_procurement.sql",
+        note="Carries no project of its own; `po_id` is NOT NULL, so the reach "
+             "through the purchase order always resolves and there is no NULL "
+             "waiver to get wrong here."),
+    ScopedTable(
+        table="grn_line",
+        dimensions=("entity", "plant", "location", "project"), reach="joined",
+        path="grn_line.po_id -> purchase_order.project_id -> project.{...}",
+        status="covered", migration="013_procurement.sql",
+        note="Reached through the DENORMALISED `po_id` rather than through "
+             "`grn_id`, and the two are the same PO by constraint: "
+             "`fk_grn_line_grn_po` ties this column to the parent GRN's. One "
+             "join instead of two, with nothing waived to buy it."),
+    ScopedTable(
+        table="bill",
+        dimensions=("entity", "plant", "location", "project"), reach="joined",
+        path="bill.project_id -> project.{entity_id, plant_id, location_id, "
+             "project_id}",
+        status="covered", migration="013_procurement.sql",
+        note="`project_id` is a column 013 ADDS and the frozen contract does "
+             "not list -- recorded there as CONTRACT GAP 4. The POC's only "
+             "dimension-bearing column was `po_id`, which is NULLABLE because "
+             "non-PO bills exist, and both readings of that NULL are the two "
+             "halves of the defect 012 closed: waive it and every non-PO bill "
+             "is world-readable, refuse it and every non-PO bill is invisible "
+             "to everyone. `fk_bill_po_project` keeps the new column from "
+             "drifting from the purchase order whenever one is named."),
+    ScopedTable(
+        table="bill_line",
+        dimensions=("entity", "plant", "location", "project"), reach="joined",
+        path="bill_line.bill_id -> bill.project_id -> project.{...} AND "
+             "bill_line.wbs_id -> wbs_element.project_id -> project.{...}",
+        status="covered", migration="013_procurement.sql",
+        note="BOTH paths required -- the budget_version_cell shape, for the "
+             "same reason. Nothing ties the line's wbs_id to its bill's "
+             "project when `po_line_id` is NULL, because a composite FK is not "
+             "checked at all while one of its columns is NULL, so the bill "
+             "path alone would let a non-PO line ride in on its bill's "
+             "visibility while posting to another project's control cell."),
 )
 
 #: Tables deliberately left WITHOUT a scope policy, each with the reason.
 #: Kept here so "not in SCOPED_TABLES" is a decision on record rather than an
-#: omission nobody ever looked at. Reviewed against `001..010`'s full
+#: omission nobody ever looked at. Reviewed against `001..013`'s full
 #: CREATE TABLE list; every table in the schema appears in exactly one of
 #: these two structures.
 UNSCOPED_TABLES: dict[str, str] = {

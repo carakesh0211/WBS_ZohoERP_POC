@@ -92,6 +92,22 @@ POST_BASELINE_FILES = {
     # column. Migration 012 confines them to a triage principal.
     "test_pg_unattributed_triage.py",
 
+    # --- Wave 6 agent 1: the procurement schema ---------------------------
+    # Migration 013 is the first PostgreSQL home the eight procurement
+    # documents have ever had; 001..012 create 53 tables and not one of them
+    # is a purchase order. Three other Wave 6 agents build directly on these
+    # tables, so this file holds the column names, the composite FKs, the
+    # signed-money exceptions and the RLS policies to a build failure.
+    #
+    # Roughly half of it runs with no database, deliberately. The live half
+    # skips on every workstation here and first executes in CI's pg_tests job,
+    # which is exactly why the source-level half exists: a check whose only
+    # coverage is in an environment nobody runs locally is a check nobody
+    # runs. Post-baseline like every Wave 2-5 file -- the 220 counts the POC's
+    # audit-remediation suite, and inflating it would make the removal guard
+    # stop meaning anything the moment the product grows.
+    "test_pg_procurement_schema.py",
+
 
     # --- Wave 5 stream 1 (integration): ONE rate-budget implementation -----
     # Wave 5 shipped THREE implementations of the same reservation; two could

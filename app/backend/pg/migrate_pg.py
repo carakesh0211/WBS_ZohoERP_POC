@@ -41,11 +41,32 @@ adopting either loses a guarantee the domain depends on (see
 ``domain-controls.md``, "Money"). :func:`upgrade`'s adoption check therefore
 verifies, best-effort via regex against the migration's own SQL, every table,
 function, trigger, explicitly *named* constraint, the accounting_period-style
-unnamed exclusion constraint, and -- the one that matters most -- that every
-``*_paise`` column is ``bigint`` in the database, not merely present. Where a
-class of object cannot be parsed reliably (an unnamed ``UNIQUE``/``CHECK``
-with no name to look up), it is not verified rather than guessed at; this
-keeps the check honest about what it actually confirmed.
+unnamed exclusion constraint, every named index, every row-level-security
+policy together with whether RLS is actually ``ENABLE``d and ``FORCE``d, and --
+the one that matters most -- that every ``*_paise`` column is ``bigint`` in the
+database, not merely present. Where a class of object cannot be parsed reliably
+(an unnamed ``UNIQUE``/``CHECK`` with no name to look up), it is not verified
+rather than guessed at; this keeps the check honest about what it actually
+confirmed.
+
+The index and RLS checks were added with ``013_procurement.sql``, and each
+closes a class the earlier ones structurally could not see:
+
+* **Indexes.** Every external-document uniqueness guarantee in this schema --
+  ``ux_bill_external``, ``ux_po_external``, ``ux_grn_external``,
+  ``ux_po_line_external``, ``ux_grn_line_external``'s sibling
+  ``ux_reconciliation_exception_open`` -- is a partial ``CREATE UNIQUE INDEX
+  ... WHERE ...``, not a table constraint, so the named-constraint check cannot
+  reach any of them. They are what makes an integration that re-walks by
+  design (a 300-second sweep overlap, a cycling walk) idempotent instead of
+  duplicating receipts. A dump missing one adopted cleanly.
+* **RLS.** A database carrying every table with row-level security never
+  enabled reads FULLY OPEN and, before this, reported itself adopted and
+  current. ``ENABLE`` and ``FORCE`` are checked separately because they fail
+  differently: without ``ENABLE`` no policy applies to anyone, and without
+  ``FORCE`` every policy applies to everyone except the table's OWNER -- in
+  production the deploy identity, the role most likely to be reused by a
+  background job.
 """
 from __future__ import annotations
 
@@ -232,6 +253,32 @@ _NAMED_CONSTRAINT_RE = re.compile(
 
 _EXCLUDE_RE = re.compile(r"^EXCLUDE\b", re.IGNORECASE)
 
+# `CREATE [UNIQUE] INDEX [CONCURRENTLY] [IF NOT EXISTS] name ON table`. Unlike
+# an anonymous `UNIQUE (col)` inside a table body, an index in these migrations
+# always carries a name, so there is always something reliable to look up.
+_CREATE_INDEX_RE = re.compile(
+    r"CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:CONCURRENTLY\s+)?"
+    r"(?:IF\s+NOT\s+EXISTS\s+)?\"?([a-zA-Z_][a-zA-Z0-9_]*)\"?\s+ON\s+"
+    r"(?:ONLY\s+)?\"?([a-zA-Z_][a-zA-Z0-9_]*)\"?",
+    re.IGNORECASE,
+)
+
+_CREATE_POLICY_RE = re.compile(
+    r"CREATE\s+POLICY\s+\"?([a-zA-Z_][a-zA-Z0-9_]*)\"?\s+ON\s+"
+    r"\"?([a-zA-Z_][a-zA-Z0-9_]*)\"?",
+    re.IGNORECASE,
+)
+
+_ENABLE_RLS_RE = re.compile(
+    r"ALTER\s+TABLE\s+\"?([a-zA-Z_][a-zA-Z0-9_]*)\"?\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY",
+    re.IGNORECASE,
+)
+
+_FORCE_RLS_RE = re.compile(
+    r"ALTER\s+TABLE\s+\"?([a-zA-Z_][a-zA-Z0-9_]*)\"?\s+FORCE\s+ROW\s+LEVEL\s+SECURITY",
+    re.IGNORECASE,
+)
+
 _PAISE_COLUMN_RE = re.compile(
     r"^\"?([a-zA-Z_][a-zA-Z0-9_]*_paise)\"?\s+\S", re.IGNORECASE,
 )
@@ -249,8 +296,16 @@ _LINE_COMMENT_RE = re.compile(r"--[^\n]*")
 def _tables_created_by(migration: "Migration") -> list[str]:
     """Best-effort: the table names a migration's ``CREATE TABLE`` statements
     would produce, in the order they appear. Used only to verify an adoption
-    candidate, never to decide what to execute."""
-    return _CREATE_TABLE_RE.findall(migration.sql)
+    candidate, never to decide what to execute.
+
+    Comments are stripped FIRST, as every other parser in this module already
+    does. Without that, a migration whose header prose contains the words
+    ``CREATE TABLE`` followed by a word -- "...DELETE on all eight the instant
+    each CREATE TABLE returned" -- reports a table named ``returned``, which
+    exists nowhere, so ``_missing_tables`` reports it missing and the migration
+    can never be adopted. A documentation sentence is not DDL.
+    """
+    return _CREATE_TABLE_RE.findall(_LINE_COMMENT_RE.sub("", migration.sql))
 
 
 def _all_tables_present(con: psycopg.Connection, tables: list[str]) -> bool:
@@ -394,6 +449,118 @@ def _paise_columns_by(migration: "Migration") -> list[tuple[str, str]]:
     return found
 
 
+def _indexes_created_by(migration: "Migration") -> list[tuple[str, str]]:
+    """Best-effort: ``(index_name, table_name)`` for every ``CREATE INDEX`` /
+    ``CREATE UNIQUE INDEX`` a migration issues.
+
+    Failure class C, the one table/constraint/type checks all miss: a partial
+    UNIQUE index is the ONLY thing standing between an integration that
+    re-walks by design and a duplicated financial document. ``ux_bill_external``,
+    ``ux_po_external``, ``ux_grn_external``, ``ux_po_line_external`` and
+    ``ux_reconciliation_exception_open`` are every one of them a
+    ``CREATE UNIQUE INDEX ... WHERE ...``, not a table constraint, so
+    :func:`_named_constraints_by` cannot see any of them. A legacy dump missing
+    one adopts cleanly under the old checks and then admits the duplicate
+    receipt the index existed to refuse.
+    """
+    text = _LINE_COMMENT_RE.sub("", migration.sql)
+    return _CREATE_INDEX_RE.findall(text)
+
+
+def _policies_created_by(migration: "Migration") -> list[tuple[str, str]]:
+    """Best-effort: ``(policy_name, table_name)`` for every ``CREATE POLICY``.
+
+    Failure class D. A row-level-security policy is not a schema object any
+    existing check looks at, and its absence is silent in exactly the direction
+    that matters: with ``ENABLE ROW LEVEL SECURITY`` still on and no policy, the
+    table denies everything and somebody notices immediately -- but a database
+    carrying the tables with RLS never enabled reads FULLY OPEN, and reports
+    itself adopted and current while every scope restriction in the product is
+    waived. That is the Wave 2 defect's exact shape, arriving through a restore
+    instead of through a missing migration.
+    """
+    text = _LINE_COMMENT_RE.sub("", migration.sql)
+    return _CREATE_POLICY_RE.findall(text)
+
+
+def _rls_tables_by(migration: "Migration") -> tuple[list[str], list[str]]:
+    """``(enabled, forced)``: the tables a migration issues ``ENABLE`` and
+    ``FORCE ROW LEVEL SECURITY`` for.
+
+    Both halves, because they fail differently and only one of them is
+    observable from ``pg_policies``: ``ENABLE`` missing means no policy applies
+    to anyone, and ``FORCE`` missing means every policy applies to everyone
+    EXCEPT the table's owner -- which in production is the deploy identity that
+    ran the migrations, and is the role most likely to be reused by a background
+    job.
+    """
+    text = _LINE_COMMENT_RE.sub("", migration.sql)
+    return _ENABLE_RLS_RE.findall(text), _FORCE_RLS_RE.findall(text)
+
+
+def _indexes_present(con: psycopg.Connection,
+                      indexes: list[tuple[str, str]]) -> list[str]:
+    """``"name on table"`` for every `(index, table)` pair NOT found as a real
+    index in the current schema. Empty means every one is present."""
+    missing: list[str] = []
+    for name, table in indexes:
+        row = con.execute(
+            "SELECT 1 FROM pg_class i "
+            "JOIN pg_index x ON x.indexrelid = i.oid "
+            "JOIN pg_class t ON t.oid = x.indrelid "
+            "JOIN pg_namespace n ON n.oid = i.relnamespace "
+            "WHERE n.nspname = current_schema() AND i.relname = %s "
+            "AND t.relname = %s",
+            (name, table),
+        ).fetchone()
+        if row is None:
+            missing.append(f"{name} on {table}")
+    return missing
+
+
+def _policies_present(con: psycopg.Connection,
+                       policies: list[tuple[str, str]]) -> list[str]:
+    """``"name on table"`` for every `(policy, table)` pair NOT found in
+    ``pg_policies``. Empty means every one is present."""
+    missing: list[str] = []
+    for name, table in policies:
+        row = con.execute(
+            "SELECT 1 FROM pg_policies "
+            "WHERE schemaname = current_schema() AND tablename = %s "
+            "AND policyname = %s",
+            (table, name),
+        ).fetchone()
+        if row is None:
+            missing.append(f"{name} on {table}")
+    return missing
+
+
+def _rls_problems(con: psycopg.Connection, enabled: list[str],
+                   forced: list[str]) -> list[str]:
+    """One message per table whose row-level security is not actually on in the
+    database, distinguishing the two halves so the operator is told which."""
+    problems: list[str] = []
+    for table in dict.fromkeys(enabled):
+        row = con.execute(
+            "SELECT relrowsecurity, relforcerowsecurity FROM pg_class c "
+            "JOIN pg_namespace n ON n.oid = c.relnamespace "
+            "WHERE n.nspname = current_schema() AND c.relname = %s",
+            (table,),
+        ).fetchone()
+        if row is None:
+            problems.append(f"{table} is absent, so RLS cannot be verified")
+            continue
+        if not row[0]:
+            problems.append(
+                f"row level security is not ENABLED on {table} -- the table "
+                f"reads fully open and no policy on it applies to anyone")
+        if table in forced and not row[1]:
+            problems.append(
+                f"row level security is not FORCED on {table} -- the table's "
+                f"OWNER bypasses every policy on it, silently")
+    return problems
+
+
 def _functions_present(con: psycopg.Connection, functions: list[str]) -> list[str]:
     """Names in `functions` that are NOT visible in the current schema's
     ``pg_proc``. Empty means every one is present."""
@@ -535,6 +702,24 @@ def _adoption_problems(con: psycopg.Connection, migration: "Migration") -> list[
     paise_problems = _paise_column_problems(con, _paise_columns_by(migration))
     if paise_problems:
         problems.append(f"money column type mismatch: {paise_problems}")
+
+    # Failure class C: a partial UNIQUE index is not a table constraint, so
+    # nothing above can see one. It is also the only thing that makes an
+    # integration which re-walks by design idempotent.
+    missing_indexes = _indexes_present(con, _indexes_created_by(migration))
+    if missing_indexes:
+        problems.append(f"indexes missing: {missing_indexes}")
+
+    # Failure class D: row-level security. A policy is checked, and separately
+    # whether RLS is actually ENABLEd and FORCEd -- a policy present on a table
+    # with RLS switched off is inert, and reads open.
+    missing_policies = _policies_present(con, _policies_created_by(migration))
+    if missing_policies:
+        problems.append(f"row level security policies missing: {missing_policies}")
+
+    rls_problems = _rls_problems(con, *_rls_tables_by(migration))
+    if rls_problems:
+        problems.append(f"row level security not enforced: {rls_problems}")
 
     return problems
 

@@ -176,12 +176,26 @@ class _FakeAdoptConnection:
 
     def __init__(self, existing_tables: set[str], *,
                  missing_objects: set[str] | None = None,
-                 paise_types: dict[str, str] | None = None):
+                 paise_types: dict[str, str] | None = None,
+                 rls_disabled: set[str] | None = None,
+                 rls_unforced: set[str] | None = None):
         self.existing_tables = set(existing_tables)
-        #: Function / trigger / constraint names this legacy database LACKS.
+        #: Function / trigger / constraint / INDEX / POLICY names this legacy
+        #: database LACKS. Index and policy names joined the same set when
+        #: 013_procurement.sql extended adoption to cover them: they are looked
+        #: up by name exactly as a trigger or constraint is, so one knob models
+        #: all five and a test naming `ux_bill_external` reads the same way as
+        #: one naming `audit_log_no_update`.
         self.missing_objects = set(missing_objects or ())
         #: Column name -> actual SQL type, for modelling money-type drift.
         self.paise_types = dict(paise_types or {})
+        #: Tables whose row-level security is switched OFF in this legacy
+        #: database -- the restore that reads fully open while reporting
+        #: itself current.
+        self.rls_disabled = set(rls_disabled or ())
+        #: Tables with RLS enabled but NOT forced -- the half that is invisible
+        #: from `pg_policies` and that the table's owner walks straight past.
+        self.rls_unforced = set(rls_unforced or ())
         self.recorded: list[tuple] = []
         self.statements: list[str] = []
 
@@ -217,13 +231,30 @@ class _FakeAdoptConnection:
         if norm.startswith("SELECT P.PRONAME FROM PG_PROC"):
             wanted = set(params[0]) if params else set()
             return _FakeCursor([(n,) for n in wanted - self.missing_objects])
-        if norm.startswith("SELECT 1 FROM PG_TRIGGER") or                 norm.startswith("SELECT 1 FROM PG_CONSTRAINT"):
+        # RLS enablement, added when 013_procurement.sql extended adoption to
+        # cover row-level security. Matched BEFORE the generic
+        # `SELECT 1 FROM PG_CLASS` index lookup below: both read pg_class and
+        # only the column list distinguishes them.
+        if norm.startswith("SELECT RELROWSECURITY, RELFORCEROWSECURITY FROM PG_CLASS"):
+            table = str(params[0]) if params else ""
+            if table not in self.existing_tables:
+                return _FakeCursor([])
+            return _FakeCursor([(table not in self.rls_disabled,
+                                 table not in self.rls_unforced)])
+        if (norm.startswith("SELECT 1 FROM PG_TRIGGER")
+                or norm.startswith("SELECT 1 FROM PG_CONSTRAINT")
+                or norm.startswith("SELECT 1 FROM PG_CLASS")
+                or norm.startswith("SELECT 1 FROM PG_POLICIES")):
             # Order-independent on purpose: the trigger lookup binds
             # (table, name) and the constraint lookup binds (table, name) too,
             # so keying on params[0] silently matched the TABLE and every
             # object looked present. A fake that answers the wrong parameter is
             # worse than no fake -- it makes a refusal test pass while
             # exercising nothing.
+            #
+            # The index (`SELECT 1 FROM PG_CLASS`) and policy
+            # (`SELECT 1 FROM PG_POLICIES`) lookups bind the same two-value
+            # (name, table) shape and join this branch unchanged.
             supplied = {str(p) for p in (params or ())}
             absent = bool(supplied & self.missing_objects)
             return _FakeCursor([] if absent else [(1,)])
