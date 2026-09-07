@@ -6710,6 +6710,160 @@
         "body_sha": "436b750b66347aad"
       }
     },
+    "test_pg_procurement_ingest.py": {
+      "test_the_unattributed_bucket_is_set_and_never_incremented": {
+        "assertions": 3,
+        "body_sha": "064ed811720ecf84"
+      },
+      "test_no_paise_is_ever_rendered_as_rupees_in_this_module": {
+        "assertions": 4,
+        "body_sha": "93ed501fc12fe4ce"
+      },
+      "test_every_sum_over_a_paise_column_is_cast_to_bigint": {
+        "assertions": 1,
+        "body_sha": "66338334447bd13b"
+      },
+      "test_the_grn_line_conflict_target_matches_the_migrations_constraint": {
+        "assertions": 3,
+        "body_sha": "d57b345bcd43833a"
+      },
+      "test_every_partial_mirror_index_is_targeted_with_its_predicate": {
+        "assertions": 2,
+        "body_sha": "16020ef0811135d2"
+      },
+      "test_a_mirrored_row_id_is_derived_and_not_random": {
+        "assertions": 4,
+        "body_sha": "4d9b6c0820a4ae48"
+      },
+      "test_an_unknown_external_source_is_refused_not_defaulted_to_erp": {
+        "assertions": 4,
+        "body_sha": "dabfacc5e32ea054"
+      },
+      "test_the_uninterpretable_status_is_not_accounting_effective": {
+        "assertions": 3,
+        "body_sha": "ba0ef535c8dc2033"
+      },
+      "test_every_statement_in_this_module_carries_a_scope_token": {
+        "assertions": 4,
+        "body_sha": "7f2fdeaacadd5b5f"
+      },
+      "test_every_sql_placeholder_has_a_parameter_behind_it": {
+        "assertions": 5,
+        "body_sha": "f35082619a21b4d5"
+      },
+      "test_every_writing_statement_returns_a_row": {
+        "assertions": 1,
+        "body_sha": "37eb68616d40ba86"
+      },
+      "test_the_sweepstore_surface_no_longer_refuses": {
+        "assertions": 3,
+        "body_sha": "21167e1e14244d6a"
+      },
+      "test_a_null_line_identifier_never_reaches_a_po_line_lookup": {
+        "assertions": 3,
+        "body_sha": "7c00d7ed09d7b5a0"
+      },
+      "test_a_partial_receipt_is_mirrored_at_the_quantity_that_arrived": {
+        "assertions": 5,
+        "body_sha": "5a7ea3e66e2a2774"
+      },
+      "test_two_receipts_against_one_po_line_are_two_rows": {
+        "assertions": 4,
+        "body_sha": "d23380ee548b16c5"
+      },
+      "test_replaying_both_receipts_duplicates_neither": {
+        "assertions": 4,
+        "body_sha": "65d71fafe3125f27"
+      },
+      "test_a_reversal_receipt_carries_negative_quantity_and_negative_paise": {
+        "assertions": 3,
+        "body_sha": "563f828c39baf885"
+      },
+      "test_provenance_is_written_on_the_mirrored_grn": {
+        "assertions": 6,
+        "body_sha": "7387e6754010c8ed"
+      },
+      "test_a_receive_line_for_an_out_of_scope_po_line_is_refused_not_skipped": {
+        "assertions": 3,
+        "body_sha": "0b31efc282b3d6f4"
+      },
+      "test_a_missing_quantity_or_amount_refuses_rather_than_defaulting": {
+        "assertions": 3,
+        "body_sha": "052b7c003497609a"
+      },
+      "test_an_unmatched_receive_line_resolves_to_nothing_and_is_quarantined": {
+        "assertions": 6,
+        "body_sha": "f74660056f169401"
+      },
+      "test_a_rewalk_sets_the_bucket_and_never_inflates_it": {
+        "assertions": 1,
+        "body_sha": "5af1763e208f64c5"
+      },
+      "test_a_negative_unattributed_line_is_held_at_its_magnitude": {
+        "assertions": 2,
+        "body_sha": "466d9b66b0b3da3c"
+      },
+      "test_a_bucket_key_naming_no_open_exception_is_refused": {
+        "assertions": 2,
+        "body_sha": "9a9c3d65557f6bb2"
+      },
+      "test_a_partial_bill_then_a_final_bill_are_two_lines_on_one_po_line": {
+        "assertions": 8,
+        "body_sha": "0e6b957d9d914f4d"
+      },
+      "test_replaying_a_bill_duplicates_no_line": {
+        "assertions": 3,
+        "body_sha": "f96713cb2a76ddee"
+      },
+      "test_over_billing_is_visible_and_never_clamped": {
+        "assertions": 8,
+        "body_sha": "670dfac2108a0d3b"
+      },
+      "test_a_credit_note_carries_negative_paise_and_reduces_the_billed_total": {
+        "assertions": 6,
+        "body_sha": "619a637a91a80811"
+      },
+      "test_an_unattributable_bill_line_is_quarantined_not_spread": {
+        "assertions": 6,
+        "body_sha": "fae20ff65e198c85"
+      },
+      "test_a_bill_naming_no_purchase_order_and_no_project_is_refused": {
+        "assertions": 3,
+        "body_sha": "e157f7908b16ca7e"
+      },
+      "test_a_bill_against_an_unknown_purchase_order_is_refused": {
+        "assertions": 2,
+        "body_sha": "68fcf2b17806c034"
+      },
+      "test_a_mapped_external_status_is_applied_from_c17_not_guessed": {
+        "assertions": 4,
+        "body_sha": "6db71fff676fe816"
+      },
+      "test_an_unmapped_external_status_is_quarantined_and_never_guessed": {
+        "assertions": 7,
+        "body_sha": "4e7f3332a0e190ff"
+      },
+      "test_a_missing_external_status_raises_nothing": {
+        "assertions": 2,
+        "body_sha": "88e049ea7079cca2"
+      },
+      "test_the_hydration_queue_holds_a_line_less_bill_and_releases_it": {
+        "assertions": 2,
+        "body_sha": "5afca20a34b20317"
+      },
+      "test_a_line_less_bill_is_not_refetched_for_ever": {
+        "assertions": 2,
+        "body_sha": "b520129e2d8090e5"
+      },
+      "test_an_invisible_connection_raises_rather_than_reporting_an_empty_queue": {
+        "assertions": 3,
+        "body_sha": "451559a4b95c6091"
+      },
+      "test_marking_a_bill_nobody_received_is_refused": {
+        "assertions": 2,
+        "body_sha": "e6374aea89e11c3c"
+      }
+    },
     "test_pg_procurement_schema.py": {
       "test_013_is_the_next_migration_and_the_runner_discovers_it": {
         "assertions": 4,
@@ -8231,6 +8385,7 @@
     "test_pg_period_concurrency.py": 9,
     "test_pg_periods.py": 18,
     "test_pg_principal_scope.py": 37,
+    "test_pg_procurement_ingest.py": 38,
     "test_pg_procurement_schema.py": 73,
     "test_pg_reconciliation.py": 36,
     "test_pg_repo.py": 23,
@@ -8312,6 +8467,7 @@
     "test_pg_period_concurrency.py": 28,
     "test_pg_periods.py": 49,
     "test_pg_principal_scope.py": 83,
+    "test_pg_procurement_ingest.py": 137,
     "test_pg_procurement_schema.py": 140,
     "test_pg_reconciliation.py": 117,
     "test_pg_repo.py": 37,

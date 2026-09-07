@@ -38,6 +38,35 @@ integration platform, inbound sweeps, outbound PO emission
 > the tables carry the composite foreign keys of plan §6.2, and inventing them
 > inside an integration stream would put the control model's constraints where
 > nobody reviewing the data model would look.
+>
+> ---
+>
+> #### ✅ THE SCHEMA HALF IS CLOSED — `013_procurement.sql` (Wave 6)
+>
+> All eight tables now exist, with the composite foreign keys of §6.2 replacing
+> the six SQLite triggers, RLS ENABLEd **and** FORCEd on each, and `DELETE`
+> revoked from `capex_app`. The §11.8 write path is closed with it:
+>
+> * `resolve_po_line`, `record_receive_line`, `accumulate_unattributed`,
+>   `bills_awaiting_detail` and `mark_detail_hydrated` no longer raise
+>   `SCHEMA_NOT_YET_MIGRATED`. `UNBACKED_SWEEP_SURFACE` is now empty — kept, not
+>   deleted, so a sixth call arriving ahead of its schema is one entry away from
+>   refusing again.
+> * `app/backend/pg/procurement.py` mirrors receives and vendor bills into the
+>   chain, attributes every line to its PO line's control cell, and quarantines
+>   what it cannot attribute at FULL value. Partial receipts, several receipts
+>   against one PO line, replay, partial-then-final billing, over-billing and
+>   negative credit notes are all ordinary paths.
+> * "Ordered, received, billed and open" are readable together for the first
+>   time, through `procurement.reconcile_po_lines`. Over-billing is **reported,
+>   never clamped**.
+>
+> **What is NOT closed.** The two coded 503s are a router question, not a schema
+> one, and are not touched here. And every live PostgreSQL test of the above is
+> `skipif CAPEX_DB_URL` — there is no server on any workstation here, so the
+> whole live half **first executes in CI**. A skip is not a pass: until
+> `pg_tests` is green the honest summary is "the SQL names real columns and real
+> constraints, and has not been executed".
 
 ## Traceability to the approved plan
 
