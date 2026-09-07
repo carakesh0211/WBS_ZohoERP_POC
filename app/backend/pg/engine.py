@@ -57,6 +57,18 @@ SCOPE_KEYS = (
     "capex.principal_kind",
     *(f"capex.{d}_{suffix}" for d in SCOPE_DIMENSIONS for suffix in ("mode", "ids")),
     "capex.read_all",
+    # Read by `capex_may_triage_unattributed()` (migration 012). It is NOT a
+    # dimension and deliberately not folded into `read_all`: it answers "may
+    # this principal see rows that could not be attributed to an entity yet",
+    # which is a far narrower question than unrestricted read over the estate.
+    #
+    # `reconciliation_exception.entity_id` is nullable by design -- an
+    # unsanctioned commitment is found on a PO we hold no record of -- and
+    # `capex_dimension_permits` returns TRUE for a NULL row value, because it
+    # is built to waive a dimension the TABLE lacks. A nullable COLUMN is a
+    # different thing, and without this flag every principal could read every
+    # unattributed discrepancy and the exact paise involved.
+    "capex.triage_unattributed",
 )
 
 #: The three legal values of `capex.<d>_mode`. Anything else -- including an
@@ -144,6 +156,19 @@ class Scope:
     location_ids: frozenset[str] | None = None
     read_all: bool = False
 
+    #: May this principal see reconciliation exceptions that could not be
+    #: attributed to an entity yet?
+    #:
+    #: Its own flag, deliberately NOT folded into `read_all`. `read_all` is
+    #: documented as "for migrations and start-up checks only, never for a
+    #: request", so reusing it would make the only route to triage an
+    #: exception an unrestricted read over the whole estate -- a far larger
+    #: grant than "may look at the rows nobody could attribute yet".
+    #:
+    #: Defaults to False, which is the safe direction: a scope constructed
+    #: without thinking about triage does not get it.
+    triage_unattributed: bool = False
+
     @classmethod
     def system(cls, user_id: str = "SVC-SYSTEM") -> "Scope":
         """For migrations and start-up checks only. Never for a request."""
@@ -185,6 +210,13 @@ class Scope:
             settings[f"capex.{dimension}_mode"] = mode
             settings[f"capex.{dimension}_ids"] = ids
         settings["capex.read_all"] = "true" if self.read_all else "false"
+        # Read by `capex_may_triage_unattributed()` (migration 012). Emitted
+        # unconditionally as an explicit 'false' rather than omitted, so an
+        # absent setting and a denied one are the same observable state --
+        # `current_setting(..., true)` returns NULL for an unset key, and a
+        # policy that COALESCEd that to 'true' would fail open.
+        settings["capex.triage_unattributed"] = (
+            "true" if self.triage_unattributed else "false")
         return settings
 
 

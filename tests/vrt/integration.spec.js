@@ -629,6 +629,25 @@ async function settleScreen(page) {
   await page.waitForLoadState('networkidle');
 }
 
+/**
+ * Every `.status` chip under `#content`, read only once at least one exists.
+ *
+ * `page.evaluate` samples the DOM once. `settleScreen` waits for mount, for
+ * loading nodes to clear and for networkidle -- none of which is "the table
+ * has painted" -- so a bare sample can race a row that renders a frame later
+ * on a slower runner. That is exactly how CI reported "received zero" for a
+ * screen that had demonstrably rendered: the test above it asserts an UNMAPPED
+ * chip, which IS a status chip, and passed in the same run.
+ *
+ * The first line is a retrying assertion, not a sleep. If chips genuinely
+ * never render this still fails, and says so more usefully than a zero count.
+ */
+async function statusChips(page) {
+  await expect(page.locator('#content .status').first()).toBeAttached();
+  return page.evaluate(() => [...document.querySelectorAll('#content .status')]
+    .map((el) => ({ text: el.textContent.trim(), sym: !!el.querySelector('.sym') })));
+}
+
 async function gotoScreen(page, hash) {
   await page.goto(`/#${hash}`);
   await page.waitForFunction(() => window.__integrationRoutesInstalled === 12, null, { timeout: 15_000 });
@@ -1370,8 +1389,7 @@ test.describe('SCR-18 — open commitment is ordered less BILLED, never less rec
     await gotoScreen(page, 'integration-reconciliation');
     await expect(page.locator('#content')).toContainText('RECEIVED, NOT BILLED');
     await expect(page.locator('#content')).toContainText('OVER-BILLED');
-    const chips = await page.evaluate(() => [...document.querySelectorAll('#content .status')]
-      .map((el) => ({ text: el.textContent.trim(), sym: !!el.querySelector('.sym') })));
+    const chips = await statusChips(page);
     for (const chip of chips) {
       expect(chip.text.length, 'a status chip rendered with no text label').toBeGreaterThan(0);
       expect(chip.sym, `"${chip.text}" carries no non-colour symbol`).toBe(true);
@@ -1479,8 +1497,7 @@ test.describe('C16 — integration statuses never become business statuses', () 
 
   test('operational statuses carry a text label and a symbol, not colour alone', async ({ page }) => {
     await gotoScreen(page, 'integration-events');
-    const chips = await page.evaluate(() => [...document.querySelectorAll('#content .status')]
-      .map((el) => ({ text: el.textContent.trim(), sym: !!el.querySelector('.sym') })));
+    const chips = await statusChips(page);
     expect(chips.length).toBeGreaterThan(0);
     for (const chip of chips) {
       expect(chip.text.length, 'a status chip rendered with no text label').toBeGreaterThan(0);

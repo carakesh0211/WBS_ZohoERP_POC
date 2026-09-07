@@ -7060,6 +7060,40 @@
         "body_sha": "2af8b9b49e219cdd"
       }
     },
+    "test_pg_unattributed_triage.py": {
+      "test_the_triage_flag_defaults_to_denied_and_is_not_read_all": {
+        "assertions": 4,
+        "body_sha": "14ac5d1773c93ca6"
+      },
+      "test_the_setting_is_emitted_explicitly_rather_than_omitted": {
+        "assertions": 1,
+        "body_sha": "94cdd2d9f028859f"
+      },
+      "test_the_triage_permission_exists_and_is_not_held_by_ordinary_roles": {
+        "assertions": 3,
+        "body_sha": "7acce1c57546789e"
+      },
+      "test_live_an_ordinary_principal_cannot_read_an_unattributed_exception": {
+        "assertions": 1,
+        "body_sha": "60473d1177a06665"
+      },
+      "test_live_an_unrelated_entity_sees_neither_row": {
+        "assertions": 1,
+        "body_sha": "42159e4ec1aa4685"
+      },
+      "test_live_a_triage_principal_can_read_the_unattributed_row": {
+        "assertions": 1,
+        "body_sha": "1b8d87fc2b2f604c"
+      },
+      "test_live_triage_does_not_widen_ordinary_entity_scope": {
+        "assertions": 2,
+        "body_sha": "9231bfad12d4b198"
+      },
+      "test_live_an_ordinary_principal_cannot_push_a_row_into_the_blind_spot": {
+        "assertions": 1,
+        "body_sha": "fed170dd9e4ced13"
+      }
+    },
     "test_runtime_startup.py": {
       "test_healthz_returns_200_with_database_unavailable": {
         "assertions": 2,
@@ -7436,6 +7470,7 @@
     "test_pg_seed.py": 23,
     "test_pg_settings.py": 17,
     "test_pg_transactions.py": 4,
+    "test_pg_unattributed_triage.py": 8,
     "test_runtime_startup.py": 11,
     "test_scope_enforcement.py": 9,
     "test_scope_negative_matrix.py": 25,
@@ -7512,6 +7547,7 @@
     "test_pg_seed.py": 56,
     "test_pg_settings.py": 46,
     "test_pg_transactions.py": 10,
+    "test_pg_unattributed_triage.py": 14,
     "test_runtime_startup.py": 31,
     "test_scope_enforcement.py": 11,
     "test_scope_negative_matrix.py": 82,

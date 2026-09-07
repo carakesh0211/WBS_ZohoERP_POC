@@ -88,6 +88,21 @@ PERMISSIONS: dict[str, tuple[str, ...]] = {
                                      "ProcurementApprover"),
     "connector.read":         ("Administrator", "Auditor"),
     "connector.manage":       ("Administrator",),
+    # Seeing, and attributing, a reconciliation exception that could not be
+    # tied to an entity. Separate from connector.manage because it is a
+    # DATA-triage right over other entities' unattributed discrepancies,
+    # not a connector-administration right.
+    #
+    # ADMINISTRATOR ONLY. Auditor was the obvious second holder and is
+    # deliberately excluded: `test_aud_c_006_auditor_is_read_only` pins
+    # Auditor to an allow-list, and granting a fifth permission means
+    # widening an audit-finding assertion -- which is not a thing to do in
+    # passing so a new feature reads more tidily. `approval.read` excludes
+    # Auditor for exactly this reason (recorded against D-12), and the same
+    # reasoning applies: an Auditor reads what happened through the
+    # hash-chained audit trail, which is the record that matters for that
+    # role. Triage is an operational act, not an audit read.
+    "reconciliation.triage": ("Administrator",),
     "admin.reset":            ("Administrator",),
 }
 

@@ -86,6 +86,12 @@ POST_BASELINE_FILES = {
     # default check (the package could not import in CI at all).
     "test_integration_dto_reader_contract.py",
     "test_no_version_sensitive_defaults.py",
+    # Wave 5 integration pass, lead: unattributed reconciliation exceptions
+    # were visible to EVERY principal, because capex_dimension_permits treats
+    # a NULL row value as a waived dimension and entity_id is a nullable
+    # column. Migration 012 confines them to a triage principal.
+    "test_pg_unattributed_triage.py",
+
 
     # --- Wave 5 stream 1 (integration): ONE rate-budget implementation -----
     # Wave 5 shipped THREE implementations of the same reservation; two could
