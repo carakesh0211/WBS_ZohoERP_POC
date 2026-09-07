@@ -62,7 +62,7 @@ from ..integration.books_inventory import BooksInventoryAdapter
 from ..integration.erp import ErpAdapter
 from ..pg import integration_store as store_svc
 from ..pg import principal_scope
-from ..pg import procurement as procurement_svc
+from ..pg import procurement_services as procurement_svc
 from ..pg.engine import Database, Scope, get_database
 
 _CORRELATION_HEADER = "X-Correlation-Id"

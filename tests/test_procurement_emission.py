@@ -1,7 +1,7 @@
 """Wave 6 agent 2: a purchase order leaving for Zoho, at most once.
 
 Everything in this file runs on every machine and touches NO database and NO
-tenant. That is possible because ``pg.procurement.build_emission_plan`` is
+tenant. That is possible because ``pg.procurement_services.build_emission_plan`` is
 pure: how many purchase orders a requisition becomes, what identity each one
 carries and what ``cf_capex_ref`` the tenant will index it under depend on the
 purchase-order LINES and on ``capabilities``, and on nothing else. The database
@@ -41,7 +41,7 @@ import pytest  # noqa: E402
 
 from app.backend.integration import outbound as ob  # noqa: E402
 from app.backend.integration import throttle  # noqa: E402
-from app.backend.pg import procurement as proc  # noqa: E402
+from app.backend.pg import procurement_services as proc  # noqa: E402
 from outbound_tenant_fake import (  # noqa: E402
     C1OnlyAdapter, FakeAdapter, FakeCapabilities, FakeTenant, FunctionKilled,
     InMemoryOutboxStore, KillSwitch,

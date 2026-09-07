@@ -1,5 +1,15 @@
 """Purchase requests, purchase orders, and the emission of a PO to Zoho.
 
+THE SERVICE LAYER, NOT THE LEDGER. There are two similarly named modules in
+this package and confusing them will waste an afternoon. ``pg/procurement.py``
+is the LEDGER: the SQL that reads and writes procurement rows -- goods
+receipts, vendor bills, the reconciliation of received against ordered. THIS
+module, ``pg/procurement_services.py``, is the SERVICE layer above it: the
+PR -> PO lifecycle, the budget control that gates it, and the emission plan
+that carries an approved PO to Zoho. The ledger owns the rows; this owns the
+decisions about them. (It was itself called ``pg/procurement.py`` until the
+name collided; see ``tests/ADAPTATIONS.md``, Wave 6.)
+
 The PostgreSQL half of what ``app/backend/services.py`` does on SQLite, over
 the eight tables ``migrations/pg/013_procurement.sql`` created. Nothing here
 is a fresh design: every control is the one ``services.create_pr`` /

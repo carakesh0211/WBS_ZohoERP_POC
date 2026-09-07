@@ -2363,7 +2363,7 @@ an individual is still outstanding and is not fabricated here.
 
 ## 2026-09-07 — Wave 6 agent 2: PR → PO, the emission to Zoho, and four gaps named rather than filled
 
-Two new service modules (`app/backend/pg/procurement.py`,
+Two new service modules (`app/backend/pg/procurement_services.py`,
 `app/backend/api/procurement.py`), two new test files, and three existing
 gates widened. **No assertion anywhere was weakened, loosened or removed.**
 Every edit to an existing test file adds coverage; each is listed below with

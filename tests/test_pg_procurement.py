@@ -1,4 +1,4 @@
-"""Wave 6 agent 2: ``app.backend.pg.procurement`` -- PR -> PO on PostgreSQL.
+"""Wave 6 agent 2: ``app.backend.pg.procurement_services`` -- PR -> PO on PostgreSQL.
 
 Two layers, and the split is the same one every Wave 3-6 file makes for the
 same reason.
@@ -50,7 +50,7 @@ from decimal import Decimal  # noqa: E402
 import pytest  # noqa: E402
 
 from app.backend.integration import outbound as ob  # noqa: E402
-from app.backend.pg import procurement as proc  # noqa: E402
+from app.backend.pg import procurement_services as proc  # noqa: E402
 from app.backend.pg.engine import Scope  # noqa: E402
 
 PG = pytest.mark.skipif(
