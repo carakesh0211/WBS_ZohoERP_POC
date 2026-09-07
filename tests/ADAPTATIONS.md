@@ -1944,3 +1944,84 @@ change, and its owner should confirm the body change was intended.**
 
 **Approved by:** product owner — the two corrections referred on 2026-09-06 and
 authorised for Wave 6.
+
+---
+
+## 2026-09-07 — the `_problem(403` ban in `test_integrations_api_guard.py`
+
+**Two changes to one assertion. The first strengthens it; the second narrows
+it, and only the second is an adaptation.**
+
+The assertion as written by the stream that owns the router:
+
+```python
+assert "_problem(403" not in source.replace(" ", ""), (
+    "this router raises a 403 of its own; permission refusals belong to "
+    "auth.require, and a 403 on an id would be an existence oracle")
+```
+
+### The strengthening: it did not work
+
+`.replace(" ", "")` removes spaces. It does not remove newlines. A call wrapped
+across two lines —
+
+```python
+raise _problem(
+    403, "SOMETHING", ...)
+```
+
+— does not contain the substring `_problem(403` after that transformation, so
+it passed. That is the normal way a long call gets formatted, which means the
+guard was defeated by ordinary formatting rather than by anyone trying. It now
+normalises **all** whitespace with `re.sub(r"\s+", "", source)`.
+
+Nothing was relaxed to make this pass; it was already passing, wrongly.
+
+### The narrowing: one reviewed 403 is now permitted
+
+`POST /api/integrations/exceptions/{exception_id}/attribute` refuses with
+`ENTITY_OUT_OF_SCOPE` when the caller names a target `entity_id` they hold no
+grant for.
+
+The original ban gave two reasons, and **neither covers this case**:
+
+* *"permission refusals belong to auth.require"* — `auth.require` has already
+  run, at the router dependency, and passed. `reconciliation.triage` says the
+  caller may triage; it says nothing about which entities they may write to,
+  which comes from their scope grants. There is no permission to resolve here.
+* *"a 403 on an id would be an existence oracle"* — this refusal discloses
+  nothing about any row. The value refused is one the caller supplied in the
+  request body. Refusing it tells them only what they may do, which is not a
+  secret from them. The route's *id* lookup still answers 404, never 403, and
+  that assertion is untouched.
+
+The replacement is not "delete the check". It asserts the source contains
+**exactly one** `_problem(403`, and that the one it contains is
+`ENTITY_OUT_OF_SCOPE` — so a second 403 added anywhere in this router, for any
+reason, still fails. A companion assertion requires that refusal's message to
+name no path parameter, which is the property the existence-oracle reasoning
+actually cares about.
+
+### Why the check is not simply removed instead
+
+Dropping the Python check would leave migration 012's `WITH CHECK` as the only
+enforcement. That layer is real and is tested independently
+(`test_live_with_check_alone_refuses_an_out_of_scope_attribution` runs the
+UPDATE with the router bypassed entirely), but a policy violation surfaces as a
+driver error carrying a policy name, not as a coded refusal an operator can
+read. Keeping both gives the operator the message and keeps the enforcement
+where a route cannot forget it.
+
+### Two inventory counts in the same file
+
+`test_the_permissions_used_exist_in_the_authoritative_table` gains
+`reconciliation.triage`; `test_every_route_sets_the_correlation_header_before_it_can_refuse`
+goes from 16 handlers to 18. Both are allow-lists of what the router contains,
+updated because the router now contains more. No assertion about the listed
+items changed, and both new handlers set the correlation header like every
+other.
+
+**Approved by:** product owner — instruction of 2026-09-07 requiring "an
+explicit, permission-gated, audited administrator/integration-triage workflow
+for viewing and attributing" unattributed exceptions, which is the route this
+refusal belongs to.

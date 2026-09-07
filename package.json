@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "description": "Visual regression baselines for the approved CAPEX & WBS Control Hub UI. styles.css is the client-approved visual baseline and must not change; these tests prove it.",
   "scripts": {
-    "vrt": "playwright test",
+    "vrt": "node tools/run_vrt.mjs",
+    "vrt:selftest": "node tools/vrt_exit_code_selftest.mjs",
     "vrt:update": "playwright test --update-snapshots",
     "vrt:install": "playwright install --with-deps chromium"
   },

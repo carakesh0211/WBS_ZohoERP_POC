@@ -279,3 +279,195 @@ def test_live_an_ordinary_principal_cannot_push_a_row_into_the_blind_spot(
             "an ordinary principal blanked entity_id and moved its own "
             "discrepancy into the unattributed bucket, where only triage can "
             "see it. WITH CHECK is what forbids that.")
+
+
+# ===========================================================================
+# The API layer: the SQL those routes actually run
+# ===========================================================================
+# `app/backend/api/integrations.py` reaches these rows through
+# `UNATTRIBUTED_COLUMNS`, which waives all four dimensions, plus a literal
+# `entity_id IS NULL`. Waiving is deliberate -- a compiled
+# `entity_id = ANY(...)` predicate excludes a NULL by definition, so a mapped
+# dimension would hand a triage principal an empty page from a database
+# perfectly willing to serve them.
+#
+# The statements below are the routes' own, reproduced rather than imported
+# because importing the router would drag FastAPI, the session middleware and
+# the SQLite identity tables into a PostgreSQL RLS test. What is under test
+# here is whether the SQL and the policy agree, and that is exactly what a
+# copy of the SQL run under the policy answers.
+
+_UNATTRIBUTED_COLUMNS = {"entity": None, "plant": None, "location": None,
+                         "project": None}
+
+_LIST_SQL = """
+    SELECT exception_id FROM reconciliation_exception
+     WHERE entity_id IS NULL AND {scope}
+     ORDER BY exception_id
+"""
+
+_ATTRIBUTE_SQL = """
+    UPDATE reconciliation_exception
+       SET entity_id = %(entity_id)s
+     WHERE exception_id = %(exception_id)s
+       AND entity_id IS NULL
+       AND {scope}
+    RETURNING exception_id, entity_id
+"""
+
+
+def _run(pg_url, dbname, statement, params, *, entities, triage):
+    from app.backend.pg import repo
+
+    database = scoped_role_database(pg_url, dbname)
+    scope = Scope(user_id="U-T", principal_kind="USER",
+                  entity_ids=frozenset(entities), plant_ids=None,
+                  project_ids=None, location_ids=None, read_all=False,
+                  triage_unattributed=triage)
+    try:
+        with database.session(scope) as session:
+            return repo.query(session, statement, params,
+                              columns=_UNATTRIBUTED_COLUMNS)
+    finally:
+        database.close()
+
+
+def test_the_route_mapping_waives_every_dimension_explicitly():
+    """No database needed, and worth its own test.
+
+    `compile_scope` REFUSES a restricted dimension the caller did not map --
+    but a dimension mapped to `None` is waived silently and deliberately. The
+    difference between "waived" and "forgotten" is one line in a dict, and the
+    whole safety of this route rests on the literal `entity_id IS NULL` that
+    accompanies the waiver. If a future edit maps `entity` back to a column,
+    the triage queue silently empties; if it drops the key entirely,
+    `compile_scope` raises. Neither should happen unnoticed.
+    """
+    from app.backend.api import integrations
+
+    assert integrations.UNATTRIBUTED_COLUMNS == {
+        "entity": None, "plant": None, "location": None, "project": None}
+    # Resolved from this file, not from the working directory: pytest can be
+    # invoked from anywhere and a relative path would make this pass or fail
+    # depending on where somebody stood when they ran it.
+    module = (_TESTS_DIR.parent / "app" / "backend" / "api" / "integrations.py")
+    source = module.read_text(encoding="utf-8")
+    assert source.count("entity_id IS NULL") >= 2, (
+        "a route reads through UNATTRIBUTED_COLUMNS without also constraining "
+        "entity_id IS NULL, so its only limit is RLS -- which a superuser "
+        "connection does not have")
+
+
+@PG
+@pytest.mark.pg
+def test_live_the_triage_list_statement_returns_the_unattributed_row(
+        pg_connection, pg_url, pg_disposable_db_name):
+    """The policy and the compiled predicate agree, which is the whole point.
+
+    Before the API layer existed, migration 012 permitted this read and
+    `repo.compile_scope` discarded it -- RLS said yes and the application said
+    no, so the row was still invisible to everyone.
+    """
+    _seed(pg_connection)
+    rows = _run(pg_url, pg_disposable_db_name, _LIST_SQL, {},
+                entities={"ENT-A"}, triage=True)
+    assert [r[0] for r in rows] == [_UNATTRIBUTED]
+
+
+@PG
+@pytest.mark.pg
+def test_live_the_triage_list_statement_returns_nothing_without_the_flag(
+        pg_connection, pg_url, pg_disposable_db_name):
+    """The same statement, run by a principal the router would never give the
+    flag to. The waived mapping does NOT make this route open -- RLS is what
+    stops it, and this is the test that proves RLS is still the thing standing
+    there after all four dimensions were waived."""
+    _seed(pg_connection)
+    rows = _run(pg_url, pg_disposable_db_name, _LIST_SQL, {},
+                entities={"ENT-A"}, triage=False)
+    assert rows == [], (
+        f"a non-triage principal read {[r[0] for r in rows]} through the "
+        f"triage route's own statement. Every scope dimension is waived here, "
+        f"so RLS is the only thing left; if it is not enforcing, this route is "
+        f"an unrestricted read of every unattributed discrepancy.")
+
+
+@PG
+@pytest.mark.pg
+def test_live_attribution_moves_the_row_into_ordinary_scope(
+        pg_connection, pg_url, pg_disposable_db_name):
+    """Attribute it, and it stops needing triage to be seen.
+
+    That is the workflow completing: the row leaves the bucket only triage can
+    read and becomes an ordinary ENT-A row governed like every other.
+    """
+    _seed(pg_connection)
+    rows = _run(pg_url, pg_disposable_db_name, _ATTRIBUTE_SQL,
+                {"exception_id": _UNATTRIBUTED, "entity_id": "ENT-A"},
+                entities={"ENT-A"}, triage=True)
+    assert [(r[0], r[1]) for r in rows] == [(_UNATTRIBUTED, "ENT-A")]
+
+    seen = _visible(pg_url, pg_disposable_db_name,
+                    entities={"ENT-A"}, triage=False)
+    assert _UNATTRIBUTED in seen, (
+        "the row was attributed to ENT-A but an ordinary ENT-A principal "
+        "still cannot see it")
+
+
+@PG
+@pytest.mark.pg
+def test_live_with_check_alone_refuses_an_out_of_scope_attribution(
+        pg_connection, pg_url, pg_disposable_db_name):
+    """THE LAYER THAT SURVIVES A DELETED ROUTE.
+
+    The router checks the named entity against the caller's grants before it
+    writes, and that check is one edit away from being removed as redundant.
+    This test does not go through the router at all: it runs the UPDATE
+    directly as a triage principal scoped to ENT-A, naming ENT-B.
+
+    Migration 012's `WITH CHECK` evaluates the NEW row, which is no longer
+    NULL-entity, so the CASE falls through to `capex_scope_permits('ENT-B',
+    ...)` and refuses. If this ever passes, a triage principal can file any
+    entity's discrepancy against any other entity's books.
+    """
+    _seed(pg_connection)
+    refused = False
+    try:
+        rows = _run(pg_url, pg_disposable_db_name, _ATTRIBUTE_SQL,
+                    {"exception_id": _UNATTRIBUTED, "entity_id": "ENT-B"},
+                    entities={"ENT-A"}, triage=True)
+    except Exception:
+        refused = True
+    else:
+        refused = rows == []
+
+    assert refused, (
+        "a triage principal scoped to ENT-A attributed an exception to ENT-B "
+        "with the router's own check bypassed entirely. WITH CHECK is what "
+        "forbids that, and it is the only layer left once somebody deletes "
+        "the Python one as duplicated logic.")
+
+    still_unattributed = _visible(pg_url, pg_disposable_db_name,
+                                  entities={"ENT-A"}, triage=True)
+    assert _UNATTRIBUTED in still_unattributed
+
+
+@PG
+@pytest.mark.pg
+def test_live_attribution_cannot_re_point_an_already_attributed_row(
+        pg_connection, pg_url, pg_disposable_db_name):
+    """The write is one-way, and the WHERE is what makes it so.
+
+    `entity_id IS NULL` means the statement can only move a row OUT of the
+    unattributed bucket. Re-attribution from one entity to another is a
+    different decision with a different audit story, and it must not arrive as
+    a side effect of an UPDATE that happens to accept any id.
+    """
+    _seed(pg_connection)
+    rows = _run(pg_url, pg_disposable_db_name, _ATTRIBUTE_SQL,
+                {"exception_id": _ATTRIBUTED, "entity_id": "ENT-A"},
+                entities={"ENT-A"}, triage=True)
+    assert rows == [], (
+        f"{_ATTRIBUTED} is already attributed to ENT-A and was updated anyway; "
+        f"the route would report a fresh attribution and write an audit entry "
+        f"for a decision nobody took")

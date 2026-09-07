@@ -214,6 +214,53 @@ export function classifyMissing(err) {
   return String(err.message || '').trim().toLowerCase() === 'not found';
 }
 
+/**
+ * The route is mounted and has DECLARED it cannot answer.
+ *
+ * `api/integrations.py` answers six operations with a 503 carrying
+ * `unavailable: true` plus a `missing` noun, and it chose 503 over 404
+ * deliberately — a 404 is collapsed by the shared client into "no records were
+ * found", which on a route that cannot answer is a lie about data rather than
+ * a statement about the build.
+ *
+ * Until this existed, `firstAvailable` recognised only `classifyMissing`'s
+ * 404, so every one of those six deliberate refusals reached the screen as
+ * "The integration service returned an unexpected error (HTTP 503)". The
+ * backend avoided 404 because this module mishandled it, and this module
+ * mishandled what the backend chose instead.
+ *
+ * THE TEST IS THE FLAG, NOT THE STATUS. A 503 from a proxy, a cold start or a
+ * crashed upstream is a real fault and must keep rendering as one. Treating
+ * every 503 as "unavailable" would trade one dishonest screen for another —
+ * a permanently calm "not built yet" over an integration that had broken.
+ *
+ * @returns {boolean} true when the server declared the capability absent.
+ */
+export function classifyUnavailable(err) {
+  if (!err || err.status !== 503) return false;
+  const body = err.body;
+  const detail = body && typeof body === 'object' ? body.detail : null;
+  return !!(detail && typeof detail === 'object' && detail.unavailable === true);
+}
+
+/**
+ * What the server said is missing, for the screen to render verbatim.
+ *
+ * Preferred over this module's own note because the server knows which half is
+ * absent and this module does not: "Zoho's side of the comparison" and "no
+ * database is configured for this process" are different problems with
+ * different remedies, and a generic "Wave 5 is building this endpoint" would
+ * flatten both into a wait.
+ */
+export function unavailableNoteFrom(err) {
+  const detail = err && err.body && typeof err.body === 'object' ? err.body.detail : null;
+  if (!detail || typeof detail !== 'object') return '';
+  const parts = [detail.missing, detail.remedy].filter(
+    (x) => typeof x === 'string' && x.trim(),
+  );
+  return parts.join(' ');
+}
+
 /* ------------------------------------------------------------------ *
  * 2. Secret redaction (REQ-INT-024)
  * ------------------------------------------------------------------ */
@@ -283,6 +330,7 @@ export function scrub(value, path = '') {
  */
 async function firstAvailable(candidates, unavailableNote) {
   let lastAbsent = null;
+  let declaredNote = '';
   for (const candidate of candidates) {
     const present = await available(candidate.template);
     if (present === false) { lastAbsent = candidate; continue; }
@@ -293,6 +341,23 @@ async function firstAvailable(candidates, unavailableNote) {
         data: value, source: candidate.source, template: candidate.template, redacted,
       };
     } catch (err) {
+      // MOUNTED, AND IT SAYS IT CANNOT ANSWER.
+      //
+      // For a reader that is indistinguishable from absent, so it is handled
+      // the same way: fall through to the next source. SCR-31/32/33/38 reach
+      // `/api/zoho/connections` as `wave4-compat` and SCR-18 reaches the
+      // ledger as `ledger-compat` — with the source still named on screen,
+      // which is the whole point of this module. Before this branch existed a
+      // mounted-but-unbacked route threw past every remaining candidate and
+      // rendered a red HTTP 503.
+      //
+      // The server's own reason is kept for the case where nothing answers:
+      // it knows which half is missing and this module does not.
+      if (classifyUnavailable(err)) {
+        lastAbsent = candidate;
+        declaredNote = unavailableNoteFrom(err) || declaredNote;
+        continue;
+      }
       // Presence UNKNOWN plus a FastAPI-shaped 404 means the route is absent
       // after all; try the next source rather than reporting an empty result.
       if (present === null && classifyMissing(err)) { lastAbsent = candidate; continue; }
@@ -300,7 +365,8 @@ async function firstAvailable(candidates, unavailableNote) {
     }
   }
   throw new EndpointUnavailableError(
-    (lastAbsent && lastAbsent.template) || candidates[0].template, unavailableNote,
+    (lastAbsent && lastAbsent.template) || candidates[0].template,
+    declaredNote || unavailableNote,
   );
 }
 
@@ -621,6 +687,58 @@ export function listReconciliationExceptions(params) {
       call: () => ledger.get('/reconciliation/exceptions'),
     },
   ], WAVE5_NOTE);
+}
+
+/**
+ * SCR-27's triage queue: the exceptions nobody could attribute to an entity.
+ *
+ * SEPARATE FROM listReconciliationExceptions, AND IT HAS TO BE.
+ *
+ * `reconciliation_exception.entity_id` is nullable on purpose — an
+ * UNSANCTIONED_COMMITMENT is discovered on a purchase order we hold no local
+ * record of, so at the moment it is raised there is no entity to file it
+ * under. Those rows carry `local_paise` and `source_paise`: the exact sums by
+ * which somebody's books do not tie out. They are visible only to a principal
+ * holding `reconciliation.triage`, enforced by RLS
+ * (`migrations/pg/012_unattributed_triage.sql`), and the ordinary queue above
+ * cannot return them at all — its scope predicate compiles to
+ * `entity_id = ANY(...)`, and SQL NULL equals nothing.
+ *
+ * NO FALLBACK. The SQLite ledger has no equivalent, and falling back to the
+ * ordinary queue would render an empty triage screen that looks like "nothing
+ * to attribute" when it means "this build cannot ask".
+ */
+export function listUnattributedExceptions(params) {
+  return firstAvailable([
+    {
+      source: 'wave5',
+      template: '/api/integrations/exceptions/unattributed',
+      call: () => wave5.get('/exceptions/unattributed', params),
+    },
+  ], 'Exceptions that could not be attributed to an entity are visible only to an administrator '
+    + 'holding reconciliation.triage. This build has no PostgreSQL integration API mounted, so the '
+    + 'triage queue cannot be read — the rows still exist and still block capitalisation.');
+}
+
+/**
+ * File one unattributed exception under an entity. Audited, and one-way.
+ *
+ * The write can only ever move a row OUT of the unattributed bucket: the
+ * backend's WHERE carries `entity_id IS NULL`, so this can never re-point an
+ * already-attributed exception from one entity to another, and never push one
+ * INTO the bucket where only triage can see it. `reason` is mandatory and is
+ * written into the hash-chained audit entry.
+ */
+export function attributeException(exceptionId, body) {
+  return firstAvailable([
+    {
+      source: 'wave5',
+      template: '/api/integrations/exceptions/{exception_id}/attribute',
+      call: () => wave5.post(`/exceptions/${encodeURIComponent(exceptionId)}/attribute`, body),
+    },
+  ], 'Attributing an exception requires the PostgreSQL integration API and the reconciliation.triage '
+    + 'permission. Nothing is attributed locally as a fallback: a guess about whose discrepancy this '
+    + 'is would be recorded in the audit trail as a decision.');
 }
 
 /**

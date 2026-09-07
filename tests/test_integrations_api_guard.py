@@ -198,9 +198,9 @@ def test_this_router_mounts_nothing_the_frontend_does_not_ask_for():
 def test_path_parameters_are_named_exactly_as_the_frontend_spells_them():
     """`{connectionId}` would serve and would never be found."""
     names = set(re.findall(r"\{(\w+)\}", " ".join(sorted(_mounted_templates()))))
-    assert names == {"connection_id", "queue", "row_id"}, (
+    assert names == {"connection_id", "exception_id", "queue", "row_id"}, (
         f"unexpected path-parameter names {sorted(names)}; the frontend "
-        f"templates use connection_id, queue and row_id")
+        f"templates use connection_id, exception_id, queue and row_id")
 
 
 @pytest.mark.parametrize("method,path,_perm", ROUTES,
@@ -403,7 +403,14 @@ def test_the_permissions_used_exist_in_the_authoritative_table():
     source = MODULE_PATH.read_text(encoding="utf-8")
     used = set(re.findall(r"_requires\(\"([^\"]+)\"\)", source))
     used |= set(re.findall(r"auth_mod\.require\(who, \"([^\"]+)\"\)", source))
-    assert used == {"connector.read", "connector.manage"}, (
+    # `reconciliation.triage` joined the set when the unattributed-exception
+    # triage routes landed. It is Administrator-only and is NOT folded into
+    # `connector.manage`: managing a connector and reading the paise figures by
+    # which another entity's books do not tie out are different grants, and one
+    # permission covering both would hand every connector administrator the
+    # second by implication.
+    assert used == {"connector.read", "connector.manage",
+                    "reconciliation.triage"}, (
         f"unexpected permission set {sorted(used)}")
     for permission in used:
         assert permission in auth.PERMISSIONS, (
@@ -596,6 +603,17 @@ def test_every_unavailable_route_is_accounted_for():
     # not a route-level silence: /scopes serves a real inventory and answers
     # this only if another stream renames the constant it reads.
     raised.discard("SCOPE_INVENTORY_UNAVAILABLE")
+    # DATABASE_NOT_CONFIGURED is the same shape: a DEPENDENCY-level degradation
+    # reachable from every backed route when the process has no PostgreSQL, not
+    # a statement that any one route has nothing behind it. It uses
+    # `_unavailable` rather than a bare 503 because `integration-api.js` reads
+    # `detail.unavailable` to tell "this build cannot answer" from "something
+    # broke" -- without the envelope a build with no database rendered a red
+    # HTTP 503 on twelve screens. Discarded here for the same reason as the
+    # line above: this map is the inventory of ROUTES that cannot answer, and
+    # adding a dependency failure to it would make "backed" stop meaning
+    # anything.
+    raised.discard("DATABASE_NOT_CONFIGURED")
     assert raised == set(UNAVAILABLE.values()), (
         f"the unavailable-route codes in the source {sorted(raised)} do not "
         f"match this test's map {sorted(set(UNAVAILABLE.values()))}")
@@ -813,12 +831,45 @@ def test_an_out_of_scope_row_is_reported_as_absent_and_never_as_forbidden():
         status, code = int(match.group(1)), match.group(2)
         if "NOT_FOUND" in code:
             assert status == 404, f"{code} answers {status}, not 404"
-    assert "_problem(403" not in source.replace(" ", ""), (
-        "this router raises a 403 of its own; permission refusals belong to "
-        "auth.require, and a 403 on an id would be an existence oracle")
+    # This assertion previously read `"_problem(403" not in
+    # source.replace(" ", "")`. It had a hole: `.replace(" ", "")` strips
+    # spaces but NOT newlines, so `_problem(\n            403, ...)` -- which
+    # is how black-ish formatting wraps a long call -- did not contain the
+    # substring and sailed straight through. A guard a line break defeats is
+    # not a guard. Normalising all whitespace closes that.
+    #
+    # It is also narrowed, deliberately and with the reason stated, from "no
+    # 403 anywhere" to "no 403 except the one reviewed case":
+    #
+    #   ENTITY_OUT_OF_SCOPE refuses an attribution whose TARGET ENTITY the
+    #   caller named in the request BODY. It is not a permission refusal
+    #   (auth.require has already run, at the router dependency) and it is not
+    #   an existence oracle -- it discloses nothing about any row, only that
+    #   the caller may not write to an entity they themselves supplied. The
+    #   original ban was written when every refusal in this file was one of
+    #   those two things, and it is kept for every other case.
+    #
+    # Recorded as ADAPT-INT-403 in tests/ADAPTATIONS.md.
+    flat = re.sub(r"\s+", "", source)
+    permitted_403 = '_problem(403,"ENTITY_OUT_OF_SCOPE"'
+    assert flat.count("_problem(403") == flat.count(permitted_403) == 1, (
+        "this router raises a 403 of its own beyond the one reviewed case "
+        "(ENTITY_OUT_OF_SCOPE on an attribution's named target entity). "
+        "Permission refusals belong to auth.require, and a 403 on an id "
+        "would be an existence oracle")
+    assert "{exception_id}" not in _out_of_scope_message(source), (
+        "the out-of-scope refusal names a path parameter, which turns a "
+        "statement about the caller's own grants into one about a row")
     assert "does not exist or is out of scope" not in source, (
         "a refusal message that spells out BOTH cases still distinguishes them "
         "for anyone reading carefully; say only that it is not visible")
+
+
+def _out_of_scope_message(source: str) -> str:
+    """The prose of the ENTITY_OUT_OF_SCOPE refusal, for the assertion above."""
+    start = source.find('"ENTITY_OUT_OF_SCOPE"')
+    assert start != -1, "ENTITY_OUT_OF_SCOPE is no longer raised"
+    return source[start:start + 800]
 
 
 # ========================================================= 6. lists and headers
@@ -826,6 +877,7 @@ _LIST_ROUTES = [
     "/api/integrations/connections", "/api/integrations/events",
     "/api/integrations/inbox", "/api/integrations/outbox",
     "/api/integrations/dead-letters", "/api/integrations/exceptions",
+    "/api/integrations/exceptions/unattributed",
 ]
 
 
@@ -927,8 +979,12 @@ def test_every_route_sets_the_correlation_header_before_it_can_refuse():
                 and d.func.value.id == "router"
                 for d in node.decorator_list)
     }
-    assert len(handlers) == 16, (
-        f"expected 16 route handlers, found {len(handlers)}: {sorted(handlers)}")
+    # 16 at first delivery; 18 with the two unattributed-exception triage
+    # routes. The count is asserted rather than merely iterated so a handler
+    # added without the header is caught even if it is also added to some
+    # other allow-list -- the loop below only checks the handlers it finds.
+    assert len(handlers) == 18, (
+        f"expected 18 route handlers, found {len(handlers)}: {sorted(handlers)}")
     for name in sorted(handlers):
         body = inspect.getsource(getattr(integrations_api, name))
         assert "_set_correlation_header(response, request)" in body, (
@@ -993,6 +1049,14 @@ DELIVERED_MUTATING_ROUTES = [
     ("/api/integrations/dead-letters/{queue}/{row_id}/retry", "POST",
      "/api/integrations/dead-letters/outbox/OBX-01/retry", {},
      "connector.manage", "Auditor"),
+    # Attributing an unattributed exception. `reconciliation.triage` is
+    # Administrator-only, so Auditor is the denied role here for the same
+    # reason as every row above -- it holds `connector.read` and clears the
+    # ROUTER's floor, then stops at the route's own permission.
+    ("/api/integrations/exceptions/{exception_id}/attribute", "POST",
+     "/api/integrations/exceptions/RX-1/attribute",
+     {"entity_id": "ENT-DM-01", "reason": "unauthorised attempt"},
+     "reconciliation.triage", "Auditor"),
 ]
 
 

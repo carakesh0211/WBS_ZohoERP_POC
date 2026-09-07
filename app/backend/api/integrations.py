@@ -24,6 +24,9 @@ unavailable state over a working endpoint.
     GET    /api/integrations/inbox
     GET    /api/integrations/reconciliation
     GET    /api/integrations/exceptions
+    GET    /api/integrations/exceptions/unattributed
+    POST   /api/integrations/exceptions/{exception_id}/attribute
+    POST   /api/integrations/exceptions/{exception_id}/resolve
     GET    /api/integrations/control-totals
 
 Note the American ``authorize``/``organization`` spellings. They are the
@@ -92,6 +95,7 @@ OPEN, granting a role that the authoritative table excluded. If
 from __future__ import annotations
 
 import base64
+import dataclasses
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -223,16 +227,37 @@ _STATEMENT_TIMEOUT = "30s"
 # ==================================================================== plumbing
 def _get_database() -> Database:
     """Degrade to a clean 503, never a 500 traceback -- same posture as
-    ``api/budget.py`` and ``api/audit.py``."""
+    ``api/budget.py`` and ``api/audit.py``.
+
+    CARRIES THE `unavailable` ENVELOPE, and that is not cosmetic.
+
+    It first raised a bare 503 with a `code` and a `message` and nothing else.
+    `integration-api.js` reads `detail.unavailable` to tell "this build cannot
+    answer" from "something broke", so without the flag every screen in a
+    process with no PostgreSQL rendered
+
+        "The integration service returned an unexpected error (HTTP 503)"
+
+    -- a red fault banner for a build that is simply not configured for this.
+    Twelve screens across three viewports, caught by the VRT assertion "renders
+    data-with-a-source or unavailable, never a bare empty state".
+
+    It keeps its OWN code rather than reusing one of the six capability codes:
+    an unconfigured database and an absent Zoho endpoint want different actions
+    from whoever is reading, and collapsing them would send an operator to look
+    at the wrong half.
+    """
     try:
         return get_database()
     except RuntimeError as exc:
-        raise HTTPException(
-            status_code=503,
-            detail={"code": "DATABASE_NOT_CONFIGURED",
-                    "message": "The integration API is mounted but no database "
-                               "is configured for this process.",
-                    "message_id": None},
+        raise _unavailable(
+            "DATABASE_NOT_CONFIGURED",
+            "a PostgreSQL database: the integration API is mounted, but this "
+            "process has none configured, so no integration record can be "
+            "read or written here.",
+            remedy="Set CAPEX_DB_URL and run the migrations. The SQLite "
+                   "ledger surfaces at /api/reconciliation and /api/zoho/* "
+                   "answer what they can without one.",
         ) from exc
 
 
@@ -1498,6 +1523,390 @@ def list_reconciliation_exceptions(
             for r in kept
         ],
         "next_cursor": next_cursor,
+    }
+
+
+# =============================================== unattributed exception triage
+#: `reconciliation_exception` with entity and project waived EXPLICITLY.
+#:
+#: Waiving is the whole point here, and it is why this is a separate mapping
+#: rather than a flag on `EXCEPTION_COLUMNS`. The rows being read are the ones
+#: whose `entity_id` IS NULL; a compiled `entity_id = ANY(...)` predicate
+#: excludes them by definition, so leaving the dimension mapped would return an
+#: empty page to a principal the database is perfectly willing to serve, and
+#: the route would look implemented while triaging nothing.
+#:
+#: What is NOT waived, because waiving the predicate does not waive the policy:
+#:
+#:   * RLS still runs. `reconciliation_exception_scope` (migration 012) admits
+#:     a NULL-entity row only to `capex_may_triage_unattributed()`, which reads
+#:     the session setting `Scope.triage_unattributed` emits. A caller without
+#:     it sees nothing here, whatever this mapping says.
+#:   * Both routes below carry a literal `entity_id IS NULL`, so even against a
+#:     connection that bypasses RLS entirely -- a superuser, which is exactly
+#:     what CI's `POSTGRES_USER: capex` is -- the widest thing this mapping can
+#:     reach is the unattributed bucket. It cannot reach another entity's
+#:     ATTRIBUTED rows, which is the failure that would actually matter.
+UNATTRIBUTED_COLUMNS: dict[str, str | None] = {
+    "entity": None, "plant": None, "location": None, "project": None,
+}
+
+
+def _triage_scope(request: Request, database: Database) -> Scope:
+    """The caller's own scope, plus the unattributed bucket. Nothing else.
+
+    THE ONE PLACE `triage_unattributed` IS EVER SET TO TRUE.
+
+    It is derived from the PERMISSION rather than from a grant table because
+    `auth.PERMISSIONS` is where the decision already lives: both routes below
+    are gated on `reconciliation.triage` by a router dependency that runs
+    first, and a second grant table would only be a second place for the
+    answer to disagree with the first.
+
+    Everything else is left exactly as `scope_for_request` resolved it, which
+    matters more than it looks. A triage principal scoped to ENT-A must still
+    not read ENT-B's ATTRIBUTED exceptions -- otherwise `triage_unattributed`
+    has quietly become `read_all`, which is the conflation the separate flag
+    exists to prevent and which
+    `test_live_triage_does_not_widen_ordinary_entity_scope` fails on.
+    """
+    return dataclasses.replace(_scope_for(request, database),
+                               triage_unattributed=True)
+
+
+@router.get("/api/integrations/exceptions/unattributed",
+            dependencies=[Depends(_requires("reconciliation.triage"))])
+def list_unattributed_exceptions(
+    response: Response, request: Request,
+    status: str | None = Query(default=None),
+    kind: str | None = Query(default=None),
+    cursor: str | None = Query(default=None),
+    limit: int = Query(default=_DEFAULT_LIMIT),
+    database: Database = Depends(_get_database),
+) -> dict[str, Any]:
+    """SCR-27's triage queue: the exceptions nobody could attribute yet.
+
+    An `UNSANCTIONED_COMMITMENT` raised against a purchase order we hold no
+    local record of has no entity to file it under at the moment it is raised.
+    Section 11.8 requires such a line to be held at full value, VISIBLE, and
+    blocking capitalisation. Without this route the first and third held and
+    the second did not: the row existed, it blocked, and no screen could show
+    it to anybody.
+
+    The path is a LITERAL segment under `/exceptions/`, and this router
+    deliberately has no `/exceptions/{exception_id}` GET. If one is ever added
+    it must be registered AFTER this route: Starlette matches in registration
+    order, and a `{exception_id}` route registered first would swallow the
+    literal `unattributed` and hand it to the detail route as an id.
+    """
+    _set_correlation_header(response, request)
+    limit = _limit(limit)
+    after = _decode_cursor(cursor, 2)
+
+    conditions = ["entity_id IS NULL"]
+    params: dict[str, Any] = {"limit": limit + 1}
+    if status is not None:
+        conditions.append("status = %(status)s")
+        params["status"] = status
+    if kind is not None:
+        conditions.append("kind = %(kind)s")
+        params["kind"] = kind
+    if after is not None:
+        conditions.append(
+            "(raised_at, exception_id) < (%(after_at)s, %(after_id)s)")
+        params["after_at"], params["after_id"] = after
+
+    statement = f"""
+        SELECT exception_id, kind, object_type, object_id, entity_id,
+               project_id, status, detail, local_paise, source_paise,
+               correlation_id, raised_at, resolved_at, resolved_by,
+               resolution_note
+        FROM reconciliation_exception
+        WHERE {' AND '.join(conditions)} AND {{scope}}
+        ORDER BY raised_at DESC, exception_id DESC
+        LIMIT %(limit)s
+    """
+    try:
+        with _Txn(database, _triage_scope(request, database)) as session:
+            rows = repo.query(session, statement, params,
+                              columns=UNATTRIBUTED_COLUMNS)
+    except store.IntegrationStoreError as exc:
+        raise _store_error_to_http(exc)
+
+    kept, next_cursor = _page(rows, limit, key=(11, 0))
+    return {
+        "items": [
+            {"exception_id": r[0], "kind": r[1], "object_type": r[2],
+             "object_id": r[3], "entity_id": r[4], "project_id": r[5],
+             "status": r[6], "detail": r[7], "local_paise": r[8],
+             "source_paise": r[9], "correlation_id": r[10],
+             "raised_at": _iso(r[11]), "resolved_at": _iso(r[12]),
+             "resolved_by": r[13], "resolution_note": r[14]}
+            for r in kept
+        ],
+        "next_cursor": next_cursor,
+        "source": "wave5",
+    }
+
+
+class _AttributionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    entity_id: str
+    project_id: str | None = None
+    reason: str
+
+
+@router.post("/api/integrations/exceptions/{exception_id}/attribute",
+             dependencies=[Depends(_requires("reconciliation.triage"))])
+def attribute_exception(
+    exception_id: str, body: _AttributionIn,
+    response: Response, request: Request,
+    database: Database = Depends(_get_database),
+) -> dict[str, Any]:
+    """File an unattributed exception under an entity. Audited, and narrowing.
+
+    THREE INDEPENDENT LAYERS DECIDE WHETHER THIS WRITE IS ALLOWED, and they
+    are not redundant -- each catches something the others cannot:
+
+    1. `reconciliation.triage`, checked by the router dependency before this
+       body runs, says the CALLER may triage at all.
+    2. The check below says the caller may write to the entity they NAMED. It
+       exists for the error message as much as for the refusal: a scope
+       violation caught here is a 403 naming the entity that was refused,
+       where the same violation caught by the database is a driver error with
+       a policy name in it.
+    3. Migration 012's `WITH CHECK` says the same thing again, in the
+       database, where no route can forget it. The NEW row is no longer
+       NULL-entity, so the policy's CASE falls through to
+       `capex_scope_permits(entity_id, ...)`: attributing to an entity outside
+       the caller's scope is refused even if this function were deleted.
+
+    The write is deliberately ONE-WAY. `entity_id IS NULL` in the WHERE means
+    it can only ever move a row OUT of the unattributed bucket -- never into
+    it, and never from one entity to another. Re-attribution is a different
+    decision with a different audit story, and it is not smuggled in here as a
+    side effect of an UPDATE that happens to accept any id.
+
+    Zero rows updated is 404, never 403. The row may not exist, may already be
+    attributed, or may be invisible to this caller, and distinguishing those in
+    the response is an existence oracle -- `repo`'s own contract is that an
+    out-of-scope read comes back as "not found".
+    """
+    _set_correlation_header(response, request)
+    correlation_id = _correlation_id(request)
+    actor = _actor(request)
+
+    entity_id = (body.entity_id or "").strip()
+    reason = (body.reason or "").strip()
+    if not entity_id:
+        raise _problem(400, "BLANK_ENTITY_ID", "Blank Entity Id",
+                       "An attribution names the entity the exception belongs "
+                       "to. A blank one would clear the field rather than set "
+                       "it, which is the direction this route refuses.")
+    if not reason:
+        raise _problem(400, "ATTRIBUTION_REASON_REQUIRED",
+                       "Attribution Reason Required",
+                       "The reason is written into the audit entry. An "
+                       "attribution with no stated basis is a discrepancy "
+                       "moved between two parties' books by an unexplained "
+                       "decision.")
+
+    scope = _scope_for(request, database)
+    permitted = scope.entity_ids
+    # `None` is unrestricted; an empty frozenset is nothing. `read_all` is
+    # tested separately because it short-circuits `compile_scope` before any
+    # dimension is examined, and would otherwise be refused here while the
+    # database allowed it.
+    if not scope.read_all and permitted is not None and entity_id not in permitted:
+        raise _problem(
+            403, "ENTITY_OUT_OF_SCOPE", "Entity Out Of Scope",
+            f"Attributing this exception to {entity_id} would file another "
+            f"party's discrepancy against an entity you hold no grant for. "
+            f"Triage grants the unattributed rows; it does not widen which "
+            f"entities you may write to.")
+
+    statement = """
+        UPDATE reconciliation_exception
+           SET entity_id = %(entity_id)s,
+               project_id = COALESCE(%(project_id)s, project_id)
+         WHERE exception_id = %(exception_id)s
+           AND entity_id IS NULL
+           AND {scope}
+        RETURNING exception_id, kind, object_type, object_id, entity_id,
+                  project_id, status, local_paise, source_paise
+    """
+    params = {"exception_id": exception_id, "entity_id": entity_id,
+              "project_id": body.project_id}
+
+    try:
+        with _Txn(database, _triage_scope(request, database)) as session:
+            rows = repo.query(session, statement, params,
+                              columns=UNATTRIBUTED_COLUMNS)
+            if not rows:
+                raise _problem(
+                    404, "UNATTRIBUTED_EXCEPTION_NOT_FOUND",
+                    "Unattributed Exception Not Found",
+                    f"No unattributed exception {exception_id} is visible to "
+                    f"you. It may not exist, or it may already have been "
+                    f"attributed by somebody else.")
+            row = rows[0]
+            # Audited INSIDE the transaction, so an attribution that rolls
+            # back leaves no audit entry claiming it happened, and one that
+            # commits cannot commit without its entry. The chain is per object
+            # -- stream `reconciliation_exception:{id}` -- and this is the last
+            # locking action in the function, per `locking.py`'s global order.
+            entry = audit_svc.append(
+                session, actor, "reconciliation.attribute",
+                "reconciliation_exception", exception_id,
+                json.dumps({"entity_id": entity_id,
+                            "project_id": row[5],
+                            "kind": row[1],
+                            "local_paise": row[7],
+                            "source_paise": row[8],
+                            "reason": reason},
+                           sort_keys=True, default=str),
+                correlation_id=correlation_id)
+    except HTTPException:
+        raise
+    except store.IntegrationStoreError as exc:
+        raise _store_error_to_http(exc)
+
+    return {
+        "exception_id": row[0], "kind": row[1], "object_type": row[2],
+        "object_id": row[3], "entity_id": row[4], "project_id": row[5],
+        "status": row[6], "local_paise": row[7], "source_paise": row[8],
+        "attributed_by": actor, "audit_seq": entry["seq"],
+        "correlation_id": correlation_id,
+        "source": "wave5",
+    }
+
+
+#: C18 freezes the `exception_status` namespace. An exception leaves `Open` by
+#: one of exactly three doors, and this router invents no fourth: the CHECK
+#: constraint `ck_reconciliation_exception_status` would refuse it anyway, but
+#: refusing here means the caller gets a coded 400 naming the three rather than
+#: a driver error naming a constraint.
+#:
+#: They are not synonyms and the screens must not present them as one:
+#:   Resolved    -- the discrepancy was real and has been corrected.
+#:   Accepted    -- the discrepancy is real, understood, and tolerated.
+#:   Written_off -- the amount will not be recovered and is being written off.
+RESOLUTION_STATUSES: frozenset[str] = frozenset(
+    {"Resolved", "Accepted", "Written_off"})
+
+
+class _ResolutionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: str
+    note: str
+
+
+@router.post("/api/integrations/exceptions/{exception_id}/resolve",
+             dependencies=[Depends(_requires("reconciliation.triage"))])
+def resolve_exception(
+    exception_id: str, body: _ResolutionIn,
+    response: Response, request: Request,
+    database: Database = Depends(_get_database),
+) -> dict[str, Any]:
+    """Close a reconciliation exception. Permission-gated and audited.
+
+    THIS IS A FINANCIAL-CONTROL ACTION, NOT HOUSEKEEPING. `status = 'Open'` is
+    what blocks capitalisation and period close, so closing one releases a
+    gate. It carries `reconciliation.triage` -- Administrator only -- and
+    writes an audit entry naming the actor, the door taken and the stated
+    reason, in the same transaction as the write.
+
+    SCOPED NORMALLY, AND DELIBERATELY SO. Unlike the two triage routes above,
+    this one uses `EXCEPTION_COLUMNS` and the caller's ORDINARY scope: by the
+    time an exception can be resolved it has an entity, and whoever resolves it
+    must hold that entity. `triage_unattributed` is NOT set here -- resolving a
+    row that is still unattributed would close a discrepancy without ever
+    saying whose it was, which is a silent drop wearing a status change. An
+    unattributed row must be attributed first; the 404 below is what enforces
+    it, because the scope predicate cannot match a NULL entity.
+
+    ONE-WAY, like `attribute`. `status = 'Open'` in the WHERE means a closed
+    exception cannot be re-closed under a different door or a different reason.
+    Reopening is a separate decision that this router does not offer.
+    """
+    _set_correlation_header(response, request)
+    correlation_id = _correlation_id(request)
+    actor = _actor(request)
+
+    status = (body.status or "").strip()
+    note = (body.note or "").strip()
+    if status not in RESOLUTION_STATUSES:
+        raise _problem(
+            400, "UNKNOWN_RESOLUTION_STATUS", "Unknown Resolution Status",
+            f"An exception leaves Open by one of "
+            f"{', '.join(sorted(RESOLUTION_STATUSES))}. They are not synonyms: "
+            f"Resolved means the discrepancy was corrected, Accepted means it "
+            f"is tolerated, and Written_off means the amount will not be "
+            f"recovered.")
+    if not note:
+        raise _problem(
+            400, "RESOLUTION_NOTE_REQUIRED", "Resolution Note Required",
+            "The note is written into the audit entry and into "
+            "resolution_note. Closing a discrepancy releases a capitalisation "
+            "and period-close gate, and doing so without a stated basis leaves "
+            "an auditor with a status change and no reason for it.")
+
+    statement = """
+        UPDATE reconciliation_exception
+           SET status = %(status)s,
+               resolved_at = now(),
+               resolved_by = %(actor)s,
+               resolution_note = %(note)s
+         WHERE exception_id = %(exception_id)s
+           AND status = 'Open'
+           AND {scope}
+        RETURNING exception_id, kind, object_type, object_id, entity_id,
+                  project_id, status, local_paise, source_paise, resolved_at
+    """
+    params = {"exception_id": exception_id, "status": status,
+              "actor": actor, "note": note}
+
+    try:
+        with _session(request, database) as session:
+            rows = repo.query(session, statement, params,
+                              columns=EXCEPTION_COLUMNS)
+            if not rows:
+                # 404, never 403, and never a message distinguishing the cases.
+                # "Already closed", "out of your scope" and "still unattributed"
+                # are three different facts about a row the caller may not be
+                # entitled to know exists.
+                raise _problem(
+                    404, "OPEN_EXCEPTION_NOT_FOUND", "Open Exception Not Found",
+                    f"No open exception {exception_id} is visible to you. An "
+                    f"exception that has not been attributed to an entity must "
+                    f"be attributed before it can be resolved.")
+            row = rows[0]
+            entry = audit_svc.append(
+                session, actor, f"reconciliation.{status.lower()}",
+                "reconciliation_exception", exception_id,
+                json.dumps({"status": status,
+                            "entity_id": row[4],
+                            "project_id": row[5],
+                            "kind": row[1],
+                            "local_paise": row[7],
+                            "source_paise": row[8],
+                            "note": note},
+                           sort_keys=True, default=str),
+                correlation_id=correlation_id)
+    except HTTPException:
+        raise
+    except store.IntegrationStoreError as exc:
+        raise _store_error_to_http(exc)
+
+    return {
+        "exception_id": row[0], "kind": row[1], "object_type": row[2],
+        "object_id": row[3], "entity_id": row[4], "project_id": row[5],
+        "status": row[6], "local_paise": row[7], "source_paise": row[8],
+        "resolved_at": _iso(row[9]), "resolved_by": actor,
+        "audit_seq": entry["seq"], "correlation_id": correlation_id,
+        "source": "wave5",
     }
 
 

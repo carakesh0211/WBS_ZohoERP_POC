@@ -309,9 +309,25 @@ jobs:
       # boot, so no separate seed step is needed here. A seed against the
       # default path would be a no-op and misleading to read.
 
+      # PROVE THE GATE CAN GO RED BEFORE TRUSTING IT GREEN.
+      #
+      # Twice in one session a VRT run was reported passing when it had failed:
+      # once because the --config path did not exist and Playwright never ran,
+      # once because the command ended in `tail`, whose exit status is what the
+      # shell reported. This runs a deliberately failing spec through
+      # tools/run_vrt.mjs and requires a non-zero exit, then a passing one and
+      # requires zero, and deletes both. It takes about three seconds and it is
+      # the only thing standing between "the suite is green" and "the suite
+      # reported green".
+      - name: VRT exit-code guard
+        run: npm run vrt:selftest
+
       # styles.css is the client-approved baseline. A pixel diff is a failure.
+      # Invoked through the wrapper, which passes Playwright's exit code
+      # through untouched -- no shell, no pipeline, no `tee`, nothing that can
+      # substitute its own status for the suite's.
       - name: Visual regression
-        run: npx playwright test
+        run: npm run vrt
         env:
           CAPEX_PROFILE: local-demo
 

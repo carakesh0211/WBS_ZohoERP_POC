@@ -3169,7 +3169,7 @@
       },
       "test_path_parameters_are_named_exactly_as_the_frontend_spells_them": {
         "assertions": 1,
-        "body_sha": "4cc66f04f3d98dbe"
+        "body_sha": "fcea47e93767507e"
       },
       "test_every_route_is_actually_served": {
         "assertions": 1,
@@ -3209,7 +3209,7 @@
       },
       "test_the_permissions_used_exist_in_the_authoritative_table": {
         "assertions": 2,
-        "body_sha": "07edb9f74e06e229"
+        "body_sha": "0ed17751c00f84b9"
       },
       "test_the_actor_is_server_derived_and_ignores_a_caller_supplied_header": {
         "assertions": 2,
@@ -3280,8 +3280,8 @@
         "body_sha": "8fd26493412cdb94"
       },
       "test_an_out_of_scope_row_is_reported_as_absent_and_never_as_forbidden": {
-        "assertions": 3,
-        "body_sha": "85a5418458fcb78b"
+        "assertions": 4,
+        "body_sha": "c65f0a9a0c3cf8af"
       },
       "test_every_list_route_is_cursor_paginated": {
         "assertions": 1,
@@ -3313,7 +3313,7 @@
       },
       "test_every_route_sets_the_correlation_header_before_it_can_refuse": {
         "assertions": 2,
-        "body_sha": "a702f7f2184cab8d"
+        "body_sha": "12c3ce7b907bc23b"
       },
       "test_the_correlation_id_returned_is_the_one_recorded": {
         "assertions": 2,
@@ -7290,6 +7290,30 @@
       "test_live_an_ordinary_principal_cannot_push_a_row_into_the_blind_spot": {
         "assertions": 1,
         "body_sha": "fed170dd9e4ced13"
+      },
+      "test_the_route_mapping_waives_every_dimension_explicitly": {
+        "assertions": 2,
+        "body_sha": "dbe0a8512852db53"
+      },
+      "test_live_the_triage_list_statement_returns_the_unattributed_row": {
+        "assertions": 1,
+        "body_sha": "9ea6f55c456569a5"
+      },
+      "test_live_the_triage_list_statement_returns_nothing_without_the_flag": {
+        "assertions": 1,
+        "body_sha": "9ef64b5a7ae7bfa6"
+      },
+      "test_live_attribution_moves_the_row_into_ordinary_scope": {
+        "assertions": 2,
+        "body_sha": "1435f37f6593f615"
+      },
+      "test_live_with_check_alone_refuses_an_out_of_scope_attribution": {
+        "assertions": 2,
+        "body_sha": "36b95ad4d6d5f839"
+      },
+      "test_live_attribution_cannot_re_point_an_already_attributed_row": {
+        "assertions": 1,
+        "body_sha": "3f6cd6c6538e85ff"
       }
     },
     "test_runtime_startup.py": {
@@ -7669,7 +7693,7 @@
     "test_pg_seed.py": 23,
     "test_pg_settings.py": 17,
     "test_pg_transactions.py": 4,
-    "test_pg_unattributed_triage.py": 8,
+    "test_pg_unattributed_triage.py": 14,
     "test_runtime_startup.py": 11,
     "test_scope_enforcement.py": 9,
     "test_scope_negative_matrix.py": 25,
@@ -7703,7 +7727,7 @@
     "test_integration_store.py": 92,
     "test_integration_sweeps.py": 110,
     "test_integration_throttle.py": 244,
-    "test_integrations_api_guard.py": 107,
+    "test_integrations_api_guard.py": 108,
     "test_known_defects.py": 13,
     "test_manifest.py": 15,
     "test_masters_settings_api_guard.py": 15,
@@ -7747,7 +7771,7 @@
     "test_pg_seed.py": 56,
     "test_pg_settings.py": 46,
     "test_pg_transactions.py": 10,
-    "test_pg_unattributed_triage.py": 14,
+    "test_pg_unattributed_triage.py": 23,
     "test_runtime_startup.py": 31,
     "test_scope_enforcement.py": 11,
     "test_scope_negative_matrix.py": 82,

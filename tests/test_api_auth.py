@@ -205,6 +205,14 @@ MUTATING_ROUTES = [
     ("/api/integrations/dead-letters/{queue}/{row_id}/retry", "POST",
      "/api/integrations/dead-letters/outbox/OUT-1/retry", {},
      "connector.manage", "Auditor"),
+    # The triage attribution. `reconciliation.triage` is Administrator-only
+    # (Auditor is excluded deliberately: `test_aud_c_006_auditor_is_read_only`
+    # pins Auditor to an allow-list, and widening an audit-finding assertion
+    # so a new feature reads tidily is not a thing to do in passing).
+    ("/api/integrations/exceptions/{exception_id}/attribute", "POST",
+     "/api/integrations/exceptions/RX-1/attribute",
+     {"entity_id": "ENT-01", "reason": "unauthorised attempt"},
+     "reconciliation.triage", "Auditor"),
 ]
 
 PUBLIC_MUTATING_ROUTES = {"/api/auth/login"}

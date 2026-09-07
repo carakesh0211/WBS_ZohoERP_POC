@@ -1,8 +1,43 @@
 # Full application — delivery status
 
-**Branch:** `full-application/build` · **Waves 1-3 COMPLETE** — PostgreSQL
-foundation, settings/masters, budget control, identity/scope, and security
-closure · **Wave 4 in progress** — M4b configurable approval engine
+**Branch:** `full-application/build` · **Waves 1-4 COMPLETE** — PostgreSQL
+foundation, settings/masters, budget control, identity/scope, security
+closure, and the configurable approval engine · **Wave 5 in progress** —
+integration platform, inbound sweeps, outbound PO emission
+
+> ### ⚠ A BLOCKING STRUCTURAL FINDING, RECORDED 2026-09-07
+>
+> **PostgreSQL has no procurement document chain.** `purchase_order`,
+> `po_line`, `grn`, `grn_line`, `bill`, `bill_line`, `purchase_request` and
+> `pr_line` are created by **none** of migrations 001–012, which between them
+> create 53 tables. All eight exist in the SQLite POC. This was reached
+> independently three times — by the integration-router stream (its
+> `/reconciliation` route refuses for exactly this reason), by the SweepStore
+> stream (five of its functions raise `SCHEMA_NOT_YET_MIGRATED` rather than
+> return a plausible default), and by direct inspection of `migrations/pg/`.
+>
+> **What it blocks, precisely:**
+>
+> * §11.8 receive-line attribution has nowhere to write. `resolve_po_line`,
+>   `record_receive_line` and `accumulate_unattributed` are unimplementable.
+> * The Wave 5 exit criterion *"ordered, received, billed and open reconcile
+>   to the paisa"* cannot be reached, because three of those four quantities
+>   have no PostgreSQL home.
+> * `GET /api/integrations/reconciliation` and `GET
+>   /api/integrations/control-totals` stay at a coded 503. Neither is waiting
+>   on a Zoho tenant.
+>
+> **The table below is corrected accordingly.** "Phase 1 — PostgreSQL port,
+> behaviour-identical | complete" was **not true** and is withdrawn: a port
+> that omits the entire procurement chain is not behaviour-identical to the
+> application it ported from. The financial-control core (budget, WBS, cells,
+> periods, audit, approvals, access) genuinely is ported and is what the
+> milestone actually delivered.
+>
+> This is a schema decision for the lead, not something a stream can settle:
+> the tables carry the composite foreign keys of plan §6.2, and inventing them
+> inside an integration stream would put the control model's constraints where
+> nobody reviewing the data model would look.
 
 ## Traceability to the approved plan
 
@@ -11,11 +46,12 @@ this build numbers by **milestone**. Recorded rather than assumed:
 
 | Plan phase | Milestone | Status |
 |---|---|---|
-| Phase 1 — PostgreSQL port, behaviour-identical | M1 | complete (`c7ca3f6`) |
+| Phase 1 — PostgreSQL port, **financial-control core only** | M1 | **partial** (`c7ca3f6`) — see the finding above. Budget, WBS, cells, periods, audit and access are ported; the procurement document chain (`purchase_order`, `po_line`, `grn`, `grn_line`, `bill`, `bill_line`, `purchase_request`, `pr_line`) is **absent from all twelve migrations** |
 | Phase 2 — Control cell, periods, budget slice (SCR-09/10/13) | M3 | **integrated** |
 | Phase 3 — Identity, roles, scope, admin slice | M4a | **integrated** |
 | Phase 3 — Settings and master data (SCR-30, Z-06) | M2 | **integrated** |
-| Phase 4 — Approval engine | M4b | **in progress (Wave 4)** |
+| Phase 4 — Approval engine | M4b | **integrated** |
+| Phase 5 — Integration inbound + outbound PO | M5 | **in progress (Wave 5)** — schema, inbox/outbox, chunked jobs, rate budget, circuit breaker, outbound emission and the `/api/integrations/*` router are in. **Blocked on the procurement schema above** for receive attribution and control totals |
 
 ## Completed vertical slices
 
