@@ -174,6 +174,17 @@ POST_BASELINE_FILES = {
     # run everywhere; the rest are `@pytest.mark.pg` and run for the first
     # time in CI.
     "test_pg_rls_integration_matrix.py",
+
+    # --- Wave 5: the /api/integrations/* router ---------------------------
+    # The guard, the frontend path-template contract, and the six operations
+    # that answer a coded 503 rather than a synthesised number. Database-free
+    # in its entirety and deliberately so: every property it holds is decided
+    # in a router dependency or in the source, before a database is touched,
+    # and a CAPEX_DB_URL gate would turn the whole file into a silent skip on
+    # every machine without a server. Post-baseline like every Wave 2-6 file:
+    # the 220 counts the POC's audit-remediation suite, and inflating it would
+    # make the removal guard stop meaning anything.
+    "test_integrations_api_guard.py",
 }
 
 

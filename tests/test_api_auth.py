@@ -174,6 +174,37 @@ MUTATING_ROUTES = [
      "/api/approvals/delegations/AD-DEL-1/revoke",
      {"reason_text": "unauthorised attempt"},
      "approval.delegate", "Requestor"),
+
+    # ---------------------------------------------------------- Wave 5
+    # `/api/integrations/*`. Every mutating route on that router carries
+    # `connector.manage`, and the denied role for all five is Auditor: it
+    # holds `connector.read`, so it authenticates and clears the ROUTER's
+    # floor, and stops at the route's own permission. A role that failed the
+    # floor would produce a 403 from the wrong check and the row would prove
+    # nothing about the route.
+    #
+    # Registered in the same commit that mounts the router in `main.py`. This
+    # matrix is built from the live OpenAPI schema, so a mounted route with no
+    # row here fails
+    # `test_aud_c_006_every_mutating_route_is_covered_by_the_authorisation_matrix`
+    # on the very next run.
+    ("/api/integrations/connections", "POST", "/api/integrations/connections",
+     {"entity_id": "ENT-01", "product": "ERP", "data_centre": "in",
+      "organization_id": "60000000000"},
+     "connector.manage", "Auditor"),
+    ("/api/integrations/connections/{connection_id}/authorize", "POST",
+     "/api/integrations/connections/CONN-01/authorize", {},
+     "connector.manage", "Auditor"),
+    ("/api/integrations/connections/{connection_id}/organization", "PUT",
+     "/api/integrations/connections/CONN-01/organization",
+     {"organization_id": "60000000001"},
+     "connector.manage", "Auditor"),
+    ("/api/integrations/connections/{connection_id}/validate", "POST",
+     "/api/integrations/connections/CONN-01/validate", {},
+     "connector.manage", "Auditor"),
+    ("/api/integrations/dead-letters/{queue}/{row_id}/retry", "POST",
+     "/api/integrations/dead-letters/outbox/OUT-1/retry", {},
+     "connector.manage", "Auditor"),
 ]
 
 PUBLIC_MUTATING_ROUTES = {"/api/auth/login"}

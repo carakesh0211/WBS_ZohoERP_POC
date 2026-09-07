@@ -95,6 +95,7 @@ else:
 from .api import admin_access as admin_access_api
 from .api import approvals as approvals_api
 from .api import budget as budget_api
+from .api import integrations as integrations_api
 from .api import masters as masters_api
 from .api import settings as settings_api
 
@@ -103,6 +104,13 @@ app.include_router(masters_api.router)
 app.include_router(settings_api.router)
 app.include_router(admin_access_api.router)
 app.include_router(approvals_api.router)
+# Wave 5. Mounted in the SAME commit that adds its five mutating paths to
+# `tests/test_api_auth.py::MUTATING_ROUTES`, because that matrix is built from
+# the live OpenAPI schema: a route that mounts without its row makes
+# `test_aud_c_006_every_mutating_route_is_covered_by_the_authorisation_matrix`
+# fail immediately, and splitting the two across commits leaves a revision in
+# history whose test suite cannot pass.
+app.include_router(integrations_api.router)
 
 PUBLIC_PATHS = {"/api/health", "/api/auth/login"}
 
