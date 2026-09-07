@@ -1608,13 +1608,30 @@ test.describe('Approval screens — the CSP contract', () => {
     WHAT CAN AND CANNOT BE MEASURED FROM HERE, STATED PLAINLY.
 
     A previous stream measured that `use.locale` does not move the native
-    widget, and neither does `--lang`. That is confirmed below rather than
-    taken on trust — `the native widget is not locale-controllable from
-    Playwright` renders one into the live page and shows it is pixel-identical
-    across every locale this harness can set.
+    widget, and neither does `--lang`; it follows the host OS. An attempt was
+    made to keep that measurement under continuous check here, by rendering a
+    native date input into the live page across every locale this harness can
+    set and asserting it did not move. THE ATTEMPT WAS WITHDRAWN, AND WHAT IT
+    FOUND ON THE WAY OUT IS WORTH MORE THAN THE TEST WOULD HAVE BEEN.
 
-    So a locale sweep CANNOT, by itself, prove the old field was broken, and it
-    cannot prove the new one is fixed either. Two things together do:
+    It passed alone and failed inside the full run. Given a proper stability
+    loop — re-shoot until two consecutive captures agree, which is what
+    `toHaveScreenshot` does for itself — it failed differently: it reported
+    `en-IN` differing from `en-IN`. The SAME locale, the same machine, the same
+    six contexts, two settled renders of 1160 and 1176 bytes at an identical
+    132x28. Over four repeats the count was:
+
+        the application's own field   4 / 4 identical across all six contexts
+        the native date widget        2 / 4  — it disagreed with itself
+
+    So the native control is not merely locale-dependent. It does not render
+    reproducibly at all, and no assertion can be built on it. That is a
+    stronger reason to have removed it than the one this screen started with,
+    and it is recorded here rather than asserted, because a gate that is red
+    two runs in four teaches people to ignore gates.
+
+    A locale sweep therefore CANNOT, by itself, prove the old field was broken,
+    and it cannot prove the new one is fixed either. Two things together do:
 
       1. STRUCTURAL — there is no user-agent-rendered date widget left on any
          approval screen. Nothing remains whose appearance the OS chooses.
@@ -1640,6 +1657,35 @@ const LOCALE_MATRIX = [
   // LOCAL midnight rather than UTC would land on a different day here.
   { locale: 'en-IN', timezoneId: 'Pacific/Kiritimati' },
 ];
+
+/**
+ * An element screenshot that is STABLE, not merely taken.
+ *
+ * `toHaveScreenshot` re-shoots until two consecutive captures agree, and
+ * disables animations and waits for fonts on the way. An ad-hoc
+ * `locator.screenshot()` gets none of that, and the difference is not
+ * academic — it is what turned the withdrawn native-widget probe from "the
+ * locale moved it" into the truth, which was that the paint clock moved it.
+ *
+ * A comparison across locales must not be able to report a capture race as a
+ * locale difference. So the shot is repeated until two in a row are
+ * byte-identical, and a render that will not settle fails loudly HERE, naming
+ * itself, rather than being attributed to whichever locale drew the odd frame.
+ */
+async function stableShot(page, selector, attempts = 8) {
+  await page.evaluate(() => document.fonts.ready);
+  let previous = null;
+  for (let i = 0; i < attempts; i += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    const shot = await page.locator(selector).screenshot({ animations: 'disabled' });
+    if (previous && previous.equals(shot)) return shot;
+    previous = shot;
+    // eslint-disable-next-line no-await-in-loop
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  }
+  throw new Error(`${selector} never rendered the same twice in ${attempts} captures; `
+    + 'it is not stable enough to compare across locales.');
+}
 
 /** The delegation screen, ready to type into, in a context of our choosing. */
 async function delegationsIn(browser, { locale, timezoneId }, viewport) {
@@ -1852,7 +1898,7 @@ test.describe('Delegation Management — the date field', () => {
         try {
           await page.fill('#delegationFrom', '01-Apr-2026');
           await page.fill('#delegationTo', '30-Jun-2026');
-          shots.push([cfg, await page.locator('#delegationForm').screenshot()]);
+          shots.push([cfg, await stableShot(page, '#delegationForm')]);
           readings.push([cfg, await page.evaluate(() => ({
             window: document.getElementById('delegationWindow').textContent,
             fromLabel: document.querySelector('label[for="delegationFrom"]').textContent,
@@ -1890,49 +1936,6 @@ test.describe('Delegation Management — the date field', () => {
         'the field resolved the same typed date to different values').toHaveLength(1);
       expect(JSON.parse([...distinctReadings][0]).window)
         .toBe('This delegation would run 01-Apr-2026 00:00:00 UTC to 30-Jun-2026 00:00:00 UTC.');
-    });
-
-  test('the native widget is not locale-controllable from Playwright — which is why it had to go',
-    async ({ browser }, testInfo) => {
-      // This test exists to keep the previous stream's measurement on the
-      // record and under continuous check, because it is the reason the
-      // structural assertion above is the load-bearing one rather than the
-      // locale sweep. `use.locale` moves `Intl` (proved in the sweep) and does
-      // NOT move <input type="date">, which follows the host OS instead. So a
-      // green locale sweep over a native date input would have been a false
-      // negative, and pinning the runner locale would have made that false
-      // negative permanent.
-      test.skip(testInfo.project.name !== 'desktop-1440', 'runs once');
-      test.setTimeout(120_000);
-
-      const viewport = testInfo.project.use.viewport;
-      const native = [];
-      for (const cfg of LOCALE_MATRIX) {
-        const context = await browser.newContext({ ...cfg, viewport, colorScheme: 'light' });
-        const page = await context.newPage();
-        try {
-          await page.goto('/');
-          await page.waitForSelector('body[data-ready="1"]', { timeout: 15_000 });
-          const box = await page.evaluate(() => {
-            const el = document.createElement('input');
-            el.type = 'date';
-            el.id = '__nativeDateProbe';
-            document.body.appendChild(el);
-            const r = el.getBoundingClientRect();
-            return { w: r.width, h: r.height };
-          });
-          expect(box.w, 'the probe did not render').toBeGreaterThan(0);
-          native.push([cfg, await page.locator('#__nativeDateProbe').screenshot()]);
-        } finally {
-          await context.close();
-        }
-      }
-      const [, firstNative] = native[0];
-      const moved = native.filter(([, b]) => !b.equals(firstNative)).map(([c]) => c.locale);
-      expect(moved,
-        'use.locale now DOES move the native date widget. That would be new '
-        + 'behaviour, and this comment — and the reasoning that rests on it — '
-        + 'needs revisiting.').toEqual([]);
     });
 });
 

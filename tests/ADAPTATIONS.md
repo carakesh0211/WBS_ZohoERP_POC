@@ -1876,12 +1876,55 @@ changed at all** — it moved, by exactly the amount the form's height changed.
 
 | # | Mutation | Guard | Result |
 |---|---|---|---|
-| 1 | restore `<input type="date">` | the date-field block | **5 of 6 fail**; only the native-widget probe passes, correctly |
+| 1 | restore `<input type="date">` | the date-field block | **5 of 6 fail** (measured before the sixth was withdrawn; only the native-widget probe passed, correctly) |
 | 2 | derive the hint from `Intl` | the locale sweep | **fails**, naming en-US, de-DE, ja-JP, ar-EG |
 | 3 | accept `03/04/2026`, drop the calendar check | `it refuses what it cannot read` | **fails** on the first ambiguous input |
 | 4 | echo a second, locally-written date rendering | the formatter-reuse assertion | **fails**: expected `01-Apr-2026 00:00:00 UTC`, got `2026-04-01 (00:00 UTC)` |
 | 5 | flip ONE pixel below the translation boundary | `prove-baseline-delta.py` | **fails**: "NOT the old one translated by any single offset within ±96px" |
 | 6 | make the committed `tableTop` 12px stale | the region measurement | **fails**: "tableTop.y is 337, recorded as 349" |
+
+### A test added in this change was WITHDRAWN before it shipped green, and what it found is better than the test
+
+`the native widget is not locale-controllable from Playwright` was added to
+keep the 2026-09-06 measurement under continuous check. It rendered a native
+`<input type="date">` into the live page under each of the six configurations
+and asserted the six were pixel-identical.
+
+It passed three times in isolation and **failed inside the full 1011-test
+run**, reporting a difference under exactly one locale. That report was already
+suspicious: if `use.locale` moved the widget, `de-DE`, `ja-JP` and `ar-EG` do
+not write dates the Indian way either, so all five would have differed, not
+one. Chasing it produced two results.
+
+**First, a real defect in this stream's own tests.** Both new sweeps compared
+ad-hoc `locator.screenshot()` output. `toHaveScreenshot` re-shoots until two
+consecutive captures agree and settles fonts and animations first; an ad-hoc
+element screenshot gets none of that, so a capture race could be reported as a
+locale difference. `stableShot()` now does that settling for both sweeps, and
+the locale sweep is byte-stable over four repeats (20/20 with the whole block
+repeated).
+
+**Second, the finding that ended the test.** With the stability loop in place
+the probe failed *differently*: it reported **`en-IN` differing from `en-IN`**
+— the same locale, the same machine, the same six contexts, two settled renders
+of 1160 and 1176 bytes at an identical 132x28. Over four repeats:
+
+| | across all six contexts |
+|---|---|
+| the application's own field | **4 / 4** identical |
+| the native date widget | **2 / 4** — it disagreed with itself |
+
+So the native control is not merely locale-dependent; **it does not render
+reproducibly at all**, and no assertion can be built on it. That is a stronger
+reason to have removed it than the one this screen started with. It is now
+recorded in the spec's header comment rather than asserted, because a gate that
+is red two runs in four teaches people to ignore gates — and because the claim
+it was guarding is a fact about Chromium, not a requirement of this product.
+
+Nothing is left uncovered by the withdrawal. The two assertions that carry the
+argument are unaffected and both stable: the structural one (no UA-rendered
+date widget on any approval screen, walked as both principals) and the locale
+sweep with its `Intl` control.
 
 ### One manifest line in this commit is NOT this stream's change
 
