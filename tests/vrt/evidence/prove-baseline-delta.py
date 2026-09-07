@@ -26,11 +26,34 @@ The two approved changes of 2026-09-03 touch exactly two regions:
 Anything outside those two boxes is a regression, not an approved change, and
 this script exits non-zero and names the file.
 
+The 2026-09-07 delegations re-baseline added a third kind of account, because
+neither of the above could describe it honestly. Two approved corrections
+landed on one screen and one of them changed the HEIGHT of a form, so
+everything below the form moved. Permitting that as a box would have meant
+allowing arbitrary change across most of the page.
+
+    A BOX IS A PERMISSION. A TRANSLATION IS A PROOF.
+
+So `--screen-regions` carries, per snapshot and per viewport, both:
+
+  * boxes that MAY differ (the shell bar's identity block and the form), and
+  * a boundary below which the new baseline MUST be the old one translated by
+    a single vertical offset, pixel for pixel -- an offset this script finds
+    for itself rather than being told. See best_translation().
+
+That turns "138,000 pixels changed" into "nothing below the form changed at
+all; it moved by exactly the amount the form grew", which is a claim a reader
+can check and a regression cannot satisfy.
+
 Usage:
     python tests/vrt/evidence/prove-baseline-delta.py [--ref HEAD] [--regions regions.json]
 
-`--regions` takes the JSON written by capture-approved-change.js, so the
-allowed boxes are MEASURED from the running application rather than guessed.
+`--regions`, `--avatar-regions` and `--screen-regions` all take JSON MEASURED
+from the running application -- by capture-approved-change.js, by
+tests/vrt/avatar-regions.spec.js and by the 'delegations re-baseline regions'
+test in tests/vrt/approvals.spec.js respectively -- rather than guessed. The
+last two are re-asserted against the live screen on every VRT run, so an
+allowance cannot quietly go stale and grow.
 """
 
 from __future__ import annotations
@@ -97,6 +120,70 @@ def diff_mask(old: Image.Image, new: Image.Image):
     return mono, count, bbox
 
 
+def best_translation(old: Image.Image, new: Image.Image, rect, noise: int, limit: int = 96):
+    """Is `rect` in the new image the OLD image translated vertically, exactly?
+
+    A BOX IS A PERMISSION; A TRANSLATION IS A PROOF.
+
+    When an approved change alters the HEIGHT of something, everything below it
+    moves. Handing that to `leaked_outside` as an allowed box would mean
+    permitting arbitrary change across most of the page -- which is precisely
+    the accounting this tool exists to refuse. But "it moved" is a far stronger
+    claim than "it is allowed to differ", and it is checkable: if the region
+    below the change is the previous baseline shifted by ONE CONSTANT, pixel
+    for pixel, then nothing in it changed at all.
+
+    So this searches for that constant rather than being told it. A regression
+    inside the region -- one row restyled, one number different -- has no dy
+    that makes the region match, and the caller reports it as unaccounted.
+
+    Rows near the edges have no counterpart at `y - dy`; those are compared
+    UNSHIFTED rather than skipped, so the bottom of the page is still checked.
+
+    @returns (dy, max per-channel difference) for the best exact fit, or
+             (None, max difference at the best dy tried).
+    """
+    x0, y0, x1, y1 = rect
+    h = min(old.height, new.height)
+    x1 = min(x1, old.width, new.width)
+    y1 = min(y1, h)
+    if x1 <= x0 or y1 <= y0:
+        return None, 0
+
+    o = old.convert("RGB")
+    n = new.convert("RGB")
+    best = (None, 255)
+
+    for dy in range(-limit, limit + 1):
+        # Rows whose counterpart at y - dy exists.
+        ys, ye = max(y0, dy), min(y1, h + dy)
+        worst = 0
+        if ys < ye:
+            a = o.crop((x0, ys - dy, x1, ye - dy))
+            b = n.crop((x0, ys, x1, ye))
+            worst = _max_channel_delta(a, b)
+        # Rows that fall off the edge under this shift: checked in place, so a
+        # change down there cannot hide in the gap the shift opened up.
+        for ea, eb in ((y0, ys), (ye, y1)):
+            if ea < eb:
+                worst = max(worst, _max_channel_delta(
+                    o.crop((x0, ea, x1, eb)), n.crop((x0, ea, x1, eb))))
+        if worst < best[1]:
+            best = (dy, worst)
+        if worst <= noise:
+            return dy, worst
+    return None, best[1]
+
+
+def _max_channel_delta(a: Image.Image, b: Image.Image) -> int:
+    diff = ImageChops.difference(a, b)
+    bands = diff.split()
+    worst = bands[0]
+    for band in bands[1:]:
+        worst = ImageChops.lighter(worst, band)
+    return max(worst.getdata()) if worst.getbbox() else 0
+
+
 def leaked_outside(old: Image.Image, new: Image.Image, boxes, noise: int):
     """What changed OUTSIDE every allowed box, and by how much.
 
@@ -151,6 +238,13 @@ def main() -> int:
              "states the baselines depict beyond the home screen `--regions` was captured "
              "on. Written by tests/vrt/avatar-regions.spec.js, which also asserts it is "
              "still true. Pass an empty string to consider only `--regions`.")
+    ap.add_argument(
+        "--screen-regions", default="tests/vrt/evidence/delegation-regions.json",
+        help="MEASURED regions for ONE screen's re-baseline, written and continuously "
+             "re-asserted by the 'delegations re-baseline regions' test in "
+             "tests/vrt/approvals.spec.js. The file names the snapshots it speaks for in "
+             "its own `applies_to` key, so this tool carries no screen name of its own. "
+             "Pass an empty string to ignore it.")
     ap.add_argument("--noise", type=int, default=1,
                     help="largest per-channel difference outside the approved regions that "
                          "is treated as re-render antialiasing rather than a regression "
@@ -180,6 +274,30 @@ def main() -> int:
             print(f"note: {extra_path} not found; considering --regions only",
                   file=sys.stderr)
 
+    # The 2026-09-07 delegations re-baseline. TWO approved corrections landed on
+    # one screen -- the fixture identity (the baseline depicted a principal who
+    # cannot open the screen) and the replacement of the native <input
+    # type="date"> -- and between them they move the shell bar's identity
+    # cluster, the form, and everything the form's new height pushed down.
+    #
+    # Only the first two are PERMITTED here. The third is PROVED: below the
+    # table's measured top, the new baseline must be the old one translated by a
+    # single constant this tool finds for itself, pixel for pixel.
+    screen_regions: dict = {}
+    screen_applies_to = None
+    if args.screen_regions:
+        sr_path = REPO / args.screen_regions
+        if sr_path.exists():
+            screen_regions = json.loads(sr_path.read_text(encoding="utf-8"))
+            screen_applies_to = screen_regions.pop("applies_to", None)
+            if not screen_applies_to:
+                print(f"{sr_path} has no `applies_to`; it names no snapshots, so it is "
+                      "ignored.", file=sys.stderr)
+                screen_regions = {}
+        else:
+            print(f"note: {sr_path} not found; no per-screen regions applied",
+                  file=sys.stderr)
+
     def avatar_box(av):
         # One pixel of slack on each side: a border-radius edge antialiases
         # against its neighbour, so the visibly-changed area can be a
@@ -204,6 +322,30 @@ def main() -> int:
             boxes.append((int(nav["x"]), int(nav["y"]),
                           int(nav["x"] + nav["width"]) + 1, 10 ** 6))
         return boxes
+
+    def pad(rect, by=2):
+        """A measured element box, in whole pixels, with an antialiasing margin."""
+        return (int(rect["x"]) - by, int(rect["y"]) - by,
+                int(rect["x"] + rect["width"]) + by,
+                int(rect["y"] + rect["height"]) + by)
+
+    def screen_account(name: str, project: str):
+        """(extra allowed boxes, translation rect) for a per-screen re-baseline."""
+        if not screen_applies_to or not name.startswith(screen_applies_to):
+            return [], None
+        r = screen_regions.get(project)
+        if not r:
+            return [], None
+        boxes = [pad(r["principalRect"])]
+        boxes += [pad(c) for c in r.get("headerClusterRects", [])]
+        # The form, across the card's full width and down to the table's top:
+        # the band the date-field change is allowed to redraw.
+        card, form, table = r["cardRect"], r["formRect"], r["tableTop"]
+        boxes.append((int(card["x"]) - 2, int(form["y"]) - 2,
+                      int(card["x"] + card["width"]) + 2, int(round(table["y"]))))
+        translate = (int(card["x"]) - 2, int(round(table["y"])),
+                     int(card["x"] + card["width"]) + 2, 10 ** 6)
+        return boxes, translate
 
     changed: list[tuple[str, int, tuple, str]] = []
     unchanged: list[str] = []
@@ -231,9 +373,27 @@ def main() -> int:
 
             project = project_of(png.name) or "?"
             boxes = allowed_boxes(project)
+
+            extra, translate = screen_account(png.stem, project)
+            boxes += extra
+            shift_note = ""
+            if translate is not None:
+                dy, worst = best_translation(old, new, translate, args.noise)
+                if dy is None:
+                    offending.append(
+                        f"{rel}: below y={translate[1]} the new baseline is NOT the old one "
+                        f"translated by any single offset within +/-96 px (closest fit still "
+                        f"differs by {worst}/255). Something in the region the approved change "
+                        f"only MOVED has actually changed."
+                    )
+                else:
+                    shift_note = (f" [below y={translate[1]}: an exact translation of "
+                                  f"{dy:+d} px, max difference {worst}/255]")
+                    boxes.append(translate)
+
             leaked, leak_bbox, max_outside = leaked_outside(old, new, boxes, args.noise)
             worst_outside = max(worst_outside, max_outside)
-            changed.append((rel, count, bbox, size_note, leaked, max_outside))
+            changed.append((rel, count, bbox, size_note + shift_note, leaked, max_outside))
 
             if leaked:
                 offending.append(

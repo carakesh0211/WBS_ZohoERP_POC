@@ -70,6 +70,8 @@
 
 const { test, expect } = require('@playwright/test');
 const AxeBuilder = require('@axe-core/playwright').default;
+const fs = require('fs');
+const path = require('path');
 
 /* ---------------- identities ----------------
    Demo credentials are user_id + '!demo' (auth.provision_dev_identities), and
@@ -1389,8 +1391,11 @@ test.describe('Approval screens — accessibility', () => {
       await page.locator('#content').focus();
       const seen = new Set();
       const ringSeen = new Set();
-      // Generous bound: a native date input alone consumes four Tab presses.
-      for (let i = 0; i < expected.length + 40; i += 1) {
+      // Was `expected.length + 40`, because a native date input alone consumed
+      // four Tab presses. There is no longer a control on any of these screens
+      // that takes more than one, so the bound is now a small margin over the
+      // real count and a control that starts eating Tab stops will be noticed.
+      for (let i = 0; i < expected.length + 4; i += 1) {
         await page.keyboard.press('Tab');
         const info = await page.evaluate(() => {
           const el = document.activeElement;
@@ -1400,7 +1405,6 @@ test.describe('Approval screens — accessibility', () => {
           return {
             inside: true,
             key: (el.id || '') + '|' + el.tagName + '|' + (el.textContent || '').slice(0, 24),
-            isDate: el.tagName === 'INPUT' && el.getAttribute('type') === 'date',
             focusVisible: el.matches(':focus-visible'),
             outlineWidth: parseFloat(cs.outlineWidth) || 0,
             outlineStyle: cs.outlineStyle,
@@ -1409,21 +1413,20 @@ test.describe('Approval screens — accessibility', () => {
         if (!info || !info.inside) continue;
         seen.add(info.key);
 
-        // A NATIVE DATE INPUT HAS FOUR TAB STOPS, AND THE LAST ONE IS NOT OURS.
+        // THE ONE EXEMPTION THAT USED TO BE HERE IS GONE, AND THAT IS THE
+        // POINT.
         //
-        // Chromium's <input type="date"> tabs through day, month and year, and
-        // then to the calendar-picker button inside its SHADOW tree.
-        // document.activeElement is still the <input> on that fourth stop, but
-        // :focus-visible is false and outline-style is 'none', because the
-        // thing actually focused is a shadow-internal control that Chromium
-        // draws its own indicator on and that no page stylesheet can reach.
+        // Chromium's <input type="date"> tabs through day, month and year and
+        // then into a calendar-picker button in its SHADOW tree, where
+        // :focus-visible is false and outline-style is 'none' because the
+        // focused thing is shadow-internal and no page stylesheet reaches it.
+        // Every stop after the first therefore had to be skipped, which meant
+        // this test could not speak for the focus ring on three of the four.
         //
-        // Asserting a ring there measures the browser, not the design. It is
-        // NOT waved through, though: `ringSeen` below records that the input
-        // did take a properly-ringed focus on one of its own stops, so a date
-        // input that genuinely lost its ring still fails.
-        if (info.isDate && !info.focusVisible) continue;
-
+        // Delegation Management no longer has one — see "the date field"
+        // above — so the skip is deleted and every stop on every control is
+        // now held to the same standard, with nothing waved through.
+        //
         // styles.css draws one high-contrast ring through :focus-visible, and
         // Tab is exactly the interaction that triggers it.
         expect(info.focusVisible, `${s.hash}: ${info.key} took focus with no :focus-visible ring`)
@@ -1436,7 +1439,7 @@ test.describe('Approval screens — accessibility', () => {
       }
 
       // Every control that Tab reached must have shown a real focus ring at
-      // least once, date inputs included.
+      // least once, with no exemptions left to grant.
       const ringless = [...seen].filter((k) => !ringSeen.has(k));
       expect(ringless, `${s.hash}: controls that never showed a focus ring`).toEqual([]);
 
@@ -1592,6 +1595,517 @@ test.describe('Approval screens — the CSP contract', () => {
     expect(unscoped, `approvals.css has selectors not scoped to a feature class:\n${unscoped.join('\n')}`)
       .toEqual([]);
   });
+});
+
+/* ============================================ the delegation date field */
+
+/*  Delegation Management used to use <input type="date">. It was replaced
+    because the native control's placeholder follows the HOST OPERATING
+    SYSTEM's locale: CI drew `mm/dd/yyyy`, an en-IN workstation drew
+    `dd-mm-yyyy`, and the same build produced two different screens (1463 px of
+    difference on one machine, 969 px on another).
+
+    WHAT CAN AND CANNOT BE MEASURED FROM HERE, STATED PLAINLY.
+
+    A previous stream measured that `use.locale` does not move the native
+    widget, and neither does `--lang`; it follows the host OS. An attempt was
+    made to keep that measurement under continuous check here, by rendering a
+    native date input into the live page across every locale this harness can
+    set and asserting it did not move. THE ATTEMPT WAS WITHDRAWN, AND WHAT IT
+    FOUND ON THE WAY OUT IS WORTH MORE THAN THE TEST WOULD HAVE BEEN.
+
+    It passed alone and failed inside the full run. Given a proper stability
+    loop — re-shoot until two consecutive captures agree, which is what
+    `toHaveScreenshot` does for itself — it failed differently: it reported
+    `en-IN` differing from `en-IN`. The SAME locale, the same machine, the same
+    six contexts, two settled renders of 1160 and 1176 bytes at an identical
+    132x28. Over four repeats the count was:
+
+        the application's own field   4 / 4 identical across all six contexts
+        the native date widget        2 / 4  — it disagreed with itself
+
+    So the native control is not merely locale-dependent. It does not render
+    reproducibly at all, and no assertion can be built on it. That is a
+    stronger reason to have removed it than the one this screen started with,
+    and it is recorded here rather than asserted, because a gate that is red
+    two runs in four teaches people to ignore gates.
+
+    A locale sweep therefore CANNOT, by itself, prove the old field was broken,
+    and it cannot prove the new one is fixed either. Two things together do:
+
+      1. STRUCTURAL — there is no user-agent-rendered date widget left on any
+         approval screen. Nothing remains whose appearance the OS chooses.
+         This is the load-bearing assertion.
+      2. MEASURED — the replacement renders byte-identical pixels and produces
+         the identical ISO value across six locale/timezone configurations,
+         AND the sweep is shown to be capable of detecting locale dependence:
+         the same six configurations disagree about `Intl`, which is what the
+         obvious locale-dependent implementation of this field would have used.
+
+    Neither a pinned runner locale nor a masked region would have established
+    either one; both would have concealed the difference instead.
+*/
+
+/** Locale/timezone configurations the field must render identically under. */
+const LOCALE_MATRIX = [
+  { locale: 'en-IN', timezoneId: 'Asia/Kolkata' },
+  { locale: 'en-US', timezoneId: 'America/Los_Angeles' },
+  { locale: 'de-DE', timezoneId: 'Europe/Berlin' },
+  { locale: 'ja-JP', timezoneId: 'Asia/Tokyo' },
+  { locale: 'ar-EG', timezoneId: 'UTC' },
+  // Deliberately the far side of the date line: a field that resolved through
+  // LOCAL midnight rather than UTC would land on a different day here.
+  { locale: 'en-IN', timezoneId: 'Pacific/Kiritimati' },
+];
+
+/**
+ * An element screenshot that is STABLE, not merely taken.
+ *
+ * `toHaveScreenshot` re-shoots until two consecutive captures agree, and
+ * disables animations and waits for fonts on the way. An ad-hoc
+ * `locator.screenshot()` gets none of that, and the difference is not
+ * academic — it is what turned the withdrawn native-widget probe from "the
+ * locale moved it" into the truth, which was that the paint clock moved it.
+ *
+ * A comparison across locales must not be able to report a capture race as a
+ * locale difference. So the shot is repeated until two in a row are
+ * byte-identical, and a render that will not settle fails loudly HERE, naming
+ * itself, rather than being attributed to whichever locale drew the odd frame.
+ */
+async function stableShot(page, selector, attempts = 8) {
+  await page.evaluate(() => document.fonts.ready);
+  let previous = null;
+  for (let i = 0; i < attempts; i += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    const shot = await page.locator(selector).screenshot({ animations: 'disabled' });
+    if (previous && previous.equals(shot)) return shot;
+    previous = shot;
+    // eslint-disable-next-line no-await-in-loop
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  }
+  throw new Error(`${selector} never rendered the same twice in ${attempts} captures; `
+    + 'it is not stable enough to compare across locales.');
+}
+
+/** The delegation screen, ready to type into, in a context of our choosing. */
+async function delegationsIn(browser, { locale, timezoneId }, viewport) {
+  const context = await browser.newContext({
+    locale, timezoneId, viewport, colorScheme: 'light',
+  });
+  const page = await context.newPage();
+  await prepared(page, { as: APPROVER, permissions: ['approval.delegate'] });
+  await gotoScreen(page, 'approval-delegations');
+  return { context, page };
+}
+
+test.describe('Delegation Management — the date field', () => {
+  test('no approval screen renders a user-agent date widget', async ({ page }) => {
+    // THE LOAD-BEARING ASSERTION. Every one of these types is drawn by the
+    // browser using the host OS locale, and no page stylesheet or Playwright
+    // option reaches inside them. A screen that contains one cannot be
+    // screenshot-tested across machines, and — more to the point — cannot tell
+    // its user unambiguously what 03-04-2026 means.
+    const UA_RENDERED = ['date', 'datetime-local', 'month', 'week', 'time'];
+    await prepared(page);
+    const offences = [];
+    for (const s of SCREENS.filter((x) => x.as === ADMIN)) {
+      await gotoScreen(page, s.hash);
+      offences.push(...await page.evaluate((types) => [...document.querySelectorAll('#content .scr-host input')]
+        .filter((el) => types.includes((el.getAttribute('type') || '').toLowerCase()))
+        .map((el) => `${location.hash}: ${el.id || '(unnamed)'} is type=${el.getAttribute('type')}`),
+      UA_RENDERED));
+    }
+    await reauthenticate(page, APPROVER, ['approval.delegate']);
+    for (const s of SCREENS.filter((x) => x.as === APPROVER)) {
+      await gotoScreen(page, s.hash);
+      offences.push(...await page.evaluate((types) => [...document.querySelectorAll('#content .scr-host input')]
+        .filter((el) => types.includes((el.getAttribute('type') || '').toLowerCase()))
+        .map((el) => `${location.hash}: ${el.id || '(unnamed)'} is type=${el.getAttribute('type')}`),
+      UA_RENDERED));
+    }
+    expect(offences, `a user-agent-rendered date widget is back:\n${offences.join('\n')}`)
+      .toEqual([]);
+  });
+
+  test('the field states its format on screen, in its accessible name, and nowhere a locale can reach',
+    async ({ page }) => {
+      await prepared(page, { as: APPROVER, permissions: ['approval.delegate'] });
+      await gotoScreen(page, 'approval-delegations');
+
+      for (const id of ['delegationFrom', 'delegationTo']) {
+        const input = page.locator(`#${id}`);
+        await expect(input).toHaveAttribute('type', 'text');
+
+        const seen = await page.evaluate((elId) => {
+          const el = document.getElementById(elId);
+          const lab = el && el.labels && el.labels[0];
+          return {
+            hasLabel: !!lab,
+            labelText: lab ? lab.textContent.trim() : '',
+            placeholder: el.getAttribute('placeholder'),
+            describedBy: el.getAttribute('aria-describedby') || '',
+          };
+        }, id);
+
+        // A real <label for>, and the format is IN it — so it is permanently
+        // visible AND is announced as part of the accessible name every time
+        // the field takes focus, not merely once as a description.
+        expect(seen.hasLabel, `${id} has no <label for>`).toBe(true);
+        expect(seen.labelText, `${id}'s label does not state the format`)
+          .toContain('DD-MMM-YYYY');
+        await expect(page.locator(`label[for="${id}"]`)).toBeVisible();
+
+        // NO PLACEHOLDER AT ALL. This is the specific attribute the native
+        // control filled in from the host OS locale; there is now nothing for
+        // any locale to fill in. A placeholder would also vanish on focus —
+        // exactly when the format is needed — and is not an accessible name.
+        expect(seen.placeholder, `${id} carries a placeholder attribute`).toBeNull();
+
+        // And it points at the one line that says what the form currently means.
+        expect(seen.describedBy.split(/\s+/)).toContain('delegationWindow');
+      }
+
+      // The worked example is on screen too, until it is no longer needed.
+      const windowLine = page.locator('#delegationWindow');
+      await expect(windowLine).toBeVisible();
+      await expect(windowLine).toHaveText('Dates are DD-MMM-YYYY, for example 01-Apr-2026.');
+    });
+
+  test('it is fully operable from the keyboard, and echoes the reading back through the app formatter',
+    async ({ page }) => {
+      await prepared(page, { as: APPROVER, permissions: ['approval.delegate'] });
+      await gotoScreen(page, 'approval-delegations');
+
+      // Keyboard only — no click anywhere in this test.
+      await page.locator('#delegationDelegate').focus();
+      await page.keyboard.type('U-CFO');
+      await page.keyboard.press('Tab');            // -> scope
+      await page.keyboard.press('Tab');            // -> From
+      expect(await page.evaluate(() => document.activeElement.id)).toBe('delegationFrom');
+      await page.keyboard.type('01-Apr-2026');
+      await page.keyboard.press('Tab');            // -> To, in ONE press
+      expect(await page.evaluate(() => document.activeElement.id),
+        'the From field consumed more than one Tab stop').toBe('delegationTo');
+      await page.keyboard.type('30-Jun-2026');
+
+      // The reading is rendered by formatAuditTimestamp — the SAME call the
+      // table's `From` column makes. Asserted against the module's own output
+      // rather than a literal, so this cannot pass by coincidence if the
+      // formatter changes, and cannot pass at all against a second rendering
+      // of the same date written just for this field.
+      const expected = await page.evaluate(async () => {
+        const m = await import('/static/src/core/format.js');
+        return {
+          from: m.formatAuditTimestamp('2026-04-01'),
+          to: m.formatAuditTimestamp('2026-06-30'),
+        };
+      });
+      await expect(page.locator('#delegationWindow'))
+        .toHaveText(`This delegation would run ${expected.from} to ${expected.to}.`);
+      // And it is really the app's format, not the browser's idea of one.
+      expect(expected.from).toBe('01-Apr-2026 00:00:00 UTC');
+
+      // The table renders the same instant with the same call, so the sentence
+      // above is a true preview of the row this form is about to create.
+      await expect(page.locator('table tbody tr').first())
+        .toContainText('01-Aug-2026 00:00:00 UTC');
+
+      // The value that reaches the API is ISO, not the typed text.
+      //
+      // The handler is REGISTERED AND AWAITED before the submit, not created
+      // inside a Promise executor alongside it: page.route() is async, and a
+      // click racing its registration is a flake that only shows up on a busy
+      // machine.
+      let seen = null;
+      let sawPost;
+      const posted = new Promise((resolve) => { sawPost = resolve; });
+      await page.route('**/api/approvals/delegations', (route) => {
+        const req = route.request();
+        if (req.method() !== 'POST') return route.fallback();
+        seen = JSON.parse(req.postData() || '{}');
+        sawPost(seen);
+        return route.fulfill(json({ delegation_id: 'DLG-003' }));
+      });
+
+      await page.keyboard.press('Tab');            // -> Create delegation
+      expect(await page.evaluate(() => document.activeElement.textContent))
+        .toContain('Create delegation');
+      await page.keyboard.press('Enter');
+      const body = await posted;
+      expect(body.from, 'the API was sent the typed text, not an ISO date').toBe('2026-04-01');
+      expect(body.to).toBe('2026-06-30');
+    });
+
+  test('it refuses what it cannot read, rather than guessing', async ({ page }) => {
+    await prepared(page, { as: APPROVER, permissions: ['approval.delegate'] });
+    await gotoScreen(page, 'approval-delegations');
+
+    // Every one of these is a thing the native widget, or a lenient parser,
+    // would have accepted and interpreted — differently on two machines.
+    const REFUSED = [
+      '03/04/2026',    // the ambiguity the whole change is about
+      '03-04-2026',
+      '2026-04-01',    // ISO in, app format expected: still not this field's format
+      '1-Apr-2026',    // unpadded
+      '01-Apr-26',     // two-digit year
+      '31-Feb-2026',   // matches the pattern, is not a date
+      '31-Apr-2026',   // ditto
+      '01-Avr-2026',   // a month name from another locale
+      'tomorrow',
+    ];
+    for (const bad of REFUSED) {
+      await page.fill('#delegationFrom', bad);
+      await page.fill('#delegationTo', '30-Jun-2026');
+      await page.fill('#delegationDelegate', 'U-CFO');
+      await page.locator('#delegationForm button[type="submit"]').click();
+      await expect(page.locator('#delegationFormError'),
+        `“${bad}” was accepted`).toContainText('DD-MMM-YYYY');
+      // Refused means refused: NO reading is offered for it. A field that
+      // showed a reading for input it then rejected would be worse than one
+      // that guessed.
+      await expect(page.locator('#delegationWindow'))
+        .toHaveText('Dates are DD-MMM-YYYY, for example 01-Apr-2026.');
+      expect(await page.evaluate(() => document.getElementById('delegationFrom').getAttribute('aria-invalid')))
+        .toBe('true');
+    }
+
+    // And the ones it should accept, accepted — otherwise the list above would
+    // pass on a field that simply refuses everything.
+    await page.fill('#delegationTo', '30-Jun-2028');
+    await page.fill('#delegationFrom', '29-Feb-2028');   // a real leap day
+    await expect(page.locator('#delegationWindow'))
+      .toContainText('29-Feb-2028 00:00:00 UTC');
+    await page.fill('#delegationFrom', '29-Feb-2027');   // not a leap year
+    await expect(page.locator('#delegationWindow'))
+      .toHaveText('Dates are DD-MMM-YYYY, for example 01-Apr-2026.');
+  });
+
+  test('it renders and resolves identically across every locale this harness can set',
+    async ({ browser }, testInfo) => {
+      // The claim under test is about LOCALE, not viewport, and each
+      // configuration costs a full sign-in. One viewport, six configurations.
+      test.skip(testInfo.project.name !== 'desktop-1440',
+        'the locale sweep is viewport-independent; it runs once');
+      test.setTimeout(180_000);
+
+      const viewport = testInfo.project.use.viewport;
+      const shots = [];
+      const readings = [];
+      const intlControl = [];
+
+      for (const cfg of LOCALE_MATRIX) {
+        const { context, page } = await delegationsIn(browser, cfg, viewport);
+        try {
+          await page.fill('#delegationFrom', '01-Apr-2026');
+          await page.fill('#delegationTo', '30-Jun-2026');
+          shots.push([cfg, await stableShot(page, '#delegationForm')]);
+          readings.push([cfg, await page.evaluate(() => ({
+            window: document.getElementById('delegationWindow').textContent,
+            fromLabel: document.querySelector('label[for="delegationFrom"]').textContent,
+            toLabel: document.querySelector('label[for="delegationTo"]').textContent,
+          }))]);
+          // THE CONTROL. If these six configurations did not actually differ,
+          // the sweep above would prove nothing at all — it would be six
+          // identical runs. `Intl` is what the obvious locale-dependent
+          // implementation of this field would have reached for, and it is
+          // what a locale sweep CAN see.
+          intlControl.push([cfg, await page.evaluate(() => {
+            const d = new Date(Date.UTC(2026, 3, 1));
+            return `${new Intl.DateTimeFormat().format(d)}|${navigator.language}`;
+          })]);
+        } finally {
+          await context.close();
+        }
+      }
+
+      const distinctIntl = new Set(intlControl.map(([, v]) => v));
+      expect(distinctIntl.size,
+        'the six configurations did not actually differ, so this sweep proves nothing:\n'
+        + intlControl.map(([c, v]) => `  ${c.locale}/${c.timezoneId}: ${v}`).join('\n'))
+        .toBeGreaterThan(1);
+
+      const [, first] = shots[0];
+      const differing = shots
+        .filter(([, buf]) => !buf.equals(first))
+        .map(([c]) => `${c.locale}/${c.timezoneId}`);
+      expect(differing,
+        `the date field rendered differently under: ${differing.join(', ')}`).toEqual([]);
+
+      const distinctReadings = new Set(readings.map(([, r]) => JSON.stringify(r)));
+      expect([...distinctReadings],
+        'the field resolved the same typed date to different values').toHaveLength(1);
+      expect(JSON.parse([...distinctReadings][0]).window)
+        .toBe('This delegation would run 01-Apr-2026 00:00:00 UTC to 30-Jun-2026 00:00:00 UTC.');
+    });
+});
+
+/* ======================================= the delegations re-baseline evidence */
+
+/*  WHERE THE 2026-09-07 DELEGATIONS RE-BASELINE WAS ALLOWED TO CHANGE.
+    -------------------------------------------------------------------
+    Two approved corrections landed on this one screen at once, and between
+    them they move a lot of pixels. `evidence/prove-baseline-delta.py` refuses
+    to take that on trust, so the regions are MEASURED HERE — in this file,
+    under the same stubs and the same principal the baseline itself is captured
+    with, which is what makes the measurement describe the baseline rather than
+    some other render of the same screen.
+
+    The regions, and what each accounts for:
+
+      principalRect      the shell bar's identity block. The baseline was
+                         captured as ADMIN and the screen can only be opened by
+                         an APPROVER, so this reads `NR / N. Rout,
+                         BudgetController` where it used to read `SA / System
+                         Administrator`. This is correction 1.
+
+      headerActionsRect  the header buttons BESIDE that block. They are not a
+                         second change: the identity block's width is a
+                         function of the name in it, and these move when it
+                         changes. Measured rather than assumed, because "it
+                         probably just reflowed" is exactly the sentence a real
+                         regression hides behind.
+
+      formRect + the band above the table
+                         the date field. This is correction 2.
+
+    And below the table's top, nothing is ALLOWED to change at all — it is
+    required to be the previous baseline TRANSLATED, pixel for pixel, by one
+    constant the prover finds for itself. That is a far stronger claim than a
+    permission, and it is the one that says the two corrections did not quietly
+    take the rest of the screen with them.
+
+    Default: ASSERT the committed file still describes the live screen.
+    CAPEX_VRT_WRITE_REGIONS=1: REWRITE it, so re-measuring is a deliberate act
+    with a reviewable diff.
+*/
+const DELEGATION_REGIONS = path.join(__dirname, 'evidence', 'delegation-regions.json');
+
+test.describe('Approval screens — the delegations re-baseline regions', () => {
+  test('the measured regions still describe the screen the baseline depicts',
+    async ({ page }, testInfo) => {
+      const project = testInfo.project.name;
+      const screen = SCREENS.find((s) => s.hash === 'approval-delegations');
+      await preparedFor(page, screen);
+      await gotoScreen(page, screen.hash);
+
+      const measured = await page.evaluate(() => {
+        const box = (el) => {
+          if (!el) return null;
+          const r = el.getBoundingClientRect();
+          return { x: r.x, y: r.y, width: r.width, height: r.height };
+        };
+        // The shell bar's RIGHT-HAND CLUSTER: the identity block and the
+        // buttons it shares a flex line with. When the identity block's width
+        // changes, that whole line re-lays-out, and the pixels a button
+        // VACATED change as much as the ones it moved into — so a union of the
+        // new element rects alone would not account for the gaps between them.
+        //
+        // Unioned PER FLEX LINE rather than over the lot: at 1024 and 800 the
+        // bar wraps and the identity block sits on its own line, and one box
+        // around both lines would be a permission covering the entire header.
+        const clusterByLine = () => {
+          const bar = document.querySelector('header');
+          const barRight = bar.getBoundingClientRect().right;
+          const rects = [
+            document.getElementById('densityBtn'),
+            ...document.querySelectorAll('header .icon-btn[data-nav]'),
+            document.querySelector('header .user-block'),
+          ].filter(Boolean)
+            .map((el) => el.getBoundingClientRect())
+            .filter((r) => r.width > 0)
+            .sort((a, b) => a.top - b.top || a.left - b.left);
+
+          // Grouped by VERTICAL OVERLAP, not by rounded `top`. These buttons
+          // are not top-aligned to the pixel — 9 and 9.5 on one visual row —
+          // and splitting them left the 8px gap BETWEEN two boxes unaccounted,
+          // which is exactly where a button that moved vacates its pixels.
+          const lines = [];
+          for (const r of rects) {
+            const cur = lines[lines.length - 1];
+            if (cur && r.top < cur.bottom - 2) {
+              cur.left = Math.min(cur.left, r.left);
+              cur.top = Math.min(cur.top, r.top);
+              cur.right = Math.max(cur.right, r.right);
+              cur.bottom = Math.max(cur.bottom, r.bottom);
+            } else {
+              lines.push({
+                left: r.left, top: r.top, right: r.right, bottom: r.bottom,
+              });
+            }
+          }
+          // Each line runs to the EDGE OF THE BAR. The cluster is right-aligned
+          // behind a flex spacer, so a narrower identity block leaves the old
+          // one's trailing pixels — "System Administrator" is longer than
+          // "N. Rout" — beyond the new block's right edge. A box drawn only
+          // around where the elements are NOW does not cover where they WERE.
+          return lines.map((r) => ({
+            x: r.left,
+            y: r.top,
+            width: barRight - r.left,
+            height: r.bottom - r.top,
+          }));
+        };
+        return {
+          principalRect: box(document.querySelector('header .user-block')),
+          headerClusterRects: clusterByLine(),
+          cardRect: box(document.querySelector('#content .scr-host .approval-card')),
+          formRect: box(document.getElementById('delegationForm')),
+          // The translation boundary: the top of everything below the form.
+          tableTop: box(document.querySelector('#content .scr-host .table-wrap')),
+        };
+      });
+
+      for (const k of Object.keys(measured)) {
+        expect(measured[k], `${k} did not render on the delegations screen`).toBeTruthy();
+      }
+      expect(measured.headerClusterRects.length,
+        'no shell-bar buttons were measured').toBeGreaterThan(0);
+
+      if (process.env.CAPEX_VRT_WRITE_REGIONS === '1') {
+        const all = fs.existsSync(DELEGATION_REGIONS)
+          ? JSON.parse(fs.readFileSync(DELEGATION_REGIONS, 'utf-8')) : {};
+        // Which baselines these regions speak for. The prover reads this
+        // rather than carrying a screen name of its own, so the coupling
+        // between the measurement and the snapshots it accounts for is stated
+        // in one place, by the thing doing the measuring.
+        all.applies_to = `approvals-${screen.hash}`;
+        all[project] = measured;
+        fs.writeFileSync(DELEGATION_REGIONS, `${JSON.stringify(all, null, 2)}\n`);
+        test.info().annotations.push({ type: 'rewrote', description: DELEGATION_REGIONS });
+        return;
+      }
+
+      expect(fs.existsSync(DELEGATION_REGIONS),
+        `${DELEGATION_REGIONS} is missing. Regenerate with CAPEX_VRT_WRITE_REGIONS=1.`).toBe(true);
+      const committed = JSON.parse(fs.readFileSync(DELEGATION_REGIONS, 'utf-8'))[project];
+      expect(committed, `delegation-regions.json has no entry for ${project}`).toBeTruthy();
+
+      // Sub-pixel tolerance, for the reason avatar-regions.spec.js gives: these
+      // are getBoundingClientRect floats and text layout produces
+      // x=1208.296875. What must be caught is a MOVE, and the prover truncates
+      // to whole pixels anyway.
+      const TOL = 1;
+      const compare = (name, got, want) => {
+        expect(want, `delegation-regions.json has no ${name} for ${project}`).toBeTruthy();
+        for (const d of ['x', 'y', 'width', 'height']) {
+          expect(Math.abs(got[d] - want[d]),
+            `${name}.${d} is ${got[d]}, recorded as ${want[d]}. The delegations screen has `
+            + 'moved, so the regions its re-baseline was accounted for against are stale. '
+            + 'Re-measure with CAPEX_VRT_WRITE_REGIONS=1 and review the diff.')
+            .toBeLessThanOrEqual(TOL);
+        }
+      };
+      for (const k of Object.keys(measured)) {
+        if (Array.isArray(measured[k])) {
+          expect(Array.isArray(committed[k]) && committed[k].length,
+            `${k} is recorded as ${JSON.stringify(committed[k])}; the shell bar now wraps `
+            + `into ${measured[k].length} lines`).toBe(measured[k].length);
+          measured[k].forEach((r, i) => compare(`${k}[${i}]`, r, committed[k][i]));
+        } else {
+          compare(k, measured[k], committed[k]);
+        }
+      }
+    });
 });
 
 /* ==================================================== visual regression */

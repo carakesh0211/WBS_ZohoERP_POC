@@ -1744,3 +1744,203 @@ every collected test (953 collected, 953 executed, 0 skipped) rather than
 skipping most of them.
 
 **Approved by:** engagement lead, Wave 5 CI repair.
+
+## 2026-09-07 — `approval-delegations`: the last three VRT failures, and the two approved corrections that close them
+
+The 2026-09-06 entry above left three baselines failing and referred two
+questions to the product owner. **Both have been approved**, and this is what
+was done with them.
+
+### Correction 1 — the fixture identity. NOTHING IN THE FIXTURE NEEDED CHANGING.
+
+The diagnosis was right and the remedy was smaller than the referral implied.
+`8e64565` had already set `as: APPROVER` on this screen, and the VRT block
+already captures through `preparedFor(page, s)`. The *fixture* was therefore
+correct on 2026-09-06; only the *baseline* was stale, captured at `69f45e1`
+through `prepared(page)` before the identity existed. So `approvals.spec.js`
+carries no fixture edit at all — the three baselines are simply re-recorded
+under the principal the spec already names.
+
+Two things move as a result, and the second is not a second change:
+
+* the shell bar's identity block, `SA / System Administrator` →
+  `NR / N. Rout, BudgetController`;
+* **the navigation rail**. Contract 4 withholds `approval.read` and
+  `approval.configure` from the four approver roles, so the APPROVER's rail has
+  no *My Approval Inbox*, *Approval Request Detail* or *Escalation & SLA
+  Monitor*, and no INTEGRATION group. Every entry below shifts. This is the
+  same principal correction, seen in the other place the principal is visible.
+
+### Correction 2 — the date field
+
+`<input type="date">` is gone from Delegation Management, and from every
+approval screen. In its place: a text input in the application's own format,
+`DD-MMM-YYYY`, **stated in the label** so the format is permanently visible AND
+part of the accessible name; parsed strictly by `toIsoDate()`; converted to ISO
+`YYYY-MM-DD` for the API; and read back to the user on one full-width line
+under the toolbar, rendered by **`formatAuditTimestamp`** — the same call the
+table's `From` column makes, so the sentence the user is shown is a true
+preview of the row the form is about to create.
+
+Three details are load-bearing rather than incidental:
+
+**The month table is not written twice.** `MONTH_TOKENS` is derived by calling
+`formatAuditTimestamp` twelve times and slicing the abbreviation back out of
+its output. The parser can therefore only accept spellings the formatter emits,
+by construction, and a change to `core/format.js` cannot leave the two
+disagreeing.
+
+**`31-Feb-2026` is refused arithmetically, not by the engine.** `Date.UTC`
+rolls over rather than refusing, and engines disagree about whether
+`new Date('2026-02-31')` is Invalid Date or the 3rd of March. The components
+are read back off the constructed date and compared, so the answer does not
+depend on which browser is asking.
+
+**The guidance is in the LABEL, and the reading is not under the field.** Both
+were first built under the input. `.toolbar` is a wrapping flex row and
+`.field` a flex column, so a line of text below an input sets the FIELD's
+width: a hint reading "DD-MMM-YYYY — for example 01-Apr-2026" made each date
+field ~215px wide and wrapped the toolbar onto three rows at 1024px, moving the
+whole screen for no user benefit. Measured, rejected, rebuilt.
+
+### What was NOT done, and why
+
+* **The CI runner's locale is not pinned** and **no region is masked**. Either
+  would have concealed a real cross-machine difference. The native widget is
+  removed instead, so there is nothing left whose appearance the host OS picks.
+* `app/frontend/styles.css` is untouched. The new field uses `.field`,
+  `.muted` and `.small`, which the frozen stylesheet already defines, and the
+  `size`/`maxlength` attributes rather than any CSS.
+
+### Proving the date field is deterministic — and being honest about the limit
+
+A locale sweep alone proves nothing here, and the new tests say so in as many
+words. `use.locale` moves `Intl` but does **not** move `<input type="date">`,
+which follows the host OS; that measurement is now a standing test
+(`the native widget is not locale-controllable from Playwright`) rather than a
+note, because the reasoning below rests on it and would need revisiting if it
+ever stopped being true.
+
+So determinism is established two ways at once:
+
+| Kind | What it establishes |
+|---|---|
+| **Structural** (load-bearing) | `no approval screen renders a user-agent date widget` walks all eight screens as both principals and fails on any `input[type=date/datetime-local/month/week/time]`. Nothing remains whose rendering the OS chooses. |
+| **Measured** (with a control) | Six locale/timezone configurations — including `ar-EG` and `Pacific/Kiritimati`, the far side of the date line — render the form to **byte-identical pixels** and resolve the same typed date to the same ISO value. The same six are asserted to **disagree** about `Intl`, so the sweep is shown capable of detecting the locale dependence it reports absent. |
+
+### One exemption deleted
+
+The keyboard-traversal test skipped the focus-ring assertion on any stop where
+`type="date"` and `:focus-visible` was false — Chromium's date input has four
+tab stops and the fourth is a shadow-internal picker button no page stylesheet
+can reach. With the widget gone the skip is deleted, the Tab bound drops from
+`expected.length + 40` to `+ 4`, and every stop on every control is now held to
+the same standard with nothing waved through. **This strengthens the test.**
+
+### The evidence: a box is a permission, a translation is a proof
+
+Two approved corrections on one screen move 71k–138k pixels. Handing that to
+`prove-baseline-delta.py` as allowed boxes would have meant permitting
+arbitrary change across most of the page — the very accounting the tool exists
+to refuse. So the regions are split by what can be *proved* versus what must be
+*permitted*:
+
+* **Permitted**, and MEASURED by `the measured regions still describe the
+  screen the baseline depicts` in `approvals.spec.js` — under the same stubs
+  and the same principal the baseline itself is captured with, which is what
+  makes the measurement describe *this* baseline: the shell bar's identity
+  block, the header cluster lines it reflows (unioned by vertical overlap and
+  run to the edge of the bar, because a narrower identity block leaves the old
+  one's trailing pixels beyond the new block's right edge), and the band from
+  the form's top to the table's top.
+* **Proved**: below the table's measured top, the new baseline must be the old
+  one **translated by a single constant the tool finds for itself, pixel for
+  pixel**. `best_translation()` searches ±96px and requires an exact fit; rows
+  that fall off the edge under the shift are compared in place so a change
+  cannot hide in the gap the shift opens.
+
+Measured result, per baseline:
+
+| Baseline | changed px | accounted for |
+|---|---|---|
+| `…-desktop-1440` | 138,121 | identity + rail + form band; below y=337 an **exact +28px translation**, max difference 1/255 |
+| `…-laptop-1024`  |  71,294 | identity + rail + form band; below y=348 an **exact −6px translation**, max difference 0/255 |
+| `…-tablet-800`   | 105,316 | identity + form band (no rail below 900px); below y=566 an **exact +28px translation**, max difference 0/255 |
+
+`unchanged 90, changed 3, added 0, removed 0`; largest per-channel difference
+anywhere outside the accounted regions **1/255**, the re-render antialiasing
+tolerance. The delta is large; the account is that **nothing below the form
+changed at all** — it moved, by exactly the amount the form's height changed.
+
+### Every guard was broken on purpose first
+
+| # | Mutation | Guard | Result |
+|---|---|---|---|
+| 1 | restore `<input type="date">` | the date-field block | **5 of 6 fail** (measured before the sixth was withdrawn; only the native-widget probe passed, correctly) |
+| 2 | derive the hint from `Intl` | the locale sweep | **fails**, naming en-US, de-DE, ja-JP, ar-EG |
+| 3 | accept `03/04/2026`, drop the calendar check | `it refuses what it cannot read` | **fails** on the first ambiguous input |
+| 4 | echo a second, locally-written date rendering | the formatter-reuse assertion | **fails**: expected `01-Apr-2026 00:00:00 UTC`, got `2026-04-01 (00:00 UTC)` |
+| 5 | flip ONE pixel below the translation boundary | `prove-baseline-delta.py` | **fails**: "NOT the old one translated by any single offset within ±96px" |
+| 6 | make the committed `tableTop` 12px stale | the region measurement | **fails**: "tableTop.y is 337, recorded as 349" |
+
+### A test added in this change was WITHDRAWN before it shipped green, and what it found is better than the test
+
+`the native widget is not locale-controllable from Playwright` was added to
+keep the 2026-09-06 measurement under continuous check. It rendered a native
+`<input type="date">` into the live page under each of the six configurations
+and asserted the six were pixel-identical.
+
+It passed three times in isolation and **failed inside the full 1011-test
+run**, reporting a difference under exactly one locale. That report was already
+suspicious: if `use.locale` moved the widget, `de-DE`, `ja-JP` and `ar-EG` do
+not write dates the Indian way either, so all five would have differed, not
+one. Chasing it produced two results.
+
+**First, a real defect in this stream's own tests.** Both new sweeps compared
+ad-hoc `locator.screenshot()` output. `toHaveScreenshot` re-shoots until two
+consecutive captures agree and settles fonts and animations first; an ad-hoc
+element screenshot gets none of that, so a capture race could be reported as a
+locale difference. `stableShot()` now does that settling for both sweeps, and
+the locale sweep is byte-stable over four repeats (20/20 with the whole block
+repeated).
+
+**Second, the finding that ended the test.** With the stability loop in place
+the probe failed *differently*: it reported **`en-IN` differing from `en-IN`**
+— the same locale, the same machine, the same six contexts, two settled renders
+of 1160 and 1176 bytes at an identical 132x28. Over four repeats:
+
+| | across all six contexts |
+|---|---|
+| the application's own field | **4 / 4** identical |
+| the native date widget | **2 / 4** — it disagreed with itself |
+
+So the native control is not merely locale-dependent; **it does not render
+reproducibly at all**, and no assertion can be built on it. That is a stronger
+reason to have removed it than the one this screen started with. It is now
+recorded in the spec's header comment rather than asserted, because a gate that
+is red two runs in four teaches people to ignore gates — and because the claim
+it was guarding is a fact about Chromium, not a requirement of this product.
+
+Nothing is left uncovered by the withdrawal. The two assertions that carry the
+argument are unaffected and both stable: the structural one (no UA-rendered
+date widget on any approval screen, walked as both principals) and the locale
+sweep with its `Intl` control.
+
+### One manifest line in this commit is NOT this stream's change
+
+`python tools/build_test_manifest.py --check` — the gate `ci.yml` runs — was
+**already failing at the lead HEAD `4e14718`**. That commit changed the body of
+`test_live_reserve_calls_charges_both_windows_or_neither`
+(`tests/test_pg_integration_schema.py`) without rebuilding the manifest, which
+was last written at `a51fa10`. This stream adds no Python test, so its own work
+needs no manifest change at all; running the tool as required regenerates that
+one `body_sha` as a side effect.
+
+It is included rather than reverted, because leaving it out leaves CI red for a
+reason unrelated to anything here. **The single line
+`test_live_reserve_calls_charges_both_windows_or_neither.body_sha`
+`b048f400e8db519f` → `9b9bc47ecd345c68` belongs to `4e14718`, not to this
+change, and its owner should confirm the body change was intended.**
+
+**Approved by:** product owner — the two corrections referred on 2026-09-06 and
+authorised for Wave 6.
