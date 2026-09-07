@@ -753,19 +753,65 @@ def _opt_datetime(value: Any, *, field: str) -> datetime | None:
     return parse_zoho_datetime(value, field=field)
 
 
-def _outbound_line(line: LineDTO) -> dict[str, Any]:
-    """One line of an emitted PO.
+def render_paise(paise: int) -> str:
+    """Integer paise -> the decimal string that goes on the wire.
 
     Amounts leave as decimal strings built from integer paise. There is no
     float here and no ``Decimal``: the value is assembled by integer division
-    so the string is exactly what the ledger holds.
+    so the string is exactly what the ledger holds. That claim used to be
+    false for every negative amount, and this function is where it becomes
+    true.
+
+    THE DEFECT THIS REPLACES
+    ------------------------
+    The previous rendering was ``divmod(paise, 100)`` straight into
+    ``f"{rupees}.{sub:02d}"``. Python's ``divmod`` **floors** -- it rounds
+    toward negative infinity and returns a non-negative remainder -- so
+    ``divmod(-150, 100)`` is ``(-2, 50)`` and the wire carried ``-2.50`` for
+    an amount of minus one rupee fifty::
+
+           paise   true rupees   emitted    verdict
+            -150        -1.50      -2.50    WRONG
+             -99        -0.99      -1.01    WRONG
+              -1        -0.01      -1.99    WRONG
+          -25000      -250.00    -250.00    ok
+
+    The last row is why this survived review and every existing test: an exact
+    multiple of 100 has a zero remainder, and flooring a value with no
+    fractional part is the identity. Every fixture amount was a round rupee,
+    so the only cases that could expose it were the only cases nobody wrote.
+
+    Negatives are not a hypothetical. ``dto.paise()`` calls
+    ``to_paise(..., allow_negative=True)`` deliberately, because **credit
+    notes, returns, reversals and negative adjustments** are ordinary
+    documents on both products, and a debit-note line is exactly a negative
+    unit price.
+
+    THE FIX
+    -------
+    Split the sign off FIRST, divide the magnitude, and put the sign back.
+    ``abs()`` on an ``int`` is exact and total, so ``rupees`` and ``sub`` are
+    always the true whole and fractional parts of the magnitude and the
+    ``:02d`` pad can never be reading a borrowed remainder.
+
+    Note the sign is taken from ``paise < 0`` rather than from ``rupees``:
+    for ``-1 <= paise <= -99`` the magnitude's rupee part is ``0``, and
+    ``-0`` does not exist for an ``int``, so a sign derived from the quotient
+    would render ``-0.99`` as ``0.99`` -- the same money lost, in the other
+    direction.
     """
-    rupees, sub = divmod(line.unit_price_paise, 100)
+    sign = "-" if paise < 0 else ""
+    rupees, sub = divmod(abs(paise), 100)
+    return f"{sign}{rupees}.{sub:02d}"
+
+
+def _outbound_line(line: LineDTO) -> dict[str, Any]:
+    """One line of an emitted PO."""
     return {
         "item_id": line.item_external_id,
         "description": line.description,
         "quantity": line.quantity,
-        "rate": f"{rupees}.{sub:02d}",
+        "rate": render_paise(line.unit_price_paise),
     }
 
 

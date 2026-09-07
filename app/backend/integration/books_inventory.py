@@ -765,13 +765,55 @@ def _opt_datetime(value: Any, *, field: str) -> datetime | None:
     return parse_zoho_datetime(value, field=field)
 
 
+def render_paise(paise: int) -> str:
+    """Integer paise -> the decimal string that goes on the wire.
+
+    Deliberately a byte-for-byte twin of ``erp.render_paise``, and NOT an
+    import of it: §11 keeps the two product adapters from reaching into each
+    other, and a shared money renderer would be the first thread of exactly
+    that coupling. ``tests/test_integration_outbound_money.py`` runs the same
+    table through both functions and fails if they ever disagree, so the
+    duplication is held to agreement by a test rather than by hope.
+
+    THE DEFECT THIS REPLACES
+    ------------------------
+    ``divmod(paise, 100)`` **floors** -- toward negative infinity, with a
+    non-negative remainder -- so ``divmod(-150, 100)`` is ``(-2, 50)`` and a
+    line worth minus one rupee fifty went out as ``-2.50``::
+
+           paise   true rupees   emitted    verdict
+            -150        -1.50      -2.50    WRONG
+             -99        -0.99      -1.01    WRONG
+              -1        -0.01      -1.99    WRONG
+          -25000      -250.00    -250.00    ok
+
+    An exact multiple of 100 has a zero remainder and so is unaffected, which
+    is why every round-rupee fixture in the suite agreed with the broken code.
+
+    Negatives are in scope by design: ``dto.paise()`` passes
+    ``allow_negative=True`` because **credit notes, returns, reversals and
+    negative adjustments** are ordinary documents here, and a debit-note line
+    is a negative unit price.
+
+    THE FIX
+    -------
+    Take the sign off the value, divide the magnitude, put the sign back. The
+    sign comes from ``paise < 0`` and not from the quotient, because for
+    ``-99 <= paise <= -1`` the magnitude's rupee part is ``0`` and an integer
+    has no ``-0`` -- a sign read off the quotient would turn ``-0.99`` into
+    ``0.99``.
+    """
+    sign = "-" if paise < 0 else ""
+    rupees, sub = divmod(abs(paise), 100)
+    return f"{sign}{rupees}.{sub:02d}"
+
+
 def _outbound_line(line: LineDTO) -> dict[str, Any]:
-    rupees, sub = divmod(line.unit_price_paise, 100)
     return {
         "item_id": line.item_external_id,
         "description": line.description,
         "quantity": line.quantity,
-        "rate": f"{rupees}.{sub:02d}",
+        "rate": render_paise(line.unit_price_paise),
     }
 
 

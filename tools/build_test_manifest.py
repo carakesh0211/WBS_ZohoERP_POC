@@ -168,6 +168,28 @@ POST_BASELINE_FILES = {
     # run everywhere; the rest are `@pytest.mark.pg` and run for the first
     # time in CI.
     "test_pg_rls_integration_matrix.py",
+    # --- Wave 6 stream B2: the two money-facing defects --------------------
+    # `test_pg_reconciliation.py` is the PostgreSQL half of
+    # `sweeps.SweepStore` -- a surface that had NO implementation at all, so
+    # all eight sweeps ran exclusively against `tests/integration_fakes.py`.
+    # Split the way `test_pg_integration_schema.py` is: seven database-free
+    # tests that render the actual SQL and check it against migration 011's
+    # DDL (including the one check `test_integration_sql_matches_schema.py`
+    # says it cannot make -- that the `ON CONFLICT` target matches a real
+    # partial unique index, columns AND predicate), and forty-seven live ones
+    # gated on CAPEX_DB_URL that run for the first time in CI. A skip is not
+    # a pass, and the live half has never executed anywhere else.
+    #
+    # `test_integration_outbound_money.py` is database-free entirely: the
+    # outbound renderer floored `divmod(paise, 100)`, so every negative amount
+    # that was not an exact multiple of 100 went out overstated -- and every
+    # fixture in the suite was a round rupee, which is why it survived. Credit
+    # notes, returns and reversals are the documents it was wrong for.
+    #
+    # Post-baseline like every wave file: the 220 counts the POC's
+    # audit-remediation suite, and inflating it would make the removal guard
+    # meaningless.
+    "test_pg_reconciliation.py", "test_integration_outbound_money.py",
 }
 
 

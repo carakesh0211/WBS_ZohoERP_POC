@@ -2254,6 +2254,52 @@
         "body_sha": "3d493f32e67871e3"
       }
     },
+    "test_integration_outbound_money.py": {
+      "test_negative_paise_render_as_the_amount_they_are": {
+        "assertions": 1,
+        "body_sha": "b6d2a94ab0dd1e5a"
+      },
+      "test_the_old_flooring_overstated_every_negative_it_touched": {
+        "assertions": 4,
+        "body_sha": "b17613643e25821e"
+      },
+      "test_a_negative_under_one_rupee_keeps_its_sign": {
+        "assertions": 2,
+        "body_sha": "b03683679ff0bae3"
+      },
+      "test_every_paise_value_across_two_rupees_matches_the_decimal_oracle": {
+        "assertions": 1,
+        "body_sha": "5c20b2edf1305e8c"
+      },
+      "test_the_wire_string_round_trips_back_to_the_same_paise": {
+        "assertions": 1,
+        "body_sha": "dda9e05c7f97b80f"
+      },
+      "test_both_products_render_money_identically": {
+        "assertions": 1,
+        "body_sha": "a530444e0c5f2f59"
+      },
+      "test_the_emitted_line_carries_the_repaired_rate": {
+        "assertions": 2,
+        "body_sha": "cc3d049525d826d1"
+      },
+      "test_indian_grouping_at_lakh_and_crore_describes_the_wire_value": {
+        "assertions": 3,
+        "body_sha": "efbbdf11b14701cf"
+      },
+      "test_the_display_form_survives_a_negative_that_is_not_a_round_rupee": {
+        "assertions": 3,
+        "body_sha": "6e6cd78b68069e40"
+      },
+      "test_no_adapter_floors_a_paise_value_again": {
+        "assertions": 1,
+        "body_sha": "6abbba9ba9778cb2"
+      },
+      "test_no_adapter_routes_money_through_a_float": {
+        "assertions": 2,
+        "body_sha": "e90743543b68629b"
+      }
+    },
     "test_integration_product_isolation.py": {
       "test_a_books_cassette_filed_under_erp_is_refused_at_load": {
         "assertions": 2,
@@ -2661,9 +2707,9 @@
         "assertions": 1,
         "body_sha": "5e654e7c8ede8da9"
       },
-      "test_no_sql_in_this_module_names_a_money_column": {
-        "assertions": 1,
-        "body_sha": "30bbed93836bb446"
+      "test_money_in_this_module_appears_only_on_the_011_exception_table": {
+        "assertions": 3,
+        "body_sha": "47e18d798d75ff4f"
       },
       "test_no_sql_in_this_module_hardcodes_a_zoho_url_or_endpoint": {
         "assertions": 1,
@@ -6406,6 +6452,152 @@
         "body_sha": "436b750b66347aad"
       }
     },
+    "test_pg_reconciliation.py": {
+      "test_an_exception_is_written_with_every_column_the_sweep_supplied": {
+        "assertions": 10,
+        "body_sha": "1eed90f2ad8b1af0"
+      },
+      "test_the_money_columns_come_back_as_int_not_decimal": {
+        "assertions": 3,
+        "body_sha": "4c6140b4213a9a3f"
+      },
+      "test_raising_the_same_exception_twice_while_open_is_a_no_op": {
+        "assertions": 2,
+        "body_sha": "0559eba15c248bbf"
+      },
+      "test_a_rewalk_does_not_inflate_anything": {
+        "assertions": 4,
+        "body_sha": "dc87b3ca1a5334bf"
+      },
+      "test_two_identifierless_lines_on_one_receive_are_two_exceptions": {
+        "assertions": 4,
+        "body_sha": "eb92b7c2064d3604"
+      },
+      "test_an_exception_with_no_object_id_is_never_deduplicated": {
+        "assertions": 2,
+        "body_sha": "7f298b7743ca3600"
+      },
+      "test_a_resolved_exception_can_be_raised_again": {
+        "assertions": 3,
+        "body_sha": "c3ed9a345b6a271b"
+      },
+      "test_each_action_lands_on_its_c18_status_and_stamps_who_and_when": {
+        "assertions": 6,
+        "body_sha": "afe810c48c36c851"
+      },
+      "test_the_database_refuses_a_status_change_that_names_nobody": {
+        "assertions": 3,
+        "body_sha": "f3e650291cc31a02"
+      },
+      "test_every_action_refuses_a_blank_reason": {
+        "assertions": 2,
+        "body_sha": "332a98a22d5f528d"
+      },
+      "test_an_action_refuses_a_blank_actor": {
+        "assertions": 2,
+        "body_sha": "c469297620de9bea"
+      },
+      "test_a_resolved_exception_cannot_be_resolved_again": {
+        "assertions": 4,
+        "body_sha": "43b39f5ba8c7710a"
+      },
+      "test_acting_on_an_exception_that_does_not_exist_is_a_404_not_a_409": {
+        "assertions": 3,
+        "body_sha": "eb0c6c733cfbb2df"
+      },
+      "test_the_database_refuses_a_sixth_kind": {
+        "assertions": 2,
+        "body_sha": "649be32b79620114"
+      },
+      "test_the_store_refuses_a_sixth_kind_before_it_reaches_the_server": {
+        "assertions": 2,
+        "body_sha": "74d2ff5d45bb404c"
+      },
+      "test_the_database_refuses_a_status_outside_c18": {
+        "assertions": 2,
+        "body_sha": "229feb7cf1d66527"
+      },
+      "test_the_python_constants_transcribe_the_migration_rather_than_invent_it": {
+        "assertions": 6,
+        "body_sha": "66e1599008c706d7"
+      },
+      "test_a_negative_source_amount_is_held_at_full_magnitude": {
+        "assertions": 2,
+        "body_sha": "dce15dc2e131a516"
+      },
+      "test_the_exposure_sum_is_an_int_and_not_a_decimal": {
+        "assertions": 3,
+        "body_sha": "f7f981ba120fb110"
+      },
+      "test_an_exposure_over_no_rows_is_zero_and_not_none": {
+        "assertions": 1,
+        "body_sha": "e53ad89c5a437643"
+      },
+      "test_an_open_exception_blocks_the_period_close": {
+        "assertions": 3,
+        "body_sha": "cbdce3fbd05e074d"
+      },
+      "test_an_accepted_exception_does_not_block_a_close": {
+        "assertions": 1,
+        "body_sha": "6fcf0820c553122b"
+      },
+      "test_every_mutation_leaves_an_event_under_its_correlation_id": {
+        "assertions": 5,
+        "body_sha": "5224e04d1ae979d1"
+      },
+      "test_a_restricted_principal_cannot_see_another_entitys_exceptions": {
+        "assertions": 2,
+        "body_sha": "d481b4f810c13437"
+      },
+      "test_a_restricted_principal_cannot_resolve_another_entitys_exception": {
+        "assertions": 4,
+        "body_sha": "021f2a08e8dec080"
+      },
+      "test_raising_into_an_entity_out_of_scope_is_refused_loudly": {
+        "assertions": 3,
+        "body_sha": "43e00419e42766c0"
+      },
+      "test_an_unattributable_exception_is_visible_to_whoever_can_resolve_it": {
+        "assertions": 2,
+        "body_sha": "62a39ed03b5189bb"
+      },
+      "test_the_unbacked_sweep_functions_refuse_rather_than_returning_a_default": {
+        "assertions": 5,
+        "body_sha": "78e39c7f47f9c745"
+      },
+      "test_the_unbacked_surface_is_exactly_what_sweepstore_still_needs": {
+        "assertions": 2,
+        "body_sha": "1c49d5432ec17ef5"
+      },
+      "test_every_reconciliation_statement_names_only_real_columns": {
+        "assertions": 2,
+        "body_sha": "1003958a47f578f0"
+      },
+      "test_the_on_conflict_target_is_the_partial_index_that_actually_exists": {
+        "assertions": 6,
+        "body_sha": "0ff037c7feb5cf75"
+      },
+      "test_every_paise_sum_is_cast_back_to_bigint": {
+        "assertions": 2,
+        "body_sha": "6972898f20441b58"
+      },
+      "test_every_reconciliation_statement_carries_a_compiled_scope_predicate": {
+        "assertions": 3,
+        "body_sha": "bc14c950d5ef0838"
+      },
+      "test_the_writer_never_returns_an_id_for_a_row_it_did_not_write": {
+        "assertions": 3,
+        "body_sha": "58d5f502691c1853"
+      },
+      "test_the_magnitude_helper_keeps_full_value_and_loses_no_sign": {
+        "assertions": 5,
+        "body_sha": "2dd07b3e9514525f"
+      },
+      "test_no_triage_verb_can_leave_an_exception_open": {
+        "assertions": 3,
+        "body_sha": "dee751fc8ce08f66"
+      }
+    },
     "test_pg_repo.py": {
       "test_require_scope_token_raises_without_literal_token": {
         "assertions": 1,
@@ -7387,6 +7579,7 @@
     "test_integration_dto_reader_contract.py": 4,
     "test_integration_jobs.py": 35,
     "test_integration_no_hardcoded_endpoints.py": 6,
+    "test_integration_outbound_money.py": 11,
     "test_integration_product_isolation.py": 16,
     "test_integration_sql_matches_schema.py": 2,
     "test_integration_statuses.py": 41,
@@ -7427,6 +7620,7 @@
     "test_pg_period_concurrency.py": 9,
     "test_pg_periods.py": 18,
     "test_pg_principal_scope.py": 37,
+    "test_pg_reconciliation.py": 36,
     "test_pg_repo.py": 23,
     "test_pg_rls.py": 18,
     "test_pg_rls_coverage.py": 34,
@@ -7463,10 +7657,11 @@
     "test_integration_dto_reader_contract.py": 5,
     "test_integration_jobs.py": 96,
     "test_integration_no_hardcoded_endpoints.py": 8,
+    "test_integration_outbound_money.py": 21,
     "test_integration_product_isolation.py": 36,
     "test_integration_sql_matches_schema.py": 2,
     "test_integration_statuses.py": 94,
-    "test_integration_store.py": 92,
+    "test_integration_store.py": 94,
     "test_integration_sweeps.py": 110,
     "test_integration_throttle.py": 244,
     "test_known_defects.py": 13,
@@ -7503,6 +7698,7 @@
     "test_pg_period_concurrency.py": 28,
     "test_pg_periods.py": 49,
     "test_pg_principal_scope.py": 83,
+    "test_pg_reconciliation.py": 117,
     "test_pg_repo.py": 37,
     "test_pg_rls.py": 34,
     "test_pg_rls_coverage.py": 72,

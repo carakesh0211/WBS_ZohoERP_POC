@@ -25,13 +25,20 @@ extend it. The ``CIRCUIT_`` prefixes in particular are not decoration: the bare
 code ``CLOSED`` collides with the C3 business status ``CLOSED`` and the two
 mean opposite things.
 
-**No money crosses this module.** There is no ``*_paise`` column on any table
-in 010, so there is no ``SUM()`` over ``bigint`` here and no numeric-to-Decimal
-trap. Monetary amounts on an outbound document travel inside
-``integration_outbox.payload`` as the integer paise the DTO already carries;
-the ledger tables own money and this module owns transport. If a screen later
-wants an amount on an outbox row, it should join to the local document rather
-than acquire a second copy that can be wrong on its own.
+**Money crosses this module in exactly one place, and it is a discrepancy,
+not a balance.** No table in 010 has a ``*_paise`` column: monetary amounts on
+an outbound document travel inside ``integration_outbox.payload`` as the
+integer paise the DTO already carries, the ledger tables own money and this
+module owns transport. ``011_reconciliation_exception.sql`` is the exception --
+``local_paise`` and ``source_paise`` are the two sides of a difference nobody
+can yet explain. They are ``bigint``, so **every aggregate over them casts
+``::bigint``**: PostgreSQL's ``SUM()`` over ``bigint`` returns ``numeric``,
+psycopg maps ``numeric`` to ``Decimal``, and a Decimal that reaches arithmetic
+expecting an int is the defect ``tests/test_money_sql_discipline.py`` was
+written after. Nothing here converts paise to rupees, to a float, or to a
+JavaScript number; the only rendering of money in the whole integration
+package is ``erp.render_paise``/``books_inventory.render_paise``, on the way
+out to the wire.
 
 **No network, no tenant, no product fact.** Nothing here builds a URL, names an
 endpoint, or knows what a Zoho response looks like. A connection stores
@@ -43,6 +50,7 @@ from __future__ import annotations
 import hashlib
 import json
 import random
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -88,6 +96,67 @@ INTEGRATION_MIGRATION = "010_integration.sql"
 #: Inbound idempotency is this constraint (section 11.6); a generated name would work
 #: until PostgreSQL chose a different one.
 INBOX_IDEMPOTENCY_CONSTRAINT = "uq_integration_inbox_idempotency"
+
+# ------------------------------------------------- reconciliation (011)
+#: The §11.8 exception table. Created by ``011_reconciliation_exception.sql``,
+#: NOT by 010 -- which is why it is named separately from
+#: :data:`INTEGRATION_TABLES` above. ``pg/periods.py`` and the integration
+#: sweeps both reference it, and until 011 landed neither could.
+RECONCILIATION_EXCEPTION = "reconciliation_exception"
+
+#: The migration that creates it.
+RECONCILIATION_EXCEPTION_MIGRATION = "011_reconciliation_exception.sql"
+
+#: The PARTIAL unique index that makes a sweep's re-walk idempotent, named
+#: because the writer infers it by its columns AND its predicate. Inferring by
+#: columns alone matches no index here, and PostgreSQL would refuse the
+#: statement rather than silently pick another -- which is the good failure,
+#: but only if the predicate is written out. See :func:`raise_exception`.
+EXCEPTION_OPEN_UNIQUE_INDEX = "ux_reconciliation_exception_open"
+
+#: ``reconciliation_exception.kind`` -- the five
+#: ``ck_reconciliation_exception_kind`` permits, and no sixth. A document-number
+#: gap is folded into CONTROL_TOTAL_MISMATCH with the missing numbers named,
+#: rather than inventing a kind outside the frozen set.
+EXCEPTION_KINDS: tuple[str, ...] = (
+    "GRN_LINE_UNATTRIBUTED", "CONTROL_TOTAL_MISMATCH",
+    "LATE_ARRIVAL_CLOSED_PERIOD", "UNMAPPED_EXTERNAL_STATUS",
+    "UNSANCTIONED_COMMITMENT",
+)
+
+#: C18's frozen ``exception_status`` namespace, verbatim, matching
+#: ``ck_reconciliation_exception_status``. NOT a C3 business status: C18 records
+#: the separation explicitly, and no value here may reach a business screen --
+#: the business-visible consequence is the C3 code ``RECONCILIATION_PENDING`` on
+#: the affected object.
+EXCEPTION_OPEN = "Open"
+EXCEPTION_RESOLVED = "Resolved"
+EXCEPTION_ACCEPTED = "Accepted"
+EXCEPTION_WRITTEN_OFF = "Written_off"
+EXCEPTION_STATUSES: tuple[str, ...] = (
+    EXCEPTION_OPEN, EXCEPTION_RESOLVED, EXCEPTION_ACCEPTED, EXCEPTION_WRITTEN_OFF,
+)
+
+#: The triage verbs a reviewer has, mapped to the C18 status each lands on.
+#:
+#: There are four verbs and three terminal statuses because ``retry`` and
+#: ``resolve`` land on the same one for different reasons, and the reason is
+#: what the audit trail keeps. ``retry`` says "the underlying condition should
+#: be gone; let the next sweep decide" -- and it works precisely BECAUSE
+#: :data:`EXCEPTION_OPEN_UNIQUE_INDEX` is partial on ``status = 'Open'``: once
+#: this row leaves Open, the same condition recurring is a genuinely new
+#: exception and is raisable again. A verb that merely deleted the row would
+#: lose the fact that a human looked at it.
+#:
+#: ``ignore`` lands on ``Accepted``, not ``Resolved``: nothing was fixed, a
+#: person decided to live with it, and a period-close report that cannot tell
+#: those two apart is a report finance cannot use.
+EXCEPTION_ACTIONS: dict[str, str] = {
+    "resolve": EXCEPTION_RESOLVED,
+    "retry": EXCEPTION_RESOLVED,
+    "ignore": EXCEPTION_ACCEPTED,
+    "write_off": EXCEPTION_WRITTEN_OFF,
+}
 
 # ================================================================= statuses
 # C16, frozen. The database CHECK constraints in 010 carry exactly these
@@ -266,6 +335,52 @@ VIA_CONNECTION_SCOPE_COLUMNS: dict[str, str | None] = {
 JOB_SCOPE_COLUMNS: dict[str, str | None] = {
     "entity": "entity_id", "plant": None, "location": None, "project": "project_id",
 }
+
+#: `reconciliation_exception` carries its own `entity_id` AND `project_id`,
+#: both nullable, and is scoped on both. plant and location are waived: 011
+#: gives the table no column for either, and both are already enforced at
+#: `project`, which carries its own policy.
+#:
+#: THE ARGUMENT ORDER THIS MIRRORS. 011's policy is
+#: `capex_scope_permits(entity_id, NULL, NULL, project_id)`. It originally read
+#: `(entity_id, NULL, project_id, NULL)` -- project_id in the LOCATION slot,
+#: project waived -- and because all four parameters are `text`, PostgreSQL
+#: accepted it silently and a principal restricted to one project could read
+#: another project's `local_paise`. This mapping is the application-layer half
+#: of the same predicate and is deliberately written to agree with it.
+EXCEPTION_SCOPE_COLUMNS: dict[str, str | None] = {
+    "entity": "x.entity_id", "plant": None, "location": None,
+    "project": "x.project_id",
+}
+
+#: The same mapping for a statement whose scope is decided by the values being
+#: WRITTEN rather than by a row that exists yet -- an INSERT has no `x.` to
+#: point at. `{scope}` sits inside an `EXISTS (... entity en ...)` for the same
+#: reason `VIA_CONNECTION_SCOPE_COLUMNS` does, and `project` is waived because
+#: an exception's `project_id` is copied from the purchase order the sweep is
+#: already walking, never supplied by a caller, and the table's RLS
+#: `WITH CHECK` is the authority on it either way.
+EXCEPTION_WRITE_SCOPE_COLUMNS: dict[str, str | None] = {
+    "entity": "en.entity_id", "plant": None, "location": None, "project": None,
+}
+
+
+#: The scope clause a reconciliation WRITE embeds, spelled out at each call
+#: site rather than returned by a helper.
+#:
+#: ``NULL`` short-circuits to permitted, exactly as :func:`record_event`'s
+#: connection clause does and exactly as ``capex_scope_permits`` does
+#: server-side. 011 is explicit that a NULL dimension is
+#: unrestricted-by-that-dimension, because "an exception nobody can attribute
+#: must be visible to whoever can resolve it"; compiling
+#: ``entity_id = ANY(...)`` against a NULL evaluates to NULL, which is falsy,
+#: and an unattributable exception would be silently refused by the very code
+#: written to stop values disappearing.
+#:
+#: NOT a function returning the clause, deliberately. The token has to be
+#: visible in the statement a reviewer reads -- and
+#: ``tests/test_integration_store.py`` looks for a literal ``{scope}`` in the
+#: SQL source for exactly that reason.
 
 def _via_connection(connection_expr: str) -> str:
     """The `EXISTS` clause every child table's query embeds.
@@ -2033,6 +2148,567 @@ def record_circuit_success(session: Session, *, connection_id: str,
             f"Connection {connection_id} does not exist or is out of scope.",
             status=404)
     return row[0]
+
+
+# ====================================================== reconciliation (§11.8)
+# The other half of `sweeps.SweepStore`. Everything above this line has run
+# against a real server since Wave 5 stream 2; everything below it had NO
+# PostgreSQL implementation at all, and all eight sweeps ran exclusively
+# against `tests/integration_fakes.py::InMemoryStore`. A fake written from the
+# same reading as the code agrees with the code about everything, including
+# statements the server cannot parse -- which is the defect
+# `tests/test_pg_integration_rate_budget.py` was written after, one section up.
+#
+# TWO SILENT DROPS HAVE ALREADY BEEN FOUND IN THIS SURFACE, and both arrived
+# through the anti-silent-drop code itself:
+#
+#   1. the unattributed bucket was INCREMENTED rather than set, so every
+#      re-walk -- and the sweeps re-walk, by design, on a 300-second overlap
+#      and a cycling cursor -- inflated it without a single new receive
+#      arriving. The number that blocks capitalisation became fiction.
+#   2. two identifierless lines on one receive keyed the SAME exception, so
+#      the second line's value vanished. `sweeps._attribute` now falls back to
+#      the line's ORDINAL (`#0`, `#1`) rather than to a constant, and
+#      `ux_reconciliation_exception_open` keys on `object_id`, so two ordinals
+#      are two rows. :func:`raise_exception` must not undo that by keying on
+#      anything coarser.
+#
+# Neither is reintroducible without failing a test in
+# `tests/test_pg_reconciliation.py`, which asserts both directly.
+
+
+def _exception_id() -> str:
+    """A fresh `exception_id`. Minted here because the `SweepStore` protocol
+    does not take one -- the caller is a cron sweep with nothing to name a row
+    after."""
+    return f"EXC-{uuid.uuid4().hex[:12].upper()}"
+
+
+def _magnitude(paise: int | None, *, side: str) -> int | None:
+    """A discrepancy side as the non-negative magnitude 011 requires.
+
+    `ck_reconciliation_exception_paise` forbids a negative on either side, and
+    says why: "these are magnitudes of two sides, and a sign would silently
+    encode a direction the `kind` is supposed to carry."
+
+    A negative genuinely arrives. `dto.paise()` passes
+    ``allow_negative=True`` because credit notes, returns and reversals are
+    ordinary documents, so a receive line on a return carries a negative
+    `line_total_paise`, and `sweeps._attribute` hands it straight through.
+    Rejecting it would stop the GRN sweep on a legitimate document; storing it
+    would violate the CHECK at 3am inside a cron function.
+
+    So the column takes the magnitude -- which IS the full value §11.8 demands
+    the line be held at -- and **the signed original is written to the audit
+    event**, so the direction is recovered from the trail rather than lost.
+    Nothing is dropped and nothing is spread.
+    """
+    if paise is None:
+        return None
+    value = int(paise)
+    if value < 0:
+        return -value
+    return value
+
+
+def raise_exception(session: Session, *, kind: str, object_type: str,
+                    object_id: str | None, detail: str,
+                    raised_at: datetime | None = None,
+                    entity_id: str | None = None,
+                    project_id: str | None = None,
+                    local_paise: int | None = None,
+                    source_paise: int | None = None,
+                    correlation_id: str | None = None,
+                    actor: str = "SVC-SWEEP") -> str:
+    """Raise a reconciliation exception, or return the Open one already there.
+
+    Returns the `exception_id` either way, which is the contract
+    `sweeps.SweepStore` declares and which
+    `sweeps.SweepPurchaseOrderAnchored._attribute` depends on: it passes the
+    returned id straight to `accumulate_unattributed` as the bucket's
+    `source_key`, so a re-walk that gets the same id back writes the same
+    bucket entry rather than a second one.
+
+    IDEMPOTENCY IS THE INDEX, NOT A READ
+    ------------------------------------
+    `ux_reconciliation_exception_open` is UNIQUE on
+    ``(kind, object_type, object_id)`` and PARTIAL on
+    ``status = 'Open' AND object_id IS NOT NULL``. This statement infers it by
+    naming both the columns and the predicate -- inference by columns alone
+    matches no index on this table, and PostgreSQL refuses rather than
+    choosing another, which is the good failure but only if the predicate is
+    written out.
+
+    ``DO UPDATE SET detail = <the row's own detail>`` rather than
+    ``DO NOTHING``: a no-op assignment changes no value but makes the
+    statement RETURN the conflicting row, so the existing `exception_id` comes
+    back from the same statement that tried to insert. `DO NOTHING` returns no
+    row, and recovering the id would then need a follow-up SELECT -- a
+    read-after-write with a window a concurrent sweep can land in. There is no
+    read-then-write here at all: the index arbitrates, once.
+
+    Whether this call created the row is decided by comparing the returned id
+    with the one this call minted. That is exact. The `xmax = 0` trick would
+    also work and is not used, because it is an implementation detail of
+    PostgreSQL's tuple header and this is money.
+
+    WHEN `object_id` IS NULL the partial index does not cover the row, so no
+    conflict is possible and every call inserts. That is 011's design, not an
+    oversight: an exception with nothing to key on cannot be recognised as
+    "the same one again", and inventing a key for it is precisely how two
+    identifierless GRN lines collapsed into one exception and half the value
+    disappeared. Callers that can supply an ordinal must
+    (`sweeps._attribute` does).
+    """
+    if kind not in EXCEPTION_KINDS:
+        raise IntegrationStoreError(
+            "UNKNOWN_EXCEPTION_KIND",
+            f"{kind!r} is not one of the five kinds C18 freezes and "
+            f"ck_reconciliation_exception_kind permits ({', '.join(EXCEPTION_KINDS)}). "
+            f"A sixth kind is a deliberate contract change, not a typo that "
+            f"silently creates a category nobody triages.")
+    moment = raised_at or _utcnow()
+    candidate = _exception_id()
+    object_type = _require(object_type, code="BLANK_OBJECT_TYPE",
+                           what="object_type")
+    detail = _require(detail, code="BLANK_EXCEPTION_DETAIL", what="detail")
+    local_magnitude = _magnitude(local_paise, side="local")
+    source_magnitude = _magnitude(source_paise, side="source")
+    row = repo.query_one(
+        session,
+        f"""
+        INSERT INTO {RECONCILIATION_EXCEPTION} (
+            exception_id, kind, object_type, object_id, entity_id, project_id,
+            status, detail, local_paise, source_paise, correlation_id,
+            raised_at)
+        SELECT %(exception_id)s, %(kind)s, %(object_type)s, %(object_id)s,
+               %(entity_id)s, %(project_id)s, %(open)s, %(detail)s,
+               %(local_paise)s, %(source_paise)s, %(correlation_id)s,
+               %(raised_at)s
+        WHERE %(entity_id)s::text IS NULL
+           OR EXISTS (SELECT 1 FROM entity en
+                       WHERE en.entity_id = %(entity_id)s AND {{scope}})
+        ON CONFLICT (kind, object_type, object_id)
+            WHERE status = 'Open' AND object_id IS NOT NULL
+        DO UPDATE SET detail = {RECONCILIATION_EXCEPTION}.detail
+        RETURNING exception_id
+        """,
+        {"exception_id": candidate, "kind": kind, "object_type": object_type,
+         "object_id": object_id, "detail": detail, "entity_id": entity_id,
+         "project_id": project_id, "local_paise": local_magnitude,
+         "source_paise": source_magnitude, "correlation_id": correlation_id,
+         "raised_at": moment, "open": EXCEPTION_OPEN},
+        columns=EXCEPTION_WRITE_SCOPE_COLUMNS,
+    )
+    if row is None:
+        # The INSERT's `WHERE` refused: this principal may not write into
+        # `entity_id`. RAISED, never returned as a fabricated id -- a caller
+        # that got an id back for a row that does not exist would hand it to
+        # `accumulate_unattributed` as a bucket key, and the value it was
+        # holding would be attributed to nothing at all. Which is the silent
+        # drop, one layer down.
+        raise IntegrationStoreError(
+            "EXCEPTION_OUT_OF_SCOPE",
+            f"Cannot raise a {kind} exception against entity "
+            f"{entity_id!r}: it does not exist or is out of scope for this "
+            f"principal. Nothing was written and no exception id exists.",
+            status=403)
+    exception_id = row[0]
+    created = exception_id == candidate
+    record_event(
+        session,
+        kind=("reconciliation.exception.raised" if created
+              else "reconciliation.exception.rewalked"),
+        actor=actor, correlation_id=correlation_id, now=moment,
+        detail={
+            "exception_id": exception_id, "exception_kind": kind,
+            "object_type": object_type, "object_id": object_id,
+            "entity_id": entity_id, "project_id": project_id,
+            "detail": detail,
+            "status": EXCEPTION_OPEN,
+            "local_paise": local_magnitude,
+            "source_paise": source_magnitude,
+            # The signed originals, so a magnitude in the column never costs
+            # the direction. See `_magnitude`.
+            "local_paise_signed": None if local_paise is None else int(local_paise),
+            "source_paise_signed": None if source_paise is None else int(source_paise),
+            "created": created,
+        })
+    return exception_id
+
+
+def open_exceptions(session: Session, *, entity_id: str | None = None,
+                    project_id: str | None = None,
+                    kinds: Sequence[str] | None = None,
+                    limit: int = 500) -> list[dict]:
+    """Every Open exception in scope, newest first. SCR-16 and SCR-27's list.
+
+    THE `OR` IS NOT A HOLE. 011 makes `entity_id` and `project_id` nullable and
+    says why: "some exceptions are raised before the owning entity or project
+    is known -- an unsanctioned commitment discovered on a PO we have no local
+    record of... an exception nobody can attribute must be visible to whoever
+    can resolve it." Its RLS policy delivers that by passing the NULLs to
+    `capex_scope_permits`, which treats a NULL dimension as
+    unrestricted-by-that-dimension.
+
+    `repo.compile_scope` cannot express that: it emits ``col = ANY(array)``,
+    and ``NULL = ANY(...)`` is NULL, which is falsy. So a wholly unattributable
+    exception -- both dimensions NULL -- would be invisible to every restricted
+    principal, and the row that most needs a human would be the one nobody
+    could see. The disjunction restores exactly that case and nothing wider:
+    BOTH dimensions must be NULL, so a row attributed to an entity is still
+    filtered by entity.
+
+    RESIDUAL, STATED RATHER THAN HIDDEN: a principal restricted on `project`
+    does not see exceptions whose `project_id` is NULL but whose `entity_id`
+    is set -- an entity-level CONTROL_TOTAL_MISMATCH, typically. Server-side
+    RLS would show them. This layer is therefore STRICTER than RLS, never
+    looser, which is the safe direction for a read; and the period-close gate
+    does not come through here (`pg/periods.py` asks the table directly, under
+    its own documented scope exemption), so nothing that blocks a close can be
+    hidden by it.
+
+    TWO DIFFERENT MEANINGS OF NULL SIT IN THIS ONE `WHERE`, and confusing them
+    is easy, so they are named. ``%(entity_id)s::text IS NULL`` is the CALLER
+    passing no filter -- one fixed statement rather than a WHERE clause
+    assembled from a list, which is what lets
+    ``tests/test_integration_store.py`` render this SQL and check every
+    placeholder against its parameter without a database. ``x.entity_id IS
+    NULL`` in the last clause is the ROW having no entity to be filtered by.
+    The first is about the query; the second is about the data.
+    """
+    rows = repo.query(
+        session,
+        f"""
+        SELECT x.exception_id, x.kind, x.object_type, x.object_id,
+               x.entity_id, x.project_id, x.status, x.detail,
+               x.local_paise, x.source_paise, x.correlation_id, x.raised_at,
+               x.resolved_at, x.resolved_by, x.resolution_note
+        FROM {RECONCILIATION_EXCEPTION} x
+        WHERE x.status = %(open)s
+          AND (%(entity_id)s::text IS NULL OR x.entity_id = %(entity_id)s)
+          AND (%(project_id)s::text IS NULL OR x.project_id = %(project_id)s)
+          AND (%(kinds)s::text[] IS NULL OR x.kind = ANY(%(kinds)s))
+          AND ({{scope}}
+               OR (x.entity_id IS NULL AND x.project_id IS NULL))
+        ORDER BY x.raised_at DESC, x.exception_id
+        LIMIT %(limit)s
+        """,
+        {"open": EXCEPTION_OPEN, "limit": int(limit), "entity_id": entity_id,
+         "project_id": project_id, "kinds": _checked_kinds(kinds)},
+        columns=EXCEPTION_SCOPE_COLUMNS,
+    )
+    return [_exception_row(r) for r in rows]
+
+
+def _checked_kinds(kinds: Sequence[str] | None) -> list[str] | None:
+    """`kinds` as a list, or None -- refusing anything outside the frozen five.
+
+    An unknown kind here filters to nothing and reads on screen as "there are
+    no exceptions of that kind", which is the wrong answer to give about a
+    control. Refused instead.
+    """
+    if kinds is None:
+        return None
+    unknown = sorted(set(kinds) - set(EXCEPTION_KINDS))
+    if unknown:
+        raise IntegrationStoreError(
+            "UNKNOWN_EXCEPTION_KIND",
+            f"{unknown} are not reconciliation exception kinds; expected some "
+            f"of {list(EXCEPTION_KINDS)}.")
+    return list(kinds)
+
+
+def _exception_row(row: tuple) -> dict:
+    (exception_id, kind, object_type, object_id, entity_id, project_id, status,
+     detail, local_paise, source_paise, correlation_id, raised_at, resolved_at,
+     resolved_by, resolution_note) = row
+    return {
+        "exception_id": exception_id, "kind": kind, "object_type": object_type,
+        "object_id": object_id, "entity_id": entity_id,
+        "project_id": project_id, "status": status, "detail": detail,
+        # `int()`, not the driver's word for it. These are `bigint` columns and
+        # psycopg returns ints for them today; the cast is here so a future
+        # expression that wraps one in `SUM()` cannot leak a Decimal past this
+        # boundary the way `check_availability` once did.
+        "local_paise": None if local_paise is None else int(local_paise),
+        "source_paise": None if source_paise is None else int(source_paise),
+        "correlation_id": correlation_id, "raised_at": raised_at,
+        "resolved_at": resolved_at, "resolved_by": resolved_by,
+        "resolution_note": resolution_note,
+    }
+
+
+def open_exception_exposure(session: Session, *, entity_id: str | None = None,
+                            project_id: str | None = None) -> dict:
+    """How many Open exceptions are in scope, and how much money they hold.
+
+    The number the capitalisation gate and the period-close report quote. It
+    is the sum of `source_paise` held at FULL value -- §11.8 forbids spreading
+    an unattributed line pro-rata, so this is an exposure, not an allocation,
+    and it is deliberately not netted against anything.
+
+    ``::bigint`` ON BOTH SUMS, and not decoration. PostgreSQL's ``SUM()`` over
+    a `bigint` column returns **numeric**, psycopg maps numeric to
+    `decimal.Decimal`, and a Decimal that reaches arithmetic expecting an int
+    is the defect that took down the availability verdict, both approval paths
+    and the concurrency proof -- in the PostgreSQL CI job only, because a
+    Decimal cannot appear without a real server.
+    `tests/test_money_sql_discipline.py` fails the build if either cast is
+    removed.
+    """
+    row = repo.query_one(
+        session,
+        f"""
+        SELECT count(*),
+               coalesce(SUM(x.source_paise), 0)::bigint,
+               coalesce(SUM(x.local_paise), 0)::bigint
+        FROM {RECONCILIATION_EXCEPTION} x
+        WHERE x.status = %(open)s
+          AND (%(entity_id)s::text IS NULL OR x.entity_id = %(entity_id)s)
+          AND (%(project_id)s::text IS NULL OR x.project_id = %(project_id)s)
+          AND ({{scope}}
+               OR (x.entity_id IS NULL AND x.project_id IS NULL))
+        """,
+        {"open": EXCEPTION_OPEN, "entity_id": entity_id,
+         "project_id": project_id},
+        columns=EXCEPTION_SCOPE_COLUMNS,
+    )
+    count, source_total, local_total = row if row is not None else (0, 0, 0)
+    return {"open_count": int(count),
+            "source_paise": int(source_total),
+            "local_paise": int(local_total)}
+
+
+def act_on_exception(session: Session, *, exception_id: str, action: str,
+                     actor: str, reason: str,
+                     now: datetime | None = None) -> dict:
+    """Resolve / retry / ignore / write off one Open exception. Returns the row.
+
+    A RESOLUTION NAMES WHO AND WHEN, OR IT IS NOT A RESOLUTION.
+    `ck_reconciliation_exception_resolution` is a biconditional: a row whose
+    status is not Open MUST carry both `resolved_at` and `resolved_by`, and a
+    row that is Open must carry neither. This statement sets all four
+    resolution columns in one UPDATE so the constraint is satisfied by the
+    same statement that leaves Open -- there is no intermediate state, and no
+    path that stamps a status without an actor.
+
+    THE REASON IS MANDATORY, and checked here rather than left to the column:
+    `resolution_note` is nullable in 011, so the database would accept a
+    resolution with no explanation. An exception closed with no reason is
+    indistinguishable from one closed by accident, which defeats the audit
+    trail the whole control rests on. Blank and whitespace-only are both
+    refused.
+
+    ONLY FROM `Open`. A second call naming a different actor and a different
+    reason is refused rather than silently overwriting the first -- the first
+    reviewer's decision is evidence, not a draft.
+
+    `retry` lands on `Resolved` and is the interesting one: it does not re-run
+    anything. It closes the row so the NEXT sweep can raise it again if the
+    condition is still there, which works only because
+    `ux_reconciliation_exception_open` is partial on `status = 'Open'`. 011
+    says so in its own header: "once an exception is resolved, the same
+    condition recurring is a genuinely new exception and must be raisable
+    again."
+    """
+    if action not in EXCEPTION_ACTIONS:
+        raise IntegrationStoreError(
+            "UNKNOWN_EXCEPTION_ACTION",
+            f"{action!r} is not a reconciliation action; expected one of "
+            f"{sorted(EXCEPTION_ACTIONS)}.")
+    status = EXCEPTION_ACTIONS[action]
+    moment = now or _utcnow()
+    exception_id = _require(exception_id, code="BLANK_EXCEPTION_ID",
+                            what="exception_id")
+    resolved_by = _require(actor, code="BLANK_EXCEPTION_ACTOR", what="actor")
+    note = _require(
+        reason, code="BLANK_EXCEPTION_REASON",
+        what=f"a reason for {action!r} on a reconciliation exception")
+    row = repo.query_one(
+        session,
+        f"""
+        UPDATE {RECONCILIATION_EXCEPTION} AS x
+        SET status = %(status)s,
+            resolved_at = %(now)s,
+            resolved_by = %(resolved_by)s,
+            resolution_note = %(reason)s
+        WHERE x.exception_id = %(exception_id)s
+          AND x.status = %(open)s
+          AND ({{scope}}
+               OR (x.entity_id IS NULL AND x.project_id IS NULL))
+        RETURNING x.exception_id, x.kind, x.object_type, x.object_id,
+                  x.entity_id, x.project_id, x.status, x.detail,
+                  x.local_paise, x.source_paise, x.correlation_id, x.raised_at,
+                  x.resolved_at, x.resolved_by, x.resolution_note
+        """,
+        {"exception_id": exception_id, "status": status,
+         "resolved_by": resolved_by, "reason": note, "now": moment,
+         "open": EXCEPTION_OPEN},
+        columns=EXCEPTION_SCOPE_COLUMNS,
+    )
+    if row is None:
+        raise _no_open_exception(session, exception_id, action)
+    result = _exception_row(row)
+    record_event(
+        session, kind=f"reconciliation.exception.{action}", actor=actor,
+        correlation_id=result["correlation_id"], now=moment,
+        detail={"exception_id": result["exception_id"],
+                "exception_kind": result["kind"],
+                "object_type": result["object_type"],
+                "object_id": result["object_id"],
+                "entity_id": result["entity_id"],
+                "project_id": result["project_id"],
+                "action": action, "status": status,
+                "reason": note,
+                "source_paise": result["source_paise"],
+                "local_paise": result["local_paise"]})
+    return result
+
+
+def _no_open_exception(session: Session, exception_id: str,
+                       action: str) -> IntegrationStoreError:
+    """Say WHICH of the three refusals happened, without widening any of them.
+
+    Diagnostic only, and it runs AFTER the UPDATE has already declined to
+    touch a row -- so it cannot change the outcome, only the message. The
+    alternative, one message covering "no such row", "not yours" and "already
+    resolved", is the message that sends a reviewer to the wrong place.
+    """
+    row = repo.query_one(
+        session,
+        f"""
+        SELECT x.status, x.resolved_by, x.resolved_at
+        FROM {RECONCILIATION_EXCEPTION} x
+        WHERE x.exception_id = %(exception_id)s
+          AND ({{scope}}
+               OR (x.entity_id IS NULL AND x.project_id IS NULL))
+        """,
+        {"exception_id": exception_id},
+        columns=EXCEPTION_SCOPE_COLUMNS,
+    )
+    if row is None:
+        return IntegrationStoreError(
+            "EXCEPTION_NOT_FOUND",
+            f"Reconciliation exception {exception_id} does not exist or is "
+            f"out of scope.", status=404)
+    return IntegrationStoreError(
+        "EXCEPTION_NOT_OPEN",
+        f"Reconciliation exception {exception_id} is already {row[0]}, "
+        f"resolved by {row[1]} at {row[2]}. It cannot be {action}d again: the "
+        f"first reviewer's decision is evidence, not a draft.",
+        status=409)
+
+
+# ------------------------------------------------- not yet backed by a schema
+#
+# `resolve_po_line`, `record_receive_line`, `accumulate_unattributed`,
+# `bills_awaiting_detail` and `mark_detail_hydrated` are the rest of
+# `sweeps.SweepStore`, and THERE IS NO TABLE FOR ANY OF THEM. Every
+# `CREATE TABLE` in `migrations/pg/` was enumerated: there is no purchase-order
+# header, no purchase-order line, no receive/GRN line, and no per-project
+# unattributed bucket. `integration_inbox` has no hydration flag and could not
+# be given one by an UPDATE anyway -- 010's append-only trigger freezes its
+# receipt columns after insert.
+#
+# WHY THEY RAISE RATHER THAN RETURNING SOMETHING PLAUSIBLE.
+#
+# Each of these has a "harmless" default that is not harmless:
+#
+#   * `resolve_po_line` -> None reads as "this line does not match a known PO
+#     line", which sends every receive line down the quarantine branch. The
+#     bucket would then be the whole GRN population, and capitalisation would
+#     be blocked estate-wide for a reason that is not true.
+#   * `record_receive_line` -> None reads as "recorded". It would not be.
+#   * `accumulate_unattributed` -> None reads as "the value is held". It would
+#     be held nowhere. That is the silent drop this entire section exists to
+#     prevent, produced by the function whose docstring promises to prevent it.
+#   * `bills_awaiting_detail` -> [] reads as "the hydration queue is empty", so
+#     `sweep_bill_detail` would report success having fetched nothing, and
+#     every bill would stay unhydrated -- meaning no lines, meaning no WBS
+#     attribution, meaning zero CWIP booked while the sweep runs green.
+#
+# This is the same call `pg/periods.py::_has_open_reconciliation_exceptions`
+# now makes and the same one `integration/outbound.py` makes with
+# `DetectiveControlUnavailable`: a control that cannot be evaluated must
+# refuse, not proceed. Until the migration lands, a sweep that reaches one of
+# these stops loudly, at the line that cannot be honoured, naming what is
+# missing.
+
+#: What the lead needs to create before the five functions below can be
+#: written. Named as data rather than prose so `tests/test_pg_reconciliation.py`
+#: can assert the refusal mentions it, and so the day the migration lands the
+#: failing tests point straight at this list.
+UNBACKED_SWEEP_SURFACE: dict[str, str] = {
+    "resolve_po_line": "a purchase-order header and line table carrying the "
+                       "external PO id and the external line id",
+    "record_receive_line": "a receive/GRN line table, UNIQUE on "
+                           "(po_line_id, receive_external_id, line_external_id)",
+    "accumulate_unattributed": "a per-project unattributed bucket, PRIMARY KEY "
+                               "(project_id, source_key), the value SET and "
+                               "never incremented",
+    "bills_awaiting_detail": "a bill line-item hydration queue",
+    "mark_detail_hydrated": "the same hydration queue",
+}
+
+
+class SchemaNotYetMigrated(IntegrationStoreError):
+    """The table this call needs is in no migration.
+
+    A distinct type, so a caller can tell "the schema does not support this
+    yet" from "this call was refused" -- and so nothing can catch it by
+    accident while catching an ordinary store error.
+    """
+
+    def __init__(self, function: str) -> None:
+        super().__init__(
+            "SCHEMA_NOT_YET_MIGRATED",
+            f"{function}() has no table to write to: migrations/pg/ creates "
+            f"no {UNBACKED_SWEEP_SURFACE[function]}. Refusing rather than "
+            f"returning a value that would read as success -- §11.8 forbids a "
+            f"silent drop, and a plausible default here IS one. The lead owns "
+            f"migrations/; this is the diff being requested.",
+            status=501)
+
+
+def resolve_po_line(session: Session, *, po_external_id: str,
+                    line_external_id: str | None) -> str | None:
+    """UNIMPLEMENTABLE: there is no purchase-order line table. See above."""
+    raise SchemaNotYetMigrated("resolve_po_line")
+
+
+def record_receive_line(session: Session, *, po_line_id: str,
+                        receive_external_id: str,
+                        line_external_id: str | None, quantity: Any,
+                        amount_paise: int | None) -> None:
+    """UNIMPLEMENTABLE: there is no receive-line table. See above."""
+    raise SchemaNotYetMigrated("record_receive_line")
+
+
+def accumulate_unattributed(session: Session, *, project_id: str | None,
+                            paise: int, source_key: str) -> None:
+    """UNIMPLEMENTABLE: there is no unattributed bucket table. See above.
+
+    When it lands it is an UPSERT keyed on ``(project_id, source_key)`` whose
+    conflict action is ``SET paise = EXCLUDED.paise`` -- **set, never
+    ``paise + EXCLUDED.paise``**. `source_key` is the exception id, and the
+    sweeps re-walk on a 300-second overlap and a cycling cursor, so a bucket
+    that added on every pass would climb every fifteen minutes without a
+    single new receive arriving. That defect has already been found here once.
+    """
+    raise SchemaNotYetMigrated("accumulate_unattributed")
+
+
+def bills_awaiting_detail(session: Session, *, connection_id: str,
+                          limit: int) -> list[str]:
+    """UNIMPLEMENTABLE: there is no hydration queue. See above."""
+    raise SchemaNotYetMigrated("bills_awaiting_detail")
+
+
+def mark_detail_hydrated(session: Session, *, connection_id: str,
+                         external_id: str) -> None:
+    """UNIMPLEMENTABLE: there is no hydration queue. See above."""
+    raise SchemaNotYetMigrated("mark_detail_hydrated")
 
 
 # =============================================================== events
