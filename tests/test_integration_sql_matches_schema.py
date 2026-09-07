@@ -96,25 +96,29 @@ def _sql_literals(path: Path) -> list[str]:
     return [s for s in found if re.search(r"\b(INSERT INTO|UPDATE|SELECT)\b", s)]
 
 
-#: `throttle.py` is a KNOWN, UNFIXED defect, marked strict so it cannot be
-#: forgotten and cannot be quietly "fixed" without removing this marker.
+#: No module is waived. `throttle.py` used to be, with `xfail(strict=True)`.
 #:
-#: Its `_RESERVE_SQL` names `lane`, `created_by` and `updated_by`; the shipped
-#: table has `allocation`, `updated_at` and neither `_by` column. Renaming the
-#: three would satisfy THIS test and still fail at runtime, because the insert
-#: would omit `window_start_key`, `window_seconds`, `window_tz` and `ceiling`
-#: -- all NOT NULL with no default. A gate that goes green on a statement that
-#: cannot execute is worse than one that stays red.
+#: It named `lane`, `created_by` and `updated_by` -- none of which the shipped
+#: table has -- and conflicted on a constraint that did not exist. It was
+#: waived rather than patched, because renaming the three columns would have
+#: satisfied THIS test and still failed at runtime on four NOT NULL columns
+#: with no default. A gate going green on a statement that cannot execute is
+#: worse than one that stays red.
 #:
-#: The fix is not another patched statement. `integration_store.reserve_calls`
-#: already reserves against this table correctly, computes the window key and
-#: was written by the author of the schema. `throttle.reserve` should call it
-#: and `_RESERVE_SQL` should be deleted -- one implementation, which is what
-#: amendment A5 should have said.
-_KNOWN_BROKEN = {
-    "throttle.py": "names lane/created_by/updated_by; see A5. Fix by "
-                   "delegating to integration_store.reserve_calls.",
-}
+#: It was fixed by DELETION: `throttle.reserve` now delegates to
+#: `integration_store.reserve_calls` and `throttle.py` contains no SQL at all.
+#:
+#: The waiver was then held open even after the module passed, because passing
+#: this static check is not evidence that the SQL RUNS. It came off only when
+#: CI's live PostgreSQL job reported `953 collected, 953 executed, 0 skipped,
+#: 0 failed` with all 21 tests in `test_pg_integration_rate_budget.py` among
+#: them -- the repaired path executing against a real server.
+#:
+#: `strict=True` was the load-bearing part: once the module was fixed, the
+#: marker XPASSed and FAILED the suite, so it could not be quietly satisfied
+#: and forgotten. A non-strict marker would have gone silently green and the
+#: waiver would still be here.
+_KNOWN_BROKEN: dict[str, str] = {}
 
 
 def _modules() -> list[Path]:
