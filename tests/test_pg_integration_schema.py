@@ -1584,9 +1584,19 @@ def test_live_reserve_calls_charges_both_windows_or_neither(
             fresh = store.read_rate_budget(
                 session, connection_id="CONN-A", allocation="POLLING",
                 now=minute_two)
-            assert fresh["MINUTE"]["used"] == 0, (
-                "the second minute is not a fresh window, so this test cannot "
-                "distinguish a day refusal from a minute refusal")
+            # An ABSENT MINUTE key is the strongest form of "fresh": the
+            # window has never been reserved in, so no row exists yet.
+            # `read_rate_budget` reports only rows that exist, and that is
+            # correct -- "no row" and "a row reading zero" are different
+            # facts, and a reader that conflated them would hide a window
+            # that was never opened. An earlier revision of this test asserted
+            # `fresh["MINUTE"]["used"] == 0` and raised KeyError in CI; the
+            # test was wrong, not the store.
+            minute_state = fresh.get("MINUTE")
+            assert minute_state is None or minute_state["used"] == 0, (
+                f"the second minute is not a fresh window (used="
+                f"{minute_state['used']}), so this test cannot distinguish a "
+                f"day refusal from a minute refusal")
 
             # One call: the minute has 12 free, the day has none.
             with pytest.raises(store.RateBudgetExhausted) as excinfo:
@@ -1602,7 +1612,8 @@ def test_live_reserve_calls_charges_both_windows_or_neither(
             state = store.read_rate_budget(
                 session, connection_id="CONN-A", allocation="POLLING",
                 now=minute_two)
-            assert state["MINUTE"]["used"] == 0, (
+            after = state.get("MINUTE")
+            assert after is None or after["used"] == 0, (
                 "the minute window was charged for a call the day refused")
             assert state["DAY"]["used"] == 12
     finally:
