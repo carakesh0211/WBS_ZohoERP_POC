@@ -13,11 +13,23 @@ guessed. Two of the three statements could not execute:
 * `throttle.py::_RESERVE_SQL` named `lane`, `created_by` and `updated_by`, and
   conflicted on a constraint that does not exist. **Repaired** -- it now
   delegates to `integration_store.reserve_calls` and issues no SQL at all.
-* `outbound.py::PgOutboundRateBudget._UPSERT` conflicts on
+* `outbound.py::PgOutboundRateBudget._UPSERT` conflicted on
   `(connection_id, window_kind, window_start)`, which is not the primary key,
-  and omits five NOT NULL columns that have no default. **Not repaired here**
-  -- stream 2 owns that file and the lead rewires it at integration. See the
-  waiver below, which is written so that it cannot outlive the defect.
+  and omitted five NOT NULL columns that have no default. **Repaired** -- like
+  `throttle.py`, by deletion: `PgOutboundRateBudget.reserve` now delegates to
+  `integration_store.reserve_calls` and the module issues no rate-budget SQL
+  at all. Its waiver has been removed, so it falls under the guard below like
+  every other module.
+
+  Worth recording, because it was the third statement's distinguishing
+  feature: it could not have been repaired by fixing the column list. Its
+  strategy was to add `calls` first and ask afterwards whether the total had
+  passed the ceiling, and `ck_integration_rate_budget_used_within_ceiling`
+  (`used <= ceiling`) means the row can never HOLD the over-reserved value
+  long enough to be read back and refused. A patched column list would have
+  produced a statement that still aborts the transaction on the first refusal
+  -- which is why "delegate, do not patch" is the rule here rather than a
+  preference.
 
 Every unit test over all three passed throughout, because all three talked to
 in-memory doubles. A double written from the same misreading as the module it
@@ -62,21 +74,23 @@ APP = ROOT / "app"
 #: migration 010, against the columns that migration actually declares.
 CANONICAL = "app/backend/pg/integration_store.py"
 
-#: Wave 5's third implementation, which this stream does not own and must not
-#: edit. Recorded rather than silently skipped, and paired with
-#: `test_the_waiver_has_not_outlived_the_defect` below so that the entry cannot
-#: rot: the moment stream 2's file stops containing such a statement, that test
-#: fails and this entry has to be deleted. A waiver that survives its own
-#: repair is how an allowlist quietly becomes permission.
-KNOWN_UNREPAIRED = {
-    "app/backend/integration/outbound.py":
-        "PgOutboundRateBudget._UPSERT: conflicts on (connection_id, "
-        "window_kind, window_start), which is not the primary key, and omits "
-        "window_start_key, window_seconds, window_tz, ceiling and allocation "
-        "-- all NOT NULL with no default. Owned by stream 2; the lead rewires "
-        "it onto integration_store.reserve_calls at integration. See "
-        "docs/WAVE5_CONTRACTS.md amendment A5 (CORRECTED).",
-}
+#: **Empty, and that is the point.** It held one entry --
+#: `app/backend/integration/outbound.py`, waived for
+#: `PgOutboundRateBudget._UPSERT` -- because the stream that wrote this guard
+#: did not own that file.
+#:
+#: The waiver was deliberately built so it could not outlive the defect:
+#: `test_the_waiver_has_not_outlived_the_defect` below asserted that each
+#: waived file STILL contained the statement it was waived for, so repairing
+#: the file failed that test and forced this entry to be deleted. That is
+#: exactly what happened. `outbound.py` now issues no rate-budget SQL and
+#: falls under `test_only_the_canonical_store_writes_the_rate_budget` like
+#: every other module in `app/`, permanently.
+#:
+#: The dict stays rather than being deleted, so a future waiver has to be
+#: added HERE, next to the machinery that makes waivers expire, rather than
+#: invented somewhere with no expiry at all.
+KNOWN_UNREPAIRED: dict[str, str] = {}
 
 TABLE = "integration_rate_budget"
 
