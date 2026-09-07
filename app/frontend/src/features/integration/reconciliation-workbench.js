@@ -48,7 +48,7 @@ import { createDataTable } from '../../components/capex-datatable.js';
 import { statusChip } from '../../components/capex-statuschip.js';
 import { createLoader } from './integration-screen.js';
 import {
-  createAnnouncer, card, field, queryParam, textInput,
+  createAnnouncer, card, field, notMeasured, queryParam, textInput,
 } from './integration-kit.js';
 import { getReconciliation } from './integration-api.js';
 
@@ -173,6 +173,61 @@ export function mountReconciliationWorkbench(root) {
             + 'columns is the mistake this screen exists to prevent.',
         }, formatINR(r.exposure_paise)),
       },
+      {
+        key: 'emission_state',
+        label: 'Reached Zoho',
+        // THE HALF THE LEDGER FALLBACK CANNOT ANSWER, and the only reason the
+        // Wave 5 route exists at all. `/api/reconciliation` knows what we
+        // ordered; it does not know whether the order was ever emitted.
+        //
+        // Three distinct renderings, and collapsing any two of them would be
+        // the defect: a NAMED state when there is an outbox row, "not
+        // measured" when the response could not answer (the ledger fallback,
+        // which carries no such field), and NEVER a dash standing in for
+        // either. A dash reads as "no", and "we did not look" is not "no".
+        render: (r) => {
+          if (!('emission_state' in r)) {
+            return notMeasured('This reconciliation came from the local ledger, which records '
+              + 'what was ordered and holds no record of what was emitted. Nothing here was '
+              + 'measured against the outbox.');
+          }
+          const emission = r.emission_state;
+          if (!emission || !emission.rows) {
+            return h('span', {
+              class: 'xs muted',
+              title: 'There is no outbox row for this purchase order at all: nothing has ever '
+                + 'been enqueued for it. That is a real answer, not a missing one.',
+            }, 'never enqueued');
+          }
+          // ONE PURCHASE ORDER CAN BE SEVERAL EMISSIONS. On a product whose
+          // custom fields are header-only, a multi-cell order is SPLIT — one
+          // emission per control cell — so its rows can legitimately disagree.
+          // The server sends a single `state` only when they all agree; when
+          // they do not it sends null and a breakdown, and this renders the
+          // breakdown rather than picking a winner. Picking the worst would
+          // hide a success and picking the first would hide a failure.
+          if (!emission.state) {
+            const breakdown = Object.entries(emission.states || {})
+              .map(([s, n]) => `${n}×${s}`).join(', ');
+            return h('span', {
+              class: 'mono integration-raw',
+              title: `This purchase order was emitted as ${emission.rows} outbox rows and they do `
+                + 'not agree. It was split across control cells because this product carries its '
+                + 'custom fields on the header only, so each cell went as its own document.',
+            }, breakdown || `${emission.rows} rows`);
+          }
+          return h('span', {
+            class: 'mono integration-external',
+            title: emission.external_id
+              ? `Accepted as ${emission.external_id}.`
+              : emission.split
+                ? `Split across ${emission.rows} control cells; every one is ${emission.state}.`
+                : 'Enqueued, and not yet accepted: no external id has come back.',
+          }, emission.split
+            ? `${emission.state} (${emission.rows})`
+            : String(emission.state));
+        },
+      },
       { key: 'flag', label: 'Position', render: flagCell },
       {
         key: 'position',
@@ -209,6 +264,55 @@ export function mountReconciliationWorkbench(root) {
    * total of that page, which on a reconciliation screen is a number an
    * operator would sign off.
    */
+  /**
+   * DID THE FOUR QUANTITIES ACTUALLY RECONCILE?
+   *
+   * The server states the identity it holds itself to —
+   * `ordered - billed = open commitment + residual released - over-billed` —
+   * and reports the residual in paise. This renders that answer rather than
+   * letting the reader assume it, because the whole screen is a claim that
+   * these numbers tie out, and a claim nobody checks is a claim nobody can
+   * trust.
+   *
+   * A NON-ZERO RESIDUAL IS SHOWN, NOT SWALLOWED. Money has either been counted
+   * twice or lost, and which is worse depends on the sign; either way an
+   * operator about to sign the total off is entitled to know the parts did not
+   * add up. It is rendered as an ALERT, in words, never colour alone.
+   *
+   * A source that does not state an identity — the ledger fallback — gets
+   * "not measured" rather than a green tick. The ledger's arithmetic is the
+   * same arithmetic; it simply does not report the check, and reporting a
+   * check that was never run would be the one dishonesty this screen cannot
+   * afford.
+   */
+  function identityTile(summary) {
+    if (!summary || !summary.identity) {
+      return h('div', { class: 'tile accent-info' }, [
+        h('div', { class: 'k' }, 'Reconciles to the paisa'),
+        h('div', { class: 'v' }, notMeasured('This source does not state a reconciliation '
+          + 'identity, so no check was run. The figures are not asserted to tie out here.')),
+        h('div', { class: 'sub' }, 'the ledger source reports no identity check'),
+      ]);
+    }
+    const balanced = summary.identity_balanced === true;
+    const residual = Number(summary.identity_residual_paise || 0);
+    return h('div', {
+      class: `tile ${balanced ? 'accent-info' : 'accent-watch'}`,
+      role: balanced ? undefined : 'alert',
+    }, [
+      h('div', { class: 'k' }, 'Reconciles to the paisa'),
+      h('div', { class: 'v' }, [
+        h('span', { class: 'sym', 'aria-hidden': 'true' }, balanced ? '\u2714' : '\u2716'),
+        text(' '),
+        text(balanced ? 'BALANCED' : 'DOES NOT BALANCE'),
+      ]),
+      h('div', { class: 'sub' }, balanced
+        ? String(summary.identity)
+        : `${summary.identity} — off by ${formatINR(residual)}. Money has been counted twice or `
+          + 'lost; these totals must not be signed off until it is found.'),
+    ]);
+  }
+
   function renderTiles(summary) {
     while (tiles.firstChild) tiles.removeChild(tiles.firstChild);
     if (!summary) return;
@@ -235,6 +339,7 @@ export function mountReconciliationWorkbench(root) {
         h('div', { class: 'v' }, formatINR(summary.received_not_billed_paise)),
         h('div', { class: 'sub' }, 'unbilled receipt exposure — NOT part of open commitment'),
       ]),
+      identityTile(summary),
       h('div', { class: 'tile accent-watch' }, [
         h('div', { class: 'k' }, 'Lines raising an exception'),
         h('div', { class: 'v' }, String(exceptions)),

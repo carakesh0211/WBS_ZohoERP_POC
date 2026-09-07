@@ -98,6 +98,7 @@ ROUTES: list[tuple[str, str, str | None]] = [
     ("GET", "/api/integrations/events", None),
     ("GET", "/api/integrations/dead-letters", None),
     ("POST", "/api/integrations/dead-letters/inbox/R1/retry", "connector.manage"),
+    ("POST", "/api/integrations/dead-letters/inbox/R1/discard", "connector.manage"),
     ("GET", "/api/integrations/outbox", None),
     ("GET", "/api/integrations/inbox", None),
     ("GET", "/api/integrations/reconciliation", None),
@@ -107,8 +108,25 @@ ROUTES: list[tuple[str, str, str | None]] = [
 
 MUTATING = [r for r in ROUTES if r[2] is not None]
 
-#: The six operations with nothing behind them, and the code each must answer.
+#: The operations with nothing behind them, and the code each must answer.
 #: Held as data so that backing one of them later shows up here as a decision.
+#:
+#: `/reconciliation` HAS LEFT THIS MAP, and this comment is the decision
+#: `test_every_unavailable_route_is_accounted_for` asks for. It refused with
+#: `INTEGRATION_RECONCILIATION_UNAVAILABLE` for eleven migrations, and the
+#: reason it gave was a fact about the schema -- "PostgreSQL holds no purchase
+#: order, GRN or bill". `013_procurement.sql` creates all eight procurement
+#: documents, so that sentence stopped being true, and a route that keeps
+#: refusing with a reason that is no longer true is not being careful; it is
+#: reporting a missing migration that has already landed and sending whoever
+#: reads it to the wrong place.
+#:
+#: `/control-totals` HAS NOT MOVED AND MUST NOT. 013 changes nothing about it:
+#: it needs ZOHO's count and value for a window, no endpoint in this build
+#: knows them, and every figure 013 added is still ours. The tests below that
+#: pin it -- `test_control_totals_never_returns_a_number`,
+#: `test_the_source_refuses_to_synthesise_a_control_total` and its half of
+#: `test_control_totals_takes_no_database_dependency` -- are untouched.
 UNAVAILABLE: dict[str, str] = {
     "/api/integrations/connections/{connection_id}/authorize":
         "OAUTH_AUTHORISATION_UNAVAILABLE",
@@ -118,8 +136,6 @@ UNAVAILABLE: dict[str, str] = {
         "ORGANISATION_MAPPING_UNAVAILABLE",
     "/api/integrations/connections/{connection_id}/validate":
         "SCOPE_VALIDATION_UNAVAILABLE",
-    "/api/integrations/reconciliation":
-        "INTEGRATION_RECONCILIATION_UNAVAILABLE",
     "/api/integrations/control-totals":
         "CONTROL_TOTALS_UNAVAILABLE",
 }
@@ -477,8 +493,6 @@ _UNAVAILABLE_CALLS = [
      "ORGANISATION_MAPPING_UNAVAILABLE"),
     ("POST", "/api/integrations/connections/C1/validate",
      "SCOPE_VALIDATION_UNAVAILABLE"),
-    ("GET", "/api/integrations/reconciliation",
-     "INTEGRATION_RECONCILIATION_UNAVAILABLE"),
     ("GET", "/api/integrations/control-totals",
      "CONTROL_TOTALS_UNAVAILABLE"),
 ]
@@ -520,25 +534,78 @@ def test_every_unbacked_route_answers_a_coded_503_naming_what_is_missing(
             f"plausible-looking MSG-INT id that resolves to nothing")
 
 
-def test_control_totals_and_reconciliation_take_no_database_dependency(make_user):
-    """Both refuse for a structural reason, not a transient one.
+def test_control_totals_takes_no_database_dependency(make_user):
+    """It refuses for a structural reason, not a transient one.
 
-    If either declared `Depends(_get_database)` it would answer
+    If it declared `Depends(_get_database)` it would answer
     `DATABASE_NOT_CONFIGURED` on a process without a database -- a 503 with the
     WRONG code, which an operator would try to fix by restarting something,
     and which would hide the permanent reason behind a transient-looking one.
+
+    THIS TEST USED TO COVER `/reconciliation` TOO, and no longer can, because
+    that route is now backed by `013_procurement.sql` and genuinely does query.
+    The property is not dropped, it is SPLIT: the test below asserts the other
+    half -- that `/reconciliation` now reports the database as what is missing,
+    which for a route that queries is the right code rather than the wrong one.
+    Narrowing this one without adding that one would have deleted an assertion.
     """
     caller = make_user(["Administrator"])
     client = _client()                      # no database configured anywhere
-    for path, code in (("/api/integrations/control-totals",
-                        "CONTROL_TOTALS_UNAVAILABLE"),
-                       ("/api/integrations/reconciliation",
-                        "INTEGRATION_RECONCILIATION_UNAVAILABLE")):
-        resp = client.get(path, headers={"X-Session": caller.session_id})
-        assert resp.status_code == 503
-        assert _detail(resp)["code"] == code, (
-            f"{path} answered {_detail(resp)['code']}; a route that never "
-            f"queries must not report a database problem")
+    resp = client.get("/api/integrations/control-totals",
+                      headers={"X-Session": caller.session_id})
+    assert resp.status_code == 503
+    assert _detail(resp)["code"] == "CONTROL_TOTALS_UNAVAILABLE", (
+        f"/api/integrations/control-totals answered "
+        f"{_detail(resp)['code']}; a route that never queries must not report "
+        f"a database problem")
+
+
+def test_reconciliation_reports_the_database_as_what_is_missing(make_user):
+    """The other half of the split above.
+
+    `/reconciliation` is backed as of 013 and takes `Depends(_get_database)`,
+    so on a process with no PostgreSQL the honest answer is
+    `DATABASE_NOT_CONFIGURED` -- a database really is what it lacks. It must
+    NOT go back to `INTEGRATION_RECONCILIATION_UNAVAILABLE`, whose sentence
+    ("PostgreSQL holds no purchase order, GRN or bill") is now false and would
+    send an operator to look for a migration that has already landed.
+
+    `unavailable` must still be True on the envelope: `integration-api.js`
+    reads that flag to tell "this build cannot answer" from "something broke",
+    and without it SCR-18 renders a red fault banner on a build that simply has
+    no database configured.
+    """
+    caller = make_user(["Administrator"])
+    resp = _client().get("/api/integrations/reconciliation",
+                         headers={"X-Session": caller.session_id})
+    assert resp.status_code == 503
+    detail = _detail(resp)
+    assert detail["code"] == "DATABASE_NOT_CONFIGURED", (
+        f"/api/integrations/reconciliation answered {detail['code']}; it "
+        f"queries now, so the missing thing is the database")
+    assert detail["unavailable"] is True, (
+        "without the unavailable envelope SCR-18 renders a red fault banner "
+        "on a build that is simply not configured for PostgreSQL")
+
+
+def test_reconciliation_never_claims_a_zoho_side_figure():
+    """The line between this route and /control-totals, asserted at the source.
+
+    /reconciliation may now answer, and everything it answers with is OURS:
+    our purchase orders, our receipts, our bills, our outbox and our inbox. The
+    moment it acquired real numbers it also acquired the way to become the
+    dangerous one -- a count of ours presented as agreement with theirs. It
+    carries a `source_note` saying so in the body, and this pins that.
+    """
+    source = inspect.getsource(integrations_api.get_reconciliation)
+    assert "source_note" in source, (
+        "get_reconciliation returns figures without stating whose they are")
+    note = source[source.index("source_note"):]
+    assert "No " in note and "Zoho" in note, (
+        "the source note must say plainly that no figure here is Zoho's own")
+    assert '"source": "wave5"' in source, (
+        "the response must name itself wave5; SCR-18 renders the source and a "
+        "result that did not name one would be data with no provenance")
 
 
 def test_control_totals_never_returns_a_number(make_user):
@@ -984,12 +1051,13 @@ def test_every_route_sets_the_correlation_header_before_it_can_refuse():
     # added without the header is caught even if it is also added to some
     # other allow-list -- the loop below only checks the handlers it finds.
     # 16 at first delivery; 18 with the unattributed-exception triage list and
-    # attribution; 19 with the resolve verb that closes one. The count is
-    # asserted rather than merely iterated so a handler added without the
-    # header is caught even if it is also added to some other allow-list --
-    # the loop below only checks the handlers it finds.
-    assert len(handlers) == 19, (
-        f"expected 19 route handlers, found {len(handlers)}: {sorted(handlers)}")
+    # attribution; 19 with the resolve verb that closes one; 20 with the
+    # dead-letter discard that Wave 6 added. The count is asserted rather than
+    # merely iterated so a handler added without the header is caught even if
+    # it is also added to some other allow-list -- the loop below only checks
+    # the handlers it finds.
+    assert len(handlers) == 20, (
+        f"expected 20 route handlers, found {len(handlers)}: {sorted(handlers)}")
     for name in sorted(handlers):
         body = inspect.getsource(getattr(integrations_api, name))
         assert "_set_correlation_header(response, request)" in body, (
@@ -1053,6 +1121,14 @@ DELIVERED_MUTATING_ROUTES = [
      "connector.manage", "Auditor"),
     ("/api/integrations/dead-letters/{queue}/{row_id}/retry", "POST",
      "/api/integrations/dead-letters/outbox/OBX-01/retry", {},
+     "connector.manage", "Auditor"),
+    # Discarding a dead-lettered inbox payload -- the operator verb that
+    # ends a payload's life instead of re-arming it. The SAME permission as
+    # retry, deliberately: a role that can re-arm something failing must not
+    # be unable to stop something that will never succeed.
+    ("/api/integrations/dead-letters/{queue}/{row_id}/discard", "POST",
+     "/api/integrations/dead-letters/inbox/IBX-01/discard",
+     {"reason": "unauthorised attempt"},
      "connector.manage", "Auditor"),
     # Attributing an unattributed exception. `reconciliation.triage` is
     # Administrator-only, so Auditor is the denied role here for the same

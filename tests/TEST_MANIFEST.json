@@ -2707,9 +2707,13 @@
         "assertions": 1,
         "body_sha": "5e654e7c8ede8da9"
       },
-      "test_money_in_this_module_appears_only_on_the_011_exception_table": {
-        "assertions": 3,
-        "body_sha": "47e18d798d75ff4f"
+      "test_money_in_this_module_never_reaches_a_transport_table": {
+        "assertions": 4,
+        "body_sha": "476cce48366226cc"
+      },
+      "test_the_money_guards_transport_list_is_every_010_table": {
+        "assertions": 1,
+        "body_sha": "f3f980a05e8195d8"
       },
       "test_no_sql_in_this_module_hardcodes_a_zoho_url_or_endpoint": {
         "assertions": 1,
@@ -3269,9 +3273,17 @@
         "assertions": 7,
         "body_sha": "1baf604c027b98aa"
       },
-      "test_control_totals_and_reconciliation_take_no_database_dependency": {
+      "test_control_totals_takes_no_database_dependency": {
         "assertions": 2,
-        "body_sha": "77f4e7603aacbb8a"
+        "body_sha": "b72e725f375fc659"
+      },
+      "test_reconciliation_reports_the_database_as_what_is_missing": {
+        "assertions": 3,
+        "body_sha": "7b6e5c3d08e09158"
+      },
+      "test_reconciliation_never_claims_a_zoho_side_figure": {
+        "assertions": 3,
+        "body_sha": "38057b02df493f04"
       },
       "test_control_totals_never_returns_a_number": {
         "assertions": 4,
@@ -3359,7 +3371,7 @@
       },
       "test_every_route_sets_the_correlation_header_before_it_can_refuse": {
         "assertions": 2,
-        "body_sha": "dd2d3c681a423536"
+        "body_sha": "489d73e1f0b401d0"
       },
       "test_the_correlation_id_returned_is_the_one_recorded": {
         "assertions": 2,
@@ -6710,6 +6722,92 @@
         "body_sha": "436b750b66347aad"
       }
     },
+    "test_pg_procurement_reconciliation.py": {
+      "test_the_constants_are_transcribed_from_domain": {
+        "assertions": 2,
+        "body_sha": "5fd88d8019feb92c"
+      },
+      "test_the_position_sentences_are_the_ledgers_own_words": {
+        "assertions": 1,
+        "body_sha": "96cd177f586a6824"
+      },
+      "test_the_flag_precedence_is_the_ledgers_and_not_the_obvious_one": {
+        "assertions": 1,
+        "body_sha": "f096a094778d7cc6"
+      },
+      "test_the_position_sentence_matches_the_ledger_for_every_state": {
+        "assertions": 1,
+        "body_sha": "f771cd187b4f593f"
+      },
+      "test_the_identity_balances_to_the_paisa": {
+        "assertions": 1,
+        "body_sha": "ee457b3aa708dd51"
+      },
+      "test_open_commitment_is_ordered_less_billed_never_less_received": {
+        "assertions": 2,
+        "body_sha": "4bdedac645e9bb9b"
+      },
+      "test_received_not_billed_is_its_own_bucket_and_is_never_netted": {
+        "assertions": 3,
+        "body_sha": "09b4cb52eb1c41ed"
+      },
+      "test_a_released_purchase_order_commits_nothing_however_much_is_unbilled": {
+        "assertions": 2,
+        "body_sha": "3399c9e03958d79b"
+      },
+      "test_the_summary_totals_and_reports_whether_it_balanced": {
+        "assertions": 6,
+        "body_sha": "9c4831b37425a37e"
+      },
+      "test_an_unbalanced_row_set_is_reported_and_not_smoothed_over": {
+        "assertions": 2,
+        "body_sha": "cc7f142141fafb0e"
+      },
+      "test_the_summary_lists_every_flagged_line_and_no_others": {
+        "assertions": 1,
+        "body_sha": "d016d7de015074f7"
+      },
+      "test_every_procurement_statement_carries_a_compiled_scope_predicate": {
+        "assertions": 4,
+        "body_sha": "14249887e68133cf"
+      },
+      "test_every_procurement_statement_names_only_real_columns": {
+        "assertions": 2,
+        "body_sha": "6243a83c9cb92b54"
+      },
+      "test_every_paise_sum_is_cast_back_to_bigint": {
+        "assertions": 1,
+        "body_sha": "0e20666124f9e72e"
+      },
+      "test_the_on_conflict_target_is_a_constraint_that_actually_exists": {
+        "assertions": 2,
+        "body_sha": "0d7cdb595f0b00a3"
+      },
+      "test_the_reconciliation_query_reaches_all_four_dimensions": {
+        "assertions": 3,
+        "body_sha": "5c787fcc2aca5acf"
+      },
+      "test_resolve_po_line_returns_none_rather_than_choosing": {
+        "assertions": 3,
+        "body_sha": "16519284f5961f96"
+      },
+      "test_record_receive_line_refuses_an_identifierless_line_before_writing": {
+        "assertions": 4,
+        "body_sha": "acffc111691fe695"
+      },
+      "test_record_receive_line_refuses_rather_than_inventing_a_goods_receipt": {
+        "assertions": 4,
+        "body_sha": "c7d512ea305e1642"
+      },
+      "test_the_sweep_actor_is_not_a_user_id": {
+        "assertions": 1,
+        "body_sha": "b224d97860e7c43c"
+      },
+      "test_the_three_functions_with_no_table_still_refuse": {
+        "assertions": 3,
+        "body_sha": "b609c4564c8dc24e"
+      }
+    },
     "test_pg_procurement_schema.py": {
       "test_013_is_the_next_migration_and_the_runner_discovers_it": {
         "assertions": 4,
@@ -8193,10 +8291,10 @@
     "test_integration_product_isolation.py": 16,
     "test_integration_sql_matches_schema.py": 2,
     "test_integration_statuses.py": 41,
-    "test_integration_store.py": 47,
+    "test_integration_store.py": 48,
     "test_integration_sweeps.py": 40,
     "test_integration_throttle.py": 76,
-    "test_integrations_api_guard.py": 49,
+    "test_integrations_api_guard.py": 51,
     "test_known_defects.py": 5,
     "test_manifest.py": 10,
     "test_masters_settings_api_guard.py": 9,
@@ -8231,6 +8329,7 @@
     "test_pg_period_concurrency.py": 9,
     "test_pg_periods.py": 18,
     "test_pg_principal_scope.py": 37,
+    "test_pg_procurement_reconciliation.py": 21,
     "test_pg_procurement_schema.py": 73,
     "test_pg_reconciliation.py": 36,
     "test_pg_repo.py": 23,
@@ -8274,10 +8373,10 @@
     "test_integration_product_isolation.py": 36,
     "test_integration_sql_matches_schema.py": 2,
     "test_integration_statuses.py": 94,
-    "test_integration_store.py": 94,
+    "test_integration_store.py": 96,
     "test_integration_sweeps.py": 110,
     "test_integration_throttle.py": 244,
-    "test_integrations_api_guard.py": 108,
+    "test_integrations_api_guard.py": 114,
     "test_known_defects.py": 13,
     "test_manifest.py": 15,
     "test_masters_settings_api_guard.py": 15,
@@ -8312,6 +8411,7 @@
     "test_pg_period_concurrency.py": 28,
     "test_pg_periods.py": 49,
     "test_pg_principal_scope.py": 83,
+    "test_pg_procurement_reconciliation.py": 49,
     "test_pg_procurement_schema.py": 140,
     "test_pg_reconciliation.py": 117,
     "test_pg_repo.py": 37,

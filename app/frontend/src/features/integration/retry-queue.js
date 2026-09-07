@@ -49,7 +49,9 @@ import { createLoader } from './integration-screen.js';
 import {
   createAnnouncer, card, field, modeBanner, operationalChip, queryParam, selectInput,
 } from './integration-kit.js';
-import { getGlobalMode, listDeadLetters, retryDeadLetter } from './integration-api.js';
+import {
+  listDeadLetters, retryDeadLetter, discardDeadLetter, getGlobalMode,
+} from './integration-api.js';
 
 const PAGE_SIZE = 50;
 
@@ -81,6 +83,20 @@ function keyFor(rowKey) {
   return attemptKeys.get(rowKey);
 }
 
+/**
+ * The same, for a DISCARD attempt.
+ *
+ * A SEPARATE MAP, and it has to be. Retry and discard are opposite decisions
+ * about the same row; sharing one key would let a transport retry of a discard
+ * be deduplicated against an earlier retry of the same row, or the reverse.
+ */
+const discardKeys = new Map();
+
+function discardKeyFor(rowKey) {
+  if (!discardKeys.has(rowKey)) discardKeys.set(rowKey, `discard-${newCorrelationId()}`);
+  return discardKeys.get(rowKey);
+}
+
 function rowKeyOf(row) {
   return `${row.queue || row.namespace || 'unknown'}:${row.row_id || row.outbox_id || row.inbox_id || row.id}`;
 }
@@ -91,7 +107,7 @@ export function mountRetryQueue(root) {
 
   const state = {
     rows: [], cursor: null, hasMore: false, loading: false, mode: 'MOCK', modeNote: '',
-    retrying: new Set(),
+    retrying: new Set(), discarding: new Set(),
   };
 
   const banner = h('div', { id: 'retryModeBanner' });
@@ -197,12 +213,55 @@ export function mountRetryQueue(root) {
    * same failed attribution against the same unchanged data cannot succeed,
    * and offering the action would suggest otherwise.
    */
+  /**
+   * The DISCARD control, offered only where the server can honour it.
+   *
+   * INBOX ONLY. `DISCARDED` is in C16's inbox namespace and there is no such
+   * value in the outbox one (PENDING / SENT / FAILED / DEAD), so the backend
+   * refuses an outbox discard with a coded 409 rather than mapping it onto a
+   * nearby state. A control that is always refused reads as a permission
+   * problem, so it is not rendered on an outbox row at all.
+   *
+   * Returns null where the action does not apply — never a disabled button,
+   * for the same reason SCR-27 renders a note instead of one: disabled says
+   * "you may not", and the truth here is "there is no such operation".
+   */
+  function discardButton(row) {
+    const queue = row.queue || row.namespace || 'outbox';
+    if (queue !== 'inbox') return null;
+    const stateCode = String(row.state || row.status || '').toUpperCase();
+    if (stateCode !== 'DEAD' && stateCode !== 'QUARANTINED') return null;
+
+    const rowKey = rowKeyOf(row);
+    const rowId = row.row_id || row.inbox_id || row.id;
+    const button = h('button', {
+      type: 'button',
+      class: 'btn-sm',
+      disabled: !rowId || state.discarding.has(rowKey),
+      onClick: () => onDiscard(row, button),
+    }, state.discarding.has(rowKey) ? 'Discarding…' : 'Discard');
+    button.dataset.discardRow = rowKey;
+    button.title = 'Stop retrying this payload permanently. It is NOT applied to the ledger and '
+      + 'it is not deleted: the row stays, its error stays, and the decision plus your reason are '
+      + 'written to the hash-chained audit trail.';
+    return button;
+  }
+
   function retryCell(row) {
     const stateCode = String(row.state || row.status || '').toUpperCase();
+    const discard = discardButton(row);
     if (stateCode === 'QUARANTINED') {
-      return h('span', { class: 'xs muted' },
+      // Still not RETRYABLE — re-running the same failed attribution against
+      // the same unchanged data cannot succeed. It is now DISCARDABLE, which
+      // is a different verb: it ends the payload's life rather than re-running
+      // it, and it is what stops the queue filling with rows nobody can act on
+      // until the real failures are invisible among them.
+      const note = h('span', { class: 'xs muted' },
         'Not retryable here. The payload could not be attributed; it raised a reconciliation '
         + 'exception and is resolved on the exception queue, never guessed at.');
+      return discard
+        ? h('div', { class: 'actions' }, [note, discard])
+        : note;
     }
     const rowKey = rowKeyOf(row);
     const queue = row.queue || row.namespace || 'outbox';
@@ -219,7 +278,7 @@ export function mountRetryQueue(root) {
         + 'so the retry carries the same idempotency key and updates by cf_capex_ref rather than '
         + 'creating a second document.';
     }
-    return button;
+    return discard ? h('div', { class: 'actions' }, [button, discard]) : button;
   }
 
   const loader = createLoader({
@@ -242,6 +301,12 @@ export function mountRetryQueue(root) {
       + 'screen exists. A retry of an outbox row re-emits a document, so it carries one idempotency '
       + 'key per attempt and updates by the unique cf_capex_ref rather than creating a second one — '
       + 'Zoho documents no idempotency header, so that uniqueness is the whole of the protection.'),
+    h('p', { class: 'muted small' },
+      'An inbox payload that will never succeed can be DISCARDED instead, with a reason that '
+      + 'reaches the audit trail. Discarding does not apply it and does not delete it: the row and '
+      + 'its error stay. There is no discard for an outbox document — C16 gives the outbox no such '
+      + 'state, and an outbox row that must not be sent is left DEAD, which is what DEAD means '
+      + 'there.'),
     toolbar, actionStatus, loader.el, table.el, pagination.el,
   ]));
 
@@ -292,6 +357,64 @@ export function mountRetryQueue(root) {
       state.retrying.delete(rowKey);
       button.disabled = false;
       button.textContent = 'Retry';
+    }
+  }
+
+  /**
+   * Discard one inbox payload, permanently and on the record.
+   *
+   * THE REASON IS ASKED FOR AND IS NOT OPTIONAL. The server refuses a blank
+   * one with `BLANK_DISCARD_REASON`, and this asks BEFORE calling rather than
+   * letting that refusal be the prompt: a discard with no explanation cannot
+   * be told apart from one done by accident, and this is the verb that ends an
+   * inbound document's life without applying it.
+   *
+   * A CANCELLED PROMPT SENDS NOTHING and says so. An empty string typed into
+   * the prompt is treated as a cancellation for the same reason.
+   */
+  async function onDiscard(row, button) {
+    const rowKey = rowKeyOf(row);
+    const queue = row.queue || row.namespace || 'inbox';
+    const rowId = row.row_id || row.inbox_id || row.id;
+    if (!rowId || state.discarding.has(rowKey)) return;
+
+    // eslint-disable-next-line no-alert
+    const reason = window.prompt(
+      `Discard ${rowId}?\n\nThis payload will never be applied and will stop being retried. `
+      + 'The row, its error and your reason are kept; nothing is deleted.\n\n'
+      + 'Why is it being discarded?');
+    if (!reason || !reason.trim()) {
+      announce('The discard was cancelled. Nothing was changed.');
+      say('info', 'The discard was cancelled. A reason is required, and nothing was changed.');
+      return;
+    }
+
+    state.discarding.add(rowKey);
+    button.disabled = true;
+    button.textContent = 'Discarding…';
+    say('info', `Discarding ${rowId}…`);
+    try {
+      await discardDeadLetter(queue, rowId, { reason: reason.trim() },
+        discardKeyFor(rowKey));
+      // The attempt succeeded, so its key is spent.
+      discardKeys.delete(rowKey);
+      say('success', `${rowId} was discarded. The decision and your reason are in the audit trail.`);
+      announce(`${rowId} was discarded.`);
+      await load(true);
+    } catch (err) {
+      if (err && err.name === 'EndpointUnavailableError') {
+        say('info', `Discarding is not available in this build: it does not mount ${err.path}. `
+          + 'Nothing was changed.');
+      } else {
+        // The key is KEPT on failure, exactly as on retry: the next attempt at
+        // this same discard must reuse it.
+        say('error', (err && err.message) || `${rowId} could not be discarded.`);
+      }
+      announce(`${rowId} was not discarded.`);
+    } finally {
+      state.discarding.delete(rowKey);
+      button.disabled = false;
+      button.textContent = 'Discard';
     }
   }
 

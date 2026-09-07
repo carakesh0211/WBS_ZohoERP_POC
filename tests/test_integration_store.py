@@ -603,7 +603,7 @@ def test_every_writing_statement_returns_something(call):
         f"repo.query fetches, and psycopg raises on a cursor with no result")
 
 
-def test_money_in_this_module_appears_only_on_the_011_exception_table():
+def test_money_in_this_module_never_reaches_a_transport_table():
     """This used to read "no SQL in this module names a money column".
 
     That was true of `010_integration.sql`, which has no `*_paise` column on
@@ -629,19 +629,56 @@ def test_money_in_this_module_appears_only_on_the_011_exception_table():
     `TypeError`, and took down the availability verdict, both approval paths
     and the concurrency proof -- in the PostgreSQL CI job only, because a
     Decimal cannot appear without a real server.
+
+    WIDENED AGAIN BY `013_procurement.sql`, AND STRENGTHENED IN THE SAME EDIT.
+
+    013 created `po_line`, `grn_line` and `bill_line`, and those tables ARE the
+    ledger: `amount_paise`, `non_creditable_tax_paise` and `freight_paise` are
+    what ordered / received / billed are computed from. `reconciliation_lines`
+    cannot be written without naming them, so the allow-list gains the
+    procurement tables.
+
+    THE THING THE GUARD WAS EVER ACTUALLY PROTECTING IS UNCHANGED AND IS NOW
+    ASSERTED DIRECTLY. Its point was never "money is rare"; it was **money must
+    not be copied onto a TRANSPORT row**. An `amount_paise` on an outbox row
+    would be a second copy of an amount that can drift from the ledger's and be
+    wrong on its own, which section 11's design forbids. Widening the
+    allow-list would have let exactly that through by accident -- a statement
+    joining `integration_outbox` to `po_line` names a procurement table and
+    would have passed. So the transport tables are now named and BANNED
+    explicitly, which the original could not do, because until this migration
+    there was nothing to distinguish "an allowed money table" from "any table
+    at all".
     """
+    # The tables money may legitimately be read from here: 011's exception
+    # table, and 013's ledger tables.
+    MONEY_TABLES = ("{RECONCILIATION_EXCEPTION}", "{PO_LINE}", "{GRN_LINE}",
+                    "{BILL_LINE}", "{PURCHASE_ORDER}", "{GRN}", "{BILL}",
+                    "{PURCHASE_REQUEST}", "{PR_LINE}")
+    # 010's transport tables. Money must NEVER appear in a statement that
+    # touches one, allow-listed table in the same query or not.
+    TRANSPORT_TABLES = ("{INTEGRATION_INBOX}", "{INTEGRATION_OUTBOX}",
+                        "{INTEGRATION_EVENT}", "{INTEGRATION_CONNECTION}",
+                        "{JOB}", "{INTEGRATION_WATERMARK}",
+                        "{INTEGRATION_RATE_BUDGET}", "{INTEGRATION_CIRCUIT}")
     money_statements = 0
     for call in _repo_calls():
         sql = _sql_literal_of(call)
         if "_paise" not in sql:
             continue
         money_statements += 1
-        assert "{RECONCILIATION_EXCEPTION}" in sql, (
-            f"line {call.lineno} names a money column in a statement that is "
-            f"not against reconciliation_exception. 010 has no *_paise column "
-            f"on any table: the ledger owns money and this module owns "
-            f"transport, and a second copy of an amount here is a copy that "
-            f"can be wrong on its own.")
+        assert any(table in sql for table in MONEY_TABLES), (
+            f"line {call.lineno} names a money column in a statement against "
+            f"none of {list(MONEY_TABLES)}. The ledger owns money and this "
+            f"module owns transport; a second copy of an amount here is a copy "
+            f"that can be wrong on its own.")
+        offending = [table for table in TRANSPORT_TABLES if table in sql]
+        assert not offending, (
+            f"line {call.lineno} names a money column in a statement touching "
+            f"{offending}. 010's tables carry no *_paise column and must never "
+            f"be joined to one in the same statement: an amount that reaches a "
+            f"transport row is a second copy that can drift from the ledger's "
+            f"and be wrong on its own. Read the money in its own statement.")
         # The tail is a LOOKAHEAD so it is not consumed -- captured normally it
         # swallows the next `SUM(` and a statement with two paise sums reports
         # only one.
@@ -654,6 +691,27 @@ def test_money_in_this_module_appears_only_on_the_011_exception_table():
         "no statement in this module names a money column any more. If the "
         "reconciliation surface moved elsewhere this guard should move with "
         "it; as written it is now asserting nothing.")
+
+
+def test_the_money_guards_transport_list_is_every_010_table():
+    """The ban above is only as good as the list it bans.
+
+    `INTEGRATION_TABLES` is 010's own inventory. Deriving the check's list from
+    it rather than from a hand-typed tuple means a table added to 010 later
+    cannot quietly fall outside the ban -- which is exactly how a guard like
+    this rots into decoration.
+    """
+    import inspect as _inspect
+
+    from app.backend.pg import integration_store as _store
+
+    source = _inspect.getsource(test_money_in_this_module_never_reaches_a_transport_table)
+    missing = [name for name in _store.INTEGRATION_TABLES
+               if f"{{{name.upper()}}}" not in source]
+    assert not missing, (
+        f"010 creates {missing}, and the transport ban above does not name "
+        f"them; money could reach one of those tables and this guard would "
+        f"stay green")
 
 
 def test_no_sql_in_this_module_hardcodes_a_zoho_url_or_endpoint():

@@ -107,6 +107,73 @@ RECONCILIATION_EXCEPTION = "reconciliation_exception"
 #: The migration that creates it.
 RECONCILIATION_EXCEPTION_MIGRATION = "011_reconciliation_exception.sql"
 
+# ------------------------------------------------- procurement chain (013)
+#: The eight procurement documents ``013_procurement.sql`` creates. Named here,
+#: as constants rather than as literals inside f-strings, for the same reason
+#: :data:`INTEGRATION_TABLES` is: `tests/test_integration_sql_matches_schema.py`
+#: reads these names to check every statement below against the migration, and
+#: a table spelled inline in one query and via a constant in another is exactly
+#: the drift that check cannot see.
+PURCHASE_REQUEST = "purchase_request"
+PR_LINE = "pr_line"
+PURCHASE_ORDER = "purchase_order"
+PO_LINE = "po_line"
+GRN = "grn"
+GRN_LINE = "grn_line"
+BILL = "bill"
+BILL_LINE = "bill_line"
+
+PROCUREMENT_TABLES: tuple[str, ...] = (
+    PURCHASE_REQUEST, PR_LINE, PURCHASE_ORDER, PO_LINE,
+    GRN, GRN_LINE, BILL, BILL_LINE,
+)
+
+#: The migration that creates them.
+PROCUREMENT_MIGRATION = "013_procurement.sql"
+
+#: The PO states that RELEASE commitment. Transcribed from
+#: ``domain.COMMITMENT_RELEASING_STATES``, which is the frozen `C5_formulas.json`
+#: registry in code, and deliberately not re-derived: a fifth state added here
+#: and not there would make PostgreSQL and the SQLite ledger disagree about how
+#: much money is committed, silently, in the direction that understates.
+COMMITMENT_RELEASING_STATES: tuple[str, ...] = ("Cancelled", "Closed")
+
+#: The bill states that MOVE actual CWIP (AUD-C-004). Transcribed from
+#: ``domain.ACCOUNTING_EFFECTIVE_BILL_STATES`` for the same reason.
+ACCOUNTING_EFFECTIVE_BILL_STATES: tuple[str, ...] = ("Approved", "Reversal")
+
+#: `created_by` / `updated_by` on a row a SWEEP wrote, not a person.
+#:
+#: A literal, and deliberately not the string a human actor would produce.
+#: `grn_line.created_by` is NOT NULL with no default, so SOMETHING has to go
+#: there, and the honest something is the name of the process -- a receive line
+#: attached by the PO-anchored walk was authored by no user, and writing a user
+#: id into it would make the audit trail claim a decision nobody took. The same
+#: rule the API router applies to `_actor`: server-derived, never inferred.
+SWEEP_ACTOR = "SYSTEM:integration-sweep"
+
+#: The four dimensions, reached through `project`, for every statement over the
+#: eight procurement tables.
+#:
+#: ALL FOUR ARE NAMED, and none is waived. That is not tidiness: it is the only
+#: mapping that agrees with what 013's own policies do. Those policies read
+#: `EXISTS (SELECT 1 FROM project p WHERE ... capex_scope_permits(p.entity_id,
+#: p.plant_id, p.location_id, p.project_id))` -- all four dimensions, through a
+#: join -- and `rls.JOINED_VIA_PROJECT` exists to record precisely that these
+#: eight are filtered through `project` rather than on a column of their own.
+#:
+#: Waiving entity, plant and location here -- which the tables' own columns
+#: would seem to invite, since only four of the eight carry `project_id` and
+#: none carries the other three -- would leave a principal restricted to one
+#: ENTITY unfiltered at the application layer, relying on RLS alone. The
+#: repository predicate is meant to be the second, independent enforcement of
+#: the same scope, and a waiver would make it the first and only place the
+#: restriction is *not* expressed. So every statement below joins `project`.
+PROCUREMENT_SCOPE_COLUMNS: dict[str, str | None] = {
+    "entity": "p.entity_id", "plant": "p.plant_id",
+    "location": "p.location_id", "project": "p.project_id",
+}
+
 #: The PARTIAL unique index that makes a sweep's re-walk idempotent, named
 #: because the writer infers it by its columns AND its predicate. Inferring by
 #: columns alone matches no index here, and PostgreSQL would refuse the
@@ -2600,26 +2667,307 @@ def _no_open_exception(session: Session, exception_id: str,
         status=409)
 
 
-# ------------------------------------------------- not yet backed by a schema
+# ================================================ commitment against actual (013)
+#
+# THE ONE ARITHMETIC THIS SECTION MUST NOT GET WRONG.
+#
+# Open commitment is ORDERED LESS BILLED, floored at zero, and zero outright
+# once the purchase order has reached a commitment-releasing state. It is NOT
+# ordered less RECEIVED. A receipt does not release a commitment; a bill does.
+#
+# Received-not-billed is its OWN quantity -- received less billed, floored at
+# zero -- and is never subtracted from commitment and never added to it. The two
+# overlap by design.
+#
+# Both rules are `domain.compute_ledger` / `domain.reconciliation`, which are
+# the frozen `C5_formulas.json` registry in code. Everything below is
+# TRANSCRIBED from them rather than re-derived, and the two states lists are
+# transcribed as constants at the head of this module for the same reason: a
+# second derivation that disagrees would make PostgreSQL and the SQLite ledger
+# quote different open commitment for the same estate, silently.
+#
+# WHERE THE ARITHMETIC HAPPENS. The three per-line sums are done by the server
+# in `bigint`; the four derived figures are done here in Python `int`. Neither
+# is float, and neither is `numeric` past this boundary: every `SUM()` over a
+# `bigint` column is cast back with `::bigint`, because PostgreSQL's SUM returns
+# numeric, psycopg maps numeric to `Decimal`, and a Decimal reaching integer
+# arithmetic is the defect that took down the availability verdict and both
+# approval paths in the PostgreSQL CI job only.
+
+
+def _reconciliation_position(ordered: int, received: int, billed: int,
+                             released: bool, po_status: str) -> tuple[str, str]:
+    """`(flag, position)` for one line -- transcribed from `domain.reconciliation`.
+
+    Character for character in the sentences, because SCR-18 renders `position`
+    verbatim and a reader comparing the PostgreSQL screen with the SQLite one
+    must not find two different words for the same state.
+
+    THE FLAG PRECEDENCE IS `domain`'s, AND IT IS NOT THE OBVIOUS ONE.
+    `received-unbilled` outranks `released`, not the other way round. A closed
+    purchase order that still holds value received and never invoiced is
+    reported as `received-unbilled`, because that is the condition somebody has
+    to act on -- the receipt is real, the invoice is missing, and the closure
+    does not make either untrue. Ranking `released` first would file it under
+    "nothing to see here" and it would leave the exception list.
+
+    `over-billed` outranks everything, on a released line too: money billed
+    beyond the order is the condition that raises an exception.
+    """
+    if released:
+        if po_status == "Cancelled":
+            position = ("PO cancelled before billing" if billed == 0
+                        else "PO cancelled after partial billing")
+        else:
+            position = "PO closed - residual released"
+    elif billed == 0:
+        position = "PO approved, not billed"
+    elif billed < ordered:
+        position = "Partially billed"
+    elif billed == ordered:
+        position = "Fully billed"
+    else:
+        position = "Bill exceeds PO"
+
+    # The exact precedence in `domain.reconciliation`, in the same order.
+    flag = ("over-billed" if billed > ordered else
+            "received-unbilled" if received > billed else
+            "released" if released else
+            "ok")
+    return flag, position
+
+
+def reconciliation_lines(session: Session, *, project_id: str | None = None,
+                         limit: int = 500) -> list[dict]:
+    """Every purchase-order line in scope, with ordered / received / billed.
+
+    ONE STATEMENT, not one per line. The SQLite original issues three queries
+    and joins them in Python dictionaries; that is fine over a POC's row counts
+    and is a fan-out here, so the two aggregates are CTEs restricted to the
+    lines the driving query already selected.
+
+    THE SCOPE PREDICATE SITS IN THE DRIVING CTE, ONCE, and everything else is
+    downstream of it -- `received` and `billed` both filter
+    `po_line_id IN (SELECT po_line_id FROM scoped_line)`. That is deliberate
+    rather than a token pasted in three places: a receipt or a bill line is
+    reachable only through a purchase-order line the caller can already see, so
+    filtering the driving set filters all three, and there is exactly one place
+    to read to know that it does.
+
+    `columns=` names ALL FOUR dimensions and waives none, through the `project`
+    join -- see :data:`PROCUREMENT_SCOPE_COLUMNS` for why a waiver here would be
+    wrong rather than merely lax.
+    """
+    rows = repo.query(
+        session,
+        f"""
+        WITH scoped_line AS (
+            SELECT pl.po_line_id, pl.line_no, pl.description,
+                   pl.wbs_id, w.wbs_code,
+                   pl.budget_head_id, bh.name AS budget_head,
+                   pl.project_id,
+                   (pl.amount_paise
+                    + pl.non_creditable_tax_paise
+                    + pl.freight_paise)::bigint AS ordered_paise,
+                   po.po_id, po.po_number, po.status AS po_status,
+                   po.vendor_name, po.currency, po.exchange_rate,
+                   po.amendment_no, po.external_id AS po_external_id
+            FROM {PO_LINE} pl
+            JOIN {PURCHASE_ORDER} po ON po.po_id = pl.po_id
+            JOIN project p ON p.project_id = pl.project_id
+            JOIN wbs_element w
+              ON w.wbs_id = pl.wbs_id AND w.project_id = pl.project_id
+            JOIN budget_head bh ON bh.budget_head_id = pl.budget_head_id
+            WHERE (%(project_id)s::text IS NULL
+                   OR pl.project_id = %(project_id)s)
+              AND {{scope}}
+        ),
+        received AS (
+            -- A reversal GRN subtracts the MAGNITUDE of its line, so a
+            -- reversal line stored positive and one stored negative both
+            -- reduce received by the same amount. `domain.compute_ledger`
+            -- spells it `-ABS(...)` for exactly that reason.
+            SELECT gl.po_line_id,
+                   SUM(CASE WHEN g.is_reversal THEN -ABS(gl.amount_paise)
+                            ELSE gl.amount_paise END)::bigint AS received_paise
+            FROM {GRN_LINE} gl
+            JOIN {GRN} g ON g.grn_id = gl.grn_id
+            WHERE g.status <> 'Void'
+              AND gl.po_line_id IN (SELECT po_line_id FROM scoped_line)
+            GROUP BY gl.po_line_id
+        ),
+        billed AS (
+            -- ONLY accounting-effective bills relieve commitment (AUD-C-004).
+            -- A Draft or Void bill is not money and must not reduce the open
+            -- commitment, which is the direction that UNDERSTATES exposure.
+            SELECT bl.po_line_id,
+                   SUM(CASE WHEN b.accounting_status = 'Reversal'
+                            THEN -ABS(bl.amount_paise
+                                      + bl.non_creditable_tax_paise
+                                      + bl.freight_paise)
+                            ELSE (bl.amount_paise
+                                  + bl.non_creditable_tax_paise
+                                  + bl.freight_paise) END)::bigint
+                       AS billed_paise
+            FROM {BILL_LINE} bl
+            JOIN {BILL} b ON b.bill_id = bl.bill_id
+            WHERE bl.po_line_id IS NOT NULL
+              AND b.accounting_status = ANY(%(effective)s)
+              AND bl.po_line_id IN (SELECT po_line_id FROM scoped_line)
+            GROUP BY bl.po_line_id
+        )
+        SELECT s.po_line_id, s.line_no, s.description, s.wbs_id, s.wbs_code,
+               s.budget_head_id, s.budget_head, s.project_id, s.ordered_paise,
+               s.po_id, s.po_number, s.po_status, s.vendor_name, s.currency,
+               s.exchange_rate, s.amendment_no, s.po_external_id,
+               COALESCE(rcv.received_paise, 0)::bigint,
+               COALESCE(bld.billed_paise, 0)::bigint
+        FROM scoped_line s
+        -- `rcv` / `bld`, never `r` / `b`. `b` is `bill` two CTEs above, and a
+        -- one-letter alias reused for a table and for an aggregate OVER that
+        -- table is how a column check stops being able to tell them apart.
+        LEFT JOIN received rcv ON rcv.po_line_id = s.po_line_id
+        LEFT JOIN billed   bld ON bld.po_line_id = s.po_line_id
+        ORDER BY s.po_number, s.line_no, s.po_line_id
+        LIMIT %(limit)s
+        """,
+        {"project_id": project_id,
+         "effective": list(ACCOUNTING_EFFECTIVE_BILL_STATES),
+         "limit": int(limit)},
+        columns=PROCUREMENT_SCOPE_COLUMNS,
+    )
+
+    out: list[dict] = []
+    for row in rows:
+        (po_line_id, line_no, description, wbs_id, wbs_code, budget_head_id,
+         budget_head, line_project_id, ordered, po_id, po_number, po_status,
+         vendor_name, currency, exchange_rate, amendment_no, po_external_id,
+         received, billed) = row
+        # `int()` on every one of the three, at the boundary, for the reason in
+        # this section's header. Not decoration: `::bigint` protects the SQL
+        # side and this protects everything downstream of the driver.
+        ordered, received, billed = int(ordered), int(received), int(billed)
+        released = po_status in COMMITMENT_RELEASING_STATES
+
+        # ORDERED LESS BILLED. Never ordered less received.
+        open_commitment = 0 if released else max(0, ordered - billed)
+        # Its OWN bucket, never subtracted from the line above.
+        received_not_billed = max(0, received - billed)
+        # The residual a Cancelled/Closed purchase order gave back, and the
+        # amount a bill exceeded its order by. Together with `open_commitment`
+        # these make the identity below hold to the paisa in every one of the
+        # four cases -- live/released crossed with under/over-billed:
+        #
+        #     ordered - billed == open_commitment
+        #                         + residual_released
+        #                         - over_billed
+        #
+        # Exposed rather than left implicit because without them a reader
+        # cannot tell a released residual from an over-bill: both show open
+        # commitment 0 against an ordered that does not equal billed, and they
+        # mean opposite things.
+        residual_released = (ordered - billed) if (released and ordered > billed) else 0
+        over_billed = max(0, billed - ordered)
+        flag, position = _reconciliation_position(
+            ordered, received, billed, released, str(po_status))
+
+        out.append({
+            "po_line_id": po_line_id, "line_no": line_no,
+            "description": description,
+            "wbs_id": wbs_id, "wbs_code": wbs_code,
+            "budget_head_id": budget_head_id, "budget_head": budget_head,
+            "project_id": line_project_id,
+            "po_id": po_id, "po_number": po_number, "po_status": po_status,
+            "po_external_id": po_external_id,
+            "vendor_name": vendor_name, "currency": currency,
+            "exchange_rate": (None if exchange_rate is None
+                              else str(exchange_rate)),
+            "amendment_no": amendment_no,
+            "ordered_paise": ordered,
+            "received_paise": received,
+            "billed_paise": billed,
+            "open_commitment_paise": open_commitment,
+            "received_not_billed_paise": received_not_billed,
+            "exposure_paise": open_commitment + billed,
+            "residual_released_paise": residual_released,
+            "over_billed_paise": over_billed,
+            "flag": flag, "position": position,
+        })
+    return out
+
+
+def reconciliation_summary(lines: Sequence[Mapping[str, Any]]) -> dict:
+    """The control-total band, summed over the SAME rows that were returned.
+
+    A pure function of `lines`, and that is the point: the summary and the
+    table can never disagree, because there is only one row set. A second query
+    that re-aggregated server-side would be a different question asked at a
+    different instant, and the tile would quietly stop being the total of what
+    is on screen.
+
+    `identity_balanced` is asserted here rather than assumed. If integer
+    arithmetic over these five columns ever stops reconciling to the paisa the
+    response says so on its face, instead of the discrepancy being discovered
+    by whoever signs the number off.
+    """
+    def total(key: str) -> int:
+        return sum(int(line[key]) for line in lines)
+
+    ordered = total("ordered_paise")
+    billed = total("billed_paise")
+    open_commitment = total("open_commitment_paise")
+    residual_released = total("residual_released_paise")
+    over_billed = total("over_billed_paise")
+    residual = (ordered - billed) - (open_commitment + residual_released - over_billed)
+
+    return {
+        "lines": len(lines),
+        "ordered_paise": ordered,
+        "received_paise": total("received_paise"),
+        "billed_paise": billed,
+        "open_commitment_paise": open_commitment,
+        "received_not_billed_paise": total("received_not_billed_paise"),
+        "exposure_paise": total("exposure_paise"),
+        "residual_released_paise": residual_released,
+        "over_billed_paise": over_billed,
+        # The reconciliation, stated so it can be read rather than trusted.
+        "identity": "ordered - billed = open_commitment + residual_released "
+                    "- over_billed",
+        "identity_residual_paise": residual,
+        "identity_balanced": residual == 0,
+        "exceptions": [
+            {"po_number": line["po_number"], "line_no": line["line_no"],
+             "flag": line["flag"]}
+            for line in lines
+            if line["flag"] in ("over-billed", "received-unbilled")
+        ],
+    }
+
+
+# ---------------------------------- the rest of SweepStore, and what still is not
 #
 # `resolve_po_line`, `record_receive_line`, `accumulate_unattributed`,
 # `bills_awaiting_detail` and `mark_detail_hydrated` are the rest of
-# `sweeps.SweepStore`, and THERE IS NO TABLE FOR ANY OF THEM. Every
-# `CREATE TABLE` in `migrations/pg/` was enumerated: there is no purchase-order
-# header, no purchase-order line, no receive/GRN line, and no per-project
-# unattributed bucket. `integration_inbox` has no hydration flag and could not
-# be given one by an UPDATE anyway -- 010's append-only trigger freezes its
-# receipt columns after insert.
+# `sweeps.SweepStore`. Until `013_procurement.sql` landed there was NO TABLE FOR
+# ANY OF THEM and all five refused.
+#
+# TWO OF THEM NOW HAVE ONE. 013 creates `purchase_order`, `po_line`, `grn` and
+# `grn_line`, so `resolve_po_line` and `record_receive_line` are implemented
+# below -- each against the real columns and the real unique indexes, and each
+# still refusing the cases 013 cannot make honest rather than guessing at them.
+#
+# THREE OF THEM STILL DO NOT. 013's eight tables are eight procurement
+# DOCUMENTS. There is no per-project unattributed bucket in any migration and no
+# bill line-item hydration queue in any migration; `integration_inbox` has no
+# hydration flag and could not be given one by an UPDATE anyway, because 010's
+# append-only trigger freezes its receipt columns after insert. So those three
+# have exactly as much to write to as they had before 013, and they keep
+# refusing.
 #
 # WHY THEY RAISE RATHER THAN RETURNING SOMETHING PLAUSIBLE.
 #
-# Each of these has a "harmless" default that is not harmless:
+# Each of the three has a "harmless" default that is not harmless:
 #
-#   * `resolve_po_line` -> None reads as "this line does not match a known PO
-#     line", which sends every receive line down the quarantine branch. The
-#     bucket would then be the whole GRN population, and capitalisation would
-#     be blocked estate-wide for a reason that is not true.
-#   * `record_receive_line` -> None reads as "recorded". It would not be.
 #   * `accumulate_unattributed` -> None reads as "the value is held". It would
 #     be held nowhere. That is the silent drop this entire section exists to
 #     prevent, produced by the function whose docstring promises to prevent it.
@@ -2627,23 +2975,31 @@ def _no_open_exception(session: Session, exception_id: str,
 #     `sweep_bill_detail` would report success having fetched nothing, and
 #     every bill would stay unhydrated -- meaning no lines, meaning no WBS
 #     attribution, meaning zero CWIP booked while the sweep runs green.
+#   * `mark_detail_hydrated` -> None reads as "the queue was advanced". The same
+#     bill would be re-fetched on every tick, forever.
 #
 # This is the same call `pg/periods.py::_has_open_reconciliation_exceptions`
 # now makes and the same one `integration/outbound.py` makes with
 # `DetectiveControlUnavailable`: a control that cannot be evaluated must
-# refuse, not proceed. Until the migration lands, a sweep that reaches one of
-# these stops loudly, at the line that cannot be honoured, naming what is
-# missing.
+# refuse, not proceed. A sweep that reaches one of these stops loudly, at the
+# line that cannot be honoured, naming what is missing.
 
-#: What the lead needs to create before the five functions below can be
+#: What the lead still needs to create before the three functions below can be
 #: written. Named as data rather than prose so `tests/test_pg_reconciliation.py`
-#: can assert the refusal mentions it, and so the day the migration lands the
+#: can assert the refusal mentions it, and so the day a migration lands the
 #: failing tests point straight at this list.
+#: TWO OF THE ORIGINAL FIVE HAVE LEFT THIS MAP. ``013_procurement.sql`` created
+#: ``purchase_order`` / ``po_line`` (so `resolve_po_line` has something to
+#: resolve against) and ``grn`` / ``grn_line`` (so `record_receive_line` has
+#: somewhere to write). Both are implemented below.
+#:
+#: THE OTHER THREE ARE STILL HERE, and that is a statement about 013, not an
+#: oversight. 013 creates eight tables and every one of them is a procurement
+#: DOCUMENT. None of them is a per-project unattributed bucket and none of them
+#: is a hydration queue, so `accumulate_unattributed`, `bills_awaiting_detail`
+#: and `mark_detail_hydrated` have exactly as much to write to as they did
+#: before the migration landed. They keep refusing.
 UNBACKED_SWEEP_SURFACE: dict[str, str] = {
-    "resolve_po_line": "a purchase-order header and line table carrying the "
-                       "external PO id and the external line id",
-    "record_receive_line": "a receive/GRN line table, UNIQUE on "
-                           "(po_line_id, receive_external_id, line_external_id)",
     "accumulate_unattributed": "a per-project unattributed bucket, PRIMARY KEY "
                                "(project_id, source_key), the value SET and "
                                "never incremented",
@@ -2673,16 +3029,199 @@ class SchemaNotYetMigrated(IntegrationStoreError):
 
 def resolve_po_line(session: Session, *, po_external_id: str,
                     line_external_id: str | None) -> str | None:
-    """UNIMPLEMENTABLE: there is no purchase-order line table. See above."""
-    raise SchemaNotYetMigrated("resolve_po_line")
+    """The local `po_line_id` a receive line belongs to, or None.
+
+    `None` MEANS "QUARANTINE THIS LINE", and it is returned only when that is
+    true. `sweeps.py` reads a None here as "this line does not resolve" and
+    raises `GRN_LINE_UNATTRIBUTED` at full value, which blocks capitalisation.
+    So the two ways of being wrong are not symmetric: a false None quarantines
+    a line that was fine, and a false id posts a receipt against somebody
+    else's purchase order. Every branch below is written for the second.
+
+    THE AMBIGUOUS CASE IS A None, NOT A GUESS. On Zoho ERP a receive line
+    frequently carries no line identifier at all (`sweeps.py` says so, and
+    falls back to the line's ordinal for the exception key). With
+    `line_external_id=None` this can only match on the purchase order, so:
+
+      * exactly one line on that PO -- unambiguous, and returned;
+      * more than one -- ambiguous, and returned as None. Picking the first by
+        `line_no` would attribute a receipt to whichever line happened to sort
+        first, which is a wrong number in a financial control rather than a
+        missing one. Quarantine is visible on SCR-27 and recoverable; a
+        mis-attributed receipt is neither.
+
+    `ux_po_line_external` is UNIQUE (po_id, line_external_id) WHERE
+    line_external_id IS NOT NULL, so the identified branch can match at most
+    one row per purchase order by construction. `ux_po_external` is UNIQUE
+    (external_source, external_id) WHERE external_id IS NOT NULL -- across
+    sources, not within one -- so the PO lookup is written to tolerate the same
+    external id arriving from two sources: it counts, and refuses to choose.
+    """
+    po_external_id = _require(po_external_id, code="BLANK_PO_EXTERNAL_ID",
+                              what="po_external_id")
+    rows = repo.query(
+        session,
+        f"""
+        SELECT pl.po_line_id
+        FROM {PO_LINE} pl
+        JOIN {PURCHASE_ORDER} po ON po.po_id = pl.po_id
+        JOIN project p ON p.project_id = pl.project_id
+        WHERE po.external_id = %(po_external_id)s
+          AND (
+                (%(line_external_id)s::text IS NOT NULL
+                 AND pl.line_external_id = %(line_external_id)s)
+             OR (%(line_external_id)s::text IS NULL)
+          )
+          AND {{scope}}
+        -- Two rows are enough to know the answer is "ambiguous"; the LIMIT is
+        -- what stops a thousand-line purchase order being read to decide it.
+        LIMIT 2
+        """,
+        {"po_external_id": po_external_id,
+         "line_external_id": line_external_id},
+        columns=PROCUREMENT_SCOPE_COLUMNS,
+    )
+    if len(rows) != 1:
+        # Zero: no such PO, no such line, or out of scope -- and out of scope
+        # must be indistinguishable from absent (see repo.py's header).
+        # Two or more: ambiguous. Both are a None, and both quarantine.
+        return None
+    return rows[0][0]
 
 
 def record_receive_line(session: Session, *, po_line_id: str,
                         receive_external_id: str,
                         line_external_id: str | None, quantity: Any,
                         amount_paise: int | None) -> None:
-    """UNIMPLEMENTABLE: there is no receive-line table. See above."""
-    raise SchemaNotYetMigrated("record_receive_line")
+    """Attach one receive line to the GRN header that already holds it.
+
+    WHAT THIS DOES NOT DO: create the `grn` header. That is deliberate and it
+    is not a shortcut. `grn` requires `grn_number`, `received_at`, `created_by`
+    and `updated_by`, all NOT NULL and none of them defaulted, plus the §6.1
+    external-document block -- and NONE of those reach this function. The
+    `SweepStore.record_receive_line` signature carries a po_line, two external
+    ids, a quantity and an amount, and nothing else. Minting a `grn_number`
+    here, stamping `received_at = now()` and writing `created_by = 'SYSTEM'`
+    would put four fabricated values into the goods-receipt table, one of which
+    (`received_at`) decides which accounting period the receipt falls in.
+    Inbound GRN acquisition owns the header; this owns the line.
+
+    A receive line whose header has not been recorded is therefore a coded
+    REFUSAL naming the header, not a silent skip and not an invented GRN.
+
+    IDEMPOTENCY, AND THE ONE CASE WHERE THIS SCHEMA CANNOT PROVIDE IT.
+    The sweeps re-walk by design -- a 300-second overlap and a cycling
+    PO-anchored walk -- so the same receive line arrives repeatedly and must
+    not become two receipts. `ux_grn_line_external` is
+    UNIQUE (po_line_id, receive_external_id, line_external_id), which the
+    identified branch infers with ON CONFLICT DO NOTHING.
+
+    That index is NULLS DISTINCT (PostgreSQL's default), so it does not
+    constrain a row whose `line_external_id` is NULL -- and on ERP an
+    identifierless receive line is the ordinary case, not the exotic one.
+    Inserting one anyway would add the same receipt again on every walk, and
+    `received` would climb without a single new receive arriving. So that case
+    is REFUSED, loudly, naming the constraint that would make it recordable,
+    rather than being papered over in either direction: silently deduplicating
+    on (po_line, receive) would collapse two genuinely distinct identifierless
+    lines and drop the second one's value, and inserting blindly would
+    overstate received value forever. See the report for migration 013.
+    """
+    po_line_id = _require(po_line_id, code="BLANK_PO_LINE_ID",
+                          what="po_line_id")
+    receive_external_id = _require(receive_external_id,
+                                   code="BLANK_RECEIVE_EXTERNAL_ID",
+                                   what="receive_external_id")
+    if line_external_id is None:
+        raise IntegrationStoreError(
+            "GRN_LINE_NOT_IDEMPOTENTLY_RECORDABLE",
+            f"Receive {receive_external_id} carries a line with no external "
+            f"line identifier, and `ux_grn_line_external` on grn_line is "
+            f"UNIQUE (po_line_id, receive_external_id, line_external_id) with "
+            f"PostgreSQL's default NULLS DISTINCT -- so it does not constrain "
+            f"that row. Recording it would add the same receipt again on every "
+            f"re-walk and overstate received value; deduplicating it on "
+            f"(po_line, receive) would collapse two distinct identifierless "
+            f"lines and lose the second one's value. Neither is offered. The "
+            f"fix is one of: declare that index UNIQUE NULLS NOT DISTINCT in a "
+            f"migration, or carry the receive line's ordinal in "
+            f"SweepStore.record_receive_line so an identifierless line has a "
+            f"stable key.",
+            status=409)
+
+    written = repo.query(
+        session,
+        f"""
+        INSERT INTO {GRN_LINE} (
+            grn_line_id, grn_id, po_id, po_line_id,
+            receive_external_id, line_external_id,
+            quantity, amount_paise, created_by, updated_by)
+        SELECT %(grn_line_id)s, g.grn_id, pl.po_id, pl.po_line_id,
+               %(receive_external_id)s, %(line_external_id)s,
+               %(quantity)s::numeric, %(amount_paise)s::bigint,
+               %(actor)s, %(actor)s
+        FROM {PO_LINE} pl
+        JOIN {PURCHASE_ORDER} po ON po.po_id = pl.po_id
+        JOIN project p ON p.project_id = pl.project_id
+        -- The header, resolved rather than created. Joined on the PO as well
+        -- as on the external id: a receive belongs to exactly one purchase
+        -- order, and `fk_grn_line_grn_po` would refuse the row anyway -- but
+        -- refusing it here names the mismatch instead of raising a foreign-key
+        -- violation an operator has to decode.
+        JOIN {GRN} g ON g.external_id = %(receive_external_id)s
+                    AND g.po_id = pl.po_id
+        WHERE pl.po_line_id = %(po_line_id)s
+          AND {{scope}}
+        ON CONFLICT ON CONSTRAINT ux_grn_line_external DO NOTHING
+        RETURNING grn_line_id
+        """,
+        {"grn_line_id": f"GRNL-{uuid.uuid4().hex[:20].upper()}",
+         "po_line_id": po_line_id,
+         "receive_external_id": receive_external_id,
+         "line_external_id": line_external_id,
+         "quantity": quantity,
+         "amount_paise": None if amount_paise is None else int(amount_paise),
+         "actor": SWEEP_ACTOR},
+        columns=PROCUREMENT_SCOPE_COLUMNS,
+    )
+    if written:
+        return
+
+    # NO ROWS. Three causes, and they are NOT interchangeable: the conflict is
+    # success (the re-walk this function is built for), the other two are not.
+    # Distinguishing them costs one read on a path that has already decided to
+    # write nothing, and returning silently on all three would make a missing
+    # GRN header look exactly like an idempotent replay.
+    existing = repo.query_one(
+        session,
+        f"""
+        SELECT 1
+        FROM {GRN_LINE} gl
+        JOIN {PURCHASE_ORDER} po ON po.po_id = gl.po_id
+        JOIN project p ON p.project_id = po.project_id
+        WHERE gl.po_line_id = %(po_line_id)s
+          AND gl.receive_external_id = %(receive_external_id)s
+          AND gl.line_external_id = %(line_external_id)s
+          AND {{scope}}
+        """,
+        {"po_line_id": po_line_id,
+         "receive_external_id": receive_external_id,
+         "line_external_id": line_external_id},
+        columns=PROCUREMENT_SCOPE_COLUMNS,
+    )
+    if existing is not None:
+        return          # already recorded: the re-walk, working as intended.
+
+    raise IntegrationStoreError(
+        "GRN_HEADER_NOT_RECORDED",
+        f"No goods receipt with external id {receive_external_id} is recorded "
+        f"against the purchase order carrying po_line {po_line_id}, or neither "
+        f"is visible to this principal. The receive HEADER carries the receipt "
+        f"date, number and source; none of those reaches this function, so it "
+        f"will not invent one -- a fabricated `received_at` decides which "
+        f"accounting period a receipt falls in. Record the receive header "
+        f"first.",
+        status=409)
 
 
 def accumulate_unattributed(session: Session, *, project_id: str | None,
