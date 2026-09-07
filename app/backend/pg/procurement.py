@@ -1016,6 +1016,176 @@ def reconcile_po_lines(session: Session, *, project_id: str | None = None,
     return out
 
 
+
+# ============================== commitment against actual (013), the SQL
+def reconciliation_lines(session: Session, *, project_id: str | None = None,
+                         limit: int = 500) -> list[dict]:
+    """Every purchase-order line in scope, with ordered / received / billed.
+
+    THE SQL IS HERE AND NOT IN `integration_store.py`, for the reason the
+    module docstring gives: `po_line.amount_paise`, `grn_line.amount_paise` and
+    `bill_line.amount_paise` are money on LEDGER rows, and
+    `test_integration_store.py::test_money_in_this_module_appears_only_on_the_011_exception_table`
+    holds that module to transport. `integration_store.reconciliation_lines`
+    remains the name the API router calls and delegates here, exactly as
+    `resolve_po_line` and `record_receive_line` do. The boundary is kept by
+    moving the statement, not by widening the guard.
+
+    ONE STATEMENT, not one per line. The SQLite original issues three queries
+    and joins them in Python dictionaries; that is fine over a POC's row counts
+    and is a fan-out here, so the two aggregates are CTEs restricted to the
+    lines the driving query already selected.
+
+    THE SCOPE PREDICATE SITS IN THE DRIVING CTE, ONCE, and everything else is
+    downstream of it -- `received` and `billed` both filter
+    `po_line_id IN (SELECT po_line_id FROM scoped_line)`. That is deliberate
+    rather than a token pasted in three places: a receipt or a bill line is
+    reachable only through a purchase-order line the caller can already see, so
+    filtering the driving set filters all three, and there is exactly one place
+    to read to know that it does.
+
+    `columns=` names ALL FOUR dimensions and waives none, through the `project`
+    join -- see :data:`SCOPE_COLUMNS` for why a waiver here would be
+    wrong rather than merely lax.
+    """
+    rows = repo.query(
+        session,
+        f"""
+        WITH scoped_line AS (
+            SELECT pl.po_line_id, pl.line_no, pl.description,
+                   pl.wbs_id, w.wbs_code,
+                   pl.budget_head_id, bh.name AS budget_head,
+                   pl.project_id,
+                   (pl.amount_paise
+                    + pl.non_creditable_tax_paise
+                    + pl.freight_paise)::bigint AS ordered_paise,
+                   po.po_id, po.po_number, po.status AS po_status,
+                   po.vendor_name, po.currency, po.exchange_rate,
+                   po.amendment_no, po.external_id AS po_external_id
+            FROM {PO_LINE} pl
+            JOIN {PURCHASE_ORDER} po ON po.po_id = pl.po_id
+            JOIN project p ON p.project_id = pl.project_id
+            JOIN wbs_element w
+              ON w.wbs_id = pl.wbs_id AND w.project_id = pl.project_id
+            JOIN budget_head bh ON bh.budget_head_id = pl.budget_head_id
+            WHERE (%(project_id)s::text IS NULL
+                   OR pl.project_id = %(project_id)s)
+              AND {{scope}}
+        ),
+        received AS (
+            -- A reversal GRN subtracts the MAGNITUDE of its line, so a
+            -- reversal line stored positive and one stored negative both
+            -- reduce received by the same amount. `domain.compute_ledger`
+            -- spells it `-ABS(...)` for exactly that reason.
+            SELECT gl.po_line_id,
+                   SUM(CASE WHEN g.is_reversal THEN -ABS(gl.amount_paise)
+                            ELSE gl.amount_paise END)::bigint AS received_paise
+            FROM {GRN_LINE} gl
+            JOIN {GRN} g ON g.grn_id = gl.grn_id
+            WHERE g.status <> 'Void'
+              AND gl.po_line_id IN (SELECT po_line_id FROM scoped_line)
+            GROUP BY gl.po_line_id
+        ),
+        billed AS (
+            -- ONLY accounting-effective bills relieve commitment (AUD-C-004).
+            -- A Draft or Void bill is not money and must not reduce the open
+            -- commitment, which is the direction that UNDERSTATES exposure.
+            SELECT bl.po_line_id,
+                   SUM(CASE WHEN b.accounting_status = 'Reversal'
+                            THEN -ABS(bl.amount_paise
+                                      + bl.non_creditable_tax_paise
+                                      + bl.freight_paise)
+                            ELSE (bl.amount_paise
+                                  + bl.non_creditable_tax_paise
+                                  + bl.freight_paise) END)::bigint
+                       AS billed_paise
+            FROM {BILL_LINE} bl
+            JOIN {BILL} b ON b.bill_id = bl.bill_id
+            WHERE bl.po_line_id IS NOT NULL
+              AND b.accounting_status = ANY(%(effective)s)
+              AND bl.po_line_id IN (SELECT po_line_id FROM scoped_line)
+            GROUP BY bl.po_line_id
+        )
+        SELECT s.po_line_id, s.line_no, s.description, s.wbs_id, s.wbs_code,
+               s.budget_head_id, s.budget_head, s.project_id, s.ordered_paise,
+               s.po_id, s.po_number, s.po_status, s.vendor_name, s.currency,
+               s.exchange_rate, s.amendment_no, s.po_external_id,
+               COALESCE(rcv.received_paise, 0)::bigint,
+               COALESCE(bld.billed_paise, 0)::bigint
+        FROM scoped_line s
+        -- `rcv` / `bld`, never `r` / `b`. `b` is `bill` two CTEs above, and a
+        -- one-letter alias reused for a table and for an aggregate OVER that
+        -- table is how a column check stops being able to tell them apart.
+        LEFT JOIN received rcv ON rcv.po_line_id = s.po_line_id
+        LEFT JOIN billed   bld ON bld.po_line_id = s.po_line_id
+        ORDER BY s.po_number, s.line_no, s.po_line_id
+        LIMIT %(limit)s
+        """,
+        {"project_id": project_id,
+         "effective": list(store.ACCOUNTING_EFFECTIVE_BILL_STATES),
+         "limit": int(limit)},
+        columns=SCOPE_COLUMNS,
+    )
+
+    out: list[dict] = []
+    for row in rows:
+        (po_line_id, line_no, description, wbs_id, wbs_code, budget_head_id,
+         budget_head, line_project_id, ordered, po_id, po_number, po_status,
+         vendor_name, currency, exchange_rate, amendment_no, po_external_id,
+         received, billed) = row
+        # `int()` on every one of the three, at the boundary, for the reason in
+        # this section's header. Not decoration: `::bigint` protects the SQL
+        # side and this protects everything downstream of the driver.
+        ordered, received, billed = int(ordered), int(received), int(billed)
+        released = po_status in store.COMMITMENT_RELEASING_STATES
+
+        # ORDERED LESS BILLED. Never ordered less received.
+        open_commitment = 0 if released else max(0, ordered - billed)
+        # Its OWN bucket, never subtracted from the line above.
+        received_not_billed = max(0, received - billed)
+        # The residual a Cancelled/Closed purchase order gave back, and the
+        # amount a bill exceeded its order by. Together with `open_commitment`
+        # these make the identity below hold to the paisa in every one of the
+        # four cases -- live/released crossed with under/over-billed:
+        #
+        #     ordered - billed == open_commitment
+        #                         + residual_released
+        #                         - over_billed
+        #
+        # Exposed rather than left implicit because without them a reader
+        # cannot tell a released residual from an over-bill: both show open
+        # commitment 0 against an ordered that does not equal billed, and they
+        # mean opposite things.
+        residual_released = (ordered - billed) if (released and ordered > billed) else 0
+        over_billed = max(0, billed - ordered)
+        flag, position = store._reconciliation_position(
+            ordered, received, billed, released, str(po_status))
+
+        out.append({
+            "po_line_id": po_line_id, "line_no": line_no,
+            "description": description,
+            "wbs_id": wbs_id, "wbs_code": wbs_code,
+            "budget_head_id": budget_head_id, "budget_head": budget_head,
+            "project_id": line_project_id,
+            "po_id": po_id, "po_number": po_number, "po_status": po_status,
+            "po_external_id": po_external_id,
+            "vendor_name": vendor_name, "currency": currency,
+            "exchange_rate": (None if exchange_rate is None
+                              else str(exchange_rate)),
+            "amendment_no": amendment_no,
+            "ordered_paise": ordered,
+            "received_paise": received,
+            "billed_paise": billed,
+            "open_commitment_paise": open_commitment,
+            "received_not_billed_paise": received_not_billed,
+            "exposure_paise": open_commitment + billed,
+            "residual_released_paise": residual_released,
+            "over_billed_paise": over_billed,
+            "flag": flag, "position": position,
+        })
+    return out
+
+
 __all__ = [
     "ACCOUNTING_EFFECTIVE",
     "ACCOUNTING_STATUSES",
@@ -1025,6 +1195,7 @@ __all__ = [
     "derived_id",
     "mirror_bill",
     "reconcile_po_lines",
+    "reconciliation_lines",
     "record_receive_line",
     "resolve_accounting_status",
     "resolve_po_line",

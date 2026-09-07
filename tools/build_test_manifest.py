@@ -108,6 +108,23 @@ POST_BASELINE_FILES = {
     # stop meaning anything the moment the product grows.
     "test_pg_procurement_schema.py",
 
+    # --- Wave 6 agent 4: commitment against actual, over those tables ------
+    # The other half of migration 013. `test_pg_procurement_schema.py` holds
+    # the SHAPE (columns, composite FKs, signed money, RLS); this holds the
+    # ARITHMETIC that reads it -- open commitment is ordered less BILLED and
+    # never less received, received-not-billed is its own bucket, and the four
+    # quantities reconcile to the paisa.
+    #
+    # It runs with NO database at all, which is the whole reason it is a
+    # separate file from `test_pg_reconciliation.py`: that file's live half
+    # skips on every workstation here, so a change to the reconciliation
+    # arithmetic could pass locally with nothing having executed. Every
+    # property here is a property of SQL text, module constants or integer
+    # arithmetic, so none of it skips anywhere. Post-baseline like every Wave
+    # 2-6 file -- the 220 counts the POC's audit-remediation suite, and
+    # inflating it would make the removal guard stop meaning anything.
+    "test_pg_procurement_reconciliation.py",
+
     # --- Wave 6 agent 3: inbound GRN / Purchase Receive and Vendor Bill ----
     # The first code that WRITES to migration 013's chain, and the file that
     # closes the five `SCHEMA_NOT_YET_MIGRATED` refusals in

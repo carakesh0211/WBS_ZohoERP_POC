@@ -548,6 +548,52 @@ export function retryDeadLetter(queue, rowId, idempotencyKey) {
 }
 
 /**
+ * SCR-39: stop retrying one dead-lettered INBOX row, permanently and on the
+ * record.
+ *
+ * THE VERB RETRY COULD NOT BE. A dead-lettered row had exactly one action, so
+ * a payload that will never succeed — a bill against a cancelled purchase
+ * order, a receive whose tenant record is gone — could only be retried or left
+ * sitting. Left sitting, it accumulates, and a queue that cannot be emptied
+ * stops being read, which is how the next genuine failure is missed.
+ *
+ * INBOX ONLY, AND THE FRONTEND MUST NOT HIDE THAT. `DISCARDED` is in C16's
+ * inbox namespace and there is no such value in the outbox one, whose states
+ * are PENDING / SENT / FAILED / DEAD. The backend refuses an outbox discard
+ * with a coded 409 rather than mapping it onto a nearby state; a screen must
+ * therefore not offer this control on an outbox row at all, because a control
+ * that is always refused reads as a permission problem.
+ *
+ * `reason` is MANDATORY and reaches the hash-chained audit entry. This is the
+ * verb that ends an inbound document's life without applying it; one recorded
+ * with no explanation cannot be told apart from one done by accident.
+ *
+ * `Idempotency-Key` is minted ONCE per discard attempt by the caller and
+ * reused across transport retries of that attempt, exactly as on retry.
+ *
+ * @param {'inbox'|'outbox'} queue
+ * @param {string} rowId
+ * @param {{reason: string}} body
+ * @param {string} idempotencyKey
+ */
+export function discardDeadLetter(queue, rowId, body, idempotencyKey) {
+  return firstAvailable([
+    {
+      source: 'wave5',
+      template: '/api/integrations/dead-letters/{queue}/{row_id}/discard',
+      call: () => wave5.request(
+        'POST',
+        `/dead-letters/${encodeURIComponent(queue)}/${encodeURIComponent(rowId)}/discard`,
+        { body: { reason: (body && body.reason) || '' },
+          headers: { 'Idempotency-Key': idempotencyKey } },
+      ),
+    },
+  ], 'Discarding a dead-lettered payload requires the PostgreSQL integration API and the '
+    + 'connector.manage permission. Nothing is discarded locally as a fallback: a row that '
+    + 'stopped being retried without the decision being recorded would be a silent drop.');
+}
+
+/**
  * The global connector mode, as a last resort.
  *
  * §11.9 makes `zoho.MODE` PER CONNECTION, so a connection row's own `mode` is

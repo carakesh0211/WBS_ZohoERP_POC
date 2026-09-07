@@ -61,8 +61,20 @@ integration platform, inbound sweeps, outbound PO emission
 >   time, through `procurement.reconcile_po_lines`. Over-billing is **reported,
 >   never clamped**.
 >
-> **What is NOT closed.** The two coded 503s are a router question, not a schema
-> one, and are not touched here. And every live PostgreSQL test of the above is
+> * `GET /api/integrations/reconciliation` **now answers.** It was one of the
+>   two coded 503s below, and its refusal named a fact about the schema —
+>   "PostgreSQL holds no purchase order, GRN or bill" — which 013 made untrue.
+>   `integration_store.reconciliation_lines` is the name it calls;
+>   `pg/procurement.py` holds the statement, because `po_line`, `grn_line` and
+>   `bill_line` carry money and the store is held to transport. On a process
+>   with no PostgreSQL it answers `DATABASE_NOT_CONFIGURED`, which is now the
+>   accurate code — a database really is what it lacks.
+>
+> **What is NOT closed.** `GET /api/integrations/control-totals` still refuses,
+> and deliberately: everything reconciliation reports is OUR side, and a control
+> total needs Zoho's own count, which no route here has. It takes no database
+> dependency at all, so the two have stopped being a pair. And every live
+> PostgreSQL test of the above is
 > `skipif CAPEX_DB_URL` — there is no server on any workstation here, so the
 > whole live half **first executes in CI**. A skip is not a pass: until
 > `pg_tests` is green the honest summary is "the SQL names real columns and real

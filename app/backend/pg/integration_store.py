@@ -107,17 +107,29 @@ RECONCILIATION_EXCEPTION = "reconciliation_exception"
 #: The migration that creates it.
 RECONCILIATION_EXCEPTION_MIGRATION = "011_reconciliation_exception.sql"
 
-# ------------------------------------------------------- procurement (013)
-#: The document chain ``013_procurement.sql`` finally creates. Named here for
-#: the same reason :data:`RECONCILIATION_EXCEPTION` is: these are NOT 010's
-#: tables, they arrive in their own migration, and a module that spells them
-#: inline cannot say which migration it depends on.
+# ------------------------------------------------- procurement chain (013)
+#: The eight procurement documents ``013_procurement.sql`` creates. Named here
+#: for the same reason :data:`RECONCILIATION_EXCEPTION` is -- these are NOT
+#: 010's tables, they arrive in their own migration, and a module that spells
+#: them inline cannot say which migration it depends on -- and as constants
+#: rather than literals inside f-strings so that
+#: `tests/test_integration_sql_matches_schema.py` can read these names and
+#: check every statement below against the migration. A table spelled inline in
+#: one query and via a constant in another is exactly the drift that check
+#: cannot see.
+PURCHASE_REQUEST = "purchase_request"
+PR_LINE = "pr_line"
 PURCHASE_ORDER = "purchase_order"
 PO_LINE = "po_line"
 GRN = "grn"
 GRN_LINE = "grn_line"
 BILL = "bill"
 BILL_LINE = "bill_line"
+
+PROCUREMENT_TABLES: tuple[str, ...] = (
+    PURCHASE_REQUEST, PR_LINE, PURCHASE_ORDER, PO_LINE,
+    GRN, GRN_LINE, BILL, BILL_LINE,
+)
 
 #: The migration that creates them.
 PROCUREMENT_MIGRATION = "013_procurement.sql"
@@ -128,14 +140,53 @@ PROCUREMENT_MIGRATION = "013_procurement.sql"
 GRN_LINE_EXTERNAL_UNIQUE: tuple[str, ...] = (
     "po_line_id", "receive_external_id", "line_external_id")
 
-#: The scope mapping for a procurement statement that has joined ``project p``.
+#: The PO states that RELEASE commitment. Transcribed from
+#: ``domain.COMMITMENT_RELEASING_STATES``, which is the frozen `C5_formulas.json`
+#: registry in code, and deliberately not re-derived: a fifth state added here
+#: and not there would make PostgreSQL and the SQLite ledger disagree about how
+#: much money is committed, silently, in the direction that understates.
+COMMITMENT_RELEASING_STATES: tuple[str, ...] = ("Cancelled", "Closed")
+
+#: The bill states that MOVE actual CWIP (AUD-C-004). Transcribed from
+#: ``domain.ACCOUNTING_EFFECTIVE_BILL_STATES`` for the same reason.
+ACCOUNTING_EFFECTIVE_BILL_STATES: tuple[str, ...] = ("Approved", "Reversal")
+
+#: The module's name for "a row a SWEEP wrote, not a person".
 #:
-#: ALL FOUR dimensions, and none waived. Unlike ``reconciliation_exception``,
-#: which genuinely has no plant or location column, a procurement document
-#: reaches its project and therefore reaches all four -- and 013's own RLS
-#: policies call ``capex_scope_permits(p.entity_id, p.plant_id, p.location_id,
-#: p.project_id)`` with exactly this shape. Waiving a dimension here would make
-#: the application layer weaker than the policy it is supposed to mirror.
+#: A literal, and deliberately not the string a human actor would produce: a
+#: receive line attached by the PO-anchored walk was authored by no user, and
+#: writing a user id into `created_by` would make the audit trail claim a
+#: decision nobody took. The same rule the API router applies to `_actor`:
+#: server-derived, never inferred.
+#:
+#: NOT THE VALUE THAT REACHES `grn_line.created_by`. The ingest writer in
+#: `pg/procurement.py` stamps `SVC-SWEEP`, which is a SEEDED `app_user` row --
+#: an actual service principal the estate can join back to -- and that is the
+#: stronger answer to the same question, because a bare marker string names a
+#: writer nothing else in the database knows about. This constant remains the
+#: module's declaration of the rule; `procurement.record_receive_line`'s
+#: `actor` default is where the rule is spent.
+SWEEP_ACTOR = "SYSTEM:integration-sweep"
+
+#: The four dimensions, reached through `project`, for every statement over the
+#: eight procurement tables.
+#:
+#: ALL FOUR ARE NAMED, and none is waived. That is not tidiness: it is the only
+#: mapping that agrees with what 013's own policies do. Those policies read
+#: `EXISTS (SELECT 1 FROM project p WHERE ... capex_scope_permits(p.entity_id,
+#: p.plant_id, p.location_id, p.project_id))` -- all four dimensions, through a
+#: join -- and `rls.JOINED_VIA_PROJECT` exists to record precisely that these
+#: eight are filtered through `project` rather than on a column of their own.
+#:
+#: Unlike ``reconciliation_exception``, which genuinely has no plant or location
+#: column, a procurement document reaches its project and therefore reaches all
+#: four. Waiving entity, plant and location here -- which the tables' own
+#: columns would seem to invite, since only four of the eight carry
+#: `project_id` and none carries the other three -- would leave a principal
+#: restricted to one ENTITY unfiltered at the application layer, relying on RLS
+#: alone. The repository predicate is meant to be the second, independent
+#: enforcement of the same scope, and a waiver would make it the first and only
+#: place the restriction is *not* expressed. So every statement joins `project`.
 PROCUREMENT_SCOPE_COLUMNS: dict[str, str | None] = {
     "entity": "p.entity_id", "plant": "p.plant_id",
     "location": "p.location_id", "project": "p.project_id",
@@ -2649,6 +2700,150 @@ def _no_open_exception(session: Session, exception_id: str,
         f"resolved by {row[1]} at {row[2]}. It cannot be {action}d again: the "
         f"first reviewer's decision is evidence, not a draft.",
         status=409)
+
+
+# ================================================ commitment against actual (013)
+#
+# THE ONE ARITHMETIC THIS SECTION MUST NOT GET WRONG.
+#
+# Open commitment is ORDERED LESS BILLED, floored at zero, and zero outright
+# once the purchase order has reached a commitment-releasing state. It is NOT
+# ordered less RECEIVED. A receipt does not release a commitment; a bill does.
+#
+# Received-not-billed is its OWN quantity -- received less billed, floored at
+# zero -- and is never subtracted from commitment and never added to it. The two
+# overlap by design.
+#
+# Both rules are `domain.compute_ledger` / `domain.reconciliation`, which are
+# the frozen `C5_formulas.json` registry in code. Everything below is
+# TRANSCRIBED from them rather than re-derived, and the two states lists are
+# transcribed as constants at the head of this module for the same reason: a
+# second derivation that disagrees would make PostgreSQL and the SQLite ledger
+# quote different open commitment for the same estate, silently.
+#
+# WHERE THE ARITHMETIC HAPPENS. The three per-line sums are done by the server
+# in `bigint`; the four derived figures are done here in Python `int`. Neither
+# is float, and neither is `numeric` past this boundary: every `SUM()` over a
+# `bigint` column is cast back with `::bigint`, because PostgreSQL's SUM returns
+# numeric, psycopg maps numeric to `Decimal`, and a Decimal reaching integer
+# arithmetic is the defect that took down the availability verdict and both
+# approval paths in the PostgreSQL CI job only.
+
+
+def _reconciliation_position(ordered: int, received: int, billed: int,
+                             released: bool, po_status: str) -> tuple[str, str]:
+    """`(flag, position)` for one line -- transcribed from `domain.reconciliation`.
+
+    Character for character in the sentences, because SCR-18 renders `position`
+    verbatim and a reader comparing the PostgreSQL screen with the SQLite one
+    must not find two different words for the same state.
+
+    THE FLAG PRECEDENCE IS `domain`'s, AND IT IS NOT THE OBVIOUS ONE.
+    `received-unbilled` outranks `released`, not the other way round. A closed
+    purchase order that still holds value received and never invoiced is
+    reported as `received-unbilled`, because that is the condition somebody has
+    to act on -- the receipt is real, the invoice is missing, and the closure
+    does not make either untrue. Ranking `released` first would file it under
+    "nothing to see here" and it would leave the exception list.
+
+    `over-billed` outranks everything, on a released line too: money billed
+    beyond the order is the condition that raises an exception.
+    """
+    if released:
+        if po_status == "Cancelled":
+            position = ("PO cancelled before billing" if billed == 0
+                        else "PO cancelled after partial billing")
+        else:
+            position = "PO closed - residual released"
+    elif billed == 0:
+        position = "PO approved, not billed"
+    elif billed < ordered:
+        position = "Partially billed"
+    elif billed == ordered:
+        position = "Fully billed"
+    else:
+        position = "Bill exceeds PO"
+
+    # The exact precedence in `domain.reconciliation`, in the same order.
+    flag = ("over-billed" if billed > ordered else
+            "received-unbilled" if received > billed else
+            "released" if released else
+            "ok")
+    return flag, position
+
+
+def reconciliation_lines(session: Session, *, project_id: str | None = None,
+                         limit: int = 500) -> list[dict]:
+    """Every purchase-order line in scope, with ordered / received / billed.
+
+    THE `sweeps.SweepStore`-SIDE NAME. The statement itself lives in
+    `pg/procurement.py`, next to the receive and bill writers, and this
+    delegates to it -- the same split `resolve_po_line` and
+    `record_receive_line` use, and for the same reason: `po_line`, `grn_line`
+    and `bill_line` are money-bearing LEDGER rows, and
+    `test_money_in_this_module_appears_only_on_the_011_exception_table` holds
+    THIS module to transport, with `reconciliation_exception` the single
+    exception 011 forced. Moving the statement across the line keeps that guard
+    at its original width; widening the guard instead would have relaxed the
+    one check standing between an amount and an outbox row.
+
+    The arithmetic the statement feeds is still this module's, and stays here:
+    :func:`_reconciliation_position` is the transcription of
+    `domain.reconciliation`, and :func:`reconciliation_summary` sums the rows
+    that were actually returned. Both are pure functions over integers and
+    neither touches SQL.
+    """
+    from . import procurement
+    return procurement.reconciliation_lines(
+        session, project_id=project_id, limit=limit)
+
+
+def reconciliation_summary(lines: Sequence[Mapping[str, Any]]) -> dict:
+    """The control-total band, summed over the SAME rows that were returned.
+
+    A pure function of `lines`, and that is the point: the summary and the
+    table can never disagree, because there is only one row set. A second query
+    that re-aggregated server-side would be a different question asked at a
+    different instant, and the tile would quietly stop being the total of what
+    is on screen.
+
+    `identity_balanced` is asserted here rather than assumed. If integer
+    arithmetic over these five columns ever stops reconciling to the paisa the
+    response says so on its face, instead of the discrepancy being discovered
+    by whoever signs the number off.
+    """
+    def total(key: str) -> int:
+        return sum(int(line[key]) for line in lines)
+
+    ordered = total("ordered_paise")
+    billed = total("billed_paise")
+    open_commitment = total("open_commitment_paise")
+    residual_released = total("residual_released_paise")
+    over_billed = total("over_billed_paise")
+    residual = (ordered - billed) - (open_commitment + residual_released - over_billed)
+
+    return {
+        "lines": len(lines),
+        "ordered_paise": ordered,
+        "received_paise": total("received_paise"),
+        "billed_paise": billed,
+        "open_commitment_paise": open_commitment,
+        "received_not_billed_paise": total("received_not_billed_paise"),
+        "exposure_paise": total("exposure_paise"),
+        "residual_released_paise": residual_released,
+        "over_billed_paise": over_billed,
+        # The reconciliation, stated so it can be read rather than trusted.
+        "identity": "ordered - billed = open_commitment + residual_released "
+                    "- over_billed",
+        "identity_residual_paise": residual,
+        "identity_balanced": residual == 0,
+        "exceptions": [
+            {"po_number": line["po_number"], "line_no": line["line_no"],
+             "flag": line["flag"]}
+            for line in lines
+            if line["flag"] in ("over-billed", "received-unbilled")
+        ],
+    }
 
 
 # ============================================ the rest of `sweeps.SweepStore`

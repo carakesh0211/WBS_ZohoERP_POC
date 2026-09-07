@@ -419,23 +419,56 @@ const INBOX_BILLS = {
   has_more: false,
 };
 
+/* The Wave 5 reconciliation response, as `api/integrations.py::get_reconciliation`
+   actually shapes it now that `013_procurement.sql` has backed it.
+
+   `residual_released_paise` / `over_billed_paise` and the `identity_*` block are
+   NOT decoration. The route holds itself to
+   `ordered - billed = open + residual_released - over_billed` and reports the
+   residual in paise, so SCR-18 can render whether the figures actually tied out
+   rather than asserting it. Both rows below satisfy it exactly:
+
+     row 1  25,00,000 - 10,00,000 = 15,00,000 + 0 - 0
+     row 2   9,00,000 -  9,50,000 =        0 + 0 - 50,000
+
+   `emission_state` is the half the ledger fallback cannot answer: the outbox row
+   for the purchase order. Row 2 carries none, which is a real answer ("nothing
+   was ever enqueued for it") and not a missing one. */
 const RECONCILIATION = {
+  source: 'wave5',
   rows: [{
     po_number: 'PO-2026-0008', line_no: 1, wbs_code: 'W-02-01', vendor_name: 'Larsen Fabricators',
     ordered_paise: 250000000, received_paise: 120000000, billed_paise: 100000000,
     open_commitment_paise: 150000000, received_not_billed_paise: 20000000,
-    exposure_paise: 250000000, flag: 'received-unbilled', position: 'Partially billed',
+    exposure_paise: 250000000, residual_released_paise: 0, over_billed_paise: 0,
+    flag: 'received-unbilled', position: 'Partially billed',
+    emission_state: {
+      rows: 1, split: false, states: { SENT: 1 }, state: 'SENT',
+      external_id: '4600000123', external_ids: ['4600000123'], attempts: 1,
+    },
   }, {
     po_number: 'PO-2026-0009', line_no: 1, wbs_code: 'W-03', vendor_name: 'Kirloskar Pumps',
     ordered_paise: 90000000, received_paise: 90000000, billed_paise: 95000000,
     open_commitment_paise: 0, received_not_billed_paise: 0,
-    exposure_paise: 95000000, flag: 'over-billed', position: 'Bill exceeds PO',
+    exposure_paise: 95000000, residual_released_paise: 0, over_billed_paise: 5000000,
+    flag: 'over-billed', position: 'Bill exceeds PO',
+    // No outbox row at all. ABSENT, never a fabricated state: nothing has ever
+    // been enqueued for this purchase order, and that is a real answer.
+    emission_state: null,
   }],
   summary: {
     lines: 2,
+    ordered_paise: 340000000,
+    received_paise: 210000000,
     open_commitment_paise: 150000000,
     billed_paise: 195000000,
     received_not_billed_paise: 20000000,
+    exposure_paise: 345000000,
+    residual_released_paise: 0,
+    over_billed_paise: 5000000,
+    identity: 'ordered - billed = open_commitment + residual_released - over_billed',
+    identity_residual_paise: 0,
+    identity_balanced: true,
     exceptions: [{ po_number: 'PO-2026-0008' }, { po_number: 'PO-2026-0009' }],
   },
 };
@@ -527,6 +560,7 @@ const WAVE5_PATHS = [
   '/api/integrations/exceptions',
   '/api/integrations/dead-letters',
   '/api/integrations/dead-letters/{queue}/{row_id}/retry',
+  '/api/integrations/dead-letters/{queue}/{row_id}/discard',
 ];
 
 /** Every Wave 5 endpoint mounted and answering with the fixtures above. */
@@ -1396,6 +1430,88 @@ test.describe('SCR-18 — open commitment is ordered less BILLED, never less rec
     }
   });
 
+  test('the screen says whether the figures actually reconciled, and does not assume it', async ({ page }) => {
+    // The whole screen is a claim that ordered, received, billed and open tie
+    // out. A claim nobody checks is a claim nobody can trust, so the server
+    // states the identity it holds itself to and reports the residual in
+    // paise, and this renders the answer.
+    await gotoScreen(page, 'integration-reconciliation');
+    const tiles = page.locator('#reconTiles');
+    await expect(tiles).toContainText('Reconciles to the paisa');
+    await expect(tiles).toContainText('BALANCED');
+    // A word, not a colour: the `--warning` token fails WCAG AA on every
+    // background in the frozen stylesheet, so nothing may depend on it.
+    await expect(tiles).not.toContainText('DOES NOT BALANCE');
+  });
+
+  test('an unbalanced total is reported as unbalanced, never smoothed over', async ({ page }) => {
+    // Money has either been counted twice or lost. An operator about to sign
+    // the total off is entitled to know the parts did not add up, and the
+    // amount by which.
+    await stubWave5(page, {
+      reconciliation: {
+        ...RECONCILIATION,
+        summary: {
+          ...RECONCILIATION.summary,
+          identity_residual_paise: 6000000,
+          identity_balanced: false,
+        },
+      },
+    });
+    await gotoScreen(page, 'integration-reconciliation');
+    const tiles = page.locator('#reconTiles');
+    await expect(tiles).toContainText('DOES NOT BALANCE');
+    await expect(tiles).toContainText('₹60,000.00');
+    await expect(tiles).toContainText('must not be signed off');
+  });
+
+  test('whether a purchase order ever reached Zoho is stated, and a dash never stands in for no', async ({ page }) => {
+    // THE ONLY REASON THE WAVE 5 ROUTE EXISTS. /api/reconciliation knows what
+    // we ordered; it does not know whether the order was ever emitted. Three
+    // distinct renderings, and collapsing any two would be the defect.
+    await gotoScreen(page, 'integration-reconciliation');
+    const rows = page.locator('#content table tbody tr');
+    await expect(rows.nth(0)).toContainText('SENT');
+    // No outbox row at all is a REAL answer, not a missing one.
+    await expect(rows.nth(1)).toContainText('never enqueued');
+  });
+
+  test('a split purchase order whose emissions disagree shows the breakdown, not a winner', async ({ page }) => {
+    // On a product whose custom fields are header-only, a multi-cell purchase
+    // order is SPLIT — one emission per control cell — so its outbox rows can
+    // legitimately disagree. Picking the worst state would hide a success and
+    // picking the first would hide a failure; both are a summary that conceals
+    // the one thing worth seeing.
+    await stubWave5(page, {
+      reconciliation: {
+        ...RECONCILIATION,
+        rows: [{
+          ...RECONCILIATION.rows[0],
+          emission_state: {
+            rows: 3, split: true, states: { SENT: 2, DEAD: 1 }, state: null,
+            external_id: null, external_ids: ['4600000123', '4600000124'], attempts: 8,
+          },
+        }],
+      },
+    });
+    await gotoScreen(page, 'integration-reconciliation');
+    const row = page.locator('#content table tbody tr').first();
+    await expect(row).toContainText('2×SENT');
+    await expect(row).toContainText('1×DEAD');
+  });
+
+  test('the ledger fallback says the emission column was not measured, never “no”', async ({ page }) => {
+    // "We did not look" is not "it did not happen". The ledger holds no record
+    // of what was emitted, and a dash there would read as a negative answer.
+    await stubNothingMounted(page);
+    await gotoScreen(page, 'integration-reconciliation');
+    const source = page.locator('.integration-source[data-source="ledger-compat"]').first();
+    await expect(source).toBeVisible();
+    const unmeasured = page.locator('#content .integration-unmeasured');
+    expect(await unmeasured.count()).toBeGreaterThan(0);
+    await expect(unmeasured.first()).toContainText('not measured');
+  });
+
   test('the control totals band is the server’s summary, not a sum of the visible rows', async ({ page }) => {
     // A total computed from a paginated page is silently the total of that
     // page — a number an operator would sign off.
@@ -1629,6 +1745,85 @@ test.describe('SCR-39 — manual retry cannot duplicate a document', () => {
     await expect(page.locator('button[data-retry-row="outbox:OUT-77"]')).toBeVisible();
     await expect(page.locator('button[data-retry-row="inbox:IN-42"]')).toHaveCount(0);
     await expect(page.locator('#content')).toContainText('Not retryable here');
+  });
+
+  test('a QUARANTINED inbox row can be DISCARDED even though it cannot be retried', async ({ page }) => {
+    // Two different verbs, and the screen must not merge them. Re-running the
+    // same failed attribution against the same unchanged data cannot succeed,
+    // so there is no Retry. Ending the payload's life CAN succeed, and without
+    // it the queue fills with rows nobody can act on until the real failures
+    // are invisible among them.
+    await stubWave5(page);
+    await signIn(page);
+    await gotoScreen(page, 'integration-retry');
+    await expect(page.locator('button[data-retry-row="inbox:IN-42"]')).toHaveCount(0);
+    await expect(page.locator('button[data-discard-row="inbox:IN-42"]')).toBeVisible();
+  });
+
+  test('no discard is offered on an outbox row, because C16 gives the outbox no such state', async ({ page }) => {
+    // The backend refuses an outbox discard with a coded 409. A control that
+    // is always refused reads as a permission problem, which is a different
+    // and false explanation, so it is not rendered at all — and NOT rendered
+    // disabled, which says "you may not" rather than "there is no such
+    // operation".
+    await stubWave5(page);
+    await signIn(page);
+    await gotoScreen(page, 'integration-retry');
+    await expect(page.locator('button[data-discard-row="outbox:OUT-77"]')).toHaveCount(0);
+    // Absent, and specifically NOT present-and-disabled: disabled says "you
+    // may not", and the truth is "there is no such operation".
+    await expect(page.locator('button[data-discard-row][disabled]')).toHaveCount(0);
+    await expect(page.locator('#content')).toContainText('There is no discard for an outbox document');
+  });
+
+  test('a discard with no reason sends nothing at all', async ({ page }) => {
+    // Discarding ends an inbound document's life without applying it. One
+    // recorded with no explanation cannot be told apart from one done by
+    // accident, so the screen refuses before calling rather than letting the
+    // server's BLANK_DISCARD_REASON be the prompt.
+    let called = 0;
+    await routeOpenApi(page, WAVE5_PATHS);
+    await routeJson(page, '**/api/integrations/dead-letters?**', DEAD_LETTERS);
+    await routeJson(page, '**/api/integrations/dead-letters', DEAD_LETTERS);
+    await page.route('**/api/integrations/dead-letters/*/*/discard', (route) => {
+      called += 1;
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    });
+    await signIn(page);
+    page.on('dialog', (d) => d.dismiss());
+    await gotoScreen(page, 'integration-retry');
+
+    await page.locator('button[data-discard-row="inbox:IN-42"]').click();
+    await expect(page.locator('#retryActionStatus')).toContainText('cancelled');
+    expect(called, 'a cancelled prompt still issued the discard').toBe(0);
+  });
+
+  test('a discard carries the reason and an Idempotency-Key distinct from any retry key', async ({ page }) => {
+    // Retry and discard are opposite decisions about the same row. Sharing one
+    // key would let a transport retry of a discard be deduplicated against an
+    // earlier retry of the same row, or the reverse.
+    const seen = [];
+    await routeOpenApi(page, WAVE5_PATHS);
+    await routeJson(page, '**/api/integrations/dead-letters?**', DEAD_LETTERS);
+    await routeJson(page, '**/api/integrations/dead-letters', DEAD_LETTERS);
+    await page.route('**/api/integrations/dead-letters/*/*/discard', (route) => {
+      seen.push({
+        key: route.request().headers()['idempotency-key'],
+        body: route.request().postDataJSON(),
+      });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    });
+    await signIn(page);
+    page.on('dialog', (d) => d.accept('the purchase order was cancelled in the tenant'));
+    await gotoScreen(page, 'integration-retry');
+
+    await page.locator('button[data-discard-row="inbox:IN-42"]').click();
+    await expect(page.locator('#retryActionStatus .msg-success')).toBeVisible();
+    expect(seen).toHaveLength(1);
+    expect(seen[0].key, 'a discard with no idempotency key').toBeTruthy();
+    expect(seen[0].key.startsWith('discard-'),
+      'the discard key is not distinguishable from a retry key').toBe(true);
+    expect(seen[0].body.reason).toBe('the purchase order was cancelled in the tenant');
   });
 
   test('an outbox row that already has an external id is flagged as already landed', async ({ page }) => {
