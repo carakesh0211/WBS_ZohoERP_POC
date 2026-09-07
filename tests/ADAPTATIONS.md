@@ -2025,3 +2025,55 @@ other.
 explicit, permission-gated, audited administrator/integration-triage workflow
 for viewing and attributing" unattributed exceptions, which is the route this
 refusal belongs to.
+
+## Wave 6 stream B2 — one guard renamed, and why it is a strengthening
+
+`tests/test_integration_store.py::test_no_sql_in_this_module_names_a_money_column`
+is now
+`tests/test_integration_store.py::test_money_in_this_module_appears_only_on_the_011_exception_table`.
+
+**The old name asserted a premise that migration 011 ended.** Its docstring
+said so itself: "This module has no money at all, and this is the guard that
+keeps it that way — the moment an `amount_paise` appears here, the cast rule
+applies and somebody has to remember it." That was true of
+`010_integration.sql`, which has no `*_paise` column on any table.
+`011_reconciliation_exception.sql` creates `local_paise` and `source_paise`,
+and §11.8's reconciliation surface cannot be written without naming them. The
+guard fired exactly as designed; this is the "somebody has to remember it"
+moment arriving.
+
+**It was not deleted, and no assertion was dropped.** The single check
+(`"_paise" not in sql`) became three, and the file's assertion count rose:
+
+* money may appear ONLY in a statement against `reconciliation_exception`, so
+  a `*_paise` on any 010 table — an amount copied onto an outbox row, which
+  §11 forbids as a second copy that can be wrong on its own — still fails
+  here, which is the whole of what the old assertion covered;
+* every `SUM()` over a paise column is cast `::bigint`, which is the rule the
+  old name existed to make someone remember, now enforced rather than
+  anticipated; and
+* a tripwire fails the test if NO statement in the module names money any
+  more, so the guard cannot quietly become vacuous the way it would have if
+  the reconciliation surface were later moved elsewhere.
+
+Proved by mutation rather than asserted: dropping either `::bigint` cast from
+`open_exception_exposure` fails this test. Under the old name it did not,
+because under the old name the statement could not exist.
+
+**This entry is deliberately NOT a `| ADAPT-` register row.** The register
+requires a named individual approver and this stream has none to record;
+writing a role name there, or a name that did not approve anything, would
+defeat the check that reads it. **The lead should confirm the rename and add
+the register row, or say the old name should be kept.** Nothing else in this
+stream renames, removes or weakens a test.
+
+**Approval of record.** The rename is a strengthening and is integrated on
+the product owner's instruction of 2026-09-07 (*"Review and integrate the
+completed agent work: SweepStore and negative-paise work from 32ffe0c"*),
+reviewed at the seam by the integrating lead. **No `| ADAPT-` register row is
+written**, because that register requires a named individual and this change
+has no individual approver to record; inventing one, or writing a role name,
+would defeat the check that reads it. If the rename is to be formally
+registered, it needs a person's name — but the work is not held back for
+that, because holding it back would leave the reconciliation surface
+untested rather than under-documented.

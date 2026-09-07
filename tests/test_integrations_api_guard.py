@@ -983,8 +983,13 @@ def test_every_route_sets_the_correlation_header_before_it_can_refuse():
     # routes. The count is asserted rather than merely iterated so a handler
     # added without the header is caught even if it is also added to some
     # other allow-list -- the loop below only checks the handlers it finds.
-    assert len(handlers) == 18, (
-        f"expected 18 route handlers, found {len(handlers)}: {sorted(handlers)}")
+    # 16 at first delivery; 18 with the unattributed-exception triage list and
+    # attribution; 19 with the resolve verb that closes one. The count is
+    # asserted rather than merely iterated so a handler added without the
+    # header is caught even if it is also added to some other allow-list --
+    # the loop below only checks the handlers it finds.
+    assert len(handlers) == 19, (
+        f"expected 19 route handlers, found {len(handlers)}: {sorted(handlers)}")
     for name in sorted(handlers):
         body = inspect.getsource(getattr(integrations_api, name))
         assert "_set_correlation_header(response, request)" in body, (
@@ -1056,6 +1061,12 @@ DELIVERED_MUTATING_ROUTES = [
     ("/api/integrations/exceptions/{exception_id}/attribute", "POST",
      "/api/integrations/exceptions/RX-1/attribute",
      {"entity_id": "ENT-DM-01", "reason": "unauthorised attempt"},
+     "reconciliation.triage", "Auditor"),
+    # Closing an exception releases the capitalisation and period-close gate,
+    # so it carries the same Administrator-only permission as attributing one.
+    ("/api/integrations/exceptions/{exception_id}/resolve", "POST",
+     "/api/integrations/exceptions/RX-1/resolve",
+     {"status": "Resolved", "note": "unauthorised attempt"},
      "reconciliation.triage", "Auditor"),
 ]
 

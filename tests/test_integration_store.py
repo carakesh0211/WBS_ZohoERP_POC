@@ -603,13 +603,57 @@ def test_every_writing_statement_returns_something(call):
         f"repo.query fetches, and psycopg raises on a cursor with no result")
 
 
-def test_no_sql_in_this_module_names_a_money_column():
-    """Section 6.1 and the Wave 5 brief: `SUM()` over bigint returns numeric.
-    This module has no money at all, and this is the guard that keeps it that
-    way -- the moment an `amount_paise` appears here, the cast rule applies and
-    somebody has to remember it."""
+def test_money_in_this_module_appears_only_on_the_011_exception_table():
+    """This used to read "no SQL in this module names a money column".
+
+    That was true of `010_integration.sql`, which has no `*_paise` column on
+    any table, and the guard existed to make somebody remember the cast rule
+    the moment one appeared. `011_reconciliation_exception.sql` is the moment:
+    `local_paise` and `source_paise` are the two sides of a discrepancy, and
+    §11.8's reconciliation surface cannot be written without them.
+
+    So the guard is not removed -- removing it would lose exactly the check it
+    was placed here to trigger. It becomes the rule it was protecting, and
+    gains a second half the original could not have:
+
+      * money may appear ONLY in a statement against `reconciliation_exception`,
+        so a `*_paise` on an 010 table -- an amount copied onto an outbox row,
+        say, which section 11's design forbids because it would be a second copy
+        that can be wrong on its own -- still fails here; and
+      * wherever it appears, every `SUM()` over it is cast `::bigint`, because
+        PostgreSQL's `SUM()` over `bigint` returns **numeric** and psycopg maps
+        numeric to `Decimal`.
+
+    The Decimal half is not theoretical. It shipped, and it failed where it
+    hurts: `check_availability` multiplied the Decimal by a float, raised
+    `TypeError`, and took down the availability verdict, both approval paths
+    and the concurrency proof -- in the PostgreSQL CI job only, because a
+    Decimal cannot appear without a real server.
+    """
+    money_statements = 0
     for call in _repo_calls():
-        assert "_paise" not in _sql_literal_of(call)
+        sql = _sql_literal_of(call)
+        if "_paise" not in sql:
+            continue
+        money_statements += 1
+        assert "{RECONCILIATION_EXCEPTION}" in sql, (
+            f"line {call.lineno} names a money column in a statement that is "
+            f"not against reconciliation_exception. 010 has no *_paise column "
+            f"on any table: the ledger owns money and this module owns "
+            f"transport, and a second copy of an amount here is a copy that "
+            f"can be wrong on its own.")
+        # The tail is a LOOKAHEAD so it is not consumed -- captured normally it
+        # swallows the next `SUM(` and a statement with two paise sums reports
+        # only one.
+        for tail in re.findall(r"SUM\s*\([^()]*_paise[^()]*\)(?=(.{0,40}))",
+                               sql, re.I | re.DOTALL):
+            assert "::bigint" in tail, (
+                f"line {call.lineno}: a SUM over a paise column with no "
+                f"::bigint cast. psycopg will hand the caller a Decimal.")
+    assert money_statements >= 1, (
+        "no statement in this module names a money column any more. If the "
+        "reconciliation surface moved elsewhere this guard should move with "
+        "it; as written it is now asserting nothing.")
 
 
 def test_no_sql_in_this_module_hardcodes_a_zoho_url_or_endpoint():

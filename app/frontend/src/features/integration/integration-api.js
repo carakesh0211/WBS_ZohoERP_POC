@@ -742,6 +742,33 @@ export function attributeException(exceptionId, body) {
 }
 
 /**
+ * Close a reconciliation exception. Permission-gated, audited, and one-way.
+ *
+ * NOT THE SAME ACTION AS attributeException, AND THE SCREEN MUST NOT MERGE
+ * THEM. Attributing says whose discrepancy this is; it changes nothing about
+ * whether the exception still blocks. Resolving says the discrepancy has been
+ * DEALT WITH, and `status = 'Open'` is what blocks capitalisation and period
+ * close — so this call releases a financial-control gate.
+ *
+ * `status` is one of Resolved / Accepted / Written_off, from C18's frozen
+ * `exception_status` namespace. They are not synonyms and must not be offered
+ * as one control: Resolved means the discrepancy was corrected, Accepted means
+ * it is real and tolerated, Written_off means the amount will not be
+ * recovered. `note` is mandatory and reaches the hash-chained audit entry.
+ */
+export function resolveException(exceptionId, body) {
+  return firstAvailable([
+    {
+      source: 'wave5',
+      template: '/api/integrations/exceptions/{exception_id}/resolve',
+      call: () => wave5.post(`/exceptions/${encodeURIComponent(exceptionId)}/resolve`, body),
+    },
+  ], 'Closing a reconciliation exception requires the PostgreSQL integration API and the '
+    + 'reconciliation.triage permission. Nothing is closed locally as a fallback: an exception '
+    + 'that stopped blocking without being recorded as resolved would be a silent drop.');
+}
+
+/**
  * SCR-26's control totals: what we sent, what we received, and whether the two
  * sides agree for a sync window.
  *

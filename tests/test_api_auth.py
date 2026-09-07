@@ -213,6 +213,10 @@ MUTATING_ROUTES = [
      "/api/integrations/exceptions/RX-1/attribute",
      {"entity_id": "ENT-01", "reason": "unauthorised attempt"},
      "reconciliation.triage", "Auditor"),
+    ("/api/integrations/exceptions/{exception_id}/resolve", "POST",
+     "/api/integrations/exceptions/RX-1/resolve",
+     {"status": "Resolved", "note": "unauthorised attempt"},
+     "reconciliation.triage", "Auditor"),
 ]
 
 PUBLIC_MUTATING_ROUTES = {"/api/auth/login"}
