@@ -311,6 +311,10 @@ class InMemoryStore:
         self.exceptions: dict[tuple[str, str, str | None], dict[str, Any]] = {}
         self.events: list[dict[str, Any]] = []
         self.receive_lines: dict[tuple[str, str, str | None], dict[str, Any]] = {}
+        #: §11.10's provenance, kept beside `receive_lines` rather than inside
+        #: it so `snapshot()` keeps its shape. See `record_receive_line`.
+        self.receive_line_provenance: dict[
+            tuple[str, str, str | None], dict[str, Any]] = {}
         self.unattributed_contributions: dict[tuple[str, str], int] = {}
         self.open_pos: list[sweeps.LocalPurchaseOrder] = []
         self.po_lines: dict[tuple[str, str], str] = {}
@@ -478,9 +482,31 @@ class InMemoryStore:
 
     def record_receive_line(self, *, po_line_id: str, receive_external_id: str,
                             line_external_id: str | None, quantity: Any,
-                            amount_paise: int | None) -> None:
-        self.receive_lines[(po_line_id, receive_external_id, line_external_id)] = {
+                            amount_paise: int | None,
+                            external_source: str | None = None,
+                            receive_number: str | None = None,
+                            received_at: Any = None,
+                            external_last_modified: Any = None,
+                            payload_sha: str | None = None) -> None:
+        """The five that are the contract, plus §11.10's provenance.
+
+        The provenance is kept in a SEPARATE dictionary rather than merged into
+        `receive_lines`, deliberately. `snapshot()` renders `receive_lines`
+        verbatim, so folding five more keys into it would change the shape of
+        every snapshot in the suite -- and a double whose observable shape moves
+        when the production code gains a field is a double that reports drift
+        it did not cause.
+        """
+        key = (po_line_id, receive_external_id, line_external_id)
+        self.receive_lines[key] = {
             "quantity": quantity, "amount_paise": amount_paise}
+        self.receive_line_provenance[key] = {
+            "external_source": external_source,
+            "receive_number": receive_number,
+            "received_at": received_at,
+            "external_last_modified": external_last_modified,
+            "payload_sha": payload_sha,
+        }
 
     def accumulate_unattributed(self, *, project_id: str | None, paise: int,
                                 source_key: str) -> None:

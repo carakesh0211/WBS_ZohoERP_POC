@@ -128,6 +128,17 @@ SCOPABLE = {
     "integration_circuit", "job",
     # Migration 011.
     "reconciliation_exception",
+    # Migration 013, all eight carrying a capex_scope_permits RLS policy of
+    # their own. Added with the migration rather than after it, because the
+    # Wave 5 tables show what happens otherwise: the gate was widened to WALK
+    # `app/backend/integration/` while still being blind to that package's
+    # tables, which is a widening that proves less than it appears to.
+    #
+    # These are the money-bearing document rows -- `po_line.amount_paise`,
+    # `grn_line.amount_paise`, `bill_line.amount_paise` -- so an unscoped read
+    # of any of them leaks another entity's committed and invoiced spend.
+    "purchase_request", "pr_line", "purchase_order", "po_line",
+    "grn", "grn_line", "bill", "bill_line",
     "entity", "division", "branch", "zone", "department", "plant", "location",
     "project", "wbs_element", "budget_control_cell", "budget_ledger_cell",
     "budget_line", "budget_revision", "budget_transfer", "budget_version",

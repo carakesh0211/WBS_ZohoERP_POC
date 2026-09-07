@@ -46,17 +46,30 @@ _ROOT = _Path(__file__).resolve().parents[1]
 if str(_ROOT) not in _sys.path:
     _sys.path.insert(0, str(_ROOT))
 
+import ast as _ast  # noqa: E402
+import inspect as _inspect  # noqa: E402
 import re  # noqa: E402
 
 import pytest  # noqa: E402
 
 from app.backend import domain  # noqa: E402
 from app.backend.pg import integration_store as store  # noqa: E402
+from app.backend.pg import procurement as procurement  # noqa: E402
 from app.backend.pg.engine import Scope  # noqa: E402
 
 _MIGRATIONS = _ROOT / "migrations" / "pg"
 _013 = _MIGRATIONS / "013_procurement.sql"
 _002 = _MIGRATIONS / "002_budget_control.sql"
+
+#: The two modules the reconciliation surface is split across, and the split is
+#: the point. `integration_store.py` keeps the `sweeps.SweepStore` names and the
+#: integer arithmetic; `procurement.py` holds every statement that names a
+#: `*_paise` column, because
+#: `test_integration_store.py::test_money_in_this_module_appears_only_on_the_011_exception_table`
+#: allows money into the store ONLY against `reconciliation_exception` and that
+#: guard is kept at its original width rather than widened.
+_STORE_SOURCE = _Path(store.__file__)
+_PROCUREMENT_SOURCE = _Path(procurement.__file__)
 
 ENTITY = "ENT-DM-01"
 PROJECT = "PRJ-01"
@@ -479,20 +492,77 @@ def test_every_paise_sum_is_cast_back_to_bigint():
 def test_the_on_conflict_target_is_a_constraint_that_actually_exists():
     """Idempotency IS that constraint.
 
-    A target naming a constraint this migration does not declare is refused by
+    A target naming a constraint the migration does not declare is refused by
     PostgreSQL outright -- the good failure, but only if it is caught before a
-    cron function hits it.
+    cron function hits it. A target INFERRED by columns is the same failure by
+    another route: PostgreSQL matches the tuple against the unique indexes it
+    holds and raises when none matches, so a mistyped column list is a 3am
+    error too.
+
+    READ FROM THE SOURCE, NOT FROM RENDERED STATEMENTS. The writers refuse
+    before they reach their INSERT when the recorder returns no rows -- which
+    is correct behaviour, and is what the two refusal tests below assert -- so
+    a rendered-statement version of this check would quietly inspect nothing.
+    `assert clauses` and the count at the end are what stop that recurring.
+
+    THE PARTIAL-INDEX HALF IS THE ONE THAT BITES. `ux_grn_external`,
+    `ux_bill_external` and `ux_po_line_external` are each declared
+    ``WHERE ... IS NOT NULL``. An `ON CONFLICT (cols)` carrying no predicate
+    infers NO index against a partial one -- PostgreSQL raises rather than
+    quietly picking it -- so the predicate is load-bearing, not decoration.
     """
     migration = _013.read_text(encoding="utf-8")
-    targets = set()
-    for statements in _rendered().values():
-        for statement in statements:
-            targets.update(re.findall(r"ON CONFLICT ON CONSTRAINT (\w+)",
-                                      statement))
-    assert targets, "no ON CONFLICT target was rendered; this asserts nothing"
-    for target in sorted(targets):
-        assert re.search(rf"CONSTRAINT {target}\b", migration), (
-            f"ON CONFLICT names {target}, which {_013.name} does not declare")
+
+    # Every unique key 013 declares, keyed by its column set, valued by whether
+    # the index behind it is PARTIAL.
+    unique: dict[frozenset, bool] = {}
+    for _table, columns, predicate in re.findall(
+            r"CREATE UNIQUE INDEX \w+\s*\n\s*ON (\w+) \(([^)]*)\)"
+            r"(\s*\n\s*WHERE [^;]*)?;", migration):
+        unique[frozenset(c.strip() for c in columns.split(","))] = bool(predicate)
+    for columns in re.findall(r"UNIQUE \(([^)]*)\)", migration):
+        unique.setdefault(
+            frozenset(c.strip() for c in columns.split(",")), False)
+    for column in re.findall(r"(\w+)\s+text PRIMARY KEY", migration):
+        unique.setdefault(frozenset({column}), False)
+    assert len(unique) > 5, (
+        "the DDL parser found no unique keys; this test is asserting nothing")
+
+    source = _PROCUREMENT_SOURCE.read_text(encoding="utf-8")
+    clauses = [source[m.start():m.start() + 260]
+               for m in re.finditer(r"ON CONFLICT ", source)]
+    assert clauses, (
+        f"no ON CONFLICT clause in {_PROCUREMENT_SOURCE.name}; the writers "
+        f"have moved and this guard is looking at the wrong file")
+
+    checked = 0
+    for clause in clauses:
+        named = re.match(r"ON CONFLICT ON CONSTRAINT \{?(\w+)\}?", clause)
+        if named is not None:
+            target = getattr(store, named.group(1), named.group(1))
+            checked += 1
+            assert re.search(rf"CONSTRAINT {target}\b", migration), (
+                f"ON CONFLICT names {target}, which {_013.name} does not "
+                f"declare")
+            continue
+        columns = re.match(r"ON CONFLICT \(([^)]*)\)", clause, re.S)
+        if columns is None:
+            continue                      # `ON CONFLICT DO NOTHING`: no target
+        target_columns = frozenset(c.strip()
+                                   for c in columns.group(1).split(","))
+        checked += 1
+        assert target_columns in unique, (
+            f"ON CONFLICT infers {sorted(target_columns)}, which "
+            f"{_013.name} declares no unique key over")
+        if unique[target_columns]:
+            head = clause[:clause.index("DO ")]
+            assert "WHERE" in head, (
+                f"ON CONFLICT {sorted(target_columns)} targets a PARTIAL "
+                f"unique index and carries no predicate. PostgreSQL infers no "
+                f"index at all and raises.")
+    assert checked >= 3, (
+        f"only {checked} conflict targets were checked; the writers have "
+        f"moved and this guard is asserting almost nothing")
 
 
 def test_the_reconciliation_query_reaches_all_four_dimensions():
@@ -540,50 +610,100 @@ def test_resolve_po_line_returns_none_rather_than_choosing(monkeypatch):
                                  line_external_id="LI-1") == "POL-7"
 
 
-def test_record_receive_line_refuses_an_identifierless_line_before_writing():
+def test_an_identifierless_receive_line_is_deduplicated_before_it_is_inserted():
     """`ux_grn_line_external` is NULLS DISTINCT, so it does not constrain it.
 
-    Recording the row anyway would add the same receipt again on every re-walk
-    -- and the sweeps re-walk BY DESIGN, on a 300-second overlap and a cycling
-    PO-anchored cursor -- so `received` would climb without a single new
-    receive arriving. Deduplicating on (po_line, receive) instead would collapse
-    two genuinely distinct identifierless lines and drop the second one's
-    value. Neither is offered.
+    Inserting such a line straight in would add the same receipt again on every
+    re-walk -- and the sweeps re-walk BY DESIGN, on a 300-second overlap and a
+    cycling PO-anchored cursor -- so `received` would climb without a single
+    new receive arriving. Deduplicating on `(po_line, receive)` alone would
+    instead collapse two genuinely distinct identifierless lines and drop the
+    second one's value.
 
-    The recorder also proves NO statement was issued: a function that reached
-    the database before refusing would have had somewhere to write after all.
+    THE WRITER TAKES NEITHER. It issues an explicit UPDATE matching
+    `line_external_id IS NULL` FIRST and returns if it hit a row, so a replay
+    updates the receipt it already holds; only a miss falls through to the
+    INSERT. The read-then-write window that opens is real and is documented at
+    the branch: §2.2's single cron worker per connection is what closes it, and
+    saying so is the difference between a documented window and a hidden one.
+
+    Asserted against the SOURCE because the branch is chosen before any row
+    comes back, so a recorder cannot tell "took the update path and found
+    nothing" from "never took it".
+    """
+    source = _PROCUREMENT_SOURCE.read_text(encoding="utf-8")
+    body = source[source.index("def record_receive_line("):
+                  source.index("def _mirror_grn_header(")]
+
+    guard = body.index('if params["line_external_id"] is None:')
+    insert = body.index("INSERT INTO {GRN_LINE}")
+    assert guard < insert, (
+        "the identifierless branch is decided AFTER the insert; a null "
+        "line_external_id would reach ON CONFLICT, which is NULLS DISTINCT, "
+        "and every re-walk would add the receipt again")
+
+    update = body[guard:insert]
+    assert "UPDATE {GRN_LINE}" in update, (
+        "the identifierless branch does not update the line it already has")
+    assert "gl.line_external_id IS NULL" in update, (
+        "the update does not restrict itself to identifierless lines, so it "
+        "would overwrite an IDENTIFIED receipt line with an unidentified "
+        "line's quantity")
+    assert "gl.receive_external_id = %(receive_external_id)s" in update, (
+        "the update is not keyed on the receive, so two distinct receipts "
+        "against one PO line would collapse into one and the second one's "
+        "value would be dropped")
+    assert re.search(r"if updated:\s*\n\s*return", update), (
+        "the update path does not return, so a hit would fall through to the "
+        "insert and duplicate the line it had just updated")
+
+
+def test_record_receive_line_will_not_write_against_a_po_line_it_cannot_see():
+    """The control cell is READ from the PO line, and refused when there is none.
+
+    `po_id`, `wbs_id` and `budget_head_id` are never accepted from the caller:
+    `fk_bill_line_po_line_cell` is a four-column FK precisely because a
+    document line's control cell must BE its PO line's cell. A `po_line_id`
+    that resolves to nothing under this principal's scope therefore has no cell
+    to attribute to, and the writer refuses at 404 rather than inventing one --
+    a document line attributed to a control cell nobody can name is not
+    attributed at all.
+
+    OUT OF SCOPE IS INDISTINGUISHABLE FROM ABSENT here, which is `pg/repo.py`'s
+    rule and is deliberate: telling a principal that a PO line exists but is
+    not theirs is itself a disclosure.
+    """
+    recorder = _Recorder()          # no rows: the cell lookup finds nothing
+    with pytest.raises(store.IntegrationStoreError) as exc:
+        store.record_receive_line(
+            recorder, po_line_id="POL-1", receive_external_id="RCV-1",
+            line_external_id="LI-1", quantity="1", amount_paise=100)
+    assert exc.value.code == "PO_LINE_NOT_FOUND"
+    assert exc.value.status == 404
+    assert "POL-1" in exc.value.message, (
+        "the refusal must name the line it could not attribute")
+    assert not any("INSERT INTO" in statement
+                   for statement in recorder.statements), (
+        "record_receive_line wrote a row before establishing the control cell")
+
+
+def test_record_receive_line_reads_an_absent_amount_as_absent_not_as_zero():
+    """Zero paise is a CLAIM -- "the goods were free" -- and `None` is an absence.
+
+    A writer that read a missing amount as zero would book the receipt at
+    nothing, and the ledger would agree with itself while being wrong by the
+    entire value of the receipt. The refusal happens before any statement is
+    issued, which the recorder proves.
     """
     recorder = _Recorder()
     with pytest.raises(store.IntegrationStoreError) as exc:
         store.record_receive_line(
             recorder, po_line_id="POL-1", receive_external_id="RCV-1",
-            line_external_id=None, quantity="1", amount_paise=100)
-    assert exc.value.code == "GRN_LINE_NOT_IDEMPOTENTLY_RECORDABLE"
-    assert "NULLS NOT DISTINCT" in exc.value.message, (
-        "the refusal must name the fix, or it is an error someone will paper "
-        "over with a try/except")
+            line_external_id="LI-1", quantity="1", amount_paise=None)
+    assert exc.value.status == 422
     assert recorder.statements == [], (
-        "record_receive_line issued SQL before refusing")
-
-
-def test_record_receive_line_refuses_rather_than_inventing_a_goods_receipt():
-    """It will not create the `grn` header, and says why.
-
-    `grn` needs `grn_number`, `received_at`, `created_by` and `updated_by`,
-    all NOT NULL and none defaulted, and NONE of them reaches
-    `SweepStore.record_receive_line`. Minting them would put four fabricated
-    values into the goods-receipt table, one of which -- `received_at` --
-    decides which accounting PERIOD the receipt falls in.
-    """
-    recorder = _Recorder()          # no rows: nothing written, nothing found
-    with pytest.raises(store.IntegrationStoreError) as exc:
-        store.record_receive_line(
-            recorder, po_line_id="POL-1", receive_external_id="RCV-1",
-            line_external_id="LI-1", quantity="1", amount_paise=100)
-    assert exc.value.code == "GRN_HEADER_NOT_RECORDED"
-    assert exc.value.status == 409
-    assert "received_at" in exc.value.message, (
-        "the refusal must name the value it declined to fabricate")
+        "record_receive_line reached the database before refusing an absent "
+        "amount")
 
 
 def test_the_sweep_actor_is_not_a_user_id():
@@ -596,22 +716,125 @@ def test_the_sweep_actor_is_not_a_user_id():
         "a sweep-written row must be attributed to the process, not to a user")
 
 
-def test_the_three_functions_with_no_table_still_refuse():
-    """013 created eight procurement DOCUMENTS and nothing else.
+def test_no_sweep_call_is_left_without_a_table_and_the_refusal_survives():
+    """`UNBACKED_SWEEP_SURFACE` is EMPTY, and that is the assertion.
 
-    There is still no per-project unattributed bucket and still no bill
-    line-item hydration queue in any migration, so these three have exactly as
-    much to write to as they had before. A migration landing next door is not a
-    reason to start returning a plausible default.
+    All five of `sweeps.SweepStore`'s remaining calls -- `resolve_po_line`,
+    `record_receive_line`, `accumulate_unattributed`, `bills_awaiting_detail`
+    and `mark_detail_hydrated` -- now have a table. Four got one from
+    `013_procurement.sql`; the unattributed bucket is answered by
+    `reconciliation_exception`, which was ALREADY the row
+    `open_exception_exposure` sums, rather than by a ninth table that would
+    have become a second source of truth for the very figure that blocks
+    capitalisation.
+
+    THE MECHANISM IS KEPT THOUGH THE LIST IS EMPTY, and that half is what this
+    guards. `SchemaNotYetMigrated` still exists and still reads its reason out
+    of this map, so the next call that arrives ahead of its schema is one entry
+    away from refusing properly. Deleting the type would mean that call has to
+    reinvent the refusal, and the reinvention is exactly where a plausible
+    default gets returned instead.
     """
-    assert set(store.UNBACKED_SWEEP_SURFACE) == {
-        "accumulate_unattributed", "bills_awaiting_detail",
-        "mark_detail_hydrated"}
+    assert store.UNBACKED_SWEEP_SURFACE == {}, (
+        f"a sweep call is back to having no table: "
+        f"{sorted(store.UNBACKED_SWEEP_SURFACE)}. That is not wrong in itself, "
+        f"but the refusal tests parametrised over this map must come back too")
+    assert issubclass(store.SchemaNotYetMigrated, store.IntegrationStoreError)
+    refusal = store.SchemaNotYetMigrated("some_future_call")
+    assert refusal.status == 501
+    assert "some_future_call" in refusal.message, (
+        "the refusal no longer names the call, so a 501 in a cron log would "
+        "not say which one stopped")
+
+    for name in ("resolve_po_line", "record_receive_line",
+                 "accumulate_unattributed", "bills_awaiting_detail",
+                 "mark_detail_hydrated"):
+        function = getattr(store, name)
+        assert callable(function), f"{name} is no longer on the store"
+        assert "SchemaNotYetMigrated" not in _inspect.getsource(function), (
+            f"{name} still raises SchemaNotYetMigrated while the map holding "
+            f"its reason is empty; the refusal would name no table at all")
+
     migration = _013.read_text(encoding="utf-8")
     created = set(re.findall(r"CREATE TABLE (\w+)", migration))
     assert created == set(store.PROCUREMENT_TABLES), (
         f"013 creates {sorted(created)}; the module's constant names "
         f"{sorted(store.PROCUREMENT_TABLES)}")
     assert not any("unattributed" in t or "hydrat" in t for t in created), (
-        "013 created a bucket or a hydration queue after all; one of the "
-        "three refusals above is now stale")
+        "013 created a bucket or a hydration queue after all; the reasoning "
+        "above `accumulate_unattributed` -- that the exception table IS the "
+        "bucket -- is now stale and must be rewritten, not left standing")
+
+
+def test_money_in_the_procurement_module_never_reaches_a_transport_table():
+    """The other half of the store's money guard, held over the module it moved to.
+
+    `test_integration_store.py::test_money_in_this_module_appears_only_on_the_011_exception_table`
+    says no statement in `pg/integration_store.py` may name a `*_paise` column
+    except against `reconciliation_exception`. That guard is kept at its
+    ORIGINAL width -- 013's money-bearing SQL was moved into
+    `pg/procurement.py` rather than added to the store's allow-list -- and the
+    move is only worth anything if the destination is held to the rule the
+    guard was ever actually protecting.
+
+    THAT RULE IS: money must never be copied onto a TRANSPORT row. An
+    `amount_paise` on an outbox row would be a second copy of an amount that
+    can drift from the ledger's and be wrong on its own, which section 11's
+    design forbids. A statement joining `integration_outbox` to `po_line` is
+    exactly the accident the store-side guard can no longer see, because the
+    statement is no longer in the store.
+
+    The transport list is DERIVED from `INTEGRATION_TABLES`, 010's own
+    inventory, rather than typed out here: a table added to 010 later cannot
+    quietly fall outside the ban, which is how a guard like this rots into
+    decoration.
+    """
+    source = _PROCUREMENT_SOURCE.read_text(encoding="utf-8")
+    tree = _ast.parse(source)
+
+    statements: list[tuple[int, str]] = []
+    for node in _ast.walk(tree):
+        if not isinstance(node, _ast.Call):
+            continue
+        func = node.func
+        if not (isinstance(func, _ast.Attribute)
+                and func.attr in {"query", "query_one"}
+                and isinstance(func.value, _ast.Name)
+                and func.value.id == "repo"):
+            continue
+        first = node.args[1] if len(node.args) > 1 else None
+        if isinstance(first, _ast.Constant) and isinstance(first.value, str):
+            statements.append((node.lineno, first.value))
+        elif isinstance(first, _ast.JoinedStr):
+            statements.append((node.lineno, "".join(
+                part.value if isinstance(part, _ast.Constant)
+                else _ast.unparse(part)
+                for part in first.values)))
+    assert len(statements) >= 5, (
+        f"only {len(statements)} repo statements found in "
+        f"{_PROCUREMENT_SOURCE.name}; the writers have moved and this guard "
+        f"is asserting nothing")
+
+    money = 0
+    for lineno, sql in statements:
+        if "_paise" not in sql:
+            continue
+        money += 1
+        # BOTH SPELLINGS. A table reaches the statement either as the literal
+        # `integration_outbox` or -- far more likely here -- as the module
+        # constant `{INTEGRATION_OUTBOX}`, which `ast.unparse` renders as the
+        # bare uppercase name. Matching only one of the two would leave the
+        # ordinary case unguarded.
+        offending = [table for table in store.INTEGRATION_TABLES
+                     if re.search(rf"\b{table}\b", sql, re.IGNORECASE)]
+        assert not offending, (
+            f"{_PROCUREMENT_SOURCE.name} line {lineno} names a money column in "
+            f"a statement touching {offending}. 010's tables carry no *_paise "
+            f"column and must never be joined to one in the same statement: an "
+            f"amount that reaches a transport row is a second copy that can "
+            f"drift from the ledger's and be wrong on its own. Read the money "
+            f"in its own statement.")
+    assert money >= 3, (
+        f"only {money} money-bearing statements in {_PROCUREMENT_SOURCE.name}. "
+        f"If the ledger SQL moved again this guard should move with it; as "
+        f"written it is asserting almost nothing")

@@ -2182,9 +2182,18 @@ def get_reconciliation(
     Open commitment is ordered less BILLED, floored at zero, and zero outright
     on a Cancelled or Closed purchase order. Received-not-billed is its own
     bucket and is never subtracted from commitment. Both live in
-    `integration_store.reconciliation_lines`, next to the SQL, with the two
-    state lists transcribed as module constants -- see that function's section
-    header for why a second derivation would be the defect.
+    `integration_store._reconciliation_position` and the Python half of
+    `reconciliation_lines`, with the two state lists transcribed as module
+    constants -- see that section's header for why a second derivation would be
+    the defect.
+
+    THE STATEMENT ITSELF IS IN `pg/procurement.py`, and this route still calls
+    `integration_store.reconciliation_lines`, which delegates. `po_line`,
+    `grn_line` and `bill_line` are money-bearing LEDGER rows, and
+    `test_integration_store.py::test_money_in_this_module_appears_only_on_the_011_exception_table`
+    holds the store to transport plus `reconciliation_exception` and nothing
+    else. The split keeps that guard at its original width instead of widening
+    it, and is the same split `resolve_po_line` and `record_receive_line` use.
 
     WHAT THIS ADDS OVER `ledger-compat`, WHICH IS THE ONLY REASON IT EXISTS.
     `/api/reconciliation` already answers "what did we order, receive and bill"

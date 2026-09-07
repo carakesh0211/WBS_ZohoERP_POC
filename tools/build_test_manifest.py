@@ -125,6 +125,28 @@ POST_BASELINE_FILES = {
     # inflating it would make the removal guard stop meaning anything.
     "test_pg_procurement_reconciliation.py",
 
+    # --- Wave 6 agent 3: inbound GRN / Purchase Receive and Vendor Bill ----
+    # The first code that WRITES to migration 013's chain, and the file that
+    # closes the five `SCHEMA_NOT_YET_MIGRATED` refusals in
+    # `pg/integration_store.py`. It holds §11.8 to a build failure: no
+    # pro-rata spreading, no silent drop, the unattributed bucket SET and
+    # never incremented, replay idempotent against `ux_grn_line_external`,
+    # signed paise on returns and credit notes, over-billing reported rather
+    # than clamped, and an unmapped external status quarantined rather than
+    # falling through to `bill.accounting_status`'s accounting-effective
+    # DEFAULT.
+    #
+    # Split like agent 1's schema file and for the same reason: the live half
+    # skips on every workstation here and first executes in CI's pg_tests job,
+    # so everything assertable against the SOURCE is asserted against the
+    # source. Two of the three defects it is written against -- the bucket
+    # that added instead of setting, and a floored `divmod` on a negative --
+    # are invisible to a live test that only inspects the final row.
+    # Post-baseline like every Wave 2-6 file: the 220 counts the POC's
+    # audit-remediation suite, and inflating it would make the removal guard
+    # stop meaning anything the moment the product grows.
+    "test_pg_procurement_ingest.py",
+
 
     # --- Wave 5 stream 1 (integration): ONE rate-budget implementation -----
     # Wave 5 shipped THREE implementations of the same reservation; two could

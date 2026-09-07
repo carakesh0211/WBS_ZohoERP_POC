@@ -2441,17 +2441,39 @@ cannot prove the planner accepts one, cannot prove an `ON CONFLICT` target
 resolves, and cannot produce a `Decimal`. CI's `pg_tests` job remains the only
 oracle for those.
 
-### Three of `SweepStore`'s five unbacked functions are STILL unbacked
+### ~~Three of `SweepStore`'s five unbacked functions are STILL unbacked~~ — SUPERSEDED ON MERGE
 
-`UNBACKED_SWEEP_SURFACE` goes from five entries to three.
-`resolve_po_line` and `record_receive_line` are implemented against 013's real
-columns and real indexes. `accumulate_unattributed`, `bills_awaiting_detail` and
-`mark_detail_hydrated` keep refusing with `SCHEMA_NOT_YET_MIGRATED`: 013 creates
+**As written in this stream:** `UNBACKED_SWEEP_SURFACE` went from five entries
+to three. `resolve_po_line` and `record_receive_line` were implemented;
+`accumulate_unattributed`, `bills_awaiting_detail` and `mark_detail_hydrated`
+kept refusing with `SCHEMA_NOT_YET_MIGRATED`, on the reading that 013 creates
 eight procurement **documents** and none of them is a per-project unattributed
-bucket or a bill line-item hydration queue. A migration landing next door is not
-a reason to start returning a plausible default, and
-`test_the_three_functions_with_no_table_still_refuse` re-derives that from the
-migration text so the claim cannot rot.
+bucket or a bill line-item hydration queue.
+
+**What the mainline had already concluded, and what this branch now carries.**
+Wave 6 agent 3 landed first and implemented all five, so `UNBACKED_SWEEP_SURFACE`
+is `{}`. The two this stream also wrote are **agent 3's implementations, not
+this stream's** — theirs were merged first and are the ones the mainline's
+tests were verified against, and re-litigating a merged implementation from a
+parallel branch is not a merge, it is a revert.
+
+The third refusal was not overcome by a ninth table; it was answered by
+observing that **`reconciliation_exception` already IS the bucket** —
+`source_key` is its primary key, `project_id` is a column on the row, the value
+is `source_paise` held at full §11.8 value, and `open_exception_exposure` is the
+per-project total that blocks capitalisation. A ninth table would have been a
+second source of truth for exactly that figure. That is a better answer than
+this stream's refusal, and it is kept.
+
+`test_the_three_functions_with_no_table_still_refuse` is therefore **false of
+the merged code** and has been replaced, not deleted, by
+`test_no_sweep_call_is_left_without_a_table_and_the_refusal_survives`. The
+replacement is strictly larger: it still re-derives 013's eight tables from the
+migration text and still fails if a bucket or hydration table appears, and it
+adds what the original could not check — that `SchemaNotYetMigrated` survives
+the list going empty, still carries its 501 and still names the call, so the
+next call arriving ahead of its schema is one map entry away from refusing
+properly rather than having to reinvent the refusal.
 
 ### The `attempts` policy, previously recorded as undecided
 
@@ -2470,53 +2492,81 @@ the **trail** rather than left to be inferred: the handler now records
 times, across three manual retries" stays answerable. No test was changed for
 this; the fields are additive.
 
-### One more guard renamed and widened — `test_money_in_this_module_appears_only_on_the_011_exception_table`
+### ~~One more guard renamed and widened~~ — THE WIDENING WAS REVERTED ON MERGE
 
-**This is the one edit in this change that a reviewer should look at hardest,
-and it is reported rather than buried.**
+**This is the one edit in this change a reviewer should look at hardest, and it
+is reported rather than buried. The outcome is that the guard was NOT widened.**
 
-`tests/test_integration_store.py` carried a guard asserting that any statement
+`tests/test_integration_store.py` carries a guard asserting that any statement
 in `integration_store.py` naming a `*_paise` column must be a statement against
 `reconciliation_exception`. That was correct while 010 and 011 were the only
 migrations in reach: 010 has no money column on any table, and the guard's job
 was to make somebody stop and think the moment money appeared.
 
 `013_procurement.sql` created `po_line`, `grn_line` and `bill_line`, and those
-tables **are** the ledger — `amount_paise`, `non_creditable_tax_paise` and
-`freight_paise` are what ordered / received / billed are computed from.
-`reconciliation_lines` cannot be written without naming them, so the assertion
-as written is now false of correct code.
+tables **are** the ledger. `reconciliation_lines` cannot be written without
+naming them, so this stream widened the guard's allow-list to admit 013's
+tables, banned 010's transport tables explicitly in the same edit to stop the
+widening letting a join through, and renamed the test
+`test_money_in_this_module_never_reaches_a_transport_table`.
+
+**Wave 6 agent 3 solved the same problem without touching the guard, and that
+answer wins.** It put its money-bearing SQL in a new module,
+`app/backend/pg/procurement.py`, and left `integration_store.py`'s
+`resolve_po_line` / `record_receive_line` as thin `sweeps.SweepStore` names that
+delegate across the boundary. The guard then stays true of correct code at its
+original width, because the store genuinely still owns transport only.
 
 | | |
 |---|---|
-| **Before** | `assert "{RECONCILIATION_EXCEPTION}" in sql` — money may appear only in a statement against the 011 exception table |
-| **After** | `assert any(table in sql for table in MONEY_TABLES)` — money may appear only in a statement against the 011 exception table **or one of 013's eight procurement tables**; **and** `assert not offending` — money may **never** appear in a statement that touches any of 010's eight transport tables |
-| **Renamed to** | `test_money_in_this_module_never_reaches_a_transport_table` |
+| **Guard** | `test_money_in_this_module_appears_only_on_the_011_exception_table` — **restored byte-for-byte to its pre-013 form**; `git diff` against the merge base shows no change to `tests/test_integration_store.py` |
+| **Rename** | reverted |
+| **Allow-list widening** | reverted |
+| **`test_the_money_guards_transport_list_is_every_010_table`** | removed — it existed only to police the widened list, and the unwidened guard admits a single table, so the property it protected holds *a fortiori* |
+| **What moved instead** | `reconciliation_lines`' statement now lives in `pg/procurement.py`; `integration_store.reconciliation_lines` delegates to it, exactly as `resolve_po_line` and `record_receive_line` do. `_reconciliation_position` and `reconciliation_summary` stay in the store: both are pure integer functions over rows and issue no SQL |
 
-**Why this is a strengthening and not a weakening.** The guard's purpose was
-never "money is rare here". It was **money must not be copied onto a transport
-row** — an `amount_paise` reaching an outbox row would be a second copy of an
-amount that can drift from the ledger's and be wrong on its own, which §11's
-design forbids. Widening the allow-list *alone* would have let exactly that
-through by accident: a statement joining `integration_outbox` to `po_line`
-names a procurement table and would have passed. The transport tables are
-therefore named and banned explicitly in the same edit — something the original
-form could not express, because until 013 there was no way to tell "an allowed
-money table" from "any table at all".
+**The transport ban is not lost — it moved with the SQL.** A new test,
+`test_money_in_the_procurement_module_never_reaches_a_transport_table` in
+`tests/test_pg_procurement_reconciliation.py`, walks `procurement.py`'s
+`repo.query` calls by AST and fails any `*_paise` statement that also names one
+of 010's tables. The list is **derived from
+`integration_store.INTEGRATION_TABLES`**, 010's own inventory, so a table added
+to 010 later cannot quietly fall outside the ban. Without this the move would
+have been a real loss of coverage: the store-side guard cannot see a statement
+that is no longer in the store.
 
-**Proved by mutation, not by reading.** `grn_line`'s aggregate was temporarily
-given `JOIN {INTEGRATION_OUTBOX} o ON TRUE` and the guard failed with
-`names a money column in a statement touching ['{INTEGRATION_OUTBOX}']`. The
-mutation was reverted; the assertion is not decoration.
+**Proved by mutation, not by reading.** `record_receive_line`'s INSERT was
+temporarily given `JOIN {INTEGRATION_OUTBOX} ob ON ob.local_id = pl.po_line_id`
+and the new guard failed with `procurement.py line 401 names a money column in a
+statement touching ['integration_outbox']`. The mutation was reverted; the
+assertion is not decoration.
 
-**And the ban's own list cannot rot.** A new test,
-`test_the_money_guards_transport_list_is_every_010_table`, derives the expected
-list from `integration_store.INTEGRATION_TABLES` — 010's own inventory — and
-fails if a table added to 010 later is not named in the ban. Without it, the
-next 010 table would fall silently outside the check.
+**Net effect on assertion strength.** One guard is unchanged from before this
+stream began; one guard this stream added is kept, over the module the SQL
+actually moved to; one guard this stream added is removed because the widening
+it policed no longer exists. Nothing that was true before is unasserted now.
 
-**This edit needs a reviewer, and has none.** It changes an existing
-assertion's text, and no approver is named below.
+### Two refusal tests re-pointed at the implementation that won the merge
+
+`tests/test_pg_procurement_reconciliation.py` asserted the refusal codes of
+**this stream's** `record_receive_line`. Wave 6 agent 3's implementation landed
+first and is the one kept, and it refuses in different places for different
+reasons, so those two assertions were false of the merged code rather than
+weakened by it. Both are replaced with tests over agent 3's actual behaviour,
+and the replacements are larger than what they replace:
+
+| Removed | Replaced by | Why |
+|---|---|---|
+| `test_record_receive_line_refuses_an_identifierless_line_before_writing` (asserted `GRN_LINE_NOT_IDEMPOTENTLY_RECORDABLE`) | `test_an_identifierless_receive_line_is_deduplicated_before_it_is_inserted` | This stream refused an identifierless line outright. Agent 3 handles it: an explicit UPDATE keyed on `line_external_id IS NULL` runs FIRST and returns on a hit, so a re-walk updates the receipt rather than adding a second. The replacement asserts the ordering (update before insert), the two predicates that stop it overwriting an identified line or collapsing two distinct receipts, and the `return` without which a hit would fall through and duplicate. The §11.8 property — a re-walk must not inflate `received` — is the same one, held against the code that ships. |
+| `test_record_receive_line_refuses_rather_than_inventing_a_goods_receipt` (asserted `GRN_HEADER_NOT_RECORDED`) | `test_record_receive_line_will_not_write_against_a_po_line_it_cannot_see` and `test_record_receive_line_reads_an_absent_amount_as_absent_not_as_zero` | This stream refused to mint a `grn` header; agent 3 mirrors it from provenance the sweep actually supplies, which is the better answer and removes the refusal. The refusal that *does* still exist — and matters more — is that no receipt is written against a `po_line` the principal cannot resolve, because the control cell is read from the PO line and never accepted from the caller. Two tests where there was one, and the zero-versus-absent amount check is new. |
+
+`test_the_on_conflict_target_is_a_constraint_that_actually_exists` keeps its
+name and gains coverage. It read rendered statements, which no longer reach the
+INSERT — the writers correctly refuse first when the recorder returns no rows —
+so it would have quietly asserted nothing. It now reads `procurement.py`'s
+source, checks conflict targets inferred **by columns** as well as targets named
+by constraint, and fails a target over a PARTIAL unique index that carries no
+predicate, which PostgreSQL refuses outright.
 
 ### Approval of record
 
