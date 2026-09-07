@@ -2361,7 +2361,237 @@ an individual is still outstanding and is not fabricated here.
 
 ---
 
+## 2026-09-07 — Wave 6 agent 4: `/reconciliation` stops refusing, and the one test that had to be split
+
+`013_procurement.sql` created `purchase_order`, `po_line`, `grn`, `grn_line`,
+`bill` and `bill_line`. `GET /api/integrations/reconciliation` had refused for
+eleven migrations with a reason that was a **fact about the schema** — "PostgreSQL
+holds no purchase order, GRN or bill" — and that sentence stopped being true. A
+route that keeps refusing with a reason that is no longer true is not being
+careful; it reports a missing migration that has already landed, and sends
+whoever reads it to look for something that is there.
+
+### One test split, and why that is not a weakening
+
+`test_integrations_api_guard.py::test_control_totals_and_reconciliation_take_no_database_dependency`
+asserted a property of TWO routes at once: that neither declares
+`Depends(_get_database)`, so neither can answer `DATABASE_NOT_CONFIGURED` — a
+503 with the WRONG code, which an operator would try to fix by restarting
+something.
+
+`/reconciliation` now genuinely queries, so it now genuinely does take that
+dependency, and half of that assertion has become false of it. The test is
+**split, not narrowed**:
+
+| Before | After |
+|---|---|
+| `test_control_totals_and_reconciliation_take_no_database_dependency` — both routes must answer their capability code with no database configured | `test_control_totals_takes_no_database_dependency` — unchanged assertion, `/control-totals` only |
+| — | `test_reconciliation_reports_the_database_as_what_is_missing` — **new**: with no database, `/reconciliation` must answer `DATABASE_NOT_CONFIGURED` (which for a route that queries is the RIGHT code), must NOT revert to `INTEGRATION_RECONCILIATION_UNAVAILABLE`, and must still carry `unavailable: true` on the envelope, or SCR-18 renders a red fault banner on a build that simply has no PostgreSQL |
+| — | `test_reconciliation_never_claims_a_zoho_side_figure` — **new**: the moment this route acquired real numbers it acquired the way to become the dangerous one. Pins that it emits `source: "wave5"` and a `source_note` saying no figure on it is Zoho's own |
+
+Deleting the reconciliation half without adding the two above would have removed
+an assertion. Adding them makes the coverage strictly wider than before: the
+route is now pinned on what it answers with a database missing, on what it
+names itself, and on what it must never claim.
+
+### `/control-totals` IS UNTOUCHED, AND THAT IS THE POINT
+
+013 changes nothing about it. It needs **Zoho's** count and value for a window;
+no endpoint in this build knows them; and every figure 013 added is still ours.
+A total computed from our ledger and compared against our ledger always
+balances — it would render green permanently, including on the day Zoho
+silently stopped accepting our purchase orders.
+
+`test_control_totals_never_returns_a_number`,
+`test_the_source_refuses_to_synthesise_a_control_total` and
+`test_every_unbacked_route_answers_a_coded_503_naming_what_is_missing` are all
+unchanged in substance. The only edit touching control totals is the *removal of
+the reconciliation row* from the `UNAVAILABLE` map and `_UNAVAILABLE_CALLS` —
+which `test_every_unavailable_route_is_accounted_for` was explicitly written to
+demand ("A route that gains a real implementation should fail this test, so
+backing one is a visible decision rather than a quiet divergence"). This entry
+is that decision.
+
+### Two data maps updated, in the same commit as the route
+
+* `test_integrations_api_guard.py::ROUTES` and `DELIVERED_MUTATING_ROUTES` gain
+  `POST /api/integrations/dead-letters/{queue}/{row_id}/discard`.
+* `test_api_auth.py::MUTATING_ROUTES` gains the same row. Required in the SAME
+  commit: that matrix is built from the live OpenAPI schema, and
+  `test_aud_c_006_every_mutating_route_is_covered_by_the_authorisation_matrix`
+  fails the instant a mutating route is served without an entry.
+* The route-handler count in
+  `test_every_route_sets_the_correlation_header_before_it_can_refuse` moves
+  19 → 20. The count is asserted, not iterated, precisely so a handler added
+  without the header is caught; the new handler sets it and is covered by the
+  loop.
+
+### One new file
+
+| File | Tests | What it asserts that nothing else can |
+|---|---|---|
+| `tests/test_pg_procurement_reconciliation.py` | 28 | The arithmetic identity `ordered - billed = open + released - over_billed` holds **to the paisa** across all four cases (live/released × under/over-billed); open commitment is ordered less BILLED and never less received; received-not-billed is never netted against it; the store's `COMMITMENT_RELEASING_STATES` and `ACCOUNTING_EFFECTIVE_BILL_STATES` are transcriptions of `domain`'s and not a second opinion; every rendered statement carries a compiled entity AND project predicate; every `SUM()` is cast `::bigint`; every aliased column exists in 013 or 002; the `ON CONFLICT` target names a constraint 013 actually declares; and the two seams that must refuse do refuse **before issuing any SQL** |
+
+**No database, and no skips.** Everything in it is a property of SQL text,
+module constants or integer arithmetic, so it runs on a machine with no
+PostgreSQL — which is exactly where `tests/test_pg_reconciliation.py` skips its
+whole live half and would otherwise report green over an untested change. What
+it cannot do is stated in its own header: it does not execute a statement, so it
+cannot prove the planner accepts one, cannot prove an `ON CONFLICT` target
+resolves, and cannot produce a `Decimal`. CI's `pg_tests` job remains the only
+oracle for those.
+
+### ~~Three of `SweepStore`'s five unbacked functions are STILL unbacked~~ — SUPERSEDED ON MERGE
+
+**As written in this stream:** `UNBACKED_SWEEP_SURFACE` went from five entries
+to three. `resolve_po_line` and `record_receive_line` were implemented;
+`accumulate_unattributed`, `bills_awaiting_detail` and `mark_detail_hydrated`
+kept refusing with `SCHEMA_NOT_YET_MIGRATED`, on the reading that 013 creates
+eight procurement **documents** and none of them is a per-project unattributed
+bucket or a bill line-item hydration queue.
+
+**What the mainline had already concluded, and what this branch now carries.**
+Wave 6 agent 3 landed first and implemented all five, so `UNBACKED_SWEEP_SURFACE`
+is `{}`. The two this stream also wrote are **agent 3's implementations, not
+this stream's** — theirs were merged first and are the ones the mainline's
+tests were verified against, and re-litigating a merged implementation from a
+parallel branch is not a merge, it is a revert.
+
+The third refusal was not overcome by a ninth table; it was answered by
+observing that **`reconciliation_exception` already IS the bucket** —
+`source_key` is its primary key, `project_id` is a column on the row, the value
+is `source_paise` held at full §11.8 value, and `open_exception_exposure` is the
+per-project total that blocks capitalisation. A ninth table would have been a
+second source of truth for exactly that figure. That is a better answer than
+this stream's refusal, and it is kept.
+
+`test_the_three_functions_with_no_table_still_refuse` is therefore **false of
+the merged code** and has been replaced, not deleted, by
+`test_no_sweep_call_is_left_without_a_table_and_the_refusal_survives`. The
+replacement is strictly larger: it still re-derives 013's eight tables from the
+migration text and still fails if a bucket or hydration table appears, and it
+adds what the original could not check — that `SchemaNotYetMigrated` survives
+the list going empty, still carries its 501 and still names the call, so the
+next call arriving ahead of its schema is one map entry away from refusing
+properly rather than having to reinvent the refusal.
+
+### The `attempts` policy, previously recorded as undecided
+
+`docs/WAVE5_INTEGRATION_API_FINDINGS.md` left open whether a manual retry should
+RESET `attempts` or RAISE `max_attempts`, noting correctly that the two mean
+different things in the audit trail — "failed 8 times" stops being true.
+
+**Decided: reset.** `max_attempts` is the safety ceiling every automatic retry
+reads, and raising it as a side effect of a human clicking Retry would loosen a
+limiter permanently, once per click, with nothing to lower it again; `attempts`
+is a backoff counter, so a row re-armed at 8 returns with the 900-second cap
+already applied. The cost — the row forgets it failed eight times — is paid in
+the **trail** rather than left to be inferred: the handler now records
+`lifetime_attempts` and `manual_retry_ordinal`, derived from the
+`DEAD_LETTER_RETRIED` events it has already been writing, so "failed eight
+times, across three manual retries" stays answerable. No test was changed for
+this; the fields are additive.
+
+### ~~One more guard renamed and widened~~ — THE WIDENING WAS REVERTED ON MERGE
+
+**This is the one edit in this change a reviewer should look at hardest, and it
+is reported rather than buried. The outcome is that the guard was NOT widened.**
+
+`tests/test_integration_store.py` carries a guard asserting that any statement
+in `integration_store.py` naming a `*_paise` column must be a statement against
+`reconciliation_exception`. That was correct while 010 and 011 were the only
+migrations in reach: 010 has no money column on any table, and the guard's job
+was to make somebody stop and think the moment money appeared.
+
+`013_procurement.sql` created `po_line`, `grn_line` and `bill_line`, and those
+tables **are** the ledger. `reconciliation_lines` cannot be written without
+naming them, so this stream widened the guard's allow-list to admit 013's
+tables, banned 010's transport tables explicitly in the same edit to stop the
+widening letting a join through, and renamed the test
+`test_money_in_this_module_never_reaches_a_transport_table`.
+
+**Wave 6 agent 3 solved the same problem without touching the guard, and that
+answer wins.** It put its money-bearing SQL in a new module,
+`app/backend/pg/procurement.py`, and left `integration_store.py`'s
+`resolve_po_line` / `record_receive_line` as thin `sweeps.SweepStore` names that
+delegate across the boundary. The guard then stays true of correct code at its
+original width, because the store genuinely still owns transport only.
+
+| | |
+|---|---|
+| **Guard** | `test_money_in_this_module_appears_only_on_the_011_exception_table` — **restored byte-for-byte to its pre-013 form**; `git diff` against the merge base shows no change to `tests/test_integration_store.py` |
+| **Rename** | reverted |
+| **Allow-list widening** | reverted |
+| **`test_the_money_guards_transport_list_is_every_010_table`** | removed — it existed only to police the widened list, and the unwidened guard admits a single table, so the property it protected holds *a fortiori* |
+| **What moved instead** | `reconciliation_lines`' statement now lives in `pg/procurement.py`; `integration_store.reconciliation_lines` delegates to it, exactly as `resolve_po_line` and `record_receive_line` do. `_reconciliation_position` and `reconciliation_summary` stay in the store: both are pure integer functions over rows and issue no SQL |
+
+**The transport ban is not lost — it moved with the SQL.** A new test,
+`test_money_in_the_procurement_module_never_reaches_a_transport_table` in
+`tests/test_pg_procurement_reconciliation.py`, walks `procurement.py`'s
+`repo.query` calls by AST and fails any `*_paise` statement that also names one
+of 010's tables. The list is **derived from
+`integration_store.INTEGRATION_TABLES`**, 010's own inventory, so a table added
+to 010 later cannot quietly fall outside the ban. Without this the move would
+have been a real loss of coverage: the store-side guard cannot see a statement
+that is no longer in the store.
+
+**Proved by mutation, not by reading.** `record_receive_line`'s INSERT was
+temporarily given `JOIN {INTEGRATION_OUTBOX} ob ON ob.local_id = pl.po_line_id`
+and the new guard failed with `procurement.py line 401 names a money column in a
+statement touching ['integration_outbox']`. The mutation was reverted; the
+assertion is not decoration.
+
+**Net effect on assertion strength.** One guard is unchanged from before this
+stream began; one guard this stream added is kept, over the module the SQL
+actually moved to; one guard this stream added is removed because the widening
+it policed no longer exists. Nothing that was true before is unasserted now.
+
+### Two refusal tests re-pointed at the implementation that won the merge
+
+`tests/test_pg_procurement_reconciliation.py` asserted the refusal codes of
+**this stream's** `record_receive_line`. Wave 6 agent 3's implementation landed
+first and is the one kept, and it refuses in different places for different
+reasons, so those two assertions were false of the merged code rather than
+weakened by it. Both are replaced with tests over agent 3's actual behaviour,
+and the replacements are larger than what they replace:
+
+| Removed | Replaced by | Why |
+|---|---|---|
+| `test_record_receive_line_refuses_an_identifierless_line_before_writing` (asserted `GRN_LINE_NOT_IDEMPOTENTLY_RECORDABLE`) | `test_an_identifierless_receive_line_is_deduplicated_before_it_is_inserted` | This stream refused an identifierless line outright. Agent 3 handles it: an explicit UPDATE keyed on `line_external_id IS NULL` runs FIRST and returns on a hit, so a re-walk updates the receipt rather than adding a second. The replacement asserts the ordering (update before insert), the two predicates that stop it overwriting an identified line or collapsing two distinct receipts, and the `return` without which a hit would fall through and duplicate. The §11.8 property — a re-walk must not inflate `received` — is the same one, held against the code that ships. |
+| `test_record_receive_line_refuses_rather_than_inventing_a_goods_receipt` (asserted `GRN_HEADER_NOT_RECORDED`) | `test_record_receive_line_will_not_write_against_a_po_line_it_cannot_see` and `test_record_receive_line_reads_an_absent_amount_as_absent_not_as_zero` | This stream refused to mint a `grn` header; agent 3 mirrors it from provenance the sweep actually supplies, which is the better answer and removes the refusal. The refusal that *does* still exist — and matters more — is that no receipt is written against a `po_line` the principal cannot resolve, because the control cell is read from the PO line and never accepted from the caller. Two tests where there was one, and the zero-versus-absent amount check is new. |
+
+`test_the_on_conflict_target_is_a_constraint_that_actually_exists` keeps its
+name and gains coverage. It read rendered statements, which no longer reach the
+INSERT — the writers correctly refuse first when the recorder returns no rows —
+so it would have quietly asserted nothing. It now reads `procurement.py`'s
+source, checks conflict targets inferred **by columns** as well as targets named
+by constraint, and fails a target over a PARTIAL unique index that carries no
+predicate, which PostgreSQL refuses outright.
+
+### Approval of record
+
+**None.** No approver is named, because this stream has none to name and an
+author approving their own change is not an approval however it is worded. The
+split above is recorded here rather than left for a reviewer to find. A
+`| ADAPT-nnn |` register row naming an individual is still outstanding for it
+and is deliberately **not** fabricated.
+
+---
+
 ## 2026-09-07 — Wave 6 agent 2: PR → PO, the emission to Zoho, and four gaps named rather than filled
+
+> **Renamed on merge.** This stream first shipped its service layer as
+> `app/backend/pg/procurement.py`. Wave 6 agent 3 independently claimed that
+> exact path for the inbound procurement LEDGER, and agent 3's file reached
+> the mainline first with agent 4's `reconciliation_lines` already built on
+> it. This stream's module therefore moved to
+> `app/backend/pg/procurement_services.py` (via `git mv`, so history follows)
+> and every import, test reference and docstring mention moved with it.
+> Agent 3's `procurement.py` was **not** renamed and **not** modified other
+> than to gain a two-sentence note saying which of the two modules it is.
+> The distinction to hold on to: `procurement.py` is the LEDGER (the SQL that
+> reads and writes procurement rows); `procurement_services.py` is the
+> SERVICE layer (PR → PO lifecycle, budget control, emission planning).
 
 Two new service modules (`app/backend/pg/procurement_services.py`,
 `app/backend/api/procurement.py`), two new test files, and three existing
@@ -2372,7 +2602,7 @@ what it now catches that it did not before.
 ### Two new test files
 
 * `tests/test_procurement_emission.py` — 27 functions, all running on every
-  machine. `procurement.build_emission_plan` is deliberately pure (it depends
+  machine. `procurement_services.build_emission_plan` is deliberately pure (it depends
   on the purchase-order lines and on `capabilities`, and on nothing else), so
   the emission SHAPE, the `cf_capex_ref` derivation, the at-most-once
   behaviour under a simulated Function death, the Z-01 negative control and
@@ -2394,11 +2624,15 @@ neither inflates the 220 the removal guard is anchored to.
    procurement tables. They were absent for exactly as long as nothing read
    them; the moment a service arrived, the gate would have walked it while
    being blind to its tables — the same blind spot the Wave 5 note in that
-   file records happening to `app/backend/integration/`. Added in the commit
-   that adds the first reader, not after one. **This makes the gate stricter.**
+   file records happening to `app/backend/integration/`. **This makes the
+   gate stricter.** (Agent 3 added the same eight names in the same commit
+   range; the merge kept one copy and agent 3's account of when they were
+   added, which is the one true of the shipped history. No name was
+   duplicated and none was removed.)
 2. `tests/test_pg_locking_order.py::_CELL_WRITES` gains
-   `recompute_commitment`, and the module parametrisation gains
-   `procurement.py`. Both are strengthenings: a second function that writes a
+   `recompute_commitment`, and the module parametrisation gains BOTH
+   `procurement_services.py` and agent 3's `procurement.py`. Both are
+   strengthenings: a second function that writes a
    ledger cell is now held to the same lock-order rule as `recompute_cell`,
    and a third service module is now analysed.
    `test_the_known_mutating_functions_are_actually_analysed` gains five
@@ -2415,7 +2649,7 @@ enforces through a table PostgreSQL has never been given.
 1. **`pr_reservation` has no PostgreSQL table.** `services.create_pr` writes
    one when `reserve=True`, and `domain.compute_ledger` reads it for the
    `pr_reserved` limb of exposure. Migrations 001–013 create nothing. So
-   `procurement.create_pr(reserve=True)` **refuses** with
+   `procurement_services.create_pr(reserve=True)` **refuses** with
    `PR_RESERVATION_NOT_MIGRATED` (501) and writes nothing. Ignoring the flag
    would be the dangerous reading: the caller asked for budget to be held and
    would be told it was.
@@ -2424,7 +2658,7 @@ enforces through a table PostgreSQL has never been given.
    and `wbs_element.status` — cannot be ported. Both columns exist; the table
    naming which of their values permit procurement does not. Hard-coding a
    value set would put this author's opinion where a frozen registry belongs.
-   `procurement.lifecycle_gate` therefore PROBES: where the table exists the
+   `procurement_services.lifecycle_gate` therefore PROBES: where the table exists the
    gate runs exactly as `domain.lifecycle_permits` runs it, and where it does
    not the result carries `lifecycle_gate = LIFECYCLE_UNAVAILABLE`, a
    sentence, so a skipped gate cannot be read as a passed one.
@@ -2453,14 +2687,51 @@ order this application created was invisible to the next budget check and one
 pot could be committed an unbounded number of times — the re-check inside the
 lock was re-checking a number nothing ever moved.
 
-`procurement.recompute_commitment` closes it, using `domain.compute_ledger`'s
-formula verbatim, including the `billed` subtraction even though bills have no
-writer yet, so the two limbs move in opposite directions correctly when they
-do.
+`procurement_services.recompute_commitment` closes it, using
+`domain.compute_ledger`'s formula verbatim, including the `billed`
+subtraction.
 
-`actual_paise` (from `bill_line`) and `pr_reserved_paise` (from the absent
-`pr_reservation`) still have no writer. Reported, not invented: writing one
-badly is worse than leaving it where its owner will find it.
+### THE HALF OF THAT HOLE THE MERGE WITH AGENT 3 RE-OPENED, IN THE UNSAFE DIRECTION
+
+This paragraph replaces one that said the `billed` subtraction was harmless
+because "bills have no writer yet, so the two limbs move in opposite directions
+correctly when they do". **Bills now have a writer and only one limb moves.**
+The sentence is retracted rather than left standing.
+
+Agent 3's `pg/procurement.py` mirrors vendor bills into `bill_line`. Checked
+line by line against `recompute_commitment`, the two modules **agree exactly**
+about the arithmetic: `ordered` and `billed` are both
+`amount_paise + non_creditable_tax_paise + freight_paise`; a `Reversal` bill is
+`-ABS(...)` in both; both filter to `('Approved', 'Reversal')`; both zero the
+commitment on `('Cancelled', 'Closed')`; and agent 3 writes all three money
+columns with a `0` default, never NULL, so no bill line can be silently dropped
+out of a `SUM`. Agent 4's `reconciliation_lines` computes the same
+`max(0, ordered - billed)` and reports it as `open_commitment_paise`.
+
+What they do **not** agree about is exposure. `check_availability` computes
+`commitment + actual + pr_reserved`, and `budget_ledger_cell.actual_paise` has
+no writer anywhere in the PostgreSQL path — no module, and no trigger in
+`013_procurement.sql`. So once a bill lands and `recompute_commitment` next
+runs, `commitment` falls by `billed` and nothing raises `actual` by it:
+available RISES by the billed amount and the same pot can be committed again.
+Before this merge the subtraction was inert because `billed` was always 0.
+It is no longer inert.
+
+It is **not** repaired here, and that is a decision rather than an oversight.
+`actual` is the ledger stream's limb; its domain formula groups `bill_line` by
+`(wbs_id, budget_head_id)` and so also counts the non-PO bill lines this
+stream never sees; and one agent quietly redefining another's exposure column
+during a name-collision merge is how a control stops meaning what its owner
+thinks it means. It is recorded here as the outstanding item it is, and named
+in `pg/procurement_services.py` at the SQL itself.
+
+The staleness is the smaller, **safe** half of the same gap: nothing on the
+inbound path calls `recompute_commitment`, so between a bill arriving and the
+next purchase-order write on that cell `commitment_paise` is OVERSTATED, which
+refuses more spending than it should.
+
+`pr_reserved_paise` (from the absent `pr_reservation`) still has no writer
+either. Reported, not invented.
 
 ### ONE BEHAVIOUR THAT IS STRONGER THAN THE SQLITE ORIGINAL, DELIBERATELY
 
@@ -2468,7 +2739,7 @@ badly is worse than leaving it where its owner will find it.
 addressed exactly one. A `pr_line`-grained request (GAP-1) can name two WBS
 elements that roll up to the SAME budget-owning ancestor for the same head.
 Checking each line's cell independently would let two halves each pass against
-one pot and the pair overspend it. `procurement.budget_verdicts` resolves each
+one pot and the pair overspend it. `procurement_services.budget_verdicts` resolves each
 cell's owning ancestor first, sums the requested amounts per `(owner, head)`,
 and checks the SUM. That is a control the original could not have needed and
 this grain does.

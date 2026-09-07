@@ -205,6 +205,17 @@ MUTATING_ROUTES = [
     ("/api/integrations/dead-letters/{queue}/{row_id}/retry", "POST",
      "/api/integrations/dead-letters/outbox/OUT-1/retry", {},
      "connector.manage", "Auditor"),
+    # Discarding a dead-lettered inbox payload. The SAME permission as retry,
+    # deliberately: both are the operator's verbs over the dead-letter queue,
+    # and splitting them would mean a role that can re-arm a failing payload
+    # cannot stop one that will never succeed -- which is the pair the wrong
+    # way round. The concrete url names the INBOX queue because the outbox has
+    # no DISCARDED state in C16 and the route refuses it; the refusal under
+    # test here is the 403, which happens in the dependency, before either.
+    ("/api/integrations/dead-letters/{queue}/{row_id}/discard", "POST",
+     "/api/integrations/dead-letters/inbox/IN-1/discard",
+     {"reason": "unauthorised attempt"},
+     "connector.manage", "Auditor"),
     # The triage attribution. `reconciliation.triage` is Administrator-only
     # (Auditor is excluded deliberately: `test_aud_c_006_auditor_is_read_only`
     # pins Auditor to an allow-list, and widening an audit-finding assertion

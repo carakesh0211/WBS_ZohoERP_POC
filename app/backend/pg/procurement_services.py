@@ -451,14 +451,39 @@ def _shortfall_summary(verdicts: Sequence[Mapping[str, Any]]) -> str:
 #     billed     = the same three columns on accounting-effective bill lines,
 #                  negated for a Reversal bill
 #
-# WHAT IS STILL MISSING, AND WHY IT IS NOT INVENTED HERE. `actual_paise` comes
-# from `bill_line` and `pr_reserved_paise` from `pr_reservation`. Bills belong
-# to another stream and `pr_reservation` has no PostgreSQL table at all, so
-# neither limb is written here -- writing one badly is worse than leaving it
-# where its owner will find it. The `billed` subtraction below is nonetheless
-# the FULL domain formula rather than a simplification, so the moment bills
-# acquire a writer the two limbs move in opposite directions correctly instead
-# of double-counting.
+# WHAT IS STILL MISSING -- AND, SINCE THE WAVE 6 LEDGER LANDED, WHY THAT NOW
+# MATTERS MORE THAN IT DID. `actual_paise` comes from `bill_line` and
+# `pr_reserved_paise` from `pr_reservation`. Neither is written here, and
+# `pr_reservation` still has no PostgreSQL table at all.
+#
+# When this module was written, `bill_line` had no PostgreSQL writer either, so
+# `billed` was always 0 and the subtraction below was inert. That is no longer
+# true: `pg/procurement.py` -- the LEDGER -- now mirrors vendor bills into
+# `bill_line`, with the same three columns and the same `-ABS(...)` treatment of
+# a Reversal that the SQL below reads. The two modules AGREE about the
+# arithmetic, exactly.
+#
+# They do not yet agree about EXPOSURE, and the gap is in the unsafe direction.
+# `check_availability` computes `commitment + actual + pr_reserved`. Once a bill
+# lands and this function next runs, `commitment` falls by `billed` and NOTHING
+# raises `actual` by it, because `budget_ledger_cell.actual_paise` has no writer
+# anywhere in the PostgreSQL path -- no module, and no trigger in 013. Available
+# therefore RISES by the billed amount and the same pot can be committed again.
+# The earlier note here claimed the two limbs would "move in opposite directions
+# correctly" once bills acquired a writer; bills have acquired one, and only one
+# limb moves. That claim was wrong and is retracted rather than left standing.
+#
+# It is NOT silently repaired here. `actual` is the ledger stream's limb, its
+# domain formula groups `bill_line` by `(wbs_id, budget_head_id)` and therefore
+# also counts the non-PO bill lines this module never sees, and one agent
+# quietly redefining another's exposure column during a merge is how a control
+# stops meaning what its owner thinks it means. It is recorded in
+# `tests/ADAPTATIONS.md` under Wave 6 agent 2 as the outstanding item it is.
+#
+# The staleness is the smaller, safe half of the same gap: nothing on the
+# inbound path calls this function, so between a bill arriving and the next
+# purchase-order write on that cell, `commitment_paise` is OVERSTATED. That
+# refuses more spending than it should, which is the direction to be wrong in.
 
 _RECOMPUTE_COMMITMENT_SQL = """
     UPDATE budget_ledger_cell SET

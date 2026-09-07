@@ -3269,9 +3269,17 @@
         "assertions": 7,
         "body_sha": "1baf604c027b98aa"
       },
-      "test_control_totals_and_reconciliation_take_no_database_dependency": {
+      "test_control_totals_takes_no_database_dependency": {
         "assertions": 2,
-        "body_sha": "77f4e7603aacbb8a"
+        "body_sha": "b72e725f375fc659"
+      },
+      "test_reconciliation_reports_the_database_as_what_is_missing": {
+        "assertions": 3,
+        "body_sha": "7b6e5c3d08e09158"
+      },
+      "test_reconciliation_never_claims_a_zoho_side_figure": {
+        "assertions": 3,
+        "body_sha": "38057b02df493f04"
       },
       "test_control_totals_never_returns_a_number": {
         "assertions": 4,
@@ -3359,7 +3367,7 @@
       },
       "test_every_route_sets_the_correlation_header_before_it_can_refuse": {
         "assertions": 2,
-        "body_sha": "dd2d3c681a423536"
+        "body_sha": "489d73e1f0b401d0"
       },
       "test_the_correlation_id_returned_is_the_one_recorded": {
         "assertions": 2,
@@ -6213,7 +6221,7 @@
       },
       "test_the_known_mutating_functions_are_actually_analysed": {
         "assertions": 4,
-        "body_sha": "9151f30244b9e6ac"
+        "body_sha": "8a529c038371cd01"
       },
       "test_lock_is_not_conditional_in_the_period_roll": {
         "assertions": 1,
@@ -6910,6 +6918,254 @@
       "test_the_planned_payload_survives_the_round_trip_through_jsonb": {
         "assertions": 3,
         "body_sha": "6c1e273b26b86d6a"
+      }
+    },
+    "test_pg_procurement_ingest.py": {
+      "test_the_unattributed_bucket_is_set_and_never_incremented": {
+        "assertions": 3,
+        "body_sha": "064ed811720ecf84"
+      },
+      "test_no_paise_is_ever_rendered_as_rupees_in_this_module": {
+        "assertions": 4,
+        "body_sha": "93ed501fc12fe4ce"
+      },
+      "test_every_sum_over_a_paise_column_is_cast_to_bigint": {
+        "assertions": 1,
+        "body_sha": "66338334447bd13b"
+      },
+      "test_the_grn_line_conflict_target_matches_the_migrations_constraint": {
+        "assertions": 3,
+        "body_sha": "d57b345bcd43833a"
+      },
+      "test_every_partial_mirror_index_is_targeted_with_its_predicate": {
+        "assertions": 2,
+        "body_sha": "16020ef0811135d2"
+      },
+      "test_a_mirrored_row_id_is_derived_and_not_random": {
+        "assertions": 4,
+        "body_sha": "4d9b6c0820a4ae48"
+      },
+      "test_an_unknown_external_source_is_refused_not_defaulted_to_erp": {
+        "assertions": 4,
+        "body_sha": "dabfacc5e32ea054"
+      },
+      "test_the_uninterpretable_status_is_not_accounting_effective": {
+        "assertions": 3,
+        "body_sha": "ba0ef535c8dc2033"
+      },
+      "test_every_statement_in_this_module_carries_a_scope_token": {
+        "assertions": 4,
+        "body_sha": "7f2fdeaacadd5b5f"
+      },
+      "test_every_sql_placeholder_has_a_parameter_behind_it": {
+        "assertions": 5,
+        "body_sha": "f35082619a21b4d5"
+      },
+      "test_every_writing_statement_returns_a_row": {
+        "assertions": 1,
+        "body_sha": "37eb68616d40ba86"
+      },
+      "test_the_sweepstore_surface_no_longer_refuses": {
+        "assertions": 3,
+        "body_sha": "21167e1e14244d6a"
+      },
+      "test_a_null_line_identifier_never_reaches_a_po_line_lookup": {
+        "assertions": 3,
+        "body_sha": "7c00d7ed09d7b5a0"
+      },
+      "test_a_partial_receipt_is_mirrored_at_the_quantity_that_arrived": {
+        "assertions": 5,
+        "body_sha": "5a7ea3e66e2a2774"
+      },
+      "test_two_receipts_against_one_po_line_are_two_rows": {
+        "assertions": 4,
+        "body_sha": "d23380ee548b16c5"
+      },
+      "test_replaying_both_receipts_duplicates_neither": {
+        "assertions": 4,
+        "body_sha": "65d71fafe3125f27"
+      },
+      "test_a_reversal_receipt_carries_negative_quantity_and_negative_paise": {
+        "assertions": 3,
+        "body_sha": "563f828c39baf885"
+      },
+      "test_provenance_is_written_on_the_mirrored_grn": {
+        "assertions": 6,
+        "body_sha": "7387e6754010c8ed"
+      },
+      "test_a_receive_line_for_an_out_of_scope_po_line_is_refused_not_skipped": {
+        "assertions": 3,
+        "body_sha": "0b31efc282b3d6f4"
+      },
+      "test_a_missing_quantity_or_amount_refuses_rather_than_defaulting": {
+        "assertions": 3,
+        "body_sha": "052b7c003497609a"
+      },
+      "test_an_unmatched_receive_line_resolves_to_nothing_and_is_quarantined": {
+        "assertions": 6,
+        "body_sha": "f74660056f169401"
+      },
+      "test_a_rewalk_sets_the_bucket_and_never_inflates_it": {
+        "assertions": 1,
+        "body_sha": "5af1763e208f64c5"
+      },
+      "test_a_negative_unattributed_line_is_held_at_its_magnitude": {
+        "assertions": 2,
+        "body_sha": "466d9b66b0b3da3c"
+      },
+      "test_a_bucket_key_naming_no_open_exception_is_refused": {
+        "assertions": 2,
+        "body_sha": "9a9c3d65557f6bb2"
+      },
+      "test_a_partial_bill_then_a_final_bill_are_two_lines_on_one_po_line": {
+        "assertions": 8,
+        "body_sha": "0e6b957d9d914f4d"
+      },
+      "test_replaying_a_bill_duplicates_no_line": {
+        "assertions": 3,
+        "body_sha": "f96713cb2a76ddee"
+      },
+      "test_over_billing_is_visible_and_never_clamped": {
+        "assertions": 8,
+        "body_sha": "670dfac2108a0d3b"
+      },
+      "test_a_credit_note_carries_negative_paise_and_reduces_the_billed_total": {
+        "assertions": 6,
+        "body_sha": "619a637a91a80811"
+      },
+      "test_an_unattributable_bill_line_is_quarantined_not_spread": {
+        "assertions": 6,
+        "body_sha": "fae20ff65e198c85"
+      },
+      "test_a_bill_naming_no_purchase_order_and_no_project_is_refused": {
+        "assertions": 3,
+        "body_sha": "e157f7908b16ca7e"
+      },
+      "test_a_bill_against_an_unknown_purchase_order_is_refused": {
+        "assertions": 2,
+        "body_sha": "68fcf2b17806c034"
+      },
+      "test_a_mapped_external_status_is_applied_from_c17_not_guessed": {
+        "assertions": 4,
+        "body_sha": "6db71fff676fe816"
+      },
+      "test_an_unmapped_external_status_is_quarantined_and_never_guessed": {
+        "assertions": 7,
+        "body_sha": "4e7f3332a0e190ff"
+      },
+      "test_a_missing_external_status_raises_nothing": {
+        "assertions": 2,
+        "body_sha": "88e049ea7079cca2"
+      },
+      "test_the_hydration_queue_holds_a_line_less_bill_and_releases_it": {
+        "assertions": 2,
+        "body_sha": "5afca20a34b20317"
+      },
+      "test_a_line_less_bill_is_not_refetched_for_ever": {
+        "assertions": 2,
+        "body_sha": "b520129e2d8090e5"
+      },
+      "test_an_invisible_connection_raises_rather_than_reporting_an_empty_queue": {
+        "assertions": 3,
+        "body_sha": "451559a4b95c6091"
+      },
+      "test_marking_a_bill_nobody_received_is_refused": {
+        "assertions": 2,
+        "body_sha": "e6374aea89e11c3c"
+      }
+    },
+    "test_pg_procurement_reconciliation.py": {
+      "test_the_constants_are_transcribed_from_domain": {
+        "assertions": 2,
+        "body_sha": "5fd88d8019feb92c"
+      },
+      "test_the_position_sentences_are_the_ledgers_own_words": {
+        "assertions": 1,
+        "body_sha": "96cd177f586a6824"
+      },
+      "test_the_flag_precedence_is_the_ledgers_and_not_the_obvious_one": {
+        "assertions": 1,
+        "body_sha": "f096a094778d7cc6"
+      },
+      "test_the_position_sentence_matches_the_ledger_for_every_state": {
+        "assertions": 1,
+        "body_sha": "f771cd187b4f593f"
+      },
+      "test_the_identity_balances_to_the_paisa": {
+        "assertions": 1,
+        "body_sha": "ee457b3aa708dd51"
+      },
+      "test_open_commitment_is_ordered_less_billed_never_less_received": {
+        "assertions": 2,
+        "body_sha": "4bdedac645e9bb9b"
+      },
+      "test_received_not_billed_is_its_own_bucket_and_is_never_netted": {
+        "assertions": 3,
+        "body_sha": "09b4cb52eb1c41ed"
+      },
+      "test_a_released_purchase_order_commits_nothing_however_much_is_unbilled": {
+        "assertions": 2,
+        "body_sha": "3399c9e03958d79b"
+      },
+      "test_the_summary_totals_and_reports_whether_it_balanced": {
+        "assertions": 6,
+        "body_sha": "9c4831b37425a37e"
+      },
+      "test_an_unbalanced_row_set_is_reported_and_not_smoothed_over": {
+        "assertions": 2,
+        "body_sha": "cc7f142141fafb0e"
+      },
+      "test_the_summary_lists_every_flagged_line_and_no_others": {
+        "assertions": 1,
+        "body_sha": "d016d7de015074f7"
+      },
+      "test_every_procurement_statement_carries_a_compiled_scope_predicate": {
+        "assertions": 4,
+        "body_sha": "14249887e68133cf"
+      },
+      "test_every_procurement_statement_names_only_real_columns": {
+        "assertions": 2,
+        "body_sha": "6243a83c9cb92b54"
+      },
+      "test_every_paise_sum_is_cast_back_to_bigint": {
+        "assertions": 1,
+        "body_sha": "0e20666124f9e72e"
+      },
+      "test_the_on_conflict_target_is_a_constraint_that_actually_exists": {
+        "assertions": 6,
+        "body_sha": "cbe2dedc96477cd0"
+      },
+      "test_the_reconciliation_query_reaches_all_four_dimensions": {
+        "assertions": 3,
+        "body_sha": "5c787fcc2aca5acf"
+      },
+      "test_resolve_po_line_returns_none_rather_than_choosing": {
+        "assertions": 3,
+        "body_sha": "16519284f5961f96"
+      },
+      "test_an_identifierless_receive_line_is_deduplicated_before_it_is_inserted": {
+        "assertions": 5,
+        "body_sha": "c6c4e14cbc016799"
+      },
+      "test_record_receive_line_will_not_write_against_a_po_line_it_cannot_see": {
+        "assertions": 5,
+        "body_sha": "7dc3f408b27bca82"
+      },
+      "test_record_receive_line_reads_an_absent_amount_as_absent_not_as_zero": {
+        "assertions": 3,
+        "body_sha": "69b2ab7804570969"
+      },
+      "test_the_sweep_actor_is_not_a_user_id": {
+        "assertions": 1,
+        "body_sha": "b224d97860e7c43c"
+      },
+      "test_no_sweep_call_is_left_without_a_table_and_the_refusal_survives": {
+        "assertions": 8,
+        "body_sha": "831180fbd8faea22"
+      },
+      "test_money_in_the_procurement_module_never_reaches_a_transport_table": {
+        "assertions": 3,
+        "body_sha": "459af3449890c1eb"
       }
     },
     "test_pg_procurement_schema.py": {
@@ -8508,7 +8764,7 @@
     "test_integration_store.py": 47,
     "test_integration_sweeps.py": 40,
     "test_integration_throttle.py": 76,
-    "test_integrations_api_guard.py": 49,
+    "test_integrations_api_guard.py": 51,
     "test_known_defects.py": 5,
     "test_manifest.py": 10,
     "test_masters_settings_api_guard.py": 9,
@@ -8544,6 +8800,8 @@
     "test_pg_periods.py": 18,
     "test_pg_principal_scope.py": 37,
     "test_pg_procurement.py": 50,
+    "test_pg_procurement_ingest.py": 38,
+    "test_pg_procurement_reconciliation.py": 23,
     "test_pg_procurement_schema.py": 73,
     "test_pg_reconciliation.py": 36,
     "test_pg_repo.py": 23,
@@ -8591,7 +8849,7 @@
     "test_integration_store.py": 94,
     "test_integration_sweeps.py": 110,
     "test_integration_throttle.py": 244,
-    "test_integrations_api_guard.py": 108,
+    "test_integrations_api_guard.py": 114,
     "test_known_defects.py": 13,
     "test_manifest.py": 15,
     "test_masters_settings_api_guard.py": 15,
@@ -8627,6 +8885,8 @@
     "test_pg_periods.py": 49,
     "test_pg_principal_scope.py": 83,
     "test_pg_procurement.py": 134,
+    "test_pg_procurement_ingest.py": 137,
+    "test_pg_procurement_reconciliation.py": 66,
     "test_pg_procurement_schema.py": 140,
     "test_pg_reconciliation.py": 117,
     "test_pg_repo.py": 37,

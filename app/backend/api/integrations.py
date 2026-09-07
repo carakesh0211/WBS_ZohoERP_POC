@@ -20,6 +20,7 @@ unavailable state over a working endpoint.
     GET    /api/integrations/events
     GET    /api/integrations/dead-letters
     POST   /api/integrations/dead-letters/{queue}/{row_id}/retry
+    POST   /api/integrations/dead-letters/{queue}/{row_id}/discard
     GET    /api/integrations/outbox
     GET    /api/integrations/inbox
     GET    /api/integrations/reconciliation
@@ -35,7 +36,7 @@ correctness here is agreement, not orthography. The rest of this codebase
 spells it ``authorise``; ``/api/zoho/{connection_id}/authorise`` in
 ``main.py`` still does.
 
-**SIX OF THESE SIXTEEN OPERATIONS HAVE NOTHING BEHIND THEM, AND SAY SO.**
+**FIVE OF THESE SEVENTEEN OPERATIONS HAVE NOTHING BEHIND THEM, AND SAY SO.**
 
 Not 404, which ``core/api-client.js`` collapses into "no records were found"
 whenever the OpenAPI probe is unreadable -- the difference between "the
@@ -61,18 +62,23 @@ missing**:
                            would be offering a blind irreversible write.
   * ``/validate``       -- module-by-module connectivity validation is a live
                            call per module.
-  * ``/reconciliation`` -- PostgreSQL holds no purchase order, no GRN and no
-                           bill. Commitments and actuals live in the SQLite
-                           ledger behind ``/api/reconciliation``, which the
-                           frontend already falls back to and LABELS. There is
-                           nothing in this database to reconcile, so this
-                           router does not pretend there is.
   * ``/control-totals`` -- deliberately, permanently, and for a different
                            reason from the other five. See ``get_control_totals``.
 
-The other ten are real: they read the tables migration 010 and 011 created,
-through the caller's own scope, and the one mutation among them writes an
-audit entry and an ``integration_event``.
+The other twelve are real: they read the tables migrations 010, 011 and 013
+created, through the caller's own scope, and every mutation among them writes
+an audit entry and an ``integration_event``.
+
+``/reconciliation`` WAS the sixth silence and no longer is.
+``013_procurement.sql`` created ``purchase_order``, ``po_line``, ``grn``,
+``grn_line``, ``bill`` and ``bill_line``, so the exact sentence that route used
+to refuse with -- "PostgreSQL holds no purchase order, GRN or bill" -- stopped
+being true, and repeating it would have sent an operator looking for a
+migration that has already landed. It now serves ordered / received / billed /
+open against those tables, with the arithmetic transcribed from
+``domain.compute_ledger`` rather than re-derived, and it labels its source: every
+figure on it is OURS. ``/control-totals`` is untouched and still refuses, for
+the reason it has always given -- see ``get_control_totals``.
 
 **Scope.** Every read goes through ``repo.query()`` with a literal ``{scope}``
 token -- a query missing it is refused before it reaches the database -- and
@@ -1321,6 +1327,38 @@ def retry_dead_letter(
     `SENT` is not retryable. Re-emitting a purchase order Zoho has already
     accepted creates a second commitment, which is the exact defect the
     outbox's dedupe key exists to prevent.
+
+    THE ATTEMPTS POLICY, DECIDED. `docs/WAVE5_INTEGRATION_API_FINDINGS.md`
+    recorded this as open: a manual retry must either RESET `attempts` or RAISE
+    `max_attempts`, because `ck_integration_inbox_state_dead_is_exhausted` and
+    its outbox twin both require `attempts >= max_attempts` while DEAD, and a
+    row leaving DEAD with neither changed is instantly re-deadable. The finding
+    is right that the two are not interchangeable in the audit trail: after a
+    reset, `attempts = 3` no longer means "this has failed three times", it
+    means "three times since a human last intervened".
+
+    **THIS ROUTE RESETS `attempts`, and does not raise `max_attempts`.** Two
+    reasons, in this order.
+
+    1. `max_attempts` is the SAFETY CEILING. It is what stops a payload that
+       will never succeed from being retried forever, and every automatic
+       retry in `integration_store` reads it. Raising it as a side effect of a
+       human clicking Retry would loosen a limiter permanently and invisibly,
+       once per click, and nothing would ever lower it again. A control that
+       only ever moves one way is not a control.
+    2. `attempts` is a BACKOFF COUNTER, not a history. `BACKOFF_BASE_SECONDS`
+       and `BACKOFF_CAP_SECONDS` are computed from it, so a row re-armed at
+       `attempts = 8` would come back with the 900-second cap already applied
+       and the operator would watch nothing happen for fifteen minutes.
+
+    WHAT THAT COSTS, AND HOW IT IS PAID. Resetting genuinely destroys "failed 8
+    times" in the ROW. It is therefore preserved in the TRAIL rather than left
+    to be inferred: this handler records `attempts_before_reset` and, derived
+    from every prior retry of this same row, `lifetime_attempts` and
+    `manual_retry_ordinal`. So "this has failed eight times, across three
+    manual retries" remains a question the audit log can answer, which is the
+    property the finding was actually protecting. `last_error` is deliberately
+    not cleared for the same reason.
     """
     cid = _set_correlation_header(response, request)
     if queue not in ("inbox", "outbox"):
@@ -1425,6 +1463,20 @@ def retry_dead_letter(
             # `last_error` is deliberately NOT cleared: it is the evidence of
             # why the row died, and the attempts counter that is reset above
             # is recorded here before it goes.
+            #
+            # THE CUMULATIVE HISTORY THE RESET WOULD OTHERWISE DESTROY. Read
+            # from the trail this route has been writing all along, so it is
+            # derived from recorded fact rather than kept in a counter column
+            # that a second writer could disagree with.
+            prior = _prior_manual_retries(session, queue=queue, row_id=row_id)
+            history = {
+                "attempts_before_reset": attempts,
+                # "failed N times", still answerable after the row's own
+                # counter has gone back to zero.
+                "lifetime_attempts": prior["attempts"] + attempts,
+                "manual_retry_ordinal": prior["retries"] + 1,
+                "attempts_policy": "reset",
+            }
             store.record_event(
                 session, kind="DEAD_LETTER_RETRIED", actor=actor,
                 connection_id=connection_id, correlation_id=cid,
@@ -1432,16 +1484,15 @@ def retry_dead_letter(
                 outbox_id=row_id if queue == "outbox" else None,
                 detail={"queue": queue, "from_state": state,
                         "to_state": target_state,
-                        "attempts_before_reset": attempts,
-                        "idempotency_key": idempotency_key})
+                        "idempotency_key": idempotency_key, **history})
             audit_svc.append(
                 session, actor=actor, action="INTEGRATION_DEAD_LETTER_RETRIED",
                 object_type=f"integration_{queue}", object_id=row_id,
                 detail=json.dumps({"queue": queue, "from_state": state,
                                    "to_state": target_state,
-                                   "attempts_before_reset": attempts,
                                    "connection_id": connection_id,
-                                   "idempotency_key": idempotency_key},
+                                   "idempotency_key": idempotency_key,
+                                   **history},
                                   sort_keys=True),
                 correlation_id=cid)
     except store.IntegrationStoreError as exc:
@@ -1449,7 +1500,198 @@ def retry_dead_letter(
 
     return {"queue": queue, "row_id": row_id, "connection_id": connection_id,
             "state": target_state, "already_armed": False, "retried": True,
-            "attempts_before_reset": attempts}
+            **history}
+
+
+def _prior_manual_retries(session: Any, *, queue: str,
+                          row_id: str) -> dict[str, int]:
+    """How many times this row has been manually retried, and for how many
+    failures in total, from the events this route has already written.
+
+    THE TRAIL IS THE SOURCE, not a column. A `lifetime_attempts` column would
+    be a second writer's opinion of the same fact and could drift from the
+    events; the events are append-only and hash-chained on the audit side, so
+    reading them back cannot disagree with what was recorded.
+
+    A row with no prior retry returns zeroes -- which is a real answer here,
+    not a default standing in for a missing one: no event means no prior manual
+    retry, and that is exactly what is being asked.
+    """
+    column = "inbox_id" if queue == "inbox" else "outbox_id"
+    rows = repo.query(
+        session,
+        f"""
+        SELECT coalesce(
+                   SUM((e.detail ->> 'attempts_before_reset')::bigint), 0
+               )::bigint,
+               count(*)::bigint
+        FROM {store.INTEGRATION_EVENT} e
+        WHERE e.kind = 'DEAD_LETTER_RETRIED'
+          AND e.{column} = %(row_id)s
+          AND (e.connection_id IS NULL
+               OR {_via_connection('e.connection_id')})
+        """,
+        {"row_id": row_id},
+        columns=VIA_CONNECTION_COLUMNS,
+    )
+    if not rows:
+        return {"attempts": 0, "retries": 0}
+    return {"attempts": int(rows[0][0] or 0), "retries": int(rows[0][1] or 0)}
+
+
+class DiscardRequest(BaseModel):
+    """The body `POST /dead-letters/{queue}/{row_id}/discard` requires.
+
+    `extra="forbid"` for the same reason `ConnectionCreate` uses it: a field
+    this model does not declare is a caller's misunderstanding of the contract,
+    and accepting it silently would let a screen believe it had sent something
+    that was dropped on the floor.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    reason: str = ""
+
+
+@router.post("/api/integrations/dead-letters/{queue}/{row_id}/discard",
+             dependencies=[Depends(_requires("connector.manage"))])
+def discard_dead_letter(
+    queue: str, row_id: str, body: DiscardRequest, response: Response,
+    request: Request,
+    database: Database = Depends(_get_database),
+) -> dict[str, Any]:
+    """SCR-39: stop retrying one dead-lettered INBOX row, on the record.
+
+    THE OPERATION RETRY COULD NOT BE. Before this, a dead-lettered row had
+    exactly one verb. An operator holding a payload that will never succeed --
+    a bill for a purchase order that was cancelled, a receive whose tenant
+    record was deleted -- could retry it or leave it, and leaving it means the
+    dead-letter queue accumulates rows nobody will ever act on until the real
+    failures are invisible among them. A queue that cannot be emptied stops
+    being read, which is how the next genuine failure is missed.
+
+    INBOX ONLY, AND THE ASYMMETRY IS C16's, NOT THIS ROUTER'S. `DISCARDED` is
+    in `ck_integration_inbox_state`. There is no such value in
+    `ck_integration_outbox_state`, whose namespace is PENDING / SENT / FAILED /
+    DEAD -- so an outbox discard is refused with a coded 409 naming the frozen
+    namespace, rather than mapped onto some nearby state. Mapping it to FAILED
+    would re-arm the sender; leaving it DEAD and calling it discarded would
+    report a state change that did not happen.
+
+    ONE-WAY, AND ONLY FROM DEAD OR QUARANTINED. A PROCESSED payload cannot be
+    discarded -- its effects are already in the ledger, and marking it
+    discarded would describe a row that was applied as one that was dropped.
+
+    `reason` IS MANDATORY. This is the verb that ends an inbound document's
+    life without applying it; the same rule `act_on_exception` applies to a
+    resolution applies here, and for the same reason -- a discard with no
+    explanation is indistinguishable from one done by accident.
+    """
+    cid = _set_correlation_header(response, request)
+    if queue not in ("inbox", "outbox"):
+        raise _problem(400, "UNKNOWN_QUEUE", "Unknown Queue",
+                       "queue must be 'inbox' or 'outbox'.")
+    if queue == "outbox":
+        raise _problem(
+            409, "QUEUE_HAS_NO_DISCARDED_STATE", "Queue Has No Discarded State",
+            "C16's frozen outbox namespace is PENDING, SENT, FAILED and DEAD; "
+            "it declares no DISCARDED. An outbox row that must not be sent is "
+            "left DEAD, which is what DEAD means there. No nearby state is "
+            "substituted: FAILED would re-arm the sender, and reporting a "
+            "change that did not happen would be worse than refusing.",
+            extra={"queue": queue,
+                   "states": ["PENDING", "SENT", "FAILED", "DEAD"]})
+
+    reason = (body.reason or "").strip()
+    if not reason:
+        raise _problem(
+            400, "BLANK_DISCARD_REASON", "Blank Discard Reason",
+            "A reason is required. Discarding ends an inbound document's life "
+            "without applying it, and one recorded with no explanation cannot "
+            "be told apart from one done by accident.")
+
+    actor = _actor(request)
+    idempotency_key = request.headers.get("Idempotency-Key") or None
+    try:
+        with _session(request, database) as session:
+            # Existence first, in the caller's own scope. Invisible and absent
+            # give the SAME 404 -- never a 403, which would confirm the id.
+            current = repo.query_one(
+                session,
+                f"""
+                SELECT i.inbox_id, i.connection_id, i.state, i.attempts
+                FROM {store.INTEGRATION_INBOX} i
+                WHERE i.inbox_id = %(row_id)s
+                  AND {_via_connection('i.connection_id')}
+                """,
+                {"row_id": row_id},
+                columns=VIA_CONNECTION_COLUMNS,
+            )
+            if current is None:
+                raise _problem(
+                    404, "DEAD_LETTER_NOT_FOUND", "Dead Letter Not Found",
+                    f"No inbox row {row_id} is visible to you.")
+
+            connection_id, state, attempts = current[1], current[2], current[3]
+            if state == "DISCARDED":
+                # The replay case, and not an error -- same posture as
+                # `already_armed` on retry.
+                return {"queue": queue, "row_id": row_id,
+                        "connection_id": connection_id, "state": state,
+                        "already_discarded": True, "discarded": False}
+            if state not in _RETRYABLE_INBOX:
+                raise _problem(
+                    409, "NOT_DISCARDABLE", "Not Discardable",
+                    f"inbox row {row_id} is in state {state}; only "
+                    f"{', '.join(_RETRYABLE_INBOX)} may be discarded. A "
+                    f"PROCESSED payload is already in the ledger, and marking "
+                    f"it discarded would describe an applied row as a dropped "
+                    f"one.",
+                    extra={"state": state,
+                           "discardable_from": list(_RETRYABLE_INBOX)})
+
+            # `processed_at` must stay NULL for any non-PROCESSED state, and
+            # `next_attempt_at` is cleared because there is no next attempt.
+            # `attempts`, `last_error` and `quarantine_reason` are all LEFT AS
+            # THEY ARE: they are the evidence of why this row died, and the
+            # discard is a decision recorded beside them, not instead of them.
+            repo.query(
+                session,
+                f"""
+                UPDATE {store.INTEGRATION_INBOX} i SET
+                    state = 'DISCARDED',
+                    next_attempt_at = NULL,
+                    processed_at = NULL
+                WHERE i.inbox_id = %(row_id)s
+                  AND i.state = ANY(%(discardable)s)
+                  AND {_via_connection('i.connection_id')}
+                RETURNING i.inbox_id
+                """,
+                {"row_id": row_id, "discardable": list(_RETRYABLE_INBOX)},
+                columns=VIA_CONNECTION_COLUMNS,
+            )
+
+            detail = {"queue": queue, "from_state": state,
+                      "to_state": "DISCARDED", "attempts_at_discard": attempts,
+                      "reason": reason, "idempotency_key": idempotency_key}
+            store.record_event(
+                session, kind="DEAD_LETTER_DISCARDED", actor=actor,
+                connection_id=connection_id, correlation_id=cid,
+                inbox_id=row_id, detail=detail)
+            audit_svc.append(
+                session, actor=actor,
+                action="INTEGRATION_DEAD_LETTER_DISCARDED",
+                object_type="integration_inbox", object_id=row_id,
+                detail=json.dumps({**detail, "connection_id": connection_id},
+                                  sort_keys=True),
+                correlation_id=cid)
+    except store.IntegrationStoreError as exc:
+        raise _store_error_to_http(exc)
+
+    return {"queue": queue, "row_id": row_id, "connection_id": connection_id,
+            "state": "DISCARDED", "already_discarded": False,
+            "discarded": True, "from_state": state,
+            "attempts_at_discard": attempts, "reason": reason}
 
 
 # ================================================================= exceptions
@@ -1915,36 +2157,242 @@ def resolve_exception(
 def get_reconciliation(
     response: Response, request: Request,
     project_id: str | None = Query(default=None),
+    limit: int = Query(default=500),
+    database: Database = Depends(_get_database),
 ) -> dict[str, Any]:
     """SCR-18: commitment against actual, with each side's integration state.
 
-    UNAVAILABLE, and for a structural reason rather than a missing tenant.
-    PostgreSQL holds no `purchase_order`, no `po_line`, no `grn` and no `bill`
-    table -- migrations 001 to 011 create none of them. Commitments and actuals
-    live in the SQLite ledger, which `/api/reconciliation` already serves and
-    which `integration-api.js` already falls back to under the label
-    `ledger-compat`.
+    **BACKED, AS OF `013_procurement.sql`.** This route answered
+    `INTEGRATION_RECONCILIATION_UNAVAILABLE` for eleven migrations, and the
+    reason it gave was exact: "PostgreSQL holds no purchase order, GRN or
+    bill". 013 creates all eight procurement documents, so that sentence is no
+    longer true and the refusal would now be the dishonest answer -- an
+    operator told a table is missing would go looking for the migration that
+    has already landed.
 
-    What this route would ADD is the integration state of each side, and that
-    is exactly the half this database cannot supply, because there is nothing
-    here to join the inbox and outbox rows TO. Serving the ledger's answer from
-    this path would relabel a `ledger-compat` result as `wave5` and remove the
-    one thing the screen uses to tell an operator which question was answered.
+    IT TAKES A DATABASE DEPENDENCY NOW, AND THAT IS THE VISIBLE CONSEQUENCE.
+    `get_control_totals` still takes none, for the reason its own docstring
+    gives, and the two have stopped being a pair. On a process with no
+    PostgreSQL this route answers `DATABASE_NOT_CONFIGURED` -- which is now the
+    RIGHT code, because a database is genuinely what it is missing, and the
+    frontend still reads `detail.unavailable` off it and renders the
+    unavailable state rather than a red fault banner.
 
-    Takes NO database dependency, deliberately -- as `get_control_totals` does
-    not. A route that never queries must not answer `DATABASE_NOT_CONFIGURED`
-    on a process without a database: that is a 503 with the WRONG code, and it
-    would hide the real reason behind a transient-looking one an operator
-    would try to fix by restarting something.
+    THE ARITHMETIC IS `domain.compute_ledger`'s, TRANSCRIBED, NOT RE-DERIVED.
+    Open commitment is ordered less BILLED, floored at zero, and zero outright
+    on a Cancelled or Closed purchase order. Received-not-billed is its own
+    bucket and is never subtracted from commitment. Both live in
+    `integration_store._reconciliation_position` and the Python half of
+    `reconciliation_lines`, with the two state lists transcribed as module
+    constants -- see that section's header for why a second derivation would be
+    the defect.
+
+    THE STATEMENT ITSELF IS IN `pg/procurement.py`, and this route still calls
+    `integration_store.reconciliation_lines`, which delegates. `po_line`,
+    `grn_line` and `bill_line` are money-bearing LEDGER rows, and
+    `test_integration_store.py::test_money_in_this_module_appears_only_on_the_011_exception_table`
+    holds the store to transport plus `reconciliation_exception` and nothing
+    else. The split keeps that guard at its original width instead of widening
+    it, and is the same split `resolve_po_line` and `record_receive_line` use.
+
+    WHAT THIS ADDS OVER `ledger-compat`, WHICH IS THE ONLY REASON IT EXISTS.
+    `/api/reconciliation` already answers "what did we order, receive and bill"
+    from the SQLite ledger, and `integration-api.js` falls back to it and
+    LABELS the fallback. What the fallback cannot say is whether each side ever
+    reached Zoho. `integration_state` below is that half: the outbox row for
+    every purchase order in the result and the inbox row for every goods
+    receipt, read in their OWN scope (through the connection, on `entity_id`)
+    rather than through the procurement scope, because they are different
+    tables with different policies and merging the two predicates into one
+    query would mean one of them was not applied.
+
+    IT IS NOT A CONTROL TOTAL, AND SAYS SO. Everything here is OUR side --
+    our purchase orders, our receipts, our bills, and our record of what we
+    tried to send. Nothing on this response is Zoho's own count or value, and
+    `source_note` says that in the body rather than leaving a reader to infer
+    it from the absence. `/control-totals` is the route that would need the
+    other half, and it still refuses.
     """
     _set_correlation_header(response, request)
-    raise _unavailable(
-        "INTEGRATION_RECONCILIATION_UNAVAILABLE",
-        "the commitment and actual tables: PostgreSQL holds no purchase order, "
-        "GRN or bill, so there is nothing here to pair with the inbox and "
-        "outbox rows.",
-        remedy="/api/reconciliation serves this application's own ledger "
-               "reconciliation, without the integration state of either side.")
+    limit = min(max(int(limit), 1), 2000)
+    try:
+        with _session(request, database) as session:
+            lines = store.reconciliation_lines(
+                session, project_id=project_id, limit=limit)
+            summary = store.reconciliation_summary(lines)
+            emission = _emission_state(session, [
+                line["po_id"] for line in lines])
+            arrival = _arrival_state(session, [
+                line["po_external_id"] for line in lines
+                if line["po_external_id"]])
+    except store.IntegrationStoreError as exc:
+        raise _store_error_to_http(exc)
+
+    for line in lines:
+        # NEVER a default. A purchase order with no outbox row has not been
+        # emitted, and `null` is the honest word for that -- a synthesised
+        # "PENDING" would tell an operator a document is queued when nothing
+        # has ever been enqueued for it.
+        line["emission_state"] = emission.get(line["po_id"])
+
+    return {
+        "source": "wave5",
+        "source_note": (
+            "Ordered, received and billed are this application's own "
+            "PostgreSQL procurement tables (migration 013). The emission and "
+            "arrival columns are our integration_outbox and integration_inbox "
+            "rows -- our record of what we sent and what we were given. No "
+            "figure here is Zoho's own count or value; comparing the two sides "
+            "is /control-totals, which has no Zoho-side total and refuses."),
+        "project_id": project_id,
+        "rows": lines,
+        "summary": summary,
+        "integration_state": {
+            "emission_by_po_id": emission,
+            "arrival_by_po_external_id": arrival,
+            "note": ("Read through the connection's own entity scope, not the "
+                     "procurement project scope. A purchase order visible here "
+                     "whose emission state is null has no outbox row at all."),
+        },
+        "truncated": len(lines) >= limit,
+        "limit": limit,
+    }
+
+
+#: The separator `outbound.plan_emission` puts between a purchase order's local
+#: id and the control cell it was split on.
+#:
+#: ONE PURCHASE ORDER CAN BE SEVERAL OUTBOX ROWS, and reading `local_id` as a
+#: plain po_id is wrong on exactly the estate where it matters most. On a
+#: product whose custom fields are header-only (D-7 False) a multi-cell
+#: purchase order is SPLIT, one emission per `(wbs_id, budget_head_id)` cell,
+#: and each draft's local id becomes `f"{po_id}#{wbs_id}#{budget_head_id}"` --
+#: deliberately, so the three POs of a three-cell requisition do not all claim
+#: one `cf_capex_ref` and have two refused as duplicates.
+#:
+#: An `o.local_id = po_id` equality would therefore match NOTHING for every
+#: split purchase order, and this route would report "never enqueued" for a
+#: document that was emitted three times. That is not a missing answer, it is
+#: a WRONG one wearing a real answer's clothes, which is the single failure
+#: this whole module is written against.
+_EMISSION_SPLIT_SEPARATOR = "#"
+
+
+def _emission_state(session: Any, po_ids: Sequence[str]) -> dict[str, Any]:
+    """Our outbox rows for each purchase order: did we ever try to send it?
+
+    Its own statement in its own scope. `integration_outbox` reaches
+    `entity_id` through `integration_connection` and carries no project column
+    at all, so it CANNOT be filtered by `PROCUREMENT_SCOPE_COLUMNS`, and
+    pretending otherwise -- by joining it into the reconciliation query under
+    the procurement mapping -- would leave it filtered on nothing.
+
+    AGGREGATED PER PURCHASE ORDER, NOT ONE ROW PER PURCHASE ORDER, because of
+    the split described above. What comes back per po_id is:
+
+      * `rows`   -- how many outbox rows exist for it;
+      * `split`  -- whether any of them carried a control-cell suffix, so a
+                    reader can tell "three emissions because it was split" from
+                    "three emissions because something went wrong";
+      * `states` -- {state: count}, and `state` only when all the rows agree.
+                    A purchase order half SENT and half DEAD has no single
+                    state, and inventing one -- picking the worst, or the first
+                    -- would be a summary that hides the thing worth seeing.
+
+    A po_id with no rows at all is ABSENT from the result rather than present
+    with a zero, so the caller renders "never enqueued" (a real answer) instead
+    of a fabricated state.
+    """
+    if not po_ids:
+        return {}
+    rows = repo.query(
+        session,
+        f"""
+        SELECT o.local_id, o.state, o.external_id, o.attempts, o.sent_at
+        FROM {store.INTEGRATION_OUTBOX} o
+        -- Equality OR the split prefix. `split_part` is not used to compare:
+        -- a po_id is free to contain the separator itself, and comparing the
+        -- first segment would then match a DIFFERENT purchase order whose id
+        -- happens to share that prefix. `LIKE prefix || '#%'` with the
+        -- separator pinned to the end of the known id cannot do that.
+        WHERE (o.local_id = ANY(%(po_ids)s)
+               OR EXISTS (SELECT 1 FROM unnest(%(po_ids)s::text[]) AS pid
+                          WHERE o.local_id LIKE pid || %(sep)s || '%%'))
+          AND {_via_connection('o.connection_id')}
+        ORDER BY o.local_id, o.outbox_id
+        """,
+        {"po_ids": sorted(set(po_ids)), "sep": _EMISSION_SPLIT_SEPARATOR},
+        columns=VIA_CONNECTION_COLUMNS,
+    )
+
+    known = sorted(set(po_ids))
+    out: dict[str, Any] = {}
+    for local_id, state, external_id, attempts, sent_at in rows:
+        # Longest match wins, so a po_id that is itself a prefix of another
+        # cannot swallow the other's rows.
+        owner = None
+        for candidate in known:
+            if local_id == candidate or local_id.startswith(
+                    candidate + _EMISSION_SPLIT_SEPARATOR):
+                if owner is None or len(candidate) > len(owner):
+                    owner = candidate
+        if owner is None:
+            continue
+        bucket = out.setdefault(owner, {
+            "rows": 0, "split": False, "states": {}, "state": None,
+            "external_ids": [], "attempts": 0, "last_sent_at": None,
+        })
+        bucket["rows"] += 1
+        if local_id != owner:
+            bucket["split"] = True
+        bucket["states"][state] = bucket["states"].get(state, 0) + 1
+        if external_id:
+            bucket["external_ids"].append(external_id)
+        bucket["attempts"] = max(bucket["attempts"], int(attempts or 0))
+        stamp = _iso(sent_at)
+        if stamp and (bucket["last_sent_at"] is None
+                      or stamp > bucket["last_sent_at"]):
+            bucket["last_sent_at"] = stamp
+
+    for bucket in out.values():
+        # A single state ONLY when every row agrees. Otherwise None, and the
+        # `states` breakdown is the answer.
+        states = bucket["states"]
+        bucket["state"] = next(iter(states)) if len(states) == 1 else None
+        # The screen renders one external id when there is exactly one; more
+        # than one means a split, and they are all kept.
+        bucket["external_id"] = (bucket["external_ids"][0]
+                                 if len(bucket["external_ids"]) == 1 else None)
+    return out
+
+
+def _arrival_state(session: Any, po_external_ids: Sequence[str]) -> dict[str, Any]:
+    """What arrived from the other side against each purchase order.
+
+    Counted, not listed: a purchase order with two hundred receive payloads
+    would otherwise put two hundred rows into a response whose subject is the
+    commitment, and the question this column answers is "has anything come
+    back", not "what exactly".
+    """
+    if not po_external_ids:
+        return {}
+    rows = repo.query(
+        session,
+        f"""
+        SELECT i.external_id, i.state, count(*)::bigint
+        FROM {store.INTEGRATION_INBOX} i
+        WHERE i.external_id = ANY(%(external_ids)s)
+          AND {_via_connection('i.connection_id')}
+        GROUP BY i.external_id, i.state
+        ORDER BY i.external_id, i.state
+        """,
+        {"external_ids": sorted(set(po_external_ids))},
+        columns=VIA_CONNECTION_COLUMNS,
+    )
+    out: dict[str, Any] = {}
+    for external_id, state, count in rows:
+        out.setdefault(external_id, {})[state] = int(count)
+    return out
 
 
 # ============================================================= control totals

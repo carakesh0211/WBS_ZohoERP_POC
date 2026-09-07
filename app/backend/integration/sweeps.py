@@ -75,7 +75,7 @@ import hashlib
 import json
 import re
 from dataclasses import asdict, dataclass, is_dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any, Iterator, Mapping, Protocol, Sequence
 
 from .jobs import (
@@ -230,6 +230,25 @@ def payload_sha(payload: Mapping[str, Any]) -> str:
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":"),
                    default=str).encode("utf-8")).hexdigest()
+
+
+def _as_datetime(value: Any) -> datetime | None:
+    """A source `date` as an aware `datetime` at midnight UTC, or `None`.
+
+    Used only where a `date`-typed source field has to reach a `timestamptz`
+    column. The timezone is stated rather than left to the server's
+    `TimeZone` setting: a naive value would be read as the SERVER's local time,
+    which would move a receipt across a day boundary on any deployment not
+    running in UTC -- and India is +05:30, so it would move it every time.
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if isinstance(value, date):
+        return datetime(value.year, value.month, value.day,
+                        tzinfo=timezone.utc)
+    return None
 
 
 def _as_date(value: Any) -> date | None:
@@ -413,7 +432,27 @@ class SweepStore(Protocol):
 
     def record_receive_line(self, *, po_line_id: str, receive_external_id: str,
                             line_external_id: str | None, quantity: Any,
-                            amount_paise: int | None) -> None: ...
+                            amount_paise: int | None,
+                            external_source: str | None = None,
+                            receive_number: str | None = None,
+                            received_at: datetime | None = None,
+                            external_last_modified: datetime | None = None,
+                            payload_sha: str | None = None) -> None:
+        """Mirror one attributed receive line.
+
+        THE FIVE ARE THE CONTRACT; the rest is PROVENANCE, and it is declared
+        here rather than left to a private arrangement between one sweep and
+        one store. §11.10 requires the SOURCE DOCUMENT to be recoverable, not
+        our rendering of it, and a mirrored row that names neither its source,
+        its version (`payload_sha`), nor when the source last changed
+        (`external_last_modified`) is a row nobody can trace back.
+
+        Optional with `None` defaults, because a store is free to hold the
+        line and nothing else -- `tests/integration_fakes.py` does exactly that
+        -- and because a required argument here would break every existing
+        implementation of this protocol at once.
+        """
+        ...
 
     def accumulate_unattributed(self, *, project_id: str | None, paise: int,
                                 source_key: str) -> None:
@@ -708,6 +747,17 @@ class SweepPoAnchored:
     connection_id: str
     kind: str = "sweep_po_anchored"
     batch_size: int = CHUNK_SIZES["sweep_po_anchored"]
+    #: The `external_source` label stamped on every GRN this sweep mirrors --
+    #: `ZOHO_ERP`, `ZOHO_BOOKS`. OUR label for where a document came from, not
+    #: a product name we invent from the adapter: `002_financial_controls.sql`
+    #: and `pg/masters.ingest_from_adapter` already spell it this way, and a
+    #: mirrored row whose `external_source` disagrees with theirs is a row the
+    #: `(external_source, external_id)` mirror indexes cannot match.
+    #:
+    #: `None` is honest rather than convenient. It means the caller did not say,
+    #: and the store then writes NULL instead of guessing a source that would
+    #: make the row LOOK traceable while pointing at the wrong tenant.
+    external_source: str | None = None
 
     def sole_grn_mechanism(self, capabilities: Capabilities | None) -> bool:
         """True when this sweep is the only GRN acquisition path there is.
@@ -815,7 +865,22 @@ class SweepPoAnchored:
                 receive_external_id=receive.external_id,
                 line_external_id=str(line_external_id) if line_external_id else None,
                 quantity=_first_attr(line, ("quantity", "qty")),
-                amount_paise=amount_paise)
+                amount_paise=amount_paise,
+                # PROVENANCE, §11.10. `payload_sha` says which VERSION of the
+                # source document this row was built from, so a later re-read
+                # that disagrees is detectable rather than merely different.
+                external_source=self.external_source,
+                receive_number=receive.document_number,
+                # The source gives a DATE and `grn.received_at` is a
+                # timestamptz, so a receipt dated 2026-09-07 is stored at
+                # midnight UTC. The midnight is an artefact of the two types,
+                # NOT a claim about the hour, and the source's own value stays
+                # verbatim in the inbox payload either way. When the source
+                # gave no date at all this falls back to the observed time,
+                # which is a different fact and is the only one we have.
+                received_at=_as_datetime(receive.document_date) or ctx.now(),
+                external_last_modified=receive.last_modified_time,
+                payload_sha=receive.sha)
             return True
 
         exception_id = self.store.raise_exception(

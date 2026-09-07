@@ -47,7 +47,7 @@ _LOCK = "lock_affected_cells"
 #: `recompute_cell` (budget.py) issues the two `UPDATE budget_control_cell` /
 #: `UPDATE budget_ledger_cell` statements that derive the BUDGET columns.
 #:
-#: `recompute_commitment` (procurement.py, Wave 6) is the second, and it is
+#: `recompute_commitment` (procurement_services.py, Wave 6) is the second, and it is
 #: not an addition of convenience: `budget_ledger_cell.commitment_paise` had NO
 #: writer at all in the PostgreSQL path, so `check_availability`'s exposure
 #: limb never moved and every purchase order was invisible to the next budget
@@ -241,7 +241,8 @@ def caller(session, w, h):
 # Layer 1b -- the real service modules
 # ==========================================================================
 @pytest.mark.parametrize("module_name",
-                         ["budget.py", "periods.py", "procurement.py"])
+                         ["budget.py", "periods.py",
+                          "procurement_services.py", "procurement.py"])
 def test_service_module_obeys_the_lock_order(module_name):
     """Contract 3, checked against the shipped code."""
     problems = _violations(_analyse((_PG_DIR / module_name).read_text(encoding="utf-8")))
@@ -273,14 +274,16 @@ def test_the_known_mutating_functions_are_actually_analysed():
     # `lock_affected_cells` then expands to every budget-owning ancestor on
     # each chain. Locking only the nearest ancestor is the correctness hole
     # plan section 7.3 records.
-    procurement = _analyse((_PG_DIR / "procurement.py").read_text(encoding="utf-8"))
+    procurement = _analyse(
+        (_PG_DIR / "procurement_services.py").read_text(encoding="utf-8"))
     for fn in ("create_pr", "submit_pr", "approve_pr", "create_po",
                "convert_pr_to_po"):
         assert _LOCK in procurement.get(fn, []), (
-            f"procurement.{fn} must declare its lock set; analysed events: "
+            f"procurement_services.{fn} must declare its lock set; analysed "
+            f"events: "
             f"{procurement.get(fn)!r}")
         assert procurement[fn][0] == _LOCK, (
-            f"procurement.{fn} must lock FIRST; analysed events: "
+            f"procurement_services.{fn} must lock FIRST; analysed events: "
             f"{procurement[fn]!r}")
 
 
