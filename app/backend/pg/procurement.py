@@ -501,6 +501,15 @@ def recompute_commitment(session: Session, wbs_id: str, budget_head_id: str,
 
     Idempotent: it recomputes in full from ``po_line`` rather than adjusting,
     so running it twice produces the same number.
+
+    RLS AND THE DIRECTION OF THE ERROR, stated because it is not obvious. In
+    production this runs as ``capex_app``, so the ``bill_line`` subquery sees
+    only the bill lines the caller's scope permits. Under-counting ``billed``
+    OVERSTATES commitment, which refuses more spending rather than less -- the
+    safe direction, and the one to be in if the two ever disagree. It does not
+    arise in practice: ``wbs_id`` belongs to exactly one project, so every
+    ``po_line`` on a cell and every bill line against it sit in the project the
+    caller already had to reach to get here.
     """
     session.execute(  # scope-exempt: derives one already-locked cell from its own PO lines
         _RECOMPUTE_COMMITMENT_SQL,
