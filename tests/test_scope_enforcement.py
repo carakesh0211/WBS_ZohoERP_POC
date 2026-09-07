@@ -128,6 +128,15 @@ SCOPABLE = {
     "integration_circuit", "job",
     # Migration 011.
     "reconciliation_exception",
+    # Migration 013, all eight carrying a capex_scope_permits RLS policy that
+    # reaches `project` and filters all four dimensions. They were absent from
+    # this set for exactly as long as no module read them -- the Wave 6 schema
+    # landed before any service did -- and the moment a service arrived the
+    # gate would have walked it while being blind to its tables, which is the
+    # blind spot the Wave 5 note two paragraphs up describes happening to
+    # `integration/`. Added with the first module that reads them, not after.
+    "purchase_request", "pr_line", "purchase_order", "po_line",
+    "grn", "grn_line", "bill", "bill_line",
     "entity", "division", "branch", "zone", "department", "plant", "location",
     "project", "wbs_element", "budget_control_cell", "budget_ledger_cell",
     "budget_line", "budget_revision", "budget_transfer", "budget_version",

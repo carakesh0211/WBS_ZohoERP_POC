@@ -108,6 +108,27 @@ POST_BASELINE_FILES = {
     # stop meaning anything the moment the product grows.
     "test_pg_procurement_schema.py",
 
+    # --- Wave 6 agent 2: PR -> PO, and the emission to Zoho ---------------
+    # `test_procurement_emission.py` runs everywhere: the emission decision
+    # (how many purchase orders a requisition becomes, what identity each
+    # carries, what `cf_capex_ref` the tenant will index it under) is pure, so
+    # the split, the dedupe keys, the at-most-once behaviour under a simulated
+    # Function death and the three distinct 429 responses are all proved on
+    # every machine, against fakes and never against a tenant.
+    #
+    # `test_pg_procurement.py` is the half only a server can answer -- the
+    # derived-total trigger firing, the ancestor chain actually being locked,
+    # a maker-checker refusal actually stopping the UPDATE, an out-of-scope
+    # project actually answering as absent. It skips on every workstation here
+    # and first executes in CI's pg_tests job. A skip is not a pass, and every
+    # gate in it says so in its own skip reason.
+    #
+    # Post-baseline like every Wave 2-6 file: the 220 counts the POC's
+    # audit-remediation suite, and inflating it would make the removal guard
+    # stop meaning anything the moment the product grows.
+    "test_procurement_emission.py",
+    "test_pg_procurement.py",
+
 
     # --- Wave 5 stream 1 (integration): ONE rate-budget implementation -----
     # Wave 5 shipped THREE implementations of the same reservation; two could

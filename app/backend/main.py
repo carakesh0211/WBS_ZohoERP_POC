@@ -97,6 +97,7 @@ from .api import approvals as approvals_api
 from .api import budget as budget_api
 from .api import integrations as integrations_api
 from .api import masters as masters_api
+from .api import procurement as procurement_api
 from .api import settings as settings_api
 
 app.include_router(budget_api.router)
@@ -111,6 +112,12 @@ app.include_router(approvals_api.router)
 # fail immediately, and splitting the two across commits leaves a revision in
 # history whose test suite cannot pass.
 app.include_router(integrations_api.router)
+# Wave 6. Same rule, same commit: the six mutating paths this router serves
+# are in `tests/test_api_auth.py::MUTATING_ROUTES` in the commit that mounts
+# it. `/api/procurement/*` is the PostgreSQL chain over migration 013's eight
+# tables; the SQLite `/api/purchase-requests` and `/api/purchase-orders`
+# routes above are untouched and stay deployable until the cutover.
+app.include_router(procurement_api.router)
 
 PUBLIC_PATHS = {"/api/health", "/api/auth/login"}
 

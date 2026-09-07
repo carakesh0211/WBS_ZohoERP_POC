@@ -217,6 +217,51 @@ MUTATING_ROUTES = [
      "/api/integrations/exceptions/RX-1/resolve",
      {"status": "Resolved", "note": "unauthorised attempt"},
      "reconciliation.triage", "Auditor"),
+
+    # ---------------------------------------------------------- Wave 6
+    # `/api/procurement/*` -- the PostgreSQL PR -> PO chain over migration
+    # 013's tables. The router floor is `budget.read`, which every role holds,
+    # so every denied role below authenticates, clears the floor, and stops at
+    # the ROUTE's own permission. A denied role that failed the floor would
+    # produce a 403 from the wrong check and the row would prove nothing.
+    #
+    # Registered in the same commit that mounts the router in `main.py`, for
+    # the reason the Wave 5 block above states.
+    ("/api/procurement/purchase-requests", "POST",
+     "/api/procurement/purchase-requests",
+     {"project_id": "PRJ-01",
+      "lines": [{"wbs_id": "W-03-01", "budget_head_id": "BH-PM",
+                 "amount_paise": 100000}]},
+     "pr.create", "ProcurementApprover"),
+    ("/api/procurement/purchase-requests/{pr_id}/submit", "POST",
+     "/api/procurement/purchase-requests/PR-015/submit", {},
+     "pr.create", "ProcurementApprover"),
+    # The floor here is "holds pr.approve OR pr.approve_exception", because the
+    # two are held by different roles and the route serves both -- which one is
+    # actually required is decided from the request's own check_result inside
+    # the transaction. Requestor holds NEITHER, so only a 403 can pass, and the
+    # matrix's own `denied_role not in PERMISSIONS[permission]` assertion still
+    # means what it says.
+    ("/api/procurement/purchase-requests/{pr_id}/approve", "POST",
+     "/api/procurement/purchase-requests/PR-015/approve",
+     {"reason": "unauthorised attempt"}, "pr.approve", "Requestor"),
+    ("/api/procurement/purchase-requests/{pr_id}/convert", "POST",
+     "/api/procurement/purchase-requests/PR-015/convert",
+     {"vendor_name": "unauthorised attempt"}, "po.amend", "Requestor"),
+    ("/api/procurement/purchase-orders", "POST",
+     "/api/procurement/purchase-orders",
+     {"project_id": "PRJ-01", "vendor_name": "unauthorised attempt",
+      "lines": [{"wbs_id": "W-03-01", "budget_head_id": "BH-PM",
+                 "amount_paise": 100000}]},
+     "po.amend", "Requestor"),
+    # Emission is a connector operation: it writes `integration_outbox` rows
+    # against a tenant connection and commits no budget. Auditor holds
+    # `connector.read`, so it clears the floor and stops here.
+    ("/api/procurement/purchase-orders/{po_id}/emit", "POST",
+     "/api/procurement/purchase-orders/PO-004/emit",
+     {"connection_id": "CONN-01", "vendor_external_id": "ZV-77",
+      "document_date": "2026-09-07"},
+     "connector.manage", "Auditor"),
 ]
 
 PUBLIC_MUTATING_ROUTES = {"/api/auth/login"}
