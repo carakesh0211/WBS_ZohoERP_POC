@@ -41,13 +41,16 @@ __all__ = [
     "BillDTO",
     "ContactDTO",
     "DtoError",
+    "EmissionRef",
     "ItemDTO",
     "LineDTO",
     "Page",
     "Product",
     "PurchaseOrderDTO",
+    "PurchaseOrderEmissionDTO",
     "ReceiveDTO",
     "SourceRef",
+    "emitted_paise",
     "freeze",
     "paise",
     "parse_zoho_date",
@@ -365,3 +368,220 @@ class ContactDTO:
     email: str | None = None
     currency_code: str = "INR"
     raw: Mapping[str, Any] = field(default_factory=_EMPTY_MAPPING)
+
+
+# ======================================================== the OUTBOUND shapes
+# Everything above this line describes a document Zoho SENT US. Everything
+# below describes one we are about to send Zoho, and the two are deliberately
+# different types.
+#
+# WHY NOT REUSE `PurchaseOrderDTO`.
+# It was tried, and it is wrong in a way that matters. `PurchaseOrderDTO`
+# requires five fields that do not exist yet at emission time: `external_id`
+# (Zoho mints it in the response we have not received), `document_number`,
+# `last_modified`, `external_status_raw`, and -- the decisive one --
+# `source: SourceRef`. `SourceRef` is a PROVENANCE CLAIM: this module's own
+# docstring says a DTO that cannot say where it came from is not admissible,
+# and section 11 makes provenance the mechanism that stops a Books fact
+# becoming evidence for an Inventory claim. Filling it in for a document we are
+# inventing means fabricating a retrieval that never happened, from an endpoint
+# we never called. The other four would be empty strings and a placeholder
+# timestamp. Five fabricated fields, one of them the audit trail, to reuse a
+# class whose only overlap with an emission is four attribute names.
+#
+# So an emission carries `EmissionRef` instead: the outbound mirror of
+# `SourceRef`, naming the outbox row this document came from rather than the
+# response it came back in. A mapping error is still always traceable to a
+# record -- which is what section 11.10 actually asks for -- but the record is
+# ours.
+
+
+@dataclass(frozen=True)
+class EmissionRef:
+    """Where one OUTBOUND DTO came from: our outbox row, not Zoho's response.
+
+    The outbound counterpart of :class:`SourceRef`. ``(connection_id, module,
+    local_id)`` is C2's uniqueness on ``integration_outbox`` and ``dedupe_key``
+    is what the emitted document will carry in ``cf_capex_ref``, so these four
+    values locate both halves of the emission -- the row we read and the
+    document the tenant now holds -- from either end.
+    """
+    connection_id: str
+    module: str
+    local_id: str
+    dedupe_key: str
+
+    def __post_init__(self) -> None:
+        for name in ("connection_id", "module", "local_id", "dedupe_key"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value.strip():
+                raise DtoError(
+                    f"EmissionRef.{name} must be a non-empty string; got "
+                    f"{value!r}. An emission that cannot name the outbox row "
+                    "it came from is not traceable, and an untraceable "
+                    "commitment is the one thing section 11.10 rules out.")
+
+
+def emitted_paise(value: Any, *, field: str, allow_zero: bool = True) -> int:
+    """A monetary value on an OUTBOUND document, as integer paise.
+
+    Deliberately NOT :func:`paise`. That one parses a value Zoho sent us, which
+    arrives as a decimal string and gets rounded once. This one validates a
+    figure we computed ourselves, which must ALREADY be integer paise -- so a
+    string, a float or a ``Decimal`` reaching it is a defect in our own code
+    and is refused rather than converted. Converting here would be the last
+    place a rounding error could enter a purchase order, and a purchase order
+    is a commitment.
+
+    ``bool`` is rejected explicitly because ``isinstance(True, int)`` is
+    ``True`` in Python, and ``True`` would otherwise be accepted as one paisa.
+    """
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise DtoError(
+            f"{field} must be integer paise (bigint), not "
+            f"{type(value).__name__} ({value!r}). Money never travels as a "
+            "float, a Decimal or a string on the outbound path.")
+    if value < 0:
+        raise DtoError(f"{field} must not be negative; got {value}.")
+    if value == 0 and not allow_zero:
+        raise DtoError(
+            f"{field} must be positive; got 0. A zero here would emit a "
+            "purchase order committing nothing, which no approval reviewed.")
+    return value
+
+
+def _emission_identifier(value: Any, *, field: str) -> str:
+    """A non-blank identifier on an outbound document."""
+    if not isinstance(value, str) or not value.strip():
+        raise DtoError(
+            f"{field} must be a non-empty string; got {value!r}. An emission "
+            "missing an identifier cannot be linked back to what it commits "
+            "against, and an unlinked commitment is an unreconcilable one.")
+    return value
+
+
+@dataclass(frozen=True)
+class PurchaseOrderEmissionDTO:
+    """A purchase order we are about to create, validated field by field.
+
+    This is the type the C1 adapters' ``create_purchase_order`` and
+    ``update_purchase_order`` actually consume: both build their wire body by
+    ATTRIBUTE access (``po.vendor_external_id``, ``po.document_date``,
+    ``po.currency_code``, ``po.lines``, and per line ``unit_price_paise``,
+    ``quantity``, ``description``, ``item_external_id``). Handing them a
+    ``Mapping`` raises ``AttributeError`` on the first field, which is why the
+    FIRST emission -- not merely a retry -- could never have worked.
+
+    ``document_date`` is a :class:`datetime.date` and a :class:`datetime` is
+    REFUSED, even though ``datetime`` subclasses ``date``. The adapters send
+    ``po.document_date.isoformat()`` into a Zoho ``date`` field; a ``datetime``
+    would render ``2026-09-07T10:00:00+00:00`` there, and a purchase order
+    whose document date is rejected or silently truncated is a commitment
+    landing in a period nobody chose.
+    """
+    origin: EmissionRef
+    vendor_external_id: str
+    document_date: date
+    currency_code: str
+    lines: tuple[LineDTO, ...]
+    subtotal_paise: int
+    tax_paise: int
+    total_paise: int
+    reference: str | None = None
+    #: Header-level ``(wbs_id, budget_head_id)``, populated only when D-7
+    #: resolved False and the dimensions could not go on the lines.
+    dimensions: Mapping[str, Any] = field(default_factory=_EMPTY_MAPPING)
+    #: Always ``draft`` (section 11.7). The move to ``open`` is a separate call.
+    state: str = "draft"
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.origin, EmissionRef):
+            raise DtoError(
+                "PurchaseOrderEmissionDTO.origin must be an EmissionRef; got "
+                f"{type(self.origin).__name__}.")
+        _emission_identifier(
+            self.vendor_external_id,
+            field="PurchaseOrderEmissionDTO.vendor_external_id")
+
+        # `datetime` is a subclass of `date`, so the ORDER of these two checks
+        # is the check.
+        if isinstance(self.document_date, datetime) or not isinstance(
+                self.document_date, date):
+            raise DtoError(
+                "PurchaseOrderEmissionDTO.document_date must be a "
+                f"datetime.date, not {type(self.document_date).__name__} "
+                f"({self.document_date!r}). The adapter sends "
+                "document_date.isoformat() into a Zoho DATE field, so a "
+                "datetime would write a timestamp where a date belongs.")
+
+        code = self.currency_code
+        if not isinstance(code, str) or not re.fullmatch(r"[A-Z]{3}", code):
+            raise DtoError(
+                "PurchaseOrderEmissionDTO.currency_code must be a three-letter "
+                f"ISO-4217 code in upper case; got {code!r}.")
+
+        if self.state != "draft":
+            raise DtoError(
+                "A purchase order is emitted as 'draft', never "
+                f"{self.state!r}. The transition to 'open' is a separate call "
+                "made only after our approval instance closes (section 11.7).")
+
+        if not isinstance(self.lines, tuple) or not self.lines:
+            raise DtoError(
+                "PurchaseOrderEmissionDTO.lines must be a non-empty tuple; got "
+                f"{self.lines!r}. A purchase order with no lines commits "
+                "nothing and would still consume a dedupe key.")
+
+        running = 0
+        for index, line in enumerate(self.lines, start=1):
+            if not isinstance(line, LineDTO):
+                raise DtoError(
+                    f"PurchaseOrderEmissionDTO.lines[{index - 1}] must be a "
+                    f"LineDTO; got {type(line).__name__}. The adapter reads "
+                    "line attributes, not keys.")
+            where = f"PurchaseOrderEmissionDTO.lines[{index - 1}]"
+            if line.line_number != index:
+                raise DtoError(
+                    f"{where}.line_number is {line.line_number}, expected "
+                    f"{index}. Line numbers are the operator's only handle on "
+                    "which line of a purchase order a query is about; a gap or "
+                    "a repeat makes a reconciliation query silently ambiguous.")
+            emitted_paise(line.unit_price_paise,
+                          field=f"{where}.unit_price_paise")
+            emitted_paise(line.line_total_paise,
+                          field=f"{where}.line_total_paise")
+            emitted_paise(line.tax_paise, field=f"{where}.tax_paise")
+            quantity(line.quantity, field=f"{where}.quantity")
+            if (not isinstance(line.description, str)
+                    or not line.description.strip()):
+                raise DtoError(
+                    f"{where}.description is required; got "
+                    f"{line.description!r}. A vendor cannot acknowledge an "
+                    "unnamed line.")
+            running += line.line_total_paise
+
+        emitted_paise(self.subtotal_paise,
+                      field="PurchaseOrderEmissionDTO.subtotal_paise")
+        emitted_paise(self.tax_paise,
+                      field="PurchaseOrderEmissionDTO.tax_paise")
+        emitted_paise(self.total_paise,
+                      field="PurchaseOrderEmissionDTO.total_paise",
+                      allow_zero=False)
+
+        # Integer arithmetic, checked rather than trusted. These two identities
+        # are the only thing standing between a line-mapping mistake and a
+        # purchase order that commits a different number from the one the
+        # budget check cleared. They are asserted HERE, at the boundary, rather
+        # than only in a test: a test proves the mapper is right today, whereas
+        # this refuses the document on the day it stops being.
+        if running != self.subtotal_paise:
+            raise DtoError(
+                f"PurchaseOrderEmissionDTO.subtotal_paise is "
+                f"{self.subtotal_paise} but the lines sum to {running}. A "
+                "purchase order whose header disagrees with its own lines "
+                "commits an amount no line accounts for.")
+        if self.subtotal_paise + self.tax_paise != self.total_paise:
+            raise DtoError(
+                f"PurchaseOrderEmissionDTO.total_paise is {self.total_paise} "
+                f"but subtotal {self.subtotal_paise} + tax {self.tax_paise} is "
+                f"{self.subtotal_paise + self.tax_paise}.")

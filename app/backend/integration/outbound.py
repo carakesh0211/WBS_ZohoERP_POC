@@ -50,15 +50,29 @@ rather than converting one.
 
 Seams this module needs from other streams
 ------------------------------------------
-The streams run in parallel, so this module is written against the frozen C1/C2
-signatures and **duck-types** everything else. It imports nothing from
-``adapter.py``, ``dto.py``, ``throttle.py`` or ``integration_store.py``: each is
-described here as a ``Protocol`` and satisfied structurally. Two extensions to
-C1 are needed and are **declared, not made** -- see :class:`ProcurementAdapter`.
-C1 as frozen cannot express an idempotent retry on its own:
-``create_purchase_order(po, dedupe_key)`` takes the key but has no documented
-behaviour when the key already exists, and that gap is reported to stream 1
-rather than patched into a file this stream does not own.
+This module was written while the streams ran in parallel, so it duck-typed
+every seam and imported nothing from ``dto.py`` or ``integration_store.py``:
+each was described here as a ``Protocol`` and satisfied structurally. That was
+right while the other files were moving. It is no longer, and the cost of
+keeping it was three defects that a single import would have made impossible:
+
+* the outbox state vocabulary drifted to six values, three of which the table's
+  CHECK rejects, because nothing ever compared the two lists;
+* a second implementation of the rate-budget reservation grew here, against
+  columns migration 010 does not declare and a conflict target that is not the
+  primary key, so it could never have executed;
+* the payload was handed to the adapter as a raw ``Mapping`` while both shipped
+  adapters read it by attribute, so **the first emission raised
+  ``AttributeError``** -- there was no shape in between and nothing typed
+  strongly enough to notice.
+
+So the seams that have landed are now imported and checked: ``dto`` for the
+emission shape and ``integration_store`` for the reservation and the state
+vocabulary (asserted at import, below). The **adapter** stays duck-typed, and
+deliberately: ``ProcurementAdapter`` declares the three C1 extensions this
+module needs, and an adapter implementing only frozen C1 must still work --
+:func:`emit_purchase_order` probes all three with ``getattr`` and says in its
+result when it is running without them.
 """
 from __future__ import annotations
 
@@ -66,10 +80,13 @@ import hashlib
 import random
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import (Any, Iterable, Mapping, Protocol, Sequence, runtime_checkable)
 
 from app.backend.money import MoneyError
+
+from ..pg import integration_store as store
+from .dto import EmissionRef, LineDTO, PurchaseOrderEmissionDTO, freeze
 
 # --------------------------------------------------------------------------
 # Constants that are decisions, not defaults
@@ -102,6 +119,17 @@ DEDUPE_KEY_MAX_LENGTH = 120
 PO_STATE_DRAFT = "draft"
 PO_STATE_OPEN = "open"
 
+#: Stamped into every ``integration_outbox.payload`` this module writes, and
+#: required by :func:`emission_dto`.
+#:
+#: An outbox row can outlive the code that wrote it by days -- it is enqueued
+#: in the business transaction and drained by a later cron tick -- so the
+#: mapper will one day be asked to read a payload written by a previous shape.
+#: Refusing an unrecognised version is the difference between that row landing
+#: on SCR-39 as a defect and being mapped on a guess, and the fields it would
+#: be guessing about are monetary.
+PAYLOAD_VERSION = 1
+
 #: Reconciliation exception kinds this module raises. ``UNSANCTIONED_COMMITMENT``
 #: is named in §11.7 and blocks period close; the other two are the ways the
 #: draft-to-open contract and the dedupe key can be violated.
@@ -114,30 +142,55 @@ KIND_ORPHANED_EMISSION = "ORPHANED_EMISSION"
 #: the client's tenant. D-7 (line-level custom fields) is unresolved.
 UNVERIFIED = "UNVERIFIED - REQUIRES ZOHO CONFIRMATION"
 
-#: Outbox states. C2 freezes the columns, not the vocabulary; these are the
-#: states this module drives.
+#: Outbox states. **The C16 `outbox` namespace, and nothing else.**
+#:
+#: These were once six: ``SENDING``, ``RETRY`` and ``DEFERRED`` alongside the
+#: four below. All three were invented here. The table's CHECK
+#: (``ck_integration_outbox_state``), ``integration_store.OUTBOX_STATES`` and
+#: ``research/30_contracts/C16_integration_statuses.json`` agree on exactly
+#: four, so every write this module made of the other three would have been
+#: refused by PostgreSQL. ``FAILED`` -- the one that does exist -- was unused.
+#:
+#: ``RETRY`` and ``DEFERRED`` were straightforward synonyms and are gone.
+#: ``SENDING`` was the argument, and it is answered in :func:`emit_purchase_order`
+#: and in :data:`CLAIMABLE_STATES` below.
 OUTBOX_PENDING = "PENDING"
-OUTBOX_SENDING = "SENDING"
 OUTBOX_SENT = "SENT"
-OUTBOX_RETRY = "RETRY"
-OUTBOX_DEFERRED = "DEFERRED"
+OUTBOX_FAILED = "FAILED"
 OUTBOX_DEAD = "DEAD"
 
-#: The states a claim may move to SENDING from. ``SENDING`` is included on
-#: purpose: a row left in SENDING is a Function that died mid-flight, and the
-#: recovery path must be able to pick it up. It is the reason resolve-by-key
-#: exists.
-CLAIMABLE_STATES = (OUTBOX_PENDING, OUTBOX_RETRY, OUTBOX_SENDING, OUTBOX_DEFERRED)
+#: The canonical four, in C16's order, asserted against the store at import.
+OUTBOX_STATES = (OUTBOX_PENDING, OUTBOX_SENT, OUTBOX_FAILED, OUTBOX_DEAD)
 
-#: How long a claim owns a row before another worker may take it (§2.2's job
-#: contract has a **12-minute soft deadline**, so the lease must be longer than
-#: that). A shorter lease is not a tuning choice, it is a duplicate: a second
-#: worker would claim a row whose first worker is still mid-request, resolve
-#: the dedupe key before that request lands, find nothing, and create a second
-#: purchase order. Z-01's unique index is what stops that becoming two records
-#: -- which is the clearest statement of why Z-01 cannot be replaced by a
-#: read-before-write.
-SENDING_LEASE_SECONDS = 900
+# The assertion is at import, not in a test, deliberately. A test proves the
+# two lists agreed on the day it ran; this refuses to load a module whose
+# vocabulary has drifted from the schema's. Drift is exactly how three states
+# that PostgreSQL rejects survived a whole wave -- every double in the test
+# suite agreed with the module rather than with the table.
+if tuple(store.OUTBOX_STATES) != OUTBOX_STATES:  # pragma: no cover - guard
+    raise ImportError(
+        "outbound.py's outbox vocabulary "
+        f"{OUTBOX_STATES!r} has drifted from integration_store.OUTBOX_STATES "
+        f"{tuple(store.OUTBOX_STATES)!r}, which mirrors "
+        "ck_integration_outbox_state. A state this module writes and the "
+        "table refuses is a row that never persists.")
+
+#: The states a row may be claimed from -- the same two
+#: ``integration_store.claim_outbox_batch`` selects, and for the same reason.
+#:
+#: There is no in-flight state here, because there is no in-flight STATE.
+#: Exclusion is `SELECT ... FOR UPDATE SKIP LOCKED`, held by the claiming
+#: transaction: a second worker skips a locked row, and a Function that dies
+#: mid-request drops its lock with its connection, so the row is immediately
+#: re-claimable with no lease to expire and no 15-minute dead zone. That is
+#: what the previous lease-plus-``SENDING`` design was reimplementing in a
+#: column, less well.
+#:
+#: What ``SENDING`` was really carrying was "a despatch may already have
+#: happened, so do not create blindly". That fact is not needed, because
+#: :func:`emit_purchase_order` resolves by dedupe key before EVERY create,
+#: never only after a suspicious state -- see its step 3.
+CLAIMABLE_STATES = (OUTBOX_PENDING, OUTBOX_FAILED)
 
 #: §11.6: max_attempts=8, then DEAD and visible on SCR-39 with manual retry.
 MAX_ATTEMPTS = 8
@@ -350,14 +403,40 @@ class PurchaseOrderDraft:
     connection_id: str
     vendor_external_id: str
     lines: tuple[PoLine, ...]
+    #: The document date the vendor and the ledger will both see. **Required,
+    #: and frozen at enqueue rather than read from the clock at send time.**
+    #:
+    #: This field did not exist, and its absence was load-bearing. Both shipped
+    #: adapters send ``po.document_date.isoformat()``, so with no date on the
+    #: draft the payload could not carry one and the only way to satisfy the
+    #: adapter would have been ``date.today()`` inside the emission. A retry is
+    #: not same-day: a row that fails at 23:58 and succeeds on the next tick
+    #: would carry a different document date from the one the approval cleared,
+    #: and an adopted-then-updated purchase order would have its date REWRITTEN
+    #: by the recovery. The commitment would move period without anyone
+    #: choosing that. So the date is an input, like the amount.
+    document_date: date
     header_cell: ControlCell | None = None
     line_level_dimensions: bool = True
     state: str = PO_STATE_DRAFT
-    currency: str = "INR"
+    #: Named ``currency_code`` to match :class:`~app.backend.integration.dto.
+    #: PurchaseOrderEmissionDTO` exactly. It was ``currency`` here and
+    #: ``currency_code`` there; a rename across a mapping boundary is a field
+    #: that gets dropped, and a purchase order emitted with no currency is one
+    #: the tenant fills in from its own default.
+    currency_code: str = "INR"
     reference: str | None = None
     provenance: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
+        if isinstance(self.document_date, datetime) or not isinstance(
+                self.document_date, date):
+            raise EmissionShapeError(
+                "PurchaseOrderDraft.document_date must be a datetime.date, not "
+                f"{type(self.document_date).__name__} "
+                f"({self.document_date!r}). datetime subclasses date, so this "
+                "check is on the order of the two isinstance calls; a datetime "
+                "would put a timestamp in a Zoho DATE field.")
         if self.state != PO_STATE_DRAFT:
             raise EmissionShapeError(
                 f"A purchase order is emitted as {PO_STATE_DRAFT!r}, never "
@@ -393,29 +472,61 @@ class PurchaseOrderDraft:
         return tuple(seen)
 
     def as_payload(self, dedupe_key: str) -> dict[str, Any]:
-        """The product-agnostic payload handed to the adapter.
+        """The JSON stored in ``integration_outbox.payload`` (C2, ``jsonb``).
+
+        **This is one of the two halves of the mapping and it is now closed.**
+        The other is :func:`emission_dto_from_record`, and
+        :meth:`as_emission_dto` is the composition of the two --
+        ``draft.as_emission_dto(k)`` and the DTO rebuilt from
+        ``draft.as_payload(k)`` are asserted equal, so a field added to one
+        half and forgotten in the other fails a test rather than silently
+        dropping off a purchase order.
+
+        Three shapes exist and each earns its place: :class:`PurchaseOrderDraft`
+        is what a caller assembles (control cells, integer paise, our
+        vocabulary); this ``dict`` is what survives a process death (C2 froze
+        ``payload jsonb``, and JSON has no dates and no tuples); and
+        :class:`~app.backend.integration.dto.PurchaseOrderEmissionDTO` is what
+        the adapter reads by attribute. Passing this dict straight to the
+        adapter -- which is what happened -- raises ``AttributeError`` on
+        ``po.vendor_external_id``.
 
         ``cf_capex_ref`` is placed here, not in the adapter, because it is the
-        idempotency key and this module owns idempotency. The adapter maps the
-        rest onto whichever product D-14 resolves to.
+        idempotency key and this module owns idempotency.
         """
         header: dict[str, Any] = {
+            # Stamped so a payload written by an older shape is refused loudly
+            # by `emission_dto_from_record` rather than mapped on a guess.
+            "payload_version": PAYLOAD_VERSION,
             "local_id": self.local_id,
+            "connection_id": self.connection_id,
             "vendor_external_id": self.vendor_external_id,
             "state": self.state,
-            "currency": self.currency,
+            # ISO-8601 date, never a timestamp: `date.isoformat()` on a
+            # `datetime.date` is `YYYY-MM-DD` and `__post_init__` has already
+            # refused a `datetime`.
+            "document_date": self.document_date.isoformat(),
+            "currency_code": self.currency_code,
             "reference": self.reference,
             CF_CAPEX_REF: dedupe_key,
+            "line_level_dimensions": self.line_level_dimensions,
+            "subtotal_paise": self.total_paise,
+            "tax_paise": 0,
             "total_paise": self.total_paise,
         }
         if not self.line_level_dimensions and self.header_cell is not None:
             header["wbs_id"] = self.header_cell.wbs_id
             header["budget_head_id"] = self.header_cell.budget_head_id
         lines = []
-        for line in self.lines:
+        for number, line in enumerate(self.lines, start=1):
             item: dict[str, Any] = {
+                "line_number": number,
                 "line_id": line.line_id,
                 "description": line.description,
+                # Integer here, exact decimal STRING in the DTO. `PoLine`
+                # counts whole units; `LineDTO.quantity` is a string because a
+                # quantity is decimal but is not money and must never acquire a
+                # float. The conversion is `str(int)`, which is exact.
                 "quantity": line.quantity,
                 "unit_price_paise": line.unit_price_paise,
                 "amount_paise": line.amount_paise,
@@ -426,6 +537,261 @@ class PurchaseOrderDraft:
             lines.append(item)
         header["lines"] = lines
         return header
+
+    def as_emission_dto(self, dedupe_key: str, *, module: str
+                        ) -> PurchaseOrderEmissionDTO:
+        """This draft as the DTO the adapter consumes, without going via JSON.
+
+        The forward half of the mapping. It exists so the round trip is
+        testable: a draft mapped straight to a DTO must equal the same draft
+        mapped to a payload, stored, read back and mapped to a DTO. If those
+        two ever differ, a field is being lost in ``payload jsonb`` -- and the
+        fields at risk are monetary.
+        """
+        return emission_dto(
+            payload=self.as_payload(dedupe_key),
+            connection_id=self.connection_id, module=module,
+            local_id=self.local_id, dedupe_key=dedupe_key)
+
+# --------------------------------------------------------------------------
+# The mapping. `payload jsonb` -> the DTO the adapter reads by attribute.
+# --------------------------------------------------------------------------
+# THIS IS THE HALF THAT WAS MISSING, and its absence was not a retry defect:
+# `emit_purchase_order` passed `record.payload` -- a `Mapping[str, Any]` -- to
+# `adapter.create_purchase_order`, and both shipped adapters build their wire
+# body from `po.vendor_external_id`, `po.document_date.isoformat()`,
+# `po.currency_code` and `po.lines`. A dict raises `AttributeError` on the
+# first of those. THE FIRST EMISSION COULD NEVER HAVE SUCCEEDED. The chaos
+# test did not catch it because its `FakeAdapter` accepts a Mapping -- it does
+# `dict(payload)` -- so every double in the suite agreed with the caller
+# instead of with the two adapters that actually ship.
+#
+# A previous stream declined to invent this mapping and bridged its test with a
+# labelled `_PayloadShim` instead. That was the right call at the time: getting
+# `PoLine.amount_paise` -> `LineDTO` wrong is not a crash, it is a purchase
+# order committing the wrong number, and a wrong number that reconciles against
+# nothing is worse than an AttributeError. The mapping is defined here now,
+# explicitly, in both directions, with every monetary and identifier field
+# validated at the boundary rather than trusted.
+
+
+def _payload_str(payload: Mapping[str, Any], key: str, *, where: str,
+                 allow_none: bool = False) -> str | None:
+    value = payload.get(key)
+    if value is None and allow_none:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise EmissionShapeError(
+            f"{where}: payload[{key!r}] must be a non-empty string; got "
+            f"{value!r}. An emission assembled from a payload missing an "
+            "identifier cannot be reconciled back to what it commits against.")
+    return value
+
+
+def _payload_paise(payload: Mapping[str, Any], key: str, *, where: str) -> int:
+    """A monetary field out of `payload jsonb`, as integer paise.
+
+    JSON has no integer/float distinction that survives every parser, so this
+    refuses a float rather than truncating one. `json.loads` turns `25000000.0`
+    into a Python float, and a float that reaches a purchase order line is the
+    defect AUD-H-007 was about.
+    """
+    value = payload.get(key)
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise MoneyError(
+            f"{where}: payload[{key!r}] must be integer paise (bigint), not "
+            f"{type(value).__name__} ({value!r}). Money never travels as a "
+            "float, a Decimal or a string through the outbound path.")
+    if value < 0:
+        raise MoneyError(f"{where}: payload[{key!r}] must not be negative; "
+                         f"got {value}.")
+    return value
+
+
+def _payload_document_date(payload: Mapping[str, Any], *, where: str) -> date:
+    """``document_date`` back out of JSON, as a ``date`` and never a timestamp.
+
+    ``date.fromisoformat`` on Python 3.11+ happily parses a full timestamp and
+    returns... a ``date``, silently discarding the time. That is the wrong kind
+    of tolerance here: a payload carrying a timestamp was written by something
+    that did not know this field is a date, and mapping it anyway hides that.
+    """
+    raw = payload.get("document_date")
+    if not isinstance(raw, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw):
+        raise EmissionShapeError(
+            f"{where}: payload['document_date'] must be an ISO date "
+            f"(YYYY-MM-DD); got {raw!r}. The adapter sends this into a Zoho "
+            "DATE field, and a purchase order whose date is rejected or "
+            "truncated is a commitment landing in a period nobody chose.")
+    return date.fromisoformat(raw)
+
+
+def _emission_line(item: Any, *, number: int, where: str) -> LineDTO:
+    """One payload line as a :class:`LineDTO`, field by named field.
+
+    The money mapping, stated once so it can be checked:
+
+    * ``unit_price_paise`` -> ``LineDTO.unit_price_paise``  (paise, unchanged)
+    * ``amount_paise``     -> ``LineDTO.line_total_paise``  (paise, unchanged)
+    * ``quantity`` (int)   -> ``LineDTO.quantity`` (exact decimal STRING)
+
+    The second of those is the one worth staring at. ``PoLine.amount_paise`` is
+    the LINE TOTAL, not a unit rate, and ``LineDTO`` has a field for each; a
+    mapping that put the amount in ``unit_price_paise`` would multiply the
+    commitment by the quantity, silently, on a document a vendor then invoices
+    against. It is checked twice over -- here by name, and by
+    ``PurchaseOrderEmissionDTO.__post_init__`` re-summing the lines against the
+    header total.
+
+    ``external_line_id`` is ``None``, deliberately. That field is AUD-H-004's
+    ZOHO line id, and Zoho has not minted one for a line it has not yet seen.
+    Putting our local ``line_id`` there would make an unresolved linkage look
+    resolved, which is precisely the ``GRN_LINE_UNATTRIBUTED`` failure §11.8
+    exists to keep visible. The local id is preserved in ``raw`` instead, where
+    it is traceable without being mistaken for an external handle.
+    """
+    if not isinstance(item, Mapping):
+        raise EmissionShapeError(
+            f"{where}: line {number} must be a JSON object; got "
+            f"{type(item).__name__}.")
+
+    stated = item.get("line_number")
+    if stated is not None and stated != number:
+        raise EmissionShapeError(
+            f"{where}: line {number} carries line_number {stated!r}. The "
+            "payload's line order and its line numbers disagree, so a "
+            "reconciliation query naming a line number would resolve to a "
+            "different line from the one the operator is looking at.")
+
+    quantity = item.get("quantity")
+    if isinstance(quantity, bool) or not isinstance(quantity, int):
+        raise MoneyError(
+            f"{where}: line {number} quantity must be an integer; got "
+            f"{type(quantity).__name__} ({quantity!r}).")
+    if quantity <= 0:
+        raise EmissionShapeError(
+            f"{where}: line {number} quantity must be positive; got "
+            f"{quantity}.")
+
+    line_where = f"{where} line {number}"
+    unit = _payload_paise(item, "unit_price_paise", where=line_where)
+    total = _payload_paise(item, "amount_paise", where=line_where)
+
+    dimensions: dict[str, Any] = {}
+    for name in ("wbs_id", "budget_head_id"):
+        if item.get(name) is not None:
+            dimensions[name] = item[name]
+
+    return LineDTO(
+        external_line_id=None,
+        line_number=number,
+        description=_payload_str(item, "description", where=line_where),
+        # `str(int)` is exact. A quantity is decimal but is not money, so it
+        # gets neither `to_paise` nor a float (dto.py's second rule).
+        quantity=str(quantity),
+        unit_price_paise=unit,
+        line_total_paise=total,
+        # Our drafts carry no per-line tax: the CAPEX commitment is the line
+        # amount, and tax on a purchase order is the vendor's to state on the
+        # bill. Zero rather than absent, so the header identity
+        # `subtotal + tax == total` has a real number on both sides.
+        tax_paise=0,
+        item_external_id=None,
+        purchase_order_line_external_id=None,
+        dimensions=freeze(dimensions),
+        raw=freeze(dict(item)),
+    )
+
+
+def emission_dto(*, payload: Mapping[str, Any], connection_id: str,
+                 module: str, local_id: str, dedupe_key: str
+                 ) -> PurchaseOrderEmissionDTO:
+    """A stored payload as the DTO both shipped adapters actually read.
+
+    The four identifiers are passed separately and **cross-checked** against
+    what the payload claims, rather than being read out of it. They are the
+    outbox row's own columns, and the row is authoritative: a payload whose
+    ``local_id`` or ``cf_capex_ref`` disagrees with the row carrying it is a
+    payload written for a different document, and emitting it would attach one
+    requisition's amount to another requisition's dedupe key -- a duplicate and
+    a mis-link in one call. That cannot be repaired by preferring either side,
+    so it is refused.
+    """
+    where = f"outbox payload for {local_id!r}"
+
+    version = payload.get("payload_version")
+    if version != PAYLOAD_VERSION:
+        raise EmissionShapeError(
+            f"{where}: payload_version is {version!r}, expected "
+            f"{PAYLOAD_VERSION}. This row was written by a different shape of "
+            "this module; mapping it would be a guess about monetary fields.")
+
+    for name, expected in (("local_id", local_id),
+                           ("connection_id", connection_id),
+                           (CF_CAPEX_REF, dedupe_key)):
+        found = payload.get(name)
+        if found != expected:
+            raise EmissionShapeError(
+                f"{where}: payload[{name!r}] is {found!r} but the outbox row "
+                f"says {expected!r}. The row is authoritative -- it is what "
+                "any already-created purchase order was keyed on -- so a "
+                "payload that disagrees with it is refused rather than "
+                "reconciled to either side.")
+
+    state = payload.get("state")
+    if state != PO_STATE_DRAFT:
+        raise EmissionShapeError(
+            f"{where}: payload['state'] is {state!r}. A purchase order is "
+            f"emitted as {PO_STATE_DRAFT!r}; the move to {PO_STATE_OPEN!r} is "
+            "a separate call made only after our approval instance closes "
+            "(§11.7).")
+
+    raw_lines = payload.get("lines")
+    if not isinstance(raw_lines, Sequence) or isinstance(raw_lines, (str, bytes)) \
+            or not raw_lines:
+        raise EmissionShapeError(
+            f"{where}: payload['lines'] must be a non-empty list; got "
+            f"{raw_lines!r}.")
+
+    lines = tuple(
+        _emission_line(item, number=number, where=where)
+        for number, item in enumerate(raw_lines, start=1))
+
+    dimensions: dict[str, Any] = {}
+    for name in ("wbs_id", "budget_head_id"):
+        if payload.get(name) is not None:
+            dimensions[name] = payload[name]
+
+    return PurchaseOrderEmissionDTO(
+        origin=EmissionRef(connection_id=connection_id, module=module,
+                           local_id=local_id, dedupe_key=dedupe_key),
+        vendor_external_id=_payload_str(payload, "vendor_external_id",
+                                        where=where),
+        document_date=_payload_document_date(payload, where=where),
+        currency_code=_payload_str(payload, "currency_code", where=where),
+        lines=lines,
+        subtotal_paise=_payload_paise(payload, "subtotal_paise", where=where),
+        tax_paise=_payload_paise(payload, "tax_paise", where=where),
+        total_paise=_payload_paise(payload, "total_paise", where=where),
+        reference=_payload_str(payload, "reference", where=where,
+                               allow_none=True),
+        dimensions=freeze(dimensions),
+    )
+
+
+def emission_dto_from_record(record: OutboxRecord) -> PurchaseOrderEmissionDTO:
+    """:func:`emission_dto`, with the identifiers taken from the outbox row.
+
+    This is what :func:`emit_purchase_order` calls, and it is the ONLY thing
+    that may be handed to an adapter. Nothing in this module passes a
+    ``Mapping`` to ``create_purchase_order`` or ``update_purchase_order`` any
+    more, and ``tests/test_outbound_chaos.py`` fails if anything starts to.
+    """
+    return emission_dto(
+        payload=record.payload, connection_id=record.connection_id,
+        module=record.module, local_id=record.local_id,
+        dedupe_key=record.dedupe_key)
+
 
 
 # --------------------------------------------------------------------------
@@ -492,6 +858,7 @@ class EmissionPlan:
 
 def plan_emission(*, local_id: str, connection_id: str, vendor_external_id: str,
                   lines: Sequence[PoLine], capabilities: Any,
+                  document_date: date,
                   reference: str | None = None) -> EmissionPlan:
     """Decide the purchase-order shape from ``Capabilities`` -- never by default.
 
@@ -523,6 +890,7 @@ def plan_emission(*, local_id: str, connection_id: str, vendor_external_id: str,
         draft = PurchaseOrderDraft(
             local_id=local_id, connection_id=connection_id,
             vendor_external_id=vendor_external_id, lines=tuple(lines),
+            document_date=document_date,
             header_cell=None, line_level_dimensions=True, reference=reference,
             provenance=(
                 f"D-7 line-level custom fields assumed available: {UNVERIFIED}",),
@@ -542,7 +910,8 @@ def plan_emission(*, local_id: str, connection_id: str, vendor_external_id: str,
             # would be refused as duplicates of the first.
             local_id=f"{local_id}#{cell[0]}#{cell[1]}",
             connection_id=connection_id, vendor_external_id=vendor_external_id,
-            lines=tuple(cell_lines), header_cell=ControlCell(*cell),
+            lines=tuple(cell_lines), document_date=document_date,
+            header_cell=ControlCell(*cell),
             line_level_dimensions=False, reference=reference,
             provenance=(f"Header-only dimensions (D-7 False); split {local_id} "
                         f"on control cell {cell[0]}/{cell[1]}",),
@@ -624,8 +993,14 @@ class RateBudget(Protocol):
     the window that refused. §11.6 says over-budget is not a failure -- the job
     checkpoints and the next tick resumes -- so the refusal carries the window
     rather than raising inside the budget.
+
+    ``now`` is part of the seam rather than left to the implementation's own
+    clock. The binding window is the DAY, so which instant a reservation is
+    charged at decides which ceiling row it lands on, and an emission whose
+    budget disagrees with it about the date is charging a day it is not in.
     """
-    def reserve(self, calls: int) -> BudgetDecision: ...
+    def reserve(self, calls: int, *,
+                now: datetime | None = None) -> BudgetDecision: ...
 
 
 @dataclass
@@ -639,8 +1014,17 @@ class OutboxRecord:
     payload: Mapping[str, Any]
     state: str = OUTBOX_PENDING
     attempts: int = 0
+    #: C2's own column, defaulted to §11.6's eight. Carried here rather than
+    #: assumed from :data:`MAX_ATTEMPTS` because
+    #: ``ck_integration_outbox_dead_exhausted_attempts`` compares DEAD against
+    #: THIS row's ceiling, and a row whose ceiling was raised by an operator
+    #: would otherwise be declared dead by a constant that no longer applies.
+    max_attempts: int = MAX_ATTEMPTS
     next_attempt_at: datetime | None = None
     external_id: str | None = None
+    #: Moves with ``state == SENT`` and only with it
+    #: (``ck_integration_outbox_sent_at``, a biconditional both ways).
+    sent_at: datetime | None = None
     last_error: str | None = None
     correlation_id: str | None = None
 
@@ -652,12 +1036,32 @@ class OutboxStore(Protocol):
     network call is the whole safety argument, so they are named for what they
     guarantee rather than for the SQL they run.
 
-    ``claim`` carries the one requirement that is not obvious from its name: it
-    must move the row to ``SENDING`` and take a **lease** of
-    :data:`SENDING_LEASE_SECONDS`, atomically, returning ``None`` when another
-    worker's lease is still live. A row in ``SENDING`` with an expired lease is
-    claimable -- that is a Function that died mid-flight and must be recovered
-    -- and a row in ``SENT`` never is.
+    ``claim`` carries the one requirement that is not obvious from its name:
+    while the claim is held, no other worker may obtain the same row.
+    ``integration_store.claim_outbox_batch`` gets that from
+    ``SELECT ... FOR UPDATE OF o SKIP LOCKED`` -- the lock lives in the
+    claiming transaction, so a concurrent worker skips the row and a Function
+    that dies releases it the instant its connection drops. **It does not
+    change the row's state and it does not take a lease**, and neither does
+    this protocol require it to.
+
+    That is a change. ``claim`` used to promise a move to ``SENDING`` plus a
+    900-second lease, and the two together were an in-Python reimplementation
+    of a lock the database already provides -- with a failure mode the database
+    version does not have: a Function killed while holding a lease leaves the
+    row unclaimable for the rest of the lease, which on a one-minute cron is
+    fifteen wasted ticks. What ``SENDING`` bought over ``SKIP LOCKED`` was the
+    record that a despatch *might* have happened, and
+    :func:`emit_purchase_order` no longer needs that record because it resolves
+    by dedupe key before every create rather than only after a suspicious
+    state.
+
+    A row in ``SENT`` is never claimable. ``CLAIMABLE_STATES`` is the whole
+    rule, and it is the same two states the store's own claim selects.
+
+    ``release`` is gone. Its only caller pushed a row it had never claimed into
+    a ``DEFERRED`` state the table's CHECK rejects; an unclaimed row needs no
+    release, and a claimed one is released by its transaction ending.
     """
     def claim(self, outbox_id: str, *, now: datetime) -> OutboxRecord | None: ...
 
@@ -667,8 +1071,6 @@ class OutboxStore(Protocol):
     def record_attempt_failed(self, outbox_id: str, *, error: str,
                               next_attempt_at: datetime | None,
                               terminal: bool, now: datetime) -> None: ...
-
-    def release(self, outbox_id: str, *, state: str, now: datetime) -> None: ...
 
     def get(self, outbox_id: str) -> OutboxRecord | None: ...
 
@@ -698,62 +1100,129 @@ def binding_window(capabilities: Any) -> str:
 
 @dataclass
 class PgOutboundRateBudget:
-    """``integration_rate_budget`` (C2), tracking both windows.
+    """The OUTBOUND allocation, delegated to ``integration_store.reserve_calls``.
 
-    The budget lives in PostgreSQL rather than in the process because no
-    process is resident (§11.6): a Catalyst Function starts, does its chunk and
-    dies, so an in-memory counter would reset on every invocation and the
-    allocation would mean nothing.
+    **This class used to carry its own SQL, and that SQL could not execute.**
+    It is worth stating exactly how, because the failure was invisible to every
+    test in the repository:
 
-    Written against C2's frozen column names. Stream 4 owns ``throttle.py``; if
-    it exposes an equivalent this is the fallback rather than a competitor --
-    the caller injects whichever it has, since both satisfy :class:`RateBudget`.
+    * it conflicted ``ON CONFLICT (connection_id, window_kind, window_start)``.
+      No such constraint exists. The primary key of ``integration_rate_budget``
+      is ``(connection_id, window_kind, allocation, window_start_key)`` -- note
+      ``allocation``, which the statement never mentioned at all, so two
+      allocations would have fought over one row even if it had parsed;
+    * its INSERT supplied four columns. Five more --
+      ``window_start_key``, ``window_seconds``, ``window_tz``, ``ceiling`` and
+      ``allocation`` -- are NOT NULL with no default;
+    * and the strategy was unfixable rather than merely wrong. It added
+      ``calls`` first and asked afterwards whether the total had passed the
+      ceiling, which is precisely what
+      ``ck_integration_rate_budget_used_within_ceiling`` (``used <= ceiling``)
+      forbids. The row can never HOLD the over-reserved value long enough to be
+      read back and refused. Patching the column list would have left a
+      statement that still aborts the transaction on the first refusal.
+
+    So it is deleted, not repaired. ``throttle.py`` went through this same
+    consolidation and now contains no SQL at all; this module now contains none
+    either, for the rate budget. ``integration_store.reserve_calls`` was
+    written by the author of migration 010, names every NOT NULL column,
+    conflicts on the real key, and settles the race in the one place it can be
+    settled -- inside the UPDATE's own WHERE clause, so an over-budget call is
+    refused by the statement that would have spent it. There is no resident
+    process (§11.6), so two cron invocations reserving at the same instant have
+    nowhere else to arbitrate.
+
+    ``capabilities`` is kept for :func:`binding_window`'s advisory answer only.
+    **It is no longer consulted for a ceiling.** The ceiling lives in
+    ``integration_rate_budget.ceiling``, seeded from the connection; a second
+    opinion here was the other half of the same defect, and a throttle that
+    disagrees with its own table is a throttle that reports a budget nobody is
+    enforcing.
     """
     session: Any
     connection_id: str
-    capabilities: Any
-    minute_allocation: int = OUTBOUND_MINUTE_ALLOCATION
+    capabilities: Any = None
+    scope: Any = None
+    tz: str = "UTC"
 
-    _UPSERT = (
-        "INSERT INTO integration_rate_budget "
-        "  (connection_id, window_kind, window_start, used) "
-        "VALUES (%(connection_id)s, %(window_kind)s, %(window_start)s, %(calls)s) "
-        "ON CONFLICT (connection_id, window_kind, window_start) DO UPDATE "
-        "  SET used = integration_rate_budget.used + EXCLUDED.used "
-        "RETURNING used"
-    )
+    #: §11.6's three-way split. Ours is OUTBOUND, and it is a constant rather
+    #: than a parameter because a caller that could choose would be able to
+    #: spend the polling budget the reconciliation sweeps depend on.
+    ALLOCATION = "OUTBOUND"
 
-    def ceiling(self, window: str) -> int:
-        if window == "MINUTE":
-            return self.minute_allocation
-        return int(getattr(self.capabilities, "daily_call_ceiling",
-                           ASSUMED_DAILY_CALL_CEILING))
+    def reserve(self, calls: int, *, now: datetime | None = None
+                ) -> BudgetDecision:
+        """Reserve ``calls`` requests, or say which window refused.
 
-    def reserve(self, calls: int, *, now: datetime | None = None) -> BudgetDecision:
-        now = now or datetime.now(timezone.utc)
-        starts = {
-            "MINUTE": now.replace(second=0, microsecond=0),
-            "DAY": now.replace(hour=0, minute=0, second=0, microsecond=0),
-        }
-        # DAY first: on ERP Standard it is the binding window, and consuming
-        # minute budget for a call the daily ceiling will refuse wastes an
-        # allocation the interactive path may need.
-        for window in ("DAY", "MINUTE"):
-            row = self.session.fetchone(self._UPSERT, {
-                "connection_id": self.connection_id, "window_kind": window,
-                "window_start": starts[window], "calls": calls,
-            })
-            used = int(row[0]) if row else calls
-            limit = self.ceiling(window)
-            if used > limit:
-                return BudgetDecision(
-                    granted=False, window=window,
-                    remaining=max(0, limit - (used - calls)),
-                    reason=(f"{window} outbound budget exhausted: {used}/{limit}. "
-                            "The job checkpoints and the next tick resumes "
-                            "(§11.6)."))
-        return BudgetDecision(granted=True,
-                              window=binding_window(self.capabilities))
+        §11.6 is explicit that over-budget is a normal outcome a job
+        checkpoints on, not an exception -- so the store's
+        ``RateBudgetExhausted`` is caught and turned into a falsy
+        :class:`BudgetDecision`, exactly as ``throttle.reserve`` does. The two
+        ``except`` arms are ordered: ``RateBudgetExhausted`` subclasses
+        ``IntegrationStoreError``, so the specific one must come first or the
+        general one swallows every refusal.
+        """
+        moment = now or datetime.now(timezone.utc)
+        if moment.tzinfo is None:
+            raise OutboundError(
+                "PgOutboundRateBudget.reserve needs a timezone-aware `now`; "
+                f"got {moment!r}. A naive timestamp lands in whichever window "
+                "the server's local time implies, and the DAY window is the "
+                "binding one.")
+
+        try:
+            granted = store.reserve_calls(
+                self.session, connection_id=self.connection_id,
+                allocation=self.ALLOCATION, count=calls, tz=self.tz,
+                now=moment, scope=self.scope)
+        except store.RateBudgetExhausted as refused:
+            return self._refused(refused.window_kind, calls, moment)
+
+        # The honest answer to "how many more may I make" is the SMALLEST
+        # remaining across the windows, not the one `binding_window` predicts
+        # from the plan tier. On ERP Standard those agree; on a tenant whose
+        # ceiling has been raised they do not, and reporting the prediction
+        # would let a chunk keep going into a window that is already spent.
+        least = min(granted.items(), key=lambda item: item[1]["remaining"])
+        return BudgetDecision(granted=True, window=least[0],
+                              remaining=least[1]["remaining"])
+
+    def _refused(self, window: str, calls: int, moment: datetime
+                 ) -> BudgetDecision:
+        """The falsy decision, carrying what the window holds AFTER the rollback.
+
+        The re-read runs outside the store's savepoint, on a transaction the
+        refusal left healthy, so it sees the figures as they stand once nothing
+        was spent. Reading them from before the rollback would report the
+        over-reserved count -- the very number the constraint exists to prevent
+        anyone believing.
+        """
+        state = store.read_rate_budget(
+            self.session, connection_id=self.connection_id,
+            allocation=self.ALLOCATION, tz=self.tz, now=moment,
+            scope=self.scope)
+
+        if window not in state:
+            # `read_rate_budget` OMITS a window whose row does not exist, and
+            # "no row" is not "a row reading zero". A missing row means the
+            # window was never seeded for this connection, which is a
+            # configuration fault, not an exhausted budget -- so `remaining`
+            # stays None rather than becoming a 0 that reads as "spent".
+            return BudgetDecision(
+                granted=False, window=window, remaining=None,
+                reason=(f"The {window} {self.ALLOCATION} budget refused "
+                        f"{calls} call(s) and no {window} row exists for "
+                        f"connection {self.connection_id}. That is a missing "
+                        "window, not a spent one; the figure is unknown rather "
+                        "than zero."))
+
+        used = int(state[window]["used"])
+        ceiling = int(state[window]["ceiling"])
+        return BudgetDecision(
+            granted=False, window=window, remaining=max(0, ceiling - used),
+            reason=(f"{window} {self.ALLOCATION} budget exhausted: "
+                    f"{used}/{ceiling} used, {calls} more requested. The job "
+                    "checkpoints and the next tick resumes (§11.6)."))
 
 
 # --------------------------------------------------------------------------
@@ -791,15 +1260,24 @@ def emit_purchase_order(
     what a kill immediately after it must leave behind.
 
     1. **Reserve budget before claiming.** Over budget is not a failure and must
-       not consume an attempt (§11.6). A kill here has changed nothing.
-    2. **Claim the row** -- to ``SENDING``, attempts incremented, durably,
-       *before the network call*. This is the write-ahead: a kill any time after
-       it leaves a row saying "a send may be in flight", and the recovery path
-       treats ``SENDING`` as *unknown*, never as "not sent".
-    3. **Resolve by dedupe key, if the adapter can.** A row already in
-       ``SENDING`` from a previous life is the lost-response case; asking the
-       tenant what it holds for this ``cf_capex_ref`` converts the unknown into
-       a fact before anything is created.
+       not consume an attempt (§11.6). A kill here has changed nothing, and --
+       corrected -- neither has a refusal: the row is left exactly as it was
+       found, ``PENDING`` or ``FAILED``, still due, still owed. It used to be
+       pushed to a ``DEFERRED`` state that did not exist, by a ``release()``
+       call on a row this function had not yet claimed.
+    2. **Claim the row.** Exclusive for the duration of the claiming
+       transaction (``SELECT ... FOR UPDATE SKIP LOCKED``, as
+       ``integration_store.claim_outbox_batch`` does it). A second worker skips
+       it; a Function that dies drops the lock with its connection and the row
+       is immediately re-claimable, with no lease to wait out.
+    3. **Resolve by dedupe key, if the adapter can. ALWAYS, not conditionally.**
+       This is the step that makes step 2 sufficient. Asking the tenant what it
+       holds for this ``cf_capex_ref`` converts "may already have been sent"
+       into a fact *before* anything is created -- and because it is asked
+       every time, no state anywhere has to remember that a despatch might have
+       happened. That is why there is no ``SENDING``: it was carrying a fact
+       this step re-derives from the tenant, which is the only place the fact
+       actually lives.
     4. **Create, carrying the key.** Z-01's unique index is what makes this
        safe: a second create with the same key cannot succeed.
     5. **Record the external id.** A kill between 4 and 5 is the worst case and
@@ -808,13 +1286,29 @@ def emit_purchase_order(
 
     The key never changes between attempts (:func:`derive_dedupe_key`), which is
     what lets step 3 and step 4 talk about the same record.
+
+    Between 2 and 3 -- before the resolve, and so before any branch that could
+    reach an adapter -- the stored payload becomes a
+    :class:`~app.backend.integration.dto.PurchaseOrderEmissionDTO`
+    (:func:`emission_dto_from_record`). Early on purpose: a malformed payload
+    is then refused without spending a call. Nothing here hands a ``Mapping``
+    to an adapter, because both shipped adapters read the document by
+    attribute, so a dict raised ``AttributeError`` on the *first* emission,
+    before any question of a retry arose.
     """
     stamp = now or datetime.now(timezone.utc)
 
     if budget is not None:
-        decision = budget.reserve(1)
+        # The SAME clock the rest of the emission uses. The budget's binding
+        # window is the DAY (§11.6), so a budget left to read its own wall
+        # clock could charge a reservation to a different day from the one this
+        # emission believes it is in -- a real difference for a chunk running
+        # across midnight, and an untraceable one.
+        decision = budget.reserve(1, now=stamp)
         if not decision.granted:
-            store.release(outbox_id, state=OUTBOX_DEFERRED, now=stamp)
+            # Nothing to release. The row was never claimed, so it is still in
+            # whichever claimable state it was already in and still due. §11.6:
+            # the job checkpoints and the next tick resumes.
             raise BudgetExhausted(decision.window or "MINUTE", decision.reason)
 
     record = store.claim(outbox_id, now=stamp)
@@ -851,17 +1345,44 @@ def emit_purchase_order(
             "order; the row is quarantined for manual review instead.")
 
     key = record.dedupe_key
-    payload = record.payload
+
+    # The payload becomes a DTO HERE -- before the resolve, and before any
+    # branch that could reach an adapter. Mapping it early means a malformed
+    # payload is refused without spending a call, and it means there is exactly
+    # one object in this function that an adapter may be given. `document`,
+    # not `payload`: the name is part of the fix, because `payload` is what the
+    # dict was called when it was being handed to `create_purchase_order`.
+    #
+    # A mapping failure is a defect in the row, not a transient fault, so it
+    # is recorded as a failed attempt and re-raised rather than retried
+    # silently -- eight identical AttributeErrors would otherwise burn eight of
+    # a 2,000-call daily ceiling to reach the same conclusion.
+    try:
+        document = emission_dto_from_record(record)
+    except Exception as exc:  # noqa: BLE001 - re-raised after recording
+        store.record_attempt_failed(
+            outbox_id,
+            error=(f"OUTBOX_PAYLOAD_UNMAPPABLE: {type(exc).__name__}: {exc}"),
+            next_attempt_at=None, terminal=True, now=stamp)
+        raise
+
     adopted_id: str | None = None
     note = ""
 
     resolve = getattr(adapter, "resolve_by_dedupe_key", None)
     if callable(resolve):
-        # Step 3. Cheap when the row is fresh, decisive when it is a resumed
-        # SENDING row. Costs one call against the same budget as the create,
-        # which is the price of not guessing.
+        # Step 3, and it runs UNCONDITIONALLY -- on the first attempt as much
+        # as on the ninth. Making it conditional on some "might be in flight"
+        # signal is what made an in-flight state look necessary; asking every
+        # time costs one call against the same budget as the create, and buys
+        # the removal of a whole state from the lifecycle.
         adopted_id = resolve(key)
-    elif record.attempts > 1:
+    # `>= 1`, not `> 1`. The note belongs on a RETRY -- the point at which a
+    # missing resolve starts to cost something -- and `attempts` now counts
+    # failures rather than claims, so a first attempt reads 0 where it used to
+    # read 1. The old `> 1` under the new accounting would have skipped the
+    # note on the second attempt, which is exactly the one it exists for.
+    elif record.attempts >= 1:
         note = (
             "Adapter exposes no resolve_by_dedupe_key; a lost response is "
             "recoverable only through the tenant refusing the duplicate "
@@ -872,10 +1393,10 @@ def emit_purchase_order(
         if adopted_id:
             update = getattr(adapter, "update_purchase_order", None)
             if callable(update):
-                update(adopted_id, payload, key)
+                update(adopted_id, document, key)
             external_id, created, adopted = adopted_id, False, True
         else:
-            external_id = adapter.create_purchase_order(payload, key)
+            external_id = adapter.create_purchase_order(document, key)
             created, adopted = True, False
     except DuplicateDedupeKey as exc:
         # Z-01 did its job: the tenant refused a second record for this key.
@@ -893,14 +1414,26 @@ def emit_purchase_order(
             # EXISTS and is orphaned, because "dead" must not be read as "never
             # sent". :func:`orphaned_emission_finding` turns that row into an
             # exception that blocks period close.
-            terminal = record.attempts >= MAX_ATTEMPTS
+            # `record.attempts` is the count BEFORE this failure, and the claim
+            # no longer increments it -- `integration_store.mark_outbox_failed`
+            # does, in the same statement that decides FAILED-or-DEAD, so that a
+            # Function killed between the increment and the decision cannot
+            # leave a row retrying for ever one attempt short of DEAD. So the
+            # eighth failure is the one where `attempts + 1` reaches the
+            # ceiling, and that is exactly how the store computes it.
+            #
+            # `record.max_attempts`, not the module constant:
+            # `ck_integration_outbox_dead_exhausted_attempts` compares DEAD
+            # against THIS row's ceiling, and an operator who raised it on one
+            # row must not have that row declared dead by a global.
+            terminal = record.attempts + 1 >= record.max_attempts
             store.record_attempt_failed(
                 outbox_id,
                 error=(f"Duplicate {CF_CAPEX_REF}={key!r} refused by the "
                        "tenant, which did not name the existing record. "
                        "Retrying to resolve it; NOT re-creating."
                        + ("" if not terminal else
-                          f" ORPHANED after {record.attempts} attempts: a "
+                          f" ORPHANED after {record.attempts + 1} attempts: a "
                           "purchase order carrying this key EXISTS in the "
                           "tenant and we cannot name it. This is not an "
                           "unsent row.")),
@@ -910,7 +1443,7 @@ def emit_purchase_order(
                 terminal=terminal, now=stamp)
             raise
     except Exception as exc:  # noqa: BLE001 - classified by the caller's throttle
-        terminal = record.attempts >= MAX_ATTEMPTS
+        terminal = record.attempts + 1 >= record.max_attempts
         store.record_attempt_failed(
             outbox_id, error=f"{type(exc).__name__}: {exc}",
             next_attempt_at=(None if terminal
@@ -974,9 +1507,10 @@ def emit_chunk(*, adapter: Any, store: OutboxStore, outbox_ids: Sequence[str],
                 adapter=adapter, store=store, outbox_id=outbox_id,
                 budget=budget, now=stamp, rng=rng))
         except BudgetExhausted as exhausted:
-            # Not a failure. The row was released back to DEFERRED by
-            # emit_purchase_order and is still owed, so it stays in the
-            # checkpoint rather than being consumed.
+            # Not a failure. `emit_purchase_order` refused before claiming, so
+            # the row was never touched: it is still PENDING or FAILED, still
+            # due, and still owed. It therefore stays in the checkpoint rather
+            # than being consumed, and the next tick resumes from here (§11.6).
             return ChunkOutcome(sent=tuple(sent), failed=tuple(failed),
                                 checkpoint=tuple(remaining),
                                 stopped_on=f"BUDGET_{exhausted.window}")
@@ -1199,13 +1733,19 @@ def detect_unsolicited_transitions(
 _RECONCILIATION_EXCEPTION_TABLE = "reconciliation_exception"
 
 # scope-exempt, deliberately, and stated here because `repo.query()` is the
-# chokepoint for scoped READS and this is neither. The three statements in this
-# module are: an INSERT of an exception whose `entity_id` comes from the tenant
-# record the sweep just read (there is no local row to be scoped against -- the
-# whole finding is that no local row exists); an upsert on
-# `integration_rate_budget`, keyed on `connection_id`, which carries no
-# row-level scope dimension; and an `information_schema` existence probe. None
-# reads business rows on a caller-supplied identifier.
+# chokepoint for scoped READS and this is neither. There are now TWO statements
+# left in this module -- it was three: an INSERT of an exception whose
+# `entity_id` comes from the tenant record the sweep just read (there is no
+# local row to be scoped against -- the whole finding is that no local row
+# exists), and an `information_schema` existence probe. Neither reads business
+# rows on a caller-supplied identifier.
+#
+# The third was an upsert on `integration_rate_budget`, and it is gone: the
+# reservation now delegates to `integration_store.reserve_calls`, which runs
+# through `repo.query()` with `VIA_CONNECTION_SCOPE_COLUMNS` and is therefore
+# scoped properly rather than exempt. That statement's removal is the point --
+# it could not execute, and its scope exemption was the smaller of its two
+# problems.
 #
 # REPORTED, not fixed: `tests/test_scope_enforcement.py` walks
 # `app/backend/pg/` and `app/backend/api/` only, so `app/backend/integration/`
