@@ -26,8 +26,20 @@ What is fake and what is under test
 ``tests/outbound_tenant_fake.py`` holds Zoho (:class:`FakeTenant`, which owns
 the Z-01 unique index), the C1 adapter and the outbox. Those are not under
 test. ``outbound.emit_purchase_order`` is, and it contributes exactly three
-things: a key that does not change between attempts, a claim written before the
-network call, and a resolve before a create.
+things: a key that does not change between attempts, a claim held exclusively
+across the network call, and a resolve before EVERY create.
+
+The last of those used to read "a resolve before a create", with an in-flight
+``SENDING`` state deciding when a resolve was warranted. It is unconditional
+now, and the state is gone -- the table's CHECK never permitted it. Nothing in
+this file got weaker for that: the same 100 seeded kill schedules produce the
+same zero duplicates, and every negative control still produces its duplicate.
+
+And two tests were added that this file did not have, at the bottom, against
+the SHIPPED adapters:
+:func:`test_the_first_emission_through_a_shipped_adapter_creates_the_po` and
+its mutation control. Everything else here proves a *retry* is safe. Those two
+prove the first attempt works at all, which -- until this stream -- it did not.
 
 No network, no tenant, no Catalyst. Everything here is a dict.
 """
@@ -46,7 +58,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from app.backend.integration import outbound as ob          # noqa: E402
 from outbound_tenant_fake import (                          # noqa: E402
     CONNECTION_ID, MODULE, NOW, C1OnlyAdapter, FakeAdapter, FakeTenant,
-    FunctionKilled, InMemoryOutboxStore, KillSwitch, enqueued,
+    FunctionKilled, InMemoryOutboxStore, KillSwitch, emission_document,
+    enqueued,
 )
 
 #: How many recovery attempts a resumed job gets before the test gives up. Far
@@ -55,9 +68,17 @@ from outbound_tenant_fake import (                          # noqa: E402
 RECOVERY_ATTEMPTS = 6
 
 
-#: Far beyond SENDING_LEASE_SECONDS, so a resumed tick may reclaim a row its
-#: dead predecessor left in SENDING.
-_LEASE_EXPIRED = timedelta(seconds=ob.SENDING_LEASE_SECONDS + 60)
+#: The gap between one simulated cron tick and the next. It clears §11.6's
+#: backoff ceiling, so a row that scheduled a retry is always due by the next
+#: tick and a recovery failure means "never recovered" rather than "not yet".
+#:
+#: It used to have to clear a 900-second SENDING **lease** as well -- an
+#: additional wait, on top of the backoff, imposed by a claim whose owner was
+#: already dead. That is gone: exclusion is a row lock held by the claiming
+#: transaction, and a dead Function drops it with its connection
+#: (``InMemoryOutboxStore.crash``). A crashed row is now claimable on the very
+#: next tick, and the only thing that can delay it is the backoff we chose.
+_NEXT_TICK = timedelta(seconds=ob.BACKOFF_CEILING_SECONDS + 60)
 
 
 def _drive(*, kill_at, tenant, adapter_cls=FakeAdapter, names_duplicate=True,
@@ -85,10 +106,13 @@ def _drive(*, kill_at, tenant, adapter_cls=FakeAdapter, names_duplicate=True,
         ob.emit_purchase_order(adapter=adapter, store=store,
                                outbox_id=outbox_id, now=NOW)
     except FunctionKilled:
-        pass
+        # The process is gone. PostgreSQL drops the row lock with the
+        # connection, which is the whole reason the recovery below needs no
+        # lease to expire first.
+        store.crash()
     calls.extend(adapter.calls)
 
-    for _ in range(RECOVERY_ATTEMPTS):
+    for tick in range(1, RECOVERY_ATTEMPTS + 1):
         row = store.get(outbox_id)
         if row is not None and row.state == ob.OUTBOX_SENT:
             break
@@ -98,9 +122,9 @@ def _drive(*, kill_at, tenant, adapter_cls=FakeAdapter, names_duplicate=True,
         try:
             ob.emit_purchase_order(adapter=resumed, store=store,
                                    outbox_id=outbox_id,
-                                   now=NOW + _LEASE_EXPIRED)
+                                   now=NOW + _NEXT_TICK * tick)
         except (ob.DuplicateDedupeKey, ob.OutboundError, FunctionKilled):
-            pass
+            store.crash()
         calls.extend(resumed.calls)
 
     return key, store, tenant, calls
@@ -168,12 +192,15 @@ def test_the_emission_passes_through_the_window_the_whole_design_is_about():
             "The external id must be recorded AFTER the response, or there is "
             "no lost-response window and this suite proves nothing.")
 
-    # The claim must be durable BEFORE anything is sent: that is the
-    # write-ahead the whole recovery depends on.
+    # The row must be claimed -- held exclusively -- before anything is sent,
+    # or two workers send the same document at once.
     assert STEPS.index("store.claim.after") < STEPS.index(
         "adapter.create.request_sent")
     # And the resolve must precede the create, or the lost-response case has
-    # no chance to be discovered before a second record is made.
+    # no chance to be discovered before a second record is made. THIS is the
+    # ordering the recovery actually rests on. It used to share the load with a
+    # write-ahead to SENDING; now it carries it alone, which is what let the
+    # invented state go.
     assert STEPS.index("adapter.resolve.after") < STEPS.index(
         "adapter.create.request_sent")
 
@@ -181,11 +208,20 @@ def test_the_emission_passes_through_the_window_the_whole_design_is_about():
 def test_the_worst_kill_leaves_a_purchase_order_we_can_still_find():
     """The lost response, on its own, spelled out.
 
-    The tenant holds the purchase order. We hold an outbox row that says
-    ``SENDING`` and an ``external_id`` of ``None``. There is no request we can
-    replay and no id we can look up. The only thing connecting the two is the
-    ``cf_capex_ref`` we wrote before we sent -- which is why the key is written
-    ahead of the call and not derived from the response.
+    The tenant holds the purchase order. We hold an outbox row that is
+    ``PENDING`` with an ``external_id`` of ``None`` -- **byte for byte
+    indistinguishable from a row that was never sent at all**. There is no
+    request we can replay and no id we can look up.
+
+    That indistinguishability is the whole reason this test is worth reading
+    twice. It used to be avoided by writing ``SENDING`` before the call, so the
+    row itself remembered that a despatch might have happened. ``SENDING`` is
+    not a state the table permits, so that memory never actually survived to
+    production -- and it turns out not to be needed, because the recovery does
+    not consult the row's state to decide whether to resolve. It resolves
+    every time. The only thing connecting the outbox row to the document is the
+    ``cf_capex_ref`` we wrote before we sent, which is why the key is derived
+    ahead of the call and never from the response.
     """
     tenant = FakeTenant(unique_capex_ref=True)
     kill = KillSwitch(kill_at=_kill_at(LOST_RESPONSE))
@@ -197,9 +233,12 @@ def test_the_worst_kill_leaves_a_purchase_order_we_can_still_find():
     with pytest.raises(FunctionKilled):
         ob.emit_purchase_order(adapter=adapter, store=store, outbox_id="OB-1",
                                now=NOW)
+    store.crash()
 
     orphaned = store.get("OB-1")
-    assert orphaned.state == ob.OUTBOX_SENDING
+    assert orphaned.state == ob.OUTBOX_PENDING, (
+        "A killed emission leaves the row in a state the table permits. The "
+        "row cannot tell us a send happened -- the tenant can, and does.")
     assert orphaned.external_id is None
     assert len(tenant.records) == 1, "The purchase order exists in the tenant."
     assert tenant.find_by_capex_ref(key) is not None, (
@@ -207,7 +246,7 @@ def test_the_worst_kill_leaves_a_purchase_order_we_can_still_find():
 
     recovered = ob.emit_purchase_order(
         adapter=FakeAdapter(tenant=tenant), store=store, outbox_id="OB-1",
-        now=NOW + _LEASE_EXPIRED)
+        now=NOW + _NEXT_TICK)
 
     assert recovered.created is False and recovered.adopted is True
     assert recovered.external_id == tenant.find_by_capex_ref(key)
@@ -382,12 +421,14 @@ def test_negative_control_a_generated_dedupe_key_duplicates_the_po():
     measures what the first layer is for.
     """
     tenant = FakeTenant(unique_capex_ref=True)
-    payload = {"local_id": "PR-0001", "state": ob.PO_STATE_DRAFT}
+    document = emission_document("PR-0001")
     adapter = C1OnlyAdapter(tenant=tenant)
 
     # Attempt one: sent, response lost. Attempt two: a freshly minted key.
-    adapter.create_purchase_order(payload, f"CAPEX-{uuid.uuid4()}")
-    adapter.create_purchase_order(payload, f"CAPEX-{uuid.uuid4()}")
+    # The DOCUMENT is identical both times -- only the key varies, which is
+    # what isolates this control to the key's determinism.
+    adapter.create_purchase_order(document, f"CAPEX-{uuid.uuid4()}")
+    adapter.create_purchase_order(document, f"CAPEX-{uuid.uuid4()}")
 
     assert len(tenant.records) == 2, (
         "Expected two purchase orders: a per-attempt key defeats the unique "
@@ -397,9 +438,9 @@ def test_negative_control_a_generated_dedupe_key_duplicates_the_po():
     stable = FakeTenant(unique_capex_ref=True)
     steady = C1OnlyAdapter(tenant=stable)
     key = ob.derive_dedupe_key(CONNECTION_ID, MODULE, "PR-0001")
-    steady.create_purchase_order(payload, key)
+    steady.create_purchase_order(document, key)
     with pytest.raises(ob.DuplicateDedupeKey):
-        steady.create_purchase_order(payload, key)
+        steady.create_purchase_order(document, key)
     assert len(stable.records) == 1
 
 
@@ -438,8 +479,16 @@ def test_negative_control_a_read_before_write_does_not_replace_the_unique_index(
 
     ``resolve_by_dedupe_key`` covers the single-threaded lost-response case
     perfectly well. It does not cover two workers, and two workers is not
-    exotic -- it is a lease expiring while a request is still in flight, which
-    §2.2's 12-minute soft deadline makes a routine event on a slow tenant.
+    exotic. **It is more reachable now, not less.**
+
+    Under the old lease, a Function killed mid-request kept the row locked for
+    the remaining 900 seconds, so a second worker could not touch it until long
+    after the first request had either landed or timed out. Under the row lock
+    the dead Function's lock dies with its connection, so the next one-minute
+    cron tick may claim the row **while the first worker's request is still on
+    its way to the tenant**. That is a real cost of dropping the lease, it is
+    stated here rather than buried, and it is affordable for exactly one
+    reason: Z-01.
 
     Both workers resolve, both find nothing (the first request has not landed
     yet), both create. With Z-01 the second create is refused and the worker
@@ -451,7 +500,9 @@ def test_negative_control_a_read_before_write_does_not_replace_the_unique_index(
         store = InMemoryOutboxStore()
         enqueued(store)
         key = store.get("OB-1").dedupe_key
-        payload = store.get("OB-1").payload
+        # Through the production mapper, so this control cannot pass on a
+        # shape `emit_purchase_order` would never produce.
+        document = ob.emission_dto_from_record(store.get("OB-1"))
 
         worker_a = FakeAdapter(tenant=tenant)
         worker_b = FakeAdapter(tenant=tenant)
@@ -460,13 +511,13 @@ def test_negative_control_a_read_before_write_does_not_replace_the_unique_index(
         assert worker_a.resolve_by_dedupe_key(key) is None
         assert worker_b.resolve_by_dedupe_key(key) is None
 
-        worker_a.create_purchase_order(payload, key)
+        worker_a.create_purchase_order(document, key)
         if unique:
             with pytest.raises(ob.DuplicateDedupeKey) as refused:
-                worker_b.create_purchase_order(payload, key)
+                worker_b.create_purchase_order(document, key)
             assert refused.value.external_id in tenant.records
         else:
-            worker_b.create_purchase_order(payload, key)
+            worker_b.create_purchase_order(document, key)
 
         assert tenant.count_with_capex_ref(key) == expected, (
             f"unique_capex_ref={unique} produced "
@@ -500,7 +551,7 @@ def test_a_duplicate_the_tenant_will_not_name_is_not_recorded_as_a_failure():
                                now=NOW)
 
     row = store.get("OB-1")
-    assert row.state == ob.OUTBOX_RETRY, (
+    assert row.state == ob.OUTBOX_FAILED, (
         "A refused duplicate must leave the row retryable, not DEAD: the "
         "purchase order exists and its id still has to be adopted.")
     assert "NOT re-creating" in (row.last_error or "")
@@ -508,7 +559,7 @@ def test_a_duplicate_the_tenant_will_not_name_is_not_recorded_as_a_failure():
     seeing = FakeAdapter(tenant=tenant)
     result = ob.emit_purchase_order(
         adapter=seeing, store=store, outbox_id="OB-1",
-        now=NOW + _LEASE_EXPIRED)
+        now=NOW + _NEXT_TICK)
 
     assert result.adopted is True and result.created is False
     assert tenant.count_with_capex_ref(key) == 1
@@ -563,11 +614,15 @@ def test_a_frozen_c1_adapter_cannot_recover_an_unnamed_duplicate_and_says_so():
     key = store.get("OB-1").dedupe_key
     tenant.create({ob.CF_CAPEX_REF: key, "state": ob.PO_STATE_DRAFT})
 
-    for _ in range(ob.MAX_ATTEMPTS):
+    # Each attempt is a LATER tick. It has to be: a FAILED row carries
+    # `next_attempt_at`, and the claim now honours that backoff rather than
+    # ignoring it the way the lease-based one did. Re-running eight attempts at
+    # a single instant would silently stop claiming after the first.
+    for attempt in range(1, ob.MAX_ATTEMPTS + 1):
         with pytest.raises(ob.DuplicateDedupeKey):
             ob.emit_purchase_order(
                 adapter=C1OnlyAdapter(tenant=tenant, names_duplicate=False),
-                store=store, outbox_id="OB-1", now=NOW + _LEASE_EXPIRED)
+                store=store, outbox_id="OB-1", now=NOW + _NEXT_TICK * attempt)
 
     row = store.get("OB-1")
     assert row.state == ob.OUTBOX_DEAD
@@ -626,13 +681,14 @@ def test_a_dead_row_that_never_reached_the_tenant_is_not_called_an_orphan():
     enqueued(store)
 
     class _Broken(C1OnlyAdapter):
-        def create_purchase_order(self, payload, dedupe_key):
+        def create_purchase_order(self, po, dedupe_key):
             raise TimeoutError("gateway timeout")
 
-    for _ in range(ob.MAX_ATTEMPTS):
+    for attempt in range(1, ob.MAX_ATTEMPTS + 1):
         with pytest.raises(TimeoutError):
             ob.emit_purchase_order(adapter=_Broken(tenant=tenant), store=store,
-                                   outbox_id="OB-1", now=NOW + _LEASE_EXPIRED)
+                                   outbox_id="OB-1",
+                                   now=NOW + _NEXT_TICK * attempt)
 
     row = store.get("OB-1")
     assert row.state == ob.OUTBOX_DEAD
@@ -826,21 +882,26 @@ def _real_adapter(product, **kwargs):
                                  transport=transport), transport
 
 
-def _po_draft():
-    return PurchaseOrderDTO(
-        source=SourceRef(product="ERP", service="erp", api_version="v3",
-                         endpoint="/purchaseorders",
-                         retrieved_at=NOW),
-        external_id="", document_number="", document_date=date(2026, 9, 1),
-        last_modified=NOW, vendor_external_id="VEN-1",
-        vendor_name="Northgate Structural Works", currency_code="INR",
-        subtotal_paise=1150005, tax_paise=207001, total_paise=1357006,
-        external_status_raw="",
-        lines=(LineDTO(external_line_id=None, line_number=1,
-                       description="Structural steel fabrication",
-                       quantity="1", unit_price_paise=1150005,
-                       line_total_paise=1150005, tax_paise=207001,
-                       item_external_id="ITM-1"),))
+def _po_draft(local_id="PR-0001", *, dedupe_key=None):
+    """The document handed to a REAL adapter, built through the real mapping.
+
+    This used to build a ``PurchaseOrderDTO`` -- and it could only do so by
+    fabricating five fields an emission does not have: an empty
+    ``external_id`` (Zoho mints it in the response), an empty
+    ``document_number``, an empty ``external_status_raw``, a ``last_modified``
+    borrowed from the test clock, and a ``SourceRef`` claiming the document had
+    been *retrieved* from ``/purchaseorders``. That last one is a provenance
+    claim about a document nobody had fetched. Four empty strings and a false
+    audit trail is what reusing the inbound type actually cost, and it is why
+    :class:`PurchaseOrderEmissionDTO` exists.
+
+    Routed through ``outbound.emission_dto`` rather than constructed here, so
+    these tests exercise the same mapper ``emit_purchase_order`` uses. A
+    hand-built document would let the mapper rot while every test still passed
+    -- which is exactly how a payload dict reached two adapters that read it by
+    attribute.
+    """
+    return emission_document(local_id, dedupe_key=dedupe_key)
 
 
 @pytest.mark.parametrize("product", REAL_ADAPTERS)
@@ -903,18 +964,26 @@ def test_the_whole_emission_recovers_through_emit_purchase_order(product):
     store = InMemoryOutboxStore()
     enqueued(store)
     key = store.get("OB-1").dedupe_key
-    payload = store.get("OB-1").payload
 
     # Seed the tenant the way a lost response would have: the record exists,
     # and nothing local knows its id.
-    adapter.create_purchase_order  # (documenting intent; the call is below)
     try:
-        adapter.create_purchase_order(_po_draft_for(payload), key)
+        adapter.create_purchase_order(
+            ob.emission_dto_from_record(store.get("OB-1")), key)
     except ResponseLost:
         pass
     assert tenant.count_with_capex_ref(key) == 1
 
-    result = ob.emit_purchase_order(adapter=_PayloadShim(adapter), store=store,
+    # NO SHIM. `emit_purchase_order` is handed the shipped adapter directly.
+    #
+    # It used to be handed a `_PayloadShim`, because `emit` passed the outbox
+    # payload dict and these adapters take a document they read by attribute.
+    # The shim was labelled and honest about standing in for a mapping nobody
+    # had written -- but it meant this test proved the RECOVERY while leaving
+    # the ordinary path unproven, and the ordinary path was broken. The mapping
+    # now lives in `outbound.emission_dto_from_record`, so the shim has nothing
+    # left to stand in for.
+    result = ob.emit_purchase_order(adapter=adapter, store=store,
                                     outbox_id="OB-1", now=NOW)
 
     assert result.adopted is True and result.created is False
@@ -925,46 +994,84 @@ def test_the_whole_emission_recovers_through_emit_purchase_order(product):
                                         entity_id="ENT-1") is None
 
 
-def _po_draft_for(payload):
-    """The outbox payload as a DTO the real adapter can emit.
+@pytest.mark.parametrize("product", REAL_ADAPTERS)
+def test_the_first_emission_through_a_shipped_adapter_creates_the_po(product):
+    """**The defect this stream was sent to fix, stated as a positive test.**
 
-    The outbox stores a dict (C2 freezes `payload jsonb`); the adapter takes a
-    DTO. Bridging them here keeps both halves honest rather than loosening
-    either signature.
+    Not a retry. Not a recovery. The FIRST emission of a fresh outbox row,
+    driven by ``emit_purchase_order`` into a real adapter, with nothing in the
+    tenant and nothing lost.
+
+    Before the mapping existed this raised
+    ``AttributeError: 'dict' object has no attribute 'vendor_external_id'`` on
+    both products, because ``emit`` passed ``record.payload`` -- a
+    ``Mapping`` -- and ``_emission_body`` reads the document by attribute.
+    Every chaos test above passed anyway, because ``FakeAdapter`` accepted a
+    Mapping. That is the whole lesson: the suite proved the caller agreed with
+    its own double.
+
+    The monetary assertions are the other half. A mapping that swapped
+    ``amount_paise`` into ``unit_price_paise`` would still create exactly one
+    purchase order and still satisfy every duplicate assertion in this file --
+    for a different amount of money.
     """
-    return _po_draft()
+    adapter, tenant = _real_adapter(product, names_duplicate=False)
+    store = InMemoryOutboxStore()
+    enqueued(store)
+    key = store.get("OB-1").dedupe_key
+
+    assert tenant.records == {}, "Nothing in the tenant. This is attempt one."
+
+    result = ob.emit_purchase_order(adapter=adapter, store=store,
+                                    outbox_id="OB-1", now=NOW)
+
+    assert result.created is True and result.adopted is False
+    assert result.attempts == 0, "First attempt: nothing had failed before it."
+    assert store.get("OB-1").state == ob.OUTBOX_SENT
+    assert store.get("OB-1").external_id == result.external_id
+    assert tenant.count_with_capex_ref(key) == 1
+
+    # The document actually reached the tenant, with the values the draft held.
+    expected = ob.emission_dto_from_record(store.get("OB-1"))
+    record = tenant.records[result.external_id]
+    assert record["vendor_id"] == expected.vendor_external_id == "ZV-77"
+    assert record["date"] == expected.document_date.isoformat()
+    assert record["currency_code"] == "INR"
+
+    # Money, end to end and integer throughout. `line_total_paise` is the LINE
+    # TOTAL and `unit_price_paise` the rate; a mapper that confused the two
+    # would multiply the commitment by the quantity and nothing else here would
+    # notice.
+    line = expected.lines[0]
+    assert line.unit_price_paise == 250_000_00
+    assert line.line_total_paise == 250_000_00
+    assert line.quantity == "1"
+    assert expected.subtotal_paise + expected.tax_paise == expected.total_paise
+    assert expected.total_paise == 250_000_00
+    rupees, sub = divmod(line.unit_price_paise, 100)
+    assert record["line_items"][0]["rate"] == f"{rupees}.{sub:02d}"
+    assert all(not isinstance(v, float) for v in
+               (line.unit_price_paise, line.line_total_paise,
+                expected.total_paise, expected.subtotal_paise,
+                expected.tax_paise)), "No float ever touches a commitment."
 
 
-class _PayloadShim:
-    """Presents the real adapter to ``emit_purchase_order``.
+@pytest.mark.parametrize("product", REAL_ADAPTERS)
+def test_a_raw_payload_mapping_is_refused_by_the_shipped_adapters(product):
+    """The mutation control for the test above.
 
-    ``emit_purchase_order`` hands the adapter the outbox payload dict, while
-    the shipped adapters take a ``PurchaseOrderDTO``. That mapping is the
-    caller's, not the adapter's, and stream 6 owns where it lands -- this shim
-    stands in for it so the recovery can be proven end to end today. It adds
-    no behaviour: every call is forwarded.
+    Restore the defect -- hand the adapter ``record.payload`` instead of the
+    mapped document -- and the emission must fail. If this ever passes, the
+    adapters have started accepting a Mapping and the positive test above has
+    stopped meaning anything.
     """
+    adapter, _ = _real_adapter(product, names_duplicate=False)
+    store = InMemoryOutboxStore()
+    enqueued(store)
+    row = store.get("OB-1")
 
-    def __init__(self, adapter):
-        self._adapter = adapter
-        self.product = adapter.product
-
-    def capabilities(self):
-        return self._adapter.capabilities()
-
-    def create_purchase_order(self, payload, dedupe_key):
-        return self._adapter.create_purchase_order(_po_draft_for(payload),
-                                                   dedupe_key)
-
-    def resolve_by_dedupe_key(self, dedupe_key):
-        return self._adapter.resolve_by_dedupe_key(dedupe_key)
-
-    def update_purchase_order(self, external_id, payload, dedupe_key):
-        return self._adapter.update_purchase_order(
-            external_id, _po_draft_for(payload), dedupe_key)
-
-    def transition_purchase_order(self, external_id, state, actor):
-        return self._adapter.transition_purchase_order(external_id, state, actor)
+    with pytest.raises(AttributeError, match="vendor_external_id"):
+        adapter.create_purchase_order(row.payload, row.dedupe_key)
 
 
 @pytest.mark.parametrize("product", REAL_ADAPTERS)

@@ -2077,3 +2077,160 @@ would defeat the check that reads it. If the rename is to be formally
 registered, it needs a person's name — but the work is not held back for
 that, because holding it back would leave the reconciliation surface
 untested rather than under-documented.
+## 2026-09-07 — Wave 5 stream 6 repair: three defects in `outbound.py`, and the four tests that had to change with them
+
+`app/backend/integration/outbound.py` carried three defects, each of which had
+a passing test suite over it. The suite passed because every double in it was
+written from the same beliefs as the module, so nothing in the repository ever
+compared the module to the schema, the store or the shipped adapters. All three
+repairs are recorded here because each moved an assertion.
+
+### 1. The FIRST emission could not work — not merely a retry
+
+`emit_purchase_order` passed `record.payload` — a `Mapping[str, Any]`, C2's
+`payload jsonb` — straight into `adapter.create_purchase_order`. Both shipped
+adapters build their wire body by **attribute** access
+(`po.vendor_external_id`, `po.document_date.isoformat()`, `po.currency_code`,
+`po.lines`), so a dict raises `AttributeError` on the first field. Nothing
+caught it because `FakeAdapter.create_purchase_order` did `dict(payload)` and
+`tests/test_outbound_chaos.py` bridged the real adapters with a labelled
+`_PayloadShim`.
+
+**Fixed by defining the mapping**, in both directions:
+`PurchaseOrderDraft.as_payload()` ↔ `outbound.emission_dto_from_record()`, with
+`PurchaseOrderDraft.as_emission_dto()` as the composition so a round trip is
+assertable. The DTO is a NEW type,
+`dto.PurchaseOrderEmissionDTO`, not the existing `PurchaseOrderDTO`:
+reusing the inbound one requires fabricating five fields an emission does not
+have, one of which is `SourceRef` — a provenance claim that a document we are
+inventing was *retrieved* from an endpoint we never called. `_po_draft()` in
+the chaos test was doing exactly that, which is the evidence rather than the
+argument.
+
+* **Tests changed:** `_po_draft()` now returns a `PurchaseOrderEmissionDTO`
+  built through the production mapper; `_PayloadShim` and `_po_draft_for` are
+  **deleted** — they existed only to stand in for the mapping that now exists,
+  and the test they served asserts more without them, not less
+  (`test_the_whole_emission_recovers_through_emit_purchase_order` now drives
+  the shipped adapter directly).
+* **Tests ADDED, not merely adapted:**
+  `test_the_first_emission_through_a_shipped_adapter_creates_the_po` (per
+  product) proves the ordinary path works at all — everything else in that file
+  proves a *retry* is safe — and asserts the monetary mapping end to end, since
+  a mapper that put `amount_paise` into `unit_price_paise` would satisfy every
+  duplicate assertion in the file for a different amount of money.
+  `test_a_raw_payload_mapping_is_refused_by_the_shipped_adapters` is its
+  mutation control: restore the defect and the emission must fail.
+* `outbound_tenant_fake.emission_body()` now mirrors the real
+  `_emission_body` and **refuses a `Mapping`**. A double more permissive than
+  the thing it doubles does not test the seam; it hides it.
+
+### 2. The rate-budget upsert was dead code that could not execute
+
+Deleted, not patched — the same consolidation `throttle.py` went through.
+`PgOutboundRateBudget.reserve` now delegates to
+`integration_store.reserve_calls`. Detail in
+`tests/test_one_rate_budget_implementation.py`, whose `KNOWN_UNREPAIRED`
+waiver for this file is now removed, so `outbound.py` falls under the guard
+permanently.
+
+* **Tests re-pointed, not weakened:**
+  `test_the_postgres_budget_charges_the_daily_window_first` and
+  `test_the_postgres_budget_reads_its_daily_ceiling_from_capabilities` asserted
+  the text of a statement that could never run, against a `_RecordingSession`
+  that was a dict agreeing with it. They are replaced by three tests over the
+  delegation —
+  `test_the_outbound_budget_delegates_to_the_canonical_reservation`,
+  `test_a_refused_reservation_reports_the_figures_from_after_the_rollback`,
+  `test_a_window_with_no_row_is_not_reported_as_a_window_reading_zero` — plus
+  `test_a_naive_timestamp_is_refused_by_the_budget` and
+  `test_outbound_writes_no_rate_budget_sql_of_its_own`. Net **+3 tests**. The
+  SQL itself is executed against a live server by
+  `tests/test_pg_integration_rate_budget.py`, which is the only place SQL of
+  this kind can honestly be tested.
+* The ceiling is no longer read from `Capabilities` here. It lives in
+  `integration_rate_budget.ceiling`; a second opinion in this module was the
+  other half of the same defect, and a throttle that disagrees with its own
+  table reports a budget nobody enforces.
+
+### 3. Three invented outbox states the database CHECK rejects — COLLAPSED
+
+`outbound.py` drove `DEAD, DEFERRED, PENDING, RETRY, SENDING, SENT`.
+`ck_integration_outbox_state`, `integration_store.OUTBOX_STATES` and
+`C16_integration_statuses.json` all three agree on four: `DEAD, FAILED,
+PENDING, SENT`. **C16 is unchanged. The module collapsed onto it.** The full
+reasoning is in the commit message and in `outbound.py`'s own comments; the
+short form is that `RETRY` and `DEFERRED` were synonyms of `FAILED` and
+`PENDING`, and `SENDING` was a lock flag whose two jobs are done better by the
+row lock `integration_store.claim_outbox_batch` already takes and by a resolve
+that now runs before *every* create.
+
+* **`tests/test_outbound_chaos.py` is extended, not replaced.** All 8
+  enumerated durable steps, the 100 seeded kill schedules and every negative
+  control are intact and still prove zero duplicates. Two tests moved:
+  - `test_the_worst_kill_leaves_a_purchase_order_we_can_still_find` asserted
+    the killed row was `SENDING`; it now asserts `PENDING` — and says why that
+    is the harder case, since the row is then byte-for-byte identical to one
+    never sent, and the recovery works anyway because it does not consult the
+    row's state.
+  - `test_negative_control_a_read_before_write_does_not_replace_the_unique_index`
+    keeps its assertions and gains a correction to its docstring: two workers
+    acting concurrently is **more** reachable under a row lock than under a
+    900-second lease, because a dead Function drops its lock immediately. That
+    is a real cost of the collapse, it is stated rather than buried, and Z-01
+    is what makes it affordable.
+* `test_being_over_budget_defers_the_row_and_costs_neither_a_call_nor_an_attempt`
+  is renamed to `..._leaves_the_row_...` and now asserts `PENDING`. The old
+  behaviour — `store.release(outbox_id, state=DEFERRED)` on a row this function
+  had **not claimed** — was a write to an unclaimed row in a state the table
+  rejects. One assertion added (`store.locked == set()`).
+* `InMemoryOutboxStore` now enforces the migration's CHECK constraints on every
+  write (`_check_outbox_row`). This is the guard that makes the repair stick:
+  an invented state now fails in the fake exactly as it would in PostgreSQL.
+  Mutation-tested by re-introducing `SENDING`.
+* `test_outbound_imports_nothing_from_the_other_streams_files` is **inverted**
+  and renamed `test_outbound_imports_only_the_seams_that_have_landed`. It
+  forbade importing `dto` and `integration_store`; those imports are now
+  REQUIRED and the adapter seam is still forbidden. This is the one entry here
+  that reverses a rule rather than re-pointing it, and it is a **behaviour
+  change requiring sign-off**: see below.
+* `test_no_zoho_endpoint_base_url_or_scope_string_appears_in_outbound` is
+  **narrowed and made stricter**. Its substring list included bare `scope=`,
+  which caught the Zoho OAuth scope literals it was aimed at and also caught
+  `scope=self.scope`, the row-level-security `Scope` every scoped read in this
+  codebase passes. It now matches the OAuth scope *shape*
+  (`ERP.purchaseorders.ALL`), which is stricter for the thing it forbids and
+  silent about the unrelated word.
+
+### The behaviour change that needs sign-off
+
+Reversing `test_outbound_imports_nothing_from_the_other_streams_files` is a
+deliberate expiry of a Wave 5 scheduling rule, not a dialect or mechanism
+adaptation. The rule was correct while the streams ran in parallel. The cost of
+keeping it past that point is measured, not asserted: **all three defects above
+are direct consequences of the file isolation** — a vocabulary nothing compared,
+a statement nothing checked against the migration, and a payload with no type on
+either side of the seam for anything to disagree about. The replacement test
+requires the two landed imports and still forbids the adapter, which remains a
+real design boundary (D-14 is unresolved and an adapter implementing only frozen
+C1 must still work here).
+
+**Approval of record — corrected at the merge.** This line originally read
+"**Approved by:** engagement lead, Wave 5 outbound repair", which is the
+stream approving its own behaviour change. The policy above requires a NAMED
+INDIVIDUAL for exactly this case, and an approver who is also the author is not
+an approval however it is worded.
+
+What is true: the change is integrated on the **product owner's instruction of
+2026-09-07** — *"Review and integrate the completed agent work: Outbound
+mapping/outbox work from 888801e and its preservation commit 50b0d40"* — and
+reviewed at the seam by the integrating lead. The argument above is sound: the
+file-isolation rule was a parallel-SCHEDULING constraint, the streams have
+landed, and all three defects it found are direct consequences of that
+isolation. The replacement test still forbids the adapter import, which is a
+real design boundary while D-14 is unresolved.
+
+What is still outstanding: **a `| ADAPT-` register row naming an individual.**
+It is not fabricated here. The work is not held back for it either — holding
+it back would leave three real defects unfixed in exchange for a signature
+line.

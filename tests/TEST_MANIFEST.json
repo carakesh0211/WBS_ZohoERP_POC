@@ -4001,7 +4001,7 @@
       },
       "test_the_worst_kill_leaves_a_purchase_order_we_can_still_find": {
         "assertions": 8,
-        "body_sha": "406c3a640e1c5457"
+        "body_sha": "8ca424a9a0afc946"
       },
       "test_a_function_killed_at_every_point_between_send_and_record_makes_one_po": {
         "assertions": 4,
@@ -4029,7 +4029,7 @@
       },
       "test_negative_control_a_generated_dedupe_key_duplicates_the_po": {
         "assertions": 3,
-        "body_sha": "c22310e318f2a5ca"
+        "body_sha": "d148b6246952d808"
       },
       "test_the_dedupe_key_is_the_same_in_every_process_that_derives_it": {
         "assertions": 4,
@@ -4037,11 +4037,11 @@
       },
       "test_negative_control_a_read_before_write_does_not_replace_the_unique_index": {
         "assertions": 5,
-        "body_sha": "a01d52e91bb3ed83"
+        "body_sha": "ef10d95a1e4fe428"
       },
       "test_a_duplicate_the_tenant_will_not_name_is_not_recorded_as_a_failure": {
         "assertions": 5,
-        "body_sha": "efcb7379405b613c"
+        "body_sha": "be66eab5b49a5222"
       },
       "test_a_dedupe_key_that_no_longer_derives_the_same_way_is_quarantined": {
         "assertions": 4,
@@ -4049,7 +4049,7 @@
       },
       "test_a_frozen_c1_adapter_cannot_recover_an_unnamed_duplicate_and_says_so": {
         "assertions": 11,
-        "body_sha": "b83fe2e05b5a9410"
+        "body_sha": "5eafae050562ce6f"
       },
       "test_the_same_row_recovers_the_moment_the_adapter_can_resolve_by_key": {
         "assertions": 5,
@@ -4057,7 +4057,7 @@
       },
       "test_a_dead_row_that_never_reached_the_tenant_is_not_called_an_orphan": {
         "assertions": 4,
-        "body_sha": "a1a41b9f60857a91"
+        "body_sha": "a10a43442428ed51"
       },
       "test_the_shipped_adapters_can_now_recover_a_lost_purchase_order": {
         "assertions": 7,
@@ -4065,7 +4065,15 @@
       },
       "test_the_whole_emission_recovers_through_emit_purchase_order": {
         "assertions": 6,
-        "body_sha": "839752b7e28a217c"
+        "body_sha": "9a7511eec2393b5b"
+      },
+      "test_the_first_emission_through_a_shipped_adapter_creates_the_po": {
+        "assertions": 16,
+        "body_sha": "50a68b71f2091b79"
+      },
+      "test_a_raw_payload_mapping_is_refused_by_the_shipped_adapters": {
+        "assertions": 1,
+        "body_sha": "782a2bb40076e8d9"
       },
       "test_a_tenant_that_ignores_the_search_parameter_still_cannot_mislink": {
         "assertions": 3,
@@ -4107,43 +4115,43 @@
       },
       "test_with_line_level_custom_fields_one_requisition_is_one_purchase_order": {
         "assertions": 6,
-        "body_sha": "69fbbe216aa75af8"
+        "body_sha": "91041cc1aaa6cd05"
       },
       "test_with_line_level_custom_fields_the_shape_is_marked_unverified": {
         "assertions": 2,
-        "body_sha": "455fa9b5a5fce2b2"
+        "body_sha": "a8b7e3dacc971384"
       },
       "test_header_only_dimensions_force_one_purchase_order_per_control_cell": {
         "assertions": 7,
-        "body_sha": "afaa2b74d6953b26"
+        "body_sha": "331f28a94d8fe931"
       },
       "test_the_header_only_split_is_reported_as_a_procurement_process_change": {
         "assertions": 6,
-        "body_sha": "0c47a4d9229ed914"
+        "body_sha": "b3da88a121772c16"
       },
       "test_a_single_cell_requisition_does_not_pretend_to_be_a_process_change": {
         "assertions": 2,
-        "body_sha": "332c6503caf20c98"
+        "body_sha": "01ef71708e1adddc"
       },
       "test_each_split_purchase_order_gets_its_own_dedupe_key": {
         "assertions": 1,
-        "body_sha": "c1ac04f133e28f78"
+        "body_sha": "028c836975ee7c38"
       },
       "test_the_plan_is_the_same_every_time_it_is_built": {
         "assertions": 2,
-        "body_sha": "d949d341e9bd0c8b"
+        "body_sha": "84b2cac73e7ca4ba"
       },
       "test_a_header_only_draft_spanning_two_cells_is_refused_outright": {
         "assertions": 1,
-        "body_sha": "d6ebacb176716ded"
+        "body_sha": "d151304ca6dcb7f4"
       },
       "test_a_purchase_order_cannot_be_constructed_already_open": {
         "assertions": 1,
-        "body_sha": "5d498878f26b2728"
+        "body_sha": "eea79692368f41fe"
       },
       "test_a_purchase_order_with_no_lines_is_refused": {
         "assertions": 1,
-        "body_sha": "1e1c0a7c7d97426b"
+        "body_sha": "7522b2d432c06dd2"
       },
       "test_a_line_with_no_control_cell_cannot_exist": {
         "assertions": 1,
@@ -4159,7 +4167,7 @@
       },
       "test_no_float_reaches_the_payload_handed_to_the_adapter": {
         "assertions": 3,
-        "body_sha": "aa344e68bd5124bc"
+        "body_sha": "7de5c7dd77eea629"
       },
       "test_the_outbound_source_never_converts_money_through_a_float": {
         "assertions": 1,
@@ -4173,21 +4181,33 @@
         "assertions": 4,
         "body_sha": "56e4470d71d617cf"
       },
-      "test_being_over_budget_defers_the_row_and_costs_neither_a_call_nor_an_attempt": {
-        "assertions": 8,
-        "body_sha": "a4fe7ee403598e39"
+      "test_being_over_budget_leaves_the_row_and_costs_neither_a_call_nor_an_attempt": {
+        "assertions": 9,
+        "body_sha": "53c330e58c934485"
       },
       "test_the_daily_window_refuses_before_the_minute_window_is_touched": {
         "assertions": 3,
         "body_sha": "f316d94c593def35"
       },
-      "test_the_postgres_budget_charges_the_daily_window_first": {
-        "assertions": 5,
-        "body_sha": "30018a6618b48743"
+      "test_the_outbound_budget_delegates_to_the_canonical_reservation": {
+        "assertions": 8,
+        "body_sha": "4c8baf3380f1b98c"
       },
-      "test_the_postgres_budget_reads_its_daily_ceiling_from_capabilities": {
-        "assertions": 3,
-        "body_sha": "c444eb06edcc4a83"
+      "test_a_refused_reservation_reports_the_figures_from_after_the_rollback": {
+        "assertions": 5,
+        "body_sha": "b9fb1037072efcad"
+      },
+      "test_a_window_with_no_row_is_not_reported_as_a_window_reading_zero": {
+        "assertions": 4,
+        "body_sha": "576a51888d8c6ec0"
+      },
+      "test_a_naive_timestamp_is_refused_by_the_budget": {
+        "assertions": 1,
+        "body_sha": "c069346dda2a3b37"
+      },
+      "test_outbound_writes_no_rate_budget_sql_of_its_own": {
+        "assertions": 1,
+        "body_sha": "0dee1b0f16e510b2"
       },
       "test_backoff_stays_inside_the_documented_envelope": {
         "assertions": 2,
@@ -4195,7 +4215,7 @@
       },
       "test_a_row_goes_dead_rather_than_retrying_for_ever": {
         "assertions": 4,
-        "body_sha": "ce70abb9edf49604"
+        "body_sha": "4210f05b40192815"
       },
       "test_an_emitted_purchase_order_lands_in_the_tenant_as_a_draft": {
         "assertions": 1,
@@ -4218,20 +4238,20 @@
         "body_sha": "1ecda882decdef71"
       },
       "test_no_zoho_endpoint_base_url_or_scope_string_appears_in_outbound": {
-        "assertions": 1,
-        "body_sha": "6ac26681a1c975c8"
+        "assertions": 2,
+        "body_sha": "8fe8c186a453af59"
       },
-      "test_outbound_imports_nothing_from_the_other_streams_files": {
-        "assertions": 1,
-        "body_sha": "aa8654777a6d564b"
+      "test_outbound_imports_only_the_seams_that_have_landed": {
+        "assertions": 2,
+        "body_sha": "d9ca4bfc56b15584"
       },
       "test_the_adapter_extensions_outbound_needs_are_declared_not_assumed": {
         "assertions": 5,
         "body_sha": "5f0a0e2044e64036"
       },
       "test_an_adapter_with_only_frozen_c1_still_emits_and_says_what_it_lost": {
-        "assertions": 4,
-        "body_sha": "abe0082edf50bb88"
+        "assertions": 9,
+        "body_sha": "b4cf2e08b2fe8389"
       },
       "test_a_chunk_sends_every_row_it_is_given": {
         "assertions": 4,
@@ -4248,6 +4268,46 @@
       "test_a_chunk_re_run_over_rows_it_already_sent_creates_nothing": {
         "assertions": 3,
         "body_sha": "f4a5af7ef571fb08"
+      },
+      "test_the_mapping_round_trips_through_the_json_the_outbox_actually_stores": {
+        "assertions": 4,
+        "body_sha": "87898aef5d6ff98a"
+      },
+      "test_the_line_total_maps_to_the_line_total_and_not_to_the_rate": {
+        "assertions": 5,
+        "body_sha": "92e62287f3b45f5c"
+      },
+      "test_the_header_total_is_re_summed_from_the_lines_and_not_trusted": {
+        "assertions": 2,
+        "body_sha": "c691846612c34077"
+      },
+      "test_every_monetary_header_field_is_validated": {
+        "assertions": 1,
+        "body_sha": "27155eb37915910e"
+      },
+      "test_every_monetary_line_field_is_validated": {
+        "assertions": 1,
+        "body_sha": "0effa7f9baf831df"
+      },
+      "test_every_identifier_field_is_validated": {
+        "assertions": 1,
+        "body_sha": "36bc41ce10d99d6f"
+      },
+      "test_a_timestamp_where_a_date_belongs_is_refused_rather_than_truncated": {
+        "assertions": 2,
+        "body_sha": "0308c4863e0c55fa"
+      },
+      "test_a_payload_that_disagrees_with_its_own_outbox_row_is_refused": {
+        "assertions": 1,
+        "body_sha": "91c1f604a2e08f10"
+      },
+      "test_a_payload_from_an_older_shape_of_this_module_is_refused_not_guessed": {
+        "assertions": 2,
+        "body_sha": "d5e75cdbc336ddeb"
+      },
+      "test_an_unmappable_payload_does_not_burn_eight_attempts_to_learn_it": {
+        "assertions": 5,
+        "body_sha": "dd5b16e8a829e08d"
       }
     },
     "test_outbound_unsanctioned.py": {
@@ -7855,8 +7915,8 @@
     "test_no_version_sensitive_defaults.py": 1,
     "test_observability.py": 40,
     "test_one_rate_budget_implementation.py": 6,
-    "test_outbound_chaos.py": 24,
-    "test_outbound_emission.py": 39,
+    "test_outbound_chaos.py": 26,
+    "test_outbound_emission.py": 52,
     "test_outbound_unsanctioned.py": 20,
     "test_pg_adoption.py": 16,
     "test_pg_approval_concurrency.py": 12,
@@ -7935,8 +7995,8 @@
     "test_no_version_sensitive_defaults.py": 1,
     "test_observability.py": 77,
     "test_one_rate_budget_implementation.py": 9,
-    "test_outbound_chaos.py": 106,
-    "test_outbound_emission.py": 111,
+    "test_outbound_chaos.py": 123,
+    "test_outbound_emission.py": 154,
     "test_outbound_unsanctioned.py": 55,
     "test_pg_adoption.py": 39,
     "test_pg_approval_concurrency.py": 53,
