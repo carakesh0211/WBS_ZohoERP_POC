@@ -129,14 +129,20 @@ SCOPABLE = {
     # Migration 011.
     "reconciliation_exception",
     # Migration 013, all eight carrying a capex_scope_permits RLS policy of
-    # their own. Added with the migration rather than after it, because the
-    # Wave 5 tables show what happens otherwise: the gate was widened to WALK
+    # their own -- one that reaches `project` and filters all four dimensions.
+    # Added with the migration rather than after it, because the Wave 5 tables
+    # show what happens otherwise: the gate was widened to WALK
     # `app/backend/integration/` while still being blind to that package's
     # tables, which is a widening that proves less than it appears to.
     #
     # These are the money-bearing document rows -- `po_line.amount_paise`,
     # `grn_line.amount_paise`, `bill_line.amount_paise` -- so an unscoped read
-    # of any of them leaks another entity's committed and invoiced spend.
+    # of any of them leaks another entity's committed and invoiced spend. Both
+    # halves of Wave 6 read them: the ledger (`pg/procurement.py`) writes the
+    # receipt and bill rows, the service layer (`pg/procurement_services.py`)
+    # writes the request and order rows and reads the bill rows back to derive
+    # commitment. Neither package can escape this set.
+
     "purchase_request", "pr_line", "purchase_order", "po_line",
     "grn", "grn_line", "bill", "bill_line",
     "entity", "division", "branch", "zone", "department", "plant", "location",

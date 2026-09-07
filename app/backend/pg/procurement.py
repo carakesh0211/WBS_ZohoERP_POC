@@ -1,5 +1,14 @@
 """The inbound half of the procurement chain: receives and vendor bills.
 
+THE LEDGER, NOT THE SERVICE LAYER. There are two similarly named modules in
+this package. THIS one, `pg/procurement.py`, is the LEDGER: the SQL that reads
+and writes procurement rows -- goods receipts, vendor bills, and the
+reconciliation of received against ordered. `pg/procurement_services.py` is the
+SERVICE layer: the PR -> PO lifecycle, the budget control that gates it, and
+the emission plan that carries an approved PO to Zoho. This module owns the
+rows; that one owns the decisions about them, and reads `bill_line` back out of
+here to derive `budget_ledger_cell.commitment_paise`.
+
 `013_procurement.sql` finally created `purchase_order`, `po_line`, `grn`,
 `grn_line`, `bill` and `bill_line`. This module is what writes to them from
 outside: it mirrors a goods receipt and a vendor bill into PostgreSQL,

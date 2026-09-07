@@ -2575,3 +2575,180 @@ author approving their own change is not an approval however it is worded. The
 split above is recorded here rather than left for a reviewer to find. A
 `| ADAPT-nnn |` register row naming an individual is still outstanding for it
 and is deliberately **not** fabricated.
+
+---
+
+## 2026-09-07 — Wave 6 agent 2: PR → PO, the emission to Zoho, and four gaps named rather than filled
+
+> **Renamed on merge.** This stream first shipped its service layer as
+> `app/backend/pg/procurement.py`. Wave 6 agent 3 independently claimed that
+> exact path for the inbound procurement LEDGER, and agent 3's file reached
+> the mainline first with agent 4's `reconciliation_lines` already built on
+> it. This stream's module therefore moved to
+> `app/backend/pg/procurement_services.py` (via `git mv`, so history follows)
+> and every import, test reference and docstring mention moved with it.
+> Agent 3's `procurement.py` was **not** renamed and **not** modified other
+> than to gain a two-sentence note saying which of the two modules it is.
+> The distinction to hold on to: `procurement.py` is the LEDGER (the SQL that
+> reads and writes procurement rows); `procurement_services.py` is the
+> SERVICE layer (PR → PO lifecycle, budget control, emission planning).
+
+Two new service modules (`app/backend/pg/procurement_services.py`,
+`app/backend/api/procurement.py`), two new test files, and three existing
+gates widened. **No assertion anywhere was weakened, loosened or removed.**
+Every edit to an existing test file adds coverage; each is listed below with
+what it now catches that it did not before.
+
+### Two new test files
+
+* `tests/test_procurement_emission.py` — 27 functions, all running on every
+  machine. `procurement_services.build_emission_plan` is deliberately pure (it depends
+  on the purchase-order lines and on `capabilities`, and on nothing else), so
+  the emission SHAPE, the `cf_capex_ref` derivation, the at-most-once
+  behaviour under a simulated Function death, the Z-01 negative control and
+  the three distinct 429 responses are all proved locally rather than only in
+  CI. Fakes and contract fixtures only; no tenant, no network, no cloud
+  resource.
+* `tests/test_pg_procurement.py` — 15 pure functions plus 33 marked
+  `@pytest.mark.pg`. The live half skips on every workstation here and first
+  executes in CI's `pg_tests` job. Each skip reason ends "This test SKIPS — it
+  does not pass", because a skip that reads like a pass is how a whole file of
+  RLS tests once shipped green while proving nothing.
+
+Both are registered in `tools/build_test_manifest.py::POST_BASELINE_FILES`, so
+neither inflates the 220 the removal guard is anchored to.
+
+### Three existing gates WIDENED, none narrowed
+
+1. `tests/test_scope_enforcement.py::SCOPABLE` gains migration 013's eight
+   procurement tables. They were absent for exactly as long as nothing read
+   them; the moment a service arrived, the gate would have walked it while
+   being blind to its tables — the same blind spot the Wave 5 note in that
+   file records happening to `app/backend/integration/`. **This makes the
+   gate stricter.** (Agent 3 added the same eight names in the same commit
+   range; the merge kept one copy and agent 3's account of when they were
+   added, which is the one true of the shipped history. No name was
+   duplicated and none was removed.)
+2. `tests/test_pg_locking_order.py::_CELL_WRITES` gains
+   `recompute_commitment`, and the module parametrisation gains BOTH
+   `procurement_services.py` and agent 3's `procurement.py`. Both are
+   strengthenings: a second function that writes a
+   ledger cell is now held to the same lock-order rule as `recompute_cell`,
+   and a third service module is now analysed.
+   `test_the_known_mutating_functions_are_actually_analysed` gains five
+   procurement functions and the additional assertion that each locks FIRST.
+3. `tests/test_api_auth.py::MUTATING_ROUTES` gains six rows, in the same
+   commit that mounts the router in `main.py`. `MUTATING_ROUTES` is a
+   module-level constant, not a test body, so no baseline body hash moves.
+
+### FOUR THINGS THIS STREAM COULD NOT DO, REFUSED WITH A CODE, AND REPORTS
+
+None of these is a defect in migration 013. Each is a control the SQLite build
+enforces through a table PostgreSQL has never been given.
+
+1. **`pr_reservation` has no PostgreSQL table.** `services.create_pr` writes
+   one when `reserve=True`, and `domain.compute_ledger` reads it for the
+   `pr_reserved` limb of exposure. Migrations 001–013 create nothing. So
+   `procurement_services.create_pr(reserve=True)` **refuses** with
+   `PR_RESERVATION_NOT_MIGRATED` (501) and writes nothing. Ignoring the flag
+   would be the dangerous reading: the caller asked for budget to be held and
+   would be told it was.
+2. **`lifecycle_state` has no PostgreSQL table**, so
+   `domain.lifecycle_permits` — which gates procurement on `project.status`
+   and `wbs_element.status` — cannot be ported. Both columns exist; the table
+   naming which of their values permit procurement does not. Hard-coding a
+   value set would put this author's opinion where a frozen registry belongs.
+   `procurement_services.lifecycle_gate` therefore PROBES: where the table exists the
+   gate runs exactly as `domain.lifecycle_permits` runs it, and where it does
+   not the result carries `lifecycle_gate = LIFECYCLE_UNAVAILABLE`, a
+   sentence, so a skipped gate cannot be read as a passed one.
+   `wbs_element.is_abandoned` is a boolean rather than a lookup, so THAT third
+   of `budget_check`'s lifecycle refusal ports 1:1 and is enforced.
+3. **There is no document-number sequence.** `services.create_pr` derives
+   `PR-2026-0007` from `SELECT COUNT(*)`, which races and would collide on
+   `ux_purchase_request_number`. Migration 013 creates no sequence and no
+   counter table. Callers may supply `pr_number` / `po_number`; absent one, an
+   id-derived number is used. A human-facing sequential series needs a
+   PostgreSQL `SEQUENCE`, which is a migration this stream does not own.
+4. **`po_line.quantity` is `numeric` and `outbound.PoLine.quantity` is
+   `int`.** A fractional ordered quantity has no representation on the
+   emission path. It is refused with `NON_INTEGER_QUANTITY` rather than
+   rounded, because rounding would send the vendor a quantity the commitment
+   was never checked against.
+
+### ONE HOLE FOUND AND CLOSED WHILE BUILDING
+
+`budget_ledger_cell.commitment_paise` had **no writer at all** in the
+PostgreSQL path. `budget.recompute_cell` derives only the four BUDGET columns
+from `budget_line`; commitment, actual and pr_reserved kept whatever they were
+seeded with, for ever. `check_availability` computes
+`available = budget − (commitment + actual + pr_reserved)`, so every purchase
+order this application created was invisible to the next budget check and one
+pot could be committed an unbounded number of times — the re-check inside the
+lock was re-checking a number nothing ever moved.
+
+`procurement_services.recompute_commitment` closes it, using
+`domain.compute_ledger`'s formula verbatim, including the `billed`
+subtraction.
+
+### THE HALF OF THAT HOLE THE MERGE WITH AGENT 3 RE-OPENED, IN THE UNSAFE DIRECTION
+
+This paragraph replaces one that said the `billed` subtraction was harmless
+because "bills have no writer yet, so the two limbs move in opposite directions
+correctly when they do". **Bills now have a writer and only one limb moves.**
+The sentence is retracted rather than left standing.
+
+Agent 3's `pg/procurement.py` mirrors vendor bills into `bill_line`. Checked
+line by line against `recompute_commitment`, the two modules **agree exactly**
+about the arithmetic: `ordered` and `billed` are both
+`amount_paise + non_creditable_tax_paise + freight_paise`; a `Reversal` bill is
+`-ABS(...)` in both; both filter to `('Approved', 'Reversal')`; both zero the
+commitment on `('Cancelled', 'Closed')`; and agent 3 writes all three money
+columns with a `0` default, never NULL, so no bill line can be silently dropped
+out of a `SUM`. Agent 4's `reconciliation_lines` computes the same
+`max(0, ordered - billed)` and reports it as `open_commitment_paise`.
+
+What they do **not** agree about is exposure. `check_availability` computes
+`commitment + actual + pr_reserved`, and `budget_ledger_cell.actual_paise` has
+no writer anywhere in the PostgreSQL path — no module, and no trigger in
+`013_procurement.sql`. So once a bill lands and `recompute_commitment` next
+runs, `commitment` falls by `billed` and nothing raises `actual` by it:
+available RISES by the billed amount and the same pot can be committed again.
+Before this merge the subtraction was inert because `billed` was always 0.
+It is no longer inert.
+
+It is **not** repaired here, and that is a decision rather than an oversight.
+`actual` is the ledger stream's limb; its domain formula groups `bill_line` by
+`(wbs_id, budget_head_id)` and so also counts the non-PO bill lines this
+stream never sees; and one agent quietly redefining another's exposure column
+during a name-collision merge is how a control stops meaning what its owner
+thinks it means. It is recorded here as the outstanding item it is, and named
+in `pg/procurement_services.py` at the SQL itself.
+
+The staleness is the smaller, **safe** half of the same gap: nothing on the
+inbound path calls `recompute_commitment`, so between a bill arriving and the
+next purchase-order write on that cell `commitment_paise` is OVERSTATED, which
+refuses more spending than it should.
+
+`pr_reserved_paise` (from the absent `pr_reservation`) still has no writer
+either. Reported, not invented.
+
+### ONE BEHAVIOUR THAT IS STRONGER THAN THE SQLITE ORIGINAL, DELIBERATELY
+
+`services.create_pr` checks one control cell because a SQLite purchase request
+addressed exactly one. A `pr_line`-grained request (GAP-1) can name two WBS
+elements that roll up to the SAME budget-owning ancestor for the same head.
+Checking each line's cell independently would let two halves each pass against
+one pot and the pair overspend it. `procurement_services.budget_verdicts` resolves each
+cell's owning ancestor first, sums the requested amounts per `(owner, head)`,
+and checks the SUM. That is a control the original could not have needed and
+this grain does.
+
+### Approval of record
+
+**None.** No approver is named for this entry because this stream has none to
+name, and an author approving their own change is not an approval however it
+is worded. No existing assertion was weakened, so no sign-off is being
+substituted for — every edit above is additive or strictly stricter. A
+`| ADAPT-` register row naming an individual is still outstanding for the
+Wave 6 stream as a whole and is not fabricated here.
