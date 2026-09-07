@@ -1,0 +1,117 @@
+{
+  "applies_to": "approvals-approval-delegations",
+  "desktop-1440": {
+    "principalRect": {
+      "x": 1175.671875,
+      "y": 9,
+      "width": 252.328125,
+      "height": 26
+    },
+    "headerClusterRects": [
+      {
+        "x": 868.96875,
+        "y": 9,
+        "width": 571.03125,
+        "height": 26
+      }
+    ],
+    "cardRect": {
+      "x": 240,
+      "y": 131,
+      "width": 1184,
+      "height": 330
+    },
+    "formRect": {
+      "x": 253,
+      "y": 233,
+      "width": 1158,
+      "height": 93
+    },
+    "tableTop": {
+      "x": 253,
+      "y": 337,
+      "width": 1158,
+      "height": 87
+    }
+  },
+  "laptop-1024": {
+    "principalRect": {
+      "x": 12,
+      "y": 29,
+      "width": 252.328125,
+      "height": 26
+    },
+    "headerClusterRects": [
+      {
+        "x": 717.296875,
+        "y": 0,
+        "width": 306.703125,
+        "height": 25
+      },
+      {
+        "x": 12,
+        "y": 29,
+        "width": 1012,
+        "height": 26
+      }
+    ],
+    "cardRect": {
+      "x": 240,
+      "y": 142,
+      "width": 768,
+      "height": 419.5
+    },
+    "formRect": {
+      "x": 253,
+      "y": 244,
+      "width": 742,
+      "height": 93
+    },
+    "tableTop": {
+      "x": 253,
+      "y": 348,
+      "width": 742,
+      "height": 176.5
+    }
+  },
+  "tablet-800": {
+    "principalRect": {
+      "x": 106.609375,
+      "y": 33,
+      "width": 202.328125,
+      "height": 26
+    },
+    "headerClusterRects": [
+      {
+        "x": 591.90625,
+        "y": 4,
+        "width": 208.09375,
+        "height": 25
+      },
+      {
+        "x": 10,
+        "y": 33,
+        "width": 790,
+        "height": 26
+      }
+    ],
+    "cardRect": {
+      "x": 10,
+      "y": 146,
+      "width": 780,
+      "height": 633.5
+    },
+    "formRect": {
+      "x": 23,
+      "y": 248,
+      "width": 754,
+      "height": 307
+    },
+    "tableTop": {
+      "x": 23,
+      "y": 566,
+      "width": 754,
+      "height": 176.5
+    }
+  }
+}

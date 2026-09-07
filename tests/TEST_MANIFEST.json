@@ -5813,7 +5813,7 @@
       },
       "test_live_reserve_calls_charges_both_windows_or_neither": {
         "assertions": 8,
-        "body_sha": "b048f400e8db519f"
+        "body_sha": "9b9bc47ecd345c68"
       },
       "test_live_a_job_that_exhausts_its_resumes_dies_alerting": {
         "assertions": 7,
