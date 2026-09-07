@@ -3154,6 +3154,204 @@
         "body_sha": "371fd9a890e605ab"
       }
     },
+    "test_integrations_api_guard.py": {
+      "test_the_frontend_contract_file_is_actually_readable": {
+        "assertions": 2,
+        "body_sha": "c1be92d42840b1f8"
+      },
+      "test_every_template_the_frontend_probes_for_is_mounted": {
+        "assertions": 1,
+        "body_sha": "20855f37db589eb3"
+      },
+      "test_this_router_mounts_nothing_the_frontend_does_not_ask_for": {
+        "assertions": 1,
+        "body_sha": "6a9b7658bdda9f71"
+      },
+      "test_path_parameters_are_named_exactly_as_the_frontend_spells_them": {
+        "assertions": 1,
+        "body_sha": "4cc66f04f3d98dbe"
+      },
+      "test_every_route_is_actually_served": {
+        "assertions": 1,
+        "body_sha": "286b9e3740d55bea"
+      },
+      "test_no_route_answers_an_unauthenticated_caller": {
+        "assertions": 2,
+        "body_sha": "04b40fc0a096b431"
+      },
+      "test_a_present_but_invalid_session_is_still_refused": {
+        "assertions": 2,
+        "body_sha": "05b74c3be9465935"
+      },
+      "test_a_role_without_connector_read_is_refused_at_the_floor": {
+        "assertions": 2,
+        "body_sha": "98ec7c54db84f56c"
+      },
+      "test_a_role_with_read_but_not_manage_is_refused_on_every_mutation": {
+        "assertions": 3,
+        "body_sha": "397d05da028a7f6d"
+      },
+      "test_the_guard_is_declared_on_the_router_not_route_by_route": {
+        "assertions": 1,
+        "body_sha": "e4b0dccb8813cf9b"
+      },
+      "test_mutation_removing_the_router_dependency_lets_an_unauthenticated_caller_in": {
+        "assertions": 3,
+        "body_sha": "a31be3ef7196359e"
+      },
+      "test_mutation_weakening_the_route_permission_removes_the_refusal": {
+        "assertions": 2,
+        "body_sha": "3a5efc256b9552eb"
+      },
+      "test_there_is_no_local_permission_table_and_no_fallback": {
+        "assertions": 3,
+        "body_sha": "8d1e6e2a9ddcc0c9"
+      },
+      "test_the_permissions_used_exist_in_the_authoritative_table": {
+        "assertions": 2,
+        "body_sha": "07edb9f74e06e229"
+      },
+      "test_the_actor_is_server_derived_and_ignores_a_caller_supplied_header": {
+        "assertions": 2,
+        "body_sha": "e4f7e6628360a605"
+      },
+      "test_this_router_never_constructs_a_whole_estate_scope": {
+        "assertions": 2,
+        "body_sha": "6f85f093c8032f1a"
+      },
+      "test_every_unbacked_route_answers_a_coded_503_naming_what_is_missing": {
+        "assertions": 7,
+        "body_sha": "1baf604c027b98aa"
+      },
+      "test_control_totals_and_reconciliation_take_no_database_dependency": {
+        "assertions": 2,
+        "body_sha": "77f4e7603aacbb8a"
+      },
+      "test_control_totals_never_returns_a_number": {
+        "assertions": 4,
+        "body_sha": "cf90f407a0efa552"
+      },
+      "test_the_source_refuses_to_synthesise_a_control_total": {
+        "assertions": 3,
+        "body_sha": "bfadac9832201ff2"
+      },
+      "test_every_unavailable_route_is_accounted_for": {
+        "assertions": 1,
+        "body_sha": "4707d81375572707"
+      },
+      "test_every_error_body_is_rfc_7807_shaped_with_a_code_and_a_message_id": {
+        "assertions": 3,
+        "body_sha": "89ef35e82a6575a9"
+      },
+      "test_a_message_id_is_only_ever_one_c10_declares": {
+        "assertions": 3,
+        "body_sha": "bc6f143df96b62ea"
+      },
+      "test_message_id_validation_cannot_be_bypassed_by_the_problem_helper": {
+        "assertions": 2,
+        "body_sha": "a1b873397a7c5842"
+      },
+      "test_an_unreadable_catalogue_emits_no_message_id_rather_than_an_unchecked_one": {
+        "assertions": 1,
+        "body_sha": "d1f81559c9e539cb"
+      },
+      "test_every_message_id_literal_in_the_source_is_declared_by_c10": {
+        "assertions": 1,
+        "body_sha": "bfab21e853e21aba"
+      },
+      "test_every_scope_mapping_names_all_four_dimensions": {
+        "assertions": 2,
+        "body_sha": "715105888a91e6c2"
+      },
+      "test_every_scope_mapping_this_router_uses_matches_the_store_where_they_overlap": {
+        "assertions": 2,
+        "body_sha": "f019d8f25abc3ff9"
+      },
+      "test_every_statement_this_module_runs_carries_a_scope_token": {
+        "assertions": 2,
+        "body_sha": "7ffca2995835d367"
+      },
+      "test_the_via_connection_helper_puts_the_token_inside_the_filtering_clause": {
+        "assertions": 3,
+        "body_sha": "ec09cfdf78d77d79"
+      },
+      "test_every_scoped_query_names_its_columns_mapping": {
+        "assertions": 1,
+        "body_sha": "8fd26493412cdb94"
+      },
+      "test_an_out_of_scope_row_is_reported_as_absent_and_never_as_forbidden": {
+        "assertions": 3,
+        "body_sha": "85a5418458fcb78b"
+      },
+      "test_every_list_route_is_cursor_paginated": {
+        "assertions": 1,
+        "body_sha": "c4270b0b61dd8e0c"
+      },
+      "test_a_malformed_cursor_is_the_callers_problem_not_a_500": {
+        "assertions": 3,
+        "body_sha": "eace7dc6af54c713"
+      },
+      "test_a_cursor_from_another_collection_is_refused": {
+        "assertions": 3,
+        "body_sha": "d0dc4d9d47299861"
+      },
+      "test_a_cursor_round_trips_and_is_opaque": {
+        "assertions": 2,
+        "body_sha": "a9147d694560ba2b"
+      },
+      "test_the_page_helper_over_fetches_and_never_returns_the_extra_row": {
+        "assertions": 3,
+        "body_sha": "c384907ce24ba863"
+      },
+      "test_the_limit_is_clamped_at_both_ends": {
+        "assertions": 3,
+        "body_sha": "e45475c60bddcfbf"
+      },
+      "test_a_route_that_returns_normally_sets_the_correlation_header_itself": {
+        "assertions": 2,
+        "body_sha": "69b13090bf2a3bd8"
+      },
+      "test_every_route_sets_the_correlation_header_before_it_can_refuse": {
+        "assertions": 2,
+        "body_sha": "a702f7f2184cab8d"
+      },
+      "test_the_correlation_id_returned_is_the_one_recorded": {
+        "assertions": 2,
+        "body_sha": "b751a5c6e09485d5"
+      },
+      "test_no_statement_may_outlive_the_thirty_second_ceiling": {
+        "assertions": 3,
+        "body_sha": "fd49cff6d69f03d7"
+      },
+      "test_the_delivered_matrix_entries_cover_every_mutating_path_exactly": {
+        "assertions": 1,
+        "body_sha": "4b2c517fe3170429"
+      },
+      "test_every_delivered_matrix_entry_actually_refuses_its_denied_role": {
+        "assertions": 4,
+        "body_sha": "eee7c3f9d43864a3"
+      },
+      "test_a_caller_with_no_role_at_all_can_mutate_nothing": {
+        "assertions": 1,
+        "body_sha": "12e92a5d12329bd3"
+      },
+      "test_the_mount_line_the_lead_needs_is_the_ordinary_one": {
+        "assertions": 1,
+        "body_sha": "7eec89f41b3069f6"
+      },
+      "test_no_route_accepts_or_returns_a_client_secret": {
+        "assertions": 3,
+        "body_sha": "71bead84c1b0a69e"
+      },
+      "test_no_response_builder_emits_a_secret_bearing_key": {
+        "assertions": 2,
+        "body_sha": "02ac7dd5ef8b66f2"
+      },
+      "test_the_creation_model_rejects_an_unexpected_field": {
+        "assertions": 1,
+        "body_sha": "7efe5e4a071a1ce2"
+      }
+    },
     "test_known_defects.py": {
       "test_def_01_a_legacy_v1_database_can_be_upgraded": {
         "assertions": 5,
@@ -7393,6 +7591,7 @@
     "test_integration_store.py": 47,
     "test_integration_sweeps.py": 40,
     "test_integration_throttle.py": 76,
+    "test_integrations_api_guard.py": 49,
     "test_known_defects.py": 5,
     "test_manifest.py": 10,
     "test_masters_settings_api_guard.py": 9,
@@ -7469,6 +7668,7 @@
     "test_integration_store.py": 92,
     "test_integration_sweeps.py": 110,
     "test_integration_throttle.py": 244,
+    "test_integrations_api_guard.py": 107,
     "test_known_defects.py": 13,
     "test_manifest.py": 15,
     "test_masters_settings_api_guard.py": 15,
