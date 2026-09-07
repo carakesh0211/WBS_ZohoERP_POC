@@ -6710,6 +6710,300 @@
         "body_sha": "436b750b66347aad"
       }
     },
+    "test_pg_procurement_schema.py": {
+      "test_013_is_the_next_migration_and_the_runner_discovers_it": {
+        "assertions": 4,
+        "body_sha": "e30d7296345ecf43"
+      },
+      "test_013_is_not_excluded_as_a_data_file": {
+        "assertions": 1,
+        "body_sha": "d515c229428c7c94"
+      },
+      "test_013_creates_exactly_the_eight_tables_the_contract_names": {
+        "assertions": 1,
+        "body_sha": "ef497f7ebea0d467"
+      },
+      "test_the_table_parser_is_not_fooled_by_prose_in_the_header": {
+        "assertions": 3,
+        "body_sha": "5b99a1056e73ddb0"
+      },
+      "test_every_paise_column_starts_its_declaration_line_and_is_bigint_in_the_ddl": {
+        "assertions": 2,
+        "body_sha": "01b059286ecd05b8"
+      },
+      "test_no_money_column_in_013_is_numeric_or_a_float": {
+        "assertions": 1,
+        "body_sha": "96ab54d82c07dabf"
+      },
+      "test_quantity_is_numeric_never_real": {
+        "assertions": 2,
+        "body_sha": "d86380fd9fc903c6"
+      },
+      "test_every_table_level_constraint_in_013_is_named": {
+        "assertions": 1,
+        "body_sha": "10410e55b2c629d3"
+      },
+      "test_013_declares_every_constraint_the_frozen_contract_names": {
+        "assertions": 1,
+        "body_sha": "9cbbbf64dbf933d2"
+      },
+      "test_013_declares_the_composite_foreign_keys_plan_6_2_requires": {
+        "assertions": 1,
+        "body_sha": "550f92cc1b3e7974"
+      },
+      "test_the_bill_line_composite_fk_restricts_on_update": {
+        "assertions": 3,
+        "body_sha": "01723ff4d4ee68e0"
+      },
+      "test_grn_line_money_and_quantity_carry_no_non_negative_check": {
+        "assertions": 1,
+        "body_sha": "cbd7017a85c50f11"
+      },
+      "test_bill_line_amount_is_signed_for_credit_notes": {
+        "assertions": 1,
+        "body_sha": "f8906632829292c1"
+      },
+      "test_bill_line_po_line_id_stays_nullable": {
+        "assertions": 1,
+        "body_sha": "ca8ae2f851aac458"
+      },
+      "test_a_bill_line_naming_a_po_line_must_also_name_the_po": {
+        "assertions": 1,
+        "body_sha": "82c402d23a28d7fe"
+      },
+      "test_every_capex_scope_permits_call_in_013_puts_project_in_the_last_slot": {
+        "assertions": 3,
+        "body_sha": "2a5a054b453dcfd3"
+      },
+      "test_013_does_not_redefine_the_frozen_scope_functions": {
+        "assertions": 1,
+        "body_sha": "21e168b98a1966b6"
+      },
+      "test_013_does_not_use_the_fail_open_all_null_predicate": {
+        "assertions": 1,
+        "body_sha": "e07e64d527dfefea"
+      },
+      "test_013_does_not_settle_for_a_project_only_predicate": {
+        "assertions": 1,
+        "body_sha": "9ee37f7ffb510105"
+      },
+      "test_013_enables_and_forces_row_level_security_on_all_eight_tables": {
+        "assertions": 2,
+        "body_sha": "ccee272dbca80a5f"
+      },
+      "test_every_013_policy_carries_both_using_and_with_check": {
+        "assertions": 3,
+        "body_sha": "dda5e3ab61cce6be"
+      },
+      "test_013_declares_a_rollback_section_naming_every_policy_table_and_trigger": {
+        "assertions": 8,
+        "body_sha": "d540bc03cd9e511f"
+      },
+      "test_the_rollback_block_states_what_reverting_costs": {
+        "assertions": 2,
+        "body_sha": "19d746a3ca899fb5"
+      },
+      "test_the_rollback_block_drops_children_before_parents": {
+        "assertions": 1,
+        "body_sha": "b617a789843fc35f"
+      },
+      "test_013_grants_no_delete_and_revokes_the_one_004_handed_out": {
+        "assertions": 6,
+        "body_sha": "eaadd42b8e00cc05"
+      },
+      "test_both_rls_registries_name_all_eight_procurement_tables": {
+        "assertions": 5,
+        "body_sha": "6188362f6b1b7902"
+      },
+      "test_the_procurement_registry_is_not_folded_into_006s": {
+        "assertions": 1,
+        "body_sha": "545777967799e1a1"
+      },
+      "test_every_procurement_table_is_accounted_for_by_a_join_registry": {
+        "assertions": 3,
+        "body_sha": "9766acc0de208304"
+      },
+      "test_project_join_permits_denies_a_missing_project_rather_than_waiving_it": {
+        "assertions": 1,
+        "body_sha": "c5ee01cfc6eb1a76"
+      },
+      "test_project_join_permits_filters_on_entity_not_only_on_project": {
+        "assertions": 2,
+        "body_sha": "55ea9283a6d9327f"
+      },
+      "test_project_join_permits_honours_read_all_and_empty_grants": {
+        "assertions": 2,
+        "body_sha": "13d4839fda2ac5e3"
+      },
+      "test_bill_line_permits_requires_both_reach_paths": {
+        "assertions": 4,
+        "body_sha": "71801de1e0389dbc"
+      },
+      "test_adoption_parses_013s_indexes": {
+        "assertions": 5,
+        "body_sha": "f1043bd30be2982b"
+      },
+      "test_adoption_parses_013s_policies_and_rls_statements": {
+        "assertions": 3,
+        "body_sha": "c2611bfa7be0a32e"
+      },
+      "test_adoption_parsers_see_the_earlier_migrations_too": {
+        "assertions": 2,
+        "body_sha": "141f3695945cecbf"
+      },
+      "test_adoption_refuses_a_schema_whose_row_level_security_is_switched_off": {
+        "assertions": 3,
+        "body_sha": "59b03ea539706e93"
+      },
+      "test_adoption_refuses_a_schema_whose_row_level_security_is_not_forced": {
+        "assertions": 3,
+        "body_sha": "cd7954fae029c5e0"
+      },
+      "test_adoption_refuses_a_schema_missing_an_external_uniqueness_index": {
+        "assertions": 2,
+        "body_sha": "1c1cc30f5b50ded1"
+      },
+      "test_adoption_refuses_a_schema_missing_a_procurement_policy": {
+        "assertions": 2,
+        "body_sha": "47c524a1d8afb807"
+      },
+      "test_013_is_recorded_in_the_ledger_with_its_checksum_live": {
+        "assertions": 4,
+        "body_sha": "2ed1e5bde38adbc4"
+      },
+      "test_a_second_upgrade_applies_nothing_live": {
+        "assertions": 2,
+        "body_sha": "b2f143d712d5d9ed"
+      },
+      "test_every_paise_column_is_bigint_in_the_database_live": {
+        "assertions": 2,
+        "body_sha": "ac7aab5a171ec346"
+      },
+      "test_the_rollback_block_actually_works_live": {
+        "assertions": 5,
+        "body_sha": "af4074f7f6b4ae52"
+      },
+      "test_entity_a_cannot_read_entity_bs_po_lines_live": {
+        "assertions": 1,
+        "body_sha": "9f2efc793caa9cad"
+      },
+      "test_entity_a_cannot_read_entity_bs_grn_lines_live": {
+        "assertions": 1,
+        "body_sha": "97f01e48071bef9a"
+      },
+      "test_entity_a_cannot_read_entity_bs_bill_lines_live": {
+        "assertions": 1,
+        "body_sha": "8863f1e5bcc6c49c"
+      },
+      "test_every_procurement_table_hides_the_other_entitys_row_live": {
+        "assertions": 1,
+        "body_sha": "0ed29f1db42c1b49"
+      },
+      "test_an_unscoped_capex_app_session_reads_no_procurement_row_live": {
+        "assertions": 1,
+        "body_sha": "a70e417e0d89e778"
+      },
+      "test_a_cross_entity_insert_is_refused_by_with_check_live": {
+        "assertions": 2,
+        "body_sha": "807f043f7c27bc1b"
+      },
+      "test_a_cross_entity_bill_line_insert_is_refused_by_with_check_live": {
+        "assertions": 1,
+        "body_sha": "87a7296cde70ef46"
+      },
+      "test_a_bill_line_cannot_name_a_po_line_from_another_purchase_order_live": {
+        "assertions": 1,
+        "body_sha": "247d6351f49890be"
+      },
+      "test_a_bill_line_cannot_post_to_a_cell_its_po_line_does_not_carry_live": {
+        "assertions": 1,
+        "body_sha": "e74cef9889009592"
+      },
+      "test_a_po_line_cannot_be_repointed_underneath_a_bill_live": {
+        "assertions": 1,
+        "body_sha": "5d619704bd9958f3"
+      },
+      "test_a_bill_line_cannot_be_repointed_by_update_live": {
+        "assertions": 1,
+        "body_sha": "7ab2d01d0eec0ebb"
+      },
+      "test_a_grn_line_cannot_name_a_po_line_from_another_purchase_order_live": {
+        "assertions": 1,
+        "body_sha": "7bc07f636caeb355"
+      },
+      "test_a_grn_line_cannot_claim_a_po_its_own_grn_does_not_have_live": {
+        "assertions": 1,
+        "body_sha": "d9987a0d754be9a1"
+      },
+      "test_a_grn_line_cannot_be_repointed_by_update_live": {
+        "assertions": 1,
+        "body_sha": "29f2021e4185ae46"
+      },
+      "test_a_po_line_cannot_name_a_wbs_in_another_project_live": {
+        "assertions": 1,
+        "body_sha": "ddccf364e45a36e1"
+      },
+      "test_a_po_line_cannot_be_moved_to_another_projects_wbs_by_update_live": {
+        "assertions": 1,
+        "body_sha": "24e6c922df78b8e4"
+      },
+      "test_a_pr_line_cannot_name_a_wbs_in_another_project_live": {
+        "assertions": 1,
+        "body_sha": "1aad3dfe3f7217c1"
+      },
+      "test_a_pr_line_cannot_be_moved_to_another_projects_wbs_by_update_live": {
+        "assertions": 1,
+        "body_sha": "29211a6708d7219d"
+      },
+      "test_a_bill_cannot_claim_a_project_its_purchase_order_does_not_have_live": {
+        "assertions": 1,
+        "body_sha": "c5f5d007159cbcf3"
+      },
+      "test_a_non_po_bill_and_its_line_are_accepted_live": {
+        "assertions": 1,
+        "body_sha": "83c57507b803f3ea"
+      },
+      "test_a_bill_line_naming_a_po_line_without_a_po_id_is_refused_live": {
+        "assertions": 1,
+        "body_sha": "7b26510e0d0048d5"
+      },
+      "test_a_negative_grn_line_is_accepted_live": {
+        "assertions": 2,
+        "body_sha": "e573ff6f1a91878c"
+      },
+      "test_a_negative_bill_line_is_accepted_for_a_credit_note_live": {
+        "assertions": 1,
+        "body_sha": "3871ab043a689122"
+      },
+      "test_an_unknown_accounting_status_is_refused_live": {
+        "assertions": 1,
+        "body_sha": "a47a2e5f70b35318"
+      },
+      "test_an_unknown_purchase_request_status_is_refused_live": {
+        "assertions": 1,
+        "body_sha": "d5afc4c16a99a263"
+      },
+      "test_capex_app_cannot_delete_any_procurement_document_live": {
+        "assertions": 2,
+        "body_sha": "a23c8b2c9d2183ff"
+      },
+      "test_the_purchase_request_header_total_follows_its_lines_live": {
+        "assertions": 4,
+        "body_sha": "600aeb64e4749651"
+      },
+      "test_a_duplicate_receive_line_is_refused_live": {
+        "assertions": 1,
+        "body_sha": "4859299307404cbe"
+      },
+      "test_two_locally_raised_receive_lines_without_external_ids_both_insert_live": {
+        "assertions": 1,
+        "body_sha": "32a5cc133956ea2d"
+      },
+      "test_row_level_security_is_enabled_and_forced_on_all_eight_live": {
+        "assertions": 2,
+        "body_sha": "1dcb3a6468ba20b9"
+      }
+    },
     "test_pg_reconciliation.py": {
       "test_an_exception_is_written_with_every_column_the_sweep_supplied": {
         "assertions": 10,
@@ -7937,6 +8231,7 @@
     "test_pg_period_concurrency.py": 9,
     "test_pg_periods.py": 18,
     "test_pg_principal_scope.py": 37,
+    "test_pg_procurement_schema.py": 73,
     "test_pg_reconciliation.py": 36,
     "test_pg_repo.py": 23,
     "test_pg_rls.py": 18,
@@ -8017,6 +8312,7 @@
     "test_pg_period_concurrency.py": 28,
     "test_pg_periods.py": 49,
     "test_pg_principal_scope.py": 83,
+    "test_pg_procurement_schema.py": 140,
     "test_pg_reconciliation.py": 117,
     "test_pg_repo.py": 37,
     "test_pg_rls.py": 34,

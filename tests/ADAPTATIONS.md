@@ -2234,3 +2234,127 @@ What is still outstanding: **a `| ADAPT-` register row naming an individual.**
 It is not fabricated here. The work is not held back for it either — holding
 it back would leave three real defects unfixed in exchange for a signature
 line.
+
+---
+
+## 2026-09-07 — Wave 6 agent 1: migration 013, one new test file and one extended fake
+
+`migrations/pg/013_procurement.sql` creates the eight procurement documents
+(`purchase_request`, `pr_line`, `purchase_order`, `po_line`, `grn`, `grn_line`,
+`bill`, `bill_line`). Migrations 001–012 create 53 tables and not one of them is
+a procurement document, so this is new surface rather than a change to existing
+behaviour.
+
+**No existing assertion is weakened, removed, renamed or re-pointed.** The
+manifest diff for this change is 296 insertions and zero deletions.
+
+### One new file
+
+`tests/test_pg_procurement_schema.py` — 39 tests that run with no database and
+34 live ones gated on `CAPEX_DB_URL`. Added to `POST_BASELINE_FILES` in
+`tools/build_test_manifest.py`, like every Wave 2–5 file: the 220 counts the
+POC's audit-remediation suite and inflating it would make the removal guard stop
+meaning anything the moment the product grows.
+
+The split is deliberate, not incidental. There is no PostgreSQL on any
+workstation here, so every live test SKIPS locally and first executes in CI's
+`pg_tests` job. Anything assertable against the migration TEXT is asserted
+against the text; the live half is reserved for what only a database can answer
+— does the constraint refuse the write, does the policy hide the row, is the
+column actually `bigint` in `information_schema`. A skip reports as a skip.
+
+Every live RLS test goes through `ScopedRoleDatabase` (`SET LOCAL ROLE
+capex_app`). CI's `POSTGRES_USER: capex` is a superuser and bypasses RLS
+unconditionally, so an assertion made through `pg_database` would prove nothing
+— and every "cannot read" test uses a principal scoped on ENTITY ONLY, with
+`project_ids=None`, which is the exact shape that would pass under a
+project-only predicate and fail under a correct one.
+
+### One test helper extended, not changed
+
+`tests/test_known_defects.py::_FakeAdoptConnection` answers two more query
+shapes and gains two constructor keywords (`rls_disabled`, `rls_unforced`).
+
+This is the same maintenance its own comment already describes for the previous
+extension: *"It now answers as a genuinely COMPLETE legacy schema would… the
+fake encoding an obsolete definition of 'complete schema', not a defect in the
+new checks."* Adoption verification now asks about indexes and row-level
+security as well as tables, functions, triggers, named constraints and money
+types; the fake refused those questions and every test over it failed.
+
+No assertion in any test that uses it changed. `missing_objects` now reaches
+index and policy names as well as function, trigger and constraint names,
+because all five are looked up by name in the same way.
+
+### Why adoption verification was extended at all
+
+`migrate_pg._adoption_problems` verified tables, functions, triggers, explicitly
+named constraints, the unnamed-exclusion case and `*_paise` column types. It did
+not look at indexes or at RLS, and each is a class the others structurally
+cannot see:
+
+* **Indexes.** Every external-document uniqueness guarantee in this schema —
+  `ux_bill_external`, `ux_po_external`, `ux_grn_external`, `ux_po_line_external`,
+  `ux_reconciliation_exception_open` — is a partial `CREATE UNIQUE INDEX …
+  WHERE …`, not a table constraint, so `_named_constraints_by` cannot reach any
+  of them. They are what makes an integration that re-walks by design (a
+  300-second sweep overlap, a cycling walk) idempotent instead of duplicating
+  receipts. A dump missing one adopted cleanly.
+* **RLS.** A database carrying every table with row-level security never enabled
+  reads FULLY OPEN and reported itself adopted and current. `ENABLE` and `FORCE`
+  are checked separately because they fail differently, and the `FORCE` half is
+  invisible from `pg_policies`.
+
+Four new refusal tests prove each of these actually refuses, through the fake,
+without a database — a guard nobody has watched fail is an assumption.
+
+### One parser bug fixed, found while writing the migration
+
+`migrate_pg._tables_created_by` scanned the RAW migration text, comments
+included, so a header sentence containing the words `CREATE TABLE` followed by a
+word reported a table of that name. Nothing creates it, `_missing_tables`
+reports it missing, and that migration can never be adopted — a documentation
+sentence permanently breaking the adoption path. Comments are now stripped
+first, as every other parser in the module already did. Verified against 001–012:
+none of them was affected, so this fixes a latent defect rather than a live one.
+`test_the_table_parser_is_not_fooled_by_prose_in_the_header` pins it.
+
+### Two registries, one commit
+
+`app/backend/pg/rls.py` gains `RLS_PROCUREMENT_TABLE_COLUMNS`,
+`JOINED_VIA_PROJECT`, `project_join_permits` and `bill_line_permits`;
+`bill_line` joins `TWO_LEGGED`; `scope_inventory.SCOPED_TABLES` gains all eight
+as `status="covered"`.
+
+**The procurement tables are a SEPARATE registry rather than an extension of
+`RLS_COVERAGE_TABLE_COLUMNS`, and that is not a style choice.**
+`test_006_covers_exactly_the_eight_tables_the_security_gate_names` asserts
+`set(rls.RLS_COVERAGE_TABLES)` equals 006's eight, and
+`RLS_MIGRATION_BY_TABLE` attributes everything in that dict to
+`006_rls_coverage.sql`. Folding 013's tables in would have broken a passing test
+that is right to fail, and mis-attributed the coverage. The equality CI actually
+asserts — `set(scope_inventory.covered_tables()) == set(rls.ALL_RLS_TABLES)`, in
+both directions — holds through `ALL_RLS_TABLE_COLUMNS`.
+
+The Wave 6 brief asked for the entries to go in `RLS_COVERAGE_TABLE_COLUMNS`
+specifically. They did not, for the reason above, and the deviation is recorded
+here rather than left for a reviewer to find.
+
+### One stale test name deliberately NOT renamed
+
+`test_pg_rls_coverage.py::test_all_nineteen_rls_tables_are_enabled_and_forced_live`
+now covers twenty-seven tables. It iterates `rls.ALL_RLS_TABLES` rather than a
+literal, so it is correct and passes; only the name is stale. Renaming it would
+be a manifest change requiring an approver, and the assertion is strictly wider
+than before, so the name is left and reported instead. The two `rls.py` comments
+that said "nineteen" are updated, since they are prose in a file this change
+already edits.
+
+### Approval of record
+
+**None.** No approver is named for this entry because this stream has none to
+name, and an author approving their own change is not an approval however it is
+worded. Nothing above is a behaviour change to an existing control — new schema,
+one new file, one fake extended to answer new questions, one latent parser bug
+fixed — so no sign-off is being substituted for. A `| ADAPT-` register row naming
+an individual is still outstanding and is not fabricated here.
