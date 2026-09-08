@@ -6021,6 +6021,14 @@
       }
     },
     "test_pg_exports.py": {
+      "test_every_statement_that_feeds_the_job_mapping_selects_the_whole_column_set": {
+        "assertions": 3,
+        "body_sha": "db92ed9f66964bd2"
+      },
+      "test_a_job_row_of_the_wrong_width_is_refused_rather_than_truncated": {
+        "assertions": 7,
+        "body_sha": "7b9b684bea5fd0a1"
+      },
       "test_018_is_discovered_named_and_numbered": {
         "assertions": 4,
         "body_sha": "2f459694d44e2400"
@@ -10164,7 +10172,7 @@
     "test_pg_budget.py": 22,
     "test_pg_closure.py": 35,
     "test_pg_constraints.py": 8,
-    "test_pg_exports.py": 47,
+    "test_pg_exports.py": 49,
     "test_pg_fixture_guard.py": 3,
     "test_pg_integration_rate_budget.py": 21,
     "test_pg_integration_schema.py": 81,
@@ -10257,7 +10265,7 @@
     "test_pg_budget.py": 57,
     "test_pg_closure.py": 77,
     "test_pg_constraints.py": 13,
-    "test_pg_exports.py": 128,
+    "test_pg_exports.py": 138,
     "test_pg_fixture_guard.py": 3,
     "test_pg_integration_rate_budget.py": 109,
     "test_pg_integration_schema.py": 132,

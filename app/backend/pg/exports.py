@@ -1056,6 +1056,21 @@ def _iso(value: Any) -> Any:
 
 
 def _job_row_to_dict(row: Sequence[Any]) -> dict[str, Any]:
+    # WIDTH IS ASSERTED BECAUSE `zip` WILL NOT. Every one of the ten statements
+    # that feeds this function selects exactly `_JOB_SELECT`, so a row of any
+    # other width is a caller defect -- and `dict(zip(...))` answers a short row
+    # by silently dropping the trailing columns, which is how `create_job` came
+    # to hand over a row with `expires_at` sliced off and take a KeyError four
+    # lines later. Named here, the error says which column set disagreed and
+    # who asked; discovered by `zip`, it says 'expires_at' from inside a loop
+    # that is not the mistake.
+    if len(row) != len(_JOB_COLUMNS):
+        raise ExportError(
+            "EXPORT_JOB_ROW_SHAPE",
+            f"an export job row of {len(row)} columns cannot be read against "
+            f"the {len(_JOB_COLUMNS)} of _JOB_COLUMNS; the statement that "
+            f"produced it does not select _JOB_SELECT",
+            status=500)
     job = dict(zip(_JOB_COLUMNS, row))
     for key in ("created_at", "started_at", "finished_at", "expires_at"):
         job[key] = _iso(job[key])
