@@ -441,8 +441,41 @@ SERVICE_USER_ID = "SVC-EXPORT"
 
 
 def service_scope() -> Scope:
-    """The worker's own scope. It can read export job rows and nothing else."""
+    """The scope the worker's DISCOVERY SESSION is opened with. Denied.
+
+    Every dimension `frozenset()`, `read_all` false. `repo.compile_scope`
+    short-circuits that to ``FALSE`` -- for every mapping, including one that
+    waives all four dimensions, because the emptiness check runs before the
+    waiver. So any query written in that session gets no rows by default, and
+    a business query added to the worker later fails closed rather than
+    inheriting a permissive predicate.
+    """
     return principal_scope.denied_scope(SERVICE_USER_ID, "SERVICE")
+
+
+def job_registry_scope() -> Scope:
+    """The DELIBERATE, NARROW EXCEPTION to :func:`service_scope`.
+
+    The worker has to read `export_job` rows to find work, and a denied scope
+    compiles to FALSE against those too. Rather than widening the session --
+    which would widen every statement in it, including one somebody adds next
+    year -- this scope is passed as `repo.query(..., scope=...)` at the three
+    call sites that read or finish a JOB ROW, and nowhere else.
+
+    `repo.query`'s override changes only the compiled predicate; it does NOT
+    touch `SET LOCAL`, so ROW-LEVEL SECURITY still sees the denied session's
+    settings and still admits these rows through migration 017's
+    `export_job_service` policy alone -- which checks the principal is
+    SVC-EXPORT and covers `export_job` and `export_job_chunk` and nothing else.
+    Two layers, and the wider one is scoped to three statements.
+
+    `read_all` stays FALSE. `read_all` short-circuits `compile_scope` to TRUE
+    before it looks at a dimension, so setting it here would hand the override
+    a blanket that would apply to any table it were ever passed to.
+    """
+    return Scope(user_id=SERVICE_USER_ID, principal_kind="SERVICE",
+                 entity_ids=None, plant_ids=None, project_ids=None,
+                 location_ids=None, read_all=False)
 
 
 # ===========================================================================
@@ -1376,7 +1409,8 @@ def _finish(session: Session, job: Mapping[str, Any], state: str, *,
     return _job_row_to_dict(row)
 
 
-def _purge_chunks(session: Session, export_job_id: str) -> int:
+def _purge_chunks(session: Session, export_job_id: str, *,
+                  scope: Scope | None = None) -> int:
     """Delete a job's rendered chunks, THROUGH the scope predicate.
 
     A bare `DELETE FROM export_job_chunk WHERE export_job_id = ...` carries no
@@ -1393,7 +1427,7 @@ def _purge_chunks(session: Session, export_job_id: str) -> int:
                       WHERE j.export_job_id = c.export_job_id AND {scope})
         RETURNING c.chunk_no
         """,
-        {"id": str(export_job_id)}, columns=JOB_SCOPE_COLUMNS))
+        {"id": str(export_job_id)}, scope=scope, columns=JOB_SCOPE_COLUMNS))
 
 
 def request_cancel(session: Session, export_job_id: str, *, requester: str,
@@ -1492,41 +1526,55 @@ def retry_job(session: Session, export_job_id: str, *, requester: str,
     return updated
 
 
-def expire_due(session: Session, *, now: datetime | None = None,
+def expire_due(database: Database, *, now: datetime | None = None,
                limit: int = 100) -> list[str]:
     """Purge the rendered rows of every SUCCEEDED export past its expiry.
 
     The CHUNKS go; the JOB ROW STAYS, moved to EXPIRED. Who exported what,
     under which scope and when, is the record that matters after the bytes are
     gone, and 017 revokes DELETE on `export_job` so it cannot be otherwise.
+
+    Runs in the worker's own DENIED session with the narrow
+    :func:`job_registry_scope` override on the three statements that touch the
+    export tables -- the same arrangement, and for the same reason, as
+    :func:`_claim_candidates`. Expiry is estate-wide; it is not any one
+    requester's action and must not need one of them to be signed in.
     """
     at = _now(now)
-    rows = repo.query(
-        session,
-        """
-        SELECT j.export_job_id FROM export_job j
-        WHERE j.state = 'SUCCEEDED' AND j.expires_at <= %(now)s AND {scope}
-        ORDER BY j.expires_at
-        LIMIT %(limit)s
-        """,
-        {"now": at, "limit": int(limit)}, columns=JOB_SCOPE_COLUMNS)
+    registry = job_registry_scope()
     expired: list[str] = []
-    for (job_id,) in rows:
-        _purge_chunks(session, job_id)
-        repo.query(
+    with database.session(service_scope()) as session:
+        rows = repo.query(
             session,
             """
-            UPDATE export_job j
-            SET state = 'EXPIRED', finished_at = %(now)s,
-                error_code = 'EXPIRED',
-                error_detail = 'the rendered rows were purged at expiry',
-                result_sha256 = NULL, result_bytes = NULL,
-                result_filename = NULL, result_media_type = NULL
-            WHERE j.export_job_id = %(id)s AND {scope}
-            RETURNING j.export_job_id
+            SELECT j.export_job_id FROM export_job j
+            WHERE j.state = 'SUCCEEDED' AND j.expires_at <= %(now)s AND {scope}
+            ORDER BY j.expires_at
+            LIMIT %(limit)s
             """,
-            {"id": job_id, "now": at}, columns=JOB_SCOPE_COLUMNS)
-        expired.append(job_id)
+            {"now": at, "limit": int(limit)},
+            scope=registry, columns=JOB_SCOPE_COLUMNS)
+        for (job_id,) in rows:
+            _purge_chunks(session, job_id, scope=registry)
+            repo.query(
+                session,
+                """
+                UPDATE export_job j
+                SET state = 'EXPIRED', finished_at = %(now)s,
+                    error_code = 'EXPIRED',
+                    error_detail = 'the rendered rows were purged at expiry',
+                    result_sha256 = NULL, result_bytes = NULL,
+                    result_filename = NULL, result_media_type = NULL
+                WHERE j.export_job_id = %(id)s AND {scope}
+                RETURNING j.export_job_id
+                """,
+                {"id": job_id, "now": at},
+                scope=registry, columns=JOB_SCOPE_COLUMNS)
+            audit_svc.append(
+                session, actor=SERVICE_USER_ID, action="export.expired",
+                object_type="export_job", object_id=job_id,
+                detail=json.dumps({"expired_at": at.isoformat()}))
+            expired.append(job_id)
     return expired
 
 
@@ -1577,7 +1625,8 @@ def _claim_candidates(database: Database, *, now: datetime, limit: int
             ORDER BY j.created_at
             LIMIT %(limit)s
             """,
-            {"now": now, "limit": int(limit)}, columns=JOB_SCOPE_COLUMNS)
+            {"now": now, "limit": int(limit)},
+            scope=job_registry_scope(), columns=JOB_SCOPE_COLUMNS)
         return [_job_row_to_dict(r) for r in rows]
 
 
@@ -1597,7 +1646,7 @@ def _fail_under_service_scope(database: Database, job_id: str, code: str,
             RETURNING j.export_job_id
             """,
             {"id": job_id, "now": now, "code": code, "detail": detail},
-            columns=JOB_SCOPE_COLUMNS)
+            scope=job_registry_scope(), columns=JOB_SCOPE_COLUMNS)
         audit_svc.append(
             session, actor=SERVICE_USER_ID, action="export.failed",
             object_type="export_job", object_id=job_id,
@@ -1630,7 +1679,8 @@ def advance_job(database: Database, export_job_id: str, *,
                 session,
                 f"SELECT {_JOB_SELECT} FROM export_job j "
                 f"WHERE j.export_job_id = %(id)s AND {{scope}}",
-                {"id": str(export_job_id)}, columns=JOB_SCOPE_COLUMNS)
+                {"id": str(export_job_id)},
+                scope=job_registry_scope(), columns=JOB_SCOPE_COLUMNS)
         if row is None:
             raise ExportError("EXPORT_JOB_NOT_FOUND",
                               f"no export job {export_job_id!r}", status=404)
