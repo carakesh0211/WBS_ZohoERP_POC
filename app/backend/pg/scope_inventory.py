@@ -570,7 +570,7 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
              "state change is legal estate-wide. READ-ONLY to capex_app, as "
              "lifecycle_state."),
 
-    # ------------------------------------------------ 016_reporting.sql
+    # ------------------------------------------------ 017_reporting.sql
     # Read from 016's CREATE TABLE statements, before looking at its policies
     # -- the maintenance rule in this module's docstring. `report_saved_view`
     # has a literal `entity_id text NOT NULL REFERENCES entity`, so it carries
@@ -579,7 +579,7 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
     ScopedTable(
         table="report_saved_view", dimensions=("entity",), reach="direct",
         path="report_saved_view.entity_id", status="covered",
-        migration="016_reporting.sql",
+        migration="017_reporting.sql",
         note="A saved view stores a QUESTION -- a FilterSet and a grouping -- "
              "and never an answer, so opening one runs under the OPENER'S "
              "scope and cannot serve the author's rows. What it can still "
@@ -594,7 +594,7 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
     ScopedTable(
         table="report_view_default", dimensions=(), reach="joined",
         path="report_view_default.view_id -> report_saved_view.entity_id",
-        status="covered", migration="016_reporting.sql",
+        status="covered", migration="017_reporting.sql",
         note="One default per (user, report); the primary key IS that rule. "
              "Carries no dimension column, so its policy is an EXISTS against "
              "`report_saved_view` -- itself under RLS -- and NOT an all-NULL "

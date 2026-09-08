@@ -1,4 +1,4 @@
--- 016_reporting.sql
+-- 017_reporting.sql
 -- Saved views for the reporting layer: a stored `FilterSet`, a per-user
 -- default, and the sharing rule that governs who may load someone else's.
 --
@@ -245,5 +245,5 @@ COMMIT;
 --   ALTER TABLE report_saved_view DISABLE ROW LEVEL SECURITY;
 --   DROP TABLE IF EXISTS report_view_default;
 --   DROP TABLE IF EXISTS report_saved_view;
---   DELETE FROM schema_migrations WHERE version = '016';
+--   DELETE FROM schema_migrations WHERE version = '017';
 --   COMMIT;
