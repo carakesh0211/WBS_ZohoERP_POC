@@ -3093,3 +3093,31 @@ branches.
 **Approved by:** product owner instruction of 2026-09-08, *"Ensure the
 migration-discovery guard is version-agnostic and does not retain a misleading
 hardcoded '013 is next' assumption."* No individual approver is fabricated.
+
+---
+
+## 2026-09-08 — `tests/vrt/evidence/vrt-inventory.json`, one spec added
+
+`mapping.spec.js` was added to the recorded spec list. Nothing was removed and
+no baseline entry was touched — the four mapping screens ship **no PNG baseline
+at all**, so the `baselines` map is byte-identical.
+
+**Why by hand rather than by regenerating.** The documented regeneration
+(`CAPEX_VRT_WRITE_INVENTORY=1`) rewrites the whole file from the working tree,
+and the working tree holds a spec this stream did not review: `analytics.spec
+.js` exists in `tests/vrt/` and is **absent from the committed inventory**,
+having arrived with the Wave 7 analytics merge at `458d74a` without the
+inventory being updated. Regenerating would have silently absorbed it into the
+approved set — precisely the act the inventory gate exists to make deliberate.
+One hand-added line records this stream's own spec and leaves the other
+stream's to its own stream.
+
+**`vrt-inventory.spec.js` therefore still fails on a full run**, and it fails
+for `analytics.spec.js`, not for this change. Reported to the lead: whoever
+owns the analytics stream should record their spec, at which point the gate
+goes green again.
+
+**Approved by:** no individual approver, and none is fabricated. This is a
+mechanical entry for a newly added spec, which the inventory's own comment
+describes as the normal path — *"a new spec or baseline that nobody recorded"*
+is reported so that it can be recorded.

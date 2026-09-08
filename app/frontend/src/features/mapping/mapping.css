@@ -1,0 +1,278 @@
+/* app/frontend/src/features/mapping/mapping.css
+   Additive stylesheet for the mapping screens: SCR-35, SCR-36, SCR-37, SCR-40.
+
+   THE FOUR RULES THIS FILE KEEPS, and why each one is here
+   -------------------------------------------------------
+   1. NO :root, NO custom property declared here, NO raw hex anywhere.
+      Every colour is a var() naming a token already frozen in
+      research/30_contracts/C6_tokens.json and declared in the byte-frozen
+      app/frontend/styles.css. A new colour belongs in the token registry, not
+      in a feature stylesheet.
+
+   2. EVERY SELECTOR IS SCOPED to a `mapping-` class.
+      settings.css shipped two UNSCOPED selectors — `input:disabled,
+      textarea:disabled` and `.field label` — which restyle disabled controls
+      and label wrapping on every approved shell view the moment that
+      stylesheet loads. That defect is why these stylesheets are injected per
+      route, and this file is written so it would be harmless even if the
+      containment failed. That matters more here than anywhere: SCR-36 and
+      SCR-37 are FULL OF disabled controls, and an unscoped `:disabled` rule
+      written for them would repaint every disabled control in the application.
+
+   3. LAYOUT AND SIZE ONLY. Nothing here restyles a `.status`, a `.msg`, a
+      `.tile`, a table or a button. Those are the approved design and they come
+      from styles.css unchanged.
+
+   4. NO `style=` ATTRIBUTE is ever produced by the screens that use this file.
+      The CSP is `style-src 'self'`; core/dom.js's h() throws on a style
+      attribute, so this is structural rather than a rule to remember.
+*/
+
+/* ---------------- cards ---------------- */
+
+.mapping-card + .mapping-card {
+  margin-top: 16px;
+}
+
+/* The card header as an <h2> rather than the frozen stylesheet's `.card > h3`.
+   The shell renders the screen name as the page <h1>, so an h3 here would skip
+   a heading level: axe flags it and a screen-reader user navigating by heading
+   loses the outline. These declarations reproduce `.card > h3` exactly, from
+   the same tokens, so the card is visually identical and only the element name
+   and the document outline differ. budget.css, approvals.css and
+   integration.css solve the same problem the same way. */
+.mapping-card > .mapping-card-title {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--n200);
+  background: var(--n50);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mapping-card > .mapping-card-title .spacer {
+  flex: 1;
+}
+
+/* The UA stylesheet gives <dl> `margin: 1em 0`; the frozen `.kv` grid was
+   written against a <div>. Removing the margin keeps the layout identical
+   while the element stays a real description list, which axe's `dlitem` rule
+   requires and a screen reader needs. */
+.mapping-kv {
+  margin: 0;
+}
+
+/* ---------------- toolbar ---------------- */
+
+.mapping-toolbar {
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+/* ---------------- the disabled control, and its reason ----------------
+
+   THE REASON IS NOT DECORATION. SCR-37's whole contribution is that an
+   unsupported control is shown disabled WITH the documented reason rather than
+   hidden, so the reason is given the same left-border treatment
+   integration.css gives a compatibility source line: a non-colour signal that
+   survives greyscale and says "read this, do not skim past it". */
+
+.mapping-disabled {
+  margin-top: 8px;
+}
+
+.mapping-reason {
+  margin: 4px 0 0;
+  border-left: 3px solid var(--warning);
+  padding-left: 8px;
+}
+
+.mapping-evidence {
+  white-space: nowrap;
+}
+
+.mapping-switch {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+/* A fieldset[disabled] carries the UA's own border and margins, which do not
+   match the approved card interior. Reset to the frozen spacing scale; the
+   controls inside are untouched and stay exactly as styles.css draws them. */
+.mapping-fieldset {
+  margin: 12px 0 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+.mapping-legend {
+  padding: 0;
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mapping-fieldset-body {
+  margin-top: 8px;
+}
+
+.mapping-governed {
+  margin-bottom: 0;
+}
+
+.mapping-enabled-note {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+/* ---------------- per-object cards (SCR-37) ---------------- */
+
+.mapping-objects {
+  display: grid;
+  gap: 12px;
+}
+
+.mapping-object > .mapping-object-title {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--n200);
+  background: var(--n50);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mapping-object > .mapping-object-title .spacer {
+  flex: 1;
+}
+
+.mapping-anchored {
+  margin-bottom: 12px;
+}
+
+.mapping-server-note + .mapping-server-note {
+  margin-top: 8px;
+}
+
+.mapping-tiles {
+  margin-bottom: 12px;
+}
+
+/* A tile whose value is a phrase rather than a number: the frozen `.tile .v`
+   sets a 20px numeric size that "not available" must not inherit, or an
+   absence renders larger than the measurements beside it. */
+.mapping-tile-word {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+/* ---------------- table cells ---------------- */
+
+/* A two-line cell: the identifier, and the thing that qualifies it. Used for
+   every source/target pair, so a code and its internal id, or an external id
+   and the system it came from, are visibly one fact rather than two columns. */
+.mapping-idpair {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+}
+
+.mapping-idpair .mono {
+  word-break: break-all;
+}
+
+.mapping-conflict,
+.mapping-origin {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.mapping-untargeted {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.mapping-none {
+  font-style: normal;
+}
+
+.mapping-params {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.mapping-params > li + li {
+  margin-top: 4px;
+}
+
+/* ---------------- counts, and the total that is not shown ---------------- */
+
+.mapping-count {
+  margin: 0 0 8px;
+}
+
+.mapping-nototal {
+  border-left: 3px solid var(--n300);
+  padding-left: 6px;
+}
+
+.mapping-reveal-withheld {
+  margin: 0 0 8px;
+}
+
+/* ---------------- documented absences (SCR-37) ---------------- */
+
+.mapping-negatives {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mapping-negatives > li {
+  padding: 8px 0;
+  border-top: 1px solid var(--n100);
+}
+
+.mapping-negatives > li:first-child {
+  border-top: 0;
+}
+
+/* ---------------- notices ---------------- */
+
+.mapping-spec-notice,
+.mapping-no-secrets {
+  margin-bottom: 12px;
+}
+
+/* ---------------- narrow viewports ----------------
+
+   The three configured VRT viewports are 1440, 1024 and 800. At 800 the nav
+   rail is display:none and the content takes the full width, so the only thing
+   that needs saying here is that a two-line identifier cell must not force a
+   table wider than the viewport — the document must never scroll sideways
+   (AUD-M-004). Wide tables scroll inside their own `.table-wrap`, which
+   styles.css already provides. */
+
+@media (max-width: 900px) {
+  .mapping-objects {
+    gap: 8px;
+  }
+}
