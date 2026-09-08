@@ -316,13 +316,35 @@ function loaderStates(page) {
     .map((el) => el.getAttribute('data-analytics-state')));
 }
 
-/** A project id from the real seeded data, for the four project-scoped screens. */
+/**
+ * A project id from the real seeded data, for the four project-scoped screens.
+ *
+ * THE `X-Session` HEADER IS NOT OPTIONAL HERE, and leaving it off is why every
+ * test that called this helper failed. `/api/dashboard` is
+ * `Depends(principal)`, which reads `Authorization` or `X-Session`; a bare
+ * `fetch` inside `page.evaluate` sends neither, because it does not go through
+ * `core/api-client.js`, which is the only thing that attaches the header. The
+ * route answered 401, `r.ok` was false, this returned null, and the assertion
+ * below reported it as "the seeded demo database returned no project" — a
+ * message about the fixture for what was really a missing header.
+ *
+ * The session id is read from where the shell puts it: `sessionStorage`, under
+ * `capex.session_id` (`core/api-client.js::SESSION_KEY`).
+ */
 async function seededProject(page) {
   const data = await page.evaluate(async () => {
-    const r = await fetch('/api/dashboard', { headers: { Accept: 'application/json' } });
-    if (!r.ok) return null;
+    const headers = { Accept: 'application/json' };
+    let sid = '';
+    try { sid = sessionStorage.getItem('capex.session_id') || ''; } catch { sid = ''; }
+    if (sid) headers['X-Session'] = sid;
+    const r = await fetch('/api/dashboard', { headers });
+    if (!r.ok) return { __status: r.status };
     return r.json();
   });
+  expect(data && data.__status,
+    `/api/dashboard refused this probe with HTTP ${data && data.__status} — the helper is not `
+    + 'authenticated, which is a fault in the test and not in the seeded data')
+    .toBeFalsy();
   expect(data && Array.isArray(data.projects) && data.projects.length,
     'the seeded demo database returned no project, so the project-scoped screens cannot be exercised')
     .toBeTruthy();
@@ -843,18 +865,25 @@ test.describe('Wave 7 analytics screens — four states that never collapse', ()
       // honours fewer filters still and would answer a question nobody asked.
       // And it must not show a figure.
       await routeOpenApi(page, REPORT_PATHS);
+      // NESTED UNDER `detail`, because that is the envelope FastAPI produces:
+      // `api/reports.py` raises HTTPException(status_code=422, detail={...}),
+      // and FastAPI serialises the detail object under a `detail` key. A stub
+      // that puts the problem at the top level would be testing a shape the
+      // server never sends.
       await routeJson(page, '**/api/reports/metrics**', {
-        type: 'about:blank',
-        title: 'Vendor Dimension Incomplete',
-        status: 422,
-        code: 'VENDOR_DIMENSION_INCOMPLETE',
-        state: 'unavailable',
-        detail: 'Filtering by vendor is not available.',
-        unsupported_filters: [{
-          field: 'vendor_ids',
+        detail: {
+          type: 'about:blank',
+          title: 'Vendor Dimension Incomplete',
+          status: 422,
           code: 'VENDOR_DIMENSION_INCOMPLETE',
-          detail: 'purchase_order still carries only vendor_name as text.',
-        }],
+          state: 'unavailable',
+          detail: 'Filtering by vendor is not available.',
+          unsupported_filters: [{
+            field: 'vendor_ids',
+            code: 'VENDOR_DIMENSION_INCOMPLETE',
+            detail: 'purchase_order still carries only vendor_name as text.',
+          }],
+        },
       }, 422);
       await signIn(page);
       await gotoScreen(page, 'analytics-executive', 'vendor=V-1');
