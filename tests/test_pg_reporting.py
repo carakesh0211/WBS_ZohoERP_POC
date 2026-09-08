@@ -299,10 +299,22 @@ def _seed(connection, *, suffix: str) -> dict[str, str]:
     # ------------------------------------------------------------ GRNs
     def grn(grn_id: str, *, status: str = "Approved", reversal: bool = False,
             lines: tuple[tuple[str, int], ...] = ()) -> None:
-        ex("INSERT INTO grn (grn_id, grn_number, po_id, received_at, status, "
-           "is_reversal, created_by, updated_by) "
-           "VALUES (%s,%s,%s,%s,%s,%s,'t','t')",
-           (grn_id, f"GN_{grn_id}", ids["po"], EARLIER, status, reversal))
+        # `grn.entity_id` is NOT NULL from migration 014
+        # (014_procurement_corrections.sql:388) and has NO default, because the
+        # only value it may hold is the one 014's own backfill wrote
+        # (014:376-380): the entity of the PO's project. Read through that same
+        # join rather than written as a literal, so this seed states the
+        # derivation `procurement.record_receive_line` states
+        # (procurement.py:850-861) instead of a value that merely happens to
+        # match it. It is also the leading column of `ux_grn_number_scoped`
+        # (014:478), so an entity taken from anywhere else would scope the
+        # document number wrongly.
+        ex("INSERT INTO grn (grn_id, grn_number, po_id, entity_id, "
+           "received_at, status, is_reversal, created_by, updated_by) "
+           "SELECT %s,%s,po.po_id,p.entity_id,%s,%s,%s,'t','t' "
+           "FROM purchase_order po JOIN project p "
+           "ON p.project_id = po.project_id WHERE po.po_id = %s",
+           (grn_id, f"GN_{grn_id}", EARLIER, status, reversal, ids["po"]))
         for line_id, amount in lines:
             ex("INSERT INTO grn_line (grn_line_id, grn_id, po_id, po_line_id, "
                "quantity, amount_paise, created_by, updated_by) "
@@ -319,11 +331,18 @@ def _seed(connection, *, suffix: str) -> dict[str, str]:
     # ----------------------------------------------------------- bills
     def bill(bill_id: str, *, accounting_status: str, po_backed: bool,
              line_id: str, amount: int, tax: int = 0, freight: int = 0) -> None:
+        # `bill.entity_id` is NOT NULL from the same migration
+        # (014_procurement_corrections.sql:389). 014 backfilled it from the
+        # BILL'S OWN project (014:382-386), not from the PO's -- which is why
+        # the join below is on `project` and survives `po_id` being NULL for
+        # the non-PO bill. Leading column of `ux_bill_number_scoped` (014:482).
         ex("INSERT INTO bill (bill_id, bill_number, po_id, project_id, "
-           "vendor_name, bill_date, status, accounting_status, created_by, "
-           "updated_by) VALUES (%s,%s,%s,%s,'Vendor',%s,'Approved',%s,'t','t')",
+           "entity_id, vendor_name, bill_date, status, accounting_status, "
+           "created_by, updated_by) "
+           "SELECT %s,%s,%s,p.project_id,p.entity_id,'Vendor',%s,'Approved',"
+           "%s,'t','t' FROM project p WHERE p.project_id = %s",
            (bill_id, f"BN_{bill_id}", ids["po"] if po_backed else None,
-            ids["project_a"], EARLIER, accounting_status))
+            EARLIER, accounting_status, ids["project_a"]))
         ex("INSERT INTO bill_line (bill_line_id, bill_id, po_id, po_line_id, "
            "wbs_id, budget_head_id, quantity, amount_paise, "
            "non_creditable_tax_paise, freight_paise, created_by, updated_by) "
@@ -344,10 +363,16 @@ def _seed(connection, *, suffix: str) -> dict[str, str]:
     bill(f"BDIR_{suffix}", accounting_status="Approved", po_backed=False,
          line_id=f"BLDIR_{suffix}", amount=2_000)
     # Project B's one bill, on the OTHER plant.
-    ex("INSERT INTO bill (bill_id, bill_number, project_id, vendor_name, "
-       "bill_date, status, accounting_status, created_by, updated_by) "
-       "VALUES (%s,%s,%s,'Vendor',%s,'Approved','Approved','t','t')",
-       (f"BB_{suffix}", f"BNB_{suffix}", ids["project_b"], EARLIER))
+    # Same NOT NULL as the helper's bills (014:389), derived from project B's
+    # own row. Both projects sit under the one entity this seed creates, so the
+    # join returns the same id -- but it is the join that states why, and a
+    # later seed that gave project B its own entity would still be correct here.
+    ex("INSERT INTO bill (bill_id, bill_number, project_id, entity_id, "
+       "vendor_name, bill_date, status, accounting_status, created_by, "
+       "updated_by) "
+       "SELECT %s,%s,p.project_id,p.entity_id,'Vendor',%s,'Approved',"
+       "'Approved','t','t' FROM project p WHERE p.project_id = %s",
+       (f"BB_{suffix}", f"BNB_{suffix}", EARLIER, ids["project_b"]))
     ex("INSERT INTO bill_line (bill_line_id, bill_id, wbs_id, budget_head_id, "
        "quantity, amount_paise, created_by, updated_by) "
        "VALUES (%s,%s,%s,%s,1,%s,'t','t')",
