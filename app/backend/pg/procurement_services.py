@@ -163,6 +163,28 @@ ERR_BUDGET_MOVED = "BUDGET_MOVED"
 ERR_VERSION_CONFLICT = "VERSION_CONFLICT"
 ERR_SELF_APPROVAL = "SELF_APPROVAL"
 
+#: Migration 015. A request asked for budget to be held and one of the cells it
+#: resolves to cannot hold it. The WHOLE request is refused and NOTHING is
+#: created -- the atomicity half of the approved grain. Reserving the cells
+#: that fit and refusing the one that does not would leave a purchase request
+#: holding budget for part of itself, which is a hold nobody can reconcile
+#: against the document it belongs to.
+ERR_RESERVATION_EXCEEDS_BUDGET = "RESERVATION_EXCEEDS_BUDGET"
+
+#: Migration 015. A live reservation already exists for this request and this
+#: resolved cell, for a DIFFERENT amount. A retry that replays the same request
+#: is idempotent and reuses the hold; a retry that replays a DIFFERENT amount
+#: is not a retry, and silently moving the hold to the new figure would change
+#: how much budget is held without any record that it moved.
+ERR_RESERVATION_AMOUNT_CONFLICT = "RESERVATION_AMOUNT_CONFLICT"
+
+#: Migration 015. The request still carries a live 014-grain hold -- one
+#: written against a line's OWN cell rather than against the budget-owning
+#: ancestor. Adding a resolved-grain hold beside it would hold the same money
+#: twice, at two different keys, and `ux_pr_reservation_live_cell` cannot see
+#: that because it is not a duplicate key. Settle the old hold first.
+ERR_RESERVATION_GRAIN_CONFLICT = "RESERVATION_GRAIN_CONFLICT"
+
 #: What :func:`lifecycle_gate` reports when ``lifecycle_state`` is absent.
 #: A STRING, not a boolean and not a silent omission: a caller reading this
 #: field learns that the gate did not run, which "True" would hide.
@@ -870,9 +892,66 @@ def issue_document_number(session: Session, series_code: str, *, actor: str,
 # two requestors can each pass `budget_check` against the same rupees, because
 # neither request has taken anything out of availability.
 #
-# `ux_pr_reservation_live UNIQUE (pr_id) WHERE state = 'Reserved'` is the whole
-# control -- exactly one live reservation per PR, enforced by a partial unique
-# index rather than by this module remembering to check.
+# THE GRAIN, AND WHY IT MOVED (migration 015, approved 2026-09-08)
+# ================================================================
+#
+# 014 built `ux_pr_reservation_live UNIQUE (pr_id) WHERE state = 'Reserved'`:
+# exactly one live hold per purchase request. That was right while a request
+# addressed exactly ONE control cell -- the SQLite POC's header-only
+# `purchase_request` -- and wrong the moment `pr_line` arrived, because a
+# request whose lines span two pots needs one hold per pot. 014 reported the
+# contradiction rather than resolving it and this module REFUSED a multi-cell
+# `reserve=True` with MULTI_CELL_RESERVATION_UNSUPPORTED. The product owner
+# resolved it on 2026-09-08.
+#
+# THE APPROVED GRAIN IS ONE LIVE RESERVATION PER (PURCHASE REQUEST x RESOLVED
+# BUDGET CONTROL CELL), enforced by `ux_pr_reservation_live_cell UNIQUE
+# (pr_id, wbs_id, budget_head_id) WHERE state = 'Reserved'` (migration 015).
+#
+# A RESOLVED CONTROL CELL IS THE BUDGET-OWNING ANCESTOR, NOT THE LINE'S WBS
+# ==========================================================================
+#
+# This is the part that is easy to get wrong and expensive to get wrong.
+# Budget is owned by an ANCESTOR: `budget._owning_ancestor` walks the chain and
+# finds the nearest ancestor-or-self whose own `budget_paise` is non-zero for
+# the head, and availability is a property of that owner's whole subtree. So
+#
+#   * two lines on DIFFERENT WBS elements that resolve to the SAME owner for
+#     the same head are competing for ONE pot and AGGREGATE INTO ONE
+#     reservation. Holding them separately would put two rows against one pot
+#     and let each half be checked in isolation -- which is precisely the
+#     defect `budget_verdicts` aggregates by owning cell to prevent, re-opened
+#     one layer down;
+#   * two lines resolving to DIFFERENT owners are competing for DIFFERENT pots
+#     and get ONE HOLD EACH. That is the case 014's index forbade.
+#
+# NOTHING HERE RE-DERIVES THE OWNER. `budget_verdicts` already resolves it --
+# it must, to check the SUM against the right pot -- and returns it as
+# `owning_wbs_id` alongside the aggregated `requested_paise`.
+# :func:`resolved_cell_amounts` reads those verdicts and nothing else. A second
+# resolution pass could disagree with the one the refusal was computed from,
+# and a hold placed on a different cell than the check was run against is a
+# hold against a budget nobody checked.
+#
+# ATOMICITY, IDEMPOTENCY, EXACTLY-ONCE
+# ====================================
+#
+# * ATOMIC. Every cell reserves or none does. There is no partial commit and no
+#   compensating write: the whole request runs in ONE transaction
+#   (`engine.Database.session` commits on success and rolls back on ANY
+#   exception), so a refusal on the third cell un-writes the first two by
+#   rolling back. That is why every refusal below is a raise and never a
+#   returned status.
+# * IDEMPOTENT. :func:`reserve_pr_cells` inserts through `ON CONFLICT ... DO
+#   NOTHING` against the partial unique index, then reads back what is actually
+#   live. A replayed request finds its own holds and reuses them; a replay
+#   carrying a DIFFERENT amount is not a replay and is refused rather than
+#   silently moving the hold.
+# * EXACTLY ONCE. Settlement is `UPDATE ... WHERE state = 'Reserved'`, so a
+#   second conversion, release or expiry of the same reservation matches zero
+#   rows and moves nothing. The row is never DELETEd -- `capex_app` has no
+#   DELETE on this table -- because AUD-H-001 is a claim about a row's history
+#   and a deleted row has none.
 
 #: `ck_pr_reservation_state`'s four values. Transcribed from migration 014,
 #: which transcribed them from `app/backend/migrations/002_financial_controls.sql`.
@@ -882,6 +961,28 @@ RESERVATION_STATES: tuple[str, ...] = (
 #: The one state that HOLDS budget. `domain.compute_ledger` and
 #: `_RECOMPUTE_DERIVED_SQL` both read exactly this.
 RESERVATION_LIVE_STATE = "Reserved"
+
+#: The three states a live reservation may be settled INTO, and the three
+#: business events that settle it. Named so a caller cannot invent a fourth by
+#: typo: `ck_pr_reservation_state` would refuse it, but at 3am with a stack
+#: trace rather than with a sentence.
+RESERVATION_SETTLED_STATES: tuple[str, ...] = (
+    "Converted", "Released", "Expired")
+
+#: `ck_pr_reservation_cell_grain`'s two values (migration 015).
+#:
+#: LINE     -- `wbs_id` is the cell a PR LINE named. Every row written before
+#:             015 is this, by construction, and every one of them is preserved.
+#: RESOLVED -- `wbs_id` is the BUDGET-OWNING ANCESTOR the line resolves to, and
+#:             the row may aggregate several lines. Everything this module
+#:             writes from 015 onward is this.
+#:
+#: The distinction is load-bearing rather than documentary: a live LINE hold on
+#: a descendant and a live RESOLVED hold on its owner are two rows at two
+#: different keys holding the SAME money twice, and no unique index can see
+#: that. :func:`reserve_pr_cells` refuses the overlap by reading this column.
+RESERVATION_GRAIN_LINE = "LINE"
+RESERVATION_GRAIN_RESOLVED = "RESOLVED"
 
 
 def _assert_reservable(session: Session) -> None:
@@ -901,10 +1002,57 @@ def _assert_reservable(session: Session) -> None:
              "tell you budget was held when nothing holds it.", 501)
 
 
+def _assert_resolved_grain_available(session: Session) -> None:
+    """Refuse if `pr_reservation.cell_grain` is absent -- 015 has not been run.
+
+    The SAME refusal as :func:`_assert_reservable`, one migration later, and
+    for the same reason rather than for tidiness. On a database at 014 the
+    resolved grain does not exist: `ux_pr_reservation_live` still permits ONE
+    live hold per request, so a two-cell reservation would take the first hold,
+    then fail on the second with a `UniqueViolation` -- loud and safe, but a
+    stack trace rather than a sentence, and the caller would be told nothing
+    about WHY. This says why, before anything is written.
+
+    Probed rather than assumed. `assert_schema_current` should already have
+    refused to serve a database behind 015, but "cannot normally happen" is not
+    a control, and the outcome it guards against -- a caller told budget was
+    held across two cells when the schema can only hold one -- is the single
+    most dangerous shape of answer this module can give.
+    """
+    row = session.fetchone(
+        "SELECT 1 FROM information_schema.columns "
+        "WHERE table_schema = current_schema() "
+        "  AND table_name = 'pr_reservation' AND column_name = 'cell_grain'")
+    if row is None:
+        _err(ERR_RESERVATION_UNAVAILABLE,
+             "budget was to be held at the RESOLVED control-cell grain and "
+             "this database cannot express it: `pr_reservation.cell_grain` "
+             "does not exist, so migration 015 has not been applied. NOTHING "
+             "was created. At 014 the schema permits exactly one live hold per "
+             "purchase request, so a request spanning two budget-owning cells "
+             "cannot be held at all -- and taking the first hold and failing "
+             "on the second would leave a request holding budget for part of "
+             "itself.", 501)
+
+
 def create_reservation(session: Session, *, pr_id: str, project_id: str,
                        wbs_id: str, budget_head_id: str, amount_paise: int,
                        actor: str) -> str:
     """Hold ``amount_paise`` on one control cell for one purchase request.
+
+    THE 014-GRAIN PRIMITIVE, KEPT EXACTLY AS IT WAS. It writes the cell it is
+    GIVEN, with no ancestor resolution and no aggregation, and the row it
+    writes therefore carries ``cell_grain = 'LINE'`` -- which is what every row
+    written before migration 015 carries, and is the truth about this function.
+    :func:`reserve_pr_cells` is the resolved-grain entry point and the one
+    :func:`create_pr` uses.
+
+    A duplicate is a `UniqueViolation` from ``ux_pr_reservation_live_cell``,
+    raised rather than swallowed. That is deliberate and is not the idempotency
+    path: a caller that hands this function a cell twice has made a mistake
+    about which cell, and answering it with a silent reuse would hide the
+    mistake. Retry-safety lives in :func:`reserve_pr_cells`, which knows what a
+    replay of a whole request looks like.
 
     The caller must already hold the cell's lock (``create_pr`` does, taken
     once with the complete affected set before any decision was read) and must
@@ -937,6 +1085,291 @@ def create_reservation(session: Session, *, pr_id: str, project_id: str,
          "state": RESERVATION_LIVE_STATE, "actor": actor},
     )
     return reservation_id
+
+
+def resolved_cell_amounts(verdicts: Sequence[Mapping[str, Any]]
+                          ) -> dict[tuple[str, str], int]:
+    """``{(owning_wbs_id, budget_head_id): paise}`` from budget verdicts.
+
+    THE RESOLVED CONTROL CELLS OF A DOCUMENT, and the whole of how they are
+    computed. :func:`budget_verdicts` has already resolved each line cell's
+    budget-OWNING ancestor (``budget._owning_ancestor``, reached through
+    ``check_availability``) and already summed the requested paise per
+    ``(owner, head)`` -- it has to, or it would check each half of a
+    two-line request against the same pot in isolation. This reads that answer
+    and derives nothing.
+
+    A SECOND RESOLUTION PASS IS THE DEFECT THIS AVOIDS. Availability moves;
+    ``budget_paise`` moves; a re-resolution a few statements later can name a
+    DIFFERENT owner than the verdict the request was accepted on, and a hold
+    placed on a cell other than the one the check ran against is a hold against
+    a budget nobody checked. One resolution, one truth, one pot.
+
+    Money is never rounded here and cannot be: ``requested_paise`` is the
+    integer sum :func:`budget_verdicts` accumulated from ``_as_paise``-checked
+    line amounts. The ``int`` guard below is not decoration -- a ``Decimal``
+    arriving from a ``SUM()`` that forgot its ``::bigint`` cast would otherwise
+    ride into an ``amount_paise`` column silently.
+    """
+    out: dict[tuple[str, str], int] = {}
+    for verdict in verdicts:
+        owner = verdict.get("owning_wbs_id")
+        head = verdict.get("budget_head_id")
+        amount = verdict.get("requested_paise")
+        if not owner or not head:
+            _err("UNRESOLVED_CONTROL_CELL",
+                 f"A budget verdict carries no owning control cell "
+                 f"(owning_wbs_id={owner!r}, budget_head_id={head!r}), so "
+                 f"there is no cell to hold budget on. NOTHING was created. "
+                 f"Holding it against the line's own cell instead would "
+                 f"reserve money on a budget that does not own it.", 500)
+        if not isinstance(amount, int) or isinstance(amount, bool):
+            _err("NON_INTEGER_RESERVATION_AMOUNT",
+                 f"The verdict for ({owner}, {head}) carries "
+                 f"{amount!r} ({type(amount).__name__}) as its requested "
+                 f"amount. Money is an integer number of paise end to end; "
+                 f"rounding or coercing it here is how a rupee goes missing "
+                 f"from a commitment. NOTHING was created.", 500)
+        out[(owner, head)] = out.get((owner, head), 0) + amount
+    return out
+
+
+def live_reservations(session: Session, pr_id: str) -> list[dict[str, Any]]:
+    """Every LIVE reservation on ``pr_id``, with its cell, amount and grain.
+
+    Read under the caller's existing locks and used for three things: the
+    idempotency read-back in :func:`reserve_pr_cells`, the grain-overlap
+    refusal beside it, and the cells :func:`release_reservations_for_pr` must
+    re-derive. One statement rather than three subtly different ones.
+    """
+    rows = session.fetchall(  # scope-exempt: pr_id was scope-gated by the caller in this transaction
+        """
+        SELECT reservation_id, wbs_id, budget_head_id, amount_paise, cell_grain
+        FROM pr_reservation
+        WHERE pr_id = %(pr_id)s AND state = %(live)s
+        ORDER BY wbs_id, budget_head_id, reservation_id
+        """,
+        {"pr_id": pr_id, "live": RESERVATION_LIVE_STATE},
+    )
+    return [{"reservation_id": row[0], "wbs_id": row[1],
+             "budget_head_id": row[2], "amount_paise": int(row[3]),
+             "cell_grain": row[4]} for row in rows]
+
+
+def reserve_pr_cells(session: Session, *, pr_id: str, project_id: str,
+                     resolved_amounts: Mapping[tuple[str, str], int],
+                     actor: str, correlation_id: str | None = None
+                     ) -> list[str]:
+    """Hold budget on EVERY resolved control cell of one request, or on none.
+
+    ``resolved_amounts`` maps ``(owning_wbs_id, budget_head_id)`` to the paise
+    to hold there -- :func:`resolved_cell_amounts` computes it from the
+    verdicts, and this function does not re-resolve anything.
+
+    ATOMIC. Every cell or no cell. Not by a compensating write and not by a
+    savepoint: the caller's whole request is ONE transaction, so any refusal
+    below rolls the earlier inserts back with it. That is why an insufficient
+    cell is a raise and never a partial success -- see
+    :func:`create_pr`, which refuses the request outright before reaching here
+    if any verdict exceeds budget.
+
+    IDEMPOTENT. ``ON CONFLICT ... DO NOTHING`` against
+    ``ux_pr_reservation_live_cell``, then a read-back of what is actually live.
+    A replay of the same request finds its own holds and returns their ids
+    unchanged, having written nothing the second time. A replay carrying a
+    DIFFERENT amount for a cell that is already held is refused with
+    :data:`ERR_RESERVATION_AMOUNT_CONFLICT`: that is not a retry, and quietly
+    updating the row would move how much budget is held with no record that it
+    moved.
+
+    THE GRAIN OVERLAP, REFUSED. A live 014-grain hold sits on a LINE's cell,
+    which may be a DESCENDANT of the owner this function is about to hold. Two
+    such rows are not a duplicate key -- the index cannot see them -- and
+    together they hold the same money twice. So a request still carrying a live
+    ``cell_grain = 'LINE'`` reservation is refused with
+    :data:`ERR_RESERVATION_GRAIN_CONFLICT` rather than double-held.
+
+    LOCKING. The caller must already hold every affected cell's lock, taken
+    ONCE, FIRST, with the complete set (``create_pr`` does). Nothing here takes
+    a cell lock: `pr_reservation` is not a control cell, and the derived
+    ``pr_reserved_paise`` is moved by the caller through
+    :func:`recompute_derived_position`, which is the module's only deriver.
+
+    AUDIT. One append-only entry per hold taken, INSIDE this transaction, with
+    the actor the caller was authenticated as. A hold that rolls back takes its
+    audit line with it, which is correct: the audit trail records what
+    happened, and nothing happened.
+    """
+    if not resolved_amounts:
+        _err("NO_RESERVABLE_CELLS",
+             "reserve=True was requested and the request resolves to no "
+             "budget control cell at all. NOTHING was created; a hold on no "
+             "cell is not a hold.", 422)
+
+    _assert_reservable(session)
+    _assert_resolved_grain_available(session)
+
+    existing = live_reservations(session, pr_id)
+    line_grain = [r for r in existing
+                  if r["cell_grain"] == RESERVATION_GRAIN_LINE]
+    if line_grain:
+        named = ", ".join(
+            "{0} on ({1}, {2})".format(
+                row["reservation_id"], row["wbs_id"], row["budget_head_id"])
+            for row in line_grain)
+        _err(ERR_RESERVATION_GRAIN_CONFLICT,
+             f"{pr_id} still carries {len(line_grain)} live reservation(s) "
+             f"written at the LINE grain: {named}. "
+             f"A line-grain hold sits on the line's own cell and a resolved "
+             f"hold sits on the budget-owning ancestor above it, so the two "
+             f"would hold the SAME money twice at two different keys -- which "
+             f"`ux_pr_reservation_live_cell` cannot refuse, because it is not "
+             f"a duplicate key. NOTHING was created. Settle the existing "
+             f"hold(s) first.", 409)
+
+    by_cell = {(r["wbs_id"], r["budget_head_id"]): r for r in existing}
+    reservation_ids: list[str] = []
+
+    for (wbs_id, head_id), amount_paise in sorted(resolved_amounts.items()):
+        amount = _as_paise(amount_paise,
+                           field=f"reservation amount_paise for "
+                                 f"({wbs_id}, {head_id})")
+        if amount <= 0:
+            _err("NON_POSITIVE_RESERVATION",
+                 f"A reservation of {amount} paise on ({wbs_id}, {head_id}) "
+                 f"holds nothing. A reservation of zero is not a reservation "
+                 f"and a negative one would INCREASE availability, which is "
+                 f"the direction this control exists to prevent. NOTHING was "
+                 f"created.", 422)
+
+        held = by_cell.get((wbs_id, head_id))
+        if held is not None:
+            if held["amount_paise"] != amount:
+                _err(ERR_RESERVATION_AMOUNT_CONFLICT,
+                     f"{pr_id} already holds {held['amount_paise']} paise on "
+                     f"({wbs_id}, {head_id}) under reservation "
+                     f"{held['reservation_id']}, and this request asks to hold "
+                     f"{amount}. A retry replays the same request and is a "
+                     f"no-op; this is a DIFFERENT request. NOTHING was "
+                     f"changed -- moving the hold silently would change how "
+                     f"much budget is held with no record that it moved. "
+                     f"Release the existing hold and raise the new request.",
+                     409)
+            # The idempotent path: same request, same cell, same money. The
+            # hold that already exists IS the answer.
+            reservation_ids.append(held["reservation_id"])
+            continue
+
+        candidate = _new_id("PRRES")
+        row = session.fetchone(  # scope-exempt: pr_id was scope-gated by the caller in this transaction
+            """
+            INSERT INTO pr_reservation (
+                reservation_id, pr_id, wbs_id, budget_head_id, project_id,
+                amount_paise, state, cell_grain, created_by, updated_by)
+            VALUES (%(id)s, %(pr_id)s, %(wbs_id)s, %(head)s, %(project_id)s,
+                    %(amount)s, %(state)s, %(grain)s, %(actor)s, %(actor)s)
+            ON CONFLICT (pr_id, wbs_id, budget_head_id)
+                WHERE state = 'Reserved'
+            DO NOTHING
+            RETURNING reservation_id
+            """,
+            {"id": candidate, "pr_id": pr_id, "wbs_id": wbs_id,
+             "head": head_id, "project_id": project_id, "amount": amount,
+             "state": RESERVATION_LIVE_STATE,
+             "grain": RESERVATION_GRAIN_RESOLVED, "actor": actor},
+        )
+        if row is None:
+            # A concurrent transaction took this hold between the read-back
+            # above and this INSERT. It is not an error and it is not ours to
+            # resolve by writing a second row: re-read, and hold the two to the
+            # same amount rule as an ordinary replay.
+            concurrent = {(r["wbs_id"], r["budget_head_id"]): r
+                          for r in live_reservations(session, pr_id)}
+            other = concurrent.get((wbs_id, head_id))
+            if other is None:
+                _err("RESERVATION_LOST",
+                     f"The hold on ({wbs_id}, {head_id}) for {pr_id} was "
+                     f"refused as a duplicate and then could not be read back. "
+                     f"NOTHING is assumed about it: answering with a "
+                     f"reservation id this transaction cannot see would report "
+                     f"a hold nothing holds.", 409)
+            if other["amount_paise"] != amount:
+                _err(ERR_RESERVATION_AMOUNT_CONFLICT,
+                     f"A concurrent transaction holds {other['amount_paise']} "
+                     f"paise on ({wbs_id}, {head_id}) for {pr_id} under "
+                     f"reservation {other['reservation_id']}, and this request "
+                     f"asks for {amount}. NOTHING was changed.", 409)
+            reservation_ids.append(other["reservation_id"])
+            continue
+
+        reservation_ids.append(row[0])
+        audit_mod.append(
+            session, actor, "PR_RESERVATION_HELD", "PurchaseRequest", pr_id,
+            f"{amount} paise held on resolved control cell "
+            f"({wbs_id}, {head_id}) as reservation {row[0]}.",
+            correlation_id=correlation_id)
+
+    return reservation_ids
+
+
+def release_reservations_for_pr(session: Session, *, pr_id: str, actor: str,
+                                state: str = "Released",
+                                reason: str | None = None,
+                                correlation_id: str | None = None
+                                ) -> list[tuple[str, str]]:
+    """Release every live hold on ``pr_id`` and re-derive every cell it freed.
+
+    THE REJECTION / CANCELLATION / EXPIRY PATH, and the reason it is one
+    function rather than three. All three events do the same three things --
+    settle every live reservation exactly once, re-derive
+    ``pr_reserved_paise`` on every cell that stopped being held, and say so in
+    the audit trail -- and three copies of that would be three chances for one
+    of them to forget the second step. ``state`` names which of the three
+    happened (``Released`` for a rejection or a cancellation, ``Expired`` for
+    an expiry sweep); ``reason`` is carried into the audit entry.
+
+    EXACTLY ONCE PER CELL. :func:`settle_reservations` is
+    ``UPDATE ... WHERE state = 'Reserved'``, so a second release of the same
+    request matches zero rows, returns no cells, re-derives nothing and appends
+    no audit line. Calling it twice is a no-op, not a double release.
+
+    LOCKING, in the order ``pg/locking.py`` fixes. The cells are read first --
+    a plain SELECT of the reservations' own rows, which takes no cell lock --
+    then ``lock_affected_cells`` is called ONCE with that COMPLETE set, and
+    only then is anything written. ``lock_affected_cells`` expands each cell to
+    every budget-owning ancestor on its chain, which is the rule §7.3 records
+    and the hole that locking only the nearest ancestor leaves open.
+
+    Re-deriving is not optional. A hold that stopped holding and was not
+    re-derived leaves ``pr_reserved_paise`` still subtracting it, which REFUSES
+    spending that is genuinely available -- quietly, and in the direction
+    nobody reports as a bug.
+    """
+    if state == RESERVATION_LIVE_STATE or state not in RESERVATION_SETTLED_STATES:
+        _err("UNKNOWN_RESERVATION_STATE",
+             f"{state!r} does not release a hold. A rejection or cancellation "
+             f"settles to 'Released' and an expiry to 'Expired'; "
+             f"'Converted' belongs to convert_pr_to_po, which names the "
+             f"purchase order that consumed the hold.", 422)
+
+    cells = [(r["wbs_id"], r["budget_head_id"])
+             for r in live_reservations(session, pr_id)]
+    lock_affected_cells(session, cells)
+
+    settled = settle_reservations(session, pr_id=pr_id, state=state,
+                                  actor=actor)
+    for wbs_id, head_id in settled:
+        recompute_derived_position(session, wbs_id, head_id, actor=actor)
+    if settled:
+        audit_mod.append(
+            session, actor, "PR_RESERVATION_RELEASED", "PurchaseRequest",
+            pr_id,
+            f"{len(settled)} reservation(s) settled to {state} across "
+            f"{len(settled)} control cell(s): "
+            f"{', '.join(f'({w}, {h})' for w, h in settled)}."
+            + (f" Reason: {reason}" if reason else ""),
+            correlation_id=correlation_id)
+    return settled
 
 
 def settle_reservations(session: Session, *, pr_id: str, state: str,
@@ -981,7 +1414,27 @@ def settle_reservations(session: Session, *, pr_id: str, state: str,
         {"pr_id": pr_id, "state": state, "po_id": po_id, "actor": actor,
          "live": RESERVATION_LIVE_STATE},
     )
-    return [(row[0], row[1]) for row in rows]
+    touched = [(row[0], row[1]) for row in rows]
+
+    # ONE APPEND-ONLY ENTRY, INSIDE THIS TRANSACTION, NAMING EVERY CELL.
+    #
+    # The actor is the caller's authenticated identity, passed down and never
+    # derived from the row -- a reservation records who created it, and reusing
+    # that here would attribute the settlement to the requestor rather than to
+    # whoever settled it.
+    #
+    # Guarded on `touched` because a settle that matched nothing is a no-op,
+    # and an audit line for a no-op is a line that says a hold was released
+    # when no hold was released. That guard is also what makes a REPLAYED
+    # settlement silent rather than duplicated: the second call's UPDATE
+    # matches zero rows, so there is nothing to record.
+    if touched:
+        audit_mod.append(
+            session, actor, "PR_RESERVATION_SETTLED", "PurchaseRequest", pr_id,
+            f"{len(touched)} live reservation(s) settled to {state}"
+            + (f" against {po_id}" if po_id else "")
+            + ": " + ", ".join(f"({w}, {h})" for w, h in touched) + ".")
+    return touched
 
 
 # ================================= C5: fractional PO quantity policy, as data
@@ -1090,6 +1543,17 @@ def create_pr(session: Session, *, project_id: str,
     anything is read for a decision, ``budget_check`` runs and a BLOCKED
     verdict refuses the write, and the reservation is honoured or refused --
     never quietly dropped.
+
+    ``reserve=True`` NOW SPANS SEVERAL CONTROL CELLS (migration 015, approved
+    2026-09-08). One live hold per RESOLVED cell -- the budget-owning ancestor
+    :func:`budget_verdicts` already checked the aggregated sum against -- so
+    lines sharing a pot share ONE hold and lines in different pots get one
+    each. All of them or none of them: a request that asks to hold budget it
+    does not have is refused outright with
+    :data:`ERR_RESERVATION_EXCEEDS_BUDGET` and nothing is created, because a
+    partial hold is a hold nobody can reconcile against the document it belongs
+    to. The old MULTI_CELL_RESERVATION_UNSUPPORTED refusal is gone; it existed
+    only while the schema could not express the grain.
     """
     # `reserve=True` USED TO REFUSE HERE with PR_RESERVATION_NOT_MIGRATED, and
     # refusing was right while there was nowhere to write: silently ignoring
@@ -1102,6 +1566,11 @@ def create_pr(session: Session, *, project_id: str,
     # and not taken is the one outcome worse than a refusal.
     if reserve:
         _assert_reservable(session)
+        # And migration 015's half of the same question. Asked HERE, before
+        # anything is normalised or written, so a database that cannot express
+        # the resolved grain refuses the request rather than taking the first
+        # hold and failing on the second.
+        _assert_resolved_grain_available(session)
 
     normalised = _normalise_lines(lines, what="purchase request")
     project = _project_row(session, project_id)
@@ -1184,51 +1653,70 @@ def create_pr(session: Session, *, project_id: str,
     # anything out of availability.
     reservation_ids: list[str] = []
     if reserve:
-        cells = _amounts_by_cell(normalised)
-        # A CONTRADICTION BETWEEN TWO FROZEN THINGS, REFUSED RATHER THAN
-        # RESOLVED.
+        # THE GRAIN 014 COULD NOT EXPRESS, AND MIGRATION 015 DOES.
         #
-        # `ux_pr_reservation_live UNIQUE (pr_id) WHERE state = 'Reserved'` is
-        # the AUD-H-001 control, ported 1:1 from the POC and frozen by
-        # `docs/WAVE6_MIGRATION_014_SPEC.md` C1 -- exactly one live reservation
-        # per purchase request. It was exactly right when a purchase request
-        # addressed exactly ONE control cell, which is what the SQLite POC's
-        # header-only `purchase_request` did.
+        # 014's `ux_pr_reservation_live UNIQUE (pr_id) WHERE state = 'Reserved'`
+        # permitted exactly one live hold per request. That was right for a
+        # request addressing ONE control cell -- the SQLite POC's header-only
+        # `purchase_request` -- and wrong for a `pr_line`-grained one, whose
+        # lines can span two budget-owning cells and need one hold EACH. This
+        # branch REFUSED such a request with MULTI_CELL_RESERVATION_UNSUPPORTED
+        # rather than bending either rule.
         #
-        # WAVE6_PROCUREMENT_CONTRACT GAP-1 changed that grain: a `pr_line`
-        # request may name several `(wbs_id, budget_head_id)` cells, and a
-        # reservation holds budget on ONE cell, so such a request needs one
-        # hold per cell -- which the index forbids.
+        # The product owner resolved it on 2026-09-08 and migration 015 built
+        # `ux_pr_reservation_live_cell UNIQUE (pr_id, wbs_id, budget_head_id)
+        # WHERE state = 'Reserved'`. The refusal is therefore GONE, replaced by
+        # the two things that make the multi-cell path actually correct rather
+        # than merely permitted:
         #
-        # The two cannot both be honoured, and neither may be quietly bent:
-        # widening the index would drop a control the spec froze, and holding
-        # the whole sum on the first cell would reserve money against a budget
-        # nobody asked to spend. So a multi-cell reservation is REFUSED, with
-        # the request NOT created, and the contradiction is reported rather
-        # than resolved on this module's own authority. A single-cell request
-        # -- the shape the control was written for -- reserves normally.
-        if len(cells) > 1:
-            _err("MULTI_CELL_RESERVATION_UNSUPPORTED",
-                 f"This request names {len(cells)} control cells and asked for "
-                 f"budget to be held. A reservation holds one cell, and "
-                 f"`ux_pr_reservation_live` permits exactly ONE live "
-                 f"reservation per purchase request (AUD-H-001, ported 1:1 and "
-                 f"frozen by the migration 014 spec). The two rules contradict "
-                 f"each other for a pr_line-grained request (GAP-1). NOTHING "
-                 f"was created: holding the whole sum against the first cell "
-                 f"would reserve money on a budget nobody asked to spend, and "
-                 f"widening the index would drop the control. Raise one "
-                 f"request per control cell, or change the contract.", 409)
-        for (wbs_id, head_id), amount in cells.items():
-            reservation_ids.append(create_reservation(
-                session, pr_id=pr_id, project_id=project_id, wbs_id=wbs_id,
-                budget_head_id=head_id, amount_paise=amount, actor=actor))
+        #   1. the holds are placed on the RESOLVED cells -- the budget-owning
+        #      ancestors `budget_verdicts` already checked the aggregated sums
+        #      against -- so lines sharing a pot share ONE hold and lines in
+        #      different pots get one each. Holding against a line's own cell
+        #      would put two rows on one pot and pass each half in isolation;
+        #   2. the whole thing is ATOMIC. If ANY resolved cell is short, the
+        #      request is refused here, before a single row is written, and no
+        #      cell is held. Reserving what fits and refusing the rest would
+        #      leave a request holding budget for part of itself.
+        #
+        # `over` is `budget_verdicts`' answer computed above, INSIDE the cell
+        # locks. A request that merely exceeds budget is still creatable as an
+        # exception (check_result EXCEEDS_BUDGET, an approver, a reason); a
+        # request that exceeds budget AND asks to HOLD it is not, because a
+        # hold is not a proposal -- it takes the money out of everyone else's
+        # availability the moment it is written.
+        if over:
+            _err(ERR_RESERVATION_EXCEEDS_BUDGET,
+                 f"This request asked for budget to be HELD and at least one "
+                 f"of the control cells it resolves to cannot cover it. "
+                 f"NOTHING was created -- not the request, not its lines, and "
+                 f"not one of its holds: a multi-cell reservation is all cells "
+                 f"or none, and holding the cells that fit would leave this "
+                 f"request holding budget for part of itself. "
+                 + _shortfall_summary(verdicts) +
+                 ". Raise it without reserve=True to record it as an exception "
+                 f"for approval, or reduce the lines on the short cell.", 409)
+
+        resolved = resolved_cell_amounts(verdicts)
+        reservation_ids = reserve_pr_cells(
+            session, pr_id=pr_id, project_id=project_id,
+            resolved_amounts=resolved, actor=actor,
+            correlation_id=correlation_id)
         session.execute(  # scope-exempt: the row this call created, under its own locks
             "UPDATE purchase_request SET reserves_budget = true, "
             "updated_at = now(), updated_by = %(actor)s "
             "WHERE pr_id = %(pr_id)s",
             {"pr_id": pr_id, "actor": actor})
-        for wbs_id, head_id in _affected_cells(normalised):
+        # Re-derive the RESOLVED cells -- the rows the holds were actually
+        # written on, and therefore the rows whose `pr_reserved_paise` moved --
+        # and the line cells besides. Every one of them is inside the lock set
+        # taken above: `lock_affected_cells` expands each line cell to every
+        # budget-owning ancestor on its chain, and a resolved cell IS such an
+        # ancestor. Deriving only the line cells would leave the owner's
+        # `pr_reserved_paise` at zero while a hold sat on it.
+        for wbs_id, head_id in _affected_cells(normalised) + [
+                cell for cell in resolved
+                if cell not in _affected_cells(normalised)]:
             recompute_derived_position(session, wbs_id, head_id, actor=actor)
 
     audit_mod.append(
