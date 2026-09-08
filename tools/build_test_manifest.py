@@ -36,6 +36,16 @@ MANIFEST = TESTS / "TEST_MANIFEST.json"
 # Files added after the POC baseline. Tracked, but excluded from the
 # "220 original functions" count so the baseline stays a fixed reference.
 POST_BASELINE_FILES = {
+    # --- Wave 7 stream A2: asynchronous exports --------------------------
+    # `test_pg_exports.py` is the export machinery -- chunking, determinism,
+    # integer-paise formatting, and migration 018's own text. `test_export_
+    # scope.py` is the anti-escalation half: the MEET of the requester's
+    # captured scope with the worker's, the digest that binds a scope to ITS
+    # job, and the proof that the service scope compiles to FALSE against
+    # every dataset. Both arrived UNTRACKED on the branch and were rescued at
+    # integration; registering them here is what stops the 220 baseline
+    # absorbing them and quietly making the removal guard meaningless.
+    "test_pg_exports.py", "test_export_scope.py",
     "test_contracts.py", "test_manifest.py", "test_observability.py",
     "test_known_defects.py", "test_middleware_observability.py",
     # --- Milestone 1: production PostgreSQL foundation -------------------

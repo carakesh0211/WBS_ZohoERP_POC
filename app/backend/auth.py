@@ -88,6 +88,27 @@ PERMISSIONS: dict[str, tuple[str, ...]] = {
                                      "ProcurementApprover"),
     "connector.read":         ("Administrator", "Auditor"),
     "connector.manage":       ("Administrator",),
+    # --- Wave 7: asynchronous exports --------------------------------
+    # Starting, advancing, cancelling or retrying an export job. READING a
+    # job needs only the router's `budget.read` floor: a caller can only ever
+    # see their own jobs, and refusing them sight of their own queued work
+    # would be a permission that protects nothing.
+    #
+    # This grants NO data right. An export runs under the requester's own
+    # resolved scope, captured on the job row, and contains no row they could
+    # not already read -- what it decides is who may cause a rendered copy of
+    # scoped financial data to exist outside the tables RLS protects.
+    #
+    # Auditor is deliberately absent, and this is the one place that costs
+    # something: an auditor cannot start an export. Creating a job is a row
+    # INSERT, `test_aud_c_006_auditor_is_read_only` pins Auditor to an
+    # allow-list of four permissions, and widening an audit-finding assertion
+    # so a new feature reads tidily is not a call to make in passing. An
+    # Auditor reads through `/api/audit` and the report API. Recorded against
+    # D-12 alongside the other role-mapping placeholders.
+    "export.create":          ("Requestor", "BudgetController", "ProcurementApprover",
+                               "FinanceApprover", "CapitalisationApprover",
+                               "Administrator"),
     # Seeing, and attributing, a reconciliation exception that could not be
     # tied to an entity. Separate from connector.manage because it is a
     # DATA-triage right over other entities' unattributed discrepancies,
