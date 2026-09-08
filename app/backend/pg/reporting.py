@@ -108,6 +108,7 @@ import base64
 import json
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -152,10 +153,18 @@ COMPONENTS: tuple[str, ...] = (
 #: utilisation figure.
 DOCUMENT_TYPES: tuple[str, ...] = ("PR", "PO", "GRN", "BILL")
 
+#: EACH ENTRY NAMES THE BUCKETS ITS OWN BRANCH EMITS, AND NOTHING ELSE.
+#: `received_not_billed` reads as a GRN measure and is not one: it is
+#: ``GREATEST(0, received - billed)`` PER PO LINE, so it needs the billed
+#: figure that offsets it and is computed by `_PO_BRANCH`. `_GRN_BRANCH` emits
+#: `received` and nothing more -- the two branches' own comments say why they
+#: are separate. Listing it under GRN advertised a bucket that could only ever
+#: come back 0 for `document_types=["GRN"]`, which is a wrong number rather
+#: than a missing one.
 _BUCKETS_BY_DOCUMENT_TYPE: dict[str, tuple[str, ...]] = {
     "PR": ("pr_reserved",),
-    "PO": ("ordered", "commitment"),
-    "GRN": ("received", "received_not_billed"),
+    "PO": ("ordered", "commitment", "received_not_billed"),
+    "GRN": ("received",),
     "BILL": ("actual",),
 }
 
@@ -1374,14 +1383,80 @@ def _sort_expression(measure: str) -> str:
         return ("(g.budget_paise - (g.commitment_paise + g.actual_paise "
                 "+ g.pr_reserved_paise))")
     if measure == "utilisation_pct":
-        # Integer paise throughout; the ratio is only an ORDERING here, never a
-        # money value, so a float division is safe. `NULLIF` keeps a zero
-        # budget out of a division by zero -- it sorts as NULL, which
-        # `NULLS LAST` would place consistently; the group-key tie-breaker
-        # below makes the placement deterministic either way.
-        return ("((g.commitment_paise + g.actual_paise + g.pr_reserved_paise)"
-                "::numeric / NULLIF(g.budget_paise, 0))")
+        return UTILISATION_PCT_SQL
     return f"g.{measure}_paise"
+
+
+#: `utilisation_pct` in SQL, and it must equal
+#: :func:`_utilisation_ordering_value` EXACTLY -- not merely order the same way.
+#:
+#: THIS EXPRESSION IS HALF OF A KEYSET CURSOR, WHICH IS WHY "IT SORTS THE SAME"
+#: IS NOT ENOUGH. It used to be the bare ratio
+#: ``exposure::numeric / NULLIF(budget, 0)`` with the comment "the ratio is
+#: only an ORDERING here". That was wrong twice over, and both defects were
+#: reproduced:
+#:
+#:   * THE SCALE. The cursor written to the wire is a PERCENTAGE -- `derive`
+#:     returns ``round(ratio * 100, 1)`` -- so the resume compared ``20.0``
+#:     against column values near ``0.2``. Ordering survived (x100 is
+#:     monotonic) and pagination did not: over six rows at ``limit=2``, ASC
+#:     returned page 1 and then nothing (4 of 6 rows unreachable), and DESC
+#:     re-returned page 1 forever.
+#:
+#:   * THE `NULLIF` ALONE. A zero-budget group divided to SQL NULL, every
+#:     comparison against NULL is NULL rather than TRUE, and the row vanished
+#:     from page 2 onward -- while `derive` reports ``0.0`` for it and page 1
+#:     shows it. Zero-budget cells are exactly the over-commitment cases
+#:     SCR-25 exists to surface, so the rows silently dropped were the ones
+#:     most worth seeing. `COALESCE(..., 0)` restores them, and 0 is the same
+#:     value `derive` already reports.
+#:
+#: THE ROUNDING IS LOAD-BEARING, not cosmetic: without it a ``76.7`` cursor
+#: never equals -- and, descending, sorts below -- a ``76.6666...`` column
+#: value, so the tie-continuation clause of the keyset predicate can never
+#: fire and every row sharing that rounded percentage is skipped.
+UTILISATION_PCT_SQL = (
+    "COALESCE(round((g.commitment_paise + g.actual_paise + g.pr_reserved_paise)"
+    "::numeric * 100 / NULLIF(g.budget_paise, 0), 1), 0)")
+
+
+def _utilisation_ordering_value(components: Mapping[str, int]) -> float:
+    """`utilisation_pct` for the CURSOR, computed as PostgreSQL computes it.
+
+    NOT `derive()["utilisation_pct"]`, and the difference is deliberate.
+    `derive` transcribes `domain._derive` verbatim -- ``round(exposure / budget
+    * 100.0, 1)`` -- which rounds a binary float to nearest, so an exact
+    two-decimal midpoint goes DOWN whenever the double falls just below it.
+    PostgreSQL's `round(numeric, 1)` is exact decimal arithmetic and rounds a
+    midpoint UP. The two disagree by 0.1 on exactly half of all midpoints: a
+    ``budget`` of 20,00,000 paise against an exposure of 15,33,000 is 76.65%,
+    which `derive` reports as 76.6 and PostgreSQL as 76.7.
+
+    A cursor value that is 0.1 away from the column it resumes against is the
+    SAME defect this expression was just fixed for -- descending, every row at
+    76.7 is skipped; ascending, the cursor row repeats forever -- so the
+    ordering key is computed here in exact decimal, half-up, matching
+    :data:`UTILISATION_PCT_SQL` digit for digit.
+
+    THIS DOES NOT CHANGE ANY REPORTED NUMBER. The `utilisation_pct` in a row,
+    in `totals`, and on every screen is still `derive`'s, still
+    `domain._derive`'s verbatim. This value is never displayed: it exists only
+    inside the base64 cursor, where its one job is to equal the SQL.
+
+    Returned as `float` because the cursor is JSON, and because the parameter
+    is compared against the expression above exactly as `derive`'s float
+    already was. A one-decimal `Decimal` and its nearest `float` convert to
+    each other without loss, so the round trip through JSON is exact.
+    """
+    budget = int(components.get("budget", 0) or 0)
+    if not budget:
+        # `COALESCE(..., 0)` in the SQL; `derive` reports 0.0 for the same
+        # case. All three agree, which is the whole point.
+        return 0.0
+    exposure = sum(int(components.get(name, 0) or 0)
+                   for name in ("commitment", "actual", "pr_reserved"))
+    return float((Decimal(exposure) * 100 / Decimal(budget)).quantize(
+        Decimal("0.1"), rounding=ROUND_HALF_UP))
 
 
 def _cursor_predicate(filters: "FilterSet", terms: Sequence[tuple[str, str]],
@@ -1556,6 +1631,12 @@ def _ordering_key_of(row: Sequence[Any], filters: "FilterSet",
     because the derived measures (`exposure`, `available`, `utilisation_pct`)
     are expressions and not columns -- and a second SQL copy of an expression
     is a second definition that can drift from the first.
+
+    `exposure` and `available` are integer paise on both sides and `derive`'s
+    value is the SQL's, exactly. `utilisation_pct` is NOT: it is rounded, and
+    Python rounds a float where PostgreSQL rounds a decimal. See
+    :func:`_utilisation_ordering_value`, which is what the cursor carries --
+    the displayed percentage is still `derive`'s and is untouched.
     """
     key_count = len(grouped)
     keys = list(row[:key_count])
@@ -1564,7 +1645,9 @@ def _ordering_key_of(row: Sequence[Any], filters: "FilterSet",
 
     key: list[Any] = []
     if filters.sort and filters.sort != "key":
-        if filters.sort in ("exposure", "available", "utilisation_pct"):
+        if filters.sort == "utilisation_pct":
+            key.append(_utilisation_ordering_value(components))
+        elif filters.sort in ("exposure", "available"):
             key.append(measures[filters.sort])
         else:
             key.append(int(components.get(filters.sort, 0) or 0))

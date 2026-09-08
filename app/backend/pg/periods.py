@@ -145,7 +145,10 @@ class ReconciliationGateUnavailable(RuntimeError):
 
 
 def _has_open_reconciliation_exceptions(session: Session, entity_id: str) -> bool:
-    """True if ``reconciliation_exception`` carries an Open row for `entity_id`.
+    """True if an Open ``reconciliation_exception`` blocks this entity's close.
+
+    Open AND (attributed to `entity_id` OR attributed to NOBODY). The second
+    class is not an edge case -- see the comment on the query itself.
 
     RAISES when the table is absent. It does not return False.
 
@@ -175,9 +178,33 @@ def _has_open_reconciliation_exceptions(session: Session, entity_id: str) -> boo
             f"gate that cannot be evaluated must refuse rather than permit. "
             f"Create the table (it is referenced by pg/periods.py and by the "
             f"integration sweeps) and re-run the close.")
-    row = session.fetchone(  # scope-exempt: table name is a module constant, and entity_id comes from a period already scope-gated by transition_period
+    # TWO CLASSES OF OPEN EXCEPTION BLOCK THIS CLOSE, NOT ONE.
+    #
+    # `WHERE entity_id = %s` alone was the whole gate, and 011 makes
+    # `reconciliation_exception.entity_id` NULLABLE (011:68) precisely because
+    # "some exceptions are raised before the owning entity or project is
+    # known". SQL NULL is not equal to anything, so `NULL = 'ENT-1'` is NULL
+    # and never TRUE: an UNATTRIBUTED Open exception matched no row here and
+    # the close proceeded. Reproduced with one Open unattributed exception
+    # worth Rs 1,20,00,000 -- this gate said False, and `closure.py`'s gate on
+    # the same table said the capitalisation was blocked.
+    #
+    # That is the exact scenario this function's own docstring names: a sweep
+    # raises GRN_LINE_UNATTRIBUTED for a real sum, nobody can attribute it,
+    # finance closes the period, and CWIP publishes a number nobody can stand
+    # behind. An exception nobody can attribute is not an exception nobody has
+    # to clear.
+    #
+    # `closure.py:_reconciliation_exposure` counts the same two classes for
+    # capitalisation, and migration 012's header (012:24) documents the trap
+    # and gives unattributed rows their own `WHEN entity_id IS NULL` RLS
+    # branch so they stay visible to whoever can resolve them. The period gate
+    # and the capitalisation gate now agree, which is the only way §11.8 can
+    # mean one thing.
+    row = session.fetchone(  # scope-exempt: table name is a module constant, entity_id comes from a period already scope-gated by transition_period, and an unattributed row matches NO scope predicate at all -- a scoped count would be structurally always zero and this gate would never fire
         f"SELECT 1 FROM {_RECONCILIATION_EXCEPTION_TABLE} "  # noqa: S608 -- fixed name, existence checked above
-        f"WHERE entity_id = %s AND status = 'Open' LIMIT 1",
+        f"WHERE status = 'Open' AND (entity_id = %s OR entity_id IS NULL) "
+        f"LIMIT 1",
         (entity_id,))
     return row is not None
 
