@@ -612,7 +612,8 @@ def record_receive_line(session: Session, *, po_line_id: str,
         "actor": actor,
     }
 
-    # THE CONFLICT TARGET IS `ux_grn_line_external_v2`'s FOUR columns.
+    # THE CONFLICT TARGET IS `ux_grn_line_external_v3`'s FOUR COLUMNS AND ITS
+    # PREDICATE.
     #
     # 013's `ux_grn_line_external` used PostgreSQL's DEFAULT NULLS DISTINCT,
     # which meant it did not constrain a receive line carrying no external line

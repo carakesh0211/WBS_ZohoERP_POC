@@ -134,7 +134,9 @@ PROCUREMENT_TABLES: tuple[str, ...] = (
 #: The migration that creates them.
 PROCUREMENT_MIGRATION = "013_procurement.sql"
 
-#: ``ux_grn_line_external_v2``, the index that makes a receive replay free.
+#: ``ux_grn_line_external_v3`` (019), the index that makes a receive replay
+#: free. 014's ``_v2`` is dropped: same columns, but unpartitioned, so it also
+#: constrained rows carrying no external identity at all.
 #: Named because :func:`record_receive_line` targets it in ``ON CONFLICT`` by
 #: its columns, and those columns must keep agreeing with the migration.
 #:
