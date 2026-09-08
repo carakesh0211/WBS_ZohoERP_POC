@@ -346,6 +346,37 @@ POST_BASELINE_FILES = {
     # audit-remediation suite, and inflating it would make the removal guard
     # stop meaning anything the moment the product grows.
     "test_pg_reservations.py",
+
+    # --- Wave 7 A1: the reporting filter set, and the SQL it builds --------
+    # `test_reporting_filterset.py` runs EVERYWHERE and holds everything
+    # decidable without a server: that `None` and `()` stay different all the
+    # way to the wire, that an unknown or unbindable filter is REFUSED rather
+    # than dropped (a dropped vendor filter shows the whole estate's
+    # commitments under one vendor's name, and nothing on screen says so),
+    # that a drill-down narrows by intersection, that open commitment is
+    # ordered less BILLED, that every branch emits the nine buckets in one
+    # fixed order, that every paise SUM reaches Python as a bigint, and --
+    # the sibling agent's defect, mechanised -- that every `alias.column` in
+    # the module's SQL exists in the migrations, with the aliases derived per
+    # statement because `bl` is `budget_line` in one branch and `bill_line`
+    # in another.
+    #
+    # Post-baseline like every Wave 2-6 file: the 220 counts the POC's
+    # audit-remediation suite, and inflating it would make the removal guard
+    # stop meaning anything the moment the product grows.
+    "test_reporting_filterset.py",
+    #
+    # `test_pg_reporting.py` is the other half, split the way
+    # `test_pg_procurement_schema.py` is: sixteen `@pytest.mark.pg` tests that
+    # skip on every workstation here and FIRST EXECUTE in CI's pg_tests job,
+    # because they are the ones no source-level check can make -- the
+    # drill-down round trip over rows a real planner produced, a keyset walk
+    # over deliberately TIED sort keys, the four buckets counted once each
+    # against a PO line carrying three receipts and three bill lines, and the
+    # numeric-to-Decimal defect, which cannot appear without a server. A skip
+    # is not a pass, and its seventeenth test fails if the skip reason is ever
+    # softened into something a reader could mistake for one.
+    "test_pg_reporting.py",
 }
 
 

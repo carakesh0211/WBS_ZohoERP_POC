@@ -3811,7 +3811,7 @@
       },
       "test_no_pg_module_multiplies_or_divides_by_a_float_literal_in_money_code": {
         "assertions": 1,
-        "body_sha": "8486355bfea239c0"
+        "body_sha": "6c4b60c13b3b10e5"
       }
     },
     "test_negative_access_matrix.py": {
@@ -8058,6 +8058,76 @@
         "body_sha": "14963e18f9a3d63b"
       }
     },
+    "test_pg_reporting.py": {
+      "test_this_file_is_gated_and_says_a_skip_is_not_a_pass": {
+        "assertions": 2,
+        "body_sha": "7608da1f9d4ed922"
+      },
+      "test_a_grouped_total_equals_the_sum_of_the_rows_its_drill_down_returns": {
+        "assertions": 4,
+        "body_sha": "633e2195670597af"
+      },
+      "test_a_drill_down_intersects_and_cannot_widen_what_was_clicked": {
+        "assertions": 3,
+        "body_sha": "4979678384e937b1"
+      },
+      "test_a_plant_scoped_principal_gets_no_row_from_the_other_plant": {
+        "assertions": 3,
+        "body_sha": "7f38f4149d46adeb"
+      },
+      "test_an_unscoped_principal_is_denied_and_not_merely_empty": {
+        "assertions": 3,
+        "body_sha": "7755c8da6ce47d06"
+      },
+      "test_pagination_skips_no_row_and_repeats_none_across_every_page": {
+        "assertions": 7,
+        "body_sha": "f26d1e5901e622cf"
+      },
+      "test_the_total_is_the_populations_and_never_the_pages": {
+        "assertions": 5,
+        "body_sha": "e7f31a90a725ac52"
+      },
+      "test_every_aggregate_is_an_int_and_never_a_decimal_or_a_float": {
+        "assertions": 3,
+        "body_sha": "8b91ba87afe50e1a"
+      },
+      "test_the_derived_measures_are_derived_from_the_rows_own_components": {
+        "assertions": 2,
+        "body_sha": "37d188c53aa7791e"
+      },
+      "test_the_four_buckets_are_each_counted_exactly_once": {
+        "assertions": 2,
+        "body_sha": "545595e2418c51d7"
+      },
+      "test_open_commitment_is_ordered_less_billed_and_never_less_received": {
+        "assertions": 3,
+        "body_sha": "f6e14a08a378f24e"
+      },
+      "test_a_void_grn_is_not_received_and_a_reversal_subtracts_its_magnitude": {
+        "assertions": 3,
+        "body_sha": "26f244b6f0edf38b"
+      },
+      "test_a_multi_cell_reservation_is_held_once_per_cell_and_not_once_per_line": {
+        "assertions": 4,
+        "body_sha": "707c9d6c6ea7e462"
+      },
+      "test_a_non_po_bill_reaches_cwip_through_its_own_cell": {
+        "assertions": 3,
+        "body_sha": "21a3e5c9ff2b9887"
+      },
+      "test_a_draft_budget_line_creates_no_spending_capacity": {
+        "assertions": 2,
+        "body_sha": "9215bf0194cc4b28"
+      },
+      "test_an_empty_filter_tuple_restricts_to_nothing_rather_than_widening": {
+        "assertions": 3,
+        "body_sha": "885d36a2c246fe77"
+      },
+      "test_a_period_is_matched_against_the_entitys_own_calendar": {
+        "assertions": 3,
+        "body_sha": "3de458110936f614"
+      }
+    },
     "test_pg_reservations.py": {
       "test_015_is_discovered_named_and_numbered": {
         "assertions": 4,
@@ -8920,6 +8990,376 @@
         "body_sha": "84a45a3fda580010"
       }
     },
+    "test_reporting_filterset.py": {
+      "test_none_and_empty_are_different_and_stay_different": {
+        "assertions": 3,
+        "body_sha": "d5e4ae0e143940ce"
+      },
+      "test_the_wire_preserves_none_versus_empty": {
+        "assertions": 2,
+        "body_sha": "ff201ca5e0b1d804"
+      },
+      "test_duplicate_ids_are_collapsed_but_order_is_kept": {
+        "assertions": 1,
+        "body_sha": "958fc2f6cbfea9c1"
+      },
+      "test_an_unknown_filter_field_is_refused_not_ignored": {
+        "assertions": 3,
+        "body_sha": "3307e51cc7cb1baf"
+      },
+      "test_a_filter_with_no_column_is_refused_with_a_code": {
+        "assertions": 3,
+        "body_sha": "a1497827be253e1a"
+      },
+      "test_the_refusal_names_the_missing_column_not_just_a_code": {
+        "assertions": 3,
+        "body_sha": "cf79f0e9af18b55d"
+      },
+      "test_an_unset_unsupported_filter_is_not_reported_as_unavailable": {
+        "assertions": 1,
+        "body_sha": "db41db76ae0013aa"
+      },
+      "test_an_unknown_dimension_is_refused": {
+        "assertions": 2,
+        "body_sha": "c6ab3e5c7d3b7c6a"
+      },
+      "test_category_and_budget_head_cannot_both_be_grouped": {
+        "assertions": 2,
+        "body_sha": "6af35eb0f93c874e"
+      },
+      "test_category_and_budget_head_resolve_to_the_same_column": {
+        "assertions": 2,
+        "body_sha": "003e68f94f49777c"
+      },
+      "test_an_inverted_date_range_is_refused_rather_than_answered_empty": {
+        "assertions": 2,
+        "body_sha": "5f738646bce2c3e9"
+      },
+      "test_a_status_no_contract_defines_is_refused": {
+        "assertions": 2,
+        "body_sha": "5963bf438c77c032"
+      },
+      "test_c3_and_c15_are_separate_namespaces_on_the_filter_set": {
+        "assertions": 2,
+        "body_sha": "31e4f4354c4469f5"
+      },
+      "test_lifecycle_codes_are_translated_to_the_labels_the_tables_store": {
+        "assertions": 1,
+        "body_sha": "e4709694c99aca71"
+      },
+      "test_the_label_map_is_read_from_the_frozen_contract_not_hand_copied": {
+        "assertions": 2,
+        "body_sha": "adfc6f35ab0ca27d"
+      },
+      "test_limit_is_bounded_at_both_ends": {
+        "assertions": 2,
+        "body_sha": "cb1d2c65d75e2510"
+      },
+      "test_drilling_in_narrows_and_never_widens": {
+        "assertions": 2,
+        "body_sha": "5c9c833dc9e4bcd7"
+      },
+      "test_drilling_into_an_unfiltered_dimension_pins_it": {
+        "assertions": 1,
+        "body_sha": "baf75ecd7d3f3a78"
+      },
+      "test_drilling_carries_every_other_filter_unchanged": {
+        "assertions": 1,
+        "body_sha": "b05ffa81859346ea"
+      },
+      "test_drilling_resets_the_cursor": {
+        "assertions": 1,
+        "body_sha": "3ac4b291c5d85c75"
+      },
+      "test_drilling_into_category_narrows_the_budget_head": {
+        "assertions": 2,
+        "body_sha": "b05f1352fce262e6"
+      },
+      "test_drilling_into_wbs_narrows_the_subtree_and_cannot_escape_it": {
+        "assertions": 2,
+        "body_sha": "8cac53050773c66e"
+      },
+      "test_a_null_group_key_drills_without_inventing_a_sentinel_id": {
+        "assertions": 1,
+        "body_sha": "ff54377ad83fae7c"
+      },
+      "test_every_derived_money_value_is_int_and_never_float": {
+        "assertions": 2,
+        "body_sha": "fcae551ee4918833"
+      },
+      "test_derive_matches_domain_derive_exactly": {
+        "assertions": 1,
+        "body_sha": "b31207e321ad46fd"
+      },
+      "test_exposure_is_commitment_plus_actual_plus_reserved_and_nothing_else": {
+        "assertions": 1,
+        "body_sha": "ec5d42e6ef07bfb7"
+      },
+      "test_the_thresholds_are_the_frozen_ones": {
+        "assertions": 2,
+        "body_sha": "b8800c749cf75843"
+      },
+      "test_the_bill_states_and_releasing_states_match_domain": {
+        "assertions": 2,
+        "body_sha": "d15c4e4d3656bd84"
+      },
+      "test_the_components_are_domains_components_in_the_same_order": {
+        "assertions": 1,
+        "body_sha": "f28b6f039d6d8e53"
+      },
+      "test_open_commitment_is_ordered_less_billed_never_less_received": {
+        "assertions": 2,
+        "body_sha": "6bad2636ec806570"
+      },
+      "test_a_released_purchase_order_holds_no_commitment": {
+        "assertions": 2,
+        "body_sha": "c097db55a9e1ba06"
+      },
+      "test_received_excludes_void_grns_and_negates_a_reversal": {
+        "assertions": 3,
+        "body_sha": "6bc6c9ad569119af"
+      },
+      "test_billed_and_actual_include_tax_and_freight_and_negate_a_reversal": {
+        "assertions": 3,
+        "body_sha": "a85fcddf48343556"
+      },
+      "test_only_accounting_effective_bills_move_actual": {
+        "assertions": 2,
+        "body_sha": "481d26c71286de93"
+      },
+      "test_ordered_includes_tax_and_freight": {
+        "assertions": 1,
+        "body_sha": "ce59e2bbb1913677"
+      },
+      "test_only_approved_and_effective_budget_lines_create_capacity": {
+        "assertions": 3,
+        "body_sha": "00e85951e33f2258"
+      },
+      "test_the_budget_branch_does_not_use_the_sqlite_column_name": {
+        "assertions": 1,
+        "body_sha": "96e19244916476ff"
+      },
+      "test_the_reservation_branch_never_joins_pr_line": {
+        "assertions": 2,
+        "body_sha": "9d3f36a1397d706a"
+      },
+      "test_only_live_reservations_count": {
+        "assertions": 1,
+        "body_sha": "0a67f03a8b3d9a12"
+      },
+      "test_actual_reads_the_bill_lines_own_cell_not_the_po_lines": {
+        "assertions": 2,
+        "body_sha": "5ce9c58134b9afeb"
+      },
+      "test_every_paise_sum_is_cast_to_bigint": {
+        "assertions": 1,
+        "body_sha": "b95ff3aed39a91a5"
+      },
+      "test_the_cast_check_catches_an_uncast_sum": {
+        "assertions": 3,
+        "body_sha": "9f4231e28dd30197"
+      },
+      "test_the_cast_check_sees_a_cast_on_the_wrapper_and_still_catches_a_missing_one": {
+        "assertions": 2,
+        "body_sha": "bc52a26b5e3a2fc3"
+      },
+      "test_each_bucket_filters_on_its_own_document_date": {
+        "assertions": 5,
+        "body_sha": "9cd82f9687aee8cf"
+      },
+      "test_a_period_is_matched_per_entity_and_not_flattened_to_one_range": {
+        "assertions": 2,
+        "body_sha": "cba59a32c54f5440"
+      },
+      "test_every_branch_selects_the_columns_in_one_fixed_order": {
+        "assertions": 1,
+        "body_sha": "85df20fbec88b82c"
+      },
+      "test_the_select_list_reader_stops_at_the_branchs_own_from": {
+        "assertions": 4,
+        "body_sha": "b8b10baab282c2db"
+      },
+      "test_the_branches_are_unioned_and_never_joined": {
+        "assertions": 1,
+        "body_sha": "769735aee44817c9"
+      },
+      "test_selecting_document_types_still_includes_the_budget_denominator": {
+        "assertions": 3,
+        "body_sha": "f99cfe69870b5198"
+      },
+      "test_branch_order_does_not_depend_on_the_callers_order": {
+        "assertions": 1,
+        "body_sha": "30a5c6fd747e970f"
+      },
+      "test_every_scope_mapping_names_all_four_dimensions": {
+        "assertions": 1,
+        "body_sha": "d6210ac00bbe3ddd"
+      },
+      "test_the_fact_mapping_waives_nothing": {
+        "assertions": 1,
+        "body_sha": "3b8cd49509563ea4"
+      },
+      "test_the_view_mapping_waives_exactly_what_017s_policy_waives": {
+        "assertions": 2,
+        "body_sha": "daafef97d4d97695"
+      },
+      "test_the_outer_predicate_carries_the_scope_token": {
+        "assertions": 1,
+        "body_sha": "cffa4bf64826dd8b"
+      },
+      "test_every_statement_in_this_module_carries_the_scope_token": {
+        "assertions": 2,
+        "body_sha": "604f7a24ebcb4a6a"
+      },
+      "test_a_filter_set_cannot_widen_a_scope": {
+        "assertions": 2,
+        "body_sha": "643c15c22c2c136d"
+      },
+      "test_a_denied_scope_compiles_to_false_not_true": {
+        "assertions": 1,
+        "body_sha": "5aec6f7c72968d44"
+      },
+      "test_the_ordering_always_ends_with_the_unique_group_key": {
+        "assertions": 2,
+        "body_sha": "56d854c2f7d1c50d"
+      },
+      "test_group_keys_are_coalesced_so_a_null_cannot_drop_a_row": {
+        "assertions": 1,
+        "body_sha": "f5521726c16d4284"
+      },
+      "test_an_ungrouped_query_still_has_a_deterministic_order": {
+        "assertions": 1,
+        "body_sha": "f9daf3155782c449"
+      },
+      "test_the_cursor_predicate_is_expanded_lexicographically": {
+        "assertions": 3,
+        "body_sha": "296ad8b00b91b269"
+      },
+      "test_the_cursor_comparison_direction_follows_each_terms_direction": {
+        "assertions": 2,
+        "body_sha": "34eed0fee0a85d16"
+      },
+      "test_no_cursor_is_a_true_predicate_and_not_a_missing_where": {
+        "assertions": 1,
+        "body_sha": "0fb1124779af1dd5"
+      },
+      "test_a_cursor_from_a_different_sort_is_refused": {
+        "assertions": 2,
+        "body_sha": "79e9cf42f4db405a"
+      },
+      "test_an_unreadable_cursor_is_refused_not_ignored": {
+        "assertions": 3,
+        "body_sha": "90991611b407c3c0"
+      },
+      "test_a_cursor_round_trips": {
+        "assertions": 1,
+        "body_sha": "677ed92af3e3645a"
+      },
+      "test_a_saved_view_never_stores_a_cursor": {
+        "assertions": 2,
+        "body_sha": "638df175187e1f2a"
+      },
+      "test_a_filter_set_round_trips_through_a_saved_definition": {
+        "assertions": 1,
+        "body_sha": "c6e1d512b0d87216"
+      },
+      "test_a_definition_naming_an_unknown_filter_is_refused_not_partly_applied": {
+        "assertions": 3,
+        "body_sha": "51deb6e4ff4dafe3"
+      },
+      "test_an_empty_definition_is_a_valid_unfiltered_view": {
+        "assertions": 1,
+        "body_sha": "5f13b285738ecaaf"
+      },
+      "test_a_view_not_found_and_one_not_permitted_are_one_exception": {
+        "assertions": 3,
+        "body_sha": "db11fbce8136139e"
+      },
+      "test_every_report_key_matches_the_migrations_shape_constraint": {
+        "assertions": 1,
+        "body_sha": "c0af32b709c09cfd"
+      },
+      "test_the_statements_are_read_one_at_a_time_and_not_as_one_blob": {
+        "assertions": 4,
+        "body_sha": "4efff094a642b646"
+      },
+      "test_the_inherited_aliases_name_only_tables_that_exist": {
+        "assertions": 1,
+        "body_sha": "a51dc906ee4fda6c"
+      },
+      "test_every_column_this_module_names_exists_in_a_migration": {
+        "assertions": 1,
+        "body_sha": "0a76118621eac442"
+      },
+      "test_the_column_check_would_catch_the_sibling_agents_mistake": {
+        "assertions": 6,
+        "body_sha": "33e2f14bbd3ce73c"
+      },
+      "test_the_column_check_reads_each_statement_in_its_own_alias_frame": {
+        "assertions": 2,
+        "body_sha": "693b090f92cdf81f"
+      },
+      "test_the_column_check_refuses_an_alias_nothing_binds": {
+        "assertions": 1,
+        "body_sha": "40f1b56f8d540111"
+      },
+      "test_migration_017_creates_exactly_the_two_tables_this_module_reads": {
+        "assertions": 4,
+        "body_sha": "7ecac17014f3eb2a"
+      },
+      "test_migration_017_names_every_constraint_it_creates": {
+        "assertions": 5,
+        "body_sha": "bc71734d8eb7c745"
+      },
+      "test_migration_017_forces_row_level_security_on_both_tables": {
+        "assertions": 2,
+        "body_sha": "e693586df05861cf"
+      },
+      "test_017s_write_check_is_narrower_than_its_read_predicate": {
+        "assertions": 3,
+        "body_sha": "d3b3fcc543b4cf59"
+      },
+      "test_the_default_table_reaches_its_dimension_through_an_exists": {
+        "assertions": 2,
+        "body_sha": "2d8600e2ba1e03d0"
+      },
+      "test_the_empty_and_denied_states_are_different_values": {
+        "assertions": 2,
+        "body_sha": "a37470147d46c4d8"
+      },
+      "test_an_empty_result_still_carries_a_zeroed_total_not_a_missing_one": {
+        "assertions": 3,
+        "body_sha": "e8a4341d5d80cad8"
+      },
+      "test_freshness_distinguishes_local_from_never_synced": {
+        "assertions": 1,
+        "body_sha": "f152568b048ab11f"
+      },
+      "test_only_message_ids_present_in_c10_are_emitted": {
+        "assertions": 2,
+        "body_sha": "08c7422c99571b7d"
+      },
+      "test_the_empty_state_uses_the_frozen_no_match_message": {
+        "assertions": 1,
+        "body_sha": "72b1791cf7c8fcfa"
+      },
+      "test_the_query_routes_are_get_so_a_drill_down_has_an_address": {
+        "assertions": 3,
+        "body_sha": "c460cf6ed4349e43"
+      },
+      "test_the_router_declares_an_authentication_floor_on_every_route": {
+        "assertions": 2,
+        "body_sha": "c36120f687666780"
+      },
+      "test_the_refused_filters_are_accepted_as_parameters_so_they_can_refuse": {
+        "assertions": 1,
+        "body_sha": "f17d5e65dae0f1a3"
+      },
+      "test_the_dimensions_route_publishes_the_refusals": {
+        "assertions": 2,
+        "body_sha": "28e11d1a6537ab2c"
+      }
+    },
     "test_runtime_startup.py": {
       "test_healthz_returns_200_with_database_unavailable": {
         "assertions": 2,
@@ -9297,6 +9737,7 @@
     "test_pg_procurement_schema.py": 74,
     "test_pg_reconciliation.py": 36,
     "test_pg_repo.py": 23,
+    "test_pg_reporting.py": 17,
     "test_pg_reservations.py": 33,
     "test_pg_rls.py": 18,
     "test_pg_rls_coverage.py": 34,
@@ -9308,6 +9749,7 @@
     "test_pg_transactions.py": 4,
     "test_pg_unattributed_triage.py": 14,
     "test_procurement_emission.py": 27,
+    "test_reporting_filterset.py": 92,
     "test_runtime_startup.py": 11,
     "test_scope_enforcement.py": 9,
     "test_scope_negative_matrix.py": 25,
@@ -9385,6 +9827,7 @@
     "test_pg_procurement_schema.py": 147,
     "test_pg_reconciliation.py": 117,
     "test_pg_repo.py": 37,
+    "test_pg_reporting.py": 55,
     "test_pg_reservations.py": 107,
     "test_pg_rls.py": 34,
     "test_pg_rls_coverage.py": 72,
@@ -9396,6 +9839,7 @@
     "test_pg_transactions.py": 10,
     "test_pg_unattributed_triage.py": 23,
     "test_procurement_emission.py": 98,
+    "test_reporting_filterset.py": 182,
     "test_runtime_startup.py": 31,
     "test_scope_enforcement.py": 11,
     "test_scope_negative_matrix.py": 82,
