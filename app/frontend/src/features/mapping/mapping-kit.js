@@ -83,7 +83,7 @@ export function disabledControl(control, { reason, evidence, labelText } = {}) {
  * same sentence beside six controls reads as six problems.
  */
 export function disabledFieldset(legend, children, { reason, evidence } = {}) {
-  return h('fieldset', { class: 'mapping-fieldset', disabled: true, 'aria-disabled': 'true' }, [
+  const el = h('fieldset', { class: 'mapping-fieldset', disabled: true, 'aria-disabled': 'true' }, [
     h('legend', { class: 'mapping-legend' }, legend),
     h('div', { class: 'msg msg-info mapping-governed', role: 'note' }, [
       h('span', { class: 'ico', 'aria-hidden': 'true' }, '⊘'),
@@ -95,6 +95,18 @@ export function disabledFieldset(legend, children, { reason, evidence } = {}) {
     ]),
     h('div', { class: 'mapping-fieldset-body' }, children),
   ]);
+  /* `fieldset[disabled]` disables its descendants for the USER AGENT, and that
+     is genuinely enough to stop anybody operating them. It is not enough for
+     the DOM: `input.disabled` still reads false, so anything that inspects a
+     control directly — a test, an assistive technology that walks properties,
+     future code that asks "is this enabled?" — sees an enabled control inside
+     a disabled fieldset and can reasonably act on it. The property is set
+     explicitly so the answer is the same whichever way it is asked. */
+  for (const control of el.querySelectorAll('input, select, textarea, button')) {
+    control.disabled = true;
+    control.setAttribute('aria-disabled', 'true');
+  }
+  return el;
 }
 
 /* ------------------------------------------------------------------ *

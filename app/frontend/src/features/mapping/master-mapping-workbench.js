@@ -95,7 +95,10 @@ export function mountMasterMappingWorkbench(root) {
     ...MAPPING_STATUSES.map((s) => [s, s]),
   ], { onChange: () => { state.mappingStatus = statusSelect.value; load(); } });
   statusSelect.value = state.mappingStatus;
-  const statusField = field('mmStatus', 'Match status', statusSelect, {
+  /* NOT `mmStatus`: that id belongs to this screen's state host below. Two
+     elements sharing an id is an axe violation and, worse, makes every test
+     assertion scoped to `#mmStatus` ambiguous about which one it found. */
+  const statusField = field('mmMatchStatus', 'Match status', statusSelect, {
     hint: 'All four values are offered whether or not any row currently holds one — an empty '
       + 'bucket and an absent bucket are different answers.',
   });
