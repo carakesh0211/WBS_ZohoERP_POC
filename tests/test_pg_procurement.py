@@ -768,19 +768,44 @@ def test_a_purchase_order_raises_the_commitment_the_next_check_reads(
     `tests/test_pg_migration_014.py::test_a_bill_landing_does_not_raise_available_live`
     is that half; this one is unchanged and still proves an order lowers
     availability.
+
+    WHERE `commitment_paise` IS READ FROM, AND WHY IT IS NOT THE VERDICT.
+    This test used to read `commitment_paise` off the mapping
+    `proc._availability` returns. That key has never been on it.
+    `budget.check_availability` is the `GET /api/budget/availability` contract
+    shape verbatim -- `budget_paise`, `exposure_paise`, `available_paise`,
+    `requested_paise`, `verdict`, `shortfall_paise` -- and it projects the
+    components away on purpose: `_subtree_totals` computes `commitment_paise`
+    (app/backend/pg/budget.py:297) and `check_availability` does not carry it
+    out (budget.py:344-355). Nothing in `app/` reads that key off a verdict, so
+    widening the response to satisfy a test would have changed a published
+    contract to describe a mistake.
+    The column is therefore read where it is written: `budget_ledger_cell`, the
+    cell the PO line is coded to, which is the same place
+    `test_pg_migration_014.py::test_the_six_derived_columns_all_move_live`
+    reads. That
+    is stronger than the verdict was -- the verdict is a subtree ROLLUP of
+    commitment + actual + pr_reserved, so it could have been satisfied by the
+    wrong column moving; this cannot.
     """
     suffix = uuid.uuid4().hex[:10]
     ids = _seed_chain(pg_connection, suffix=suffix, budget_paise=1_000_00)
+    read_commitment = (
+        "SELECT commitment_paise FROM budget_ledger_cell "
+        "WHERE wbs_id = %s AND budget_head_id = %s")
+    cell = (ids["child"], ids["head"])
 
     with pg_database.session(Scope.system()) as session:
         before = proc._availability(session, ids["child"], ids["head"], 0)
+        before_commitment = session.fetchone(read_commitment, cell)[0]
         pr_id = _approved_pr(session, ids, amount=600_00)
         proc.convert_pr_to_po(session, pr_id=pr_id, actor="U-PROC",
                               vendor_name="Acme")
         after = proc._availability(session, ids["child"], ids["head"], 0)
+        after_commitment = session.fetchone(read_commitment, cell)[0]
 
-    assert before["commitment_paise"] == 0
-    assert after["commitment_paise"] == 600_00
+    assert before_commitment == 0, "commitment_paise had no writer"
+    assert after_commitment == 600_00, "an order did not raise the commitment"
     assert after["available_paise"] == before["available_paise"] - 600_00
 
 
