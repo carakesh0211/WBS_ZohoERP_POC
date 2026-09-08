@@ -86,6 +86,20 @@ PERMISSIONS: dict[str, tuple[str, ...]] = {
     "settings.tax_identity.reveal": ("Administrator", "FinanceApprover"),
     "masters.tax_identity.reveal":  ("Administrator", "FinanceApprover",
                                      "ProcurementApprover"),
+    # Publishing a saved view to everyone in an entity. NOT the same right as
+    # saving one: a PRIVATE view is a bookmark under the caller's own identity
+    # and correctly sits at the router floor, which every role holds. A SHARED
+    # view is opened by other people, who then read money through whatever
+    # filters it carries -- so it is a write that affects other principals.
+    #
+    # Held by the roles that already curate configuration others depend on.
+    # Auditor is excluded for the same reason it is excluded from
+    # `reconciliation.triage`: `test_aud_c_006_auditor_is_read_only` pins the
+    # Auditor as read-only, and publishing into an entity is not a read.
+    # Recorded against D-12 with the other role-mapping placeholders; it is a
+    # documented default, not a resolved client decision.
+    "report.view.share":      ("Administrator", "BudgetController",
+                               "FinanceApprover"),
     "connector.read":         ("Administrator", "Auditor"),
     "connector.manage":       ("Administrator",),
     # --- Wave 7: asynchronous exports --------------------------------

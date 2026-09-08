@@ -128,6 +128,30 @@ class _ReportsAccess:
 
 require_reports_access = _ReportsAccess()
 
+
+#: Publishing a view into an entity is a write that affects other principals.
+SHARE_PERMISSION = "report.view.share"
+
+
+def _require_share_permission(request: Request, visibility: str | None) -> None:
+    """Refuse a SHARED view to a caller who may only keep private ones.
+
+    Checked in the handler, not on the route: `visibility` arrives in the BODY,
+    which a route-level dependency cannot see. Anything that is not SHARED --
+    including `None` on a PATCH that does not mention visibility -- passes
+    untouched, so saving and editing a private view stays at the router floor.
+    """
+    if visibility is None or visibility.upper() != "SHARED":
+        return
+    from .. import auth as auth_mod
+
+    who = getattr(request.state, "reports_principal", None) or {}
+    try:
+        auth_mod.require(who, SHARE_PERMISSION)
+    except auth_mod.AuthError as exc:
+        raise HTTPException(exc.status,
+                            {"code": exc.code, "message": exc.message})
+
 router = APIRouter(dependencies=[Depends(require_reports_access)])
 
 
@@ -455,10 +479,19 @@ def get_view(
 @router.post("/api/reports/views", status_code=201)
 def post_view(
     body: _ViewIn, request: Request, response: Response,
-    database: Database = Depends(_get_database),
 ) -> dict[str, Any]:
-    """Save a view. Owned by the caller; 017's `WITH CHECK` enforces that."""
+    """Save a view. Owned by the caller, and shared only with permission.
+
+    `_get_database()` is called here rather than declared as
+    `Depends(_get_database)` deliberately: FastAPI resolves every parameter
+    dependency BEFORE the handler body, so the 503 for an unconfigured
+    database preceded the permission check and an unauthorised SHARED view
+    answered 503 instead of 403. A gate that only fires when the database
+    happens to be up is not a gate.
+    """
     _set_correlation_header(response, request)
+    _require_share_permission(request, body.visibility)
+    database = _get_database()
     actor = _actor(request)
     view_id = f"RV-{uuid4().hex[:16]}"
     try:
@@ -478,7 +511,6 @@ def post_view(
 @router.put("/api/reports/views/{view_id}")
 def put_view(
     view_id: str, body: _ViewPatch, request: Request, response: Response,
-    database: Database = Depends(_get_database),
 ) -> dict[str, Any]:
     """Edit a saved view. Owner only.
 
@@ -487,6 +519,9 @@ def put_view(
     is real to a caller who was refused it.
     """
     _set_correlation_header(response, request)
+    # Before `_get_database()`, for the reason given on `post_view`.
+    _require_share_permission(request, body.visibility)
+    database = _get_database()
     actor = _actor(request)
     try:
         filters = (reporting_svc.FilterSet.from_json(body.definition)

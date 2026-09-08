@@ -50,7 +50,7 @@
    "usage": "Exposure bands correspond to the client's own alert thresholds: below 80 percent safe, 80 to 90 percent watch, above 90 percent or exceeded breach.",
    "rule": "Negative monetary values are shown in value-negative AND in parentheses. Colour is never the sole carrier of sign."
   },
-  "contrast_rule": "Every text/background pairing above meets WCAG 2.2 AA (4.5:1 for body text, 3:1 for large text and UI boundaries). Any new pairing must be checked before use."
+  "contrast_rule": "Every text/background pairing above meets WCAG 2.2 AA (4.5:1 for body text, 3:1 for large text and UI boundaries) EXCEPT the warning token (hex A66A00), measured at 4.484:1 on white and 4.077:1 on its own tint warning-bg (hex FDF3E2), and rendered as NORMAL text by .st-warning at 12px/600. It fails AA on every background it is actually used on; the shortfall is 0.42, not the 0.016 previously recorded here. RECORDED, NOT ACCEPTED: the remedy is the darker warning already used by .msg-warning (hex 6D4600), which measures 8.313:1 on white and 7.558:1 on the tint and introduces no new colour. It is not applied because styles.css is byte-frozen behind a SHA-256 pin and darkening an approved token is a visual change requiring the product owner's approval. Consistent with exclusion X-08: WCAG AA is a target, not a certification. Any new pairing must be checked before use."
  },
  "typography": {
   "font_stack_ui": "Inter, 'Segoe UI', Roboto, system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif",
