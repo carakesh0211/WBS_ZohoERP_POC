@@ -273,6 +273,45 @@ MUTATING_ROUTES = [
      {"connection_id": "CONN-01", "vendor_external_id": "ZV-77",
       "document_date": "2026-09-07"},
      "connector.manage", "Auditor"),
+
+    # ---------------------------------------------------------- Wave 7 (A1)
+    # `/api/reports/*` -- the saved-view mutations on the reporting router.
+    # Registered in the same commit that mounts the router in `main.py`, for
+    # the reason the Wave 5 block above states.
+    #
+    # PERMISSION IS `None` ON ALL FIVE, AND THAT IS A CLAIM RATHER THAN A GAP.
+    # These routes carry no permission beyond the router floor, `budget.read`,
+    # which `auth.PERMISSIONS` grants to EVERY role. So there is no role that
+    # holds the floor and not the route, and
+    # `test_aud_c_006_mutating_route_rejects_a_role_without_the_permission`
+    # would have nothing true to assert: its own
+    # `denied_role not in PERMISSIONS[permission]` guard fails for every role
+    # by construction. Naming a permission these routes do not require, purely
+    # to fill the column, would make that test pass while proving something
+    # false -- so the column is `None`, exactly as `/api/auth/logout`'s is.
+    #
+    # THEY ARE NOT UNGUARDED. A saved view writes a bookmark under the
+    # caller's own identity: it moves no money, touches no ledger row and
+    # grants nobody anything, and 016's `WITH CHECK` pins `owner_user_id` to
+    # the session principal so one caller cannot author or edit another's.
+    # Authentication is still asserted for all five by
+    # `test_aud_c_006_mutating_route_rejects_an_unauthenticated_caller`, and a
+    # caller holding NO role at all is refused by the floor -- which
+    # `test_aud_c_006_a_caller_with_no_role_at_all_can_mutate_nothing` skips
+    # for `None` rows, so `tests/test_pg_reporting.py` asserts it directly for
+    # these five instead of leaving the case uncovered.
+    ("/api/reports/views", "POST", "/api/reports/views",
+     {"entity_id": "ENT-01", "report_key": "executive_dashboard",
+      "name": "unauthorised attempt", "definition": {}},
+     None, None),
+    ("/api/reports/views/{view_id}", "PUT", "/api/reports/views/RV-1",
+     {"name": "unauthorised attempt"}, None, None),
+    ("/api/reports/views/{view_id}", "DELETE", "/api/reports/views/RV-1",
+     {}, None, None),
+    ("/api/reports/views/{view_id}/default", "PUT",
+     "/api/reports/views/RV-1/default", {}, None, None),
+    ("/api/reports/defaults/{report_key}", "DELETE",
+     "/api/reports/defaults/executive_dashboard", {}, None, None),
 ]
 
 PUBLIC_MUTATING_ROUTES = {"/api/auth/login"}

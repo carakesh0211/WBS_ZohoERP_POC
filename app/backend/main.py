@@ -98,6 +98,7 @@ from .api import budget as budget_api
 from .api import integrations as integrations_api
 from .api import masters as masters_api
 from .api import procurement as procurement_api
+from .api import reports as reports_api
 from .api import settings as settings_api
 
 app.include_router(budget_api.router)
@@ -118,6 +119,13 @@ app.include_router(integrations_api.router)
 # tables; the SQLite `/api/purchase-requests` and `/api/purchase-orders`
 # routes above are untouched and stay deployable until the cutover.
 app.include_router(procurement_api.router)
+# Wave 7 stream A1. Same rule, same commit: the five mutating paths this
+# router serves are in `tests/test_api_auth.py::MUTATING_ROUTES` in the commit
+# that mounts it. `/api/reports/*` is the server-side reporting layer over the
+# whole 002..016 estate; its reads are GET so a drill-down has a shareable
+# address and so the mutation matrix keeps meaning "these really do change
+# something" -- see `api/reports.py`'s docstring.
+app.include_router(reports_api.router)
 
 PUBLIC_PATHS = {"/api/health", "/api/auth/login"}
 
