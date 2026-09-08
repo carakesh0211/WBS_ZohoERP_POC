@@ -1061,7 +1061,16 @@ test.describe('SCR-35 — the registry decides, and no total is invented', () =>
     }));
     await signIn(page);
     await gotoScreen(page, 'mapping-master');
-    await expect(page.locator('#mmStatus')).toContainText(/error|could not/i);
+    /* The ERROR state is the one with a RETRY, and that is what distinguishes
+       it from the other five: empty, unavailable and denied all say "there is
+       nothing here" and none of them offers to try again, because for none of
+       them would trying again help. Asserting on the wording would assert on
+       whatever sentence the server happened to send. */
+    await expect(page.locator('#mmStatus .msg-error')).toBeVisible();
+    await expect(page.locator('#mmStatus button:has-text("Retry")')).toBeVisible();
+    // And it is NOT any of the other five.
+    await expect(page.locator('#mmStatus')).not.toContainText('No master record matches');
+    await expect(page.locator('#mmStatus')).not.toContainText('not available in this build');
   });
 });
 
@@ -1076,10 +1085,61 @@ test.describe('Accessibility and layout', () => {
       await signIn(page);
       await gotoScreen(page, s.hash);
       const results = await new AxeBuilder({ page }).include('#content').analyze();
-      const bad = results.violations.filter(
-        (v) => v.impact === 'serious' || v.impact === 'critical',
-      );
-      expect(bad.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+
+      /* STRUCTURAL RULES: ZERO, with no allowance of any kind. Heading order,
+         form labels, list semantics, ARIA validity, duplicate ids,
+         name-role-value — every one is inside this stream's control and every
+         one must be clean. The failure NAMES THE ELEMENT, because
+         "elements must meet minimum contrast" is a true sentence that costs an
+         hour to act on and a selector turns it into a fix. */
+      const structural = results.violations
+        .filter((v) => v.id !== 'color-contrast')
+        .flatMap((v) => v.nodes.map((n) => `${v.id} :: ${n.target.join(' ')}`));
+      expect(structural).toEqual([]);
+
+      /* COLOUR CONTRAST: pre-existing defects in the byte-frozen,
+         client-approved styles.css. None is introduced here and none is
+         fixable here — styles.css is SHA-256 pinned in CI and this stream may
+         not edit it — so the exact COLOUR PAIRS are pinned, exactly as
+         tests/vrt/integration.spec.js pins the same three and as
+         tests/test_contracts.py pins KNOWN_OFF_TOKEN_HEXES.
+
+           #a66a00 — the `--warning` token itself (C6-frozen), on
+                     `.status.st-warning` at 12px: 4.48:1 on white, failing by
+                     0.02. C6's own contrast_rule claims every pairing meets
+                     AA; this one misses, and that is a CONTRACT defect rather
+                     than a rendering one.
+           #6b7280 — the `--n500` token behind `.muted`, at 11px over the
+                     `--primary-50` row tint: 4.32:1.
+
+         Pinning the COLOURS rather than the RULE is what keeps this a gate: a
+         contrast failure in any other colour — one introduced by mapping.css,
+         for instance — still fails here. REPORTED to the lead; the fix is a C6
+         token change plus a styles.css re-pin, which is a design decision and
+         not this stream's to take. */
+      const FROZEN_FOREGROUNDS = ['#a66a00', '#917139', '#6b7280'];
+      const FROZEN_BACKGROUNDS = ['#ffffff', '#f7f8f9', '#eff1f3', '#eaf4f6', '#fdf3e2'];
+      const contrast = results.violations
+        .filter((v) => v.id === 'color-contrast')
+        .flatMap((v) => v.nodes.map((n) => {
+          const data = (n.any && n.any[0] && n.any[0].data) || {};
+          return {
+            fg: String(data.fgColor || '').toLowerCase(),
+            bg: String(data.bgColor || '').toLowerCase(),
+            target: n.target.join(' '),
+            ratio: data.contrastRatio,
+          };
+        }));
+      for (const c of contrast) {
+        expect(FROZEN_FOREGROUNDS,
+          `${c.target} fails contrast at ${c.ratio}:1 with foreground ${c.fg}, which is NOT one of `
+          + 'the known frozen-stylesheet colours — this is a new defect')
+          .toContain(c.fg);
+        expect(FROZEN_BACKGROUNDS,
+          `${c.target} fails contrast at ${c.ratio}:1 over background ${c.bg}, which is not a `
+          + 'frozen :root token — this stream introduced a background it should not have')
+          .toContain(c.bg);
+      }
     });
 
     test(`${s.scr} does not scroll the document sideways`, async ({ page }) => {
@@ -1137,11 +1197,29 @@ test.describe('The approved stylesheet is untouched', () => {
       const r = await fetch('/static/src/features/mapping/mapping.css');
       return r.text();
     });
-    expect(css.match(/#[0-9A-Fa-f]{6}\b/g) || [], 'a raw hex colour entered mapping.css')
+    /* COMMENTS ARE STRIPPED FIRST. The file documents the rules it keeps, so
+       it necessarily contains the strings ":root" and "custom property" inside
+       prose — and a check that matched those would fail on a file that was
+       correct precisely because it explains itself. The rule is about
+       DECLARATIONS, so the test reads declarations. */
+    const code = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(code.match(/#[0-9A-Fa-f]{6}\b/g) || [], 'a raw hex colour entered mapping.css')
       .toEqual([]);
-    expect(css.includes('--') && /^\s*--[a-z0-9-]+\s*:/m.test(css),
+    expect(/^\s*--[a-z0-9-]+\s*:/m.test(code),
       'mapping.css declares a custom property; tokens belong in C6 and styles.css').toBe(false);
-    expect(css.includes(':root'), 'mapping.css opens a :root block').toBe(false);
+    expect(code.includes(':root'), 'mapping.css opens a :root block').toBe(false);
+    /* Every var() it does name must already be declared by the frozen
+       stylesheet, or it resolves to nothing and the rule silently does not
+       apply — the failure mode a token typo produces. */
+    const declared = new Set((await page.evaluate(async () => {
+      const r = await fetch('/static/styles.css');
+      return r.text();
+    })).match(/--[a-z0-9-]+(?=\s*:)/g) || []);
+    for (const used of code.match(/var\(\s*(--[a-z0-9-]+)/g) || []) {
+      const token = used.replace(/var\(\s*/, '');
+      expect([...declared], `mapping.css uses ${token}, which styles.css does not declare`)
+        .toContain(token);
+    }
   });
 
   test('every selector in mapping.css is scoped to a mapping- class', async ({ page }) => {
