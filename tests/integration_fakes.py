@@ -306,6 +306,9 @@ class InMemoryStore:
         self.connection_id = connection_id
         self.job_rows: dict[str, JobRow] = {}
         self.inbox: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+        #: Every `mirror_bill` call, so a test can assert the sweep
+        #: reached the LEDGER and not merely the inbox.
+        self.mirrored_bills: list[dict[str, Any]] = []
         self.inbox_writes = 0
         self.watermarks: dict[tuple[str, str], datetime] = {}
         self.exceptions: dict[tuple[str, str, str | None], dict[str, Any]] = {}
@@ -530,6 +533,43 @@ class InMemoryStore:
         if external_id in self.detail_queue:
             self.detail_queue.remove(external_id)
         self.hydrated.append(external_id)
+
+    def mirror_bill(self, **kwargs: Any) -> dict[str, Any]:
+        """The verb the bill-detail sweep gained when the ledger was wired in.
+
+        WHY THIS EXISTS, AND WHY ITS ABSENCE WAS A REAL FAILURE
+        -------------------------------------------------------
+        `procurement.mirror_bill` was written with NO PRODUCTION CALLER: the
+        bill-detail sweep fetched the document, wrote the inbox row, marked it
+        hydrated and stopped, so `bill` and `bill_line` were never written and
+        `billed_paise` was structurally 0 for the whole estate. Wiring the
+        sweep to the ledger is what fixed it -- and this double, which had no
+        `mirror_bill`, then made the sweep refuse.
+
+        That refusal was CORRECT and the test that caught it was right: a
+        store which cannot record the bill must not let the queue be drained
+        by the step that failed. So this is the double catching up with a real
+        contract, not a test being relaxed to accommodate one.
+
+        Records the call and returns the real function's summary shape, with
+        the line counts derived from what it was actually handed rather than
+        hard-coded -- a fake that always answers "0 quarantined" would make
+        the quarantine assertions pass without exercising anything.
+        """
+        self.mirrored_bills.append(dict(kwargs))
+        lines = tuple(kwargs.get("lines") or ())
+        attributed = sum(
+            1 for line in lines
+            if getattr(line, "purchase_order_line_external_id", None)
+            or (isinstance(line, dict)
+                and line.get("purchase_order_line_external_id")))
+        return {
+            "bill_id": f"BILL-{kwargs.get('external_id', 'UNKNOWN')}",
+            "attributed": attributed,
+            "quarantined": len(lines) - attributed,
+            "quarantined_paise": 0,
+        }
+
 
     # -------------------------------------------------------- completeness
     def periods_to_reconcile(self, *,
