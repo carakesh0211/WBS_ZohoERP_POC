@@ -1,0 +1,316 @@
+/* app/frontend/src/features/analytics/analytics.css
+   Additive stylesheet for the eleven analytics screens (Wave 7 / A3:
+   SCR-01, 02, 04, 05, 06, 07, 08, 19, 23, 24, 25).
+
+   WHERE THIS FILE LIVES, AND WHY IT IS NOT app/frontend/analytics.css
+   -------------------------------------------------------------------
+   The Wave 5 integration stylesheet set the precedent and the reasoning is the
+   same: this agent owns app/frontend/src/features/analytics/** and owns
+   nothing at the frontend root. A <link> to a file here is same-origin and
+   static, so `style-src 'self'` permits it exactly as it permits budget.css,
+   settings.css, approvals.css and integration.css, and manifest.js injects it
+   per route in the same way.
+
+   RULES THIS FILE KEEPS, AND WHY
+   ------------------------------
+   1. NO :root block, NO custom property declared here, and NO raw hex
+      anywhere in this file. Every colour is a var() naming a token already
+      frozen in research/30_contracts/C6_tokens.json and declared in the
+      byte-frozen styles.css. A new colour belongs in the token registry, not
+      in a feature stylesheet.
+
+   2. app/frontend/styles.css IS BYTE-FROZEN AND SHA-256 PINNED. Nothing here
+      is a workaround for something that "should" have gone in it. This file
+      only positions the parts these screens add.
+
+   3. EVERY SELECTOR IS SCOPED to an `analytics-` class. settings.css shipped
+      two UNSCOPED selectors and they restyled every approved shell view the
+      moment that stylesheet loaded globally — which is why these stylesheets
+      are injected per route. This file is written so it would be harmless even
+      if that containment failed.
+
+   4. Layout and size only. Nothing here restyles a `.status`, a `.msg`, a
+      `.tile`, a `.bar`, a table or a button: those are the approved design and
+      they come from styles.css unchanged.
+
+   5. No `style=` attribute is ever produced by the screens that use this file.
+      The CSP is `style-src 'self'`; the one piece of computed geometry (the
+      band bar's fill widths) goes through the CSSOM via core/dom.js's
+      setGeometry(), which CSP does not govern.
+*/
+
+/* ---------------- cards ---------------- */
+
+.analytics-card + .analytics-card {
+  margin-top: 16px;
+}
+
+/* The card header as an <h2> rather than the frozen stylesheet's `.card > h3`.
+   The shell renders the screen name as the page <h1>, so an h3 here would skip
+   a heading level: axe flags it and a screen-reader user navigating by heading
+   loses the outline. These declarations reproduce `.card > h3` exactly, from
+   the same tokens, so the card is visually identical and only the element name
+   and the document outline differ. */
+.analytics-card > .analytics-card-title {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--n900);
+  background: var(--n50);
+  border-bottom: 1px solid var(--n200);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.analytics-card > .analytics-card-title .spacer {
+  flex: 1;
+}
+
+/* ---------------- the filter bar ---------------- */
+
+.analytics-filter-bar {
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+}
+
+.analytics-filter-field {
+  min-width: 132px;
+  max-width: 220px;
+}
+
+.analytics-filter-field select[multiple] {
+  min-height: 66px;
+  padding: 2px;
+}
+
+.analytics-filter-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  align-items: flex-end;
+  margin-left: auto;
+}
+
+/* ---------------- active-filter chips ---------------- */
+
+.analytics-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 8px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--n500);
+}
+
+.analytics-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px;
+  border: 1px solid var(--n200);
+  border-radius: 9px;
+  background: var(--n50);
+  color: var(--n700);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A filter the answering source could NOT apply. It carries a symbol and a
+   screen-reader sentence as well as this treatment, so the warning survives
+   greyscale and a screen reader alike. */
+.analytics-chip-dropped {
+  border-color: var(--warning);
+  background: var(--warning-bg);
+  color: var(--warning);
+  text-decoration: line-through;
+}
+
+.analytics-chip .sym {
+  font-weight: 700;
+}
+
+/* ---------------- provenance lines ---------------- */
+
+.analytics-notes {
+  display: block;
+}
+
+.analytics-source,
+.analytics-freshness {
+  margin: 0 0 4px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+}
+
+.analytics-source .sym,
+.analytics-freshness .sym,
+.analytics-reconciled .sym {
+  font-weight: 700;
+}
+
+/* The fallback source line is set apart, and it is deliberately NOT a colour
+   swap alone: the leading symbol changes from '·' to '!' and the sentence
+   itself states the limitation. */
+.analytics-source-compat {
+  border-left: 3px solid var(--warning);
+  padding-left: 8px;
+}
+
+.analytics-freshness[data-freshness='stale'] {
+  color: var(--warning);
+}
+
+.analytics-reconciled {
+  margin: 6px 0 0;
+  line-height: 16px;
+}
+
+/* ---------------- the four extra states ---------------- */
+
+.analytics-unavailable,
+.analytics-scope-denied,
+.analytics-stale,
+.analytics-unapplied,
+.analytics-data-quality {
+  margin: 0 0 10px;
+}
+
+.analytics-unavailable code,
+.analytics-scope-denied .mono,
+.analytics-data-quality .mono {
+  overflow-wrap: anywhere;
+}
+
+/* ---------------- metric tiles ---------------- */
+
+.analytics-tiles {
+  margin-bottom: 12px;
+}
+
+.analytics-tile .v {
+  overflow-wrap: anywhere;
+}
+
+/* A figure the source did not report. It is not zero, and it must not read as
+   a number: smaller, muted, and carrying its own '?' symbol and title. */
+.analytics-not-reported {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--n500);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.analytics-not-reported .sym {
+  font-weight: 700;
+}
+
+.analytics-drill {
+  font-size: inherit;
+  font-weight: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- band bars in table cells ---------------- */
+
+.analytics-bar {
+  display: block;
+  width: 100%;
+}
+
+.analytics-band-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 96px;
+}
+
+/* ---------------- the WBS tree ---------------- */
+
+.analytics-tree-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+/* Indentation is set per row through the CSSOM (setGeometry), never as a
+   style attribute — the CSP blocks the attribute outright. This rule only
+   declares the box the computed value applies to. */
+.analytics-tree-indent {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 0;
+}
+
+.analytics-tree-row[data-carries-budget='false'] .analytics-tree-code {
+  color: var(--n500);
+}
+
+/* ---------------- key/value detail ---------------- */
+
+.analytics-kv {
+  margin: 0;
+}
+
+.analytics-kv dd .mono {
+  overflow-wrap: anywhere;
+}
+
+/* ---------------- two-column detail layout ---------------- */
+
+.analytics-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .analytics-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .analytics-filter-field {
+    max-width: none;
+  }
+
+  .analytics-filter-actions {
+    margin-left: 0;
+  }
+}
+
+/* ---------------- the ageing bucket strip ---------------- */
+
+.analytics-buckets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* ---------------- export control ---------------- */
+
+.analytics-export[disabled] {
+  cursor: not-allowed;
+}
+
+/* ---------------- cross-links to the operational views ---------------- */
+
+.analytics-crosslinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 16px;
+}
