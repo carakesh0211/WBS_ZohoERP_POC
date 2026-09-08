@@ -459,9 +459,17 @@ test.describe('Wave 7 analytics screens — no data without its provenance', () 
         // EITHER a named source, OR an explicit unavailable / denied block.
         // Never neither: a screen showing nothing and explaining nothing is
         // the exact failure this suite exists to prevent.
+        /* UNSTARTED COUNTS AS EXPLAINED, and SCR-08 is why. The WBS Element
+           Detail page needs a project AND an element; given only a project it
+           renders an explicit prompt naming what is still to be chosen, and
+           settles its loader in `unstarted`. That is not a screen showing
+           nothing and explaining nothing — it is a query nobody has asked yet,
+           which is a state this feature models deliberately, and it has no
+           source to name because it made no request. */
         const explained = evidence.sources.length > 0
           || evidence.unavailable > 0
-          || evidence.denied > 0;
+          || evidence.denied > 0
+          || evidence.unstarted > 0;
         expect(explained,
           `${screen.scr} rendered neither a named source nor an explicit unavailable state`)
           .toBe(true);
@@ -1486,8 +1494,14 @@ test.describe('Wave 7 analytics screens — axe-core clean', () => {
       const results = await new AxeBuilder({ page })
         .include('#content')
         .analyze();
+      /* THE NODE, NOT JUST THE COUNT. A summary of "color-contrast x1" names
+         a rule and leaves the element to be hunted for; the selector and the
+         failure text turn the same failure into a one-line fix. */
       const summary = results.violations.map(
-        (v) => `${v.id} (${v.impact}) x${v.nodes.length}: ${v.help}`,
+        (v) => `${v.id} (${v.impact}) x${v.nodes.length}: ${v.help} — `
+          + v.nodes.slice(0, 3).map(
+            (n) => `${(n.target || []).join(' ')} [${(n.failureSummary || '').replace(/\s+/g, ' ').trim()}]`,
+          ).join(' | '),
       );
       expect(summary, `${screen.scr} has accessibility violations`).toEqual([]);
     });

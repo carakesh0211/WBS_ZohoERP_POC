@@ -79,7 +79,18 @@ export function createWbsTree({
   if (showBand) headRow.appendChild(h('th', { scope: 'col' }, 'Utilisation'));
 
   const tbody = h('tbody');
-  const table = h('table', {}, [
+  /* `treegrid`, NOT the implicit `table` role.
+     Every row below carries `aria-level`, `aria-posinset`, `aria-setsize` and
+     — on a parent — `aria-expanded`, which is how the hierarchy survives for
+     anyone not looking at the indentation. Those four attributes are only
+     valid on a `row` that a TREEGRID owns; on a plain table they are a
+     serious `aria-conditional-attr` violation, one per row, and axe reported
+     exactly that once these trees became visible (they were rendering into a
+     hidden element, so nothing had ever audited them).
+     Declaring the role is the fix rather than dropping the attributes: a tree
+     table whose depth exists only in pixels is a flat list to a screen reader,
+     which is the thing `tests/vrt/analytics.spec.js` asserts against. */
+  const table = h('table', { role: 'treegrid' }, [
     h('caption', { class: 'sr-only' }, caption),
     h('thead', {}, headRow),
     tbody,
