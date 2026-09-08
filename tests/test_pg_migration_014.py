@@ -720,9 +720,18 @@ def test_concurrent_duplicate_bill_line_ingestion_is_refused_live(
         ids = _seed(session)
         _purchase_order(session, ids)
         session.execute(
+            # `po_id`, because `fk_bill_line_bill_po` is COMPOSITE on
+            # (bill_id, po_id) -> bill (bill_id, po_id)
+            # (013_procurement.sql:684-686, targeting ux_bill_id_po at :617).
+            # The line below claims PO-014, so the BILL must be raised against
+            # PO-014 too -- that is the half of the ownership trigger pair the
+            # FK replaced, and the seed was contradicting it. Leaving `po_id`
+            # NULL made the parent (BILL-C, NULL) and the child
+            # (BILL-C, PO-014), which has no parent at all.
             "INSERT INTO bill (bill_id, bill_number, project_id, entity_id, "
-            "vendor_name, bill_date, created_by, updated_by) "
-            "VALUES ('BILL-C', 'B-C', %s, %s, 'V', DATE '2026-09-08', 't', 't')",
+            "po_id, vendor_name, bill_date, created_by, updated_by) "
+            "VALUES ('BILL-C', 'B-C', %s, %s, 'PO-014', 'V', "
+            "DATE '2026-09-08', 't', 't')",
             (ids["project"], ids["entity"]))
 
     insert = (
@@ -923,10 +932,16 @@ def test_a_pr_converts_into_exactly_one_purchase_order_live(pg_database):
 @pytest.mark.pg
 @PG
 def test_exactly_one_live_reservation_per_purchase_request_live(pg_database):
-    """C1. `ux_pr_reservation_live` is the whole control: one live hold per PR,
-    enforced by a partial unique index rather than by a service remembering to
-    check. PARTIAL on `state = 'Reserved'` so a later hold, after the first is
-    released, is creatable."""
+    """C1. One live hold per PR per resolved cell, enforced by a partial unique
+    index rather than by a service remembering to check. PARTIAL on
+    `state = 'Reserved'` so a later hold, after the first is released, is
+    creatable.
+
+    The index doing the work is `ux_pr_reservation_live_cell`
+    (015_reservation_grain.sql:263-265); 015 dropped 014's whole-PR
+    `ux_pr_reservation_live` at :271. Under the single cell this test uses, the
+    two are indistinguishable and the behaviour asserted below is unchanged.
+    """
     with pg_database.session(Scope.system()) as session:
         ids = _seed(session)
         session.execute(
@@ -937,6 +952,14 @@ def test_exactly_one_live_reservation_per_purchase_request_live(pg_database):
             session, pr_id="PR-1", project_id=ids["project"],
             wbs_id=ids["wbs"], budget_head_id=ids["head"],
             amount_paise=1000000, actor="t")
+
+    # THE REFUSAL GETS ITS OWN TRANSACTION, and it did not before. A
+    # UniqueViolation puts the transaction into INFAILEDSQLTRANSACTION, so
+    # `Database.session`'s commit on exit executes as a ROLLBACK -- taking the
+    # seed, the purchase request and the reservation this test goes on to
+    # settle with it. `settle_reservations` then found nothing and returned [].
+    # Same reason and same shape as the two-organisations test above.
+    with pg_database.session(Scope.system()) as session:
         with pytest.raises(psycopg.errors.UniqueViolation):
             svc.create_reservation(
                 session, pr_id="PR-1", project_id=ids["project"],
@@ -1226,7 +1249,19 @@ def test_a_database_already_at_013_upgrades_to_014_live(bare_pg_connection):
 
     performed = migrate_pg.upgrade(con)
     con.commit()
-    assert performed == ["014"], f"expected 014 alone; got {performed}"
+    # 014 IS THE STEP THIS TEST IS ABOUT, NOT THE LAST STEP THERE IS.
+    # `upgrade` applies EVERY pending migration, and the setup above stops
+    # recording at 013 -- so it returns 014 and everything after it. Asserting
+    # equality with ["014"] asserted that 014 happened to be the newest
+    # migration, which stopped being true when 015 landed and would stop being
+    # true again with every wave. The properties actually being tested are that
+    # the 013 -> 014 step RAN, that it ran FIRST, and that nothing already
+    # recorded was replayed.
+    assert performed and performed[0] == "014", (
+        f"the 013 -> 014 step did not run first; performed {performed}")
+    assert all(version > "013" for version in performed), (
+        f"a migration already recorded as applied was re-applied; "
+        f"performed {performed}")
 
     row = con.execute(
         "SELECT (SELECT entity_id FROM grn WHERE grn_id = 'G'), "

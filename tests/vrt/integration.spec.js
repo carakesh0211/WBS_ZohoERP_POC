@@ -1275,6 +1275,30 @@ test.describe('Against the real build, with nothing stubbed', () => {
       await signIn(page);
       await gotoScreen(page, s.hash);
 
+      // THE THIRD SITE IN THIS FILE WITH THE SAME UNSYNCHRONISED READ.
+      //
+      // `page.evaluate` samples the DOM exactly once. `gotoScreen` waits for
+      // the mount flag, for loading nodes to clear and for networkidle --
+      // none of which is "the data has painted". CI caught it at tablet-800
+      // only, while desktop-1440 and laptop-1024 both passed in the same run:
+      //
+      //   desktop-1440  sources=[wave4-compat] unavailable=[...] empty=0
+      //   laptop-1024   sources=[wave4-compat] unavailable=[...] empty=0
+      //   tablet-800    sources=[none]         unavailable=[none] empty=1
+      //
+      // `empty=1` is the tell: the screen had rendered its intermediate empty
+      // placeholder and the fetch had not yet resolved. Nothing about the
+      // viewport changed what the screen renders -- it changed the timing.
+      //
+      // NOT A WAIT. No `waitForTimeout`, no sleep. The read is made to happen
+      // AFTER the condition it depends on, using the same retrying assertion
+      // every other check in this file already uses. If a screen genuinely
+      // renders neither a source nor an unavailable block, this still fails --
+      // with a clearer message than a zero count.
+      await expect(
+        page.locator('#content .integration-source, #content .integration-unavailable').first(),
+      ).toBeAttached();
+
       const observed = await page.evaluate(() => {
         const root = document.getElementById('content');
         // VISIBLE only. A data table that has been hidden still holds its
