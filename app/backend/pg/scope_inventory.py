@@ -571,7 +571,7 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
              "lifecycle_state."),
 
     # ------------------------------------------------ 017_reporting.sql
-    # Read from 016's CREATE TABLE statements, before looking at its policies
+    # Read from 017's CREATE TABLE statements, before looking at its policies
     # -- the maintenance rule in this module's docstring. `report_saved_view`
     # has a literal `entity_id text NOT NULL REFERENCES entity`, so it carries
     # a dimension whether or not anything protects it; `report_view_default`
@@ -587,7 +587,7 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
              "holds no grant for, sitting in `definition`. That is why this "
              "is scoped data and not a user preference. NOTE that the entity "
              "predicate is only half the control -- a colleague in the same "
-             "entity passes it and must still not read a PRIVATE view; 016's "
+             "entity passes it and must still not read a PRIVATE view; 017's "
              "policy carries the visibility/owner disjunction in the same "
              "expression, and its WITH CHECK is narrower than its USING so a "
              "shared view cannot be edited under everyone who uses it."),

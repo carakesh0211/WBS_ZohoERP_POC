@@ -292,7 +292,7 @@ MUTATING_ROUTES = [
     #
     # THEY ARE NOT UNGUARDED. A saved view writes a bookmark under the
     # caller's own identity: it moves no money, touches no ledger row and
-    # grants nobody anything, and 016's `WITH CHECK` pins `owner_user_id` to
+    # grants nobody anything, and 017's `WITH CHECK` pins `owner_user_id` to
     # the session principal so one caller cannot author or edit another's.
     # Authentication is still asserted for all five by
     # `test_aud_c_006_mutating_route_rejects_an_unauthenticated_caller`, and a

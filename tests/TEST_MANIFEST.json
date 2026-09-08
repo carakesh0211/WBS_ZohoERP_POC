@@ -9199,7 +9199,7 @@
         "assertions": 1,
         "body_sha": "3b8cd49509563ea4"
       },
-      "test_the_view_mapping_waives_exactly_what_016s_policy_waives": {
+      "test_the_view_mapping_waives_exactly_what_017s_policy_waives": {
         "assertions": 2,
         "body_sha": "daafef97d4d97695"
       },
@@ -9303,19 +9303,19 @@
         "assertions": 1,
         "body_sha": "40f1b56f8d540111"
       },
-      "test_migration_016_creates_exactly_the_two_tables_this_module_reads": {
+      "test_migration_017_creates_exactly_the_two_tables_this_module_reads": {
         "assertions": 4,
-        "body_sha": "eac4b2891bb24952"
+        "body_sha": "7ecac17014f3eb2a"
       },
-      "test_migration_016_names_every_constraint_it_creates": {
+      "test_migration_017_names_every_constraint_it_creates": {
         "assertions": 5,
         "body_sha": "bc71734d8eb7c745"
       },
-      "test_migration_016_forces_row_level_security_on_both_tables": {
+      "test_migration_017_forces_row_level_security_on_both_tables": {
         "assertions": 2,
         "body_sha": "e693586df05861cf"
       },
-      "test_016s_write_check_is_narrower_than_its_read_predicate": {
+      "test_017s_write_check_is_narrower_than_its_read_predicate": {
         "assertions": 3,
         "body_sha": "d3b3fcc543b4cf59"
       },

@@ -223,7 +223,7 @@ class Dimension:
 #: three exist in the model. The plan's mitigation is to carry the assumed
 #: reading and retain the others as additional dimensions "so the assumption is
 #: cheap if wrong". The other two are not served today: there is no asset
-#: category on any table 001..016 creates, and `item_master.category` is
+#: category on any table 001..017 creates, and `item_master.category` is
 #: unreachable from the document chain (see the module docstring's
 #: `item_ids`). Aliasing `category` onto the head is therefore the honest
 #: single reading, not a silent choice between three.
@@ -997,7 +997,7 @@ SCOPE_COLUMNS: dict[str, str | None] = {
 
 #: `columns=` for the saved-view statements, which read `report_saved_view v`.
 #:
-#: THE THREE WAIVERS ARE DELIBERATE AND THEY MATCH 016'S POLICY EXACTLY. A
+#: THE THREE WAIVERS ARE DELIBERATE AND THEY MATCH 017'S POLICY EXACTLY. A
 #: saved view carries `entity_id` and no other dimension -- it belongs to an
 #: entity, not to a plant -- so `plant`, `location` and `project` are waived by
 #: explicit `None`, which is a visible decision rather than an omission that
@@ -1634,12 +1634,12 @@ def drill_down(session: Session, filters: "FilterSet", dimension: str,
 
 
 # ===========================================================================
-# Saved views (migration 016)
+# Saved views (migration 017)
 # ===========================================================================
 
 #: The screens a view may be saved against. An allow-list in the application,
 #: not a foreign key: there is no table of screens in this schema, and
-#: inventing one in a migration would make it the registry of the UI. 016's
+#: inventing one in a migration would make it the registry of the UI. 017's
 #: `ck_report_saved_view_key_shape` stops the column becoming free text; this
 #: stops it becoming a typo.
 REPORT_KEYS: frozenset[str] = frozenset({
@@ -1659,7 +1659,7 @@ def list_views(session: Session, *, report_key: str | None = None,
                user_id: str | None = None) -> list[dict[str, Any]]:
     """Every saved view this principal may open, own and shared alike.
 
-    RLS DOES THE PRIVACY, and the predicate here does not repeat it. 016's
+    RLS DOES THE PRIVACY, and the predicate here does not repeat it. 017's
     policy admits a row only when the caller's scope reaches its entity AND
     (the view is SHARED or the caller owns it), so a private view belonging to
     a colleague is simply not there. Re-stating that condition in this
@@ -1757,7 +1757,7 @@ def default_view_id(session: Session, report_key: str, *,
     """This user's default view for one report, or None.
 
     None means "no default set" and nothing else. A default pointing at a view
-    the caller may no longer open is filtered out by 016's policy -- its EXISTS
+    the caller may no longer open is filtered out by 017's policy -- its EXISTS
     runs against `report_saved_view`, which is itself under RLS -- so it also
     reads as None rather than as a dangling id.
     """
@@ -1791,7 +1791,7 @@ def save_view(session: Session, *, view_id: str, entity_id: str,
     `EntityNotInScope`, the same answer an entity id that never existed gets.
     Checking with a separate SELECT would leave a window between the check and
     the write, and would make the check the control rather than the write.
-    016's `WITH CHECK` is the third layer and refuses an `owner_user_id` that
+    017's `WITH CHECK` is the third layer and refuses an `owner_user_id` that
     is not the session's principal, so a caller cannot author a view in someone
     else's name even by reaching past this function.
     """
@@ -1859,7 +1859,7 @@ def update_view(session: Session, view_id: str, *, actor: str,
                 name: str | None = None, description: str | None = None,
                 visibility: str | None = None,
                 filters: "FilterSet | None" = None) -> dict[str, Any]:
-    """Edit a saved view. Only its OWNER can, and 016's `WITH CHECK` is why.
+    """Edit a saved view. Only its OWNER can, and 017's `WITH CHECK` is why.
 
     The UPDATE names `owner_user_id = %(actor)s` in its WHERE as well. That is
     not redundancy for its own sake: the policy's `WITH CHECK` refuses the
@@ -1915,7 +1915,7 @@ def delete_view(session: Session, view_id: str, *, actor: str) -> str:
     """Delete a saved view. Owner only; the default pointing at it CASCADEs.
 
     Returns the deleted id so the router can write an audit entry naming it.
-    A saved view is a bookmark, not a ledger row -- see 016's grant block for
+    A saved view is a bookmark, not a ledger row -- see 017's grant block for
     why DELETE is granted here and nowhere else in this schema.
     """
     rows = repo.query(

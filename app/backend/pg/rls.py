@@ -304,7 +304,7 @@ _RESERVATION_GRAIN_MIGRATION = "015_reservation_grain.sql"
 #: rest. `capex_scope_permits(entity_id, ...)` decides whose ENTITY's views a
 #: principal sees; it does not decide private from shared, because a colleague
 #: in the same entity passes it. The `visibility`/`owner_user_id` disjunction
-#: in 016's policy is the other half, and the two are one expression in one
+#: in 017's policy is the other half, and the two are one expression in one
 #: policy so there is no window where only one holds.
 RLS_REPORTING_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
     "report_saved_view": {"entity": "entity_id", "plant": None,
@@ -313,12 +313,12 @@ RLS_REPORTING_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
                             "location": None, "project": None},
 }
 
-#: The dimensionless table in 016 that IS filtered, through a join, so it is
+#: The dimensionless table in 017 that IS filtered, through a join, so it is
 #: not mistaken for one nobody wrote a predicate for. Same distinction
 #: :data:`JOINED_VIA_WBS_ELEMENT` and :data:`JOINED_VIA_PROJECT` draw.
 JOINED_VIA_REPORT_SAVED_VIEW = frozenset({"report_view_default"})
 
-#: Every table 016 enables RLS on.
+#: Every table 017 enables RLS on.
 RLS_REPORTING_TABLES: tuple[str, ...] = tuple(RLS_REPORTING_TABLE_COLUMNS)
 
 #: Every RLS-protected table, from any of the five migrations.

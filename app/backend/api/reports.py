@@ -50,7 +50,7 @@ make in passing.
 
 Saving a view is likewise not a new permission: it writes no business data,
 moves no money and grants nobody anything. It writes a bookmark, under the
-caller's own identity, which 016's ``WITH CHECK`` pins to the session
+caller's own identity, which 017's ``WITH CHECK`` pins to the session
 principal.
 
 FOUR STATES, FOUR RESPONSES
@@ -157,7 +157,7 @@ def _principal_of(request: Request) -> dict:
 
 def _actor(request: Request) -> str:
     """SERVER-DERIVED. Never a header: this value is written into
-    `report_saved_view.owner_user_id`, and 016's `WITH CHECK` compares exactly
+    `report_saved_view.owner_user_id`, and 017's `WITH CHECK` compares exactly
     this identity against the session principal."""
     who = _principal_of(request)
     return str(who.get("user_id") or who.get("username") or "UNKNOWN")
@@ -414,7 +414,7 @@ def list_views(
     """Every saved view this caller may open, own and shared alike.
 
     A colleague's PRIVATE view is not in the list and produces no marker that
-    it exists. 016's policy does that, not a predicate here.
+    it exists. 017's policy does that, not a predicate here.
     """
     _set_correlation_header(response, request)
     with database.session(_scope_for(request, database)) as session:
@@ -457,7 +457,7 @@ def post_view(
     body: _ViewIn, request: Request, response: Response,
     database: Database = Depends(_get_database),
 ) -> dict[str, Any]:
-    """Save a view. Owned by the caller; 016's `WITH CHECK` enforces that."""
+    """Save a view. Owned by the caller; 017's `WITH CHECK` enforces that."""
     _set_correlation_header(response, request)
     actor = _actor(request)
     view_id = f"RV-{uuid4().hex[:16]}"

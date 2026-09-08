@@ -635,9 +635,9 @@ def test_the_fact_mapping_waives_nothing():
     assert all(column is not None for column in rp.SCOPE_COLUMNS.values())
 
 
-def test_the_view_mapping_waives_exactly_what_016s_policy_waives():
+def test_the_view_mapping_waives_exactly_what_017s_policy_waives():
     """The repository predicate and RLS must be the same restriction expressed
-    twice, not two restrictions that can drift. 016's policy is
+    twice, not two restrictions that can drift. 017's policy is
     `capex_scope_permits(entity_id, NULL, NULL, NULL)`."""
     assert rp.VIEW_SCOPE_COLUMNS == {
         "entity": "v.entity_id", "plant": None, "location": None,
@@ -820,7 +820,7 @@ def test_a_view_not_found_and_one_not_permitted_are_one_exception():
 
 
 def test_every_report_key_matches_the_migrations_shape_constraint():
-    """016's `ck_report_saved_view_key_shape` is the database's half; the
+    """017's `ck_report_saved_view_key_shape` is the database's half; the
     allow-list is the application's. A key the application permits and the
     database rejects is a 500 at the moment of saving."""
     pattern = re.compile(r"^[a-z][a-z0-9_]{2,63}$")
@@ -833,7 +833,7 @@ def test_every_report_key_matches_the_migrations_shape_constraint():
 # ===========================================================================
 
 def _columns_by_table() -> dict[str, set[str]]:
-    """Every column of every table migrations 001..016 create or alter.
+    """Every column of every table migrations 001..017 create or alter.
 
     Read from the migration text, which is the only source that cannot be
     wrong about the schema. Parsing is deliberately generous -- it over-collects
@@ -1123,16 +1123,16 @@ def test_the_column_check_refuses_an_alias_nothing_binds():
         "and it is not an inherited alias"]
 
 
-def test_migration_016_creates_exactly_the_two_tables_this_module_reads():
+def test_migration_017_creates_exactly_the_two_tables_this_module_reads():
     tables = _columns_by_table()
     for table in ("report_saved_view", "report_view_default"):
-        assert table in tables, f"016 does not create {table}"
+        assert table in tables, f"017 does not create {table}"
     assert "definition" in tables["report_saved_view"]
     assert "visibility" in tables["report_saved_view"]
     assert "owner_user_id" in tables["report_saved_view"]
 
 
-def test_migration_016_names_every_constraint_it_creates():
+def test_migration_017_names_every_constraint_it_creates():
     """An anonymous CHECK has no `pg_constraint.conname` a later migration or
     a test can name, so it can neither be asserted nor dropped."""
     text = (MIGRATIONS / "017_reporting.sql").read_text(encoding="utf-8")
@@ -1144,7 +1144,7 @@ def test_migration_016_names_every_constraint_it_creates():
     assert re.search(r"CONSTRAINT pk_report_view_default PRIMARY KEY", text)
 
 
-def test_migration_016_forces_row_level_security_on_both_tables():
+def test_migration_017_forces_row_level_security_on_both_tables():
     """`ENABLE` alone does not apply to the table's owner. Every other
     migration here pairs it with `FORCE`, and a table with one and not the
     other is protected against everyone except the role most able to read it."""
@@ -1154,7 +1154,7 @@ def test_migration_016_forces_row_level_security_on_both_tables():
         assert f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;" in text
 
 
-def test_016s_write_check_is_narrower_than_its_read_predicate():
+def test_017s_write_check_is_narrower_than_its_read_predicate():
     """A principal may READ a shared view somebody else authored and may WRITE
     only their own. Without the asymmetry any principal in the entity could
     UPDATE a shared view, silently editing the filters under everyone using
