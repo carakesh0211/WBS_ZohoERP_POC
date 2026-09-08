@@ -134,11 +134,26 @@ PROCUREMENT_TABLES: tuple[str, ...] = (
 #: The migration that creates them.
 PROCUREMENT_MIGRATION = "013_procurement.sql"
 
-#: ``ux_grn_line_external``, the constraint that makes a receive replay free.
+#: ``ux_grn_line_external_v2``, the index that makes a receive replay free.
 #: Named because :func:`record_receive_line` targets it in ``ON CONFLICT`` by
-#: its three columns, and those columns must keep agreeing with the migration.
+#: its columns, and those columns must keep agreeing with the migration.
+#:
+#: FOUR COLUMNS SINCE MIGRATION 014, AND `NULLS NOT DISTINCT`. 013's
+#: ``ux_grn_line_external`` was a table UNIQUE over the first three under
+#: PostgreSQL's DEFAULT NULLS DISTINCT, which meant it did not constrain a
+#: receive line with no external line id -- and on Zoho ERP that is the
+#: ORDINARY case, because ERP publishes no receives-list endpoint and lines are
+#: discovered PO-anchored. The sweeps re-walk by design, so every walk
+#: re-inserted and ``received`` climbed with no new receive arriving. ``line_no``
+#: joins the key so that two GENUINELY DISTINCT lines on one receive stay
+#: distinct rather than being collapsed by the same fix.
 GRN_LINE_EXTERNAL_UNIQUE: tuple[str, ...] = (
-    "po_line_id", "receive_external_id", "line_external_id")
+    "po_line_id", "receive_external_id", "line_external_id", "line_no")
+
+#: The migration that corrects 013: scoped document numbers, bill-line replay
+#: identity, canonical status CHECKs, ``external_status_raw``, the NULLS NOT
+#: DISTINCT receive-line key, and the one-PO-per-PR index.
+PROCUREMENT_CORRECTION_MIGRATION = "014_procurement_corrections.sql"
 
 #: The PO states that RELEASE commitment. Transcribed from
 #: ``domain.COMMITMENT_RELEASING_STATES``, which is the frozen `C5_formulas.json`

@@ -2752,3 +2752,98 @@ is worded. No existing assertion was weakened, so no sign-off is being
 substituted for — every edit above is additive or strictly stricter. A
 `| ADAPT-` register row naming an individual is still outstanding for the
 Wave 6 stream as a whole and is not fabricated here.
+
+---
+
+## 2026-09-08 — Wave 6, migration 014: the corrective migration, and the assertions it made false
+
+`migrations/pg/014_procurement_corrections.sql` implements
+`docs/WAVE6_MIGRATION_014_SPEC.md`. It **drops six objects migration 013
+created** and **adds a NOT NULL column to two populated tables**, so a handful
+of tests that named those objects, or inserted rows without those columns,
+stopped being true — every one of them for a reason that is not a defect.
+
+**No assertion below is weakened.** Each is either re-pointed at the object
+that replaced the one it named, or replaced by a statement that is true and
+strictly stronger. The reason and the strengthening are written into each
+docstring at the assertion itself, not only here, because a test whose only
+explanation lives in a register is a test the next reader will "simplify".
+
+### The two defects that made this necessary, in one paragraph each
+
+**`budget_ledger_cell` had six derived money columns and one writer.**
+`check_availability` computes `available = budget - (commitment + actual +
+pr_reserved)`. `commitment_paise` is `max(0, ordered - billed)` and FALLS when
+a bill arrives; `actual_paise` had no writer anywhere in the PostgreSQL path,
+so nothing rose by the same amount. **Available rose by the billed amount and
+the same budget could be committed again** — AUD-C-001 re-opened. It was
+dormant only while `bill_line` had no writer either; Wave 6's inbound path made
+`billed` non-zero and activated it. `recompute_derived_position` now writes all
+six in ONE statement, every formula transcribed from `domain.compute_ledger`.
+The previous entry in this register called the staleness "the smaller, safe
+half" of the gap; that was true only while `actual` was also unwritten, and it
+is retracted rather than left standing.
+
+**`ux_grn_line_external` was NULLS DISTINCT.** It therefore did not constrain a
+receive line carrying no external line id — the ORDINARY case on Zoho ERP,
+where no receives-list endpoint exists and lines are discovered PO-anchored.
+The sweeps re-walk by design, so every walk re-inserted and `received` climbed
+with no new receive arriving.
+
+### The assertions that changed, and what each says now
+
+| Test | Was | Is | Why it is not a weakening |
+|---|---|---|---|
+| `test_the_grn_line_conflict_target_matches_the_migrations_constraint` | 013's three-column table UNIQUE | 014's four-column `ux_grn_line_external_v2` | Also requires `NULLS NOT DISTINCT`, without which the index is 013's defect under a new name |
+| `test_every_partial_mirror_index_is_targeted_with_its_predicate` | `(external_source, external_id)` | `(connection_id, external_source, external_id)` | The predicate half is unchanged; it now also requires `NULLS NOT DISTINCT`, without which dropping 013's index would genuinely weaken replay idempotency |
+| `test_an_identifierless_receive_line_is_deduplicated_before_it_is_inserted` | the hand-rolled UPDATE-first branch exists | the branch does NOT exist and the index covers the case | Asserts the ABSENCE of a read-then-write window whose safety rested on "one cron worker per connection" — an operational fact, not a constraint |
+| `test_two_locally_raised_receive_lines_without_external_ids_both_insert_live` | distinctness from two NULLs | distinctness from two ORDINALS | Adds the converse the old form could not state: two lines that are NOT distinct are now REFUSED rather than silently duplicated |
+| `test_the_on_conflict_target_is_a_constraint_that_actually_exists` | parsed 013 only | parses 013 and 014, honouring 014's drops | Would otherwise accept a target naming a dropped index and reject every valid one |
+| `test_013_is_the_next_migration_and_the_runner_discovers_it` | `versions[-1] == "013"` | 013 discovers once, at position 12, in an unbroken 001..N sequence | "013 is last" was true for one wave and was guaranteed to become false. The replacement also catches a MISSING number, which the old form could not |
+| `test_all_nineteen_rls_tables_are_enabled_and_forced_live` | `len(status) == 19` | `len(status) == len(rls.ALL_RLS_TABLES)` | **The literal was ALREADY false**: 013 took the registry to 27 and 014 to 31. It is live-only, so it had been failing wherever it actually runs |
+| `test_reference_tables_are_not_left_on_the_fail_open_all_null_predicate` | read 006's text | reads every migration | 014 adds three reference tables whose policies are not in 006. The all-NULL scan now covers every migration, so a future one cannot introduce the fail-open predicate either |
+
+Six raw INSERTs in `tests/test_pg_procurement_schema.py` now read `entity_id`
+from the row's own join (`SELECT ... FROM project p WHERE ...`) instead of
+omitting it, because `grn.entity_id` and `bill.entity_id` are `NOT NULL` from
+014. That is exactly what `_mirror_grn_header` and `mirror_bill` do, and for
+the stated reason: the column is the first of `ux_grn_number_scoped` /
+`ux_bill_number_scoped`, so an entity taken from anywhere but the row's own
+join would scope the document number wrongly. No assertion in any of the six
+tests changed.
+
+`tests/test_pg_locking_order.py` gains one tracked name and one exemption.
+`recompute_derived_position` joins `_CELL_WRITES` — it is an `UPDATE` on
+`budget_ledger_cell`, so it takes that row's lock implicitly and must never
+precede `lock_affected_cells`. The analyser now skips a function that IS a
+declared write primitive, which was previously an ACCIDENTAL exemption:
+`recompute_cell` and `recompute_commitment` happened to contain no tracked
+call, so the analyser scored them "touches no cell" and moved on. Making
+`recompute_commitment` a thin delegation exposed the accident. Nothing else is
+exempt — every function that is not itself a primitive is still held to the
+full rule, including one that reaches a primitive through a helper.
+
+### Two new files, both post-baseline
+
+`tests/test_ledger_cell_writers.py` runs with **no database at all**, which is
+the point: it holds "every money column on `budget_ledger_cell` has a writer"
+to a build failure on every machine, and it reads the column list out of
+`002_budget_control.sql` rather than from any register this repository keeps —
+so the next column added cannot silently join the unwritten set. A register and
+a writer that agree with each other prove nothing once the schema has moved
+past both.
+
+`tests/test_pg_migration_014.py` is split the way
+`test_pg_procurement_schema.py` is: a source-level half that runs everywhere
+and a `@pytest.mark.pg` half that first executes in CI's `pg_tests` job. Its
+skip reason says **a skip is not a pass** in so many words.
+
+### Approval of record
+
+**None.** No approver is named, because this agent has none to name and an
+author approving their own change is not an approval however it is worded. No
+existing assertion was weakened — every edit above is a re-pointing, a
+strengthening, or the replacement of a literal that had already become false —
+so no sign-off is being substituted for. A `| ADAPT-` register row naming an
+individual remains outstanding for the Wave 6 stream as a whole and is not
+fabricated here.

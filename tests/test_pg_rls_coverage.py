@@ -306,14 +306,35 @@ def test_reference_tables_are_not_left_on_the_fail_open_all_null_predicate():
     """`capex_scope_permits(NULL, NULL, NULL, NULL)` is the tempting reuse for
     a table with no dimension column, and it returns TRUE for a session
     carrying no settings whatsoever -- fail OPEN. The reference tables must use
-    `capex_principal_present()` instead."""
-    text = COVERAGE_MIGRATION.read_text(encoding="utf-8")
+    `capex_principal_present()` instead.
+
+    WIDENED FROM 006 TO EVERY MIGRATION when
+    `014_procurement_corrections.sql` added `lifecycle_state`,
+    `procurement_policy` and `procurement_transition` to
+    `rls.REFERENCE_TABLES`. This test read 006's text alone and looked up every
+    name in that frozenset in it, so it began failing on `lifecycle_state` --
+    a policy defined in 014 is not in 006 -- for a reason that is not a defect.
+
+    The assertion is not weakened by the widening; it is strengthened twice
+    over. The per-table lookup now holds for EVERY reference table wherever its
+    policy is declared, rather than only for the two 006 happened to add, and
+    the all-NULL scan now covers every migration in the directory rather than
+    one file -- so the fail-open predicate cannot be introduced by a future
+    migration either, which the old form could not have seen.
+    """
     assert not re.search(
-        r"capex_scope_permits\(\s*NULL\s*,\s*NULL\s*,\s*NULL\s*,\s*NULL\s*\)", text)
+        r"capex_scope_permits\(\s*NULL\s*,\s*NULL\s*,\s*NULL\s*,\s*NULL\s*\)",
+        ALL_MIGRATION_TEXT), (
+        "capex_scope_permits(NULL, NULL, NULL, NULL) returns TRUE for a "
+        "session carrying no scope settings at all. A table with no dimension "
+        "column takes capex_principal_present(), never this.")
     for table in sorted(rls.REFERENCE_TABLES):
         policy = re.search(
-            rf"CREATE POLICY \w+ ON {table}\b(.*?);", text, flags=re.DOTALL)
-        assert policy, table
+            rf"CREATE POLICY \w+ ON {table}\b(.*?);", ALL_MIGRATION_TEXT,
+            flags=re.DOTALL)
+        assert policy, (
+            f"{table} is registered as a REFERENCE table but no migration "
+            f"creates a policy on it")
         assert "capex_principal_present()" in policy.group(1), table
 
 
@@ -820,11 +841,26 @@ def test_every_newly_covered_table_actually_carries_a_policy_live(pg_connection)
 @pytest.mark.pg
 @PG
 def test_all_nineteen_rls_tables_are_enabled_and_forced_live(pg_connection):
-    """004's eleven and 006's eight together. Guards against 006 accidentally
-    disturbing 004's coverage."""
+    """Every RLS-protected table from every migration, together. Guards against
+    a later migration accidentally disturbing an earlier one's coverage.
+
+    THE LITERAL 19 IS GONE, AND IT WAS ALREADY FALSE. It was written when 004's
+    eleven and 006's eight were all there was. `013_procurement.sql` took the
+    registry to 27 and `014_procurement_corrections.sql` to 31, so this
+    assertion has been failing wherever it actually runs -- which is CI's
+    `pg_tests` job only, because the whole file skips without CAPEX_DB_URL.
+
+    It is REPLACED, not relaxed. `len(rls.ALL_RLS_TABLES)` is the same
+    statement the literal was making -- "every table the registry names is
+    enabled and forced, and none was lost on the way" -- expressed so that it
+    keeps being true as the product grows rather than needing a number edited
+    each wave. The test-function name keeps its historical spelling because
+    `tests/TEST_MANIFEST.json` tracks names and renaming one is a separate,
+    reviewed act; the docstring is where the count now lives.
+    """
     status = rls.fetch_rls_status(pg_connection, rls.ALL_RLS_TABLES)
     pg_connection.rollback()
-    assert len(status) == 19
+    assert len(status) == len(rls.ALL_RLS_TABLES)
     unprotected = sorted(t for t, s in status.items()
                          if not (s["enabled"] and s["forced"]))
     assert unprotected == [], unprotected

@@ -505,28 +505,81 @@ def test_the_on_conflict_target_is_a_constraint_that_actually_exists():
     a rendered-statement version of this check would quietly inspect nothing.
     `assert clauses` and the count at the end are what stop that recurring.
 
-    THE PARTIAL-INDEX HALF IS THE ONE THAT BITES. `ux_grn_external`,
-    `ux_bill_external` and `ux_po_line_external` are each declared
+    THE PARTIAL-INDEX HALF IS THE ONE THAT BITES. `ux_grn_external_identity`,
+    `ux_bill_external_identity` and `ux_po_line_external` are each declared
     ``WHERE ... IS NOT NULL``. An `ON CONFLICT (cols)` carrying no predicate
     infers NO index against a partial one -- PostgreSQL raises rather than
     quietly picking it -- so the predicate is load-bearing, not decoration.
-    """
-    migration = _013.read_text(encoding="utf-8")
 
-    # Every unique key 013 declares, keyed by its column set, valued by whether
-    # the index behind it is PARTIAL.
+    BOTH MIGRATIONS ARE READ, AND 014'S DROPS ARE HONOURED. Reading 013 alone
+    became wrong the moment 014 corrected three of the objects this parses:
+    it would have accepted a conflict target naming an index 014 has dropped
+    (`ux_grn_external`), and rejected every target naming one 014 created. The
+    drops are applied in file order, so the key set this checks against is the
+    schema as it actually is rather than as 013 left it.
+    """
+    # COMMENTS STRIPPED FIRST, and this is not tidiness. Every migration in
+    # this directory ends with a `-- ROLLBACK:` block written as commented-out
+    # DDL, and 014's contains both `DROP INDEX IF EXISTS
+    # ux_grn_external_identity` and `CREATE UNIQUE INDEX ux_bill_external`.
+    # Parsing that as real DDL makes the honouring below drop every index 014
+    # creates and resurrect the two it removes -- the exact inverse of the
+    # truth. A commented statement is prose.
+    def _code_only(text: str) -> str:
+        return re.sub(r"--[^\n]*", "", text)
+
+    migration = _code_only(_013.read_text(encoding="utf-8"))
+    correction = _code_only(
+        (_MIGRATIONS / "014_procurement_corrections.sql").read_text(
+            encoding="utf-8"))
+
+    # Names 014 drops. An object that no longer exists is not a key, and a
+    # conflict target naming its columns infers nothing and raises at runtime
+    # -- which is the failure this whole test exists to catch, so the drops
+    # have to be honoured rather than assumed harmless.
+    dropped_names = set(
+        re.findall(r"DROP (?:CONSTRAINT|INDEX) IF EXISTS (\w+)", correction))
+    assert dropped_names, (
+        "014 drops nothing; either it has changed shape or this parser has "
+        "stopped seeing its DROP statements, and the honouring below is inert")
+
+    def _collect(text: str, unique: dict[frozenset, bool]) -> None:
+        """Every SURVIVING unique key in `text`, keyed by column set, valued by
+        whether the object behind it is PARTIAL."""
+        for name, _table, columns, predicate in re.findall(
+                r"CREATE UNIQUE INDEX (\w+)\s*\n\s*ON (\w+)\s*\(([^)]*)\)"
+                r"(?:\s*\n\s*NULLS NOT DISTINCT)?"
+                r"((?:\s*\n\s*WHERE [^;]*)?);", text):
+            if name in dropped_names:
+                continue
+            unique[frozenset(c.strip() for c in columns.split(","))] = bool(
+                predicate.strip())
+        for name, columns in re.findall(
+                r"CONSTRAINT (\w+)\s+UNIQUE \(([^)]*)\)", text):
+            if name in dropped_names:
+                continue
+            unique.setdefault(
+                frozenset(c.strip() for c in columns.split(",")), False)
+        for columns in re.findall(r"(?<!\w)UNIQUE \(([^)]*)\)", text):
+            unique.setdefault(
+                frozenset(c.strip() for c in columns.split(",")), False)
+        for column in re.findall(r"(\w+)\s+text PRIMARY KEY", text):
+            unique.setdefault(frozenset({column}), False)
+
     unique: dict[frozenset, bool] = {}
-    for _table, columns, predicate in re.findall(
-            r"CREATE UNIQUE INDEX \w+\s*\n\s*ON (\w+) \(([^)]*)\)"
-            r"(\s*\n\s*WHERE [^;]*)?;", migration):
-        unique[frozenset(c.strip() for c in columns.split(","))] = bool(predicate)
-    for columns in re.findall(r"UNIQUE \(([^)]*)\)", migration):
-        unique.setdefault(
-            frozenset(c.strip() for c in columns.split(",")), False)
-    for column in re.findall(r"(\w+)\s+text PRIMARY KEY", migration):
-        unique.setdefault(frozenset({column}), False)
+    _collect(migration, unique)
+    _collect(correction, unique)
+
     assert len(unique) > 5, (
         "the DDL parser found no unique keys; this test is asserting nothing")
+    for expected in (
+        frozenset({"connection_id", "external_source", "external_id"}),
+        frozenset({"po_line_id", "receive_external_id", "line_external_id",
+                   "line_no"}),
+    ):
+        assert expected in unique, (
+            f"014's replacement key {sorted(expected)} was not parsed; this "
+            f"test would then reject the conflict target that names it")
 
     source = _PROCUREMENT_SOURCE.read_text(encoding="utf-8")
     clauses = [source[m.start():m.start() + 260]
@@ -611,51 +664,63 @@ def test_resolve_po_line_returns_none_rather_than_choosing(monkeypatch):
 
 
 def test_an_identifierless_receive_line_is_deduplicated_before_it_is_inserted():
-    """`ux_grn_line_external` is NULLS DISTINCT, so it does not constrain it.
+    """The defect is unchanged; MIGRATION 014 MOVED WHERE IT IS CLOSED.
 
-    Inserting such a line straight in would add the same receipt again on every
+    A receive line with no external line id must not be inserted again on every
     re-walk -- and the sweeps re-walk BY DESIGN, on a 300-second overlap and a
-    cycling PO-anchored cursor -- so `received` would climb without a single
-    new receive arriving. Deduplicating on `(po_line, receive)` alone would
-    instead collapse two genuinely distinct identifierless lines and drop the
-    second one's value.
+    cycling PO-anchored cursor -- or `received` climbs without a single new
+    receive arriving. Deduplicating on `(po_line, receive)` alone would instead
+    collapse two genuinely distinct identifierless lines and drop the second
+    one's value.
 
-    THE WRITER TAKES NEITHER. It issues an explicit UPDATE matching
-    `line_external_id IS NULL` FIRST and returns if it hit a row, so a replay
-    updates the receipt it already holds; only a miss falls through to the
-    INSERT. The read-then-write window that opens is real and is documented at
-    the branch: §2.2's single cron worker per connection is what closes it, and
-    saying so is the difference between a documented window and a hidden one.
+    UNTIL 014 THIS WAS DONE IN THE APPLICATION, because 013's
+    `ux_grn_line_external` used PostgreSQL's DEFAULT NULLS DISTINCT and could
+    not see those rows at all. `record_receive_line` issued an explicit UPDATE
+    matching `line_external_id IS NULL` first and returned on a hit. That
+    worked, and it opened a read-then-write window whose safety rested on
+    "one cron worker per connection" -- an operational fact, not a constraint,
+    and useless against genuinely concurrent ingestion.
 
-    Asserted against the SOURCE because the branch is chosen before any row
-    comes back, so a recorder cannot tell "took the update path and found
-    nothing" from "never took it".
+    014 REPLACES THE INDEX WITH `ux_grn_line_external_v2 ... NULLS NOT
+    DISTINCT` over four columns, so `ON CONFLICT` now matches those rows and
+    the database closes the window. The hand-rolled UPDATE is deleted because
+    keeping it would be a second, weaker deduplication racing the first.
+
+    This test is re-pointed, not relaxed. It now asserts something the old form
+    could not: that the application does NOT carry a read-then-write window at
+    all, and that the conflict target really does cover the identifierless
+    case. Asserted against the SOURCE and the MIGRATION together, because
+    "which index does this ON CONFLICT infer" is a question no recorder can
+    answer.
     """
     source = _PROCUREMENT_SOURCE.read_text(encoding="utf-8")
     body = source[source.index("def record_receive_line("):
                   source.index("def _mirror_grn_header(")]
 
-    guard = body.index('if params["line_external_id"] is None:')
-    insert = body.index("INSERT INTO {GRN_LINE}")
-    assert guard < insert, (
-        "the identifierless branch is decided AFTER the insert; a null "
-        "line_external_id would reach ON CONFLICT, which is NULLS DISTINCT, "
-        "and every re-walk would add the receipt again")
+    assert 'if params["line_external_id"] is None:' not in body, (
+        "the hand-rolled identifierless branch is back. It is a SECOND "
+        "deduplication racing the index, and its read-then-write window is "
+        "exactly what ux_grn_line_external_v2 exists to close")
+    assert "UPDATE {GRN_LINE}" not in body, (
+        "record_receive_line issues an UPDATE before its INSERT again")
 
-    update = body[guard:insert]
-    assert "UPDATE {GRN_LINE}" in update, (
-        "the identifierless branch does not update the line it already has")
-    assert "gl.line_external_id IS NULL" in update, (
-        "the update does not restrict itself to identifierless lines, so it "
-        "would overwrite an IDENTIFIED receipt line with an unidentified "
-        "line's quantity")
-    assert "gl.receive_external_id = %(receive_external_id)s" in update, (
-        "the update is not keyed on the receive, so two distinct receipts "
-        "against one PO line would collapse into one and the second one's "
-        "value would be dropped")
-    assert re.search(r"if updated:\s*\n\s*return", update), (
-        "the update path does not return, so a hit would fall through to the "
-        "insert and duplicate the line it had just updated")
+    assert ("ON CONFLICT (po_line_id, receive_external_id, line_external_id, "
+            "line_no)" in body), (
+        "the insert's conflict target no longer names ux_grn_line_external_v2's "
+        "four columns, so a replayed receive line matches no index")
+
+    correction = (_MIGRATIONS / "014_procurement_corrections.sql").read_text(
+        encoding="utf-8")
+    assert re.search(
+        r"CREATE UNIQUE INDEX ux_grn_line_external_v2\s+ON grn_line\s+"
+        r"\(po_line_id, receive_external_id, line_external_id, line_no\)\s+"
+        r"NULLS NOT DISTINCT", correction), (
+        "without NULLS NOT DISTINCT the index does not constrain a line with a "
+        "null line_external_id -- the ORDINARY case on Zoho ERP -- and every "
+        "re-walk adds the receipt again")
+    assert "DROP CONSTRAINT IF EXISTS ux_grn_line_external" in correction, (
+        "013's NULLS DISTINCT constraint is still in place alongside the new "
+        "index")
 
 
 def test_record_receive_line_will_not_write_against_a_po_line_it_cannot_see():

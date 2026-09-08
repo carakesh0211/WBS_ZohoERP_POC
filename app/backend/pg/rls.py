@@ -149,7 +149,19 @@ TWO_LEGGED = frozenset({"budget_transfer", "bill_line"})
 #: Organisation-wide reference tables. RLS-protected, but by
 #: `capex_principal_present()` -- "a principal is established" -- not by any
 #: dimension predicate. Mirrored by :func:`reference_permits`.
-REFERENCE_TABLES = frozenset({"item_master", "vendor_master"})
+REFERENCE_TABLES = frozenset({
+    "item_master", "vendor_master",
+    # 014's three rule tables. `lifecycle_state` answers "does this state permit
+    # procurement", `procurement_transition` "is this state change legal",
+    # `procurement_policy` "what does this deployment do with a fractional
+    # ordered quantity". None of the three has an entity, plant, location or
+    # project column, and none reaches one: the answers are the same
+    # estate-wide by construction. The only line RLS can draw is the one
+    # `capex_principal_present()` draws for the two master tables above -- a
+    # session with an established principal reads them, a session with no scope
+    # applied at all reads nothing.
+    "lifecycle_state", "procurement_policy", "procurement_transition",
+})
 
 #: Every table 006 enables RLS on.
 RLS_COVERAGE_TABLES: tuple[str, ...] = tuple(RLS_COVERAGE_TABLE_COLUMNS)
@@ -196,15 +208,54 @@ RLS_PROCUREMENT_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
 #: cannot make on their own: "unfiltered because someone forgot" versus
 #: "filtered on entity, plant, location AND project, through a join". These are
 #: filtered harder than any table in 004 or 006, not less.
-JOINED_VIA_PROJECT = frozenset(RLS_PROCUREMENT_TABLE_COLUMNS)
+JOINED_VIA_PROJECT = frozenset(RLS_PROCUREMENT_TABLE_COLUMNS) | {
+    # 014. `fk_pr_reservation_pr_project` binds this table's denormalised
+    # `project_id` to its purchase request's, so reaching `project` through it
+    # reaches the request's project by construction -- the `pr_line` shape: one
+    # join, FK-guaranteed.
+    "pr_reservation",
+}
 
 #: Every table 013 enables RLS on.
 RLS_PROCUREMENT_TABLES: tuple[str, ...] = tuple(RLS_PROCUREMENT_TABLE_COLUMNS)
 
-#: Every RLS-protected table, from any of the three migrations.
+#: Table -> dimension column mapping for the four tables
+#: `migrations/pg/014_procurement_corrections.sql` adds.
+#:
+#: A SEPARATE DICT again, for the reason `RLS_PROCUREMENT_TABLE_COLUMNS` gives:
+#: `RLS_MIGRATION_BY_TABLE` attributes coverage by which registry a table is
+#: in, so folding these into 013's would make the inventory-vs-registry
+#: agreement test report the wrong file.
+#:
+#: `pr_reservation` maps every dimension to `None` and is in
+#: :data:`JOINED_VIA_PROJECT` -- it reaches all four through its denormalised
+#: `project_id`, exactly as `pr_line` does, and for the same reason it does not
+#: filter on that column directly: dimensions resolve independently, so a
+#: principal restricted to one entity and to no project carries
+#: `project_ids=None`, and a project-only predicate would hand them every other
+#: entity's held budget.
+#:
+#: `lifecycle_state`, `procurement_policy` and `procurement_transition` are
+#: ORGANISATION-WIDE RULE TABLES -- no dimension column, no join to one, and
+#: nothing entity-specific to say: "a project in state Released permits
+#: procurement" is true in every entity. They carry 006's
+#: `capex_principal_present()` predicate and are listed in
+#: :data:`REFERENCE_TABLES`, which is what distinguishes "unfiltered because
+#: organisation-wide" from "unfiltered because someone forgot".
+RLS_CORRECTION_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
+    "pr_reservation": {"entity": None, "plant": None, "location": None, "project": None},
+    "lifecycle_state": {"entity": None, "plant": None, "location": None, "project": None},
+    "procurement_policy": {"entity": None, "plant": None, "location": None, "project": None},
+    "procurement_transition": {"entity": None, "plant": None, "location": None, "project": None},
+}
+
+#: Every table 014 enables RLS on.
+RLS_CORRECTION_TABLES: tuple[str, ...] = tuple(RLS_CORRECTION_TABLE_COLUMNS)
+
+#: Every RLS-protected table, from any of the four migrations.
 ALL_RLS_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
     **RLS_TABLE_COLUMNS, **RLS_COVERAGE_TABLE_COLUMNS,
-    **RLS_PROCUREMENT_TABLE_COLUMNS,
+    **RLS_PROCUREMENT_TABLE_COLUMNS, **RLS_CORRECTION_TABLE_COLUMNS,
 }
 
 #: Every RLS-protected table, from any migration, in registry order.
@@ -218,6 +269,8 @@ RLS_MIGRATION_BY_TABLE: dict[str, str] = {
     **{table: "004_identity_scope.sql" for table in RLS_TABLES},
     **{table: "006_rls_coverage.sql" for table in RLS_COVERAGE_TABLES},
     **{table: "013_procurement.sql" for table in RLS_PROCUREMENT_TABLES},
+    **{table: "014_procurement_corrections.sql"
+       for table in RLS_CORRECTION_TABLES},
 }
 
 
