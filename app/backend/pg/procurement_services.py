@@ -1428,6 +1428,28 @@ def settle_reservations(session: Session, *, pr_id: str, state: str,
     # when no hold was released. That guard is also what makes a REPLAYED
     # settlement silent rather than duplicated: the second call's UPDATE
     # matches zero rows, so there is nothing to record.
+    #
+    # THIS TAKES THE ADVISORY AUDIT LOCK BEFORE THE CALLER'S RECOMPUTE, WHICH
+    # LOOKS LIKE A BREACH OF THE GLOBAL LOCK ORDER AND IS NOT.
+    #
+    # `pg/locking.py`'s order is (1) cells, (2) the document row, (3) the
+    # advisory audit lock, LAST -- and every caller of this function follows it
+    # with `recompute_derived_position`, which UPDATEs a `budget_ledger_cell`
+    # row and so takes that row's lock AFTER this append. The cycle that order
+    # exists to prevent would need a second transaction holding one of those
+    # ledger rows and waiting on the audit lock while this one holds the audit
+    # lock and waits on the ledger row.
+    #
+    # It cannot arise, for the structural reason `recompute_derived_position`
+    # already gives: a transaction holding a `budget_ledger_cell` row lock
+    # necessarily holds that cell's `budget_control_cell` lock
+    # (`fk_ledger_control_cell`, and every writer takes the control lock
+    # first). Every cell this transaction is about to recompute is one it
+    # ALREADY LOCKED, via `lock_affected_cells` with the complete affected set,
+    # before anything here ran. No other transaction can hold those control
+    # locks, so none can hold those ledger rows, so there is no second party to
+    # form the cycle with. The audit lock is still the last NEW lock class this
+    # transaction acquires; what follows it re-enters locks it owns.
     if touched:
         audit_mod.append(
             session, actor, "PR_RESERVATION_SETTLED", "PurchaseRequest", pr_id,
