@@ -365,6 +365,18 @@ POST_BASELINE_FILES = {
     # audit-remediation suite, and inflating it would make the removal guard
     # stop meaning anything the moment the product grows.
     "test_reporting_filterset.py",
+    #
+    # `test_pg_reporting.py` is the other half, split the way
+    # `test_pg_procurement_schema.py` is: sixteen `@pytest.mark.pg` tests that
+    # skip on every workstation here and FIRST EXECUTE in CI's pg_tests job,
+    # because they are the ones no source-level check can make -- the
+    # drill-down round trip over rows a real planner produced, a keyset walk
+    # over deliberately TIED sort keys, the four buckets counted once each
+    # against a PO line carrying three receipts and three bill lines, and the
+    # numeric-to-Decimal defect, which cannot appear without a server. A skip
+    # is not a pass, and its seventeenth test fails if the skip reason is ever
+    # softened into something a reader could mistake for one.
+    "test_pg_reporting.py",
 }
 
 

@@ -8058,6 +8058,76 @@
         "body_sha": "14963e18f9a3d63b"
       }
     },
+    "test_pg_reporting.py": {
+      "test_this_file_is_gated_and_says_a_skip_is_not_a_pass": {
+        "assertions": 2,
+        "body_sha": "7608da1f9d4ed922"
+      },
+      "test_a_grouped_total_equals_the_sum_of_the_rows_its_drill_down_returns": {
+        "assertions": 4,
+        "body_sha": "633e2195670597af"
+      },
+      "test_a_drill_down_intersects_and_cannot_widen_what_was_clicked": {
+        "assertions": 3,
+        "body_sha": "4979678384e937b1"
+      },
+      "test_a_plant_scoped_principal_gets_no_row_from_the_other_plant": {
+        "assertions": 3,
+        "body_sha": "7f38f4149d46adeb"
+      },
+      "test_an_unscoped_principal_is_denied_and_not_merely_empty": {
+        "assertions": 3,
+        "body_sha": "7755c8da6ce47d06"
+      },
+      "test_pagination_skips_no_row_and_repeats_none_across_every_page": {
+        "assertions": 7,
+        "body_sha": "f26d1e5901e622cf"
+      },
+      "test_the_total_is_the_populations_and_never_the_pages": {
+        "assertions": 5,
+        "body_sha": "e7f31a90a725ac52"
+      },
+      "test_every_aggregate_is_an_int_and_never_a_decimal_or_a_float": {
+        "assertions": 3,
+        "body_sha": "8b91ba87afe50e1a"
+      },
+      "test_the_derived_measures_are_derived_from_the_rows_own_components": {
+        "assertions": 2,
+        "body_sha": "37d188c53aa7791e"
+      },
+      "test_the_four_buckets_are_each_counted_exactly_once": {
+        "assertions": 2,
+        "body_sha": "545595e2418c51d7"
+      },
+      "test_open_commitment_is_ordered_less_billed_and_never_less_received": {
+        "assertions": 3,
+        "body_sha": "f6e14a08a378f24e"
+      },
+      "test_a_void_grn_is_not_received_and_a_reversal_subtracts_its_magnitude": {
+        "assertions": 3,
+        "body_sha": "26f244b6f0edf38b"
+      },
+      "test_a_multi_cell_reservation_is_held_once_per_cell_and_not_once_per_line": {
+        "assertions": 4,
+        "body_sha": "707c9d6c6ea7e462"
+      },
+      "test_a_non_po_bill_reaches_cwip_through_its_own_cell": {
+        "assertions": 3,
+        "body_sha": "21a3e5c9ff2b9887"
+      },
+      "test_a_draft_budget_line_creates_no_spending_capacity": {
+        "assertions": 2,
+        "body_sha": "9215bf0194cc4b28"
+      },
+      "test_an_empty_filter_tuple_restricts_to_nothing_rather_than_widening": {
+        "assertions": 3,
+        "body_sha": "885d36a2c246fe77"
+      },
+      "test_a_period_is_matched_against_the_entitys_own_calendar": {
+        "assertions": 3,
+        "body_sha": "3de458110936f614"
+      }
+    },
     "test_pg_reservations.py": {
       "test_015_is_discovered_named_and_numbered": {
         "assertions": 4,
@@ -9667,6 +9737,7 @@
     "test_pg_procurement_schema.py": 74,
     "test_pg_reconciliation.py": 36,
     "test_pg_repo.py": 23,
+    "test_pg_reporting.py": 17,
     "test_pg_reservations.py": 33,
     "test_pg_rls.py": 18,
     "test_pg_rls_coverage.py": 34,
@@ -9756,6 +9827,7 @@
     "test_pg_procurement_schema.py": 147,
     "test_pg_reconciliation.py": 117,
     "test_pg_repo.py": 37,
+    "test_pg_reporting.py": 55,
     "test_pg_reservations.py": 107,
     "test_pg_rls.py": 34,
     "test_pg_rls_coverage.py": 72,
