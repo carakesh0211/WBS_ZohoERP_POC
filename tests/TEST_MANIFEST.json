@@ -7312,6 +7312,114 @@
       "test_marking_a_bill_nobody_received_is_refused": {
         "assertions": 2,
         "body_sha": "e6374aea89e11c3c"
+      },
+      "test_the_bill_detail_sweep_writes_the_ledger_and_not_only_the_inbox": {
+        "assertions": 3,
+        "body_sha": "642b55068ae2c98a"
+      },
+      "test_a_hydrated_bill_is_handed_to_the_ledger_with_the_names_the_dto_carries": {
+        "assertions": 13,
+        "body_sha": "cb69ed7dc0a048ee"
+      },
+      "test_a_bill_naming_two_purchase_orders_is_held_not_attributed_to_the_first": {
+        "assertions": 5,
+        "body_sha": "11a173ba831ee014"
+      },
+      "test_a_store_that_cannot_mirror_refuses_rather_than_draining_the_queue": {
+        "assertions": 2,
+        "body_sha": "6952ed02f5473796"
+      },
+      "test_both_attribution_paths_retract_the_quarantine_they_may_have_raised": {
+        "assertions": 8,
+        "body_sha": "ddd9c364912449d4"
+      },
+      "test_a_retracted_quarantine_is_transitioned_and_never_deleted": {
+        "assertions": 6,
+        "body_sha": "3c1e1ad170bcd0a5"
+      },
+      "test_the_status_resolver_returns_the_callers_default_not_a_hard_coded_approved": {
+        "assertions": 2,
+        "body_sha": "69995b9ae66a6cfa"
+      },
+      "test_a_c17_row_that_says_nothing_about_accounting_leaves_the_default_alone": {
+        "assertions": 2,
+        "body_sha": "718714c4c3b8b955"
+      },
+      "test_the_status_resolver_no_longer_hard_codes_approved_anywhere": {
+        "assertions": 4,
+        "body_sha": "9252d9196182a559"
+      },
+      "test_an_invalid_default_status_is_refused_rather_than_substituted": {
+        "assertions": 2,
+        "body_sha": "1dbadaec9a42d65c"
+      },
+      "test_every_mirrored_grn_carries_all_four_provenance_columns": {
+        "assertions": 4,
+        "body_sha": "37878e6505bc7277"
+      },
+      "test_a_receive_with_no_external_source_is_refused_not_written_as_null": {
+        "assertions": 3,
+        "body_sha": "d9b15ee4c6513e5d"
+      },
+      "test_the_grn_id_and_the_grn_number_can_no_longer_disagree": {
+        "assertions": 4,
+        "body_sha": "1d99b3a84151fb5b"
+      },
+      "test_every_money_moving_success_path_writes_an_audit_entry": {
+        "assertions": 7,
+        "body_sha": "b53fc8685ec6417b"
+      },
+      "test_the_audit_entry_is_written_on_the_callers_own_session": {
+        "assertions": 2,
+        "body_sha": "d533880a7cf7c7f4"
+      },
+      "test_the_audit_actor_is_server_derived_and_never_blank": {
+        "assertions": 6,
+        "body_sha": "ef782f3f61042534"
+      },
+      "test_reconcile_po_lines_is_transcribed_from_compute_ledger_verbatim": {
+        "assertions": 11,
+        "body_sha": "f54aec69079890e0"
+      },
+      "test_a_revised_bill_supersedes_the_lines_it_no_longer_carries": {
+        "assertions": 6,
+        "body_sha": "629f2faab67e41b2"
+      },
+      "test_a_re_mirrored_bill_line_takes_its_new_control_cell": {
+        "assertions": 1,
+        "body_sha": "44e4f0923422376b"
+      },
+      "test_the_bill_quarantine_then_attribute_sequence_counts_the_money_once": {
+        "assertions": 10,
+        "body_sha": "255c6ff5d64b0f9d"
+      },
+      "test_a_receive_quarantined_on_pass_one_is_retracted_when_it_attributes": {
+        "assertions": 4,
+        "body_sha": "c488b1f13f488b82"
+      },
+      "test_a_human_triaged_exception_is_not_reopened_or_overwritten": {
+        "assertions": 2,
+        "body_sha": "f333dc73da4362bb"
+      },
+      "test_a_void_bill_stays_void_and_moves_no_money": {
+        "assertions": 5,
+        "body_sha": "37441970cdb65c89"
+      },
+      "test_reconcile_po_lines_and_reconciliation_lines_agree_on_void_and_reversal": {
+        "assertions": 5,
+        "body_sha": "a82b448348f2a663"
+      },
+      "test_a_revised_bill_stops_counting_the_line_it_no_longer_carries": {
+        "assertions": 8,
+        "body_sha": "0e891a5f9872c2b9"
+      },
+      "test_a_mirrored_receive_and_a_mirrored_bill_each_leave_an_audit_entry": {
+        "assertions": 5,
+        "body_sha": "ccc78234640615ab"
+      },
+      "test_a_rolled_back_mirror_leaves_no_audit_entry_claiming_it_happened": {
+        "assertions": 3,
+        "body_sha": "d7e47f25142df5ff"
       }
     },
     "test_pg_procurement_reconciliation.py": {
@@ -9042,7 +9150,7 @@
     "test_pg_periods.py": 18,
     "test_pg_principal_scope.py": 37,
     "test_pg_procurement.py": 50,
-    "test_pg_procurement_ingest.py": 38,
+    "test_pg_procurement_ingest.py": 65,
     "test_pg_procurement_reconciliation.py": 23,
     "test_pg_procurement_schema.py": 73,
     "test_pg_reconciliation.py": 36,
@@ -9129,7 +9237,7 @@
     "test_pg_periods.py": 49,
     "test_pg_principal_scope.py": 83,
     "test_pg_procurement.py": 134,
-    "test_pg_procurement_ingest.py": 139,
+    "test_pg_procurement_ingest.py": 272,
     "test_pg_procurement_reconciliation.py": 68,
     "test_pg_procurement_schema.py": 142,
     "test_pg_reconciliation.py": 117,

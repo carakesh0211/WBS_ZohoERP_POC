@@ -278,6 +278,24 @@ class SourceRecord:
     entity_id: str | None = None
     project_id: str | None = None
     capex_reference: str | None = None
+    #: The vendor the document names. `bill.vendor_name` is NOT NULL and there
+    #: is no honest filler for it, so a bill arriving without one is refused by
+    #: the ledger rather than mirrored under a placeholder nobody can reconcile
+    #: against `vendor_master`.
+    vendor_name: str | None = None
+    #: The PURCHASE ORDERS a bill is raised against, as the SOURCE names them
+    #: -- not our `po_id`. PLURAL and a tuple, because `dto.BillDTO` spells it
+    #: `purchase_order_external_ids: tuple[str, ...]` and a reader that took
+    #: the singular name would get `None` from every real bill the adapters
+    #: emit. That is precisely the defect
+    #: `tests/test_integration_dto_reader_contract.py` exists for: a field name
+    #: shaped to the reader rather than to the producer, which no double can
+    #: catch.
+    #:
+    #: `mirror_bill` and `bill.po_id` are both singular, so exactly one id is
+    #: mirrorable, none is a non-PO bill, and two or more is refused rather
+    #: than resolved by picking the first.
+    po_external_ids: tuple[str, ...] = ()
     lines: tuple[Any, ...] = ()
 
     @property
@@ -315,8 +333,40 @@ def normalise(record: Any, *, module: str) -> SourceRecord:
         capex_reference=_first_attr(
             record, ("capex_reference", "cf_capex_ref", "capex_ref",
                      "wbs_code")),
+        # `vendor_name` FIRST, because that is what `dto.BillDTO` and
+        # `dto.PurchaseOrderDTO` actually carry. The other two are aliases for
+        # a raw mapping that has not been through an adapter yet.
+        vendor_name=_first_attr(
+            record, ("vendor_name", "contact_name", "vendor")),
+        # READ ONLY FOR BILLS, and the guard is not fussiness. `external_id`
+        # above resolves `f"{module[:-1]}_id"`, which for the purchase-order
+        # module IS `purchaseorder_id` -- so reading a PO reference here
+        # unconditionally would give every PO a linkage equal to its own id: a
+        # self-reference that reads like a linkage and is not one.
+        po_external_ids=(_po_external_ids(record)
+                         if module == MODULE_BILLS else ()),
         lines=tuple(lines),
     )
+
+
+def _po_external_ids(record: Any) -> tuple[str, ...]:
+    """The purchase orders a bill names, as a tuple, however the source spells it.
+
+    `dto.BillDTO.purchase_order_external_ids` is the real name and is already a
+    tuple; a raw Zoho mapping spells it `purchaseorder_id` (singular scalar) or
+    `purchaseorder_ids` (a list). All three normalise to the same tuple here so
+    the caller has one shape to reason about, and blanks are dropped rather
+    than carried as an empty-string "linkage".
+    """
+    value = _first_attr(
+        record, ("purchase_order_external_ids", "po_external_ids",
+                 "purchaseorder_ids", "purchase_order_external_id",
+                 "po_external_id", "purchaseorder_id"))
+    if value is None:
+        return ()
+    if isinstance(value, (str, bytes)):
+        value = [value]
+    return tuple(str(item).strip() for item in value if str(item).strip())
 
 
 # ===================================================================== ports
@@ -468,6 +518,49 @@ class SweepStore(Protocol):
         """
 
     # ---- bill detail hydration
+    def mirror_bill(self, *, external_source: str, external_id: str,
+                    bill_number: str, vendor_name: str, bill_date: date,
+                    lines: Sequence[Any],
+                    po_external_id: str | None = None,
+                    project_id: str | None = None,
+                    entity_id: str | None = None,
+                    external_status_raw: str | None = None,
+                    external_last_modified: datetime | None = None,
+                    payload_sha: str | None = None,
+                    correlation_id: str | None = None) -> Mapping[str, Any]:
+        """Mirror one hydrated vendor bill and its lines into the ledger.
+
+        THE VERB THAT WAS MISSING, AND WHAT ITS ABSENCE COST. The ledger has
+        been able to do this since 013; nothing called it.
+        `SweepBillDetail.resume` fetched `GET /bills/{id}`, wrote the payload
+        to the inbox, raised an exception when the response carried no lines,
+        marked the bill hydrated -- and stopped. It never wrote `bill` or
+        `bill_line`, and this protocol declared no verb that could.
+
+        So `bill_line` stayed empty for the whole estate, and everything
+        downstream reported a number that was structurally, permanently wrong
+        rather than merely stale: every reconciliation line quoted
+        ``billed_paise = 0`` and therefore ``open_commitment == ordered``;
+        `recompute_commitment` subtracted a `billed` that was always zero, so
+        a commitment never fell when its bill was paid; and
+        `/api/integrations/reconciliation` reported ``identity_balanced: true``
+        while quoting all of it. An identity between three figures that are all
+        derived from the same empty table balances perfectly.
+
+        RETURNS A SUMMARY, and it is not decoration: `attributed`,
+        `quarantined` and `quarantined_paise` are what the sweep's progress
+        detail reports, so an operator can see that a hydrated bill produced
+        lines nobody could attribute rather than inferring it from a silence.
+
+        REFUSALS PROPAGATE. A bill the ledger cannot honour -- no vendor, no
+        date, no project to hang it on, a purchase order this system never
+        sanctioned -- raises, the queue entry is NOT marked hydrated, and
+        `jobs.py` fails the run and eventually marks it DEAD for a human.
+        Swallowing it would drain the queue of a document nothing ever wrote,
+        which is the silent drop §11.8 forbids wearing a completion badge.
+        """
+        ...
+
     def bills_awaiting_detail(self, *, connection_id: str,
                               limit: int) -> list[str]: ...
 
@@ -754,9 +847,19 @@ class SweepPoAnchored:
     #: mirrored row whose `external_source` disagrees with theirs is a row the
     #: `(external_source, external_id)` mirror indexes cannot match.
     #:
-    #: `None` is honest rather than convenient. It means the caller did not say,
-    #: and the store then writes NULL instead of guessing a source that would
-    #: make the row LOOK traceable while pointing at the wrong tenant.
+    #: `None` IS NO LONGER A WRITABLE VALUE, and the correction is worth
+    #: stating because this comment used to defend it. It said the store would
+    #: "write NULL instead of guessing a source", which was honest about the
+    #: guess and wrong about the consequence: nothing ever constructed this
+    #: field with a value, so EVERY mirrored GRN took a second INSERT branch
+    #: that also dropped `payload_sha` and `external_last_modified` -- §6.1's
+    #: four-column provenance block came out one of four populated, and
+    #: `ux_grn_external`, NULLS DISTINCT in its leading column, constrained
+    #: nothing. `pg.procurement.record_receive_line` now REFUSES a blank
+    #: source, so a wiring that omits this fails loudly on its first receive
+    #: rather than quietly filling the ledger with untraceable rows. It is
+    #: still defaulted only so this dataclass keeps the three-argument shape
+    #: every existing caller constructs it with.
     external_source: str | None = None
 
     def sole_grn_mechanism(self, capabilities: Capabilities | None) -> bool:
@@ -911,6 +1014,15 @@ class SweepBillDetail:
     accepted is queued for a `GET /bills/{id}`, one call each, until the queue
     drains. The checkpoint is the queue itself: the last hydrated id is
     recorded so a resumed run does not re-fetch what it already paid for.
+
+    HYDRATION IS NOT THE END OF THE JOB, AND USED TO BE. This sweep fetched the
+    lines, wrote the payload to the inbox and marked the bill hydrated without
+    ever writing `bill` or `bill_line` -- so the call was paid for, the lines
+    were read, and the ledger stayed empty. See
+    :meth:`SweepStore.mirror_bill` for what that cost every figure downstream.
+    The mirror now runs BEFORE `mark_detail_hydrated`, so a bill the ledger
+    refuses stays on the queue instead of being marked done by the very step
+    that failed to record it.
     """
 
     adapter: Any
@@ -918,6 +1030,20 @@ class SweepBillDetail:
     connection_id: str
     kind: str = "sweep_bill_detail"
     batch_size: int = CHUNK_SIZES["sweep_bill_detail"]
+    #: OUR label for where these documents came from -- `ZOHO_ERP`,
+    #: `ZOHO_BOOKS` -- stamped on every `bill` this sweep mirrors, exactly as
+    #: `SweepPoAnchored.external_source` is stamped on every `grn`.
+    #: `002_financial_controls.sql` and `pg/masters.ingest_from_adapter`
+    #: already spell it this way, and a mirrored row whose `external_source`
+    #: disagrees with theirs is a row the `(external_source, external_id)`
+    #: mirror index cannot match.
+    #:
+    #: `None` is not a usable value: the ledger REFUSES a blank source rather
+    #: than writing a row whose provenance points nowhere. It is left
+    #: defaulted only so this dataclass keeps the three-argument shape every
+    #: existing caller constructs it with; a wiring that omits it fails loudly
+    #: on its first bill rather than quietly mirroring untraceable documents.
+    external_source: str | None = None
 
     def resume(self, ctx: JobContext) -> Iterator[Progress]:
         queued = self.store.bills_awaiting_detail(
@@ -939,6 +1065,7 @@ class SweepBillDetail:
                 payload=record.payload,
                 external_status_raw=record.status_raw,
                 received_at=ctx.now(), correlation_id=ctx.correlation_id)
+            mirrored: Mapping[str, Any] | None = None
             if not record.has_line_items:
                 # Hydration that returned no lines is not hydration. Saying so
                 # is the difference between a bill nobody can attribute and a
@@ -953,13 +1080,99 @@ class SweepBillDetail:
                     project_id=record.project_id,
                     source_paise=record.total_paise,
                     correlation_id=ctx.correlation_id)
+            else:
+                mirrored = self._mirror(ctx, record)
             self.store.mark_detail_hydrated(connection_id=self.connection_id,
                                             external_id=record.external_id)
             yield Progress(
                 checkpoint={"last_hydrated": record.external_id,
                             "drained": False},
                 units=1,
-                detail={"lines": len(record.lines)})
+                detail={
+                    "lines": len(record.lines),
+                    # Reported, not inferred from a silence: a hydrated bill
+                    # whose every line quarantined looks exactly like one that
+                    # posted cleanly unless these are on the progress record.
+                    "attributed": None if mirrored is None
+                                  else mirrored.get("attributed"),
+                    "quarantined": None if mirrored is None
+                                   else mirrored.get("quarantined"),
+                    "quarantined_paise": None if mirrored is None
+                                         else mirrored.get("quarantined_paise"),
+                })
+
+    # -------------------------------------------------------- §11.5 + §11.8
+    def _mirror(self, ctx: JobContext,
+                record: SourceRecord) -> Mapping[str, Any] | None:
+        """Write one hydrated bill into the ledger, or refuse to guess at it.
+
+        THE PURCHASE-ORDER LINKAGE IS SINGULAR OR IT IS NOTHING. `bill.po_id`
+        is one column and `mirror_bill` takes one `po_external_id`, while
+        `dto.BillDTO.purchase_order_external_ids` is a TUPLE, because a Zoho
+        bill may genuinely span several orders. None of them is an ordinary
+        non-PO bill. Exactly one is the ordinary case. TWO OR MORE is refused:
+        picking the first would attribute a whole document -- and every line's
+        control cell through it -- to whichever purchase order the source
+        happened to list first, which is the guess §11.8 forbids in the one
+        place where guessing wrong moves money into another project's budget.
+        The bill is held at its FULL value in an exception instead, visible on
+        SCR-16 and SCR-27 and blocking capitalisation, and nothing is written.
+        """
+        if len(record.po_external_ids) > 1:
+            self.store.raise_exception(
+                kind=KIND_CONTROL_TOTAL_MISMATCH,
+                object_type="bill", object_id=record.external_id,
+                detail=(f"Bill {record.external_id} names "
+                        f"{len(record.po_external_ids)} purchase orders "
+                        f"({', '.join(record.po_external_ids)}). `bill.po_id` "
+                        f"holds one, and choosing between them would "
+                        f"attribute the whole document -- and every line's "
+                        f"control cell -- to whichever the source listed "
+                        f"first. Held at full value; nothing was mirrored."),
+                raised_at=ctx.now(), entity_id=record.entity_id,
+                project_id=record.project_id,
+                source_paise=record.total_paise,
+                correlation_id=ctx.correlation_id)
+            return None
+
+        mirror = getattr(self.store, "mirror_bill", None)
+        if mirror is None:
+            # REFUSED, not skipped. A store that cannot mirror would let this
+            # sweep pay for the call, read the lines, mark the bill hydrated
+            # and write nothing -- leaving `bill_line` empty for ever while
+            # every reconciliation figure quoted zero billed and claimed the
+            # identity balanced. Reported against the seam by name, because
+            # that is the wiring defect, not a property of this document.
+            raise SweepError(
+                "sweep_bill_detail: the injected store implements no "
+                "`mirror_bill` verb, so a hydrated bill would be fetched, "
+                "paid for and then discarded -- `bill` and `bill_line` would "
+                "stay empty, `billed_paise` would be structurally 0 for the "
+                "whole estate, and the reconciliation identity would balance "
+                "on three figures all derived from an empty table. "
+                "SweepStore.mirror_bill is not optional.")
+        return mirror(
+            external_source=self.external_source,
+            external_id=record.external_id,
+            bill_number=record.document_number,
+            vendor_name=record.vendor_name,
+            bill_date=record.document_date,
+            lines=record.lines,
+            po_external_id=(record.po_external_ids[0]
+                            if record.po_external_ids else None),
+            project_id=record.project_id,
+            entity_id=record.entity_id,
+            # VERBATIM, never interpreted here. C17's mapping happens in the
+            # ledger, which is also where the UNMAPPED_EXTERNAL_STATUS
+            # exception is raised; this sweep only carries the raw value
+            # across.
+            external_status_raw=record.status_raw,
+            # §11.10. `payload_sha` says which VERSION of the source document
+            # the mirrored rows were built from, so a later re-read that
+            # disagrees is detectable rather than merely different.
+            external_last_modified=record.last_modified_time,
+            payload_sha=record.sha,
+            correlation_id=ctx.correlation_id)
 
 
 # ======================================================= completeness sweeps
