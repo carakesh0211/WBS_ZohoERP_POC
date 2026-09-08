@@ -67,6 +67,19 @@ closes a class the earlier ones structurally could not see:
   ``FORCE`` every policy applies to everyone except the table's OWNER -- in
   production the deploy identity, the role most likely to be reused by a
   background job.
+
+``014_procurement_corrections.sql`` added a fifth, and it is the one every
+earlier check structurally could not see:
+
+* **ALTER-added columns and constraints.** Every parser above reads
+  ``CREATE TABLE`` bodies. A CORRECTIVE migration is almost entirely
+  ``ALTER TABLE``, so 014 -- fourteen added columns, ten added constraints, and
+  the uniqueness rules built on them -- had two table names verified and
+  nothing else. :func:`_added_columns_by` and :func:`_added_constraints_by`
+  close that, and an added ``*_paise`` column is type-checked exactly as a
+  declared one is. ``DROP COLUMN`` is deliberately NOT collected: an object a
+  migration removes must never join the set that has to be present, or the
+  migration becomes unadoptable against the schema it itself produces.
 """
 from __future__ import annotations
 
@@ -283,6 +296,38 @@ _PAISE_COLUMN_RE = re.compile(
     r"^\"?([a-zA-Z_][a-zA-Z0-9_]*_paise)\"?\s+\S", re.IGNORECASE,
 )
 
+# `ALTER TABLE tbl ADD COLUMN [IF NOT EXISTS] col type...`.
+#
+# Failure class E, and it arrived with `014_procurement_corrections.sql`: every
+# parser above reads `CREATE TABLE` bodies, so a migration that CORRECTS an
+# earlier one -- and a corrective migration is almost entirely ALTERs -- had
+# essentially nothing verified. 014 adds `grn.entity_id NOT NULL`,
+# `bill.vendor_key`, `bill_line.line_fingerprint` and eleven more; a database
+# missing any of them would have adopted cleanly while the uniqueness rules
+# built on them were absent.
+#
+# Only ADD is matched. A DROP COLUMN must NOT be reported as an object that has
+# to be present -- that would make every corrective migration permanently
+# unadoptable against the very schema it produces.
+_ADD_COLUMN_RE = re.compile(
+    r"ALTER\s+TABLE\s+(?:ONLY\s+)?\"?([a-zA-Z_][a-zA-Z0-9_]*)\"?\s+"
+    r"ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?\"?([a-zA-Z_][a-zA-Z0-9_]*)\"?",
+    re.IGNORECASE,
+)
+
+# `ALTER TABLE tbl ADD CONSTRAINT name ...`, including the comma-separated
+# multi-constraint form (`ALTER TABLE t ADD CONSTRAINT a ..., ADD CONSTRAINT b
+# ...`), which is why the table name is captured separately below rather than
+# in one regex: a single pattern anchored on ALTER TABLE would find only the
+# first constraint of such a statement and silently drop the rest.
+_ALTER_TABLE_HEAD_RE = re.compile(
+    r"ALTER\s+TABLE\s+(?:ONLY\s+)?\"?([a-zA-Z_][a-zA-Z0-9_]*)\"?\s+",
+    re.IGNORECASE,
+)
+_ADD_CONSTRAINT_RE = re.compile(
+    r"ADD\s+CONSTRAINT\s+\"?([a-zA-Z_][a-zA-Z0-9_]*)\"?", re.IGNORECASE,
+)
+
 # Regex parsing is best-effort by nature: it cannot see what the database
 # actually decided a statement means, only what the SQL text looks like. A
 # single-line `--` comment strip is enough for these migrations (none of
@@ -446,6 +491,49 @@ def _paise_columns_by(migration: "Migration") -> list[tuple[str, str]]:
             match = _PAISE_COLUMN_RE.match(field)
             if match:
                 found.append((table, match.group(1)))
+    return found
+
+
+def _added_columns_by(migration: "Migration") -> list[tuple[str, str]]:
+    """Best-effort: ``(table_name, column_name)`` for every ``ALTER TABLE ...
+    ADD COLUMN`` a migration issues.
+
+    Failure class E. Every other parser in this module reads ``CREATE TABLE``
+    bodies, so a CORRECTIVE migration -- which is almost entirely ALTERs -- had
+    almost nothing verified at all. See :data:`_ADD_COLUMN_RE`.
+
+    ``DROP COLUMN`` is deliberately not reported: an object a migration REMOVES
+    must never join the set of objects that have to be present, or the
+    migration becomes unadoptable against the schema it itself produces.
+    """
+    text = _LINE_COMMENT_RE.sub("", migration.sql)
+    return [(table, column) for table, column in _ADD_COLUMN_RE.findall(text)]
+
+
+def _added_constraints_by(migration: "Migration") -> list[tuple[str, str]]:
+    """Best-effort: ``(table_name, constraint_name)`` for every ``ALTER TABLE
+    ... ADD CONSTRAINT`` a migration issues, in :func:`_named_constraints_by`'s
+    ``(table, name)`` order so the two lists concatenate.
+
+    Parsed in two steps rather than one regex because PostgreSQL allows several
+    ``ADD CONSTRAINT`` clauses in ONE ``ALTER TABLE`` statement, comma
+    separated, and 014 uses that form. A single pattern anchored on
+    ``ALTER TABLE`` matches the first clause and silently loses every other --
+    which is the precise failure mode this module exists to refuse: an object
+    that is not verified must be KNOWN not to be verified, never quietly
+    dropped from the list.
+    """
+    text = _LINE_COMMENT_RE.sub("", migration.sql)
+    found: list[tuple[str, str]] = []
+    heads = list(_ALTER_TABLE_HEAD_RE.finditer(text))
+    for position, head in enumerate(heads):
+        end = heads[position + 1].start() if position + 1 < len(heads) else len(text)
+        segment = text[head.end():end]
+        # One statement only: everything after the first `;` belongs to a
+        # statement this ALTER TABLE does not govern.
+        segment = segment.split(";", 1)[0]
+        for name in _ADD_CONSTRAINT_RE.findall(segment):
+            found.append((head.group(1), name))
     return found
 
 
@@ -658,6 +746,36 @@ def _paise_column_problems(con: psycopg.Connection,
     return problems
 
 
+def _added_column_problems(con: psycopg.Connection,
+                            columns: list[tuple[str, str]]) -> list[str]:
+    """One message per ``ALTER TABLE ... ADD COLUMN`` column that is missing --
+    and, for a ``*_paise`` column, per one that is present but is not
+    ``bigint``.
+
+    The money half is the same check :func:`_paise_column_problems` makes, made
+    here too because an ADDED money column is exactly as capable of drifting to
+    ``numeric`` as a declared one, and neither is visible to the other parser.
+    A non-money column is checked for PRESENCE only: this module verifies types
+    where the migration states one unambiguously and declines to guess
+    elsewhere, which for an ALTER means the paise rule and nothing more.
+    """
+    problems: list[str] = []
+    for table, column in columns:
+        row = con.execute(
+            "SELECT data_type FROM information_schema.columns "
+            "WHERE table_schema = current_schema() AND table_name = %s "
+            "AND column_name = %s",
+            (table, column),
+        ).fetchone()
+        if row is None:
+            problems.append(f"{table}.{column} is missing")
+        elif column.lower().endswith("_paise") and row[0] != "bigint":
+            problems.append(
+                f"{table}.{column} is {row[0]}, not bigint -- money must be "
+                f"integer paise, never {row[0]}")
+    return problems
+
+
 def _adoption_problems(con: psycopg.Connection, migration: "Migration") -> list[str]:
     """Every reason `migration` cannot be safely adopted against the current
     database -- empty means adoption is safe. Checks tables, functions,
@@ -690,9 +808,18 @@ def _adoption_problems(con: psycopg.Connection, migration: "Migration") -> list[
         problems.append(f"triggers missing: {missing_triggers}")
 
     missing_constraints = _named_constraints_present(
-        con, _named_constraints_by(migration))
+        con, _named_constraints_by(migration) + _added_constraints_by(migration))
     if missing_constraints:
         problems.append(f"constraints missing: {missing_constraints}")
+
+    # Failure class E: a CORRECTIVE migration is almost entirely ALTERs, and
+    # every check above reads `CREATE TABLE` bodies. Without this, 014 verified
+    # two tables and nothing else -- while the uniqueness rules it exists to
+    # install are built on fourteen ADDED columns.
+    added_column_problems = _added_column_problems(
+        con, _added_columns_by(migration))
+    if added_column_problems:
+        problems.append(f"added columns missing or mistyped: {added_column_problems}")
 
     missing_exclusions = _exclusion_constraints_present(
         con, _exclusion_constraint_tables(migration))

@@ -80,6 +80,7 @@ from datetime import date, datetime
 from typing import Any, Mapping, Sequence
 
 from . import integration_store as store
+from . import procurement_services as svc
 from . import repo
 from .engine import Session
 
@@ -310,6 +311,9 @@ def record_receive_line(session: Session, *, po_line_id: str,
                         external_last_modified: datetime | None = None,
                         payload_sha: str | None = None,
                         is_reversal: bool = False,
+                        connection_id: str | None = None,
+                        line_no: int | None = None,
+                        external_status_raw: str | None = None,
                         actor: str = "SVC-SWEEP",
                         now: datetime | None = None) -> None:
     """Mirror one attributed receive line, header included, idempotently.
@@ -317,6 +321,26 @@ def record_receive_line(session: Session, *, po_line_id: str,
     See `integration_store.record_receive_line`, the `sweeps.SweepStore`
     surface this backs, for the contract and for why the provenance arguments
     after `amount_paise` are optional but not decorative.
+
+    THREE ARGUMENTS ARRIVED WITH MIGRATION 014, all optional so that no
+    existing caller breaks and none of them is ever invented when absent:
+
+    * `connection_id` names the Zoho ORGANISATION this receipt came from.
+      `ux_grn_external_identity` is UNIQUE NULLS NOT DISTINCT on
+      `(connection_id, external_source, external_id)`, so a NULL here behaves
+      exactly as 013's estate-wide `ux_grn_external` did, and two different
+      organisations legitimately mirroring the same receive id do not collide.
+    * `line_no` is the receive line's ordinal within its receipt.
+      `ux_grn_line_external_v2` carries it so two GENUINELY DISTINCT lines on
+      one receive stay distinct; NULL keeps the pre-014 behaviour, which is now
+      NULLS NOT DISTINCT and therefore idempotent where 013's index was not.
+    * `external_status_raw` is C17's verbatim copy on the document row. NOT
+      mapped, NOT trimmed, NOT interpreted -- `grn.status` is still never
+      written from it, for the reason `_mirror_grn_header` gives.
+
+    THE LEDGER IS REFRESHED AT THE END. A receipt moves `received_paise` and
+    `received_not_billed_paise` on its PO line's control cell, and before 014
+    nothing on the inbound path recomputed either.
     """
     moment = now or store._utcnow()
     observed = received_at or moment
@@ -353,12 +377,15 @@ def record_receive_line(session: Session, *, po_line_id: str,
     # `fk_grn_line_po_line` and `fk_grn_line_grn_po` must BOTH agree with, and
     # taking it from anywhere else is precisely the hole the trigger
     # `grn_line_po_ownership` existed to plug.
-    po_id, _project_id, _wbs_id, _head_id = _po_line_cell(session, po_line_id)
+    po_id, _project_id, cell_wbs_id, cell_head_id = _po_line_cell(
+        session, po_line_id)
     grn_id = _mirror_grn_header(
         session, po_id=po_id, receive_external_id=receive_external_id,
         external_source=external_source, receive_number=receive_number,
         received_at=observed, external_last_modified=external_last_modified,
-        payload_sha=payload_sha, is_reversal=is_reversal, actor=actor)
+        payload_sha=payload_sha, is_reversal=is_reversal,
+        connection_id=connection_id, external_status_raw=external_status_raw,
+        actor=actor)
 
     params = {
         "grn_line_id": derived_id("GRNL", po_line_id, receive_external_id,
@@ -371,63 +398,65 @@ def record_receive_line(session: Session, *, po_line_id: str,
         # rounding `dto.quantity` exists to refuse.
         "quantity": str(quantity).strip(),
         "amount_paise": int(amount_paise),
+        "line_no": None if line_no is None else int(line_no),
+        "external_status_raw": external_status_raw,
         "actor": actor,
     }
 
-    # NULLS ARE DISTINCT in `ux_grn_line_external`, which is what 013 wants for
-    # a locally-raised line carrying neither external id -- and which means a
-    # line with a receive id but NO line id would not conflict and WOULD
-    # duplicate on replay. `resolve_po_line` returns None for a null line id,
-    # so no such line reaches here through the sweep; a caller that supplies
-    # one directly gets this explicit update-first path, whose read-then-write
-    # window is documented rather than hidden. §2.2's single cron worker per
-    # connection is what makes the window safe, not luck.
-    if params["line_external_id"] is None:
-        updated = repo.query(
-            session,
-            f"""
-            UPDATE {GRN_LINE} gl
-            SET quantity = %(quantity)s::numeric,
-                amount_paise = %(amount_paise)s,
-                updated_at = now(), updated_by = %(actor)s,
-                version_no = gl.version_no + 1
-            FROM {PO_LINE} pl
-            JOIN project p ON p.project_id = pl.project_id
-            WHERE pl.po_line_id = gl.po_line_id
-              AND gl.po_line_id = %(po_line_id)s
-              AND gl.receive_external_id = %(receive_external_id)s
-              AND gl.line_external_id IS NULL
-              AND {{scope}}
-            RETURNING gl.grn_line_id
-            """,
-            params, columns=SCOPE_COLUMNS)
-        if updated:
-            return
-
-    # THE CONFLICT TARGET IS `ux_grn_line_external`'s three columns, and that
-    # constraint is a table UNIQUE with NO predicate -- so there is nothing
-    # further to name, unlike the two partial mirror indexes below.
+    # THE CONFLICT TARGET IS `ux_grn_line_external_v2`'s FOUR columns.
+    #
+    # 013's `ux_grn_line_external` used PostgreSQL's DEFAULT NULLS DISTINCT,
+    # which meant it did not constrain a receive line carrying no external line
+    # id -- and on Zoho ERP that is THE ORDINARY CASE, because ERP publishes no
+    # receives-list endpoint and lines are discovered PO-anchored. The sweeps
+    # re-walk by design, so every walk re-inserted and `received` climbed with
+    # no new receive arriving. Migration 014 replaces it with
+    # `UNIQUE NULLS NOT DISTINCT (po_line_id, receive_external_id,
+    # line_external_id, line_no)`.
+    #
+    # THE UPDATE-FIRST PATH THAT USED TO STAND HERE IS GONE, and its removal is
+    # the fix rather than a tidy-up. It existed only because the old index
+    # could not see a NULL `line_external_id`, so a read-then-write window was
+    # opened by hand and its safety rested on "one cron worker per connection",
+    # which is an operational fact and not a constraint. `ON CONFLICT` now
+    # matches those rows, so the window is closed by the database instead --
+    # and CONCURRENT duplicate ingestion of the same identifierless line is
+    # refused by the index rather than racing.
+    #
+    # The index is a plain (non-partial) unique index, so the column list alone
+    # infers it; there is no predicate to name, unlike the two partial mirror
+    # indexes on `grn`.
     repo.query(
         session,
         f"""
         INSERT INTO {GRN_LINE} (
             grn_line_id, grn_id, po_id, po_line_id, receive_external_id,
-            line_external_id, quantity, amount_paise, created_by, updated_by)
+            line_external_id, line_no, quantity, amount_paise,
+            external_status_raw, created_by, updated_by)
         SELECT %(grn_line_id)s, %(grn_id)s, %(po_id)s, pl.po_line_id,
-               %(receive_external_id)s, %(line_external_id)s,
-               %(quantity)s::numeric, %(amount_paise)s, %(actor)s, %(actor)s
+               %(receive_external_id)s, %(line_external_id)s, %(line_no)s,
+               %(quantity)s::numeric, %(amount_paise)s,
+               %(external_status_raw)s, %(actor)s, %(actor)s
         FROM {PO_LINE} pl
         JOIN project p ON p.project_id = pl.project_id
         WHERE pl.po_line_id = %(po_line_id)s AND {{scope}}
-        ON CONFLICT (po_line_id, receive_external_id, line_external_id)
+        ON CONFLICT (po_line_id, receive_external_id, line_external_id, line_no)
         DO UPDATE SET quantity = EXCLUDED.quantity,
                       amount_paise = EXCLUDED.amount_paise,
+                      external_status_raw = EXCLUDED.external_status_raw,
                       updated_at = now(),
                       updated_by = EXCLUDED.updated_by,
                       version_no = {GRN_LINE}.version_no + 1
         RETURNING grn_line_id
         """,
         params, columns=SCOPE_COLUMNS)
+
+    # A receipt moves `received_paise` and `received_not_billed_paise` on this
+    # PO line's control cell. Before migration 014 nothing on the inbound path
+    # recomputed either, so both sat at their DEFAULT 0 for ever while
+    # `check_availability` subtracted them.
+    svc.refresh_cells_after_ingest(
+        session, [(cell_wbs_id, cell_head_id)], actor=actor)
 
 
 def _mirror_grn_header(session: Session, *, po_id: str,
@@ -437,7 +466,10 @@ def _mirror_grn_header(session: Session, *, po_id: str,
                        received_at: datetime,
                        external_last_modified: datetime | None,
                        payload_sha: str | None,
-                       is_reversal: bool, actor: str) -> str:
+                       is_reversal: bool,
+                       actor: str,
+                       connection_id: str | None = None,
+                       external_status_raw: str | None = None) -> str:
     """The `grn` header a receive line hangs off: created once, then refreshed.
 
     `grn.status` IS NOT WRITTEN HERE, and the omission is the point. 013 gives
@@ -467,32 +499,50 @@ def _mirror_grn_header(session: Session, *, po_id: str,
         "external_source": external_source,
         "external_id": receive_external_id,
         "external_last_modified": external_last_modified,
-        "payload_sha": payload_sha, "actor": actor,
+        "payload_sha": payload_sha,
+        "connection_id": _text(connection_id),
+        "external_status_raw": external_status_raw,
+        "actor": actor,
     }
+    # `grn.entity_id` is NOT NULL from migration 014 and is READ from
+    # `po -> project`, never accepted from the caller -- the same rule
+    # `_purchase_order` follows for the same column, and for the same reason: a
+    # goods receipt filed under the wrong entity is invisible to the people who
+    # triage it. It is the first column of `ux_grn_number_scoped`, so getting
+    # it from anywhere but the row's own join would scope the number wrongly.
     if external_source:
-        # `ux_grn_external` is PARTIAL -- `WHERE external_id IS NOT NULL` -- so
-        # the predicate is written out alongside the columns. Inference by
-        # columns alone matches no index on this table and PostgreSQL refuses
-        # rather than choosing another: the good failure, but only once the
-        # predicate is there to be matched.
+        # `ux_grn_external_identity` is PARTIAL -- `WHERE external_id IS NOT
+        # NULL` -- so the predicate is written out alongside the columns.
+        # Inference by columns alone matches no index on this table and
+        # PostgreSQL refuses rather than choosing another: the good failure,
+        # but only once the predicate is there to be matched.
+        #
+        # THREE COLUMNS, not 013's two. `connection_id` leads, so the same
+        # external receive id under two Zoho organisations no longer collides;
+        # the index is NULLS NOT DISTINCT, so a NULL `connection_id` still
+        # behaves exactly as 013's estate-wide index did and replay stays
+        # idempotent for every existing row.
         rows = repo.query(
             session,
             f"""
             INSERT INTO {GRN} (
-                grn_id, grn_number, po_id, received_at, is_reversal,
-                external_source, external_id, external_last_modified,
-                payload_sha, created_by, updated_by)
-            SELECT %(grn_id)s, %(grn_number)s, po.po_id, %(received_at)s,
-                   %(is_reversal)s, %(external_source)s, %(external_id)s,
+                grn_id, grn_number, po_id, entity_id, received_at, is_reversal,
+                connection_id, external_source, external_id,
+                external_last_modified, payload_sha, external_status_raw,
+                created_by, updated_by)
+            SELECT %(grn_id)s, %(grn_number)s, po.po_id, p.entity_id,
+                   %(received_at)s, %(is_reversal)s, %(connection_id)s,
+                   %(external_source)s, %(external_id)s,
                    %(external_last_modified)s, %(payload_sha)s,
-                   %(actor)s, %(actor)s
+                   %(external_status_raw)s, %(actor)s, %(actor)s
             FROM {PURCHASE_ORDER} po
             JOIN project p ON p.project_id = po.project_id
             WHERE po.po_id = %(po_id)s AND {{scope}}
-            ON CONFLICT (external_source, external_id)
+            ON CONFLICT (connection_id, external_source, external_id)
                 WHERE external_id IS NOT NULL
             DO UPDATE SET external_last_modified = EXCLUDED.external_last_modified,
                           payload_sha = EXCLUDED.payload_sha,
+                          external_status_raw = EXCLUDED.external_status_raw,
                           updated_at = now(),
                           updated_by = EXCLUDED.updated_by,
                           version_no = {GRN}.version_no + 1
@@ -504,15 +554,19 @@ def _mirror_grn_header(session: Session, *, po_id: str,
             session,
             f"""
             INSERT INTO {GRN} (
-                grn_id, grn_number, po_id, received_at, is_reversal,
-                external_id, created_by, updated_by)
-            SELECT %(grn_id)s, %(grn_number)s, po.po_id, %(received_at)s,
-                   %(is_reversal)s, %(external_id)s, %(actor)s, %(actor)s
+                grn_id, grn_number, po_id, entity_id, received_at, is_reversal,
+                connection_id, external_id, external_status_raw,
+                created_by, updated_by)
+            SELECT %(grn_id)s, %(grn_number)s, po.po_id, p.entity_id,
+                   %(received_at)s, %(is_reversal)s, %(connection_id)s,
+                   %(external_id)s, %(external_status_raw)s,
+                   %(actor)s, %(actor)s
             FROM {PURCHASE_ORDER} po
             JOIN project p ON p.project_id = po.project_id
             WHERE po.po_id = %(po_id)s AND {{scope}}
             ON CONFLICT (grn_id) DO UPDATE
-                SET updated_at = now(), updated_by = EXCLUDED.updated_by,
+                SET external_status_raw = EXCLUDED.external_status_raw,
+                    updated_at = now(), updated_by = EXCLUDED.updated_by,
                     version_no = {GRN}.version_no + 1
             RETURNING grn_id
             """,
@@ -619,6 +673,8 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
                 external_status_raw: str | None = None,
                 external_last_modified: datetime | None = None,
                 payload_sha: str | None = None,
+                connection_id: str | None = None,
+                vendor_id: str | None = None,
                 correlation_id: str | None = None,
                 actor: str = "SVC-SWEEP",
                 now: datetime | None = None,
@@ -720,13 +776,31 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
 
     params = {
         "bill_id": bill_id, "bill_number": bill_number, "po_id": po_id,
-        "project_id": project_id, "vendor_name": vendor_name,
+        # `entity_id` is deliberately NOT here. `bill.entity_id` is NOT NULL
+        # from migration 014 and is read from `p.entity_id` in the INSERT's own
+        # join, never bound from the caller: it is the first column of
+        # `ux_bill_number_scoped`, and an entity supplied from anywhere but the
+        # row's own join would scope the vendor's bill number wrongly. The
+        # local `entity_id` variable is still used -- it is what a quarantine
+        # exception is raised under, so a triage principal restricted by entity
+        # can actually see it.
+        "project_id": project_id,
+        "vendor_name": vendor_name, "vendor_id": _text(vendor_id),
         "bill_date": bill_date, "accounting_status": accounting_status,
         "is_reversal": bool(is_reversal),
         "reverses_bill_id": reverses_bill_id, "doc_type": doc_type,
+        "connection_id": _text(connection_id),
         "external_source": external_source, "external_id": external_id,
         "external_last_modified": external_last_modified,
-        "payload_sha": payload_sha, "actor": actor,
+        "payload_sha": payload_sha,
+        # C17's verbatim copy, on the document row. NOT the mapped value:
+        # `accounting_status` above is what C17 resolved this to, and this is
+        # what the vendor actually sent. `resolve_accounting_status` has
+        # already raised UNMAPPED_EXTERNAL_STATUS if it could not interpret it,
+        # and the document is accepted either way -- with the raw value
+        # preserved, which is what this column is for.
+        "external_status_raw": external_status_raw,
+        "actor": actor,
     }
     # `ux_bill_external` is PARTIAL. Both the columns AND the predicate, for
     # the reason `_mirror_grn_header` states.
@@ -736,30 +810,45 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
     # in it either -- a mirrored bill that changed project would be a different
     # commitment, and `fk_bill_po_project` should be the thing that refuses it,
     # not an UPDATE that quietly succeeds.
+    # THREE COLUMNS IN THE CONFLICT TARGET, not 013's two. `connection_id`
+    # leads `ux_bill_external_identity`, so the same external bill id under two
+    # Zoho organisations no longer collides -- which was the whole of D1. The
+    # index is NULLS NOT DISTINCT, so a NULL `connection_id` behaves exactly as
+    # 013's estate-wide `ux_bill_external` did and replay stays idempotent for
+    # every row written before 014.
+    #
+    # `entity_id` is NOT NULL from 014 and is READ from `project`, never taken
+    # from the caller: it is the first column of `ux_bill_number_scoped`, so an
+    # entity supplied from anywhere but the row's own join would scope the
+    # vendor's bill number wrongly.
     rows = repo.query(
         session,
         f"""
         INSERT INTO {BILL} (
-            bill_id, bill_number, po_id, project_id, vendor_name, bill_date,
-            accounting_status, is_reversal, reverses_bill_id, doc_type,
-            external_source, external_id, external_last_modified, payload_sha,
-            created_by, updated_by)
+            bill_id, bill_number, po_id, project_id, entity_id, vendor_name,
+            vendor_id, bill_date, accounting_status, is_reversal,
+            reverses_bill_id, doc_type, connection_id, external_source,
+            external_id, external_last_modified, payload_sha,
+            external_status_raw, created_by, updated_by)
         SELECT %(bill_id)s, %(bill_number)s, %(po_id)s, p.project_id,
-               %(vendor_name)s, %(bill_date)s, %(accounting_status)s,
-               %(is_reversal)s, %(reverses_bill_id)s, %(doc_type)s,
+               p.entity_id, %(vendor_name)s, %(vendor_id)s, %(bill_date)s,
+               %(accounting_status)s, %(is_reversal)s, %(reverses_bill_id)s,
+               %(doc_type)s, %(connection_id)s,
                %(external_source)s, %(external_id)s,
                %(external_last_modified)s, %(payload_sha)s,
-               %(actor)s, %(actor)s
+               %(external_status_raw)s, %(actor)s, %(actor)s
         FROM project p
         WHERE p.project_id = %(project_id)s AND {{scope}}
-        ON CONFLICT (external_source, external_id)
+        ON CONFLICT (connection_id, external_source, external_id)
             WHERE external_id IS NOT NULL
         DO UPDATE SET vendor_name = EXCLUDED.vendor_name,
+                      vendor_id = EXCLUDED.vendor_id,
                       bill_date = EXCLUDED.bill_date,
                       accounting_status = EXCLUDED.accounting_status,
                       doc_type = EXCLUDED.doc_type,
                       external_last_modified = EXCLUDED.external_last_modified,
                       payload_sha = EXCLUDED.payload_sha,
+                      external_status_raw = EXCLUDED.external_status_raw,
                       updated_at = now(),
                       updated_by = EXCLUDED.updated_by,
                       version_no = {BILL}.version_no + 1
@@ -778,18 +867,50 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
     quarantined = 0
     quarantined_paise = 0
     exceptions: list[str] = []
+    touched_cells: list[tuple[str, str]] = []
+    # SEEN KEYS, and this is a silent-drop fix rather than bookkeeping.
+    #
+    # `bill_line_id` is derived from `(bill_id, line_key)` so a replay lands on
+    # the same row. Until now `line_key` fell back to the PO LINE's external id,
+    # and two bill lines against ONE purchase-order line -- a partial claim and
+    # its balance, a wholly ordinary pair -- produced the SAME key, the same
+    # derived id, and the second silently overwrote the first. A whole line's
+    # value disappeared through the code written to prevent exactly that.
+    #
+    # The ordinal is appended only to the SECOND and later occurrence of a key
+    # within one payload, so every id written before this change is byte
+    # identical and no replay of an already-mirrored bill creates a second row
+    # -- which matters more here than anywhere else in this module, because
+    # `capex_app` has DELETE revoked and a duplicate could not be removed.
+    seen_keys: set[str] = set()
     for index, line in enumerate(lines or ()):
         outcome = _mirror_bill_line(
             session, bill_id=bill_id, bill_external_id=external_id,
             po_id=po_id, po_external_id=po_external_id, line=line,
             index=index, project_id=project_id, entity_id=entity_id,
-            correlation_id=correlation_id, actor=actor, now=moment)
+            seen_keys=seen_keys, correlation_id=correlation_id, actor=actor,
+            now=moment)
         if outcome["attributed"]:
             attributed += 1
+            if outcome["cell"] is not None:
+                touched_cells.append(outcome["cell"])
         else:
             quarantined += 1
             quarantined_paise += abs(int(outcome["amount_paise"]))
             exceptions.append(outcome["exception_id"])
+
+    # THE HALF THAT MAKES THE OVER-COMMITMENT HOLE ACTUALLY CLOSED.
+    #
+    # `check_availability` computes `commitment + actual + pr_reserved`.
+    # `commitment_paise` is `max(0, ordered - billed)` and FALLS when this bill
+    # lands. `actual_paise` must RISE by the same amount, and before migration
+    # 014 it had no writer anywhere in the PostgreSQL path -- so available rose
+    # by the billed amount and the same budget could be committed again.
+    #
+    # Both limbs are re-derived here, in one pass, under the cell locks
+    # `refresh_cells_after_ingest` takes. A bill that quarantined every line
+    # touches no cell and correctly refreshes nothing.
+    svc.refresh_cells_after_ingest(session, touched_cells, actor=actor)
 
     return {
         "bill_id": bill_id, "project_id": project_id, "po_id": po_id,
@@ -809,8 +930,9 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
                       bill_external_id: str, po_id: str | None,
                       po_external_id: str | None, line: Any, index: int,
                       project_id: str, entity_id: str | None,
-                      correlation_id: str | None, actor: str,
-                      now: datetime) -> dict[str, Any]:
+                      seen_keys: set[str] | None = None,
+                      correlation_id: str | None = None, actor: str = "SVC-SWEEP",
+                      now: datetime | None = None) -> dict[str, Any]:
     """One bill line: attributed to its PO line's control cell, or quarantined.
 
     The line's identity falls back to its ORDINAL when the source gave it none.
@@ -820,11 +942,34 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
     silent drop arriving through the code written to prevent one. The same
     defect was found and fixed in `sweeps._attribute`; this is the same
     fallback, for the same reason.
+
+    TWO IDENTITIES, AND THEY ARE NOT THE SAME THING. `po_line_external_id` is
+    the PURCHASE ORDER LINE's id -- what 013 named the column for, because the
+    POC's `bill_line.zoho_purchaseorder_item_id` held exactly that.
+    `external_line_id` (migration 014) is THIS line's own id, which the source
+    may or may not supply. Only the second is an identity for this row, which
+    is why `ux_bill_line_external` keys on it and why the fingerprint index
+    takes over when it is absent.
+
+    Reading the bill line's own id from explicit names only
+    (`bill_line_external_id`, `external_line_id`, `line_id`) is deliberate: the
+    PO-line lookup above already claims `line_item_id`, and re-using that name
+    for both would make the two identities the same value again.
     """
     line_external_id = _text(_line_field(
         line, "purchase_order_line_external_id", "po_line_external_id",
         "line_external_id", "line_item_id", "purchaseorder_item_id"))
+    external_line_id = _text(_line_field(
+        line, "bill_line_external_id", "external_line_id", "line_id"))
     line_key = line_external_id or f"#{index}"
+    # See `mirror_bill`'s `seen_keys` note: two bill lines against ONE purchase
+    # order line are ordinary, and until this they collided on one derived id
+    # and the second overwrote the first. Only the repeat is disambiguated, so
+    # every id written before migration 014 is unchanged.
+    if seen_keys is not None:
+        if line_key in seen_keys:
+            line_key = f"{line_key}#{index}"
+        seen_keys.add(line_key)
     amount_paise = int(_line_field(
         line, "line_total_paise", "amount_paise", "total_paise", default=0) or 0)
 
@@ -863,7 +1008,7 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
                 session, project_id=project_id, paise=amount_paise,
                 source_key=exception_id)
             return {"attributed": False, "exception_id": exception_id,
-                    "amount_paise": amount_paise}
+                    "amount_paise": amount_paise, "cell": None}
 
     params = {
         "bill_line_id": derived_id("BLL", bill_id, line_key),
@@ -876,25 +1021,47 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
             line, "non_creditable_tax_paise", default=0) or 0),
         "freight_paise": int(_line_field(line, "freight_paise", default=0) or 0),
         "po_line_external_id": line_external_id,
+        "external_line_id": external_line_id,
+        # The ORDINAL within this bill, 1-based. It is an input to
+        # `bill_line.line_fingerprint` (a GENERATED column, migration 014),
+        # which is what stops two genuinely distinct lines that are identical
+        # in every other field from collapsing into one row -- and, equally,
+        # what makes a replay of the same payload produce the same fingerprint
+        # and therefore the same row.
+        "line_no": index + 1,
+        "external_status_raw": None,
         "actor": actor,
     }
-    # THE CONFLICT TARGET IS THE PRIMARY KEY, because 013 gives `bill_line` no
-    # external unique index at all. `bill_line_id` is DERIVED from
-    # `(bill_id, line_key)` so a replay lands on the same row -- which matters
-    # more here than anywhere else in this module, since `capex_app` has DELETE
-    # revoked and a duplicated line could not be removed afterwards.
+    # THE CONFLICT TARGET IS STILL THE PRIMARY KEY, and that is deliberate even
+    # now that migration 014 gives `bill_line` two unique indexes.
+    #
+    # `bill_line_id` is DERIVED from `(bill_id, line_key)`, so a replay lands on
+    # the same row -- which matters more here than anywhere else in this
+    # module, since `capex_app` has DELETE revoked and a duplicated line could
+    # not be removed afterwards. Conflicting on the primary key keeps that
+    # property for every row written before 014, whose `external_line_id` is
+    # NULL and whose fingerprint is computed from columns this statement is
+    # about to overwrite.
+    #
+    # `ux_bill_line_external` and `ux_bill_line_fingerprint` are the BACKSTOP,
+    # exactly as RLS is the backstop for `repo.compile_scope`: if a future
+    # caller ever derives an id differently, or two writers race on the same
+    # identifierless line, the database refuses the second rather than
+    # admitting a duplicate the application cannot delete.
     repo.query(
         session,
         f"""
         INSERT INTO {BILL_LINE} (
             bill_line_id, bill_id, po_id, po_line_id, wbs_id, budget_head_id,
             description, quantity, amount_paise, non_creditable_tax_paise,
-            freight_paise, po_line_external_id, created_by, updated_by)
+            freight_paise, po_line_external_id, external_line_id, line_no,
+            external_status_raw, created_by, updated_by)
         SELECT %(bill_line_id)s, %(bill_id)s, %(po_id)s, %(po_line_id)s,
                %(wbs_id)s, %(budget_head_id)s, %(description)s,
                %(quantity)s::numeric, %(amount_paise)s,
                %(non_creditable_tax_paise)s, %(freight_paise)s,
-               %(po_line_external_id)s, %(actor)s, %(actor)s
+               %(po_line_external_id)s, %(external_line_id)s, %(line_no)s,
+               %(external_status_raw)s, %(actor)s, %(actor)s
         FROM {BILL} b
         JOIN project p ON p.project_id = b.project_id
         WHERE b.bill_id = %(bill_id)s AND {{scope}}
@@ -904,6 +1071,8 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
                       amount_paise = EXCLUDED.amount_paise,
                       non_creditable_tax_paise = EXCLUDED.non_creditable_tax_paise,
                       freight_paise = EXCLUDED.freight_paise,
+                      external_line_id = EXCLUDED.external_line_id,
+                      line_no = EXCLUDED.line_no,
                       updated_at = now(),
                       updated_by = EXCLUDED.updated_by,
                       version_no = {BILL_LINE}.version_no + 1
@@ -911,7 +1080,8 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
         """,
         params, columns=SCOPE_COLUMNS)
     return {"attributed": True, "exception_id": None,
-            "amount_paise": amount_paise}
+            "amount_paise": amount_paise,
+            "cell": (wbs_id, budget_head_id)}
 
 
 def _adapter_product_of(external_source: str) -> str:

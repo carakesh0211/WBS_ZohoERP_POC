@@ -14,7 +14,7 @@ registry. Both sides agree, both sides are wrong, every test passes.
 sat in exactly that hole from Wave 2 until Wave 3.
 
 This module is the second, *independent* source: written from
-``migrations/pg/001..013``'s **CREATE TABLE** statements -- the schema, not the
+``migrations/pg/001..014``'s **CREATE TABLE** statements -- the schema, not the
 policies -- asking of each table only "does a row of this carry, or reach, a
 scope dimension?". A table that must be protected appears here whether or not
 any migration protects it, which is what makes "protected nowhere" detectable.
@@ -89,7 +89,7 @@ class ScopedTable:
     note: str = ""
 
 
-#: Every table in `migrations/pg/001..013` whose rows carry or reach a scope
+#: Every table in `migrations/pg/001..014` whose rows carry or reach a scope
 #: dimension. Hand-maintained from the CREATE TABLE statements -- see the
 #: module docstring. Ordered by migration, then by table name.
 SCOPED_TABLES: tuple[ScopedTable, ...] = (
@@ -507,11 +507,60 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
              "checked at all while one of its columns is NULL, so the bill "
              "path alone would let a non-PO line ride in on its bill's "
              "visibility while posting to another project's control cell."),
+
+    # -------------------------- 014_procurement_corrections.sql -----------
+    # Written from 014's four CREATE TABLE statements, before reading its
+    # policies -- the maintenance rule in this module's docstring.
+    ScopedTable(
+        table="pr_reservation",
+        dimensions=("entity", "plant", "location", "project"), reach="joined",
+        path="pr_reservation.project_id -> project.{entity_id, plant_id, "
+             "location_id, project_id}",
+        status="covered", migration="014_procurement_corrections.sql",
+        note="A reservation is HELD BUDGET -- the `pr_reserved` limb of "
+             "exposure, which `check_availability` subtracts. `project_id` is "
+             "denormalised and is not an independent claim: "
+             "`fk_pr_reservation_pr_project` forces it to equal the purchase "
+             "request's, so reaching `project` through it reaches the "
+             "request's project by construction. All four dimensions are "
+             "passed, not project alone, for the reason 013's header gives at "
+             "length: a principal restricted to one entity and to no project "
+             "carries project_ids=None, and a project-only predicate would "
+             "hand them every other entity's held budget."),
+    ScopedTable(
+        table="lifecycle_state", dimensions=(), reach="reference",
+        path="no dimension column and no join to one -- organisation-wide",
+        status="covered", migration="014_procurement_corrections.sql",
+        note="AUD-C-008's rule table: which project/WBS states permit "
+             "procurement and posting. The answer is the same in every "
+             "entity, so there is no dimension for a predicate to filter on. "
+             "Policy admits any session with an established principal and "
+             "denies a session with no scope applied at all -- 006's "
+             "`capex_principal_present()`, reused rather than reinvented. "
+             "READ-ONLY to capex_app: a rule table the running application "
+             "can rewrite is code with extra steps."),
+    ScopedTable(
+        table="procurement_policy", dimensions=(), reach="reference",
+        path="no dimension column and no join to one -- organisation-wide",
+        status="covered", migration="014_procurement_corrections.sql",
+        note="One row today: FRACTIONAL_PO_QUANTITY, default REFUSE. A "
+             "deployment-wide business choice, not per-entity configuration, "
+             "so it carries no dimension. capex_app may UPDATE it (that is "
+             "what makes it configuration) but never DELETE it -- a policy "
+             "that stops existing silently reverts every caller to whatever "
+             "default the code carries."),
+    ScopedTable(
+        table="procurement_transition", dimensions=(), reach="reference",
+        path="no dimension column and no join to one -- organisation-wide",
+        status="covered", migration="014_procurement_corrections.sql",
+        note="Plan section 12's PR and PO state machines as data. A legal "
+             "state change is legal estate-wide. READ-ONLY to capex_app, as "
+             "lifecycle_state."),
 )
 
 #: Tables deliberately left WITHOUT a scope policy, each with the reason.
 #: Kept here so "not in SCOPED_TABLES" is a decision on record rather than an
-#: omission nobody ever looked at. Reviewed against `001..013`'s full
+#: omission nobody ever looked at. Reviewed against `001..014`'s full
 #: CREATE TABLE list; every table in the schema appears in exactly one of
 #: these two structures.
 UNSCOPED_TABLES: dict[str, str] = {

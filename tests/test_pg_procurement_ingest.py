@@ -122,6 +122,11 @@ def code_only(text: str) -> str:
 CODE = code_only(SOURCE)
 MIGRATION = (_Path(__file__).resolve().parents[1] / "migrations" / "pg"
              / "013_procurement.sql").read_text(encoding="utf-8")
+#: 014 CORRECTS several of the objects 013 created. Where an assertion below is
+#: about an object 014 replaced, it reads THIS text -- the migrations are
+#: additive and the corrected object lives here, not in 013.
+CORRECTION = (_Path(__file__).resolve().parents[1] / "migrations" / "pg"
+              / "014_procurement_corrections.sql").read_text(encoding="utf-8")
 
 ORG = "ORG-ING"
 ENTITY = "ENT-ING"
@@ -220,37 +225,79 @@ def test_every_sum_over_a_paise_column_is_cast_to_bigint():
 
 
 def test_the_grn_line_conflict_target_matches_the_migrations_constraint():
-    """`ux_grn_line_external` is a table UNIQUE with NO predicate, so the
-    conflict target is its three columns and nothing else. A target that does
-    not match a real constraint is a runtime error PostgreSQL raises when the
-    statement RUNS -- inside a cron function, in CI at the earliest.
+    """The receive-line conflict target must name a real index, columns and
+    all. A target that does not match one is a runtime error PostgreSQL raises
+    when the statement RUNS -- inside a cron function, in CI at the earliest.
 
     `tests/test_integration_sql_matches_schema.py` says plainly that it is not
     a SQL parser and cannot do this. So it is done here, against both texts.
+
+    RE-POINTED AT 014, AND STRENGTHENED. 013's `ux_grn_line_external` was a
+    table UNIQUE over three columns under PostgreSQL's DEFAULT NULLS DISTINCT,
+    so it did not constrain a receive line with no external line id -- the
+    ORDINARY case on Zoho ERP, where lines are discovered PO-anchored. Every
+    sweep re-walk re-inserted and `received` climbed with no new receive
+    arriving. 014 drops it and creates
+    `ux_grn_line_external_v2 ... NULLS NOT DISTINCT` over FOUR columns.
+
+    The assertion is not weakened by moving: it now also requires the
+    `NULLS NOT DISTINCT` clause, without which the index is 013's defect again
+    under a new name, and it requires the ordinal that keeps two genuinely
+    distinct lines on one receive from collapsing into one.
     """
-    assert "UNIQUE (po_line_id, receive_external_id, line_external_id)" in MIGRATION
-    assert ("ON CONFLICT (po_line_id, receive_external_id, line_external_id)"
-            in SOURCE)
+    assert "DROP CONSTRAINT IF EXISTS ux_grn_line_external" in CORRECTION, (
+        "013's NULLS DISTINCT constraint must be dropped by name, not shadowed")
+    assert re.search(
+        r"CREATE UNIQUE INDEX ux_grn_line_external_v2\s+ON grn_line\s+"
+        r"\(po_line_id, receive_external_id, line_external_id, line_no\)\s+"
+        r"NULLS NOT DISTINCT", CORRECTION), (
+        "ux_grn_line_external_v2 must be NULLS NOT DISTINCT over four columns; "
+        "without the clause it is 013's defect under a new name")
+    assert ("ON CONFLICT (po_line_id, receive_external_id, line_external_id, "
+            "line_no)" in SOURCE)
     columns = store.GRN_LINE_EXTERNAL_UNIQUE
-    assert columns == ("po_line_id", "receive_external_id", "line_external_id")
+    assert columns == ("po_line_id", "receive_external_id",
+                       "line_external_id", "line_no")
 
 
 @pytest.mark.parametrize("table", ["grn", "bill"])
 def test_every_partial_mirror_index_is_targeted_with_its_predicate(table):
-    """`ux_grn_external` and `ux_bill_external` are both PARTIAL --
-    ``WHERE external_id IS NOT NULL``. Inference by COLUMNS ALONE matches no
-    index on either table, and PostgreSQL refuses rather than choosing another
-    one: the good failure, but only if the predicate is written out."""
+    """The mirror upserts are PARTIAL -- ``WHERE external_id IS NOT NULL``.
+    Inference by COLUMNS ALONE matches no index on either table, and PostgreSQL
+    refuses rather than choosing another one: the good failure, but only if the
+    predicate is written out.
+
+    RE-POINTED AT 014, AND STRENGTHENED. 013's `ux_grn_external` /
+    `ux_bill_external` were UNIQUE on `(external_source, external_id)`
+    ESTATE-WIDE, so the same external document mirrored from two Zoho
+    ORGANISATIONS collided and the second was refused. 014 drops both and
+    creates `(connection_id, external_source, external_id)` NULLS NOT DISTINCT
+    -- which is a strict replacement, not a relaxation: with `connection_id`
+    NULL on both rows the group is identical to 013's, and with two different
+    organisations it correctly is not.
+
+    The predicate half of the assertion -- the part this test exists for -- is
+    unchanged. It now also requires `NULLS NOT DISTINCT`, without which
+    dropping 013's index would genuinely weaken replay idempotency for every
+    row whose `connection_id` is NULL.
+    """
+    assert f"DROP INDEX IF EXISTS ux_{table}_external" in CORRECTION, (
+        f"ux_{table}_external must be dropped by name; leaving it in place "
+        f"means the two-organisation case still collides on it and the new "
+        f"index changes nothing")
     assert re.search(
-        rf"CREATE UNIQUE INDEX ux_{table}(?:_id)?_?external\s+ON {table} "
-        rf"\(external_source, external_id\)\s+WHERE external_id IS NOT NULL",
-        MIGRATION), f"ux_{table}_external is no longer the partial index this targets"
+        rf"CREATE UNIQUE INDEX ux_{table}_external_identity\s+ON {table}\s+"
+        rf"\(connection_id, external_source, external_id\)\s+"
+        rf"NULLS NOT DISTINCT\s+WHERE external_id IS NOT NULL",
+        CORRECTION), (
+        f"ux_{table}_external_identity is no longer the partial, "
+        f"NULLS NOT DISTINCT index this targets")
     targets = re.findall(
-        r"ON CONFLICT \(external_source, external_id\)\s*\n\s*"
+        r"ON CONFLICT \(connection_id, external_source, external_id\)\s*\n\s*"
         r"WHERE external_id IS NOT NULL", SOURCE)
     assert len(targets) >= 2, (
-        "a mirror upsert names (external_source, external_id) without the "
-        "partial index's predicate; it matches no index and will not run")
+        "a mirror upsert names the identity columns without the partial "
+        "index's predicate; it matches no index and will not run")
 
 
 def test_a_mirrored_row_id_is_derived_and_not_random():

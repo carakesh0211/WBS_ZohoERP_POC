@@ -57,37 +57,52 @@ two halves each pass against the same pot and the pair overspend it.
 sums the requested amounts per ``(owner, head)``, and checks the SUM. See
 GAP-1 in ``docs/WAVE6_PROCUREMENT_CONTRACT.md`` for why the grain changed.
 
-THREE CONTROLS THAT COULD NOT BE PORTED, NAMED RATHER THAN FAKED
-================================================================
+THREE CONTROLS THAT COULD NOT BE PORTED -- ALL THREE NOW CAN
+============================================================
 
-1. **`pr_reservation` has no PostgreSQL table.** ``grep -c pr_reservation
-   migrations/pg/*.sql`` finds it only inside comments. ``domain.compute_ledger``
-   reads it for the ``pr_reserved`` limb of exposure and ``services.create_pr``
-   writes it when ``reserve=True``. There is nowhere to write it here, so
-   ``reserve=True`` is REFUSED with :data:`ERR_RESERVATION_UNAVAILABLE` rather
-   than silently ignored. Silently ignoring it is the dangerous reading: the
-   caller asked for budget to be held and would be told it was.
+Each of these was a REFUSAL rather than a silent omission while the schema
+could not carry it, and ``migrations/pg/014_procurement_corrections.sql``
+supplies what each was waiting for. The refusals are KEPT, because a database
+behind 014 must still refuse rather than report a control it did not run.
 
-2. **`lifecycle_state` has no PostgreSQL table either**, so
-   ``domain.lifecycle_permits`` -- which gates procurement on
-   ``project.status`` and ``wbs_element.status`` -- cannot be ported. Both
-   columns exist; the table that says which of their values permit procurement
-   does not, and hard-coding a value set would be this module's author's
-   opinion standing in for a frozen registry. :func:`lifecycle_gate` therefore
-   PROBES for the table: where it exists the gate runs exactly as
-   ``domain.lifecycle_permits`` runs it, and where it does not the returned
-   check payload carries ``lifecycle_gate = LIFECYCLE_UNAVAILABLE`` so no
-   caller and no test can read a skipped gate as a passed one.
-   ``wbs_element.is_abandoned`` is a boolean, not a lookup, so THAT half of
-   ``budget_check``'s lifecycle refusal ports 1:1 and is enforced here.
+1. **`pr_reservation`** -- ``domain.compute_ledger`` reads it for the
+   ``pr_reserved`` limb of exposure and ``services.create_pr`` writes it when
+   ``reserve=True``. There was nowhere to write it, so ``reserve=True`` was
+   REFUSED with :data:`ERR_RESERVATION_UNAVAILABLE` rather than silently
+   ignored -- silently ignoring it is the dangerous reading, because the caller
+   asked for budget to be held and would have been told it was.
 
-3. **There is no document-number sequence.** ``services.create_pr`` derives
+   014 creates the table and :func:`recompute_derived_position` writes
+   ``pr_reserved_paise``, so :func:`create_reservation` now takes the hold.
+   :func:`_assert_reservable` PROBES rather than assumes, so the old refusal
+   still fires on a database that lacks the table.
+
+2. **`lifecycle_state`** -- ``domain.lifecycle_permits`` gates procurement on
+   ``project.status`` and ``wbs_element.status``. Both columns existed; the
+   table saying which of their values permit procurement did not, and
+   hard-coding a value set would have been this module's author's opinion
+   standing in for a frozen registry. :func:`lifecycle_gate` PROBES: where the
+   table exists the gate runs exactly as ``domain.lifecycle_permits`` runs it,
+   and where it does not the check payload carries
+   ``lifecycle_gate = LIFECYCLE_UNAVAILABLE`` -- a SENTENCE, so no caller and
+   no test can read a skipped gate as a passed one.
+
+   014 seeds the table from the POC's own rows, so the gate now ENFORCES with
+   no change to any caller. :func:`assert_transition_permitted` is the other
+   half (plan section 12): valid state changes are data, and an unlisted one is
+   refused rather than assumed.
+
+3. **There was no document-number sequence.** ``services.create_pr`` derives
    ``PR-2026-0007`` from ``SELECT COUNT(*)``, which is a race that duplicates
-   under concurrency and would hit ``ux_purchase_request_number``. Migration
-   013 creates no sequence and no counter table. A caller may supply
-   ``pr_number`` / ``po_number``; absent one, an id-derived number is used. A
-   human-facing sequential series needs a PostgreSQL ``SEQUENCE``, which is a
-   migration this stream does not own.
+   under concurrency and would hit ``ux_purchase_request_number``. This module
+   fell back to the surrogate id, which is unique by construction but is not a
+   human-facing series.
+
+   NOTHING NEW WAS BUILT. ``numbering_series`` / ``numbering_counter`` /
+   ``numbering_issued`` already existed (005_master_data.sql) and
+   ``masters.issue_number`` already advances the counter atomically, its row
+   lock serialising concurrent issuers; 014 seeds the four series and
+   :func:`issue_document_number` is the one line that reaches them.
 
 MONEY
 =====
@@ -120,6 +135,13 @@ import random
 import uuid
 from collections.abc import Mapping, Sequence
 from datetime import date, datetime, timezone
+# Decimal appears here for ONE purpose and never touches money: rounding a
+# fractional ORDERED QUANTITY under the ROUND_HALF_UP policy (C5). `round()` on
+# a binary float is banker's rounding applied to a value that may not be
+# representable at all -- `round(2.5)` is 2 -- and a policy named HALF_UP that
+# rounds 2.5 down is a policy that lies. Money stays integer paise throughout;
+# `_as_paise` still refuses a Decimal amount.
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from ..integration import outbound as ob
@@ -426,107 +448,225 @@ def _shortfall_summary(verdicts: Sequence[Mapping[str, Any]]) -> str:
         f"{v['shortfall_paise']} paise of the {v['requested_paise']} requested"
         for v in over)
 
+# ============================== derived exposure: ALL SIX, IN ONE PASS
+#
+# THE DEFECT THIS CLOSES, AND WHY IT WAS LIVE RATHER THAN THEORETICAL
+#
+# `budget_ledger_cell` carries six derived money columns -- `ordered_paise`,
+# `commitment_paise`, `actual_paise`, `received_paise`,
+# `received_not_billed_paise` and `pr_reserved_paise`. Before migration 014,
+# exactly ONE of the six had a writer anywhere in the PostgreSQL path
+# (`commitment_paise`, added by this module in Wave 6). `budget.recompute_cell`
+# derives only the BUDGET columns from `budget_line`. The other five sat at
+# their `DEFAULT 0` for ever.
+#
+# `check_availability` computes
+#
+#     available = budget - (commitment + actual + pr_reserved)
+#
+# `commitment_paise` is `max(0, ordered - billed)` and FALLS when a bill
+# arrives. `actual_paise` should RISE by the same amount, and never did. So a
+# bill landing made AVAILABLE RISE BY THE BILLED AMOUNT and the same budget
+# could be committed again. That is AUD-C-001 re-opened.
+#
+# It was dormant only because `bill_line` had no PostgreSQL writer at all:
+# `billed` was always zero, so the subtraction inside `commitment` was inert
+# and neither limb moved. Wave 6's inbound path (`pg/procurement.py`) made
+# `billed` non-zero and ACTIVATED it. The earlier note here claimed the two
+# limbs would "move in opposite directions correctly" once bills acquired a
+# writer; bills acquired one, only one limb moved, and that claim was wrong.
+#
+# ALL SIX ARE WRITTEN HERE, IN ONE STATEMENT. Not four, not five. Leaving some
+# of six derived columns unwritten is exactly how this defect arose, and a
+# second function writing a seventh column later would recreate it. One
+# statement also means the six can never be observed inconsistent with each
+# other: `received_not_billed` is derived from the same per-line `billed` that
+# `commitment` is, and computing them in two passes admits a window where a
+# concurrent bill makes them disagree.
+#
+# EVERY FORMULA IS `domain.compute_ledger`'S, VERBATIM
+#
+# That function is the frozen `C5_formulas.json` registry expressed in code.
+# Reimplementing from memory is how the two limbs drift apart again, so each
+# line below is transcribed from it and the differences that MATTER are called
+# out rather than left to be spotted:
+#
+#   ordered      SUM over EVERY po_line on the cell of
+#                (amount + non_creditable_tax + freight).
+#                NO purchase-order status filter. A cancelled order was still
+#                ordered.
+#
+#   received     SUM over grn_line joined to grn WHERE `g.status <> 'Void'`,
+#                with `is_reversal` negating BY FLAG (`-ABS(...)`), never by
+#                data entry. Again NO purchase-order status filter.
+#
+#   billed       (per PO line, an input to two of the six, not a column)
+#                SUM over bill_line joined to bill of
+#                (amount + non_creditable_tax + freight), restricted to
+#                `accounting_status IN ('Approved','Reversal')` -- AUD-C-004's
+#                accounting-effective set -- with `Reversal` negated by flag.
+#
+#   commitment   0 when `po.status IN ('Cancelled','Closed')`, else
+#                GREATEST(0, ordered_line - billed_line), summed.
+#                THE ANTI-DOUBLE-COUNT: a line commits only its unbilled
+#                balance.
+#
+#   received_not_billed
+#                GREATEST(0, received_line - billed_line), summed. THE
+#                ANTI-UNDER-COUNT: value received but not yet billed is its own
+#                bucket and is not commitment.
+#
+#   actual       THE ONE THAT IS NOT PER-PO-LINE, and the difference is
+#                load-bearing. `domain.compute_ledger` groups `bill_line` on
+#                `(wbs_id, budget_head_id)` -- the line's OWN control cell --
+#                with NO `po_line_id IS NOT NULL` filter, so it counts NON-PO
+#                BILL LINES TOO. A non-PO bill is an ordinary document
+#                (`bill.po_id` is nullable in 013 precisely for it), it moves
+#                actual CWIP, and deriving `actual` from PO lines would miss
+#                every one of them -- understating exposure, which is the
+#                permissive direction.
+#
+#   pr_reserved  SUM over `pr_reservation WHERE state = 'Reserved'` on the
+#                cell. AUD-H-001: a reservation is Reserved, then Converted or
+#                Released or Expired, exactly once.
+#
+# WHAT THE DATABASE STILL REFUSES, AND WHY THAT IS RIGHT
+#
+# `002_budget_control.sql` puts a `>= 0` CHECK on five of the six columns;
+# `actual_paise` is deliberately unconstrained because a reversal or a credit
+# note legitimately drives it negative. Four of the five are non-negative by
+# construction here (`ordered` from columns 013 constrains non-negative,
+# `commitment` and `received_not_billed` through GREATEST, `pr_reserved` from
+# `amount_paise > 0`). `received_paise` is the exception: it is a SIGNED sum,
+# and a receipt reversed for MORE than was received would make it negative and
+# `ck_ledger_received_nonneg` would refuse this UPDATE.
+#
+# That refusal is kept. Clamping with GREATEST would deviate from
+# `compute_ledger` -- the one thing this function must not do -- and would hide
+# an over-reversal, which is a data error somebody needs to see. The write
+# fails loudly, in the transaction that caused it, naming the constraint.
+#
+# `pr_reservation` is referenced directly rather than probed for. Migration 014
+# creates it, `assert_schema_current` refuses to serve a database behind the
+# migrations, and an absent table therefore raises `UndefinedTable` -- which is
+# the correct, loud outcome. A probe that answered "no table, so zero" would be
+# a permissive default, and a zero `pr_reserved` OVERSTATES availability.
 
-# ================================================== derived exposure: commitment
-#
-# `budget_ledger_cell.commitment_paise` had NO WRITER in the PostgreSQL path
-# before this module. `recompute_cell` derives only the BUDGET columns
-# (`budget_paise`, `original_paise`, `revisions_paise`, `future_budget_paise`)
-# from `budget_line`; commitment, actual and pr_reserved were left at their
-# seeded values for ever.
-#
-# That is not cosmetic. `check_availability` computes
-# `available = budget - (commitment + actual + pr_reserved)`, so a commitment
-# that never rises means every purchase order this application creates is
-# invisible to the next budget check, and the pot can be spent an unbounded
-# number of times. The re-check inside the lock would have been re-checking
-# against a number nothing ever moved.
-#
-# So creating or amending a purchase order recomputes the commitment limb for
-# every cell it touches, from the same formula `domain.compute_ledger` uses:
-#
-#     commitment = 0                        if po.status in (Cancelled, Closed)
-#                = max(0, ordered - billed) otherwise
-#     ordered    = amount + non_creditable_tax + freight
-#     billed     = the same three columns on accounting-effective bill lines,
-#                  negated for a Reversal bill
-#
-# WHAT IS STILL MISSING -- AND, SINCE THE WAVE 6 LEDGER LANDED, WHY THAT NOW
-# MATTERS MORE THAN IT DID. `actual_paise` comes from `bill_line` and
-# `pr_reserved_paise` from `pr_reservation`. Neither is written here, and
-# `pr_reservation` still has no PostgreSQL table at all.
-#
-# When this module was written, `bill_line` had no PostgreSQL writer either, so
-# `billed` was always 0 and the subtraction below was inert. That is no longer
-# true: `pg/procurement.py` -- the LEDGER -- now mirrors vendor bills into
-# `bill_line`, with the same three columns and the same `-ABS(...)` treatment of
-# a Reversal that the SQL below reads. The two modules AGREE about the
-# arithmetic, exactly.
-#
-# They do not yet agree about EXPOSURE, and the gap is in the unsafe direction.
-# `check_availability` computes `commitment + actual + pr_reserved`. Once a bill
-# lands and this function next runs, `commitment` falls by `billed` and NOTHING
-# raises `actual` by it, because `budget_ledger_cell.actual_paise` has no writer
-# anywhere in the PostgreSQL path -- no module, and no trigger in 013. Available
-# therefore RISES by the billed amount and the same pot can be committed again.
-# The earlier note here claimed the two limbs would "move in opposite directions
-# correctly" once bills acquired a writer; bills have acquired one, and only one
-# limb moves. That claim was wrong and is retracted rather than left standing.
-#
-# It is NOT silently repaired here. `actual` is the ledger stream's limb, its
-# domain formula groups `bill_line` by `(wbs_id, budget_head_id)` and therefore
-# also counts the non-PO bill lines this module never sees, and one agent
-# quietly redefining another's exposure column during a merge is how a control
-# stops meaning what its owner thinks it means. It is recorded in
-# `tests/ADAPTATIONS.md` under Wave 6 agent 2 as the outstanding item it is.
-#
-# The staleness is the smaller, safe half of the same gap: nothing on the
-# inbound path calls this function, so between a bill arriving and the next
-# purchase-order write on that cell, `commitment_paise` is OVERSTATED. That
-# refuses more spending than it should, which is the direction to be wrong in.
+#: The columns this module derives. Named once so
+#: `tests/test_ledger_cell_writers.py` can assert that every money column on
+#: `budget_ledger_cell` has a writer somewhere, rather than trusting that
+#: whoever adds the seventh remembers to.
+DERIVED_LEDGER_COLUMNS: tuple[str, ...] = (
+    "ordered_paise", "commitment_paise", "actual_paise", "received_paise",
+    "received_not_billed_paise", "pr_reserved_paise",
+)
 
-_RECOMPUTE_COMMITMENT_SQL = """
+_RECOMPUTE_DERIVED_SQL = """
+    WITH po_line_position AS (
+        SELECT
+            pl.po_line_id,
+            po.status AS po_status,
+            (pl.amount_paise + pl.non_creditable_tax_paise
+             + pl.freight_paise) AS ordered_paise,
+            COALESCE((
+                SELECT SUM(CASE WHEN g.is_reversal
+                                THEN -ABS(gl.amount_paise)
+                                ELSE gl.amount_paise END)
+                FROM grn_line gl
+                JOIN grn g ON g.grn_id = gl.grn_id
+                WHERE gl.po_line_id = pl.po_line_id
+                  AND g.status <> 'Void'
+            ), 0)::bigint AS received_paise,
+            COALESCE((
+                SELECT SUM(CASE WHEN b.accounting_status = 'Reversal'
+                                THEN -ABS(bl.amount_paise
+                                          + bl.non_creditable_tax_paise
+                                          + bl.freight_paise)
+                                ELSE bl.amount_paise
+                                     + bl.non_creditable_tax_paise
+                                     + bl.freight_paise END)
+                FROM bill_line bl
+                JOIN bill b ON b.bill_id = bl.bill_id
+                WHERE bl.po_line_id = pl.po_line_id
+                  AND b.accounting_status = ANY(%(effective)s)
+            ), 0)::bigint AS billed_paise
+        FROM po_line pl
+        JOIN purchase_order po ON po.po_id = pl.po_id
+        WHERE pl.wbs_id = %(wbs_id)s
+          AND pl.budget_head_id = %(head)s
+    )
     UPDATE budget_ledger_cell SET
+        -- Every po_line on the cell. No status filter: a cancelled order was
+        -- still ordered.
+        ordered_paise = COALESCE(
+            (SELECT SUM(ordered_paise) FROM po_line_position), 0)::bigint,
+
+        -- Anti-double-count: a line commits only its UNBILLED balance, and a
+        -- released purchase order commits nothing.
         commitment_paise = COALESCE((
-            SELECT SUM(
-                GREATEST(
-                    0,
-                    (pl.amount_paise + pl.non_creditable_tax_paise
-                     + pl.freight_paise)
-                    - COALESCE((
-                        SELECT SUM(CASE WHEN b.accounting_status = 'Reversal'
-                                        THEN -ABS(bl.amount_paise
-                                                  + bl.non_creditable_tax_paise
-                                                  + bl.freight_paise)
-                                        ELSE bl.amount_paise
-                                             + bl.non_creditable_tax_paise
-                                             + bl.freight_paise END)
-                        FROM bill_line bl
-                        JOIN bill b ON b.bill_id = bl.bill_id
-                        WHERE bl.po_line_id = pl.po_line_id
-                          AND b.accounting_status = ANY(%(effective)s)
-                    ), 0)
-                )
-            )::bigint
-            FROM po_line pl
-            JOIN purchase_order po ON po.po_id = pl.po_id
-            WHERE pl.wbs_id = %(wbs_id)s
-              AND pl.budget_head_id = %(head)s
-              AND NOT (po.status = ANY(%(releasing)s))
-        ), 0),
+            SELECT SUM(CASE WHEN po_status = ANY(%(releasing)s) THEN 0
+                            ELSE GREATEST(0, ordered_paise - billed_paise)
+                       END)
+            FROM po_line_position), 0)::bigint,
+
+        -- SIGNED, and not clamped. See the header: reversal by flag.
+        received_paise = COALESCE(
+            (SELECT SUM(received_paise) FROM po_line_position), 0)::bigint,
+
+        -- Anti-under-count: value received but not yet billed is its own
+        -- bucket, and it is NOT commitment.
+        received_not_billed_paise = COALESCE((
+            SELECT SUM(GREATEST(0, received_paise - billed_paise))
+            FROM po_line_position), 0)::bigint,
+
+        -- NOT derived from po_line_position, deliberately. `compute_ledger`
+        -- groups bill_line on its OWN (wbs_id, budget_head_id) with NO
+        -- `po_line_id IS NOT NULL` filter, so a non-PO bill line counts. This
+        -- limb is why a bill arriving no longer raises availability.
+        actual_paise = COALESCE((
+            SELECT SUM(CASE WHEN b.accounting_status = 'Reversal'
+                            THEN -ABS(bl.amount_paise
+                                      + bl.non_creditable_tax_paise
+                                      + bl.freight_paise)
+                            ELSE bl.amount_paise
+                                 + bl.non_creditable_tax_paise
+                                 + bl.freight_paise END)
+            FROM bill_line bl
+            JOIN bill b ON b.bill_id = bl.bill_id
+            WHERE bl.wbs_id = %(wbs_id)s
+              AND bl.budget_head_id = %(head)s
+              AND b.accounting_status = ANY(%(effective)s)
+        ), 0)::bigint,
+
+        -- AUD-H-001. Only a LIVE reservation holds budget.
+        pr_reserved_paise = COALESCE((
+            SELECT SUM(r.amount_paise)
+            FROM pr_reservation r
+            WHERE r.wbs_id = %(wbs_id)s
+              AND r.budget_head_id = %(head)s
+              AND r.state = 'Reserved'
+        ), 0)::bigint,
+
         updated_at = now(), updated_by = %(actor)s,
         version_no = version_no + 1
     WHERE wbs_id = %(wbs_id)s AND budget_head_id = %(head)s
 """
 
 
-def recompute_commitment(session: Session, wbs_id: str, budget_head_id: str,
-                         *, actor: str) -> None:
-    """Re-derive one cell's ``commitment_paise`` from its purchase-order lines.
+def recompute_derived_position(session: Session, wbs_id: str,
+                               budget_head_id: str, *, actor: str) -> None:
+    """Re-derive ALL SIX of one cell's derived money columns, in one statement.
+
+    ``ordered_paise``, ``commitment_paise``, ``actual_paise``,
+    ``received_paise``, ``received_not_billed_paise`` and
+    ``pr_reserved_paise``, every one of them from
+    ``app.backend.domain.compute_ledger``'s formula verbatim. See the block
+    comment above this function for each formula and for why ``actual`` is the
+    one that is not per-PO-line.
 
     Locking. The caller must already hold this cell's ``budget_control_cell``
     lock, taken by :func:`~app.backend.pg.locking.lock_affected_cells` with the
-    complete affected set. This ``UPDATE`` takes the ``budget_ledger_cell``
+    COMPLETE affected set. This ``UPDATE`` takes the ``budget_ledger_cell``
     row's lock as part of executing -- an UPDATE always does -- and that is
     safe for the reason ``budget.recompute_cell`` gives at length:
     ``fk_ledger_control_cell`` makes the ledger row's existence imply the
@@ -534,25 +674,78 @@ def recompute_commitment(session: Session, wbs_id: str, budget_head_id: str,
     ledger locks are always acquired beneath the control order and add no edge
     to the wait-for graph.
 
-    Idempotent: it recomputes in full from ``po_line`` rather than adjusting,
-    so running it twice produces the same number.
+    Idempotent: it recomputes in full from source rows rather than adjusting,
+    so running it twice with no intervening change produces the same numbers.
 
     RLS AND THE DIRECTION OF THE ERROR, stated because it is not obvious. In
-    production this runs as ``capex_app``, so the ``bill_line`` subquery sees
-    only the bill lines the caller's scope permits. Under-counting ``billed``
-    OVERSTATES commitment, which refuses more spending rather than less -- the
-    safe direction, and the one to be in if the two ever disagree. It does not
-    arise in practice: ``wbs_id`` belongs to exactly one project, so every
-    ``po_line`` on a cell and every bill line against it sit in the project the
+    production this runs as ``capex_app``, so each subquery sees only the rows
+    the caller's scope permits. Under-counting ``billed`` OVERSTATES commitment
+    and under-counting ``actual`` UNDERSTATES exposure -- the second of those
+    is the permissive direction, which is why it must not arise, and it does
+    not: ``wbs_id`` belongs to exactly one project, so every ``po_line``,
+    ``bill_line`` and ``pr_reservation`` on a cell sits in the project the
     caller already had to reach to get here.
     """
-    session.execute(  # scope-exempt: derives one already-locked cell from its own PO lines
-        _RECOMPUTE_COMMITMENT_SQL,
+    session.execute(  # scope-exempt: derives one already-locked cell from its own source rows
+        _RECOMPUTE_DERIVED_SQL,
         {"wbs_id": wbs_id, "head": budget_head_id, "actor": actor,
          "releasing": list(COMMITMENT_RELEASING_STATES),
          "effective": list(ACCOUNTING_EFFECTIVE_BILL_STATES)},
     )
 
+
+def refresh_cells_after_ingest(session: Session,
+                               cells: Sequence[tuple[str, str]], *,
+                               actor: str) -> list[tuple[str, str]]:
+    """Lock the complete affected set, then re-derive every cell in it.
+
+    THE INBOUND PATH'S ENTRY POINT, and the reason the over-commitment hole is
+    actually closed rather than merely closeable. ``pg/procurement.py`` mirrors
+    a goods receipt or a vendor bill and then calls this; without it
+    ``actual_paise`` would still never move on the path that makes ``billed``
+    non-zero, and the earlier note that the staleness was "the smaller, safe
+    half" would only have been true while no bill existed.
+
+    Rule 1 of ``pg/locking.py``'s global order -- ``lock_affected_cells`` ONCE,
+    FIRST, with the COMPLETE set -- is obeyed here rather than by the caller,
+    deliberately: the lock and the write it protects are then one function, and
+    ``tests/test_pg_locking_order.py`` verifies that pairing against this
+    module's own source. A caller that took the lock itself and then called
+    :func:`recompute_derived_position` in a loop would be correct only as long
+    as nobody edited it.
+
+    Returns the lock set actually taken, which can be SMALLER than ``cells``:
+    an affected pair with no ``budget_control_cell`` row has nothing to lock
+    and nothing will write one. The caller is told rather than left to assume.
+    """
+    if not cells:
+        return []
+    unique: list[tuple[str, str]] = []
+    for cell in cells:
+        if cell not in unique:
+            unique.append(cell)
+    taken = lock_affected_cells(session, unique)
+    for wbs_id, head_id in unique:
+        recompute_derived_position(session, wbs_id, head_id, actor=actor)
+    return taken
+
+
+def recompute_commitment(session: Session, wbs_id: str, budget_head_id: str,
+                         *, actor: str) -> None:
+    """Historical name for :func:`recompute_derived_position`.
+
+    It wrote ``commitment_paise`` and only ``commitment_paise``, which is the
+    defect described above this module's derived-exposure block: five of the
+    six derived columns had no writer, and ``actual_paise`` not having one made
+    availability RISE when a bill landed.
+
+    Kept as a name so every existing call site and every existing test keeps
+    working, and kept as a THIN DELEGATION rather than a second statement so
+    the two can never derive commitment differently. There is exactly one place
+    in this package that writes a derived ledger column, and it is
+    :data:`_RECOMPUTE_DERIVED_SQL`.
+    """
+    recompute_derived_position(session, wbs_id, budget_head_id, actor=actor)
 
 # ==================================================================== PR lines
 
@@ -616,6 +809,270 @@ def _affected_cells(lines: Sequence[Mapping[str, Any]]) -> list[tuple[str, str]]
     return seen
 
 
+# ======================================== C4: concurrency-safe document numbers
+#
+# `services.create_pr` derives `PR-2026-0007` from `SELECT COUNT(*)`, which
+# races `ux_purchase_request_number`: two concurrent counts read the same value
+# and both proceed. This module used to fall back to the surrogate id, which is
+# unique by construction but is not a human-facing series.
+#
+# NO NEW MECHANISM IS NEEDED AND NONE IS INVENTED. `numbering_series` /
+# `numbering_counter` / `numbering_issued` already exist (005_master_data.sql)
+# and `masters.issue_number` already advances the counter with a single atomic
+# `INSERT ... ON CONFLICT ... DO UPDATE ... RETURNING`, whose row lock
+# serialises concurrent issuers. Migration 014 seeds the four series.
+
+#: `numbering_series.code` for each procurement document. The series rows are
+#: created by 014; these are the codes it seeds, named here so a caller cannot
+#: mistype one into a 404 at 3am.
+PR_SERIES = "PURCHASE_REQUEST"
+PO_SERIES = "PURCHASE_ORDER"
+GRN_SERIES = "GOODS_RECEIPT"
+BILL_SERIES = "VENDOR_BILL"
+
+
+def issue_document_number(session: Session, series_code: str, *, actor: str,
+                          object_type: str, object_id: str,
+                          period_key: str | None = None) -> str:
+    """One atomically minted, human-facing document number.
+
+    `period_key` defaults to the calendar year of ``now()``. The series are
+    seeded ``YEARLY``, and 005 is explicit that deriving the period key from
+    the clock is APPLICATION logic rather than a database trigger -- so it is
+    derived here, in one place, and injectable for a test.
+
+    Refuses rather than falling back. A missing series is a schema that has not
+    had 014 applied, and answering with the surrogate id would quietly reissue
+    the un-numbered documents this closes.
+    """
+    from . import masters as masters_mod
+
+    key = period_key if period_key is not None else str(datetime.now(
+        timezone.utc).year)
+    try:
+        issued = masters_mod.issue_number(
+            session, series_code, actor=actor, period_key=key,
+            object_type=object_type, object_id=object_id)
+    except masters_mod.MasterDataError as exc:
+        raise ProcurementError(
+            "NUMBERING_SERIES_UNAVAILABLE",
+            f"No active numbering series {series_code!r}: {exc}. Migration "
+            f"014 seeds it. Nothing was created -- falling back to the "
+            f"surrogate id would mint a document number outside the "
+            f"append-only `numbering_issued` log, which is the record that "
+            f"makes a number un-reusable.", status=500) from exc
+    return issued["formatted_number"]
+
+
+# ============================================== C1: purchase-request reservations
+#
+# AUD-H-001, and the reason it matters in one sentence: without reservations
+# two requestors can each pass `budget_check` against the same rupees, because
+# neither request has taken anything out of availability.
+#
+# `ux_pr_reservation_live UNIQUE (pr_id) WHERE state = 'Reserved'` is the whole
+# control -- exactly one live reservation per PR, enforced by a partial unique
+# index rather than by this module remembering to check.
+
+#: `ck_pr_reservation_state`'s four values. Transcribed from migration 014,
+#: which transcribed them from `app/backend/migrations/002_financial_controls.sql`.
+RESERVATION_STATES: tuple[str, ...] = (
+    "Reserved", "Converted", "Released", "Expired")
+
+#: The one state that HOLDS budget. `domain.compute_ledger` and
+#: `_RECOMPUTE_DERIVED_SQL` both read exactly this.
+RESERVATION_LIVE_STATE = "Reserved"
+
+
+def _assert_reservable(session: Session) -> None:
+    """Refuse if `pr_reservation` is absent, rather than reporting a hold.
+
+    Probed, not assumed. `assert_schema_current` should already have refused to
+    serve a database behind migration 014, so this cannot normally fire -- but
+    "cannot normally" is not a control, and the failure it guards against is a
+    caller being told budget was held when nothing holds it, which is the
+    single most dangerous shape of answer this module can give.
+    """
+    if not _table_exists(session, "pr_reservation"):
+        _err(ERR_RESERVATION_UNAVAILABLE,
+             "reserve=True was requested and this database cannot hold "
+             "budget: `pr_reservation` does not exist, so migration 014 has "
+             "not been applied. NOTHING was created. Ignoring the flag would "
+             "tell you budget was held when nothing holds it.", 501)
+
+
+def create_reservation(session: Session, *, pr_id: str, project_id: str,
+                       wbs_id: str, budget_head_id: str, amount_paise: int,
+                       actor: str) -> str:
+    """Hold ``amount_paise`` on one control cell for one purchase request.
+
+    The caller must already hold the cell's lock (``create_pr`` does, taken
+    once with the complete affected set before any decision was read) and must
+    call :func:`recompute_derived_position` afterwards -- writing the row does
+    not move ``pr_reserved_paise`` on its own, because that column is DERIVED
+    and this module has exactly one place that derives it.
+
+    ``amount_paise > 0`` is enforced by ``ck_pr_reservation_amount_positive``
+    and re-stated here so the refusal names the value: a reservation of zero is
+    not a reservation, and a negative one would INCREASE availability.
+    """
+    amount = _as_paise(amount_paise, field="reservation amount_paise")
+    if amount <= 0:
+        _err("NON_POSITIVE_RESERVATION",
+             f"A reservation of {amount} paise holds nothing. A reservation of "
+             f"zero is not a reservation and a negative one would INCREASE "
+             f"availability, which is the direction this control exists to "
+             f"prevent.", 422)
+    reservation_id = _new_id("PRRES")
+    session.execute(  # scope-exempt: pr_id was scope-gated by the caller in this transaction
+        """
+        INSERT INTO pr_reservation (
+            reservation_id, pr_id, wbs_id, budget_head_id, project_id,
+            amount_paise, state, created_by, updated_by)
+        VALUES (%(id)s, %(pr_id)s, %(wbs_id)s, %(head)s, %(project_id)s,
+                %(amount)s, %(state)s, %(actor)s, %(actor)s)
+        """,
+        {"id": reservation_id, "pr_id": pr_id, "wbs_id": wbs_id,
+         "head": budget_head_id, "project_id": project_id, "amount": amount,
+         "state": RESERVATION_LIVE_STATE, "actor": actor},
+    )
+    return reservation_id
+
+
+def settle_reservations(session: Session, *, pr_id: str, state: str,
+                        actor: str, po_id: str | None = None
+                        ) -> list[tuple[str, str]]:
+    """Move every LIVE reservation on ``pr_id`` to ``state``, and say which
+    cells moved so the caller can re-derive them.
+
+    UPDATE, NEVER DELETE. `capex_app` has DELETE revoked on this table by
+    migration 014 and that is deliberate: AUD-H-001 is "a reservation is
+    Reserved, then Converted or Released or Expired, EXACTLY ONCE", and a
+    deleted row has no such history. A released reservation stops holding
+    budget because `state <> 'Reserved'`, not because it stopped existing.
+
+    Returns the ``(wbs_id, budget_head_id)`` pairs it touched. The caller must
+    already hold their locks and must call
+    :func:`recompute_derived_position` for each -- releasing a hold that
+    nothing re-derives leaves `pr_reserved_paise` overstating, which refuses
+    spending that is now available.
+    """
+    if state == RESERVATION_LIVE_STATE or state not in RESERVATION_STATES:
+        _err("UNKNOWN_RESERVATION_STATE",
+             f"{state!r} is not a settled reservation state. "
+             f"ck_pr_reservation_state admits "
+             f"{', '.join(RESERVATION_STATES)}, and settling to "
+             f"{RESERVATION_LIVE_STATE!r} is not settling.", 422)
+    if state == "Converted" and not po_id:
+        _err("CONVERTED_WITHOUT_PO",
+             "A reservation converts INTO a purchase order. "
+             "ck_pr_reservation_converted_has_po refuses a Converted row with "
+             "no po_id, and so does this.", 422)
+    rows = session.fetchall(  # scope-exempt: pr_id was scope-gated by the caller in this transaction
+        """
+        UPDATE pr_reservation
+           SET state = %(state)s, po_id = %(po_id)s,
+               settled_at = now(), settled_by = %(actor)s,
+               updated_at = now(), updated_by = %(actor)s,
+               version_no = version_no + 1
+         WHERE pr_id = %(pr_id)s AND state = %(live)s
+        RETURNING wbs_id, budget_head_id
+        """,
+        {"pr_id": pr_id, "state": state, "po_id": po_id, "actor": actor,
+         "live": RESERVATION_LIVE_STATE},
+    )
+    return [(row[0], row[1]) for row in rows]
+
+
+# ================================= C5: fractional PO quantity policy, as data
+#
+# `po_line.quantity` is `numeric`; `outbound.PoLine.quantity` is `int`.
+# `_emission_lines` refuses a fractional quantity with NON_INTEGER_QUANTITY
+# rather than rounding it, because rounding silently changes what was ordered.
+#
+# THAT REFUSAL IS THE DEFAULT AND STAYS THE DEFAULT. It is now configurable
+# rather than hard-coded, per the standing rule that a configurable business
+# choice becomes configuration -- and the alternative is AUDITED, so a rounded
+# quantity is never invisible.
+
+POLICY_FRACTIONAL_QUANTITY = "FRACTIONAL_PO_QUANTITY"
+POLICY_REFUSE = "REFUSE"
+POLICY_ROUND_HALF_UP = "ROUND_HALF_UP"
+
+#: The documented working default, used when `procurement_policy` has no row --
+#: which is only possible on a database behind migration 014. REFUSE is the
+#: safe value to be wrong with: it emits nothing and tells somebody.
+FRACTIONAL_QUANTITY_DEFAULT = POLICY_REFUSE
+
+
+def fractional_quantity_policy(session: Session) -> str:
+    """What this deployment does with a fractional ordered quantity.
+
+    Reads `procurement_policy`. A missing table or a missing row answers
+    :data:`FRACTIONAL_QUANTITY_DEFAULT` -- and that is the ONE permissible
+    default in this module, because it is the REFUSING value: it stops the
+    emission and reports, rather than rounding on the strength of a row nobody
+    could find.
+    """
+    if not _table_exists(session, "procurement_policy"):
+        return FRACTIONAL_QUANTITY_DEFAULT
+    row = session.fetchone(  # scope-exempt: procurement_policy is an organisation-wide rule table
+        "SELECT policy_value FROM procurement_policy WHERE policy_key = %s",
+        (POLICY_FRACTIONAL_QUANTITY,))
+    return row[0] if row else FRACTIONAL_QUANTITY_DEFAULT
+
+
+# ==================================== C6: procurement lifecycle transitions
+#
+# Plan section 12's PR and PO state machines, as data. An unknown transition is
+# REFUSED rather than permitted -- the same fail-closed rule
+# `domain.lifecycle_permits` follows for an unknown state.
+
+_TRANSITION_OBJECT_TYPES = ("purchase_request", "purchase_order")
+
+
+def assert_transition_permitted(session: Session, *, object_type: str,
+                                from_state: str, to_state: str) -> None:
+    """Refuse a state change `procurement_transition` does not carry.
+
+    FAIL CLOSED, and the two ways of failing open are both closed:
+
+    * an ABSENT TABLE does not permit everything. It raises
+      TRANSITION_RULES_UNAVAILABLE, so a database behind migration 014 refuses
+      the change rather than waving it through -- the same choice
+      `periods._has_open_reconciliation_exceptions` made when 011 landed, and
+      for the same reason: `False` there was the value that PERMITTED a close.
+    * an UNKNOWN transition raises. There is no "not listed, so probably fine".
+
+    A no-op (`from_state == to_state`) is permitted without a lookup:
+    `ck_procurement_transition_not_self` means the table cannot carry one, and
+    writing a row's own state back is not a transition.
+    """
+    if object_type not in _TRANSITION_OBJECT_TYPES:
+        _err("UNKNOWN_TRANSITION_OBJECT",
+             f"{object_type!r} has no state machine in procurement_transition; "
+             f"it carries {', '.join(_TRANSITION_OBJECT_TYPES)}.", 422)
+    if from_state == to_state:
+        return
+    if not _table_exists(session, "procurement_transition"):
+        _err("TRANSITION_RULES_UNAVAILABLE",
+             "procurement_transition does not exist, so no state change can "
+             "be evaluated. Migration 014 creates it. The change was REFUSED "
+             "rather than permitted: a gate that cannot run has not passed.",
+             503)
+    row = session.fetchone(  # scope-exempt: procurement_transition is an organisation-wide rule table
+        "SELECT 1 FROM procurement_transition "
+        "WHERE object_type = %s AND from_state = %s AND to_state = %s",
+        (object_type, from_state, to_state))
+    if row is None:
+        _err("TRANSITION_NOT_PERMITTED",
+             f"{object_type} may not move from {from_state!r} to "
+             f"{to_state!r}. Valid transitions are DATA, in "
+             f"procurement_transition, and an unlisted one is refused rather "
+             f"than assumed. Adding it is a migration, not a code change.",
+             422)
+
+
 # =========================================================== purchase requests
 
 def create_pr(session: Session, *, project_id: str,
@@ -634,13 +1091,17 @@ def create_pr(session: Session, *, project_id: str,
     verdict refuses the write, and the reservation is honoured or refused --
     never quietly dropped.
     """
+    # `reserve=True` USED TO REFUSE HERE with PR_RESERVATION_NOT_MIGRATED, and
+    # refusing was right while there was nowhere to write: silently ignoring
+    # the flag would have told the caller budget was held when nothing held it.
+    # Migration 014 creates `pr_reservation` and
+    # `recompute_derived_position` writes `pr_reserved_paise`, so the
+    # reservation is now taken rather than refused. The refusal is KEPT for a
+    # database that somehow lacks the table -- see :func:`_assert_reservable`,
+    # which probes rather than assumes, because a reservation reported as taken
+    # and not taken is the one outcome worse than a refusal.
     if reserve:
-        _err(ERR_RESERVATION_UNAVAILABLE,
-             "reserve=True was requested, and this build cannot hold budget: "
-             "`pr_reservation` has no PostgreSQL table (migrations 001-013 "
-             "create none) and `budget_ledger_cell.pr_reserved_paise` has no "
-             "writer. The request has NOT been created. Ignoring the flag "
-             "would tell you budget was held when nothing holds it.", 501)
+        _assert_reservable(session)
 
     normalised = _normalise_lines(lines, what="purchase request")
     project = _project_row(session, project_id)
@@ -678,11 +1139,9 @@ def create_pr(session: Session, *, project_id: str,
     over = exceeds_budget(verdicts)
 
     pr_id = _new_id("PR")
-    # `ux_purchase_request_number` is UNIQUE and there is no sequence to draw a
-    # human-facing series from (see the module docstring). Falling back to the
-    # id is unique by construction; `SELECT COUNT(*) + 1`, which is what the
-    # SQLite service does, races and collides.
-    number = pr_number or pr_id
+    number = pr_number or issue_document_number(
+        session, PR_SERIES, actor=actor, object_type="PurchaseRequest",
+        object_id=pr_id)
     check_result = "EXCEEDS_BUDGET" if over else "WITHIN_BUDGET"
 
     session.execute(
@@ -716,6 +1175,62 @@ def create_pr(session: Session, *, project_id: str,
         )
 
     total = sum(line["amount_paise"] for line in normalised)
+
+    # THE RESERVATION, taken AFTER the lines exist because
+    # `fk_pr_reservation_pr_project` binds it to the header, and after the cell
+    # locks because it changes `pr_reserved_paise` -- the limb
+    # `check_availability` subtracts. Without it two requestors each pass
+    # `budget_check` against the same rupees, because neither request has taken
+    # anything out of availability.
+    reservation_ids: list[str] = []
+    if reserve:
+        cells = _amounts_by_cell(normalised)
+        # A CONTRADICTION BETWEEN TWO FROZEN THINGS, REFUSED RATHER THAN
+        # RESOLVED.
+        #
+        # `ux_pr_reservation_live UNIQUE (pr_id) WHERE state = 'Reserved'` is
+        # the AUD-H-001 control, ported 1:1 from the POC and frozen by
+        # `docs/WAVE6_MIGRATION_014_SPEC.md` C1 -- exactly one live reservation
+        # per purchase request. It was exactly right when a purchase request
+        # addressed exactly ONE control cell, which is what the SQLite POC's
+        # header-only `purchase_request` did.
+        #
+        # WAVE6_PROCUREMENT_CONTRACT GAP-1 changed that grain: a `pr_line`
+        # request may name several `(wbs_id, budget_head_id)` cells, and a
+        # reservation holds budget on ONE cell, so such a request needs one
+        # hold per cell -- which the index forbids.
+        #
+        # The two cannot both be honoured, and neither may be quietly bent:
+        # widening the index would drop a control the spec froze, and holding
+        # the whole sum on the first cell would reserve money against a budget
+        # nobody asked to spend. So a multi-cell reservation is REFUSED, with
+        # the request NOT created, and the contradiction is reported rather
+        # than resolved on this module's own authority. A single-cell request
+        # -- the shape the control was written for -- reserves normally.
+        if len(cells) > 1:
+            _err("MULTI_CELL_RESERVATION_UNSUPPORTED",
+                 f"This request names {len(cells)} control cells and asked for "
+                 f"budget to be held. A reservation holds one cell, and "
+                 f"`ux_pr_reservation_live` permits exactly ONE live "
+                 f"reservation per purchase request (AUD-H-001, ported 1:1 and "
+                 f"frozen by the migration 014 spec). The two rules contradict "
+                 f"each other for a pr_line-grained request (GAP-1). NOTHING "
+                 f"was created: holding the whole sum against the first cell "
+                 f"would reserve money on a budget nobody asked to spend, and "
+                 f"widening the index would drop the control. Raise one "
+                 f"request per control cell, or change the contract.", 409)
+        for (wbs_id, head_id), amount in cells.items():
+            reservation_ids.append(create_reservation(
+                session, pr_id=pr_id, project_id=project_id, wbs_id=wbs_id,
+                budget_head_id=head_id, amount_paise=amount, actor=actor))
+        session.execute(  # scope-exempt: the row this call created, under its own locks
+            "UPDATE purchase_request SET reserves_budget = true, "
+            "updated_at = now(), updated_by = %(actor)s "
+            "WHERE pr_id = %(pr_id)s",
+            {"pr_id": pr_id, "actor": actor})
+        for wbs_id, head_id in _affected_cells(normalised):
+            recompute_derived_position(session, wbs_id, head_id, actor=actor)
+
     audit_mod.append(
         session, actor, "PR_CREATED", "PurchaseRequest", pr_id,
         f"{number} raised on {project_id} with {len(normalised)} line(s) "
@@ -729,6 +1244,8 @@ def create_pr(session: Session, *, project_id: str,
         "status": STATUS_DRAFT, "check_result": check_result,
         "amount_paise": total, "line_count": len(normalised),
         "verdicts": verdicts, "lifecycle_gate": lifecycle,
+        "reservation_ids": tuple(reservation_ids),
+        "reserves_budget": bool(reserve),
     }
 
 
@@ -1108,9 +1625,12 @@ def _write_po(session: Session, *, project_id: str, vendor_name: str,
     invariant reads better where it is enforced.
     """
     po_id = _new_id("PO")
-    # As `create_pr`: `ux_purchase_order_number` is UNIQUE and no sequence
-    # exists to draw a human-facing series from.
-    number = po_number or po_id
+    # As `create_pr`: minted atomically from `numbering_series`, whose counter
+    # row lock serialises concurrent issuers. `SELECT COUNT(*) + 1` reads under
+    # no lock at all and collides on `ux_purchase_order_number`.
+    number = po_number or issue_document_number(
+        session, PO_SERIES, actor=actor, object_type="PurchaseOrder",
+        object_id=po_id)
     session.execute(
         """
         INSERT INTO purchase_order (
@@ -1278,9 +1798,28 @@ def convert_pr_to_po(session: Session, *, pr_id: str, actor: str,
         lines=[{**line, "rate_paise": None} for line in lines], actor=actor,
         pr_id=pr_id, po_number=po_number, currency=currency,
         exchange_rate=exchange_rate)
-    # As `create_po`: the commitment limb, under the locks taken above.
-    for wbs_id, head_id in _affected_cells(lines):
-        recompute_commitment(session, wbs_id, head_id, actor=actor)
+
+    # THE RESERVATION IS SETTLED, NOT LEFT STANDING. A converted request whose
+    # hold stays `Reserved` is counted TWICE against the same budget -- once as
+    # `pr_reserved_paise` and again as the new order's `commitment_paise` --
+    # which refuses spending that is genuinely available. AUD-H-001 is
+    # "Reserved, then Converted or Released or Expired, EXACTLY ONCE", and
+    # `ux_pr_reservation_live` would refuse a second hold on this request until
+    # this one is settled.
+    #
+    # UPDATE, never DELETE: `capex_app` has no DELETE on this table, and a
+    # deleted reservation has no history saying which purchase order consumed
+    # it.
+    settled = settle_reservations(
+        session, pr_id=pr_id, state="Converted", actor=actor,
+        po_id=written["po_id"]) if _table_exists(session, "pr_reservation") else []
+
+    # As `create_po`: the derived position, under the locks taken above. The
+    # settled cells are folded in, because a hold that stopped holding must be
+    # re-derived or `pr_reserved_paise` keeps subtracting it.
+    for wbs_id, head_id in _affected_cells(lines) + [
+            cell for cell in settled if cell not in _affected_cells(lines)]:
+        recompute_derived_position(session, wbs_id, head_id, actor=actor)
     audit_mod.append(
         session, actor, "PR_CONVERTED", "PurchaseRequest", pr_id,
         f"{header['pr_number']} converted to {written['po_number']} "
@@ -1298,35 +1837,72 @@ def convert_pr_to_po(session: Session, *, pr_id: str, actor: str,
 # order that already exists locally and gets it to Zoho AT MOST ONCE, which is
 # a different problem with a different failure mode.
 
-def _emission_lines(po_line_rows: Sequence[Mapping[str, Any]]
+def _emission_lines(po_line_rows: Sequence[Mapping[str, Any]],
+                    *, fractional_quantity_policy: str = FRACTIONAL_QUANTITY_DEFAULT,
+                    rounded: list[dict[str, Any]] | None = None
                     ) -> tuple[ob.PoLine, ...]:
     """``po_line`` rows as ``outbound.PoLine`` values, or a refusal.
 
-    TWO SHAPES DO NOT SURVIVE THE CROSSING, AND BOTH ARE REPORTED RATHER THAN
-    ROUNDED:
+    TWO SHAPES DO NOT SURVIVE THE CROSSING:
 
     * ``po_line.quantity`` is ``numeric`` and ``outbound.PoLine.quantity`` is
       ``int``. A fractional ordered quantity therefore has no representation on
       the emission path. Rounding it would send the vendor a different quantity
-      from the one the commitment was checked against, so it is refused.
+      from the one the commitment was checked against, so the DEFAULT is to
+      refuse -- and REFUSE remains the default after migration 014 made this a
+      setting rather than a hard-coded rule. `ROUND_HALF_UP` is the explicit
+      alternative, and every line it rounds is appended to ``rounded`` so the
+      caller can AUDIT it: a rounded quantity that nobody records is the silent
+      change the refusal exists to prevent.
     * ``rate_paise`` carries no non-negative CHECK (013 constrains
       ``amount_paise``, ``non_creditable_tax_paise`` and ``freight_paise``
       only, deliberately), and ``outbound._require_paise`` refuses a negative.
       A negative unit price is refused here with a code rather than as a
-      ``MoneyError`` from three frames down.
+      ``MoneyError`` from three frames down. That one is NOT configurable: a
+      purchase order is a commitment and does not carry a negative unit price
+      under any policy.
+
+    PURE, still. The policy arrives as a VALUE, not as a session -- the whole
+    emission decision is testable on a machine with no PostgreSQL, which is why
+    `tests/test_procurement_emission.py` can prove the split, the dedupe keys
+    and the at-most-once behaviour everywhere rather than only in CI.
     """
+    if fractional_quantity_policy not in (POLICY_REFUSE, POLICY_ROUND_HALF_UP):
+        _err("UNKNOWN_QUANTITY_POLICY",
+             f"{fractional_quantity_policy!r} is not a fractional-quantity "
+             f"policy. ck_procurement_policy_known admits {POLICY_REFUSE} and "
+             f"{POLICY_ROUND_HALF_UP}. Nothing was emitted -- guessing which "
+             f"was meant is how a quantity gets changed silently.", 500)
     out: list[ob.PoLine] = []
     for row in po_line_rows:
         quantity = row["quantity"]
         as_float = float(quantity)
         if not as_float.is_integer():
-            _err("NON_INTEGER_QUANTITY",
-                 f"PO line {row['po_line_id']} has quantity {quantity}, which "
-                 f"the emission path cannot carry: outbound.PoLine.quantity is "
-                 f"an integer count. Rounding it would send the vendor a "
-                 f"quantity the commitment was never checked against. This is "
-                 f"a contract gap between `po_line.quantity numeric` and the "
-                 f"emission DTO, not a data error.", 422)
+            if fractional_quantity_policy == POLICY_REFUSE:
+                _err("NON_INTEGER_QUANTITY",
+                     f"PO line {row['po_line_id']} has quantity {quantity}, "
+                     f"which the emission path cannot carry: "
+                     f"outbound.PoLine.quantity is an integer count. Rounding "
+                     f"it would send the vendor a quantity the commitment was "
+                     f"never checked against. This is a contract gap between "
+                     f"`po_line.quantity numeric` and the emission DTO, not a "
+                     f"data error. The deployment policy is {POLICY_REFUSE}; "
+                     f"set procurement_policy.{POLICY_FRACTIONAL_QUANTITY} to "
+                     f"{POLICY_ROUND_HALF_UP} to round and audit instead.",
+                     422)
+            # Decimal, not float: `round()` on a binary float is
+            # banker's rounding on a value that may not be representable at
+            # all, and 2.5 would go to 2. HALF_UP is the policy's own name and
+            # is what it does.
+            rounded_qty = int(Decimal(str(quantity)).quantize(
+                Decimal("1"), rounding=ROUND_HALF_UP))
+            if rounded is not None:
+                rounded.append({
+                    "po_line_id": row["po_line_id"],
+                    "ordered_quantity": str(quantity),
+                    "emitted_quantity": rounded_qty,
+                })
+            as_float = float(rounded_qty)
         rate = int(row["rate_paise"])
         if rate < 0:
             _err("NEGATIVE_RATE",
@@ -1350,12 +1926,19 @@ def build_emission_plan(*, po_id: str, po_number: str, connection_id: str,
                         capabilities: Any,
                         line_rows: Sequence[Mapping[str, Any]],
                         acknowledged: bool = False,
+                        fractional_quantity_policy: str = FRACTIONAL_QUANTITY_DEFAULT,
+                        rounded: list[dict[str, Any]] | None = None,
                         ) -> tuple[ob.EmissionPlan, list[dict[str, Any]]]:
     """The whole emission decision, with NO database anywhere in it.
 
     Returns the plan and, for each purchase order it decided on, the exact
     ``(local_id, dedupe_key, payload)`` triple that will be written to
     ``integration_outbox``.
+
+    ``fractional_quantity_policy`` DEFAULTS TO REFUSE and arrives as a value so
+    this function stays pure; ``plan_po_emission`` reads it from
+    ``procurement_policy`` and passes it in. Any line the ROUND_HALF_UP policy
+    rounds is appended to ``rounded``, which the caller audits.
 
     Split out of :func:`plan_po_emission` deliberately. Everything that decides
     how many purchase orders a requisition becomes, what identity each one
@@ -1369,7 +1952,11 @@ def build_emission_plan(*, po_id: str, po_number: str, connection_id: str,
     plan = ob.plan_emission(
         local_id=po_id, connection_id=connection_id,
         vendor_external_id=vendor_external_id,
-        lines=_emission_lines(line_rows), capabilities=capabilities,
+        lines=_emission_lines(
+            line_rows,
+            fractional_quantity_policy=fractional_quantity_policy,
+            rounded=rounded),
+        capabilities=capabilities,
         document_date=document_date, reference=po_number)
     try:
         plan.assert_acknowledged(acknowledged)
@@ -1435,11 +2022,30 @@ def plan_po_emission(session: Session, *, po_id: str, connection_id: str,
              f"{header['po_number']} carries no lines and cannot be emitted.",
              422)
 
+    # C5. REFUSE unless this deployment has explicitly chosen otherwise, and
+    # every rounded line is audited below -- so a quantity that reached the
+    # vendor differing from the one the commitment was checked against is on
+    # the record with both values, rather than being a number nobody can
+    # reconstruct.
+    rounded_lines: list[dict[str, Any]] = []
     plan, planned = build_emission_plan(
         po_id=po_id, po_number=header["po_number"],
         connection_id=connection_id, vendor_external_id=vendor_external_id,
         document_date=document_date, capabilities=adapter.capabilities(),
-        line_rows=rows, acknowledged=acknowledged)
+        line_rows=rows, acknowledged=acknowledged,
+        fractional_quantity_policy=fractional_quantity_policy(session),
+        rounded=rounded_lines)
+
+    for entry in rounded_lines:
+        audit_mod.append(
+            session, actor, "PO_QUANTITY_ROUNDED", "PurchaseOrder", po_id,
+            f"Line {entry['po_line_id']} was ordered at quantity "
+            f"{entry['ordered_quantity']} and emitted at "
+            f"{entry['emitted_quantity']}. procurement_policy."
+            f"{POLICY_FRACTIONAL_QUANTITY} is {POLICY_ROUND_HALF_UP}; under "
+            f"the default {POLICY_REFUSE} this emission would have been "
+            f"refused with NON_INTEGER_QUANTITY and nothing sent.",
+            correlation_id=correlation_id)
 
     enqueued: list[dict[str, Any]] = []
     for entry in planned:

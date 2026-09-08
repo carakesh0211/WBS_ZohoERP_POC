@@ -634,8 +634,19 @@ def test_conversion_requires_an_approved_request(pg_database, pg_connection):
 
 @PG
 def test_a_request_converts_exactly_once(pg_database, pg_connection):
-    """AUD-H-001. `ix_purchase_order_pr` is not unique, so the guard is the
-    request's own row lock plus the question asked under it."""
+    """AUD-H-001, and the guard is now TWO deep rather than one.
+
+    `ix_purchase_order_pr` was a PLAIN index, so the only thing stopping a
+    second conversion was the request's own row lock plus the question asked
+    under it -- application discipline, which is what
+    `014_procurement_corrections.sql` D6 replaces with
+    `ux_purchase_order_pr UNIQUE (pr_id) WHERE pr_id IS NOT NULL`.
+
+    This test still asserts the APPLICATION's answer, deliberately: a caller
+    must get `PR_ALREADY_CONVERTED` naming the existing order, not a raw 23505
+    from three frames down. The index is the backstop underneath it, proved
+    separately in `tests/test_pg_migration_014.py`.
+    """
     suffix = uuid.uuid4().hex[:10]
     ids = _seed_chain(pg_connection, suffix=suffix)
 
@@ -679,13 +690,20 @@ def test_conversion_copies_each_line_onto_the_cell_it_was_checked_against(
 @PG
 def test_a_purchase_order_raises_the_commitment_the_next_check_reads(
         pg_database, pg_connection):
-    """The hole this stream closed.
+    """The hole this stream closed -- HALF of it.
 
     `budget_ledger_cell.commitment_paise` had NO writer in the PostgreSQL
     path: `recompute_cell` derives only the budget columns. So availability
     never fell, and the same pot could be committed an unbounded number of
     times -- the re-check inside the lock was re-checking a number nothing
     moved.
+
+    The OTHER half stayed open until migration 014: `actual_paise` had no
+    writer either, and `commitment` FALLS when a bill arrives. So availability
+    rose by the billed amount and the pot could be committed again anyway.
+    `tests/test_pg_migration_014.py::test_a_bill_landing_does_not_raise_available_live`
+    is that half; this one is unchanged and still proves an order lowers
+    availability.
     """
     suffix = uuid.uuid4().hex[:10]
     ids = _seed_chain(pg_connection, suffix=suffix, budget_paise=1_000_00)

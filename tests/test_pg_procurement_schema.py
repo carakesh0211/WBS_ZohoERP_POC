@@ -106,12 +106,27 @@ def test_013_is_the_next_migration_and_the_runner_discovers_it():
     """`migrate_pg._FILENAME` is `^(\\d{3})_([a-z0-9_]+)\\.sql$` and `discover()`
     raises on anything that does not match, so a mis-named file is not a silent
     omission -- but a file in the RIGHT shape at the WRONG number is, because it
-    would simply sort somewhere else."""
+    would simply sort somewhere else.
+
+    "013 IS THE LAST MIGRATION" WAS TRUE FOR ONE WAVE AND IS NOT A PROPERTY.
+    `014_procurement_corrections.sql` exists, so the literal became false for a
+    reason that is not a defect: the product grew, which is the one thing this
+    assertion was guaranteed to be wrong about eventually.
+
+    Replaced with the property it was reaching for -- 013 discovers exactly
+    once, at the position its number gives it, in an unbroken sequence with no
+    gap. That catches everything the old form caught (a file numbered 0013, or
+    duplicated, or sorting out of order) and one thing it did not: a MISSING
+    number, which would mean a migration was deleted rather than superseded.
+    """
     versions = [m.version for m in migrate_pg.discover()]
     assert versions == sorted(versions), "migrations must discover in order"
-    assert versions[-1] == "013", (
-        f"013 must be the latest migration; discovered {versions}")
     assert versions.count("013") == 1
+    assert versions == [f"{n:03d}" for n in range(1, len(versions) + 1)], (
+        f"migration numbers must be an unbroken 001..N sequence; "
+        f"discovered {versions}")
+    assert versions.index("013") == 12, (
+        f"013 must be the thirteenth migration; discovered {versions}")
     assert _migration_013().name == "procurement"
 
 
@@ -757,10 +772,20 @@ def _seed_documents(con) -> None:
             " wbs_id, budget_head_id, rate_paise, amount_paise, created_by,"
             " updated_by) VALUES (%s, %s, 1, %s, %s, %s, 100000, 500000, 'T', 'T')",
             (f"POL-{suffix}", f"PO-{suffix}", project, wbs, head))
+        # `grn.entity_id` / `bill.entity_id` are NOT NULL from migration 014,
+        # and both are read from the row's OWN join rather than supplied --
+        # which is exactly what `_mirror_grn_header` and `mirror_bill` do,
+        # because the column is the first of `ux_grn_number_scoped` /
+        # `ux_bill_number_scoped` and an entity taken from anywhere else would
+        # scope the document number wrongly.
         con.execute(
-            "INSERT INTO grn (grn_id, grn_number, po_id, received_at,"
-            " created_by, updated_by) VALUES (%s, %s, %s, now(), 'T', 'T')",
-            (f"GRN-{suffix}", f"GRN-NUM-{suffix}", f"PO-{suffix}"))
+            "INSERT INTO grn (grn_id, grn_number, po_id, entity_id,"
+            " received_at, created_by, updated_by)"
+            " SELECT %s, %s, %s, p.entity_id, now(), 'T', 'T'"
+            " FROM purchase_order po JOIN project p"
+            "   ON p.project_id = po.project_id WHERE po.po_id = %s",
+            (f"GRN-{suffix}", f"GRN-NUM-{suffix}", f"PO-{suffix}",
+             f"PO-{suffix}"))
         con.execute(
             "INSERT INTO grn_line (grn_line_id, grn_id, po_id, po_line_id,"
             " quantity, amount_paise, created_by, updated_by)"
@@ -768,8 +793,10 @@ def _seed_documents(con) -> None:
             (f"GRNL-{suffix}", f"GRN-{suffix}", f"PO-{suffix}", f"POL-{suffix}"))
         con.execute(
             "INSERT INTO bill (bill_id, bill_number, po_id, project_id,"
-            " vendor_name, bill_date, created_by, updated_by)"
-            " VALUES (%s, %s, %s, %s, 'Vendor', current_date, 'T', 'T')",
+            " entity_id, vendor_name, bill_date, created_by, updated_by)"
+            " SELECT %s, %s, %s, p.project_id, p.entity_id, 'Vendor',"
+            "        current_date, 'T', 'T'"
+            " FROM project p WHERE p.project_id = %s",
             (f"BILL-{suffix}", f"BILL-NUM-{suffix}", f"PO-{suffix}", project))
         con.execute(
             "INSERT INTO bill_line (bill_line_id, bill_id, po_id, po_line_id,"
@@ -1217,9 +1244,10 @@ def test_a_bill_cannot_claim_a_project_its_purchase_order_does_not_have_live(
     with pytest.raises(psycopg.errors.ForeignKeyViolation):
         pg_connection.execute(
             "INSERT INTO bill (bill_id, bill_number, po_id, project_id,"
-            " vendor_name, bill_date, created_by, updated_by)"
-            " VALUES ('BILL-X', 'BILL-NUM-X', 'PO-A', %s, 'V', current_date,"
-            " 'T', 'T')", (_PRJ_B,))
+            " entity_id, vendor_name, bill_date, created_by, updated_by)"
+            " SELECT 'BILL-X', 'BILL-NUM-X', 'PO-A', p.project_id, p.entity_id,"
+            "        'V', current_date, 'T', 'T'"
+            " FROM project p WHERE p.project_id = %s", (_PRJ_B,))
     pg_connection.rollback()
 
 
@@ -1231,10 +1259,11 @@ def test_a_non_po_bill_and_its_line_are_accepted_live(pg_connection):
     and both must insert."""
     _seed_documents(pg_connection)
     pg_connection.execute(
-        "INSERT INTO bill (bill_id, bill_number, project_id, vendor_name,"
-        " bill_date, created_by, updated_by)"
-        " VALUES ('BILL-NOPO', 'BILL-NUM-NOPO', %s, 'V', current_date, 'T', 'T')",
-        (_PRJ_A,))
+        "INSERT INTO bill (bill_id, bill_number, project_id, entity_id,"
+        " vendor_name, bill_date, created_by, updated_by)"
+        " SELECT 'BILL-NOPO', 'BILL-NUM-NOPO', p.project_id, p.entity_id,"
+        "        'V', current_date, 'T', 'T'"
+        " FROM project p WHERE p.project_id = %s", (_PRJ_A,))
     pg_connection.execute(
         "INSERT INTO bill_line (bill_line_id, bill_id, wbs_id, budget_head_id,"
         " amount_paise, created_by, updated_by)"
@@ -1273,9 +1302,12 @@ def test_a_negative_grn_line_is_accepted_live(pg_connection):
     Reversal-by-flag is the AUD-C-004 contract, so this row must insert."""
     _seed_documents(pg_connection)
     pg_connection.execute(
-        "INSERT INTO grn (grn_id, grn_number, po_id, received_at, is_reversal,"
-        " created_by, updated_by)"
-        " VALUES ('GRN-REV', 'GRN-NUM-REV', 'PO-A', now(), true, 'T', 'T')")
+        "INSERT INTO grn (grn_id, grn_number, po_id, entity_id, received_at,"
+        " is_reversal, created_by, updated_by)"
+        " SELECT 'GRN-REV', 'GRN-NUM-REV', 'PO-A', p.entity_id, now(), true,"
+        "        'T', 'T'"
+        " FROM purchase_order po JOIN project p"
+        "   ON p.project_id = po.project_id WHERE po.po_id = 'PO-A'")
     pg_connection.execute(
         "INSERT INTO grn_line (grn_line_id, grn_id, po_id, po_line_id,"
         " quantity, amount_paise, created_by, updated_by)"
@@ -1294,10 +1326,11 @@ def test_a_negative_grn_line_is_accepted_live(pg_connection):
 def test_a_negative_bill_line_is_accepted_for_a_credit_note_live(pg_connection):
     _seed_documents(pg_connection)
     pg_connection.execute(
-        "INSERT INTO bill (bill_id, bill_number, po_id, project_id, vendor_name,"
-        " bill_date, doc_type, created_by, updated_by)"
-        " VALUES ('BILL-CN', 'BILL-NUM-CN', 'PO-A', %s, 'V', current_date,"
-        " 'CREDIT_NOTE', 'T', 'T')", (_PRJ_A,))
+        "INSERT INTO bill (bill_id, bill_number, po_id, project_id, entity_id,"
+        " vendor_name, bill_date, doc_type, created_by, updated_by)"
+        " SELECT 'BILL-CN', 'BILL-NUM-CN', 'PO-A', p.project_id, p.entity_id,"
+        "        'V', current_date, 'CREDIT_NOTE', 'T', 'T'"
+        " FROM project p WHERE p.project_id = %s", (_PRJ_A,))
     pg_connection.execute(
         "INSERT INTO bill_line (bill_line_id, bill_id, po_id, po_line_id,"
         " wbs_id, budget_head_id, amount_paise, created_by, updated_by)"
@@ -1424,20 +1457,49 @@ def test_a_duplicate_receive_line_is_refused_live(pg_connection):
 @pytest.mark.pg
 def test_two_locally_raised_receive_lines_without_external_ids_both_insert_live(
         pg_connection):
-    """The other side of `ux_grn_line_external`: NULLs are DISTINCT under
-    PostgreSQL's default, deliberately. A locally-raised receipt line carries
-    neither external id, and every such line must stay insertable rather than
-    all of them colliding on one NULL row."""
+    """The other side of the receive-line key: two GENUINELY DISTINCT lines
+    carrying no external id must both stay insertable, rather than all of them
+    colliding on one NULL row.
+
+    THE REQUIREMENT IS UNCHANGED; MIGRATION 014 CHANGED WHAT KEEPS THEM APART,
+    and it had to. 013 relied on PostgreSQL's default NULLS DISTINCT, which
+    kept these two rows apart at the cost of not constraining them AT ALL --
+    and on Zoho ERP a receive line with no external line id is THE ORDINARY
+    case, because ERP publishes no receives-list endpoint and lines are
+    discovered PO-anchored. The sweeps re-walk on a 300-second overlap, so
+    every walk re-inserted the same line and `received` climbed with no new
+    receive arriving. That is D5, the most dangerous of the six defects
+    `014_procurement_corrections.sql` closes.
+
+    `ux_grn_line_external_v2` is `NULLS NOT DISTINCT` over four columns, the
+    fourth being the receive line's ORDINAL. So distinctness now comes from the
+    ordinal -- which is a real property of the two lines -- instead of from the
+    absence of a value, which was a property of nothing.
+
+    The assertion is not weakened. It still requires both lines to insert, and
+    it now also requires the converse, which the old form could not state: two
+    lines that are NOT distinct are REFUSED rather than silently duplicated.
+    """
     _seed_documents(pg_connection)
-    for line_id in ("GRNL-N1", "GRNL-N2"):
+    for line_id, line_no in (("GRNL-N1", 1), ("GRNL-N2", 2)):
         pg_connection.execute(
             "INSERT INTO grn_line (grn_line_id, grn_id, po_id, po_line_id,"
-            " quantity, amount_paise, created_by, updated_by)"
-            " VALUES (%s, 'GRN-A', 'PO-A', 'POL-A', 1, 100, 'T', 'T')",
-            (line_id,))
+            " line_no, quantity, amount_paise, created_by, updated_by)"
+            " VALUES (%s, 'GRN-A', 'PO-A', 'POL-A', %s, 1, 100, 'T', 'T')",
+            (line_id, line_no))
     pg_connection.commit()
     assert pg_connection.execute(
         "SELECT count(*) FROM grn_line WHERE grn_id = 'GRN-A'").fetchone()[0] == 3
+
+    # ...and the half 013 could not enforce: a THIRD line indistinguishable
+    # from the second is a re-walk, not a receipt, and is refused.
+    with pytest.raises(psycopg.errors.UniqueViolation):
+        pg_connection.execute(
+            "INSERT INTO grn_line (grn_line_id, grn_id, po_id, po_line_id,"
+            " line_no, quantity, amount_paise, created_by, updated_by)"
+            " VALUES ('GRNL-N3', 'GRN-A', 'PO-A', 'POL-A', 2, 1, 100,"
+            " 'T', 'T')")
+    pg_connection.rollback()
 
 
 @PG

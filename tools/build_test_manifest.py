@@ -283,6 +283,36 @@ POST_BASELINE_FILES = {
     # audit-remediation suite, and inflating it would make the removal guard
     # meaningless.
     "test_pg_reconciliation.py", "test_integration_outbound_money.py",
+
+    # --- Wave 6, migration 014: the corrective migration -------------------
+    # `test_ledger_cell_writers.py` runs with NO database at all, and that is
+    # the whole reason it is a separate file. It holds the defect that made
+    # this migration urgent: `budget_ledger_cell` has six derived money
+    # columns and exactly ONE of them had a writer, so `available = budget -
+    # (commitment + actual + pr_reserved)` had two terms permanently stuck at
+    # zero. `actual_paise` in particular FALLS out of the subtraction the
+    # moment a bill lands and `commitment_paise` drops -- availability RISES by
+    # the billed amount and the same budget can be committed again, which is
+    # AUD-C-001 re-opened. Its central guard reads the column list out of
+    # `002_budget_control.sql` rather than from any register this repository
+    # maintains, so the NEXT column added cannot silently join the unwritten
+    # set.
+    #
+    # `test_pg_migration_014.py` is split the way `test_pg_procurement_schema.py`
+    # is: a thorough source-level half that runs everywhere (the migration is
+    # additive, the preflight precedes every DDL statement, no DELETE or
+    # TRUNCATE anywhere, the status sets are the registries', the lifecycle
+    # seed matches the POC row for row, the scope_permits argument order) and a
+    # `@pytest.mark.pg` half that first executes in CI's pg_tests job -- the
+    # over-commitment scenario end to end, both upgrade paths, rerun
+    # idempotency, checksum drift, and the preflight refusing an ambiguity
+    # rather than resolving it. A skip is not a pass, and its skip reason says
+    # so.
+    #
+    # Post-baseline like every Wave 2-6 file: the 220 counts the POC's
+    # audit-remediation suite, and inflating it would make the removal guard
+    # stop meaning anything the moment the product grows.
+    "test_ledger_cell_writers.py", "test_pg_migration_014.py",
 }
 
 

@@ -53,7 +53,19 @@ _LOCK = "lock_affected_cells"
 #: limb never moved and every purchase order was invisible to the next budget
 #: check. It writes a ledger cell exactly as `recompute_cell` does and is held
 #: to exactly the same rule.
-_CELL_WRITES = frozenset({"recompute_cell", "recompute_commitment"})
+#:
+#: `recompute_derived_position` (Wave 6, migration 014) is the third, and is
+#: now the ONLY statement that writes a derived ledger column --
+#: `recompute_commitment` delegates to it. It closes the other half of the same
+#: defect: five of the six derived columns still had no writer, and
+#: `actual_paise` not having one made AVAILABILITY RISE when a bill landed,
+#: because `commitment` fell by the billed amount and nothing rose by it.
+#: Tracked here for exactly the reason the other two are: it is an UPDATE on
+#: `budget_ledger_cell`, so it takes that row's lock implicitly and must never
+#: precede `lock_affected_cells`.
+_CELL_WRITES = frozenset({
+    "recompute_cell", "recompute_commitment", "recompute_derived_position",
+})
 
 #: Calls that READ availability. Availability is derived from the whole
 #: ancestor chain and subtree, so reading it before the chain is locked reads a
@@ -130,6 +142,28 @@ def _violations(events_by_function: dict[str, list[str]]) -> list[str]:
     """Every breach of Contract 3, as human-readable strings."""
     problems: list[str] = []
     for fn, events in sorted(events_by_function.items()):
+        if fn in _CELL_WRITES:
+            # THE PRIMITIVE ITSELF. Contract 3 is a rule about the CALLERS of a
+            # cell write -- "hold the lock set before you write" -- and the
+            # write primitive is the thing being called, not a caller. It must
+            # NOT take the lock: `lock_affected_cells` is called once, first,
+            # with the complete set, and a primitive locking on its own behalf
+            # would be a second call with an incomplete one.
+            #
+            # This exemption was implicit and accidental until 014. Both
+            # primitives happened to contain no tracked call, so the analyser
+            # scored them "touches no cell" and moved on. Then
+            # `recompute_commitment` became a thin delegation to
+            # `recompute_derived_position` -- so that the six derived ledger
+            # columns have exactly ONE statement deriving them and cannot drift
+            # apart -- and the delegation made the primitive look like a caller
+            # that writes without locking.
+            #
+            # Stated explicitly rather than left to that coincidence. Nothing
+            # is weakened: every function that is not itself a declared
+            # primitive is still held to the full rule, including any that
+            # reaches a primitive through a helper.
+            continue
         locks = [i for i, e in enumerate(events) if e == _LOCK]
         writes = [i for i, e in enumerate(events) if e in _CELL_WRITES]
         reads = [i for i, e in enumerate(events) if e in _AVAILABILITY_READS]

@@ -3428,6 +3428,72 @@
         "body_sha": "e8b9e53c54b5290e"
       }
     },
+    "test_ledger_cell_writers.py": {
+      "test_every_derived_ledger_money_column_has_a_writer": {
+        "assertions": 1,
+        "body_sha": "bf8021ff8c2bf3c7"
+      },
+      "test_the_six_procurement_derived_columns_are_written_by_one_statement": {
+        "assertions": 1,
+        "body_sha": "7c2b798a65bb5103"
+      },
+      "test_the_register_matches_the_schema_minus_the_budget_columns": {
+        "assertions": 1,
+        "body_sha": "8111652f195c3f7f"
+      },
+      "test_exactly_one_statement_writes_the_derived_columns": {
+        "assertions": 2,
+        "body_sha": "7893808bf4a891a5"
+      },
+      "test_actual_is_grouped_on_the_bill_lines_own_cell_and_counts_non_po_lines": {
+        "assertions": 5,
+        "body_sha": "e4af1382f2b4777e"
+      },
+      "test_reversal_negates_by_flag_and_never_by_data_entry": {
+        "assertions": 3,
+        "body_sha": "944bf39228fdd465"
+      },
+      "test_a_void_receipt_does_not_count_as_received": {
+        "assertions": 2,
+        "body_sha": "444599eb914bf6ff"
+      },
+      "test_commitment_is_ordered_less_billed_and_never_less_received": {
+        "assertions": 3,
+        "body_sha": "212debe210c7f002"
+      },
+      "test_ordered_and_received_ignore_the_purchase_orders_status": {
+        "assertions": 2,
+        "body_sha": "38d2bc55f2a5e5b2"
+      },
+      "test_the_releasing_and_effective_sets_come_from_the_domain_module": {
+        "assertions": 2,
+        "body_sha": "a85690e2180d4b2c"
+      },
+      "test_pr_reserved_counts_only_a_live_reservation": {
+        "assertions": 3,
+        "body_sha": "4decefd2473bc612"
+      },
+      "test_every_sum_over_paise_is_cast_back_to_bigint": {
+        "assertions": 1,
+        "body_sha": "3f779433cf1d9d42"
+      },
+      "test_the_inbound_bill_path_refreshes_the_cells_it_touched": {
+        "assertions": 2,
+        "body_sha": "ff87d022f5eab78a"
+      },
+      "test_the_inbound_receipt_path_refreshes_the_cell_it_touched": {
+        "assertions": 1,
+        "body_sha": "d68ab062bf06b5e9"
+      },
+      "test_the_refresh_takes_the_cell_locks_before_it_writes": {
+        "assertions": 1,
+        "body_sha": "a87430a38882bdbf"
+      },
+      "test_recompute_commitment_is_a_delegation_and_not_a_second_statement": {
+        "assertions": 2,
+        "body_sha": "de8cca51b1daefc1"
+      }
+    },
     "test_manifest.py": {
       "test_no_test_has_vanished_without_a_recorded_adaptation": {
         "assertions": 1,
@@ -6410,6 +6476,180 @@
         "body_sha": "7ac5d7160a013544"
       }
     },
+    "test_pg_migration_014.py": {
+      "test_014_is_discovered_named_and_numbered": {
+        "assertions": 4,
+        "body_sha": "c90bef99b0161a54"
+      },
+      "test_013_is_not_modified_by_this_change": {
+        "assertions": 4,
+        "body_sha": "c6f3d1a8185560a7"
+      },
+      "test_014_contains_no_delete_or_truncate_of_a_financial_record": {
+        "assertions": 1,
+        "body_sha": "a8b2a0717c6dd3c5"
+      },
+      "test_the_preflight_refuses_and_runs_before_any_ddl": {
+        "assertions": 3,
+        "body_sha": "68943f4be00ad6ec"
+      },
+      "test_every_object_014_drops_is_named_exactly": {
+        "assertions": 4,
+        "body_sha": "794d888b652c1956"
+      },
+      "test_every_paise_column_starts_its_declaration_line": {
+        "assertions": 1,
+        "body_sha": "a6006313aae4471a"
+      },
+      "test_every_constraint_014_adds_carries_an_explicit_name": {
+        "assertions": 1,
+        "body_sha": "6487e5578f6b937d"
+      },
+      "test_adoption_verification_reaches_014s_altered_objects": {
+        "assertions": 3,
+        "body_sha": "89c8f3b5ddeb4aad"
+      },
+      "test_a_dropped_column_is_never_reported_as_one_that_must_be_present": {
+        "assertions": 3,
+        "body_sha": "db5c0e9c33241f78"
+      },
+      "test_the_status_checks_admit_exactly_what_the_code_and_registries_name": {
+        "assertions": 5,
+        "body_sha": "c817d6e717a9ca1c"
+      },
+      "test_the_lifecycle_seed_matches_the_poc_row_for_row": {
+        "assertions": 2,
+        "body_sha": "b9875e045527008f"
+      },
+      "test_the_pr_state_machine_omits_what_013s_check_cannot_hold": {
+        "assertions": 4,
+        "body_sha": "332331e6c9145a5a"
+      },
+      "test_the_rule_tables_are_read_only_to_the_application": {
+        "assertions": 4,
+        "body_sha": "62a7c76d65585869"
+      },
+      "test_scope_permits_arguments_are_in_the_signature_order": {
+        "assertions": 1,
+        "body_sha": "621c2c564980fe11"
+      },
+      "test_the_new_tables_are_in_both_registries": {
+        "assertions": 3,
+        "body_sha": "08aaea21d998647d"
+      },
+      "test_a_bill_landing_does_not_raise_available_live": {
+        "assertions": 3,
+        "body_sha": "f8d25b412df1a9ca"
+      },
+      "test_the_six_derived_columns_all_move_live": {
+        "assertions": 6,
+        "body_sha": "9206a698261007f4"
+      },
+      "test_two_entities_may_share_a_grn_number_live": {
+        "assertions": 1,
+        "body_sha": "0198cabf79119071"
+      },
+      "test_two_vendors_may_share_a_bill_number_but_one_may_not_reuse_it_live": {
+        "assertions": 2,
+        "body_sha": "83ace1f5bb0ca0d9"
+      },
+      "test_one_external_document_under_two_organisations_does_not_collide_live": {
+        "assertions": 2,
+        "body_sha": "d6321cbcb4845ea3"
+      },
+      "test_a_bill_line_replay_cannot_duplicate_a_line_live": {
+        "assertions": 2,
+        "body_sha": "39fcd785b9bb8d90"
+      },
+      "test_two_genuinely_distinct_identical_looking_lines_both_survive_live": {
+        "assertions": 3,
+        "body_sha": "7955d2d9f42d2209"
+      },
+      "test_a_credit_note_line_carries_negative_paise_live": {
+        "assertions": 2,
+        "body_sha": "8559365d9282a26f"
+      },
+      "test_concurrent_duplicate_bill_line_ingestion_is_refused_live": {
+        "assertions": 1,
+        "body_sha": "5877c43c636c4620"
+      },
+      "test_an_identifierless_receive_line_replays_without_duplicating_live": {
+        "assertions": 2,
+        "body_sha": "67d1a9753897c14b"
+      },
+      "test_a_bill_line_with_no_external_id_replays_without_duplicating_live": {
+        "assertions": 2,
+        "body_sha": "4b21d69f23d33693"
+      },
+      "test_the_lifecycle_gate_now_enforces_rather_than_reporting_unavailable_live": {
+        "assertions": 3,
+        "body_sha": "988d86491b97a528"
+      },
+      "test_an_unlisted_state_change_is_refused_rather_than_permitted_live": {
+        "assertions": 2,
+        "body_sha": "a45c0924b72696c2"
+      },
+      "test_the_fractional_quantity_policy_defaults_to_refuse_live": {
+        "assertions": 3,
+        "body_sha": "92f0560f0b8d8f97"
+      },
+      "test_a_document_number_is_minted_atomically_live": {
+        "assertions": 3,
+        "body_sha": "14b09adc9f82b93b"
+      },
+      "test_a_pr_converts_into_exactly_one_purchase_order_live": {
+        "assertions": 1,
+        "body_sha": "ac7d9f1b1f46d515"
+      },
+      "test_exactly_one_live_reservation_per_purchase_request_live": {
+        "assertions": 3,
+        "body_sha": "3d3ea7674e94df46"
+      },
+      "test_a_reservation_lowers_availability_live": {
+        "assertions": 1,
+        "body_sha": "31287dc4cf842ed3"
+      },
+      "test_a_raw_or_unmapped_status_is_refused_live": {
+        "assertions": 1,
+        "body_sha": "3bb03f1f004d1c07"
+      },
+      "test_external_status_raw_is_stored_byte_for_byte_live": {
+        "assertions": 1,
+        "body_sha": "ef6b20a7e902f5a7"
+      },
+      "test_an_unknown_external_status_raises_and_has_no_accounting_effect_live": {
+        "assertions": 3,
+        "body_sha": "21ec0503f2c45d51"
+      },
+      "test_no_correction_path_can_delete_a_financial_record_live": {
+        "assertions": 2,
+        "body_sha": "45b2c0675fd882e6"
+      },
+      "test_rls_is_enabled_and_forced_on_every_table_014_adds_live": {
+        "assertions": 2,
+        "body_sha": "4c2f5fc2e9698bf3"
+      },
+      "test_a_clean_database_upgrades_001_to_014_live": {
+        "assertions": 3,
+        "body_sha": "c646151afb72db8c"
+      },
+      "test_a_database_already_at_013_upgrades_to_014_live": {
+        "assertions": 3,
+        "body_sha": "3e300842b1b83d22"
+      },
+      "test_rerunning_the_upgrade_is_a_no_op_live": {
+        "assertions": 1,
+        "body_sha": "909f522c0e7229bc"
+      },
+      "test_checksum_drift_on_014_is_a_hard_error_live": {
+        "assertions": 3,
+        "body_sha": "36abd39b22b1e05a"
+      },
+      "test_the_preflight_refuses_an_ambiguous_duplicate_rather_than_resolving_it_live": {
+        "assertions": 4,
+        "body_sha": "76d2ff9a5fbda86a"
+      }
+    },
     "test_pg_migrations_runner.py": {
       "test_discover_skips_seed_demo_sql_and_its_presence_does_not_change_the_version_list": {
         "assertions": 4,
@@ -6934,12 +7174,12 @@
         "body_sha": "66338334447bd13b"
       },
       "test_the_grn_line_conflict_target_matches_the_migrations_constraint": {
-        "assertions": 3,
-        "body_sha": "d57b345bcd43833a"
+        "assertions": 4,
+        "body_sha": "5a8ea8b13e15eb98"
       },
       "test_every_partial_mirror_index_is_targeted_with_its_predicate": {
-        "assertions": 2,
-        "body_sha": "16020ef0811135d2"
+        "assertions": 3,
+        "body_sha": "d94ff6f4bdde707c"
       },
       "test_a_mirrored_row_id_is_derived_and_not_random": {
         "assertions": 4,
@@ -7132,8 +7372,8 @@
         "body_sha": "0e20666124f9e72e"
       },
       "test_the_on_conflict_target_is_a_constraint_that_actually_exists": {
-        "assertions": 6,
-        "body_sha": "cbe2dedc96477cd0"
+        "assertions": 8,
+        "body_sha": "6b39b6233f200ef9"
       },
       "test_the_reconciliation_query_reaches_all_four_dimensions": {
         "assertions": 3,
@@ -7145,7 +7385,7 @@
       },
       "test_an_identifierless_receive_line_is_deduplicated_before_it_is_inserted": {
         "assertions": 5,
-        "body_sha": "c6c4e14cbc016799"
+        "body_sha": "5c158ec2e3907ccb"
       },
       "test_record_receive_line_will_not_write_against_a_po_line_it_cannot_see": {
         "assertions": 5,
@@ -7170,8 +7410,8 @@
     },
     "test_pg_procurement_schema.py": {
       "test_013_is_the_next_migration_and_the_runner_discovers_it": {
-        "assertions": 4,
-        "body_sha": "e30d7296345ecf43"
+        "assertions": 5,
+        "body_sha": "46652498c255c8f0"
       },
       "test_013_is_not_excluded_as_a_data_file": {
         "assertions": 1,
@@ -7415,11 +7655,11 @@
       },
       "test_a_bill_cannot_claim_a_project_its_purchase_order_does_not_have_live": {
         "assertions": 1,
-        "body_sha": "c5f5d007159cbcf3"
+        "body_sha": "57f89d8e13837902"
       },
       "test_a_non_po_bill_and_its_line_are_accepted_live": {
         "assertions": 1,
-        "body_sha": "83c57507b803f3ea"
+        "body_sha": "16ac4c81290249e8"
       },
       "test_a_bill_line_naming_a_po_line_without_a_po_id_is_refused_live": {
         "assertions": 1,
@@ -7427,11 +7667,11 @@
       },
       "test_a_negative_grn_line_is_accepted_live": {
         "assertions": 2,
-        "body_sha": "e573ff6f1a91878c"
+        "body_sha": "e54d32343767b625"
       },
       "test_a_negative_bill_line_is_accepted_for_a_credit_note_live": {
         "assertions": 1,
-        "body_sha": "3871ab043a689122"
+        "body_sha": "11a1f059488039c5"
       },
       "test_an_unknown_accounting_status_is_refused_live": {
         "assertions": 1,
@@ -7454,8 +7694,8 @@
         "body_sha": "4859299307404cbe"
       },
       "test_two_locally_raised_receive_lines_without_external_ids_both_insert_live": {
-        "assertions": 1,
-        "body_sha": "32a5cc133956ea2d"
+        "assertions": 2,
+        "body_sha": "e5f27a202d4ce4d6"
       },
       "test_row_level_security_is_enabled_and_forced_on_all_eight_live": {
         "assertions": 2,
@@ -7835,7 +8075,7 @@
       },
       "test_reference_tables_are_not_left_on_the_fail_open_all_null_predicate": {
         "assertions": 3,
-        "body_sha": "7a9e542159069a66"
+        "body_sha": "5ac2a29c366420c5"
       },
       "test_006_forces_row_level_security_on_every_table_it_enables": {
         "assertions": 2,
@@ -7911,7 +8151,7 @@
       },
       "test_all_nineteen_rls_tables_are_enabled_and_forced_live": {
         "assertions": 2,
-        "body_sha": "65d3e2a8281e2903"
+        "body_sha": "374fa8724024e2ca"
       }
     },
     "test_pg_rls_integration_matrix.py": {
@@ -8766,6 +9006,7 @@
     "test_integration_throttle.py": 76,
     "test_integrations_api_guard.py": 51,
     "test_known_defects.py": 5,
+    "test_ledger_cell_writers.py": 16,
     "test_manifest.py": 10,
     "test_masters_settings_api_guard.py": 9,
     "test_middleware_observability.py": 11,
@@ -8795,6 +9036,7 @@
     "test_pg_locking.py": 17,
     "test_pg_locking_order.py": 19,
     "test_pg_masters.py": 32,
+    "test_pg_migration_014.py": 43,
     "test_pg_migrations_runner.py": 11,
     "test_pg_period_concurrency.py": 9,
     "test_pg_periods.py": 18,
@@ -8851,6 +9093,7 @@
     "test_integration_throttle.py": 244,
     "test_integrations_api_guard.py": 114,
     "test_known_defects.py": 13,
+    "test_ledger_cell_writers.py": 32,
     "test_manifest.py": 15,
     "test_masters_settings_api_guard.py": 15,
     "test_middleware_observability.py": 31,
@@ -8880,14 +9123,15 @@
     "test_pg_locking.py": 36,
     "test_pg_locking_order.py": 30,
     "test_pg_masters.py": 82,
+    "test_pg_migration_014.py": 108,
     "test_pg_migrations_runner.py": 32,
     "test_pg_period_concurrency.py": 28,
     "test_pg_periods.py": 49,
     "test_pg_principal_scope.py": 83,
     "test_pg_procurement.py": 134,
-    "test_pg_procurement_ingest.py": 137,
-    "test_pg_procurement_reconciliation.py": 66,
-    "test_pg_procurement_schema.py": 140,
+    "test_pg_procurement_ingest.py": 139,
+    "test_pg_procurement_reconciliation.py": 68,
+    "test_pg_procurement_schema.py": 142,
     "test_pg_reconciliation.py": 117,
     "test_pg_repo.py": 37,
     "test_pg_rls.py": 34,
