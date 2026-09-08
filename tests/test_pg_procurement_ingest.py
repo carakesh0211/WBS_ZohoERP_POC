@@ -67,9 +67,21 @@ from datetime import date, datetime, timezone  # noqa: E402
 import psycopg  # noqa: E402
 import pytest  # noqa: E402
 
+from app.backend import domain as sqlite_domain  # noqa: E402
+from app.backend.integration import jobs  # noqa: E402
+from app.backend.integration import sweeps  # noqa: E402
+from app.backend.integration.dto import BillDTO, LineDTO, SourceRef  # noqa: E402
+from app.backend.pg import audit as audit_mod  # noqa: E402
 from app.backend.pg import integration_store as store  # noqa: E402
 from app.backend.pg import procurement  # noqa: E402
 from app.backend.pg.engine import Scope, Session  # noqa: E402
+
+from integration_fakes import (  # noqa: E402  the Wave 5 in-process doubles
+    ERP as ERP_CAPABILITIES,
+    FakeAdapter,
+    FakeClock,
+    InMemoryStore,
+)
 
 PG = pytest.mark.skipif(
     not os.environ.get("CAPEX_DB_URL"),
@@ -820,11 +832,12 @@ def test_a_bucket_key_naming_no_open_exception_is_refused(seeded):
 
 # ----------------------------------------------------------------- bills
 def _bill(session, *, external_id, number, lines, doc_type="BILL",
-          status_raw=None, po=PO_EXTERNAL):
+          status_raw=None, po=PO_EXTERNAL, accounting_status="Approved"):
     return procurement.mirror_bill(
         session, external_source=SOURCE_LABEL, external_id=external_id,
         bill_number=number, vendor_name="Vendor", bill_date=date(2026, 9, 7),
         lines=lines, po_external_id=po, entity_id=ENTITY, doc_type=doc_type,
+        accounting_status=accounting_status,
         external_status_raw=status_raw, external_last_modified=T0,
         payload_sha=f"sha-{external_id}", now=T0, status_as_of=AS_OF)
 
@@ -1185,3 +1198,917 @@ def test_marking_a_bill_nobody_received_is_refused(seeded):
         store.mark_detail_hydrated(session, connection_id=connection_id,
                                    external_id="ZB-NEVER-SEEN")
     assert exc.value.code == "BILL_NOT_IN_INBOX"
+
+
+# =========================================================================
+# THE WAVE 6 ADVERSARIAL REVIEW: C-1, C-2, H-1, H-2, H-5, H-8, M-2.
+#
+# Every one of these is written against a defect that was VERIFIED with a
+# concrete scenario, and the source-level half exists for the same reason the
+# rest of this file's does: there is no PostgreSQL on the machine these were
+# written on, and a check whose only coverage is a job nobody runs locally is
+# a check nobody runs.
+# =========================================================================
+SWEEPS_SOURCE = _Path(sweeps.__file__).read_text(encoding="utf-8")
+#: `domain.compute_ledger` is the frozen `C5_formulas.json` registry in code.
+#: Every money formula in `procurement.py` is transcribed from it, so the
+#: transcription is checked against the ORIGINAL rather than against a second
+#: statement of what the original says.
+DOMAIN_SOURCE = _Path(sqlite_domain.__file__).read_text(encoding="utf-8")
+
+
+def _fn(name: str) -> str:
+    """One function of `procurement.py`, prose stripped.
+
+    Use this for "the code does not do X" over single tokens. `code_only`
+    joins TOKENS with newlines, so a multi-word SQL fragment cannot be found
+    in its output at all -- which is what :func:`_sql` is for.
+    """
+    return code_only(inspect.getsource(getattr(procurement, name)))
+
+
+def _sql(name: str) -> str:
+    """One function of `procurement.py`, verbatim.
+
+    The SQL assertions below are about multi-word fragments -- a join
+    condition, an ON CONFLICT set list, a CASE expression -- and those survive
+    only in the unmangled source. Every use of this is a POSITIVE assertion
+    (this fragment is present); the negative ones stay on :data:`CODE`, or on a
+    regex specific enough that a sentence of prose cannot satisfy it.
+    """
+    return inspect.getsource(getattr(procurement, name))
+
+
+#: A SQL DELETE, as opposed to the word "delete" in a sentence explaining why
+#: there is not one. `capex_app` has the privilege revoked and every row this
+#: module writes is evidence, so the whole module is held to it.
+_DELETE_STATEMENT = re.compile(r"\bDELETE\s+FROM\b", re.I)
+
+
+# ------------------------------------------------------- C-1 (CRITICAL)
+def test_the_bill_detail_sweep_writes_the_ledger_and_not_only_the_inbox():
+    """`mirror_bill` had NO CALLER, so `billed_paise` was structurally 0.
+
+    `grep -rn "mirror_bill" app/` found only the definition. The bill-detail
+    sweep fetched `GET /bills/{id}`, wrote `upsert_inbox`, raised an exception
+    when there were no line items, called `mark_detail_hydrated` -- and
+    stopped. It never wrote `bill` or `bill_line`, and `SweepStore` declared no
+    verb that could. Agent 3 built the ledger; nothing joined it to the sweep.
+
+    So every reconciliation line reported `billed_paise = 0` and therefore
+    `open_commitment == ordered` for the whole estate; `recompute_commitment`
+    subtracted a `billed` that was always zero, so a commitment never fell when
+    its bill was paid; and `/api/integrations/reconciliation` reported
+    `identity_balanced: true` while quoting all of it -- an identity between
+    three figures all derived from one empty table balances perfectly.
+    """
+    assert hasattr(sweeps.SweepStore, "mirror_bill"), (
+        "SweepStore declares no mirror_bill verb, so nothing in the sweep "
+        "layer can write bill or bill_line at all")
+    detail = code_only(inspect.getsource(sweeps.SweepBillDetail))
+    assert "mirror_bill" in detail, (
+        "the bill-detail sweep does not call mirror_bill; a hydrated bill is "
+        "paid for, read and then discarded")
+    # ...and the ORDER is load-bearing. Marking a bill hydrated is what takes
+    # it off the queue; doing that before the ledger write would drain the
+    # queue of documents nothing ever recorded.
+    body = code_only(inspect.getsource(sweeps.SweepBillDetail.resume))
+    assert body.index("_mirror") < body.index("mark_detail_hydrated"), (
+        "the queue entry is marked hydrated before the ledger write, so a "
+        "refused mirror still takes the bill off the queue for ever")
+
+
+class _MirroringStore(InMemoryStore):
+    """`InMemoryStore` plus the one verb `SweepStore` gained.
+
+    A SUBCLASS rather than an edit to `tests/integration_fakes.py`, which
+    belongs to another owner. It records the call verbatim, so the assertions
+    below are about what the sweep PASSES rather than about what a double chose
+    to keep -- the failure mode
+    `tests/test_integration_dto_reader_contract.py` exists for.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.mirrored: list[dict] = []
+
+    def mirror_bill(self, **kwargs):
+        self.mirrored.append(dict(kwargs))
+        lines = kwargs.get("lines") or ()
+        return {"bill_id": "BILL-" + str(kwargs["external_id"]),
+                "attributed": len(lines), "quarantined": 0,
+                "quarantined_paise": 0}
+
+
+def _real_bill_dto(*, external_id, total_paise,
+                   po_external_ids=(PO_EXTERNAL,)) -> BillDTO:
+    """A bill exactly as an adapter emits one. NO double anywhere.
+
+    Built from `dto.BillDTO` and `dto.LineDTO` rather than from
+    `tests/integration_fakes.FakeRecord`, because the defect this proves fixed
+    is a JOIN between two modules: the sweep must read the names the DTO really
+    carries -- `vendor_name`, and `purchase_order_external_ids`, which is
+    PLURAL and a TUPLE. A double shaped to the reader cannot fail the way
+    production fails; that lesson is already recorded in
+    `tests/test_integration_dto_reader_contract.py`.
+    """
+    return BillDTO(
+        source=SourceRef(product="ERP", service="erp", api_version="v3",
+                         endpoint="/bills/" + external_id, retrieved_at=T0),
+        external_id=external_id, document_number="BN-" + external_id,
+        document_date=date(2026, 9, 7), last_modified=T0,
+        vendor_external_id="V-1", vendor_name="Pumps and Motors Pvt Ltd",
+        currency_code="INR", subtotal_paise=total_paise, tax_paise=0,
+        total_paise=total_paise, external_status_raw="open",
+        purchase_order_external_ids=po_external_ids,
+        lines=(LineDTO(external_line_id="RL-1", line_number=1,
+                       description="Centrifugal pump", quantity="1",
+                       unit_price_paise=total_paise,
+                       line_total_paise=total_paise, tax_paise=0,
+                       purchase_order_line_external_id=POL_EXTERNAL),),
+        lines_hydrated=True,
+        raw={"bill_id": external_id, "status": "open"})
+
+
+def _run_bill_detail(store_double, *, queued, details, external_source):
+    clock = FakeClock()
+    adapter = FakeAdapter(clock, bill_details=details, seconds_per_call=1)
+    store_double.detail_queue.extend(queued)
+    job = sweeps.SweepBillDetail(adapter, store_double,
+                                 store_double.connection_id,
+                                 external_source=external_source)
+    store_double.enqueue(job.kind)
+    return jobs.run_job(job, store=store_double, clock=clock,
+                        capabilities=ERP_CAPABILITIES)
+
+
+def test_a_hydrated_bill_is_handed_to_the_ledger_with_the_names_the_dto_carries():
+    """The sweep reads `vendor_name` and `purchase_order_external_ids`.
+
+    Both are on `BillDTO`; neither was on `SourceRecord` before this. Without
+    them `mirror_bill` cannot be called at all -- `bill.vendor_name` is NOT
+    NULL and the control cell of every line is resolved through the purchase
+    order the bill names -- so a reader that missed either would have made the
+    wiring impossible rather than merely lossy.
+
+    `purchase_order_external_ids` is the one to get wrong: it is PLURAL and a
+    TUPLE, and a reader taking the singular spelling gets `None` from every
+    real bill the adapters emit while passing against any double shaped to the
+    reader.
+    """
+    double = _MirroringStore()
+    dto = _real_bill_dto(external_id="ZB-SWEEP", total_paise=1_000_000)
+    run = _run_bill_detail(double, queued=["ZB-SWEEP"],
+                           details={"ZB-SWEEP": dto},
+                           external_source=SOURCE_LABEL)
+    assert run.state == jobs.JOB_DONE
+    assert len(double.mirrored) == 1, (
+        "the hydrated bill never reached the ledger surface")
+    call = double.mirrored[0]
+    assert call["external_source"] == SOURCE_LABEL
+    assert call["external_id"] == "ZB-SWEEP"
+    assert call["bill_number"] == "BN-ZB-SWEEP"
+    assert call["vendor_name"] == "Pumps and Motors Pvt Ltd", (
+        "vendor_name was read as None; bill.vendor_name is NOT NULL and the "
+        "ledger refuses a placeholder, so the mirror could never run")
+    assert call["bill_date"] == date(2026, 9, 7)
+    assert call["po_external_id"] == PO_EXTERNAL, (
+        "the PO linkage was read as None. BillDTO spells it "
+        "purchase_order_external_ids -- plural, a tuple -- and without it "
+        "every line has to name its own control cell or be quarantined")
+    assert call["external_status_raw"] == "open", (
+        "the raw status is carried across verbatim; C17 maps it in the ledger")
+    assert call["external_last_modified"] == T0
+    assert call["payload_sha"], "no payload_sha; §11.10 provenance is lost"
+    assert [line.line_total_paise for line in call["lines"]] == [1_000_000]
+    # ...and the bill still leaves the queue, so the call is not paid for twice.
+    assert double.hydrated == ["ZB-SWEEP"] and double.detail_queue == []
+
+
+def test_a_bill_naming_two_purchase_orders_is_held_not_attributed_to_the_first():
+    """`bill.po_id` holds ONE purchase order and `BillDTO` may name several.
+
+    Picking the first would attribute a whole document -- and every line's
+    control cell through it -- to whichever order the source happened to list
+    first, which is the guess §11.8 forbids in the one place where guessing
+    wrong moves money into another project's budget. The bill is held at its
+    FULL value instead and nothing is written.
+    """
+    double = _MirroringStore()
+    dto = _real_bill_dto(external_id="ZB-TWO", total_paise=2_500_000,
+                         po_external_ids=(PO_EXTERNAL, "ZPO-9002"))
+    run = _run_bill_detail(double, queued=["ZB-TWO"],
+                           details={"ZB-TWO": dto},
+                           external_source=SOURCE_LABEL)
+    assert run.state == jobs.JOB_DONE
+    assert double.mirrored == [], "the ambiguous linkage was resolved by guessing"
+    held = [e for e in double.exceptions.values()
+            if e["object_id"] == "ZB-TWO"]
+    assert len(held) == 1
+    assert held[0]["kind"] == sweeps.KIND_CONTROL_TOTAL_MISMATCH
+    assert held[0]["source_paise"] == 2_500_000, (
+        "the bill was not held at its full value")
+
+
+def test_a_store_that_cannot_mirror_refuses_rather_than_draining_the_queue():
+    """The failure mode this whole defect wore: a queue that drains while the
+    ledger stays empty. A store with no `mirror_bill` is a WIRING defect, and
+    it is reported against the seam by name rather than letting the sweep mark
+    a bill hydrated that nothing ever wrote."""
+    plain = InMemoryStore()
+    run = _run_bill_detail(
+        plain, queued=["ZB-1"],
+        details={"ZB-1": _real_bill_dto(external_id="ZB-1", total_paise=100)},
+        external_source=SOURCE_LABEL)
+    assert run.state == jobs.JOB_FAILED, (
+        "a store that cannot mirror reported success; the queue would drain "
+        "while bill_line stayed empty")
+    assert plain.hydrated == [], (
+        "the bill was marked hydrated even though nothing wrote it")
+
+
+# ------------------------------------------------------- C-2 (CRITICAL)
+def test_both_attribution_paths_retract_the_quarantine_they_may_have_raised():
+    """A line quarantined on pass 1 and attributed on pass 2 was counted TWICE.
+
+    The sweeps re-walk BY DESIGN -- a 300-second overlap and a cycling cursor
+    -- and PO-poll against bill-poll ordering is not guaranteed, so
+    raise-then-succeed is the ORDINARY sequence, not an edge case. Nothing
+    resolved the exception when the same line later attributed, so the same
+    rupees sat in `bill_line.amount_paise` (feeding billed, and therefore
+    actual) AND in `open_exception_exposure`'s SUM(source_paise) -- the figure
+    the capitalisation gate and the period close quote. The exception also
+    blocked capitalisation for ever on a line that was by then correctly
+    posted.
+
+    Keyed on the SAME triple the raise conflicts on, which is what lets the
+    retraction find the row: `ux_reconciliation_exception_open` is UNIQUE on
+    `(kind, object_type, object_id)` while it is Open.
+    """
+    assert procurement.QUARANTINE_RECEIVE_LINE == (
+        "GRN_LINE_UNATTRIBUTED", "grn_line")
+    assert procurement.QUARANTINE_BILL_LINE == (
+        "CONTROL_TOTAL_MISMATCH", "bill_line")
+    # The receive half: raised by `sweeps._attribute`, retracted by the ledger.
+    raised = inspect.getsource(
+        sweeps.SweepPoAnchored._attribute).replace('"', "'")
+    assert "KIND_GRN_LINE_UNATTRIBUTED" in raised
+    assert "f'{receive.external_id}:{line_key}'" in raised, (
+        "the receive quarantine's object_id shape moved; the retraction "
+        "reconstructs it and would silently stop matching")
+    settle = _sql("_settle_receive_line").replace('"', "'")
+    assert "retract_quarantine" in settle
+    assert "f'{receive_external_id}:{line_external_id}'" in settle, (
+        "the retraction no longer keys on the receive quarantine's object_id")
+    # The bill half: raised and retracted in the same function, which is what
+    # makes the two keys impossible to drift apart.
+    line = _sql("_mirror_bill_line").replace('"', "'")
+    assert "retract_quarantine" in line
+    assert line.count("f'{bill_external_id}:{line_key}'") >= 2, (
+        "the raise and the retraction do not key on the same object_id, so "
+        "the exception a first pass raised is never found by the second")
+
+
+def test_a_retracted_quarantine_is_transitioned_and_never_deleted():
+    """DELETE is revoked on `capex_app` and the audit trail is the point.
+
+    The row stays, keeps its `source_paise` as the record of what WAS held, and
+    moves to `Resolved` with an actor, a time and a reason -- which is what
+    `ck_reconciliation_exception_resolution` demands, and what makes the value
+    stop counting, because `open_exception_exposure` and `open_exceptions` both
+    filter `status = 'Open'`.
+    """
+    body = _sql("retract_quarantine")
+    assert not _DELETE_STATEMENT.search(SOURCE), (
+        "this module issues a DELETE; capex_app has the privilege revoked and "
+        "the row is evidence")
+    assert "UPDATE" in body and "status = %(resolved)s" in body
+    for column in ("resolved_at", "resolved_by", "resolution_note"):
+        assert column in body, (
+            "{} is not set, so ck_reconciliation_exception_resolution refuses "
+            "the row: a resolution names who and when, or it is not a "
+            "resolution".format(column))
+    assert "x.status = %(open)s" in body, (
+        "a row a human already Accepted or Wrote off would be overwritten; "
+        "the first reviewer's decision is evidence, not a draft")
+    assert store.EXCEPTION_RESOLVED == "Resolved"
+    # ...and it is audited, so the money leaving the bucket has a named reason.
+    assert "_audit" in body and "AUDIT_QUARANTINE_RETRACTED" in body
+
+
+# ----------------------------------------------------------- H-1 (HIGH)
+class _NoStatements:
+    """A session that records every statement it is asked to run.
+
+    Used where the assertion is that NOTHING was issued: a refusal that reaches
+    the database has already failed.
+    """
+
+    scope = Scope(user_id="U", entity_ids=frozenset({ENTITY}))
+
+    def __init__(self):
+        self.statements: list[str] = []
+
+    def fetchall(self, statement, params=None):
+        self.statements.append(statement)
+        return []
+
+    def fetchone(self, statement, params=None):
+        self.statements.append(statement)
+        return None
+
+
+@pytest.mark.parametrize("raw,default,expected", [
+    (None, "Void", "Void"),
+    ("   ", "Void", "Void"),
+    (None, "Draft", "Draft"),
+    ("", "Reversal", "Reversal"),
+])
+def test_the_status_resolver_returns_the_callers_default_not_a_hard_coded_approved(
+        raw, default, expected):
+    """The comment said "the caller's own default stands"; the code said
+    `return "Approved", None`.
+
+    `mirror_bill` then assigned that answer to `accounting_status`, so a bill
+    passed `accounting_status="Void"` came out **Approved** -- accounting
+    effective under AUD-C-004, relieving commitment and raising actual on a
+    VOIDED document. Two branches did it: the blank-raw one and the C17
+    `BUSINESS_STATUS` / `NO_BUSINESS_STATUS` one.
+    """
+    session = _NoStatements()
+    status, exception_id = procurement.resolve_accounting_status(
+        session, adapter_product="ERP", object="bill", field="status",
+        raw=raw, object_id="ZB-1", default_status=default, as_of=AS_OF)
+    assert (status, exception_id) == (expected, None)
+    assert session.statements == [], (
+        "a status the resolver had nothing to interpret still reached the "
+        "database")
+
+
+def test_a_c17_row_that_says_nothing_about_accounting_leaves_the_default_alone():
+    """C17's `BUSINESS_STATUS` and `NO_BUSINESS_STATUS` rows map a raw value
+    without saying anything about accounting effect. That silence is
+    deliberate, so the CALLER's default stands -- and it must be the caller's,
+    not the literal `Approved` this branch used to return.
+
+    Driven through `purchase_order.status`, whose ERP block is entirely
+    `BUSINESS_STATUS`, because both `bill.status` blocks are
+    `ACCOUNTING_STATUS_ONLY` today and the branch would otherwise be
+    unreachable from a test -- which is part of how it survived review.
+    """
+    session = _NoStatements()
+    for default in ("Void", "Draft", "Reversal", "Approved"):
+        status, exception_id = procurement.resolve_accounting_status(
+            session, adapter_product="ERP", object="purchase_order",
+            field="status", raw="cancelled", object_id="ZPO-1",
+            default_status=default, as_of=AS_OF)
+        assert (status, exception_id) == (default, None), (
+            "a C17 row carrying no accounting status overrode the caller's "
+            + repr(default))
+    assert session.statements == []
+
+
+def test_the_status_resolver_no_longer_hard_codes_approved_anywhere():
+    """The literal is gone from the function, and the caller hands its own
+    default in. Asserted against the code because both replacements are one
+    word each and a revert would read as a tidy-up."""
+    body = _sql("resolve_accounting_status")
+    assert 'return "Approved"' not in body and "return 'Approved'" not in body, (
+        "resolve_accounting_status hard-codes Approved again")
+    assert "default_status" in body
+    tree = ast.parse(SOURCE)
+    calls = [n for n in ast.walk(tree)
+             if isinstance(n, ast.Call)
+             and getattr(n.func, "id", None) == "resolve_accounting_status"]
+    assert calls, "mirror_bill no longer resolves the external status at all"
+    for call in calls:
+        supplied = {k.arg: ast.unparse(k.value) for k in call.keywords}
+        assert supplied.get("default_status") == "accounting_status", (
+            "the caller does not hand the resolver its own default, so the "
+            "resolver has nothing to fall back to but a hard-coded value")
+
+
+def test_an_invalid_default_status_is_refused_rather_than_substituted():
+    """A caller's typo reaching `bill.accounting_status` is refused by
+    `ck_bill_accounting_status` at 3am inside a cron function. Refused here
+    instead, and NOT quietly replaced with a valid-looking one."""
+    with pytest.raises(procurement.ProcurementIngestError) as exc:
+        procurement.resolve_accounting_status(
+            _NoStatements(), adapter_product="ERP", object="bill",
+            field="status", raw=None, object_id="ZB-1",
+            default_status="approved", as_of=AS_OF)
+    assert exc.value.code == "UNKNOWN_ACCOUNTING_STATUS"
+
+
+# ----------------------------------------------------------- H-2 (HIGH)
+def test_every_mirrored_grn_carries_all_four_provenance_columns():
+    """§6.1's block was ONE of four populated on every real receive.
+
+    `_mirror_grn_header` had a second INSERT branch, taken whenever
+    `external_source` was absent, that omitted BOTH `payload_sha` and
+    `external_last_modified` though `sweeps._attribute` passes them and
+    comments them "PROVENANCE, §11.10". `SweepPoAnchored.external_source`
+    defaults to `None` and nothing constructed it with a value, so that branch
+    was the only one anything ever took.
+    """
+    header = _sql("_mirror_grn_header")
+    inserts = re.findall(r"INSERT INTO \{GRN\}\s*\(([^)]*)\)", header)
+    assert len(inserts) == 1, (
+        "{} INSERT branches into grn; the second one is what dropped the "
+        "provenance, and there is nothing left for it to handle now that a "
+        "blank external_source is refused".format(len(inserts)))
+    columns = inserts[0]
+    for column in ("external_source", "external_id", "external_last_modified",
+                   "payload_sha"):
+        assert column in columns, (
+            "a mirrored GRN is written without {}; §11.10 requires the SOURCE "
+            "DOCUMENT to be recoverable, not our rendering of it".format(column))
+    # ...and a re-read carrying a newer version refreshes the two that say
+    # WHICH version, rather than leaving the first one we happened to see.
+    assert "external_last_modified = EXCLUDED.external_last_modified" in header
+    assert "payload_sha = EXCLUDED.payload_sha" in header
+
+
+def test_a_receive_with_no_external_source_is_refused_not_written_as_null():
+    """The NULL that caused all three defects, closed at the one place that can
+    close it.
+
+    `ux_grn_external ON grn (external_source, external_id)` is NULLS DISTINCT
+    in its LEADING column, so a NULL source made the index constrain nothing;
+    and `grn_id` is derived from `(external_source, receive_external_id)` while
+    `grn_number` is derived from the receive id alone, so the day a deployment
+    set the label every already-mirrored receive would derive a NEW `grn_id`
+    and the SAME `grn_number`, violate `ux_grn_number` -- which no ON CONFLICT
+    target here covers -- abort the transaction, and kill the sweep on every
+    tick, with DELETE revoked so nothing could be tidied.
+    """
+    class _CellResolves(_NoStatements):
+        """The control cell IS found, so the refusal below is the provenance
+        one and not the 404 that would otherwise mask it."""
+
+        def fetchall(self, statement, params=None):
+            self.statements.append(statement)
+            return [("PO-ING", PROJECT, WBS + "-a", HEAD + "-a")]
+
+    session = _CellResolves()
+    for blank in (None, "", "   "):
+        with pytest.raises(store.IntegrationStoreError) as exc:
+            procurement.record_receive_line(
+                session, po_line_id="POL-ING", receive_external_id="RCV-1",
+                line_external_id=POL_EXTERNAL, quantity="1",
+                amount_paise=1_000_000, external_source=blank)
+        assert exc.value.code == "RECEIVE_EXTERNAL_SOURCE_MISSING"
+    assert not any("INSERT" in statement for statement in session.statements), (
+        "a receive with no provenance reached a write before being refused")
+
+
+def test_the_grn_id_and_the_grn_number_can_no_longer_disagree():
+    """`grn_id` is derived, `grn_number` is derived, and the source label can no
+    longer change under them -- because it can no longer be absent. The
+    derivation itself is unchanged, so a replay still lands on the same row."""
+    first = procurement.derived_id("GRN", SOURCE_LABEL, "RCV-1")
+    assert first == procurement.derived_id("GRN", SOURCE_LABEL, "RCV-1")
+    assert "derived_id('GRN', external_source, receive_external_id)" \
+        in _sql("_mirror_grn_header").replace('"', "'"), (
+        "the grn_id derivation moved; it must stay a pure function of the "
+        "source label and the receive id, both of which are now mandatory")
+    # ...and the coalesce that made the two disagree is gone from the header,
+    # which is the only place it could reach an id. `_adapter_product_of` has
+    # its own `external_source or ""`, and that one is a normalisation before
+    # a REFUSAL rather than a value written anywhere, so this is scoped to the
+    # function rather than to the module.
+    assert "external_source or ''" not in _sql(
+        "_mirror_grn_header").replace('"', "'"), (
+        "a blank external_source is being coalesced into the id derivation "
+        "again, which is what made grn_id and grn_number disagree")
+    assert "external_source or ''" not in _sql(
+        "record_receive_line").replace('"', "'")
+
+
+# ----------------------------------------------------------- H-5 (HIGH)
+def test_every_money_moving_success_path_writes_an_audit_entry():
+    """Nothing in the ledger wrote an audit entry, on any SUCCESS path.
+
+    `record_receive_line` creates a `grn` header and a `grn_line`;
+    `mirror_bill` creates a `bill` and N `bill_line` rows. Those move `actual`
+    and `commitment`. Every mutation in `procurement_services.py` audits on the
+    same session; the mirrored documents -- where the money actually arrives --
+    had none, so §11.9's trace ("one id traces a Zoho bill from HTTP response
+    to ledger movement to audit entry") stopped one step short.
+    """
+    for name in ("_settle_receive_line", "mirror_bill",
+                 "_supersede_withdrawn_bill_lines", "retract_quarantine"):
+        assert "_audit(" in _sql(name), (
+            name + " moves money and writes no audit entry")
+    assert "audit_mod.append" in _sql("_audit")
+    assert procurement.AUDIT_RECEIVE_MIRRORED == "GRN_MIRRORED"
+    assert procurement.AUDIT_BILL_MIRRORED == "BILL_MIRRORED"
+
+
+def test_the_audit_entry_is_written_on_the_callers_own_session():
+    """INSIDE the transaction, so a rolled-back mirror leaves no entry claiming
+    it happened. `audit_mod.append` takes the caller's `session`; a second
+    connection, or a deferred write, would survive the rollback."""
+    tree = ast.parse(SOURCE)
+    appends = [n for n in ast.walk(tree)
+               if isinstance(n, ast.Call)
+               and isinstance(n.func, ast.Attribute)
+               and n.func.attr == "append"
+               and getattr(n.func.value, "id", None) == "audit_mod"]
+    assert len(appends) == 1, (
+        "the audit append moved or multiplied; there is one, and it takes the "
+        "caller's session")
+    assert ast.unparse(appends[0].args[0]) == "session"
+
+
+def test_the_audit_actor_is_server_derived_and_never_blank():
+    """Server-derived, never a caller-supplied header. An entry attributed to
+    nobody is indistinguishable from one nobody wrote, and `audit_log.actor` is
+    NOT NULL with no foreign key, so the refusal has to be in the code."""
+    # EVERY audit call passes the function's own `actor` parameter, which the
+    # ledger API takes from the calling service layer and defaults to the
+    # sweep's service identity. Nothing here reads a request, a header or an
+    # environment variable, so there is no path by which a caller-supplied
+    # string could become the actor without also being the authenticated one.
+    tree = ast.parse(SOURCE)
+    audits = [n for n in ast.walk(tree)
+              if isinstance(n, ast.Call)
+              and getattr(n.func, "id", None) == "_audit"]
+    assert len(audits) >= 4, "the audit calls moved; this gate moves with them"
+    for call in audits:
+        supplied = {k.arg: ast.unparse(k.value) for k in call.keywords}
+        assert supplied.get("actor") == "actor", (
+            "an audit entry is attributed to something other than the "
+            "server-derived actor the ledger function was called with")
+    for name in ("request", "headers", "environ", "getenv"):
+        assert name not in CODE, (
+            "this module reads " + name + "; the audit actor is the service "
+            "or principal identity the calling layer already authenticated")
+    body = _sql("_audit").replace('"', "'")
+    assert "code='BLANK_AUDIT_ACTOR'" in body
+    with pytest.raises(store.IntegrationStoreError) as exc:
+        procurement._audit(_NoStatements(), actor="  ", action="X",
+                           object_type="Y", object_id="Z", detail="d")
+    assert exc.value.code == "BLANK_AUDIT_ACTOR"
+
+
+# ----------------------------------------------------------- H-8 (HIGH)
+def test_reconcile_po_lines_is_transcribed_from_compute_ledger_verbatim():
+    """`received_paise` summed `grn_line.amount_paise` with NO JOIN to `grn`.
+
+    So it counted VOID goods receipts, which `reconciliation_lines` and
+    `domain.compute_ledger` both exclude, and it did not negate a reversal,
+    which both spell `SUM(CASE WHEN g.is_reversal THEN -ABS(...) ...)`. The
+    reviewer's numbers: a receipt of +12,000,000 with a reversal GRN stored
+    POSITIVE at 12,000,000 and `is_reversal = true` gives 0 from
+    `reconciliation_lines` and 24,000,000 here. Add a Void GRN of 5,000,000 and
+    the two differ by Rs 2,90,000 on ONE line.
+
+    `billed_paise` and `ordered_paise` had drifted the same way -- both dropped
+    `non_creditable_tax_paise` and `freight_paise`, and `billed` did not negate
+    a `Reversal` bill -- so all three limbs are checked against the ORIGINAL
+    rather than against a second statement of what the original says.
+    """
+    body = _sql("reconcile_po_lines")
+    assert re.search(r"JOIN \{GRN\} g ON g\.grn_id = gl\.grn_id", body), (
+        "received_paise sums grn_line with no join to grn, so a Void receipt "
+        "counts and a reversal does not subtract")
+    assert "g.status <> 'Void'" in body, (
+        "Void goods receipts are being counted as received")
+    assert re.search(
+        r"SUM\(CASE WHEN g\.is_reversal\s+THEN -ABS\(gl\.amount_paise\)",
+        body), (
+        "a reversal GRN is not negated; domain.compute_ledger spells it "
+        "-ABS(...) precisely so a reversal stored positive and one stored "
+        "negative reduce received by the same amount")
+    # The billed limb, AUD-C-004.
+    assert "b.accounting_status = 'Reversal'" in body
+    assert "b.accounting_status = ANY(%(effective)s)" in body, (
+        "the effective-status list is a second literal that can drift from "
+        "store.ACCOUNTING_EFFECTIVE_BILL_STATES")
+    # Tax and freight are part of the money on all three limbs.
+    for limb in ("pl.non_creditable_tax_paise", "bl.non_creditable_tax_paise"):
+        assert limb in body, limb + " is dropped from the arithmetic"
+    assert body.count("freight_paise") >= 3
+    # ...and the ORIGINAL still says what this claims to transcribe, so the day
+    # compute_ledger changes, this fails rather than drifting quietly.
+    assert "WHERE g.status <> 'Void'" in DOMAIN_SOURCE
+    assert "-ABS(gl.amount_paise)" in DOMAIN_SOURCE
+    assert sqlite_domain.ACCOUNTING_EFFECTIVE_BILL_STATES == {
+        "Approved", "Reversal"}
+    assert set(store.ACCOUNTING_EFFECTIVE_BILL_STATES) == \
+        sqlite_domain.ACCOUNTING_EFFECTIVE_BILL_STATES, (
+        "PostgreSQL and the SQLite ledger disagree about which bill states are "
+        "accounting-effective; they would quote different open commitment for "
+        "the same estate, silently")
+
+
+# --------------------------------------------------------- M-2 (MEDIUM)
+def test_a_revised_bill_supersedes_the_lines_it_no_longer_carries():
+    """A bill revised from three lines to two kept the removed line
+    contributing to billed -- and through it to actual -- for ever.
+
+    `mirror_bill` upserted the lines it was given and never reconciled the ones
+    that had DISAPPEARED from the source, and DELETE is revoked so nothing
+    could remove them afterwards. They are made NON-EFFECTIVE instead: the
+    money zeroed so every formula that sums it sees nothing, the row kept and
+    stamped so the trail still says what it was.
+    """
+    assert "_supersede_withdrawn_bill_lines" in _sql("mirror_bill")
+    body = _sql("_supersede_withdrawn_bill_lines")
+    assert "UPDATE" in body and not _DELETE_STATEMENT.search(body)
+    for column in ("amount_paise = 0", "non_creditable_tax_paise = 0",
+                   "freight_paise = 0", "quantity = 0"):
+        assert column in body, (
+            column + " is not zeroed, so a withdrawn line keeps contributing "
+            "to billed and to actual")
+    assert "NOT (bl.bill_line_id = ANY(%(keep)s::text[]))" in body, (
+        "the lines this pass wrote are not protected, or the empty-list case "
+        "cannot be typed by the driver")
+    # The stamp is also the idempotency guard: the sweeps re-walk, and a second
+    # pass must not re-stamp and re-version a row it already withdrew.
+    assert "NOT LIKE %(stamped)s" in body
+    assert procurement.SUPERSEDED_DESCRIPTION_PREFIX == "SUPERSEDED "
+
+
+def test_a_re_mirrored_bill_line_takes_its_new_control_cell():
+    """The `ON CONFLICT DO UPDATE` set list omitted `po_id`, `po_line_id`,
+    `wbs_id` and `budget_head_id` -- the four columns
+    `fk_bill_line_po_line_cell` binds together -- so a re-mirrored line kept
+    its ORIGINAL control cell after its linkage changed, and the money stayed
+    posted against a WBS element and budget head the source no longer names."""
+    body = _sql("_mirror_bill_line")
+    conflict = body.split("ON CONFLICT (bill_line_id)")[1]
+    for column in ("po_id", "po_line_id", "wbs_id", "budget_head_id",
+                   "po_line_external_id"):
+        assert column + " = EXCLUDED." + column in conflict, (
+            column + " is not refreshed on a re-mirror; the line keeps a "
+            "control cell the source no longer names")
+
+
+# =========================================================================
+# LIVE. Gated on CAPEX_DB_URL; first executes in CI.
+# =========================================================================
+def _open_exceptions_paise(con) -> int:
+    row = con.execute(
+        "SELECT coalesce(sum(source_paise), 0)::bigint"
+        " FROM reconciliation_exception WHERE status = 'Open'").fetchone()
+    return int(row[0])
+
+
+@PG
+def test_the_bill_quarantine_then_attribute_sequence_counts_the_money_once(seeded):
+    """C-2, end to end, with the reviewer's own scenario.
+
+    Pass 1 sees a bill line whose linkage does not resolve: it is quarantined
+    at FULL value. Pass 2 sees the same bill with the linkage populated: the
+    line posts. The money must then exist ONCE -- in `bill_line`, feeding
+    billed and actual -- and NOT also in `open_exception_exposure`, which is
+    what the capitalisation gate and the period close quote.
+    """
+    session = _session(seeded)
+    first = _bill(session, external_id="ZB-Q", number="BILL-Q",
+                  lines=[_line(2_500_000, line_id="NOT-A-LINE")])
+    seeded.commit()
+    assert first["quarantined"] == 1 and first["attributed"] == 0
+    assert _open_exceptions_paise(seeded) == 2_500_000
+    exception_id = first["exception_ids"][0]
+
+    # The same source document on the next pass, now carrying the linkage.
+    second = _bill(session, external_id="ZB-Q", number="BILL-Q",
+                   lines=[_line(2_500_000, line_id=POL_EXTERNAL)])
+    seeded.commit()
+    assert second["attributed"] == 1 and second["quarantined"] == 0
+
+    status, resolved_by, note, held = seeded.execute(
+        "SELECT status, resolved_by, resolution_note, source_paise"
+        " FROM reconciliation_exception WHERE exception_id = %s",
+        (exception_id,)).fetchone()
+    assert status == "Resolved", (
+        "the exception raised on pass 1 is still Open, so the line is counted "
+        "in bill_line AND in open_exception_exposure, and capitalisation is "
+        "blocked for ever on a line that is correctly posted")
+    assert resolved_by and note, (
+        "ck_reconciliation_exception_resolution requires who and when")
+    assert int(held) == 2_500_000, (
+        "the row lost the record of what it was holding; the value stops "
+        "counting because the row leaves Open, not because it was zeroed")
+
+    assert _open_exceptions_paise(seeded) == 0
+    assert store.open_exception_exposure(
+        session, project_id=PROJECT)["source_paise"] == 0
+    billed = seeded.execute(
+        "SELECT sum(amount_paise)::bigint FROM bill_line").fetchone()[0]
+    assert int(billed) == 2_500_000, "the money is counted twice, or not at all"
+    assert procurement.reconcile_po_lines(
+        session, project_id=PROJECT)[0]["billed_paise"] == 2_500_000
+
+
+@PG
+def test_a_receive_quarantined_on_pass_one_is_retracted_when_it_attributes(seeded):
+    """The GRN half of the same sequence.
+
+    The quarantine is raised by `sweeps.SweepPoAnchored._attribute` with an
+    object_id of `receive:line`, and the ledger retracts exactly that key when
+    the line posts -- no ordinal has to be carried through the store surface,
+    because a line with no identifier can never attribute at all.
+    """
+    session = _session(seeded)
+    exception_id = store.raise_exception(
+        session, kind="GRN_LINE_UNATTRIBUTED", object_type="grn_line",
+        object_id="RCV-1:" + POL_EXTERNAL,
+        detail="Receive RCV-1 line does not resolve to a known po_line.",
+        raised_at=T0, entity_id=ENTITY, project_id=PROJECT)
+    store.accumulate_unattributed(session, project_id=PROJECT,
+                                  paise=1_000_000, source_key=exception_id)
+    seeded.commit()
+    assert _open_exceptions_paise(seeded) == 1_000_000
+
+    _receive(session, receive_id="RCV-1", line_id=POL_EXTERNAL,
+             quantity="1", paise=1_000_000)
+    seeded.commit()
+
+    status = seeded.execute(
+        "SELECT status FROM reconciliation_exception WHERE exception_id = %s",
+        (exception_id,)).fetchone()[0]
+    assert status == "Resolved"
+    assert _open_exceptions_paise(seeded) == 0
+    assert int(seeded.execute(
+        "SELECT sum(amount_paise)::bigint FROM grn_line").fetchone()[0]) \
+        == 1_000_000
+
+
+@PG
+def test_a_human_triaged_exception_is_not_reopened_or_overwritten(seeded):
+    """A reviewer who Accepted or Wrote off an exception has made a decision.
+    The retraction only ever moves a row OUT of Open, so an already-triaged row
+    keeps its own actor, reason and status."""
+    session = _session(seeded)
+    exception_id = store.raise_exception(
+        session, kind="GRN_LINE_UNATTRIBUTED", object_type="grn_line",
+        object_id="RCV-1:" + POL_EXTERNAL, detail="unattributed",
+        raised_at=T0, entity_id=ENTITY, project_id=PROJECT)
+    store.act_on_exception(session, exception_id=exception_id, action="accept",
+                           actor="U-FINANCE", reason="Known vendor shortfall.")
+    seeded.commit()
+
+    _receive(session, receive_id="RCV-1", line_id=POL_EXTERNAL,
+             quantity="1", paise=1_000_000)
+    seeded.commit()
+
+    status, by, note = seeded.execute(
+        "SELECT status, resolved_by, resolution_note"
+        " FROM reconciliation_exception WHERE exception_id = %s",
+        (exception_id,)).fetchone()
+    assert (status, by) == ("Accepted", "U-FINANCE")
+    assert note == "Known vendor shortfall."
+
+
+@PG
+def test_a_void_bill_stays_void_and_moves_no_money(seeded):
+    """H-1's scenario: `accounting_status="Void"` must survive.
+
+    An `Approved` here is accounting-effective under AUD-C-004: it would
+    relieve commitment and raise actual on a VOIDED document.
+    """
+    session = _session(seeded)
+    result = _bill(session, external_id="ZB-VD", number="BILL-VD",
+                   lines=[_line(700_000)], accounting_status="Void",
+                   status_raw="void")
+    seeded.commit()
+    assert result["accounting_status"] == "Void"
+    assert result["accounting_effective"] is False
+    assert seeded.execute(
+        "SELECT accounting_status FROM bill WHERE bill_number = 'BILL-VD'"
+    ).fetchone()[0] == "Void"
+    # ...and a Void bill moves nothing: not billed, and therefore not actual.
+    assert procurement.reconcile_po_lines(
+        session, project_id=PROJECT)[0]["billed_paise"] == 0
+    assert store.reconciliation_lines(
+        session, project_id=PROJECT)[0]["billed_paise"] == 0
+
+
+@PG
+def test_reconcile_po_lines_and_reconciliation_lines_agree_on_void_and_reversal(
+        seeded):
+    """H-8, with the reviewer's exact numbers.
+
+    A receipt of +12,000,000, a reversal GRN stored POSITIVE at 12,000,000 with
+    `is_reversal = true`, and a Void GRN of 5,000,000. `reconciliation_lines`
+    said 0; `reconcile_po_lines` said 24,000,000, and 29,000,000 once the Void
+    receipt was added -- a difference of Rs 2,90,000 on one line.
+    """
+    session = _session(seeded)
+    _receive(session, receive_id="RCV-1", line_id=POL_EXTERNAL,
+             quantity="1", paise=12_000_000)
+    procurement.record_receive_line(
+        session, po_line_id="POL-ING", receive_external_id="RCV-REV",
+        line_external_id=POL_EXTERNAL, quantity="-1",
+        amount_paise=12_000_000, external_source=SOURCE_LABEL,
+        received_at=T0, external_last_modified=T0, payload_sha="sha-rev",
+        is_reversal=True)
+    _receive(session, receive_id="RCV-VOID", line_id=POL_EXTERNAL,
+             quantity="1", paise=5_000_000)
+    seeded.execute(
+        "UPDATE grn SET status = 'Void' WHERE external_id = 'RCV-VOID'")
+    seeded.commit()
+
+    mine = procurement.reconcile_po_lines(session, project_id=PROJECT)[0]
+    theirs = store.reconciliation_lines(session, project_id=PROJECT)[0]
+    assert mine["received_paise"] == 0, (
+        "a reversal stored positive was added instead of subtracted, or a "
+        "Void goods receipt was counted")
+    assert mine["received_paise"] == theirs["received_paise"]
+    assert mine["ordered_paise"] == theirs["ordered_paise"]
+    assert mine["billed_paise"] == theirs["billed_paise"]
+    for key in ("ordered_paise", "received_paise", "billed_paise"):
+        assert isinstance(mine[key], int) and not isinstance(mine[key], bool), (
+            key + " came back as a Decimal; a SUM lost its ::bigint cast")
+
+
+@PG
+def test_a_revised_bill_stops_counting_the_line_it_no_longer_carries(seeded):
+    """M-2, end to end. Three lines become two; the third stops counting and
+    its row is still there to say what it was."""
+    session = _session(seeded)
+    _bill(session, external_id="ZB-R", number="BILL-R", lines=[
+        _line(300_000), _line(400_000), _line(500_000)])
+    seeded.commit()
+    assert int(seeded.execute(
+        "SELECT sum(amount_paise)::bigint FROM bill_line").fetchone()[0]) \
+        == 1_200_000
+
+    revised = _bill(session, external_id="ZB-R", number="BILL-R",
+                    lines=[_line(300_000), _line(400_000)])
+    seeded.commit()
+    assert revised["superseded"] == 1
+
+    assert int(seeded.execute(
+        "SELECT sum(amount_paise)::bigint FROM bill_line").fetchone()[0]) \
+        == 700_000, "the withdrawn line is still contributing to billed"
+    assert seeded.execute(
+        "SELECT count(*) FROM bill_line").fetchone()[0] == 3, (
+        "the row was DELETEd; capex_app has the privilege revoked and the row "
+        "is evidence of what the bill once carried")
+    stamped = seeded.execute(
+        "SELECT description FROM bill_line WHERE amount_paise = 0"
+    ).fetchone()[0]
+    assert stamped.startswith(procurement.SUPERSEDED_DESCRIPTION_PREFIX)
+    assert procurement.reconcile_po_lines(
+        session, project_id=PROJECT)[0]["billed_paise"] == 700_000
+
+    # ...and a re-mirror of the SAME revision withdraws nothing further and
+    # does not re-stamp: the sweeps re-walk, and version_no would otherwise
+    # climb every fifteen minutes on a row nothing had touched.
+    version_before = seeded.execute(
+        "SELECT version_no FROM bill_line WHERE amount_paise = 0").fetchone()[0]
+    again = _bill(session, external_id="ZB-R", number="BILL-R",
+                  lines=[_line(300_000), _line(400_000)])
+    seeded.commit()
+    assert again["superseded"] == 0
+    assert seeded.execute(
+        "SELECT version_no FROM bill_line WHERE amount_paise = 0"
+    ).fetchone()[0] == version_before
+
+
+@PG
+def test_a_mirrored_receive_and_a_mirrored_bill_each_leave_an_audit_entry(seeded):
+    """H-5. These rows move `actual` and `commitment`; every mutation in
+    `procurement_services.py` audits on the same session and these had none."""
+    session = _session(seeded)
+    _receive(session, receive_id="RCV-1", line_id=POL_EXTERNAL,
+             quantity="1", paise=1_000_000)
+    _bill(session, external_id="ZB-1", number="BILL-1",
+          lines=[_line(1_000_000)])
+    seeded.commit()
+
+    actions = [row[0] for row in seeded.execute(
+        "SELECT action FROM audit_log ORDER BY audit_id").fetchall()]
+    assert procurement.AUDIT_RECEIVE_MIRRORED in actions
+    assert procurement.AUDIT_BILL_MIRRORED in actions
+    actor, detail = seeded.execute(
+        "SELECT actor, detail FROM audit_log WHERE action = %s",
+        (procurement.AUDIT_BILL_MIRRORED,)).fetchone()
+    assert actor == "SVC-SWEEP"
+    assert "1000000" in detail, "the entry does not say how much moved"
+    # The chain is intact, which is the property the whole log rests on.
+    bill_id = seeded.execute("SELECT bill_id FROM bill").fetchone()[0]
+    assert audit_mod.verify_chain(session, "VendorBill:" + bill_id)["intact"]
+
+
+@PG
+def test_a_rolled_back_mirror_leaves_no_audit_entry_claiming_it_happened(seeded):
+    """The entry is appended INSIDE the caller's transaction, so it dies with
+    the rows it describes. A second connection, or a deferred write, would
+    leave the log asserting a receipt that no `grn_line` backs."""
+    session = _session(seeded)
+    _receive(session, receive_id="RCV-1", line_id=POL_EXTERNAL,
+             quantity="1", paise=1_000_000)
+    assert seeded.execute(
+        "SELECT count(*) FROM audit_log WHERE action = %s",
+        (procurement.AUDIT_RECEIVE_MIRRORED,)).fetchone()[0] == 1
+    seeded.rollback()
+    assert seeded.execute("SELECT count(*) FROM grn_line").fetchone()[0] == 0
+    assert seeded.execute(
+        "SELECT count(*) FROM audit_log WHERE action = %s",
+        (procurement.AUDIT_RECEIVE_MIRRORED,)).fetchone()[0] == 0
