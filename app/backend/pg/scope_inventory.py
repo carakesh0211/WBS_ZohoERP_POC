@@ -569,6 +569,43 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
         note="Plan section 12's PR and PO state machines as data. A legal "
              "state change is legal estate-wide. READ-ONLY to capex_app, as "
              "lifecycle_state."),
+
+    # ------------------------------------------------ 017_export_jobs.sql
+    # Wave 7 stream A2. `app.backend.pg.rls`'s registry is lead-owned and is
+    # not edited by this stream, so both entries are
+    # `protected_pending_registry`, exactly as 008's and 010's are: the
+    # migration DOES enable, force and policy them; only the registry half is
+    # outstanding.
+    ScopedTable(
+        table="export_job", dimensions=(), reach="reference",
+        path="no dimension column -- the row's authorisation is its REQUESTER, "
+             "and its scope_json is a SET of ids across all four dimensions, "
+             "which is not a value a per-row predicate can filter on",
+        status="protected_pending_registry",
+        migration="017_export_jobs.sql",
+        note="Classified `reference` for the shape of its predicate, NOT "
+             "because it is organisation-wide data -- it is the opposite of "
+             "organisation-wide. `lifecycle_state` admits any established "
+             "principal; `export_job_owner` admits ONE, the requester named on "
+             "the row, and `export_job_service` admits the SVC-EXPORT worker "
+             "so it can claim and advance jobs. That is a narrower line than "
+             "any dimension predicate in this file draws, not a waiver of one. "
+             "It has to be: the row carries the requester's whole resolved "
+             "scope, and a rendered export of another entity's financial data "
+             "hangs off it."),
+    ScopedTable(
+        table="export_job_chunk", dimensions=(), reach="joined",
+        path="export_job_chunk.export_job_id -> export_job, whose own two "
+             "policies decide",
+        status="protected_pending_registry",
+        migration="017_export_jobs.sql",
+        note="The rendered bytes. Visible to exactly whoever the parent job is "
+             "visible to, expressed as an EXISTS over `export_job` so there is "
+             "one definition of 'may see this export' rather than two that can "
+             "drift. Append-only by trigger AND by privilege (capex_app holds "
+             "SELECT/INSERT/DELETE, never UPDATE); DELETE is granted on purpose "
+             "-- expiry purges the bytes while the job row recording who "
+             "exported what, under which scope, stays."),
 )
 
 #: Tables deliberately left WITHOUT a scope policy, each with the reason.
