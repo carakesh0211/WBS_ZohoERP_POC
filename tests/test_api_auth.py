@@ -273,6 +273,35 @@ MUTATING_ROUTES = [
      {"connection_id": "CONN-01", "vendor_external_id": "ZV-77",
       "document_date": "2026-09-07"},
      "connector.manage", "Auditor"),
+
+    # ---------------------------------------------------------- Wave 7 (A2)
+    # `/api/exports/*`. The router floor is `budget.read`, which every role
+    # holds, so the denied role below authenticates, clears the floor, and
+    # stops at the ROUTE's own `export.create`. Auditor is that role: it holds
+    # `budget.read` and is deliberately excluded from `export.create`, because
+    # creating an export job is a row INSERT and
+    # `test_aud_c_006_auditor_is_read_only` pins Auditor to an allow-list of
+    # four permissions. A denied role that failed the FLOOR would produce a 403
+    # from the wrong check and the row would prove nothing about the route.
+    #
+    # Registered in the same commit that mounts the router in `main.py`, for
+    # the reason the Wave 5 block above states.
+    #
+    # GET routes are absent from this matrix by construction -- it covers
+    # mutating paths only -- and that is not a gap: a caller can only ever read
+    # their OWN export jobs, and a job belonging to somebody else answers 404
+    # with the same code as one that never existed.
+    ("/api/exports", "POST", "/api/exports",
+     {"dataset": "budget_ledger_cells"}, "export.create", "Auditor"),
+    ("/api/exports/{export_job_id}/advance", "POST",
+     "/api/exports/EXP-DOES-NOT-EXIST/advance", {},
+     "export.create", "Auditor"),
+    ("/api/exports/{export_job_id}/cancel", "POST",
+     "/api/exports/EXP-DOES-NOT-EXIST/cancel",
+     {"reason": "unauthorised attempt"}, "export.create", "Auditor"),
+    ("/api/exports/{export_job_id}/retry", "POST",
+     "/api/exports/EXP-DOES-NOT-EXIST/retry", {},
+     "export.create", "Auditor"),
 ]
 
 PUBLIC_MUTATING_ROUTES = {"/api/auth/login"}

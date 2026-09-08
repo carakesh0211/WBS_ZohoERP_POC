@@ -95,6 +95,7 @@ else:
 from .api import admin_access as admin_access_api
 from .api import approvals as approvals_api
 from .api import budget as budget_api
+from .api import exports as exports_api
 from .api import integrations as integrations_api
 from .api import masters as masters_api
 from .api import procurement as procurement_api
@@ -118,6 +119,11 @@ app.include_router(integrations_api.router)
 # tables; the SQLite `/api/purchase-requests` and `/api/purchase-orders`
 # routes above are untouched and stay deployable until the cutover.
 app.include_router(procurement_api.router)
+# Wave 7 stream A2. Same rule, same commit: the four mutating paths this router
+# serves are in `tests/test_api_auth.py::MUTATING_ROUTES` in the commit that
+# mounts it. `/api/exports/*` answers 202 with a job id and never a file, so no
+# route here can exceed the 30-second AppSail budget however large the export.
+app.include_router(exports_api.router)
 
 PUBLIC_PATHS = {"/api/health", "/api/auth/login"}
 
