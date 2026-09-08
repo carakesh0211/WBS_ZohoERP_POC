@@ -42,6 +42,8 @@
 */
 
 import { h } from './dom.js';
+import { ANALYTICS_SCREENS } from '../features/analytics/manifest.js';
+import { MAPPING_SCREENS } from '../features/mapping/manifest.js';
 
 /* ---------------- on-demand stylesheets ----------------
    index.html loads ONLY the byte-frozen styles.css. The additive stylesheets
@@ -408,6 +410,13 @@ export const SCREENS = [
     need: ['approval.delegate'],
     build: approvalScreen('approval-delegations', 'delegations.js', 'mountDelegations'),
   },
+  // Wave 7. Spliced by the lead, exactly as each feature's manifest.js
+  // specifies. The entries carry the same shape router.js's own do -- id, scr,
+  // group, ico, label, title, crumbs, need, build() -> { node, mount } -- with
+  // per-route stylesheet injection done inside build().mount(), so router.js
+  // needs no constant of its own for either.
+  ...ANALYTICS_SCREENS,
+  ...MAPPING_SCREENS,
 ];
 
 /** @returns {Object|undefined} the screen declared at this hash. */

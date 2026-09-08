@@ -230,6 +230,26 @@ const SCR_ROUTES = [
   { id: 'approval-versions', ico: '⎘', label: 'Workflow Version History', need: ['approval.configure'] },
   { id: 'approval-simulator', ico: '⊛', label: 'Approval Rule Simulator', need: ['approval.configure'] },
   { id: 'approval-delegations', ico: '⇌', label: 'Delegation Management', need: ['approval.delegate'] },
+  // Wave 7 analytics. app.js is a CLASSIC SCRIPT and cannot import an ES
+  // module, so these are restated from features/analytics/manifest.js. They
+  // deep-link, stay permission-gated and stay bookmarkable without a nav row:
+  // `viewAllowed()` resolves any SCR_ROUTES id whether or not NAV carries it.
+  { id: 'analytics-executive',          ico: '▣', label: 'Executive CAPEX Dashboard',    need: ['budget.read'] },
+  { id: 'analytics-controller',         ico: '◎', label: 'Project Controller Workbench', need: ['budget.check'] },
+  { id: 'analytics-project-list',       ico: '▤', label: 'CAPEX Project List',           need: ['budget.read'] },
+  { id: 'analytics-project-object',     ico: '▥', label: 'CAPEX Project Object Page',    need: ['budget.read'] },
+  { id: 'analytics-wbs-explorer',       ico: '⌗', label: 'WBS Hierarchy Explorer',       need: ['budget.read'] },
+  { id: 'analytics-wbs-tree',           ico: '▦', label: 'WBS Tree Table',               need: ['budget.read'] },
+  { id: 'analytics-wbs-element',        ico: '⊡', label: 'WBS Element Detail',           need: ['budget.read'] },
+  { id: 'analytics-cwip-ledger',        ico: '₹', label: 'CWIP Ledger',                  need: ['budget.read'] },
+  { id: 'analytics-commitment-ageing',  ico: '◷', label: 'Open Commitment Ageing',       need: ['budget.read'] },
+  { id: 'analytics-cwip-ageing',        ico: '◔', label: 'CWIP Ageing',                  need: ['budget.read'] },
+  { id: 'analytics-exceptions',         ico: '⚠', label: 'Exception & Overrun Monitor',  need: ['budget.check'] },
+  // Wave 7 mapping, from features/mapping/manifest.js, same reasoning.
+  { id: 'mapping-master',   ico: '⇵', label: 'Master Data Mapping Workbench',       need: ['masters.read'] },
+  { id: 'mapping-fields',   ico: '⇄', label: 'Transaction Field Mapping Workbench', need: ['connector.read'] },
+  { id: 'mapping-sync',     ico: '◷', label: 'Sync Direction & Scheduling',         need: ['connector.read'] },
+  { id: 'connector-audit',  ico: '⧉', label: 'Connector Audit & Credential Log',    need: ['audit.read'] },
 ];
 
 /** The SCR_ROUTES row for an id, spliced into NAV by reference. */

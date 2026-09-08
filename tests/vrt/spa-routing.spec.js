@@ -534,15 +534,30 @@ test.describe('SPA routing — the two declarations cannot drift', () => {
       expect(entry.scr, `${s.hash} lost its SCR number`).toBe(s.scr);
     }
 
-    // And the registry as a whole is exactly the thirteen routable screens:
-    // these five, plus the approval engine's eight from Wave 4 (covered by
-    // tests/vrt/approvals.spec.js). Naming all thirteen rather than asserting
-    // "at least the five" keeps this an exact statement — a fourteenth screen
-    // appearing without a test still fails here.
+    // And the registry as a whole is exactly the twenty-eight routable
+    // screens: five shell screens, the approval engine's eight from Wave 4
+    // (tests/vrt/approvals.spec.js), Wave 7's eleven analytics screens
+    // (tests/vrt/analytics.spec.js) and its four mapping/connector screens
+    // (tests/vrt/mapping.spec.js). Naming every one rather than asserting
+    // "at least the five" keeps this an exact statement — a twenty-ninth
+    // screen appearing without a test still fails here.
+    //
+    // This list was thirteen until Wave 7, and it FAILED when the fifteen new
+    // screens were spliced into the registry. That is the assertion working,
+    // not an obstacle to route around: it is extended here only because each
+    // of the fifteen brought its own spec asserting its own SCR number, which
+    // is the condition the guard is checking for. Relaxing it to a subset
+    // check would have removed the property entirely.
     expect(registry.map((r) => r.id).sort()).toEqual([
+      'analytics-commitment-ageing', 'analytics-controller', 'analytics-cwip-ageing',
+      'analytics-cwip-ledger', 'analytics-exceptions', 'analytics-executive',
+      'analytics-project-list', 'analytics-project-object', 'analytics-wbs-element',
+      'analytics-wbs-explorer', 'analytics-wbs-tree',
       'approval-delegations', 'approval-inbox', 'approval-matrix', 'approval-request',
       'approval-simulator', 'approval-sla', 'approval-timeline', 'approval-versions',
-      'audit-trail', 'budget-availability', 'budget-compare', 'budget-grid', 'settings',
+      'audit-trail', 'budget-availability', 'budget-compare', 'budget-grid',
+      'connector-audit', 'mapping-fields', 'mapping-master', 'mapping-sync',
+      'settings',
     ].sort());
   });
 
