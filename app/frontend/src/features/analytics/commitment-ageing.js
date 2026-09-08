@@ -27,7 +27,7 @@
 */
 
 import { createAgeingScreen } from './ageing-screen-base.js';
-import { getCommitmentTotal, REPORT_IDS } from './analytics-api.js';
+import { getCommitmentTotal, SCREENS } from './analytics-api.js';
 
 export const mountCommitmentAgeing = createAgeingScreen({
   screen: 'SCR-23 Open Commitment Ageing',
@@ -38,7 +38,7 @@ export const mountCommitmentAgeing = createAgeingScreen({
     + 'purchase order reaches a commitment-releasing state — a receipt does not release a '
     + 'commitment. Received-not-billed is a separate exposure shown beside it; the two overlap '
     + 'by design and are never added together.',
-  reportId: REPORT_IDS.commitmentAgeing,
+  report: SCREENS.commitmentAgeing,
   fetchTotal: getCommitmentTotal,
   rowMetric: 'open_commitment_paise',
   bucketWhat: 'Open commitment ageing',

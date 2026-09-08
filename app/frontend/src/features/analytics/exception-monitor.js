@@ -55,14 +55,14 @@ import {
   bandBar, bandChip, card, countCard, createAnnouncer, exportButton, metricCard,
 } from './analytics-kit.js';
 import {
-  createFilterBar, drilldownHref, filterChips, readFilters, screenHref, writeFilters,
+  createFilterBar, drilldownHref, filterChips, readFilters, writeFilters,
 } from './analytics-filters.js';
 import { inr } from './analytics-metrics.js';
 import { METRIC_LABEL, projectRow, readAlerts, readRows, readTotals } from './analytics-shapes.js';
 import { createDataTable } from '../../components/capex-datatable.js';
 import { statusChip } from '../../components/capex-statuschip.js';
 import {
-  exportAvailable, getExceptions, queueExport, REPORT_IDS,
+  exportAvailable, getExceptions, queueExport, SCREENS,
 } from './analytics-api.js';
 
 const FILTER_FIELDS = [
@@ -289,7 +289,9 @@ export function mountExceptionMonitor(root) {
         + 'collectively over budget.',
       accent: 'info',
       metric: 'available',
-      href: screenHref('analytics-controller', filters),
+      // See executive-dashboard.js: every tile declares which figure was
+      // clicked.
+      href: drilldownHref('analytics-controller', filters, { metric: 'available' }),
     }));
 
     tiles.appendChild(band);
@@ -343,9 +345,9 @@ export function mountExceptionMonitor(root) {
     while (exportHost.firstChild) exportHost.removeChild(exportHost.firstChild);
     exportHost.appendChild(exportButton({
       availability,
-      reportId: REPORT_IDS.exceptions,
+      report: SCREENS.exceptions,
       onExport: async () => {
-        const result = await queueExport(REPORT_IDS.exceptions, filters);
+        const result = await queueExport(SCREENS.exceptions, filters);
         announce(result.queued ? 'The export has been queued.'
           : 'This build mounts no export endpoint, so nothing was queued.');
       },

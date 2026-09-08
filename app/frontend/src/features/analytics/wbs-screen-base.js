@@ -57,7 +57,7 @@ import { exportAvailable, getWbs, queueExport } from './analytics-api.js';
  * @param {string[]} spec.metrics - money columns.
  * @param {string[]} spec.cards - metric keys rendered as cards.
  * @param {number|null} spec.collapseBelow - null opens flat.
- * @param {string} spec.reportId
+ * @param {string} spec.report
  */
 export function createWbsScreen(spec) {
   return function mount(root) {
@@ -215,9 +215,9 @@ export function createWbsScreen(spec) {
       while (exportHost.firstChild) exportHost.removeChild(exportHost.firstChild);
       exportHost.appendChild(exportButton({
         availability,
-        reportId: spec.reportId,
+        report: spec.report,
         onExport: async () => {
-          const result = await queueExport(spec.reportId, filters);
+          const result = await queueExport(spec.report, filters);
           announce(result.queued ? 'The export has been queued.'
             : 'This build mounts no export endpoint, so nothing was queued.');
         },
@@ -249,7 +249,7 @@ export function createWbsScreen(spec) {
       tree.el.hidden = false;
       tree.renderSkeleton();
 
-      await loader.run(() => getWbs(projectId, filters, spec.reportId), {
+      await loader.run(() => getWbs(projectId, filters, spec.report), {
         render: (data, result) => {
           renderChips(result.unapplied);
           const nested = Array.isArray(data && data.tree) ? data.tree
@@ -271,6 +271,9 @@ export function createWbsScreen(spec) {
             ]));
           }
           if (!rows.length) { tree.setRows([]); tree.el.hidden = true; return false; }
+          // See executive-dashboard.js: `onState('loading')` hides this, and
+          // only the success path can put it back.
+          tree.el.hidden = false;
           tree.setRows(rows, { collapseBelow: spec.collapseBelow });
           announceCount();
           return true;

@@ -44,7 +44,7 @@ import { createDataTable } from '../../components/capex-datatable.js';
 import { statusChip } from '../../components/capex-statuschip.js';
 import { formatAuditTimestamp } from '../../core/format.js';
 import {
-  exportAvailable, getCwipLedger, queueExport, REPORT_IDS,
+  exportAvailable, getCwipLedger, queueExport, SCREENS,
 } from './analytics-api.js';
 
 const FILTER_FIELDS = [
@@ -338,9 +338,9 @@ export function mountCwipLedger(root) {
     while (exportHost.firstChild) exportHost.removeChild(exportHost.firstChild);
     exportHost.appendChild(exportButton({
       availability,
-      reportId: REPORT_IDS.cwipLedger,
+      report: SCREENS.cwipLedger,
       onExport: async () => {
-        const result = await queueExport(REPORT_IDS.cwipLedger, filters);
+        const result = await queueExport(SCREENS.cwipLedger, filters);
         announce(result.queued ? 'The export has been queued.'
           : 'This build mounts no export endpoint, so nothing was queued.');
       },
@@ -374,6 +374,9 @@ export function mountCwipLedger(root) {
         const excluded = rows.filter((r) => isEffective(r) === false);
         renderCards(totals, rows, effective, excluded);
         if (!rows.length) { table.renderRows([]); table.el.hidden = true; return false; }
+        // See executive-dashboard.js: `onState('loading')` hides this, and
+        // only the success path can put it back.
+        table.el.hidden = false;
         table.renderRows(rows);
         announce(`${rows.length} bill(s); ${effective.length} counted in CWIP, `
           + `${excluded.length} excluded.`);

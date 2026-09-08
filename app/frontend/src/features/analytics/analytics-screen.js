@@ -51,9 +51,12 @@
 
 import { h } from '../../core/dom.js';
 import { createStateHost, stateForError } from '../../components/approvals/state-host.js';
-import { EndpointUnavailableError, ScopeDeniedError } from './analytics-api.js';
 import {
-  freshnessLine, scopeDeniedBlock, sourceLine, staleBlock, unappliedLine, unavailableBlock,
+  EndpointUnavailableError, FilterUnavailableError, ScopeDeniedError,
+} from './analytics-api.js';
+import {
+  filterUnavailableBlock, freshnessLine, scopeDeniedBlock, sourceLine, staleBlock,
+  unappliedLine, unavailableBlock,
 } from './analytics-kit.js';
 
 /** Every state this feature can be in. Exported so the suite cannot drift. */
@@ -161,6 +164,19 @@ export function createLoader({
         setState('unavailable');
         onState('unavailable');
         announce(`${what} is not available in this build.`);
+        return 'unavailable';
+      }
+      if (err instanceof FilterUnavailableError) {
+        /* UNAVAILABLE, not `error` and not `validation`. Nothing failed and
+           nothing the reader typed is malformed: the route answered and told
+           us which dimension this build cannot express. Rendering it through
+           the status host's `error` state would offer a Retry button for a
+           request that will be refused identically every time. */
+        host.set('ready');
+        notes.appendChild(filterUnavailableBlock(err, { what }));
+        setState('unavailable');
+        onState('unavailable');
+        announce(`${what} was not computed, because this build cannot apply one of your filters.`);
         return 'unavailable';
       }
       if (err instanceof ScopeDeniedError) {

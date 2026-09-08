@@ -83,6 +83,87 @@ export const METRIC_LABEL = Object.freeze({
 });
 
 /**
+ * The identity fields each reportable dimension supplies, when a grouped row
+ * is read into the vocabulary `projectRow()` and `flattenWbs()` already speak.
+ *
+ * `reporting.DIMENSIONS` selects a KEY and a LABEL per dimension — for
+ * `project`, `f.project_id` and `pr.capex_code` — and returns them in two
+ * side-maps rather than on the row. Both halves are carried across: dropping
+ * the key would leave a screen unable to build a drill-down link, and dropping
+ * the label would leave it rendering raw ids at a controller.
+ *
+ * `category` and `budget_head` deliberately land on the SAME pair of fields,
+ * because AMB-04 reads them as one column and the backend narrows both to
+ * `budget_head_ids`. Two names for one fact, kept as one fact.
+ */
+const DIMENSION_FIELDS = Object.freeze({
+  entity: { key: 'entity_id', label: 'entity' },
+  plant: { key: 'plant_id', label: 'plant' },
+  location: { key: 'location_id', label: 'location' },
+  project: { key: 'project_id', label: 'capex_code' },
+  wbs: { key: 'wbs_id', label: 'wbs_code' },
+  budget_head: { key: 'budget_head_id', label: 'budget_head' },
+  category: { key: 'budget_head_id', label: 'budget_head' },
+});
+
+/**
+ * Read ONE grouped row from `/api/reports/metrics` into the flat vocabulary.
+ *
+ * The metrics are already flat on the row and integer paise, so they are
+ * spread across UNTOUCHED — not recomputed, not rescaled, not defaulted. Only
+ * the `key` and `labels` side-maps are lifted onto named fields.
+ *
+ * `raw` keeps the original, and `group_key` keeps the whole key map, so a
+ * drill-down can send back exactly the key the server grouped on rather than a
+ * value re-derived from a label that may not be unique.
+ */
+export function adaptGroupedRow(raw) {
+  const r = raw || {};
+  const key = (r.key && typeof r.key === 'object') ? r.key : {};
+  const labels = (r.labels && typeof r.labels === 'object') ? r.labels : {};
+  const out = { ...r, group_key: key, group_labels: labels };
+  for (const [dimension, field] of Object.entries(DIMENSION_FIELDS)) {
+    if (Object.prototype.hasOwnProperty.call(key, dimension) && key[dimension] !== undefined) {
+      out[field.key] = key[dimension];
+    }
+    if (labels[dimension] !== undefined && labels[dimension] !== null) {
+      out[field.label] = labels[dimension];
+    }
+  }
+  /* A grouped row's display name is its label, and a row grouped on something
+     with no label (an id the join found no row for) keeps its id rather than
+     acquiring a fabricated name. `name` is left absent when neither exists —
+     `projectRow()` renders an absent name as a dash, at the cell, where the
+     reason can be attached. */
+  if (out.name === undefined) {
+    const first = (r.group_by && r.group_by[0]) || Object.keys(labels)[0] || Object.keys(key)[0];
+    const field = first ? DIMENSION_FIELDS[first] : null;
+    if (field && out[field.label] !== undefined) out.name = out[field.label];
+  }
+  return out;
+}
+
+/**
+ * A whole `/api/reports/metrics` (or `/drill-down`) payload, read into the
+ * shape the eleven screens already consume.
+ *
+ * `rows`, `totals`, `state`, `next_cursor`, `has_more` and `freshness` are
+ * PASSED THROUGH, because every one of them is the server's own answer and
+ * this function's job is translation, not arithmetic. Not one number is
+ * touched: the totals are the server's totals over the whole filtered
+ * population, and re-deriving them from the page would make them the totals of
+ * whatever happened to be on screen.
+ */
+export function adaptReportPayload(data) {
+  if (!data || typeof data !== 'object' || !Array.isArray(data.rows)) return data;
+  const groupBy = Array.isArray(data.group_by) ? data.group_by : [];
+  return {
+    ...data,
+    rows: data.rows.map((row) => adaptGroupedRow({ group_by: groupBy, ...row })),
+  };
+}
+
+/**
  * Pull the row array out of whichever shape answered.
  *
  * @returns {{rows: Array, readable: boolean, key: string|null}}

@@ -61,7 +61,7 @@ const FILTER_FIELDS = [
  * @param {string} spec.idPrefix
  * @param {string} spec.title
  * @param {string} spec.intro
- * @param {string} spec.reportId
+ * @param {string} spec.report
  * @param {Function} spec.fetchTotal - the api call for the measured total.
  * @param {Array<{key:string,label:string,sub:string,accent:string}>} spec.totals
  * @param {string} spec.rowMetric - the money key on a drill-down row.
@@ -209,9 +209,9 @@ export function createAgeingScreen(spec) {
       while (exportHost.firstChild) exportHost.removeChild(exportHost.firstChild);
       exportHost.appendChild(exportButton({
         availability,
-        reportId: spec.reportId,
+        report: spec.report,
         onExport: async () => {
-          const result = await queueExport(spec.reportId, filters);
+          const result = await queueExport(spec.report, filters);
           announce(result.queued ? 'The export has been queued.'
             : 'This build mounts no export endpoint, so nothing was queued.');
         },
@@ -254,6 +254,9 @@ export function createAgeingScreen(spec) {
             throw new Error('The ageing report carried no recognisable bucket array.');
           }
           if (!rows.length) { buckets.renderRows([]); buckets.el.hidden = true; return false; }
+          // See executive-dashboard.js: `onState('loading')` hides this, and
+          // only the success path can put it back.
+          buckets.el.hidden = false;
           buckets.renderRows(rows);
           return true;
         },

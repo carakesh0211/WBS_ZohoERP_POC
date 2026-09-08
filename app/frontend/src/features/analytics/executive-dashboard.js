@@ -49,7 +49,7 @@ import {
 } from './analytics-shapes.js';
 import { createProjectTable, METRIC_TARGET, totalsFooter } from './portfolio-table.js';
 import {
-  exportAvailable, getPortfolio, queueExport, REPORT_IDS,
+  exportAvailable, getPortfolio, queueExport, SCREENS,
 } from './analytics-api.js';
 
 const SCREEN_ID = 'analytics-executive';
@@ -190,7 +190,13 @@ export function mountExecutiveDashboard(root) {
       count: rows.length,
       sub: 'the rows below, which are what every card above is the sum of',
       metric: 'project_count',
-      href: screenHref('analytics-project-list', filters),
+      /* `drilldownHref`, not `screenHref`, so this tile's link carries
+         `metric=project_count` like every other tile's does. A count is still
+         a figure that was clicked, the target still needs to know which, and a
+         tile whose href omits it is the one place a reader could arrive
+         somewhere with no record of what they pressed. It also clears the
+         cursor, which `screenHref` does not. */
+      href: drilldownHref('analytics-project-list', filters, { metric: 'project_count' }),
     }));
 
     tiles.appendChild(band);
@@ -263,13 +269,13 @@ export function mountExecutiveDashboard(root) {
     while (exportHost.firstChild) exportHost.removeChild(exportHost.firstChild);
     exportHost.appendChild(exportButton({
       availability,
-      reportId: REPORT_IDS.portfolio,
+      report: SCREENS.executive,
       onExport: async () => {
         // The export carries the SAME FilterSet. That is the requirement —
         // "filters cascade through cards, charts, tables AND exports" — and it
         // holds structurally here because there is one object and one
         // serialiser, not because a caller remembered to copy the values.
-        const result = await queueExport(REPORT_IDS.portfolio, filters);
+        const result = await queueExport(SCREENS.executive, filters);
         announce(result.queued
           ? 'The export has been queued. It will appear in your downloads when the job finishes.'
           : 'This build mounts no export endpoint, so nothing was queued.');
@@ -305,6 +311,14 @@ export function mountExecutiveDashboard(root) {
         const alerts = renderAlerts(readAlerts(data));
         if (alerts) quality.appendChild(alerts);
         if (!rows.length) { table.renderRows([]); table.el.hidden = true; return false; }
+        /* UN-HIDDEN HERE, NOT IN `load()`. `load()` sets `hidden = false`
+           before calling `loader.run`, and the first thing `run` does is
+           `onState('loading')` — which, below, hides the table again. Nothing
+           on the success path ever undid that, so this table rendered its rows
+           into an element with `display: none`: the cards were right, the
+           totals footer was right, the sums-back check passed, and the rows
+           every one of those figures is clickable down to were invisible. */
+        table.el.hidden = false;
         table.renderRows(rows);
         totalsFooter(table, totals, COLUMNS);
         announce(`${rows.length} project${rows.length === 1 ? '' : 's'} in scope.`);

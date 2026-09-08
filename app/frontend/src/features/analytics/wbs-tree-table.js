@@ -28,7 +28,7 @@
 */
 
 import { createWbsScreen } from './wbs-screen-base.js';
-import { REPORT_IDS } from './analytics-api.js';
+import { SCREENS } from './analytics-api.js';
 
 export const mountWbsTreeTable = createWbsScreen({
   screen: 'SCR-07 WBS Tree Table',
@@ -43,5 +43,5 @@ export const mountWbsTreeTable = createWbsScreen({
     'actual', 'received', 'received_not_billed', 'pr_reserved', 'available'],
   cards: ['budget', 'commitment', 'actual', 'received_not_billed', 'available'],
   collapseBelow: null,
-  reportId: REPORT_IDS.wbsHierarchy,
+  report: SCREENS.wbsHierarchy,
 });
