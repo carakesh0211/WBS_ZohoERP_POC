@@ -56,7 +56,7 @@ import {
 } from './analytics-shapes.js';
 import { createProjectTable, METRIC_TARGET, totalsFooter } from './portfolio-table.js';
 import {
-  exportAvailable, getPortfolio, queueExport, REPORT_IDS,
+  exportAvailable, getPortfolio, queueExport, SCREENS,
 } from './analytics-api.js';
 
 const SCREEN_ID = 'analytics-controller';
@@ -260,9 +260,9 @@ export function mountControllerWorkbench(root) {
     while (exportHost.firstChild) exportHost.removeChild(exportHost.firstChild);
     exportHost.appendChild(exportButton({
       availability,
-      reportId: REPORT_IDS.controller,
+      report: SCREENS.controller,
       onExport: async () => {
-        const result = await queueExport(REPORT_IDS.controller, filters);
+        const result = await queueExport(SCREENS.controller, filters);
         announce(result.queued ? 'The export has been queued.'
           : 'This build mounts no export endpoint, so nothing was queued.');
       },
@@ -278,7 +278,7 @@ export function mountControllerWorkbench(root) {
     table.renderSkeleton();
     renderChips([]);
 
-    await loader.run(() => getPortfolio(filters, REPORT_IDS.controller), {
+    await loader.run(() => getPortfolio(filters, SCREENS.controller), {
       render: (data, result) => {
         renderChips(result.unapplied);
         const { rows: raw, readable } = readRows(data, ['projects']);

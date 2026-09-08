@@ -49,7 +49,7 @@ import {
 } from './analytics-shapes.js';
 import { createProjectTable, METRIC_TARGET, totalsFooter } from './portfolio-table.js';
 import {
-  exportAvailable, getPortfolio, queueExport, REPORT_IDS,
+  exportAvailable, getPortfolio, queueExport, SCREENS,
 } from './analytics-api.js';
 
 const SCREEN_ID = 'analytics-executive';
@@ -263,13 +263,13 @@ export function mountExecutiveDashboard(root) {
     while (exportHost.firstChild) exportHost.removeChild(exportHost.firstChild);
     exportHost.appendChild(exportButton({
       availability,
-      reportId: REPORT_IDS.portfolio,
+      report: SCREENS.executive,
       onExport: async () => {
         // The export carries the SAME FilterSet. That is the requirement —
         // "filters cascade through cards, charts, tables AND exports" — and it
         // holds structurally here because there is one object and one
         // serialiser, not because a caller remembered to copy the values.
-        const result = await queueExport(REPORT_IDS.portfolio, filters);
+        const result = await queueExport(SCREENS.executive, filters);
         announce(result.queued
           ? 'The export has been queued. It will appear in your downloads when the job finishes.'
           : 'This build mounts no export endpoint, so nothing was queued.');

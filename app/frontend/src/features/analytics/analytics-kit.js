@@ -137,11 +137,26 @@ export function freshnessLine(freshness) {
     ]);
   }
   const parts = [];
+  if (f.sourceLabel) parts.push(`source ${f.sourceLabel}`);
   if (f.asOf) parts.push(`computed ${formatAuditTimestamp(f.asOf)}`);
   if (f.lastSyncAt) parts.push(`last synced ${formatAuditTimestamp(f.lastSyncAt)}`);
+
+  /* THREE ANSWERS, THREE SENTENCES. `reporting.freshness()` distinguishes data
+     that nothing syncs from data whose connector has never run, and both of
+     them report a null `last_sync_at`. Printing only the timestamp would make
+     the two identical on screen — and one of them is complete provenance while
+     the other is a connector that has never delivered a row. */
+  if (f.state === 'local') {
+    parts.push('computed from documents raised in this application — no connector supplies any '
+      + 'part of it, so there is no sync time to report and none is claimed');
+  } else if (f.state === 'never_synced') {
+    parts.push('a connector is configured for this data and has NEVER completed a poll, so any '
+      + 'mirrored document is absent rather than out of date — this is not the same as up to date');
+  }
   return h('p', {
     class: 'xs muted analytics-freshness',
     'data-freshness': f.stale ? 'stale' : 'fresh',
+    'data-freshness-state': f.state || 'unknown',
   }, [
     h('span', { class: 'sym', 'aria-hidden': 'true' }, f.stale ? '!' : '·'),
     text(` ${parts.join(' · ')}`),
@@ -223,6 +238,51 @@ export function unavailableBlock(err, { what }) {
       ]),
       err && err.note ? h('div', { class: 'small' }, err.note) : null,
     ].filter(Boolean)),
+  ]);
+}
+
+/**
+ * UNAVAILABLE, BY FILTER: the route answered and refused one of the filters.
+ *
+ * Distinct from `unavailableBlock` because the cause is different and so is
+ * the remedy. There the route is missing and nothing the reader does will
+ * help; here the route is mounted, working, and has said — with a code and a
+ * reason — that this build cannot express one of the dimensions the reader
+ * asked for. Clearing that one filter makes the screen work, so the block
+ * names the field rather than the route.
+ *
+ * NO FIGURE IS SHOWN. `reporting.UNSUPPORTED_FILTERS` is explicit that a
+ * dropped filter is worse than a refused one — "the reader gets a total that
+ * looks right, computed over a population they did not ask for, with nothing
+ * on screen saying so" — so the refusal is carried through to the screen
+ * rather than being retried without the offending field.
+ */
+export function filterUnavailableBlock(err, { what }) {
+  const fields = (err && err.fields && err.fields.length)
+    ? err.fields
+    : [{ field: '', code: (err && err.code) || '', detail: (err && err.detail) || '' }];
+  return h('div', {
+    class: 'msg msg-warning analytics-filter-unavailable',
+    role: 'alert',
+    'data-state': 'unavailable',
+    'data-unavailable': 'filter',
+  }, [
+    h('span', { class: 'ico', 'aria-hidden': 'true' }, '!'),
+    h('div', { class: 'body' }, [
+      h('strong', {}, `${what} was not computed, because this build cannot apply one of your `
+        + 'filters.'),
+      h('div', {}, 'The filter is well formed — there is nothing to correct above. This build '
+        + 'has no column to bind it to, and a total computed with it silently dropped would look '
+        + 'right while describing a population you did not ask for. Clear the filter named below '
+        + 'to see a figure.'),
+      ...fields.map((f) => h('div', { class: 'small' }, [
+        f.field ? h('span', { class: 'mono' }, labelFor(f.field)) : null,
+        f.field ? text(' — ') : null,
+        f.code ? h('span', { class: 'mono' }, f.code) : null,
+        f.code ? text(': ') : null,
+        text(f.detail || ''),
+      ].filter(Boolean))),
+    ]),
   ]);
 }
 
@@ -456,7 +516,12 @@ export function replace(host, node) {
  * cannot: the first teaches an operator that the application is unreliable,
  * the second tells them what is missing.
  */
-export function exportButton({ availability, onExport, reportId }) {
+export function exportButton({ availability, onExport, report }) {
+  /* The DATASET, not a report id. An export is a request for a named dataset
+     under the caller's own scope — `budget_ledger_cells`, `wbs_elements`,
+     `purchase_order_lines` — and naming it is what lets an operator check the
+     export catalogue at /api/exports/datasets for the columns they will get. */
+  const dataset = (report && report.dataset) || 'this dataset';
   if (availability === true) {
     return h('button', {
       type: 'button', class: 'btn-sm analytics-export', 'data-export': 'available',
@@ -472,7 +537,7 @@ export function exportButton({ availability, onExport, reportId }) {
     title: unknown
       ? 'This build\'s API schema could not be read, so whether an export endpoint exists is '
         + 'unknown. The control is disabled rather than offered on a guess.'
-      : `No export endpoint is mounted in this build, so ${reportId} cannot be queued. `
+      : `No export endpoint is mounted in this build, so ${dataset} cannot be queued. `
         + 'The control is disabled rather than failing when pressed.',
   }, 'Export unavailable');
 }

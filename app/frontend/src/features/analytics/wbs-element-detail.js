@@ -32,7 +32,7 @@
    is not in that tree, the screen says the ELEMENT was not found in THIS
    PROJECT, which is a different sentence from "you may not see it" and from
    "the route is missing". A1's reporting service may later answer an element
-   directly; `REPORT_IDS.wbsElement` is already the preferred candidate, so
+   directly; `SCREENS.wbsElement` is already the preferred candidate, so
    that lands without a change here.
 */
 
@@ -52,7 +52,7 @@ import { createDataTable } from '../../components/capex-datatable.js';
 import { statusChip } from '../../components/capex-statuschip.js';
 import { METRIC_TARGET } from './portfolio-table.js';
 import {
-  exportAvailable, getWbs, queueExport, REPORT_IDS,
+  exportAvailable, getWbs, queueExport, SCREENS,
 } from './analytics-api.js';
 
 const CARDS = ['budget', 'commitment', 'actual', 'received_not_billed', 'available'];
@@ -375,9 +375,9 @@ export function mountWbsElementDetail(root) {
     while (exportHost.firstChild) exportHost.removeChild(exportHost.firstChild);
     exportHost.appendChild(exportButton({
       availability,
-      reportId: REPORT_IDS.wbsElement,
+      report: SCREENS.wbsElement,
       onExport: async () => {
-        const result = await queueExport(REPORT_IDS.wbsElement, filters);
+        const result = await queueExport(SCREENS.wbsElement, filters);
         announce(result.queued ? 'The export has been queued.'
           : 'This build mounts no export endpoint, so nothing was queued.');
       },
@@ -414,7 +414,7 @@ export function mountWbsElementDetail(root) {
     children.el.hidden = false;
     children.renderSkeleton();
 
-    await loader.run(() => getWbs(projectId, filters, REPORT_IDS.wbsElement), {
+    await loader.run(() => getWbs(projectId, filters, SCREENS.wbsElement), {
       render: (data, result) => {
         renderChips(result.unapplied);
         const nested = Array.isArray(data && data.tree) ? data.tree

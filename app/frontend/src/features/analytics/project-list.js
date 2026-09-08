@@ -46,7 +46,7 @@ import {
 } from './analytics-shapes.js';
 import { createProjectTable, METRIC_TARGET, totalsFooter } from './portfolio-table.js';
 import {
-  exportAvailable, getPortfolio, queueExport, REPORT_IDS,
+  exportAvailable, getPortfolio, queueExport, SCREENS,
 } from './analytics-api.js';
 
 const COLUMNS = ['budget', 'ordered', 'commitment', 'actual', 'received_not_billed', 'available'];
@@ -229,14 +229,14 @@ export function mountProjectList(root) {
     while (exportHost.firstChild) exportHost.removeChild(exportHost.firstChild);
     exportHost.appendChild(exportButton({
       availability,
-      reportId: REPORT_IDS.projectList,
+      report: SCREENS.projectList,
       onExport: async () => {
         /* The export carries the FilterSet WITHOUT the cursor: an export is of
            the filtered population, not of the page the reader happens to be
            looking at. Carrying the cursor would silently export one page and
            label the file with the filters, which is a file that looks complete
            and is not. */
-        const result = await queueExport(REPORT_IDS.projectList, { ...filters, cursor: null });
+        const result = await queueExport(SCREENS.projectList, { ...filters, cursor: null });
         announce(result.queued
           ? 'The export has been queued for the whole filtered result, not just this page.'
           : 'This build mounts no export endpoint, so nothing was queued.');
@@ -253,7 +253,7 @@ export function mountProjectList(root) {
     table.renderSkeleton();
     renderChips([]);
 
-    await loader.run(() => getPortfolio(filters, REPORT_IDS.projectList), {
+    await loader.run(() => getPortfolio(filters, SCREENS.projectList), {
       render: (data, result) => {
         renderChips(result.unapplied);
         const { rows: raw, readable } = readRows(data, ['projects']);

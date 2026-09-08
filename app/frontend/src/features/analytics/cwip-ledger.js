@@ -44,7 +44,7 @@ import { createDataTable } from '../../components/capex-datatable.js';
 import { statusChip } from '../../components/capex-statuschip.js';
 import { formatAuditTimestamp } from '../../core/format.js';
 import {
-  exportAvailable, getCwipLedger, queueExport, REPORT_IDS,
+  exportAvailable, getCwipLedger, queueExport, SCREENS,
 } from './analytics-api.js';
 
 const FILTER_FIELDS = [
@@ -338,9 +338,9 @@ export function mountCwipLedger(root) {
     while (exportHost.firstChild) exportHost.removeChild(exportHost.firstChild);
     exportHost.appendChild(exportButton({
       availability,
-      reportId: REPORT_IDS.cwipLedger,
+      report: SCREENS.cwipLedger,
       onExport: async () => {
-        const result = await queueExport(REPORT_IDS.cwipLedger, filters);
+        const result = await queueExport(SCREENS.cwipLedger, filters);
         announce(result.queued ? 'The export has been queued.'
           : 'This build mounts no export endpoint, so nothing was queued.');
       },

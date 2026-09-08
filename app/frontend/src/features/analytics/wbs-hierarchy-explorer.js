@@ -18,7 +18,7 @@
 */
 
 import { createWbsScreen } from './wbs-screen-base.js';
-import { REPORT_IDS } from './analytics-api.js';
+import { SCREENS } from './analytics-api.js';
 
 export const mountWbsHierarchyExplorer = createWbsScreen({
   screen: 'SCR-06 WBS Hierarchy Explorer',
@@ -31,5 +31,5 @@ export const mountWbsHierarchyExplorer = createWbsScreen({
   metrics: ['budget', 'commitment', 'actual', 'received_not_billed', 'available'],
   cards: ['budget', 'commitment', 'actual', 'available'],
   collapseBelow: 1,
-  reportId: REPORT_IDS.wbsHierarchy,
+  report: SCREENS.wbsHierarchy,
 });

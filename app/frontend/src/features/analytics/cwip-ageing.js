@@ -28,7 +28,7 @@
 */
 
 import { createAgeingScreen } from './ageing-screen-base.js';
-import { getCwipTotal, REPORT_IDS } from './analytics-api.js';
+import { getCwipTotal, SCREENS } from './analytics-api.js';
 
 export const mountCwipAgeing = createAgeingScreen({
   screen: 'SCR-24 CWIP Ageing',
@@ -39,7 +39,7 @@ export const mountCwipAgeing = createAgeingScreen({
     + 'it — bills in a non-effective state are already excluded and are not re-added here. A long '
     + 'ageing on CWIP usually means an asset is complete and has not been capitalised, which is '
     + 'why a wrong distribution would be worse on this screen than a missing one.',
-  reportId: REPORT_IDS.cwipAgeing,
+  report: SCREENS.cwipAgeing,
   fetchTotal: getCwipTotal,
   rowMetric: 'amount_paise',
   bucketWhat: 'CWIP ageing',

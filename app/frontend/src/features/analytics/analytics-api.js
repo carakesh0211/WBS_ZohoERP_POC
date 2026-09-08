@@ -3,12 +3,33 @@
 
    WHAT THIS MODULE IS FOR
    -----------------------
-   `app/backend/pg/reporting.py` + `api/reports.py` (agent A1) and
-   `api/exports.py` (agent A2) are being written WHILE these screens are being
-   written. Neither is guaranteed to exist in the tree this file is loaded
-   from. That is not a reason to stub a number, and it is not a reason to
-   block: this codebase already has the pattern for exactly this situation and
-   this module follows it rather than inventing a second one.
+   These screens were written BEFORE `api/reports.py` and `api/exports.py`
+   existed, so this file guessed their contract. The guess was wrong in every
+   particular, and it failed in the most expensive way available: the probe
+   found `/api/reports/{report_id}` absent, every screen rendered an honest
+   "not available in this build", and the reporting service that answers them
+   sat mounted three routes away.
+
+   THE BACKEND CONTRACT IS AUTHORITATIVE. It was built against the frozen
+   FilterSet in `docs/WAVE7_CONTRACT.md`; this file is the side that moves.
+   What was guessed, and what is actually served:
+
+     guessed                        real
+     /api/reports/{report_id}       /api/reports/metrics      (grouped totals)
+                                    /api/reports/drill-down   (rows behind one)
+                                    /api/reports/dimensions   (what it can do)
+                                    /api/reports/freshness    (provenance)
+     /api/reports/saved-views       /api/reports/views
+     /api/reports/export            /api/exports              (202 + job id)
+
+   There is no `report_id` in the real contract and this module no longer
+   invents one. A "report" is a `group_by` over one FilterSet, so what used to
+   be eleven report ids is now a per-screen DEFAULT GROUPING plus the frozen
+   `report_key` the saved-view table accepts (`reporting.REPORT_KEYS`).
+
+   That is not a reason to stub a number, and it is not a reason to block:
+   this codebase already has the pattern for exactly this situation and this
+   module follows it rather than inventing a second one.
 
    `features/integration/integration-api.js` established it in Wave 5:
 
@@ -29,10 +50,10 @@
 
    THE THREE SOURCES, AND WHAT EACH ONE CAN HONESTLY ANSWER
    --------------------------------------------------------
-   'reports'  — A1's `/api/reports/{report_id}`. The only source that applies
-                the canonical FilterSet server-side, groups by the requested
-                dimensions, and returns totals it computed itself over the
-                caller's whole resolved scope.
+   'reports'  — `/api/reports/metrics` and `/api/reports/drill-down`. The only
+                source that applies the canonical FilterSet server-side, groups
+                by the requested dimensions, and returns totals it computed
+                itself over the caller's whole resolved scope.
 
    'ledger'   — the routes this build mounts TODAY: `/api/dashboard`,
                 `/api/projects/{project_id}/wbs`, `/api/reconciliation`,
@@ -62,6 +83,7 @@
 */
 
 import { createApiClient, ApiClientError } from '../../core/api-client.js';
+import { adaptReportPayload } from './analytics-shapes.js';
 import {
   available,
   classifyMissing,
@@ -115,6 +137,59 @@ export class ScopeDeniedError extends Error {
   }
 }
 
+/**
+ * The server APPLIED NOTHING because one of the filters cannot be expressed.
+ *
+ * `reporting.UNSUPPORTED_FILTERS` refuses `vendor_ids` and `item_ids` with a
+ * 422 carrying `state: "unavailable"` and a coded reason: there is no item_id
+ * on any procurement line, and `purchase_order` carries a vendor NAME while
+ * `bill` carries a vendor id, so a vendor filter would narrow the actuals and
+ * leave the commitments across the whole estate.
+ *
+ * THIS IS NOT A VALIDATION ERROR AND MUST NOT RENDER AS ONE. The shared client
+ * maps every 422 to `kind: 'validation'`, whose wording is "correct the
+ * highlighted fields" — advice the reader cannot take, because nothing they
+ * typed is malformed. The filter is well-formed and this build cannot answer
+ * it, which is the UNAVAILABLE state, named after the exact field.
+ *
+ * It is deliberately NOT an `EndpointUnavailableError`: the route is mounted
+ * and working. Saying "this deployment does not mount /api/reports/metrics"
+ * would be false, and a false explanation is worse than a generic one.
+ */
+export class FilterUnavailableError extends Error {
+  /**
+   * @param {string} detail - the server's own reason, rendered verbatim.
+   * @param {string} code - e.g. 'VENDOR_DIMENSION_INCOMPLETE'.
+   * @param {Array<{field:string, code:string, detail:string}>} fields
+   */
+  constructor(detail, code, fields) {
+    super(detail || 'This build cannot apply one of the filters you set.');
+    this.name = 'FilterUnavailableError';
+    this.detail = detail || '';
+    this.code = code || '';
+    this.fields = Array.isArray(fields) ? fields : [];
+  }
+}
+
+/**
+ * Did the server refuse a filter it cannot express?
+ *
+ * The test is the DECLARED `state`, not the status code. A 422 from FastAPI's
+ * own request validation (a malformed date, a limit out of range) really is a
+ * validation error and keeps rendering as one; only a body that says
+ * `state: "unavailable"` is this.
+ */
+export function classifyFilterUnavailable(err) {
+  if (!err || (err.status !== 422 && err.status !== 400)) return null;
+  const body = err.body;
+  const detail = body && typeof body === 'object' ? body.detail : null;
+  if (!detail || typeof detail !== 'object') return null;
+  if (detail.state !== 'unavailable') return null;
+  return new FilterUnavailableError(
+    detail.detail || err.message, detail.code, detail.unsupported_filters,
+  );
+}
+
 const MESSAGES = {
   network: 'The reporting service could not be reached. Check your connection and try again.',
   auth: 'Your session has ended. Sign in again to continue.',
@@ -143,43 +218,144 @@ const ledger = createApiClient({
  * ------------------------------------------------------------------ */
 
 /**
- * A1's reporting surface, exactly as C14_traceability.json declares it for
- * REQ-RPT-009 and REQ-RPT-010. These are OpenAPI path TEMPLATES, matched
- * against /openapi.json character for character — `{report_id}` is the
- * parameter name FastAPI publishes, not a placeholder this file substitutes.
+ * The reporting surface, exactly as `api/reports.py` declares it. These are
+ * OpenAPI path TEMPLATES, matched against /openapi.json character for
+ * character — `{view_id}` is the parameter name FastAPI publishes, not a
+ * placeholder this file substitutes.
+ *
+ * `/api/reports/{report_id}` IS NOT IN THIS LIST because it is not in the
+ * build. It never was: it was this file's guess at a contract that had not
+ * been written yet, and probing for it is what made eleven working dashboards
+ * declare themselves absent.
  */
 export const REPORT_ROUTES = Object.freeze({
-  report: '/api/reports/{report_id}',
-  savedViews: '/api/reports/saved-views',
-  export: '/api/reports/export',
-});
-
-/** A2's export-job surface. Long exports answer 202 with a job id. */
-export const EXPORT_ROUTES = Object.freeze({
-  create: '/api/exports',
-  job: '/api/exports/{job_id}',
+  metrics: '/api/reports/metrics',
+  drillDown: '/api/reports/drill-down',
+  dimensions: '/api/reports/dimensions',
+  freshness: '/api/reports/freshness',
+  views: '/api/reports/views',
+  view: '/api/reports/views/{view_id}',
 });
 
 /**
- * The report ids these eleven screens ask for.
+ * The export-job surface. Long exports answer 202 with a job id.
  *
- * Named here rather than inline so that the UNAVAILABLE state can say
- * `/api/reports/cwip-ageing` — the concrete thing an operator would look for —
- * while the presence probe still checks the template `/api/reports/{report_id}`
- * that FastAPI actually publishes.
+ * `{export_job_id}` — NOT `{job_id}`, which was the other half of the same
+ * guess. The template has to match what FastAPI publishes or `available()`
+ * reports a mounted route as absent.
  */
-export const REPORT_IDS = Object.freeze({
-  portfolio: 'portfolio-summary',
-  controller: 'controller-workbench',
-  projectList: 'project-list',
-  projectDetail: 'project-detail',
-  wbsHierarchy: 'wbs-hierarchy',
-  wbsElement: 'wbs-element',
-  cwipLedger: 'cwip-ledger',
-  commitmentAgeing: 'open-commitment-ageing',
-  cwipAgeing: 'cwip-ageing',
-  exceptions: 'exception-overrun',
+export const EXPORT_ROUTES = Object.freeze({
+  create: '/api/exports',
+  job: '/api/exports/{export_job_id}',
+  datasets: '/api/exports/datasets',
 });
+
+/**
+ * The `report_key` values `reporting.REPORT_KEYS` accepts, verbatim.
+ *
+ * These are NOT route segments and nothing is fetched by them — the reporting
+ * API has no per-report route. They are the allow-list the saved-view table
+ * checks, so a screen can save and reload a default view. A key absent from
+ * the backend's frozen set is refused there, so it is not restated loosely
+ * here: seven keys, the seven `REPORT_KEYS` names.
+ *
+ * Four of the eleven screens (SCR-05, 06, 07, 08) have no key of their own in
+ * that frozen set. They are not given a borrowed one — registering a WBS view
+ * under `project_list` would make that screen open on a filter set built for
+ * another — so those screens simply do not offer a saved view. See
+ * `savedViewsSupported()`.
+ */
+export const REPORT_KEYS = Object.freeze({
+  executive: 'executive_dashboard',
+  controller: 'controller_workbench',
+  projectList: 'project_list',
+  cwipLedger: 'cwip_ledger',
+  commitmentAgeing: 'open_commitment_ageing',
+  cwipAgeing: 'cwip_ageing',
+  exceptions: 'exception_monitor',
+});
+
+/**
+ * The reportable dimensions `reporting.DIMENSIONS` defines.
+ *
+ * Restated here ONLY as the default this module falls back to when
+ * `/api/reports/dimensions` cannot be read. The live list is authoritative and
+ * `getDimensions()` fetches it; this constant exists so that a screen whose
+ * probe failed groups by something valid rather than by nothing.
+ */
+export const GROUPABLE = Object.freeze([
+  'entity', 'plant', 'location', 'project', 'wbs', 'budget_head', 'category',
+]);
+
+/**
+ * One descriptor per screen: what it groups by, which saved-view key it may
+ * use, and which export dataset carries its rows.
+ *
+ * This replaces the eleven invented report ids. A screen is no longer a route
+ * segment — it is a DEFAULT GROUPING over the one FilterSet, which is what the
+ * reporting API actually models, and saying so here means a screen cannot
+ * quietly ask for a grouping the backend refuses.
+ *
+ * `groupBy` is a DEFAULT, applied only when the FilterSet carries none of its
+ * own. A `?group=entity` in the URL wins — the reader chose it, the drill-down
+ * and the export inherit it, and overriding it here would make the filter bar
+ * a decoration.
+ *
+ * `key: null` means the frozen `REPORT_KEYS` set has no entry for this screen,
+ * so it offers no saved view rather than borrowing another screen's key.
+ *
+ * `dataset` is the `/api/exports` dataset whose rows ARE what the screen
+ * shows. `budget_ledger_cells` is the control cell every metric on these
+ * screens is keyed on; `wbs_elements` is the hierarchy the WBS screens render;
+ * `purchase_order_lines` is where an open commitment actually lives.
+ */
+export const SCREENS = Object.freeze({
+  executive: Object.freeze({
+    name: 'executive', key: REPORT_KEYS.executive,
+    groupBy: Object.freeze(['project']), dataset: 'budget_ledger_cells',
+  }),
+  controller: Object.freeze({
+    name: 'controller', key: REPORT_KEYS.controller,
+    groupBy: Object.freeze(['project']), dataset: 'budget_ledger_cells',
+  }),
+  projectList: Object.freeze({
+    name: 'projectList', key: REPORT_KEYS.projectList,
+    groupBy: Object.freeze(['project']), dataset: 'budget_ledger_cells',
+  }),
+  projectDetail: Object.freeze({
+    name: 'projectDetail', key: null,
+    groupBy: Object.freeze(['wbs']), dataset: 'wbs_elements',
+  }),
+  wbsHierarchy: Object.freeze({
+    name: 'wbsHierarchy', key: null,
+    groupBy: Object.freeze(['wbs']), dataset: 'wbs_elements',
+  }),
+  wbsElement: Object.freeze({
+    name: 'wbsElement', key: null,
+    groupBy: Object.freeze(['wbs']), dataset: 'wbs_elements',
+  }),
+  cwipLedger: Object.freeze({
+    name: 'cwipLedger', key: REPORT_KEYS.cwipLedger,
+    groupBy: Object.freeze(['wbs', 'budget_head']), dataset: 'budget_ledger_cells',
+  }),
+  commitmentAgeing: Object.freeze({
+    name: 'commitmentAgeing', key: REPORT_KEYS.commitmentAgeing,
+    groupBy: Object.freeze(['project']), dataset: 'purchase_order_lines',
+  }),
+  cwipAgeing: Object.freeze({
+    name: 'cwipAgeing', key: REPORT_KEYS.cwipAgeing,
+    groupBy: Object.freeze(['project']), dataset: 'budget_ledger_cells',
+  }),
+  exceptions: Object.freeze({
+    name: 'exceptions', key: REPORT_KEYS.exceptions,
+    groupBy: Object.freeze(['project']), dataset: 'budget_ledger_cells',
+  }),
+});
+
+/** Does this screen have a frozen `report_key`, and therefore saved views? */
+export function savedViewsSupported(screen) {
+  return !!(screen && screen.key);
+}
 
 /** The ledger routes that exist in this build today, as templates. */
 export const LEDGER_ROUTES = Object.freeze({
@@ -205,14 +381,36 @@ export const LEDGER_ROUTES = Object.freeze({
  */
 export const LEDGER_HONOURS = Object.freeze(['entity_ids', 'plant_ids', 'project_ids']);
 
-const A1_NOTE = 'Wave 7 agent A1 is building the reporting endpoint this screen reads '
-  + '(app/backend/pg/reporting.py and api/reports.py). Until it is mounted there is no source '
-  + 'for this figure, so none is shown — an empty table here would read as "nothing matched", '
+const REPORTING_NOTE = 'This deployment does not mount the reporting endpoint this screen reads '
+  + '(/api/reports/metrics, served by app/backend/api/reports.py). There is therefore no source '
+  + 'for this figure and none is shown — an empty table here would read as "nothing matched", '
   + 'which is a claim about your data rather than about this build.';
 
-const A2_NOTE = 'Wave 7 agent A2 is building the export-job endpoint (app/backend/api/exports.py). '
-  + 'Until it is mounted this screen cannot queue an export, and offering a button that '
-  + 'silently did nothing would be worse than saying so.';
+/* THE AGEING BUCKETS ARE MISSING A DIMENSION, NOT A ROUTE, and the difference
+   is the whole reason this note is separate. /api/reports/metrics is mounted
+   and answers; what it cannot do is group by an age band. `reporting.DIMENSIONS`
+   defines seven axes — entity, plant, location, project, wbs, budget_head,
+   category — and not one of them is a bucket of days, so there is nothing to
+   ask it for. `open_commitment_ageing` and `cwip_ageing` exist in
+   `reporting.REPORT_KEYS`, which makes it possible to SAVE A VIEW of these
+   screens; that is a bookmark, not a computation, and it must not be mistaken
+   for one.
+
+   Saying "this endpoint is not built yet" here would send an operator looking
+   for a deployment problem that does not exist. Naming the dimension sends
+   them to the one change that would make the screen work. */
+const AGEING_NOTE = 'This build cannot produce an ageing distribution: /api/reports/metrics is '
+  + 'mounted and answering, but the reportable dimensions it publishes at /api/reports/dimensions '
+  + '(entity, plant, location, project, wbs, budget_head, category) contain no age band, so there '
+  + 'is no grouping to ask it for. The un-bucketed TOTAL below is real and server-computed; the '
+  + 'distribution is not shown because it cannot be assembled in this browser from a page of '
+  + 'documents — the buckets would be the buckets of that page while the headings claimed to be '
+  + 'the buckets of the portfolio.';
+
+const EXPORT_NOTE = 'This deployment does not mount the export-job endpoint (/api/exports, served '
+  + 'by app/backend/api/exports.py), so this screen cannot queue an export. The control is '
+  + 'disabled rather than offered, because a button that silently did nothing would be worse '
+  + 'than saying so.';
 
 /* ------------------------------------------------------------------ *
  * Scope refusal, declared by the server
@@ -242,12 +440,25 @@ export function classifyScopeDenied(err) {
 /**
  * A SUCCESSFUL response that declares the scope empty.
  *
- * The better shape, and the one A1 should prefer: 200 with zero rows plus
- * `scope_denied: true`, so the client never has to distinguish a refusal from
- * a miss by status code at all.
+ * THIS IS THE SHAPE THE REPORTING SERVICE ACTUALLY SENDS, and it is the better
+ * one: 200 with zero rows and `state: "denied"`, so the client never has to
+ * distinguish a refusal from a miss by status code at all. `api/reports.py`
+ * chose it deliberately — "the caller is entitled to ask, and the honest
+ * answer is 'nothing you can see', which is a result and not a refusal" — and
+ * a 403 would additionally have made an empty estate and a denied one tellable
+ * apart by status code, which is an oracle.
+ *
+ * `state: "empty"` is NOT this. It is a query the caller was entitled to run,
+ * over a scope that reaches records, that matched nothing — a clean bill of
+ * health, and the one sentence this must never be confused with.
+ *
+ * The older `scope_denied` flag is still read, because the ledger fallback
+ * routes are free to grow it and dropping support would silently downgrade a
+ * denial to an empty table on exactly the screens that can least afford it.
  */
 export function payloadScopeDenied(data) {
   if (!data || typeof data !== 'object') return false;
+  if (data.state === 'denied') return String(data.detail || '') || true;
   if (data.scope_denied === true) return String(data.missing_grant || '') || true;
   const meta = data.meta;
   if (meta && typeof meta === 'object' && meta.scope_denied === true) {
@@ -276,17 +487,57 @@ export function payloadScopeDenied(data) {
 export function freshnessOf(data) {
   const meta = (data && typeof data === 'object' && (data.meta || data.freshness)) || data;
   if (!meta || typeof meta !== 'object') {
-    return { known: false, asOf: null, lastSyncAt: null, stale: false, staleReason: '' };
+    return {
+      known: false, asOf: null, lastSyncAt: null, stale: false, staleReason: '',
+      sourceLabel: '', state: 'unknown',
+    };
   }
+
+  /* THE REPORTING SERVICE'S THREE ANSWERS, AND WHY NONE COLLAPSES.
+     `reporting.freshness()` returns exactly one of:
+
+       local         every figure was computed from documents this application
+                     raised. `last_sync_at` is null and that is COMPLETE, not
+                     missing — nothing syncs it, so there is no sync time to
+                     report and the source label is the whole provenance.
+       synced        a real watermark. Render the time.
+       never_synced  a connector IS configured and has never completed a poll,
+                     so mirrored documents are ABSENT rather than out of date.
+                     `last_sync_at` is null here too, and the naive reading —
+                     "no timestamp, so freshness unknown" — renders it exactly
+                     like the `local` case, which is the one thing it must not
+                     look like. It is STALE, and it is marked stale here.
+
+     Reading only `last_sync_at` would fail twice over: it would call locally
+     computed data "freshness not reported", and it would let a connector that
+     has never run render as calmly as one that ran a minute ago. */
+  const state = typeof meta.state === 'string' ? meta.state : '';
+  if (state === 'local' || state === 'synced' || state === 'never_synced') {
+    return {
+      known: true,
+      asOf: null,
+      lastSyncAt: meta.last_sync_at || null,
+      highWaterMark: meta.high_water_mark || null,
+      stale: state === 'never_synced',
+      staleReason: state === 'never_synced' ? String(meta.detail || '') : '',
+      sourceLabel: String(meta.source_label || ''),
+      state,
+    };
+  }
+
+  /* The ledger fallback routes, which have no freshness contract of their own
+     and may carry any of these older shapes. Unchanged. */
   const asOf = meta.as_of || meta.generated_at || meta.computed_at || null;
   const lastSyncAt = meta.last_sync_at || meta.last_synced_at || meta.synced_at || null;
-  const stale = meta.stale === true;
   return {
     known: !!(asOf || lastSyncAt),
     asOf: asOf || null,
     lastSyncAt: lastSyncAt || null,
-    stale,
+    highWaterMark: null,
+    stale: meta.stale === true,
     staleReason: String(meta.stale_reason || meta.staleness_reason || ''),
+    sourceLabel: String(meta.source_label || ''),
+    state: state || 'unknown',
   };
 }
 
@@ -333,6 +584,13 @@ export async function firstAvailable(candidates, unavailableNote) {
     } catch (err) {
       const denied = classifyScopeDenied(err);
       if (denied) throw new ScopeDeniedError(typeof denied === 'string' ? denied : '');
+      /* A refused filter is NOT fallen through. The next candidate honours
+         FEWER filters than the one that just refused, so falling through would
+         answer a question the reader did not ask and label it as their own
+         filtered total — the precise failure `UNSUPPORTED_FILTERS` exists to
+         prevent, re-created on the client. */
+      const refused = classifyFilterUnavailable(err);
+      if (refused) throw refused;
       if (classifyUnavailable(err)) {
         lastAbsent = candidate;
         declaredNote = unavailableNoteFrom(err) || declaredNote;
@@ -394,23 +652,11 @@ function ledgerParams(filters) {
 }
 
 /**
- * A reporting-surface candidate for one report id.
+ * Serialise a FilterSet into query parameters. Arrays stay arrays.
  *
- * The whole FilterSet is sent as the query. A1 owns the parse; this module
- * owns only that the SAME object goes to cards, charts, tables and exports —
- * which is the requirement a second filter shape would break.
+ * Kept for callers that want the plain object; the WIRE form is `toSearch()`,
+ * and the difference between them is not cosmetic — see below.
  */
-function reportCandidate(reportId, filters, extra = {}) {
-  return {
-    source: 'reports',
-    template: REPORT_ROUTES.report,
-    label: `/api/reports/${reportId}`,
-    call: () => reports.get(`/${reportId}`, { ...toQuery(filters), ...extra }),
-    unapplied: [],
-  };
-}
-
-/** Serialise a FilterSet into query parameters. Arrays go as repeated keys. */
 export function toQuery(filters) {
   const out = {};
   for (const [key, value] of Object.entries(filters || {})) {
@@ -425,14 +671,91 @@ export function toQuery(filters) {
   return out;
 }
 
+/**
+ * A FilterSet as a REPEATED-KEY search string: `?entity_ids=A&entity_ids=B`.
+ *
+ * THIS EXISTS BECAUSE `core/api-client.js::buildQuery` CANNOT EXPRESS A LIST,
+ * AND FAILS SILENTLY WHEN ASKED TO. It builds parameters with
+ * `URLSearchParams.set(key, value)`, and `set` stringifies an array by joining
+ * it with commas: `set('entity_ids', ['E1','E2'])` emits
+ * `entity_ids=E1%2CE2` — ONE value, the eight-character string "E1,E2".
+ *
+ * `api/reports.py` declares every list filter as `list[str] | None = Query()`,
+ * so FastAPI would parse that as a single entity id literally named "E1,E2",
+ * match no row, and return `state: "empty"`. The screen would then render "no
+ * data matches these filters" — a confident, wrong, unfalsifiable answer to a
+ * question that was never asked. A two-entity filter would silently become a
+ * no-entity one.
+ *
+ * `buildQuery` is in `core/` and is shared by every feature; changing it is
+ * not this feature's to make. So the query string is built here, correctly,
+ * and appended to the path — `request()` concatenates
+ * `basePath + path + buildQuery(params)` and `buildQuery(undefined)` is the
+ * empty string, so a path that already carries its own search survives intact.
+ *
+ * Order is FilterSet-key order and then list order, so the same FilterSet
+ * always produces the same URL — which is what makes a drill-down link
+ * comparable by eye with the card link it came from.
+ */
+export function toSearch(filters, extra = {}) {
+  const params = new URLSearchParams();
+  const append = (key, value) => {
+    if (value === null || value === undefined || value === '') return;
+    if (Array.isArray(value)) {
+      // An EMPTY array is dropped, not sent. `FilterSet._tuple` keeps `None`
+      // and `()` distinct — "do not filter on this" versus "restrict to
+      // nothing" — and an omitted parameter is the `None` this means. Sending
+      // an empty repeated key is not possible over a query string anyway, so
+      // the honest encoding of "no value chosen" is no parameter.
+      for (const v of value) if (v !== null && v !== undefined && v !== '') params.append(key, String(v));
+      return;
+    }
+    params.append(key, String(value));
+  };
+  for (const [key, value] of Object.entries(filters || {})) append(key, value);
+  for (const [key, value] of Object.entries(extra || {})) append(key, value);
+  const s = params.toString();
+  return s ? `?${s}` : '';
+}
+
+/**
+ * The FilterSet a reporting call actually sends: the screen's own filters,
+ * with the screen's default grouping applied ONLY when the reader chose none.
+ */
+export function reportFilters(filters, screen) {
+  const f = { ...(filters || {}) };
+  const chosen = Array.isArray(f.group_by) ? f.group_by.filter(Boolean) : [];
+  if (!chosen.length && screen && screen.groupBy) f.group_by = [...screen.groupBy];
+  return f;
+}
+
+/**
+ * A reporting-surface candidate over `/api/reports/metrics`.
+ *
+ * The whole FilterSet is sent as the query. The reporting service owns the
+ * parse; this module owns only that the SAME object goes to cards, charts,
+ * tables and exports — which is the requirement a second filter shape would
+ * break.
+ */
+function metricsCandidate(filters, screen, extra = {}) {
+  const search = toSearch(reportFilters(filters, screen), extra);
+  return {
+    source: 'reports',
+    template: REPORT_ROUTES.metrics,
+    label: REPORT_ROUTES.metrics,
+    call: async () => adaptReportPayload(await reports.get(`/metrics${search}`)),
+    unapplied: [],
+  };
+}
+
 /* ------------------------------------------------------------------ *
  * The calls, one per screen
  * ------------------------------------------------------------------ */
 
 /** SCR-01 / SCR-02 / SCR-04: the portfolio, as cards plus one row per project. */
-export function getPortfolio(filters, reportId = REPORT_IDS.portfolio) {
+export function getPortfolio(filters, screen = SCREENS.executive) {
   return firstAvailable([
-    reportCandidate(reportId, filters),
+    metricsCandidate(filters, screen),
     {
       source: 'ledger',
       template: LEDGER_ROUTES.dashboard,
@@ -440,11 +763,30 @@ export function getPortfolio(filters, reportId = REPORT_IDS.portfolio) {
       call: () => ledger.get('/dashboard', ledgerParams(filters)),
       unapplied: unappliedFilters(filters, LEDGER_HONOURS),
     },
-  ], A1_NOTE);
+  ], REPORTING_NOTE);
 }
 
-/** SCR-05 / SCR-06 / SCR-07 / SCR-08: one project's WBS, with its ledger. */
-export function getWbs(projectId, filters, reportId = REPORT_IDS.wbsHierarchy) {
+/**
+ * SCR-05 / SCR-06 / SCR-07 / SCR-08: one project's WBS, with its ledger.
+ *
+ * THE LEDGER ROUTE IS THE PREFERRED SOURCE HERE, AND IT IS THE ONLY PLACE IN
+ * THIS FILE WHERE THAT IS TRUE. These four screens render a TREE — nested
+ * children, a level per node, `carries_budget` on each — and
+ * `/api/reports/metrics` cannot produce one. It answers grouped rows: group by
+ * `wbs` and you get one flat row per element, with its metrics but with no
+ * parent, no depth and no `carries_budget`. A tree table fed that would draw
+ * every node at the root, and on a hierarchy whose whole purpose is to show a
+ * rollup against its parts, a flattened tree is not a cosmetic loss — a reader
+ * cannot see which figures are rollups, which is how an ancestor's value comes
+ * to be read as an own-value and counted twice.
+ *
+ * So the hierarchy comes from `/api/projects/{project_id}/wbs`, which really
+ * does serve one, and the screen states — through `unapplied` — that the route
+ * narrows by project and by nothing else. That is a smaller lie than a
+ * complete-looking flat table, and it is not a lie at all, because it is
+ * printed on the screen.
+ */
+export function getWbs(projectId, filters, screen = SCREENS.wbsHierarchy) {
   if (!projectId) {
     return Promise.reject(new AnalyticsApiError(
       'Choose a CAPEX project to load its WBS hierarchy.',
@@ -452,7 +794,6 @@ export function getWbs(projectId, filters, reportId = REPORT_IDS.wbsHierarchy) {
     ));
   }
   return firstAvailable([
-    reportCandidate(reportId, { ...filters, project_ids: [projectId] }),
     {
       source: 'ledger',
       template: LEDGER_ROUTES.wbs,
@@ -460,7 +801,13 @@ export function getWbs(projectId, filters, reportId = REPORT_IDS.wbsHierarchy) {
       call: () => ledger.get(`/projects/${encodeURIComponent(projectId)}/wbs`),
       unapplied: unappliedFilters(filters, ['project_ids']),
     },
-  ], A1_NOTE);
+    /* Second, not first, and it will rarely be reached: if the hierarchy route
+       is ever unmounted, flat grouped rows honouring the WHOLE FilterSet are
+       better than no figures at all — and the source line says which one
+       answered, so the reader is never left guessing which they are looking
+       at. */
+    metricsCandidate({ ...filters, project_ids: [projectId] }, screen),
+  ], REPORTING_NOTE);
 }
 
 /**
@@ -483,7 +830,7 @@ export function getWbs(projectId, filters, reportId = REPORT_IDS.wbsHierarchy) {
  */
 export function getCwipLedger(filters) {
   return firstAvailable([
-    reportCandidate(REPORT_IDS.cwipLedger, filters),
+    metricsCandidate(filters, SCREENS.cwipLedger),
     {
       source: 'ledger',
       template: LEDGER_ROUTES.bills,
@@ -505,7 +852,7 @@ export function getCwipLedger(filters) {
       },
       unapplied: unappliedFilters(filters, LEDGER_HONOURS),
     },
-  ], A1_NOTE);
+  ], REPORTING_NOTE);
 }
 
 /**
@@ -517,7 +864,7 @@ export function getCwipLedger(filters) {
  */
 export function getCwipTotal(filters) {
   return firstAvailable([
-    reportCandidate(REPORT_IDS.cwipAgeing, filters, { shape: 'total' }),
+    metricsCandidate(filters, SCREENS.cwipAgeing),
     {
       source: 'ledger',
       template: LEDGER_ROUTES.dashboard,
@@ -525,7 +872,7 @@ export function getCwipTotal(filters) {
       call: () => ledger.get('/dashboard', ledgerParams(filters)),
       unapplied: unappliedFilters(filters, LEDGER_HONOURS),
     },
-  ], A1_NOTE);
+  ], REPORTING_NOTE);
 }
 
 /**
@@ -543,18 +890,31 @@ export function getCwipTotal(filters) {
  * it comes from `/api/reconciliation`'s own summary — and they fetch it
  * separately through `getCommitmentTotal()` / `getCwipTotal()`.
  */
-export function getAgeing(kind, filters) {
-  const reportId = kind === 'cwip' ? REPORT_IDS.cwipAgeing : REPORT_IDS.commitmentAgeing;
-  return firstAvailable([reportCandidate(reportId, filters)],
-    `${A1_NOTE} An ageing table cannot be assembled in the browser from a page of documents: `
-    + 'the buckets would be the buckets of that page while the headings claimed to be the '
-    + 'buckets of the portfolio.');
+export async function getAgeing(kind, filters) {
+  const screen = kind === 'cwip' ? SCREENS.cwipAgeing : SCREENS.commitmentAgeing;
+  /* THE REFUSAL IS READ FROM THE BUILD, NOT ASSUMED.
+     `/api/reports/dimensions` publishes what this build can group by, exactly
+     so a screen can grey a control out with the reason attached instead of
+     discovering the refusal by sending a request and getting a 422. If an
+     age-band dimension is ever added, this screen starts working without a
+     line changing here — and until then it says which dimension is missing
+     rather than "not built yet", which was never true of this route. */
+  const dimensions = await getDimensions();
+  const band = (dimensions.dimensions || []).find(
+    (d) => /age|ageing|aging|bucket/i.test(String(d && d.name || '')),
+  );
+  if (!band) {
+    throw new EndpointUnavailableError(REPORT_ROUTES.dimensions, AGEING_NOTE);
+  }
+  return firstAvailable(
+    [metricsCandidate(filters, screen, { group_by: band.name })], AGEING_NOTE,
+  );
 }
 
 /** The measured, un-bucketed open-commitment total — server-summed. */
 export function getCommitmentTotal(filters) {
   return firstAvailable([
-    reportCandidate(REPORT_IDS.commitmentAgeing, filters, { shape: 'total' }),
+    metricsCandidate(filters, SCREENS.commitmentAgeing),
     {
       source: 'ledger',
       template: LEDGER_ROUTES.reconciliation,
@@ -562,13 +922,13 @@ export function getCommitmentTotal(filters) {
       call: () => ledger.get('/reconciliation', ledgerParams(filters)),
       unapplied: unappliedFilters(filters, LEDGER_HONOURS),
     },
-  ], A1_NOTE);
+  ], REPORTING_NOTE);
 }
 
 /** SCR-25: exceptions and overruns. */
 export function getExceptions(filters) {
   return firstAvailable([
-    reportCandidate(REPORT_IDS.exceptions, filters),
+    metricsCandidate(filters, SCREENS.exceptions),
     {
       source: 'ledger',
       template: LEDGER_ROUTES.dashboard,
@@ -576,61 +936,193 @@ export function getExceptions(filters) {
       call: () => ledger.get('/dashboard', ledgerParams(filters)),
       unapplied: unappliedFilters(filters, LEDGER_HONOURS),
     },
-  ], A1_NOTE);
+  ], REPORTING_NOTE);
 }
 
-/** The drill-down behind a metric: the SOURCE RECORDS, same FilterSet. */
-export function getDrilldown(reportId, filters, dimension) {
-  return firstAvailable([
-    reportCandidate(reportId, filters, dimension ? { drill: dimension } : {}),
-    {
-      source: 'ledger',
-      template: LEDGER_ROUTES.dashboard,
-      label: '/api/dashboard',
-      call: () => ledger.get('/dashboard', ledgerParams(filters)),
-      unapplied: unappliedFilters(filters, LEDGER_HONOURS),
-    },
-  ], A1_NOTE);
+/**
+ * The rows behind one grouped figure: the SAME FilterSet plus the clicked
+ * dimension and its key.
+ *
+ * THE ROUND TRIP IS THE CONTRACT — "a drill-down that does not sum back to the
+ * figure clicked is a defect" — and it holds here by CONSTRUCTION rather than
+ * by agreement, because both sides of the comparison come from one place.
+ * `reporting.drill_down` narrows through `FilterSet.narrowed_to`, which
+ * INTERSECTS rather than replaces, then re-runs the SAME aggregate over the
+ * SAME fact with only `group_by` changed. There is no second query and no
+ * second set of formulas to drift.
+ *
+ * This function's whole job is to not break that: it sends the FilterSet the
+ * card was built from, UNCHANGED, and adds `dimension` and `key`. It does not
+ * re-read the filter bar, and it strips `cursor` — a drill-down starts at the
+ * first page of its own result, and inheriting the card screen's cursor would
+ * page into the middle of a different result set and return rows that cannot
+ * sum back to anything.
+ *
+ * There is NO LEDGER FALLBACK. `/api/dashboard` applies three of the eighteen
+ * filters, so its rows could not sum back to a card the reporting service
+ * computed — and a drill-down that silently answers from a different
+ * population is worse than one that says it is unavailable.
+ *
+ * @param {Object} filters - the card's FilterSet, verbatim.
+ * @param {string} dimension - the clicked dimension, e.g. 'project'.
+ * @param {string|null} key - the clicked key. `null` is a real value: a group
+ *   whose key is NULL (a project with no plant) drills to the rows with no
+ *   key, and inventing a sentinel id would fabricate a filter.
+ * @param {string[]} [grain] - the finer grouping to land on.
+ */
+export function getDrilldown(filters, dimension, key = null, grain = null) {
+  if (!dimension) {
+    return Promise.reject(new AnalyticsApiError(
+      'A drill-down needs the dimension that was clicked.',
+      { status: 0, kind: 'validation' },
+    ));
+  }
+  const sent = { ...(filters || {}), cursor: null };
+  const extra = { dimension };
+  if (key !== null && key !== undefined) extra.key = key;
+  if (grain && grain.length) extra.grain = grain;
+  const search = toSearch(sent, extra);
+  return firstAvailable([{
+    source: 'reports',
+    template: REPORT_ROUTES.drillDown,
+    label: REPORT_ROUTES.drillDown,
+    call: async () => adaptReportPayload(await reports.get(`/drill-down${search}`)),
+    unapplied: [],
+  }], REPORTING_NOTE);
 }
+
+/**
+ * What this build can group by, sort by, and what it cannot filter on.
+ *
+ * Cached for the life of the page: it describes the BUILD, not the data, so it
+ * cannot change under a reader. A failure to read it degrades to the frozen
+ * defaults rather than blocking a screen — but the failure is reported in
+ * `known`, so a caller can tell "this build has no age-band dimension" from
+ * "the catalogue could not be read".
+ */
+let dimensionsPromise = null;
+
+export function getDimensions() {
+  if (dimensionsPromise) return dimensionsPromise;
+  dimensionsPromise = (async () => {
+    try {
+      const present = await available(REPORT_ROUTES.dimensions);
+      if (present === false) throw new Error('not mounted');
+      const data = await reports.get('/dimensions');
+      return {
+        known: true,
+        dimensions: Array.isArray(data.dimensions) ? data.dimensions : [],
+        metrics: Array.isArray(data.metrics) ? data.metrics : [],
+        sortable: Array.isArray(data.sortable) ? data.sortable : [],
+        reportKeys: Array.isArray(data.report_keys) ? data.report_keys : [],
+        unavailableFilters: Array.isArray(data.unavailable_filters)
+          ? data.unavailable_filters : [],
+      };
+    } catch {
+      return {
+        known: false,
+        dimensions: GROUPABLE.map((name) => ({ name, description: '' })),
+        metrics: [], sortable: [], reportKeys: Object.values(REPORT_KEYS),
+        unavailableFilters: [],
+      };
+    }
+  })();
+  return dimensionsPromise;
+}
+
+/** Test seam: forget the cached dimension catalogue. */
+export function resetDimensions() { dimensionsPromise = null; }
 
 /**
  * Queue an export of exactly what is on screen.
  *
- * Returns `{ queued: false, reason }` rather than throwing when neither export
- * route is mounted, so a screen can DISABLE the control and say why instead of
- * offering a button that fails when pressed.
+ * Returns `{ queued: false, reason }` rather than throwing when the export
+ * route is not mounted, so a screen can DISABLE the control and say why
+ * instead of offering a button that fails when pressed.
+ *
+ * THE BODY IS `{dataset, filters}` AND THERE IS NO `report_id` AND NO
+ * `format`. `api/exports.py` declares `CreateExportRequest` with
+ * `extra="forbid"`, so a stray field is a 422 rather than a silently ignored
+ * one; and the output format is the dataset's, not the caller's — every
+ * dataset in this build is CSV and offering a choice would imply one exists.
+ *
+ * `cursor`, `limit`, `sort` and `group_by` are STRIPPED, and this is the one
+ * place in this feature where a filter is removed rather than sent. They are
+ * not narrowing filters: they are this screen's paging and shape, and
+ * `exports.FILTER_FIELDS_NOT_APPLICABLE_TO_AN_EXPORT` refuses all four
+ * outright, because an export delivers the whole result set in a captured
+ * column and row order. Sending the screen's `limit` would either be refused
+ * or — worse, had the backend been laxer — truncate the file to one page while
+ * the reader believed they had the portfolio.
  */
-export async function queueExport(reportId, filters, format = 'csv') {
-  const viaExports = await available(EXPORT_ROUTES.create);
-  const viaReports = await available(REPORT_ROUTES.export);
-  if (viaExports === false && viaReports === false) {
-    return { queued: false, reason: A2_NOTE, template: EXPORT_ROUTES.create };
+export async function queueExport(screen, filters) {
+  const dataset = (screen && screen.dataset) || SCREENS.executive.dataset;
+  const present = await available(EXPORT_ROUTES.create);
+  if (present === false) {
+    return { queued: false, reason: EXPORT_NOTE, template: EXPORT_ROUTES.create };
   }
-  const body = { report_id: reportId, format, filters: toQuery(filters) };
-  const result = await firstAvailable([
-    {
-      source: 'exports',
-      template: EXPORT_ROUTES.create,
-      label: '/api/exports',
-      call: () => ledger.post('/exports', body),
-    },
-    {
-      source: 'reports',
-      template: REPORT_ROUTES.export,
-      label: '/api/reports/export',
-      call: () => reports.post('/export', body),
-    },
-  ], A2_NOTE);
+  const sent = { ...(filters || {}) };
+  for (const shapeKey of ['cursor', 'limit', 'sort', 'group_by']) delete sent[shapeKey];
+  const body = { dataset, filters: toQuery(sent) };
+  const result = await firstAvailable([{
+    source: 'exports',
+    template: EXPORT_ROUTES.create,
+    label: EXPORT_ROUTES.create,
+    call: () => ledger.post('/exports', body),
+  }], EXPORT_NOTE);
   return { queued: true, ...result };
+}
+
+/** Poll one export job. 202 at creation means the job id is the only answer. */
+export function getExportJob(exportJobId) {
+  return ledger.get(`/exports/${encodeURIComponent(exportJobId)}`);
 }
 
 /** Is an export possible in this build at all? Used to gate the control. */
 export async function exportAvailable() {
-  const a = await available(EXPORT_ROUTES.create);
-  const b = await available(REPORT_ROUTES.export);
-  if (a === true || b === true) return true;
-  if (a === false && b === false) return false;
-  return null;   // unknown stays unknown
+  return available(EXPORT_ROUTES.create);   // unknown stays unknown
 }
 
-export const NOTES = Object.freeze({ reporting: A1_NOTE, exporting: A2_NOTE });
+/* ------------------------------------------------------------------ *
+ * Saved views
+ * ------------------------------------------------------------------ */
+
+/** Every saved view this caller may open for one screen. */
+export async function listViews(screen) {
+  if (!savedViewsSupported(screen)) {
+    return { state: 'unsupported', views: [], default_view_id: null };
+  }
+  return reports.get(`/views${toSearch({ report_key: screen.key })}`);
+}
+
+/**
+ * Save the CURRENT FilterSet as a named view.
+ *
+ * The definition is the FilterSet in `FilterSet.to_json`'s shape, and `cursor`
+ * is excluded — a saved view that stored one would open on page four of a
+ * result set that no longer exists. `FilterSet.from_json` REFUSES an unknown
+ * key rather than dropping it, so a definition is either applied whole or not
+ * at all.
+ */
+export function saveView(screen, { entityId, name, description, visibility, filters }) {
+  if (!savedViewsSupported(screen)) {
+    return Promise.reject(new AnalyticsApiError(
+      'This screen has no saved-view key, so a view cannot be saved against it.',
+      { status: 0, kind: 'validation' },
+    ));
+  }
+  const definition = { ...toQuery(filters) };
+  delete definition.cursor;
+  return reports.post('/views', {
+    entity_id: entityId,
+    report_key: screen.key,
+    name,
+    description: description || null,
+    visibility: visibility || 'PRIVATE',
+    definition,
+  });
+}
+
+export const NOTES = Object.freeze({
+  reporting: REPORTING_NOTE, exporting: EXPORT_NOTE, ageing: AGEING_NOTE,
+});

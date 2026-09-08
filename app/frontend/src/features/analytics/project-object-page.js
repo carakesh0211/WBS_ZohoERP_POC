@@ -48,7 +48,7 @@ import {
 import { createWbsTree } from './wbs-tree.js';
 import { METRIC_TARGET } from './portfolio-table.js';
 import {
-  exportAvailable, getWbs, queueExport, REPORT_IDS,
+  exportAvailable, getWbs, queueExport, SCREENS,
 } from './analytics-api.js';
 
 const CARDS = ['budget', 'commitment', 'actual', 'received_not_billed', 'pr_reserved', 'available'];
@@ -243,9 +243,9 @@ export function mountProjectObjectPage(root) {
     while (exportHost.firstChild) exportHost.removeChild(exportHost.firstChild);
     exportHost.appendChild(exportButton({
       availability,
-      reportId: REPORT_IDS.projectDetail,
+      report: SCREENS.projectDetail,
       onExport: async () => {
-        const result = await queueExport(REPORT_IDS.projectDetail, filters);
+        const result = await queueExport(SCREENS.projectDetail, filters);
         announce(result.queued ? 'The export has been queued.'
           : 'This build mounts no export endpoint, so nothing was queued.');
       },
@@ -274,7 +274,7 @@ export function mountProjectObjectPage(root) {
     tree.el.hidden = false;
     tree.renderSkeleton();
 
-    await loader.run(() => getWbs(projectId, filters, REPORT_IDS.projectDetail), {
+    await loader.run(() => getWbs(projectId, filters, SCREENS.projectDetail), {
       render: (data, result) => {
         renderChips(result.unapplied);
         const nested = Array.isArray(data && data.tree) ? data.tree
