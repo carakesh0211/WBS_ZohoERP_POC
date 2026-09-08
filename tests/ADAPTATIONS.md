@@ -2847,3 +2847,118 @@ strengthening, or the replacement of a literal that had already become false —
 so no sign-off is being substituted for. A `| ADAPT-` register row naming an
 individual remains outstanding for the Wave 6 stream as a whole and is not
 fabricated here.
+
+## 2026-09-08 — migration 015: the reservation grain, and the refusal that was deleted on purpose
+
+### What changed, and on whose authority
+
+`014_procurement_corrections.sql` built
+
+    ux_pr_reservation_live  UNIQUE (pr_id) WHERE state = 'Reserved'
+
+and said so in its own header, at length: the index is **exactly right** for a
+purchase request addressing one control cell and **exactly wrong** for a
+`pr_line`-grained one, whose lines can name two budget-owning cells and need
+one hold each. 014 reported that contradiction (GAP-1) rather than resolving it
+on its own authority, and `procurement_services.create_pr` REFUSED a multi-cell
+`reserve=True` with `MULTI_CELL_RESERVATION_UNSUPPORTED` — safe, and a blocked
+feature.
+
+**The product owner approved the resolution on 2026-09-08.** That is the
+authority recorded here, and it is the only one: no individual approver is
+named, because this agent has none to name and an author approving their own
+change is not an approval however it is worded. The approved grain is **one
+live reservation per (purchase request × resolved budget control cell)**, where
+a *resolved* cell is the budget-**owning WBS ancestor** plus `budget_head_id` —
+never the line's own `wbs_id`.
+
+`migrations/pg/015_reservation_grain.sql` is that decision and nothing else.
+014 is **not** edited: its checksum is recorded in `schema_migrations` wherever
+it ran, and editing it makes `assert_schema_current` report drift and every
+existing deployment refuse to boot. That is the same reason 014 exists rather
+than 013 having been corrected in place.
+
+### The one assertion-bearing thing that was REMOVED, and why it is not a weakening
+
+| What | Was | Is | Why it is not a weakening |
+|---|---|---|---|
+| `procurement_services.create_pr`, `reserve=True` on a multi-cell request | raised `MULTI_CELL_RESERVATION_UNSUPPORTED` (409), created nothing | takes one hold per resolved cell, atomically | The refusal existed **only** while the schema could not express the grain. It was never a control over money; it was a report that two frozen rules contradicted each other. 015 removes the contradiction, so the report has nothing left to report. |
+
+**No test asserted that code.** The refusal was never covered by an assertion
+anywhere in the suite — a search finds it in `procurement_services.py` and in
+014's header prose and nowhere else — so nothing was weakened, deleted or
+re-pointed to accommodate its removal. `tests/test_pg_reservations.py` now
+asserts its **absence from the raise site** and its **presence in the prose**,
+because the record of what was refused and why is the explanation of why 015
+exists.
+
+What replaced it is stronger than what it removed, and every part is asserted:
+
+* **Atomic.** A `reserve=True` request that exceeds available budget on ANY
+  resolved cell is refused outright with `RESERVATION_EXCEEDS_BUDGET` and
+  nothing is created — not the request, not its lines, not the holds that would
+  have fitted. Before 015 a *single-cell* over-budget request with
+  `reserve=True` was created and its hold taken; that is now refused too. That
+  is a **narrowing**, and it is deliberate: a hold is not a proposal, it takes
+  money out of everyone else's availability the moment it is written.
+* **Idempotent.** `ON CONFLICT (pr_id, wbs_id, budget_head_id) WHERE state =
+  'Reserved' DO NOTHING`, then a read-back. A replay reuses its own holds; a
+  replay carrying a different amount is refused with
+  `RESERVATION_AMOUNT_CONFLICT` rather than silently moving the hold.
+* **Grain overlap refused.** A live 014-grain hold on a descendant and a
+  resolved hold on its owner are two rows at two different keys holding the
+  same money twice, and no unique index can see that. `cell_grain` (015) makes
+  the refusal possible; `RESERVATION_GRAIN_CONFLICT` is it.
+
+### What was preserved, and checked
+
+Every historical `Released`, `Converted` and `Expired` reservation. 015 issues
+no `DELETE`, no `TRUNCATE`, no `DROP TABLE` and no `UPDATE pr_reservation`; the
+only row-level write is the `DEFAULT 'LINE'` that populates a column which did
+not exist a statement ago, and `'LINE'` is the truthful value for every row in
+existence when it runs. Asserted twice — against the migration text on every
+machine, and against a live database in CI.
+
+The preflight **refuses and never resolves**, exactly as 014's does: it names
+every live reservation group that would block the new index, with its
+`reservation_id`s and the paise it holds, and then `RAISE EXCEPTION`. It also
+reports — **without** refusing — live 014-grain holds, because those are
+correct rows and refusing them would refuse to migrate a database doing nothing
+wrong.
+
+### `tests/test_pg_locking_order.py` needed no change, and that is worth stating
+
+`release_reservations_for_pr` writes cells, so the analyser holds it to
+Contract 3 in full: it reads the live reservations' own rows (a plain `SELECT`,
+no cell lock), calls `lock_affected_cells` ONCE with that COMPLETE set, and
+only then settles and re-derives. `reserve_pr_cells` deliberately takes **no**
+lock and performs **no** cell write — `create_pr` holds the locks it needs,
+taken once with the complete affected set, and `lock_affected_cells` expands
+each line cell to every budget-owning ancestor on its chain, so every resolved
+cell is already inside that set. A second `lock_affected_cells` call, which is
+what Rule 1 forbids, therefore never arises. The suite passed unchanged.
+
+### One new file, post-baseline
+
+`tests/test_pg_reservations.py`, split the way `test_pg_migration_014.py` is.
+Twenty-one source-level tests run on every machine; twelve `@pytest.mark.pg`
+tests skip here and first execute in CI's `pg_tests` job, and their shared skip
+reason says **a skip is not a pass** in so many words.
+
+The seventh live property is the one to read first:
+`test_the_previous_whole_pr_index_fails_the_multi_cell_scenario` rebuilds 014's
+`UNIQUE (pr_id) WHERE state = 'Reserved'` on the real table inside a
+transaction, runs the real two-pot request against it, and requires a
+`UniqueViolation`; the transaction rolls back, taking the replica index with
+it, and the identical request then succeeds under 015's grain. The reason for
+the change is therefore **provable**, not asserted in a commit message.
+
+### Approval of record
+
+**The product owner, 2026-09-08**, for the grain decision itself — that is the
+authority this whole change rests on and it is recorded as such. No individual
+approver is named for the test-level consequences, because none reviewed them:
+no existing assertion was weakened, deleted or re-pointed, so there is no
+sign-off being substituted for. A `| ADAPT-` register row naming an individual
+remains outstanding for the Wave 6 stream as a whole and is not fabricated
+here.

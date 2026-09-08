@@ -526,7 +526,20 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
              "passed, not project alone, for the reason 013's header gives at "
              "length: a principal restricted to one entity and to no project "
              "carries project_ids=None, and a project-only predicate would "
-             "hand them every other entity's held budget."),
+             "hand them every other entity's held budget. "
+             "015_reservation_grain.sql changes the GRAIN of this table -- one "
+             "live hold per (request x RESOLVED control cell) rather than one "
+             "per request -- and adds no table, no policy and no dimension "
+             "column, so the row above is unchanged. The reach is unchanged "
+             "too, and that is checked rather than assumed: 015 moves `wbs_id` "
+             "from the line's own cell to the budget-owning ANCESTOR, and an "
+             "ancestor in ANOTHER project would put the denormalised "
+             "`project_id` at odds with `wbs_id` and open a scope hole. It "
+             "cannot: `fk_wbs_parent_same_project` (002) makes a child's "
+             "project_id identical to its parent's for the whole chain, and "
+             "`fk_pr_reservation_wbs_project` (014) binds this row's "
+             "(wbs_id, project_id) pair to a real wbs_element -- so the "
+             "resolved ancestor is in the request's project by construction."),
     ScopedTable(
         table="lifecycle_state", dimensions=(), reach="reference",
         path="no dimension column and no join to one -- organisation-wide",

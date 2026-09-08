@@ -313,6 +313,39 @@ POST_BASELINE_FILES = {
     # audit-remediation suite, and inflating it would make the removal guard
     # stop meaning anything the moment the product grows.
     "test_ledger_cell_writers.py", "test_pg_migration_014.py",
+
+    # --- Migration 015: the reservation grain ------------------------------
+    # 014 built `ux_pr_reservation_live UNIQUE (pr_id) WHERE state =
+    # 'Reserved'` and said in its own header that the index was right for a
+    # one-cell request and wrong for a `pr_line`-grained one; it reported the
+    # contradiction rather than resolving it, and `create_pr` refused a
+    # multi-cell `reserve=True`. The product owner resolved it on 2026-09-08:
+    # one live hold per (purchase request x RESOLVED budget control cell),
+    # where a resolved cell is the budget-OWNING WBS ancestor, not the line's
+    # own `wbs_id`.
+    #
+    # Split like `test_pg_migration_014.py`, and the split is doing real work
+    # here. The source-level half runs EVERYWHERE and holds the things a live
+    # test cannot see: that 014 was not edited, that no DELETE or TRUNCATE
+    # touches a settled reservation, that the runner's adoption parsers
+    # actually see the new index and the new named CHECK (an index they cannot
+    # see certifies as adopted while absent), and that the resolved cell is
+    # read out of the verdicts rather than re-derived -- a second resolution
+    # pass can name a different owner than the verdict the request was accepted
+    # on, and that is a hold against a budget nobody checked.
+    #
+    # The `@pytest.mark.pg` half skips on every workstation here and first
+    # executes in CI's pg_tests job: aggregation, separation, the atomic
+    # rollback, the concurrent over-reserve, retry idempotency, exactly-once
+    # settlement, and -- the one that makes the change's justification
+    # checkable rather than a claim in a commit message -- 014's index shape
+    # rebuilt on the real table and FAILING the multi-cell scenario. A skip is
+    # not a pass, and its skip reason says so.
+    #
+    # Post-baseline like every Wave 2-6 file: the 220 counts the POC's
+    # audit-remediation suite, and inflating it would make the removal guard
+    # stop meaning anything the moment the product grows.
+    "test_pg_reservations.py",
 }
 
 

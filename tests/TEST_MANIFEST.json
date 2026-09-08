@@ -7027,17 +7027,17 @@
         "assertions": 2,
         "body_sha": "f77269aab03814e2"
       },
-      "test_reserve_true_is_refused_because_pr_reservation_has_no_pg_table": {
-        "assertions": 4,
-        "body_sha": "3564453315a7b7eb"
+      "test_reserve_true_now_holds_budget_because_014_created_the_table": {
+        "assertions": 3,
+        "body_sha": "9125edbbdcd8a246"
       },
-      "test_pr_reservation_really_has_no_postgresql_table": {
-        "assertions": 1,
-        "body_sha": "556328bd8c81a84b"
+      "test_pr_reservation_now_exists_and_carries_its_live_uniqueness": {
+        "assertions": 6,
+        "body_sha": "23753d1982d50c52"
       },
-      "test_the_lifecycle_gate_reports_unavailable_rather_than_claiming_to_pass": {
+      "test_the_lifecycle_gate_is_evaluated_now_that_014_created_its_table": {
         "assertions": 1,
-        "body_sha": "267b1d11b71f5374"
+        "body_sha": "06deee5f10be043c"
       },
       "test_an_abandoned_wbs_is_refused": {
         "assertions": 2,
@@ -8048,6 +8048,140 @@
       "test_query_one_returns_first_row": {
         "assertions": 1,
         "body_sha": "14963e18f9a3d63b"
+      }
+    },
+    "test_pg_reservations.py": {
+      "test_015_is_discovered_named_and_numbered": {
+        "assertions": 4,
+        "body_sha": "4c24fe5dbb7acf44"
+      },
+      "test_014_is_not_modified_by_this_change": {
+        "assertions": 2,
+        "body_sha": "634b6ed9aaeeac27"
+      },
+      "test_015_contains_no_delete_truncate_or_drop_of_a_reservation": {
+        "assertions": 4,
+        "body_sha": "b938e9a0e54c097e"
+      },
+      "test_the_new_index_is_over_the_pr_and_the_resolved_cell": {
+        "assertions": 2,
+        "body_sha": "f3a09f81292fc4a8"
+      },
+      "test_the_old_whole_pr_index_is_dropped_not_left_alongside": {
+        "assertions": 2,
+        "body_sha": "cc3f93f1d560107f"
+      },
+      "test_the_preflight_runs_before_every_ddl_statement": {
+        "assertions": 1,
+        "body_sha": "2a20dbe3eb77df98"
+      },
+      "test_the_preflight_refuses_and_never_resolves": {
+        "assertions": 4,
+        "body_sha": "c0d50579ac19bdc1"
+      },
+      "test_the_preflight_names_the_rows_that_would_block_the_index": {
+        "assertions": 3,
+        "body_sha": "24d7e44ad6a0410f"
+      },
+      "test_every_sum_over_bigint_money_is_cast_back_to_bigint": {
+        "assertions": 1,
+        "body_sha": "4258ef3b4ff6374d"
+      },
+      "test_the_migration_names_its_grant_and_its_revoke_for_capex_app": {
+        "assertions": 2,
+        "body_sha": "78d9c7f766583e91"
+      },
+      "test_the_migration_ends_with_a_commented_rollback": {
+        "assertions": 4,
+        "body_sha": "d950a3d7138c2b96"
+      },
+      "test_the_runner_verifies_both_of_015s_indexes": {
+        "assertions": 3,
+        "body_sha": "1998e3e22d2e8443"
+      },
+      "test_the_runner_verifies_015s_added_column_and_named_check": {
+        "assertions": 2,
+        "body_sha": "ceba260f0dc94d14"
+      },
+      "test_015_adds_no_table_no_policy_and_no_rls_statement": {
+        "assertions": 3,
+        "body_sha": "934d70edb9c3c39c"
+      },
+      "test_015_adds_no_paise_column_so_none_can_be_mis_declared": {
+        "assertions": 2,
+        "body_sha": "2561b2bc903fa8b0"
+      },
+      "test_the_multi_cell_refusal_is_gone_from_the_service": {
+        "assertions": 2,
+        "body_sha": "a7d48a712c5eaed8"
+      },
+      "test_the_service_still_refuses_a_hold_it_cannot_take": {
+        "assertions": 1,
+        "body_sha": "4572452917da8923"
+      },
+      "test_the_resolved_cell_is_read_from_the_verdicts_never_re_derived": {
+        "assertions": 2,
+        "body_sha": "0f2e9f29d6f49963"
+      },
+      "test_exactly_one_statement_in_this_package_derives_a_ledger_column": {
+        "assertions": 2,
+        "body_sha": "bff5826446afd87a"
+      },
+      "test_the_insert_targets_the_partial_index_with_its_predicate": {
+        "assertions": 1,
+        "body_sha": "3e509fd38514b993"
+      },
+      "test_every_reservation_mutation_appends_an_audit_entry": {
+        "assertions": 1,
+        "body_sha": "70e930f1f92adf94"
+      },
+      "test_two_lines_in_the_same_resolved_cell_aggregate_into_one_reservation": {
+        "assertions": 6,
+        "body_sha": "f264cbd6fc327696"
+      },
+      "test_two_lines_in_different_resolved_cells_produce_two_reservations": {
+        "assertions": 6,
+        "body_sha": "3b362c1b0cf94a8e"
+      },
+      "test_insufficient_availability_in_one_cell_rolls_back_every_reservation": {
+        "assertions": 8,
+        "body_sha": "3ae9f142ec9e63b8"
+      },
+      "test_concurrent_reservations_cannot_over_reserve_one_pot": {
+        "assertions": 5,
+        "body_sha": "ebd6a63393d01673"
+      },
+      "test_a_retry_reuses_its_own_holds_and_does_not_duplicate_them": {
+        "assertions": 5,
+        "body_sha": "a98a35c9e3060ab0"
+      },
+      "test_conversion_settles_every_cell_exactly_once": {
+        "assertions": 6,
+        "body_sha": "02fcba417562ea1c"
+      },
+      "test_release_frees_every_cell_exactly_once_and_re_derives_both": {
+        "assertions": 5,
+        "body_sha": "b46b96926f077668"
+      },
+      "test_the_previous_whole_pr_index_fails_the_multi_cell_scenario": {
+        "assertions": 4,
+        "body_sha": "18e151ad13e602e7"
+      },
+      "test_the_shipped_index_is_the_resolved_cell_one_and_the_old_one_is_gone": {
+        "assertions": 5,
+        "body_sha": "7876d8138a3d9d17"
+      },
+      "test_a_settled_reservation_does_not_block_a_later_hold_on_the_same_cell": {
+        "assertions": 1,
+        "body_sha": "dcf6082e2c71edff"
+      },
+      "test_a_live_line_grain_hold_refuses_a_resolved_hold_beside_it": {
+        "assertions": 4,
+        "body_sha": "49c3aab1d9f1978a"
+      },
+      "test_historical_settled_reservations_survive_the_migration": {
+        "assertions": 4,
+        "body_sha": "8200d8e0a47d7a47"
       }
     },
     "test_pg_rls.py": {
@@ -9155,6 +9289,7 @@
     "test_pg_procurement_schema.py": 73,
     "test_pg_reconciliation.py": 36,
     "test_pg_repo.py": 23,
+    "test_pg_reservations.py": 33,
     "test_pg_rls.py": 18,
     "test_pg_rls_coverage.py": 34,
     "test_pg_rls_integration_matrix.py": 16,
@@ -9236,12 +9371,13 @@
     "test_pg_period_concurrency.py": 28,
     "test_pg_periods.py": 49,
     "test_pg_principal_scope.py": 83,
-    "test_pg_procurement.py": 134,
+    "test_pg_procurement.py": 138,
     "test_pg_procurement_ingest.py": 272,
     "test_pg_procurement_reconciliation.py": 68,
     "test_pg_procurement_schema.py": 142,
     "test_pg_reconciliation.py": 117,
     "test_pg_repo.py": 37,
+    "test_pg_reservations.py": 107,
     "test_pg_rls.py": 34,
     "test_pg_rls_coverage.py": 72,
     "test_pg_rls_integration_matrix.py": 34,

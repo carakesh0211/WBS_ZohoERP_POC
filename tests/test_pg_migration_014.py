@@ -391,7 +391,13 @@ def _seed(session) -> dict:
         (ids["head"], ids["entity"]))
     for wkey, pkey in (("wbs", "project"), ("wbs_b", "project_b")):
         session.execute(
-            "INSERT INTO wbs_element (wbs_id, project_id, code, name, level, "
+            # `wbs_code` and `description`, NOT `code`/`name`. Those are
+            # `entity`/`budget_head`'s column names, and the mistake was
+            # invisible locally because every test in this file is
+            # `@pytest.mark.pg` and skips without a server -- it would
+            # have errored all 27 of them on the first CI run.
+            "INSERT INTO wbs_element (wbs_id, project_id, wbs_code, "
+            "description, level, "
             "sort_order, wbs_path, status, created_by, updated_by) "
             "VALUES (%s, %s, %s, %s, 1, 1, %s, 'Released', 't', 't')",
             (ids[wkey], ids[pkey], ids[wkey], ids[wkey],

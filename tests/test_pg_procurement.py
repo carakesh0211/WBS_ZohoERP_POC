@@ -304,42 +304,81 @@ def test_create_pr_locks_every_budget_owning_ancestor_not_only_the_nearest(
 
 
 @PG
-def test_reserve_true_is_refused_because_pr_reservation_has_no_pg_table(
+def test_reserve_true_now_holds_budget_because_014_created_the_table(
         pg_database, pg_connection):
-    """The caller asked for budget to be held. There is nowhere to hold it, so
-    the request is NOT created. Ignoring the flag would report a reservation
-    that nothing is reserving."""
+    """The reminder the previous version of this test promised, arriving.
+
+    It read `test_reserve_true_is_refused_because_pr_reservation_has_no_pg_table`
+    and asserted a 501: the caller asked for budget to be held, there was
+    nowhere to hold it, so the request was not created at all — ignoring the
+    flag would have reported a reservation that nothing was reserving.
+
+    Migration 014 created `pr_reservation` and 015 gave it the
+    (PR × resolved control cell) grain. The refusal is therefore no longer the
+    correct behaviour, and this asserts the capability instead of the absence.
+    Deleting the test would have removed coverage of a control that has only
+    just begun to exist.
+    """
     suffix = uuid.uuid4().hex[:10]
     ids = _seed_chain(pg_connection, suffix=suffix)
 
     with pg_database.session(Scope.system()) as session:
-        with pytest.raises(proc.ProcurementError) as excinfo:
-            proc.create_pr(session, project_id=ids["project"], actor="U-REQ",
-                           lines=[_line(ids, 100_00)], reserve=True)
-        rows = session.fetchall("SELECT pr_id FROM purchase_request")
+        result = proc.create_pr(session, project_id=ids["project"],
+                                actor="U-REQ", lines=[_line(ids, 100_00)],
+                                reserve=True)
+        held = session.fetchall(
+            "SELECT wbs_id, budget_head_id, amount_paise, state"
+            "  FROM pr_reservation WHERE pr_id = %s", (result["pr_id"],))
 
-    assert excinfo.value.code == proc.ERR_RESERVATION_UNAVAILABLE
-    assert excinfo.value.status == 501
-    assert rows == [], "nothing was written"
+    assert held, "reserve=True created no hold"
+    assert all(row[3] == "Reserved" for row in held), held
+    assert sum(row[2] for row in held) == 100_00, (
+        f"the hold does not equal the amount requested: {held}")
 
 
 @PG
-def test_pr_reservation_really_has_no_postgresql_table(pg_connection):
-    """The premise of the refusal above, checked rather than asserted in prose.
-    If a later migration creates the table this test fails, which is the
-    reminder that `reserve=True` should then start working."""
+def test_pr_reservation_now_exists_and_carries_its_live_uniqueness(
+        pg_connection):
+    """The premise of the test above, checked rather than asserted in prose.
+
+    Replaces `test_pr_reservation_really_has_no_postgresql_table`, whose whole
+    purpose was to fail the day a migration created the table. It did its job.
+
+    Now it pins the shape that matters: 015's partial unique index over
+    (pr_id, wbs_id, budget_head_id) WHERE state = 'Reserved'. That predicate is
+    the control — without it a PR could hold the same resolved cell twice, and
+    without the partiality a settled hold would block a later one.
+    """
     row = pg_connection.execute(
         "SELECT 1 FROM information_schema.tables "
         "WHERE table_schema = current_schema() AND table_name = 'pr_reservation'"
     ).fetchone()
-    assert row is None
+    assert row is not None, "migration 014 did not create pr_reservation"
+
+    indexes = {
+        name: definition for name, definition in pg_connection.execute(
+            "SELECT indexname, indexdef FROM pg_indexes "
+            "WHERE tablename = 'pr_reservation'").fetchall()
+    }
+    assert "ux_pr_reservation_live_cell" in indexes, sorted(indexes)
+    definition = indexes["ux_pr_reservation_live_cell"].lower()
+    assert "unique" in definition
+    for column in ("pr_id", "wbs_id", "budget_head_id"):
+        assert column in definition, definition
+    assert "reserved" in definition, (
+        "the live-hold index is not partial, so a settled reservation would "
+        "block a later hold on the same cell")
+    assert "ux_pr_reservation_live" not in indexes, (
+        "015 replaced the whole-PR index; leaving both would refuse the "
+        "multi-cell reservation the new grain exists to permit")
 
 
 @PG
-def test_the_lifecycle_gate_reports_unavailable_rather_than_claiming_to_pass(
+def test_the_lifecycle_gate_is_evaluated_now_that_014_created_its_table(
         pg_database, pg_connection):
-    """`lifecycle_state` has no PostgreSQL table, so two thirds of
-    `domain.budget_check`'s lifecycle refusal cannot run. The result says so."""
+    """`lifecycle_state` had no PostgreSQL table, so two thirds of
+    `domain.budget_check`'s lifecycle refusal could not run and the result said
+    so in words. Migration 014 ported the table; the gate is evaluable."""
     suffix = uuid.uuid4().hex[:10]
     ids = _seed_chain(pg_connection, suffix=suffix)
 
@@ -347,7 +386,13 @@ def test_the_lifecycle_gate_reports_unavailable_rather_than_claiming_to_pass(
         result = proc.create_pr(session, project_id=ids["project"],
                                 actor="U-REQ", lines=[_line(ids, 100_00)])
 
-    assert result["lifecycle_gate"] == proc.LIFECYCLE_UNAVAILABLE
+    # 014 created `lifecycle_state`, so the gate can be EVALUATED now. It was
+    # `LIFECYCLE_UNAVAILABLE` — deliberately a sentence, so a skipped gate
+    # could not read as a passed one — and that sentinel is no longer the
+    # right answer for a seeded, released WBS.
+    assert result["lifecycle_gate"] != proc.LIFECYCLE_UNAVAILABLE, (
+        "migration 014 created lifecycle_state, so the gate must now be "
+        "evaluated rather than reported unavailable")
 
 
 @PG

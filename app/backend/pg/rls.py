@@ -252,6 +252,31 @@ RLS_CORRECTION_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
 #: Every table 014 enables RLS on.
 RLS_CORRECTION_TABLES: tuple[str, ...] = tuple(RLS_CORRECTION_TABLE_COLUMNS)
 
+#: `migrations/pg/015_reservation_grain.sql` DELIBERATELY ADDS NO ROW HERE, AND
+#: THAT IS THE FACT WORTH RECORDING.
+#:
+#: This module's maintenance rule is that a reader must always be able to tell
+#: "absent because there is nothing to register" from "absent because somebody
+#: forgot", and silence cannot make that distinction. 015 changes the GRAIN of
+#: `pr_reservation` -- one live hold per (request x resolved control cell)
+#: instead of one per request -- and it creates NO table, NO policy and NO
+#: `ENABLE`/`FORCE` statement. There is therefore no new row for any registry
+#: in this module, and `RLS_CORRECTION_TABLE_COLUMNS` above still covers
+#: `pr_reservation` exactly as 014 left it.
+#:
+#: The SCOPE REACH IS UNCHANGED, and that is a claim rather than an assumption.
+#: 015 moves a reservation's `wbs_id` from the line's own cell to the
+#: budget-owning ANCESTOR, and an ancestor could in principle be another
+#: project's element -- which would be a scope hole, because `project_id` on
+#: this table is denormalised and would then disagree with `wbs_id`. It cannot
+#: be: `fk_wbs_parent_same_project` (002) makes a child's `project_id`
+#: identical to its parent's for the whole chain, and
+#: `fk_pr_reservation_wbs_project` (014) binds the row's `(wbs_id, project_id)`
+#: pair to a real `wbs_element`. The resolved ancestor is in the same project
+#: as the line by construction, so the join through `project` reaches the same
+#: four dimensions it always did.
+_RESERVATION_GRAIN_MIGRATION = "015_reservation_grain.sql"
+
 #: Every RLS-protected table, from any of the four migrations.
 ALL_RLS_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
     **RLS_TABLE_COLUMNS, **RLS_COVERAGE_TABLE_COLUMNS,
