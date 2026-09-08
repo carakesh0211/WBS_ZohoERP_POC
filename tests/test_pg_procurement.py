@@ -19,14 +19,24 @@ every one of those SKIPS locally and first executes in CI's ``pg_tests`` job.
 with a reason that says so out loud. Nothing in this file reports success
 against a database that was never there.
 
-WHAT THIS FILE DELIBERATELY DOES NOT ASSERT
-===========================================
+THE LIFECYCLE GATE NOW RUNS, AND THIS PARAGRAPH USED TO SAY IT COULD NOT
+========================================================================
 
-That the ``project.status`` / ``wbs_element.status`` procurement gates run.
-They cannot: ``domain.lifecycle_permits`` reads a ``lifecycle_state`` table
-that no PostgreSQL migration creates. :func:`procurement.lifecycle_gate`
-reports its own absence instead, and the tests below assert THAT -- a check
-that claimed the gate had run would be the defect, not the coverage.
+It said the ``project.status`` / ``wbs_element.status`` procurement gates
+could not be asserted, because ``domain.lifecycle_permits`` reads a
+``lifecycle_state`` table that no PostgreSQL migration created;
+:func:`procurement_services.lifecycle_gate` reported its own absence instead
+and the tests asserted THAT. Migration 014 ported the table
+(``014_procurement_corrections.sql:788``), so the gate is evaluated for real
+and ``test_the_lifecycle_gate_is_evaluated_now_that_014_created_its_table``
+asserts the sentinel is no longer the answer.
+
+The consequence for the fixture is not cosmetic. ``project.status`` and
+``wbs_element.status`` both DEFAULT to 'Draft', and 014 gives 'Draft'
+``allows_procurement = false``. :func:`_seed_chain` therefore states
+'Released' rather than defaulting -- a fixture that defaults is a fixture
+every test in this file is refused by, which is exactly what happened on the
+first CI run after 014 landed.
 """
 from __future__ import annotations
 
@@ -223,18 +233,27 @@ def _seed_chain(con, *, suffix: str, budget_paise: int = 10_000_00):
     ex("INSERT INTO entity (entity_id, organisation_id, code, name, "
        "created_by, updated_by) VALUES (%s,%s,%s,%s,'t','t')",
        (ent, org, f"EC_{suffix}", "Entity"))
-    ex("INSERT INTO project (project_id, entity_id, capex_code, name, "
-       "created_by, updated_by) VALUES (%s,%s,%s,%s,'t','t')",
+    # `status` is stated, not defaulted. `project.status` and
+    # `wbs_element.status` both default to 'Draft' (002_budget_control.sql:45
+    # and :94), and migration 014 gave 'Draft' allows_procurement = false in
+    # `lifecycle_state` (014_procurement_corrections.sql:805, :816). Before 014
+    # the gate could not be evaluated at all and answered LIFECYCLE_UNAVAILABLE,
+    # so a Draft fixture went unnoticed; now the gate is real and every call in
+    # this file would be refused LIFECYCLE_STATE. 'Released' is the one project
+    # state that permits procurement AND posting (014:807).
+    ex("INSERT INTO project (project_id, entity_id, capex_code, name, status, "
+       "created_by, updated_by) VALUES (%s,%s,%s,%s,'Released','t','t')",
        (prj, ent, f"C_{suffix}", "Project"))
     ex("INSERT INTO budget_head (budget_head_id, entity_id, code, name, "
        "created_by, updated_by) VALUES (%s,%s,%s,%s,'t','t')",
        (head, ent, f"HC_{suffix}", "Head"))
     ex("INSERT INTO wbs_element (wbs_id, project_id, wbs_code, description, "
-       "wbs_path, level, created_by, updated_by) "
-       "VALUES (%s,%s,%s,%s,%s,0,'t','t')", (root, prj, root, "root", root))
+       "wbs_path, level, status, created_by, updated_by) "
+       "VALUES (%s,%s,%s,%s,%s,0,'Released','t','t')",
+       (root, prj, root, "root", root))
     ex("INSERT INTO wbs_element (wbs_id, project_id, parent_wbs_id, wbs_code, "
-       "description, wbs_path, level, created_by, updated_by) "
-       "VALUES (%s,%s,%s,%s,%s,%s,1,'t','t')",
+       "description, wbs_path, level, status, created_by, updated_by) "
+       "VALUES (%s,%s,%s,%s,%s,%s,1,'Released','t','t')",
        (child, prj, root, child, "child", f"{root}.{child}"))
     for wbs, budget in ((root, budget_paise), (child, 0)):
         ex("INSERT INTO budget_control_cell (wbs_id, budget_head_id, "
@@ -896,7 +915,8 @@ def test_plan_po_emission_writes_one_outbox_row_per_purchase_order(
         planned = proc.plan_po_emission(
             session, po_id=created["po_id"], connection_id=connection_id,
             adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-77",
-            document_date=DOCUMENT_DATE, actor="U-ADM", acknowledged=True)
+            document_date=DOCUMENT_DATE, actor="U-ADM", acknowledged=True,
+            now=NOW)
         rows = session.fetchall(
             "SELECT local_id, dedupe_key, state FROM integration_outbox "
             "WHERE connection_id = %s ORDER BY local_id", (connection_id,))
@@ -1001,7 +1021,8 @@ def test_send_reports_a_failure_instead_of_raising_it(
         planned = proc.plan_po_emission(
             session, po_id=created["po_id"], connection_id=connection_id,
             adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-77",
-            document_date=DOCUMENT_DATE, actor="U-ADM", acknowledged=True)
+            document_date=DOCUMENT_DATE, actor="U-ADM", acknowledged=True,
+            now=NOW)
         outbox_id = planned["outbox"][0]["outbox_id"]
         result = proc.send_purchase_order(
             session, outbox_id=outbox_id, connection_id=connection_id,
@@ -1034,7 +1055,8 @@ def test_a_daily_quota_refusal_costs_no_attempt_and_opens_the_circuit(
         planned = proc.plan_po_emission(
             session, po_id=created["po_id"], connection_id=connection_id,
             adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-77",
-            document_date=DOCUMENT_DATE, actor="U-ADM", acknowledged=True)
+            document_date=DOCUMENT_DATE, actor="U-ADM", acknowledged=True,
+            now=NOW)
         outbox_id = planned["outbox"][0]["outbox_id"]
         result = proc.send_purchase_order(
             session, outbox_id=outbox_id, connection_id=connection_id,
@@ -1081,7 +1103,8 @@ def test_a_duplicate_refusal_does_not_move_the_circuit(
         planned = proc.plan_po_emission(
             session, po_id=created["po_id"], connection_id=connection_id,
             adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-77",
-            document_date=DOCUMENT_DATE, actor="U-ADM", acknowledged=True)
+            document_date=DOCUMENT_DATE, actor="U-ADM", acknowledged=True,
+            now=NOW)
         outbox_id = planned["outbox"][0]["outbox_id"]
         result = proc.send_purchase_order(
             session, outbox_id=outbox_id, connection_id=connection_id,
@@ -1110,7 +1133,8 @@ def test_an_unclaimable_row_is_reported_without_moving_the_circuit(
         planned = proc.plan_po_emission(
             session, po_id=created["po_id"], connection_id=connection_id,
             adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-77",
-            document_date=DOCUMENT_DATE, actor="U-ADM", acknowledged=True)
+            document_date=DOCUMENT_DATE, actor="U-ADM", acknowledged=True,
+            now=NOW)
         outbox_id = planned["outbox"][0]["outbox_id"]
         # Push it DEAD, which `CLAIMABLE_STATES` excludes.
         session.execute(
@@ -1145,7 +1169,8 @@ def test_an_open_circuit_refuses_before_a_call_is_made(
         planned = proc.plan_po_emission(
             session, po_id=created["po_id"], connection_id=connection_id,
             adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-77",
-            document_date=DOCUMENT_DATE, actor="U-ADM", acknowledged=True)
+            document_date=DOCUMENT_DATE, actor="U-ADM", acknowledged=True,
+            now=NOW)
         outbox_id = planned["outbox"][0]["outbox_id"]
         proc.send_purchase_order(
             session, outbox_id=outbox_id, connection_id=connection_id,
@@ -1188,7 +1213,8 @@ def test_a_successful_send_records_the_external_id_and_closes_the_circuit(
         planned = proc.plan_po_emission(
             session, po_id=created["po_id"], connection_id=connection_id,
             adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-77",
-            document_date=DOCUMENT_DATE, actor="U-ADM", acknowledged=True)
+            document_date=DOCUMENT_DATE, actor="U-ADM", acknowledged=True,
+            now=NOW)
         outbox_id = planned["outbox"][0]["outbox_id"]
         result = proc.send_purchase_order(
             session, outbox_id=outbox_id, connection_id=connection_id,
@@ -1231,7 +1257,8 @@ def test_a_settled_outbox_row_costs_no_second_call(pg_database, pg_connection):
         planned = proc.plan_po_emission(
             session, po_id=created["po_id"], connection_id=connection_id,
             adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-77",
-            document_date=DOCUMENT_DATE, actor="U-ADM", acknowledged=True)
+            document_date=DOCUMENT_DATE, actor="U-ADM", acknowledged=True,
+            now=NOW)
         outbox_id = planned["outbox"][0]["outbox_id"]
         adapter = _CountingAdapter()
         first = proc.send_purchase_order(
@@ -1265,7 +1292,8 @@ def test_the_planned_payload_survives_the_round_trip_through_jsonb(
         planned = proc.plan_po_emission(
             session, po_id=created["po_id"], connection_id=connection_id,
             adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-77",
-            document_date=DOCUMENT_DATE, actor="U-ADM", acknowledged=True)
+            document_date=DOCUMENT_DATE, actor="U-ADM", acknowledged=True,
+            now=NOW)
         entry = planned["outbox"][0]
         store = proc.PgOutboxStore(session, connection_id=connection_id,
                                    actor="U-ADM")

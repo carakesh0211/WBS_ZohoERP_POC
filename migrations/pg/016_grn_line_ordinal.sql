@@ -1,0 +1,183 @@
+-- 016_grn_line_ordinal.sql
+-- 014's replay fix also collapsed every locally-raised receipt line on a PO line onto one row; the uniqueness becomes partial so it constrains externally-identified lines only.
+--
+-- WHAT 014 FIXED, AND WHY NONE OF IT IS GIVEN BACK
+--
+-- 013 carried
+--
+--     ux_grn_line_external
+--         UNIQUE (po_line_id, receive_external_id, line_external_id)
+--
+-- under PostgreSQL's default NULLS DISTINCT. 014's D5 section is right about
+-- what that cost: a receive line with no external LINE id -- which on Zoho ERP
+-- is THE ORDINARY CASE, because ERP publishes no receives-list endpoint and
+-- lines are discovered PO-anchored -- was not constrained at all. The sweeps
+-- re-walk by design, on a 300-second overlap with a cycling cursor, so every
+-- walk re-inserted and `received` climbed with no new receipt arriving. 014
+-- replaced it with
+--
+--     ux_grn_line_external_v2
+--         UNIQUE NULLS NOT DISTINCT
+--             (po_line_id, receive_external_id, line_external_id, line_no)
+--
+-- and that is the correct fix for the replay. IT IS KEPT, in full, below.
+--
+--
+-- WHAT 014 BROKE ON THE WAY, WHICH 013 HAD SAID OUT LOUD
+--
+-- 013's comment on its own index reads, verbatim:
+--
+--     "NULLs are DISTINCT here, which is PostgreSQL's default and is wanted: a
+--      locally-raised receipt line carries neither external id, and every such
+--      line must remain insertable rather than all colliding on one NULL row."
+--
+-- `grn_line.receive_external_id` and `grn_line.line_external_id` are both
+-- NULLABLE (013_procurement.sql:544-545) and a receipt line raised in this
+-- product rather than mirrored from a tenant carries NEITHER. Under 014's
+-- index every one of those rows keys as
+--
+--     (po_line_id, NULL, NULL, NULL)
+--
+-- with NULLs no longer distinct, so a PO line may hold EXACTLY ONE of them for
+-- ever. The second genuine receipt against that PO line is refused with a
+-- duplicate-key error, or -- through `record_receive_line`'s ON CONFLICT --
+-- silently OVERWRITES the first and the earlier delivery's value vanishes.
+-- That is the same shape of loss D5 was written to stop, pointed the other
+-- way: D5 stopped one receipt being counted twice, and introduced two receipts
+-- being counted once.
+--
+-- 014's header claimed the change was "strictly stronger, never weaker". It is
+-- strictly stronger over rows that HAVE an external identity, and it is
+-- WRONG over rows that have none, because for those rows there is no identity
+-- for it to be an identity check ON.
+--
+--
+-- THE DISCRIMINATOR IS `receive_external_id IS NOT NULL`, AND IT IS EXACT
+--
+-- The two populations are separated by one fact, and the ingest path already
+-- guarantees it. `pg/procurement.py::record_receive_line` refuses a blank
+-- receive id before it writes anything --
+-- `store._require(..., code="BLANK_RECEIVE_EXTERNAL_ID")` -- so EVERY row that
+-- reaches `grn_line` from a sweep has a non-NULL `receive_external_id`, and
+-- every row without one was raised locally and was never mirrored from
+-- anywhere.
+--
+-- So the uniqueness below is 014's, unchanged in its columns and unchanged in
+-- its NULLS NOT DISTINCT, made PARTIAL on exactly that predicate:
+--
+--   * a row WITH a receive id is externally identified, the sweeps will re-walk
+--     it, and it must key idempotently -- 014's rule applies in full;
+--   * a row WITHOUT one has no external identity to be idempotent on, and its
+--     identity is its own primary key, exactly as 013 intended.
+--
+-- Nothing that 014 constrains stops being constrained. The predicate removes
+-- only the rows 014 should never have been constraining.
+--
+--
+-- WHY `line_no` IS NOT MADE NOT NULL, WHICH WAS THE OTHER WAY TO GO
+--
+-- `line_no` was added by 014 (014_procurement_corrections.sql:657) to carry the
+-- receive line's ordinal so two genuinely distinct lines of one receipt stay
+-- distinct. It is NULLABLE and NOTHING POPULATES IT: `record_receive_line`
+-- accepts a `line_no` argument and `sweeps.py::_attribute` never passes one,
+-- so it is NULL on every mirrored row in existence. Making it NOT NULL was
+-- weighed and REFUSED, on three counts:
+--
+--   1. THERE IS NO VALUE TO BACKFILL. A NOT NULL column needs every existing
+--      row given an ordinal, and the ordinals were never recorded -- the source
+--      payloads are in the inbox, not in this column. Any constant would be a
+--      fact this migration invented, and this schema does not invent values it
+--      was not told (see 014's own note that the three new arguments are "never
+--      invented when absent").
+--   2. A CONSTANT BACKFILL WOULD DUPLICATE EVERY MIRRORED LINE ON THE NEXT
+--      WALK. Backfill an existing row to 0, then let a writer start passing the
+--      true ordinal: the line that is really #3 arrives as
+--      (po_line, receive, NULL, 3), does not match the stored
+--      (po_line, receive, NULL, 0), and is INSERTED. `received` doubles. That
+--      is precisely the duplicated-receipt shape D5 exists to stop, reintroduced
+--      by the column meant to prevent it.
+--   3. IT WOULD NOT FIX THE FAILING CASE ANYWAY. A locally-raised line has no
+--      ordinal either, so NOT NULL turns its refusal from a duplicate-key error
+--      into a not-null error and the second receipt is still impossible.
+--
+-- `line_no` therefore stays NULLABLE and stays IN the index. When a writer is
+-- given real ordinals -- together with the payload-aware backfill that migration
+-- will have to carry -- the column starts distinguishing sibling lines of one
+-- receipt with no further schema change. Populating it is deliberately NOT done
+-- here: it cannot be done safely without that backfill, and doing it unsafely is
+-- worse than the gap it closes.
+--
+--
+-- 013 AND 014 ARE NOT EDITED
+--
+-- Their checksums are recorded in `schema_migrations` on every database where
+-- they ran, and `assert_schema_current` reports drift the moment either file
+-- changes -- every existing deployment would refuse to boot. This is the same
+-- reason 014 exists rather than 013 having been corrected in place, and it
+-- applies here unchanged. 016 is additive: it creates one named index and drops
+-- exactly the one it replaces.
+
+BEGIN;
+
+-- ================================================== THE REPLACEMENT INDEX
+-- Built BEFORE the old one is dropped, matching 015's ordering and for the same
+-- reason: inside one transaction the ordering cannot be observed, and a reader
+-- should not have to work out whether there is a point in this file at which
+-- `grn_line` is under no replay-idempotency rule at all. There is not.
+--
+-- IDENTICAL TO 014's IN ITS COLUMNS AND IN `NULLS NOT DISTINCT`. The ONLY
+-- difference is the predicate, and the predicate is what makes the rule true of
+-- the rows it is a rule about. `line_external_id` and `line_no` are still
+-- inside it and still grouped when NULL -- that is what makes the ordinary
+-- Zoho ERP case (a receive id, no line id, no ordinal) collide with its own
+-- replay instead of being re-inserted on every 300-second overlap.
+CREATE UNIQUE INDEX ux_grn_line_external_v3
+    ON grn_line (po_line_id, receive_external_id, line_external_id, line_no)
+    NULLS NOT DISTINCT
+    WHERE receive_external_id IS NOT NULL;
+
+-- Dropped, not left alongside. Leaving it would keep refusing the second
+-- locally-raised receipt line and the defect would survive, with two indexes
+-- disagreeing about which rows carry an identity and the broader one silently
+-- winning.
+DROP INDEX ux_grn_line_external_v2;
+
+
+-- ================================================== privileges for capex_app
+-- Restated rather than relied upon, exactly as 011, 014 and 015 state theirs:
+-- 004's ALTER DEFAULT PRIVILEGES attaches to the ROLE THAT ISSUED IT, so a
+-- deployment whose 016 is applied by a different identity than its 004 would
+-- otherwise be left guessing. Nothing here widens anything -- these are 013's
+-- privileges, named again against the table whose uniqueness 016 has just
+-- changed the reach of.
+GRANT SELECT, INSERT, UPDATE ON grn_line TO capex_app;
+
+-- And the REVOKE that makes the rest true. A receipt line is REVERSED by a
+-- further signed row -- 013 deliberately carries no `>= 0` CHECK on
+-- `grn_line.quantity` or `grn_line.amount_paise` because the reversal contract
+-- needs both signs -- and never by deletion. Restated here because this
+-- migration's whole subject is which receipt lines may exist, and a DELETE
+-- privilege is the one way to make that question meaningless.
+REVOKE DELETE ON grn_line FROM capex_app;
+
+COMMIT;
+
+-- ROLLBACK:
+--
+--   BEGIN;
+--   -- Reverting restores 014's reach, and with it 014's defect: a PO line may
+--   -- again hold only ONE locally-raised receipt line, and a second is refused
+--   -- or overwrites the first. The CREATE below FAILS, loudly and correctly, if
+--   -- any PO line currently holds more than one row with no
+--   -- `receive_external_id` -- which is the state this migration exists to
+--   -- permit. Those rows are genuine receipts; do NOT delete one to make the
+--   -- index build. Give them distinct `line_no` values, or take a dump and
+--   -- expect to reconcile by hand.
+--   CREATE UNIQUE INDEX ux_grn_line_external_v2
+--       ON grn_line (po_line_id, receive_external_id, line_external_id, line_no)
+--       NULLS NOT DISTINCT;
+--   DROP INDEX IF EXISTS ux_grn_line_external_v3;
+--   -- No row is deleted here and none should be. Every receipt line this
+--   -- migration's predicate permitted stays exactly where it is.
+--   DELETE FROM schema_migrations WHERE version = '016';
+--   COMMIT;

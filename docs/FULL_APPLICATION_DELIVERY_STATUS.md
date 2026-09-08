@@ -59,10 +59,37 @@ closed:
 
 ## Test and commit status
 
-- Full local suite: **3246 passed, 525 skipped, 1 xfailed** (`e326648`)
+- Full local suite: **3267 passed, 539 skipped, 1 xfailed** (`c910db1`)
 - Manifest `--check`: clean
-- Last full VRT: **1004 passed, 4 skipped**, exit 0 — re-running at `e326648`
-- Last green CI: Wave 5 (all five jobs). **Wave 6 not yet pushed.**
+- Migrations: **001…016, contiguous, no gaps**
+- Last full VRT: 1031 passed, 4 skipped, exit 0 (at `422eb51`); re-running at
+  `c910db1`
+- **Last CI run 34203327903 was RED — 3 of 5.** PostgreSQL failed 49 of 1337
+  executed; VRT failed 1 of 1031. Both are fixed locally (migration `016`, and
+  the third unsynchronised `page.evaluate` in `integration.spec.js`) and
+  **neither fix has been proven in CI yet.** ~539 tests cannot run on this
+  machine at all, so the next push is the first real evidence.
+- Wave 6 is **not closed**.
+
+## Flake classification of record — SCR-39, 2026-09-08
+
+CI run 34203327903 failed one VRT test:
+`SCR-39 is gated on connector.read even though it offers a write`, at
+laptop-1024 only, on `page.waitForSelector: Timeout 15000ms exceeded`.
+
+**Classified as resource contention, not a defect, on evidence rather than
+assumption:**
+
+* The failing run took **54 minutes** for a spec that takes ~17, with five
+  agents competing for the machine at the time.
+* The same test passed at desktop-1440 and tablet-800 in that same run.
+* Re-run **three times sequentially on an idle machine: 3/3 passed**, in
+  37.0s, 23.2s and 25.5s.
+
+Nothing was changed to obtain this: no timeout raised, no permission assertion
+weakened, no baseline touched. Recorded so the next reader does not have to
+re-derive it — and so that if it recurs on an idle machine, the classification
+is known to be wrong rather than merely re-asserted.
 
 ## Corrections of record
 
