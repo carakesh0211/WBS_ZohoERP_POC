@@ -102,7 +102,7 @@ def _migration_013() -> migrate_pg.Migration:
 # =========================================================================
 # The migration exists, is numbered right, and the runner can see it
 # =========================================================================
-def test_013_is_the_next_migration_and_the_runner_discovers_it():
+def test_migrations_discover_as_an_unbroken_sequence_and_013_sits_at_its_number():
     """`migrate_pg._FILENAME` is `^(\\d{3})_([a-z0-9_]+)\\.sql$` and `discover()`
     raises on anything that does not match, so a mis-named file is not a silent
     omission -- but a file in the RIGHT shape at the WRONG number is, because it
@@ -112,6 +112,14 @@ def test_013_is_the_next_migration_and_the_runner_discovers_it():
     `014_procurement_corrections.sql` exists, so the literal became false for a
     reason that is not a defect: the product grew, which is the one thing this
     assertion was guaranteed to be wrong about eventually.
+
+    THE NAME CARRIED THAT STALE CLAIM AFTER THE BODY STOPPED MAKING IT. It read
+    `test_013_is_the_next_migration_and_the_runner_discovers_it` while asserting
+    the general sequence property, so a reader scanning names would have
+    believed the suite still pinned 013 as last -- and would have gone looking
+    for a guard that no longer existed. Renamed to say what it checks. The
+    assertions are unchanged and the body was already version-agnostic:
+    `[f"{n:03d}" for n in range(1, len(versions) + 1)]` grows with the product.
 
     Replaced with the property it was reaching for -- 013 discovers exactly
     once, at the position its number gives it, in an unbroken sequence with no
@@ -891,28 +899,59 @@ def test_every_paise_column_is_bigint_in_the_database_live(pg_connection):
 @PG
 @pytest.mark.pg
 def test_the_rollback_block_actually_works_live(pg_connection):
-    """The `-- ROLLBACK:` block is EXECUTED, not read.
+    """The `-- ROLLBACK:` blocks are EXECUTED, not read.
 
-    A rollback section nobody has ever run is a comment. This un-comments the
-    block exactly as an operator would, runs it, and asserts the eight tables
-    and the ledger row are gone -- then re-applies 013 through the product's own
-    runner to prove the revert leaves a database `upgrade()` can still move
-    forward.
+    A rollback section nobody has ever run is a comment. This un-comments them
+    exactly as an operator would, runs them, and asserts the eight tables and
+    the ledger rows are gone -- then re-applies through the product's own runner
+    to prove the revert leaves a database `upgrade()` can still move forward.
+
+    REVERTED IN REVERSE ORDER, AND THAT IS THE CORRECTION THIS TEST NEEDED.
+    It used to un-comment 013's block ALONE, which was right while 013 was the
+    newest migration and became wrong the moment 014 added `pr_reservation`
+    with an FK to `purchase_order`. 013's block then failed with
+
+        cannot drop table purchase_order because other objects depend on it
+        DETAIL: constraint pr_reservation_po_id_fkey on table pr_reservation
+
+    and the failure was 013's block being RIGHT. Its own comment says the DROPs
+    are ordered by dependency "rather than using CASCADE, so a table this block
+    has forgotten raises instead of being silently taken with something else."
+    `pr_reservation` is a table 013 cannot know about; raising is the designed
+    behaviour and CASCADE would have silently destroyed a table 013 never
+    created and 014's block is responsible for.
+
+    You cannot revert a migration that later migrations are stacked on. So this
+    reverts the whole stack from the newest down to 013, which is what an
+    operator does, and asserts every block in it runs. Derived from
+    `migrate_pg.discover()` rather than hard-coded, so a migration added after
+    this one is covered the day it lands instead of breaking the assertion.
     """
-    block = MIGRATION_TEXT.split("-- ROLLBACK:", 1)[1]
-    statements: list[str] = []
-    for raw in block.splitlines():
-        stripped = raw.strip()
-        if not stripped.startswith("--"):
-            continue
-        statements.append(re.sub(r"^--[ ]{0,3}", "", stripped))
-    sql = "\n".join(statements)
-    assert "DROP TABLE IF EXISTS bill_line;" in sql, (
-        "the un-comment step produced no SQL; the block's comment prefix "
-        "changed and this test would otherwise pass vacuously")
+    stack = [m for m in migrate_pg.discover() if m.version >= "013"]
+    assert [m.version for m in stack][:3] == ["013", "014", "015"], (
+        f"the procurement stack is not the one this test reverts: "
+        f"{[m.version for m in stack]}")
 
-    pg_connection.execute(sql)
-    pg_connection.commit()
+    for migration in reversed(stack):
+        assert "-- ROLLBACK:" in migration.sql, (
+            f"{migration.version}_{migration.name} carries no ROLLBACK block, "
+            f"so the stack cannot be reverted and this test cannot run")
+        block = migration.sql.split("-- ROLLBACK:", 1)[1]
+        statements: list[str] = []
+        for raw in block.splitlines():
+            stripped = raw.strip()
+            if not stripped.startswith("--"):
+                continue
+            statements.append(re.sub(r"^--[ ]{0,3}", "", stripped))
+        sql = "\n".join(statements)
+        if migration.version == "013":
+            assert "DROP TABLE IF EXISTS bill_line;" in sql, (
+                "the un-comment step produced no SQL; the block's comment "
+                "prefix changed and this test would otherwise pass vacuously")
+        assert "COMMIT;" in sql, (
+            f"{migration.version}'s un-commented block is empty or unterminated")
+        pg_connection.execute(sql)
+        pg_connection.commit()
 
     remaining = pg_connection.execute(
         "SELECT table_name FROM information_schema.tables "
@@ -920,13 +959,19 @@ def test_the_rollback_block_actually_works_live(pg_connection):
         (list(PROCUREMENT_TABLES),)).fetchall()
     assert remaining == [], f"rollback left tables behind: {remaining}"
 
-    assert pg_connection.execute(
-        "SELECT 1 FROM schema_migrations WHERE version = '013'").fetchone() is None
+    reverted = [m.version for m in stack]
+    still_recorded = [v for (v,) in pg_connection.execute(
+        "SELECT version FROM schema_migrations WHERE version = ANY(%s)",
+        (reverted,)).fetchall()]
+    assert still_recorded == [], (
+        f"a block dropped its objects but left its ledger row, so `upgrade` "
+        f"will not re-apply it: {still_recorded}")
 
     # ...and forward again, through the runner, on the reverted database.
     performed = migrate_pg.upgrade(pg_connection)
     pg_connection.commit()
-    assert performed == ["013"], f"re-application performed {performed}"
+    assert performed == reverted, (
+        f"re-application performed {performed}, expected {reverted}")
     back = pg_connection.execute(
         "SELECT table_name FROM information_schema.tables "
         "WHERE table_schema = current_schema() AND table_name = ANY(%s)",
@@ -1179,6 +1224,56 @@ def test_a_grn_line_cannot_be_repointed_by_update_live(pg_connection):
         pg_connection.execute(
             "UPDATE grn_line SET po_line_id = 'POL-B' WHERE grn_line_id = 'GRNL-A'")
     pg_connection.rollback()
+
+
+@PG
+@pytest.mark.pg
+def test_two_locally_raised_receipt_lines_on_one_po_line_both_exist_live(
+        pg_connection):
+    """PROPERTY (b) OF `ux_grn_line_external_v3`, and 013's stated intent.
+
+    013's comment on `ux_grn_line_external` says it out loud: "a locally-raised
+    receipt line carries neither external id, and every such line must remain
+    insertable rather than all colliding on one NULL row." Both
+    `receive_external_id` and `line_external_id` are nullable
+    (013_procurement.sql:544-545) and a receipt raised in this product rather
+    than mirrored from a tenant has NEITHER.
+
+    014's `ux_grn_line_external_v2` was UNIQUE NULLS NOT DISTINCT with no
+    predicate, so every one of those rows keyed as
+    `(po_line_id, NULL, NULL, NULL)` and a PO line could hold exactly ONE for
+    ever -- the second genuine receipt was refused, or overwrote the first and
+    the earlier delivery's value vanished. That is the same loss D5 was written
+    to stop, pointed the other way.
+
+    016 makes the index partial on `receive_external_id IS NOT NULL`. A row
+    with no external identity has nothing for an identity check to be ABOUT,
+    and its identity is its own primary key. Two staged deliveries booked by
+    hand against one PO line are two receipts and must be two rows.
+
+    This is the half of the tension that pulls against
+    `test_replaying_a_line_without_a_line_id_duplicates_nothing`, which proves
+    the replay is still refused. Both must hold.
+    """
+    _seed_documents(pg_connection)
+    # `_seed_documents` has already booked GRNL-A on POL-A with both external
+    # ids NULL, so this is the SECOND such row on that PO line -- exactly the
+    # insert 014's index refused.
+    pg_connection.execute(
+        "INSERT INTO grn_line (grn_line_id, grn_id, po_id, po_line_id,"
+        " quantity, amount_paise, created_by, updated_by)"
+        " VALUES ('GRNL-A2', 'GRN-A', 'PO-A', 'POL-A', 2, 250000, 'T', 'T')")
+    pg_connection.commit()
+
+    rows = pg_connection.execute(
+        "SELECT grn_line_id, amount_paise FROM grn_line"
+        " WHERE po_line_id = 'POL-A' ORDER BY grn_line_id").fetchall()
+    assert [r[0] for r in rows] == ["GRNL-A", "GRNL-A2"], (
+        "a second locally-raised receipt line on one PO line was refused or "
+        "overwrote the first; 016's predicate is missing or too narrow")
+    assert sum(int(r[1]) for r in rows) == 750000, (
+        "the two deliveries do not add up, so one of them was overwritten "
+        "rather than inserted -- the silent half of the 014 defect")
 
 
 @PG
