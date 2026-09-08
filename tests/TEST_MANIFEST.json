@@ -7521,7 +7521,7 @@
       }
     },
     "test_pg_procurement_schema.py": {
-      "test_013_is_the_next_migration_and_the_runner_discovers_it": {
+      "test_migrations_discover_as_an_unbroken_sequence_and_013_sits_at_its_number": {
         "assertions": 5,
         "body_sha": "46652498c255c8f0"
       },

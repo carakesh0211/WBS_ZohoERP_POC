@@ -102,7 +102,7 @@ def _migration_013() -> migrate_pg.Migration:
 # =========================================================================
 # The migration exists, is numbered right, and the runner can see it
 # =========================================================================
-def test_013_is_the_next_migration_and_the_runner_discovers_it():
+def test_migrations_discover_as_an_unbroken_sequence_and_013_sits_at_its_number():
     """`migrate_pg._FILENAME` is `^(\\d{3})_([a-z0-9_]+)\\.sql$` and `discover()`
     raises on anything that does not match, so a mis-named file is not a silent
     omission -- but a file in the RIGHT shape at the WRONG number is, because it
@@ -112,6 +112,14 @@ def test_013_is_the_next_migration_and_the_runner_discovers_it():
     `014_procurement_corrections.sql` exists, so the literal became false for a
     reason that is not a defect: the product grew, which is the one thing this
     assertion was guaranteed to be wrong about eventually.
+
+    THE NAME CARRIED THAT STALE CLAIM AFTER THE BODY STOPPED MAKING IT. It read
+    `test_013_is_the_next_migration_and_the_runner_discovers_it` while asserting
+    the general sequence property, so a reader scanning names would have
+    believed the suite still pinned 013 as last -- and would have gone looking
+    for a guard that no longer existed. Renamed to say what it checks. The
+    assertions are unchanged and the body was already version-agnostic:
+    `[f"{n:03d}" for n in range(1, len(versions) + 1)]` grows with the product.
 
     Replaced with the property it was reaching for -- 013 discovers exactly
     once, at the position its number gives it, in an unbroken sequence with no

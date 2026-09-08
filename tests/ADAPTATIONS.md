@@ -3060,3 +3060,34 @@ stale literal about which migration is newest or a check strengthened to match
 an index that is now partial. No existing assertion was weakened or deleted.
 The `| ADAPT-` register row naming an individual remains outstanding for the
 Wave 6 stream as a whole, exactly as the 015 entry above records.
+
+---
+
+## 2026-09-08 — `test_013_is_the_next_migration_and_the_runner_discovers_it`, renamed
+
+Now `test_migrations_discover_as_an_unbroken_sequence_and_013_sits_at_its_number`.
+
+**A rename only. Not one assertion changed, and none was weakened.**
+
+The body had already been generalised: it asserts `versions == [f"{n:03d}" for
+n in range(1, len(versions) + 1)]` — an unbroken `001..N` sequence that grows
+with the product — plus that `013` discovers exactly once at index 12. Its own
+docstring says the literal "013 is the last migration" *"was true for one wave
+and is not a property"*.
+
+**The name kept making the claim the body had stopped making.** A reader
+scanning test names would have believed the suite still pinned 013 as the last
+migration, and would have gone looking for a guard that no longer existed. That
+is the same failure mode this session has hit repeatedly from the other
+direction — a guard whose subject moved while its name stayed put.
+
+It is worth recording that this test **did its job today**: it caught migration
+`016` being numbered `019`, which left a gap. The gap mattered for the reason
+the docstring gives — *a missing number means a migration was deleted rather
+than superseded* — and it arose because numbers had been reserved for Wave 7
+branches that had not merged. Numbers cannot be reserved across unmerged
+branches.
+
+**Approved by:** product owner instruction of 2026-09-08, *"Ensure the
+migration-discovery guard is version-agnostic and does not retain a misleading
+hardcoded '013 is next' assumption."* No individual approver is fabricated.
