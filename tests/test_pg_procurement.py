@@ -223,18 +223,27 @@ def _seed_chain(con, *, suffix: str, budget_paise: int = 10_000_00):
     ex("INSERT INTO entity (entity_id, organisation_id, code, name, "
        "created_by, updated_by) VALUES (%s,%s,%s,%s,'t','t')",
        (ent, org, f"EC_{suffix}", "Entity"))
-    ex("INSERT INTO project (project_id, entity_id, capex_code, name, "
-       "created_by, updated_by) VALUES (%s,%s,%s,%s,'t','t')",
+    # `status` is stated, not defaulted. `project.status` and
+    # `wbs_element.status` both default to 'Draft' (002_budget_control.sql:45
+    # and :94), and migration 014 gave 'Draft' allows_procurement = false in
+    # `lifecycle_state` (014_procurement_corrections.sql:805, :816). Before 014
+    # the gate could not be evaluated at all and answered LIFECYCLE_UNAVAILABLE,
+    # so a Draft fixture went unnoticed; now the gate is real and every call in
+    # this file would be refused LIFECYCLE_STATE. 'Released' is the one project
+    # state that permits procurement AND posting (014:807).
+    ex("INSERT INTO project (project_id, entity_id, capex_code, name, status, "
+       "created_by, updated_by) VALUES (%s,%s,%s,%s,'Released','t','t')",
        (prj, ent, f"C_{suffix}", "Project"))
     ex("INSERT INTO budget_head (budget_head_id, entity_id, code, name, "
        "created_by, updated_by) VALUES (%s,%s,%s,%s,'t','t')",
        (head, ent, f"HC_{suffix}", "Head"))
     ex("INSERT INTO wbs_element (wbs_id, project_id, wbs_code, description, "
-       "wbs_path, level, created_by, updated_by) "
-       "VALUES (%s,%s,%s,%s,%s,0,'t','t')", (root, prj, root, "root", root))
+       "wbs_path, level, status, created_by, updated_by) "
+       "VALUES (%s,%s,%s,%s,%s,0,'Released','t','t')",
+       (root, prj, root, "root", root))
     ex("INSERT INTO wbs_element (wbs_id, project_id, parent_wbs_id, wbs_code, "
-       "description, wbs_path, level, created_by, updated_by) "
-       "VALUES (%s,%s,%s,%s,%s,%s,1,'t','t')",
+       "description, wbs_path, level, status, created_by, updated_by) "
+       "VALUES (%s,%s,%s,%s,%s,%s,1,'Released','t','t')",
        (child, prj, root, child, "child", f"{root}.{child}"))
     for wbs, budget in ((root, budget_paise), (child, 0)):
         ex("INSERT INTO budget_control_cell (wbs_id, budget_head_id, "
