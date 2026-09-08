@@ -6,6 +6,7 @@
     "avatar-regions.spec.js",
     "budget.spec.js",
     "integration.spec.js",
+    "mapping.spec.js",
     "nav-rail-budget.spec.js",
     "settings.spec.js",
     "spa-routing.spec.js",
