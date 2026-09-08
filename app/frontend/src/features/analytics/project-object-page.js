@@ -297,6 +297,9 @@ export function mountProjectObjectPage(root) {
           ]));
         }
         if (!rows.length) { tree.setRows([]); tree.el.hidden = true; return false; }
+        // See executive-dashboard.js: `onState('loading')` hides this, and
+        // only the success path can put it back.
+        tree.el.hidden = false;
         // The object page opens at the top two levels: it is a summary of the
         // project, and the whole tree is one click away in SCR-07.
         tree.setRows(rows, { collapseBelow: 1 });

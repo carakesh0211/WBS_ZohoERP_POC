@@ -305,6 +305,14 @@ export function mountExecutiveDashboard(root) {
         const alerts = renderAlerts(readAlerts(data));
         if (alerts) quality.appendChild(alerts);
         if (!rows.length) { table.renderRows([]); table.el.hidden = true; return false; }
+        /* UN-HIDDEN HERE, NOT IN `load()`. `load()` sets `hidden = false`
+           before calling `loader.run`, and the first thing `run` does is
+           `onState('loading')` — which, below, hides the table again. Nothing
+           on the success path ever undid that, so this table rendered its rows
+           into an element with `display: none`: the cards were right, the
+           totals footer was right, the sums-back check passed, and the rows
+           every one of those figures is clickable down to were invisible. */
+        table.el.hidden = false;
         table.renderRows(rows);
         totalsFooter(table, totals, COLUMNS);
         announce(`${rows.length} project${rows.length === 1 ? '' : 's'} in scope.`);

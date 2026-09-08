@@ -267,6 +267,9 @@ export function mountProjectList(root) {
         renderCards(totals, rows, !!nextCursor);
         renderPager(nextCursor);
         if (!rows.length) { table.renderRows([]); table.el.hidden = true; return false; }
+        // See executive-dashboard.js: `onState('loading')` hides this, and
+        // only the success path can put it back.
+        table.el.hidden = false;
         table.renderRows(rows);
         totalsFooter(table, totals, COLUMNS);
         announce(`${rows.length} project${rows.length === 1 ? '' : 's'} listed`

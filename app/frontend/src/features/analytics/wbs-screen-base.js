@@ -271,6 +271,9 @@ export function createWbsScreen(spec) {
             ]));
           }
           if (!rows.length) { tree.setRows([]); tree.el.hidden = true; return false; }
+          // See executive-dashboard.js: `onState('loading')` hides this, and
+          // only the success path can put it back.
+          tree.el.hidden = false;
           tree.setRows(rows, { collapseBelow: spec.collapseBelow });
           announceCount();
           return true;

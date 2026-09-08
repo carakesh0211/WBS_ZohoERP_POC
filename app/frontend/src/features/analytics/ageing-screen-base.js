@@ -254,6 +254,9 @@ export function createAgeingScreen(spec) {
             throw new Error('The ageing report carried no recognisable bucket array.');
           }
           if (!rows.length) { buckets.renderRows([]); buckets.el.hidden = true; return false; }
+          // See executive-dashboard.js: `onState('loading')` hides this, and
+          // only the success path can put it back.
+          buckets.el.hidden = false;
           buckets.renderRows(rows);
           return true;
         },

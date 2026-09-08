@@ -374,6 +374,9 @@ export function mountCwipLedger(root) {
         const excluded = rows.filter((r) => isEffective(r) === false);
         renderCards(totals, rows, effective, excluded);
         if (!rows.length) { table.renderRows([]); table.el.hidden = true; return false; }
+        // See executive-dashboard.js: `onState('loading')` hides this, and
+        // only the success path can put it back.
+        table.el.hidden = false;
         table.renderRows(rows);
         announce(`${rows.length} bill(s); ${effective.length} counted in CWIP, `
           + `${excluded.length} excluded.`);

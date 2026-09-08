@@ -743,14 +743,26 @@ test.describe('Wave 7 analytics screens — four states that never collapse', ()
     // would put a red error on a build that is simply incomplete.
     await routeOpenApi(page, REPORT_PATHS);
 
+    // ONE HANDLER, SWITCHED BY A FLAG — not two handlers and an unroute.
+    // `page.unroute()` followed by a fresh `page.route()` on the same pattern
+    // left the FIRST handler serving: phase two received the declared-503 body
+    // again, fell through to the ledger, settled `ready`, and the assertion
+    // reported "a bare 503 was swallowed" about a bare 503 that was never
+    // sent. A flag cannot half-apply.
+    let phase = 'declared';
+    await page.route('**/api/reports/**', (route) => (phase === 'declared'
+      ? route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          detail: { unavailable: true, missing: 'No reporting database is configured.' },
+        }),
+      })
+      : route.fulfill({
+        status: 503, contentType: 'text/plain', body: 'upstream unavailable',
+      })));
+
     // 1. Declared unavailable — falls through to the ledger, which answers.
-    await page.route('**/api/reports/**', (route) => route.fulfill({
-      status: 503,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        detail: { unavailable: true, missing: 'No reporting database is configured.' },
-      }),
-    }));
     await signIn(page);
     await gotoScreen(page, 'analytics-executive');
     let states = await loaderStates(page);
@@ -759,10 +771,7 @@ test.describe('Wave 7 analytics screens — four states that never collapse', ()
     await expect(page.locator('#content .analytics-source[data-source="ledger"]')).toBeAttached();
 
     // 2. Bare 503 — a real fault, rendered as one.
-    await page.unroute('**/api/reports/**');
-    await page.route('**/api/reports/**', (route) => route.fulfill({
-      status: 503, contentType: 'text/plain', body: 'upstream unavailable',
-    }));
+    phase = 'bare';
     await gotoScreen(page, 'analytics-executive');
     states = await loaderStates(page);
     expect(states, 'a bare 503 was swallowed as "not built yet"').toContain('error');
@@ -973,7 +982,13 @@ test.describe('Wave 7 analytics screens — every metric drills down, and sums b
   test('every card is a link, and its href carries the same FilterSet plus the dimension',
     async ({ page }) => {
       await signIn(page);
-      await gotoScreen(page, 'analytics-executive', 'plant=PL-1&from=2026-04-01');
+      // PL-01, WHICH IS A REAL SEEDED PLANT. This read is unstubbed, so it
+      // falls through to /api/dashboard, which DOES apply plant_id — and the
+      // id here was `PL-1`, which matches nothing. Every project was filtered
+      // out, the screen entered its empty state, `onState` cleared the tiles,
+      // and the assertion below reported "the executive dashboard rendered no
+      // metric cards" for what was a typo in a fixture id.
+      await gotoScreen(page, 'analytics-executive', 'plant=PL-01&from=2026-04-01');
 
       const cards = await page.evaluate(() => [...document.querySelectorAll('#content .analytics-tile')]
         .map((tile) => {
@@ -991,7 +1006,7 @@ test.describe('Wave 7 analytics screens — every metric drills down, and sums b
         expect(card.href, `${card.metric} has no drill-down href`).toBeTruthy();
         // THE SAME FILTERS. Not a subset, not a fresh query.
         expect(card.href, `${card.metric} dropped the plant filter on the way down`)
-          .toContain('plant=PL-1');
+          .toContain('plant=PL-01');
         expect(card.href, `${card.metric} dropped the date filter on the way down`)
           .toContain('from=2026-04-01');
         // Plus the clicked dimension, so the target knows what was clicked.
