@@ -146,23 +146,15 @@ const PASTE_ROWS = [
  * manifest, exactly as router.js defers its own feature modules.
  */
 async function installRoutes(page) {
-  await page.addInitScript((rows) => {
+  await page.addInitScript(() => {
     document.addEventListener('DOMContentLoaded', () => {
-      for (const row of rows) {
-        // eslint-disable-next-line no-undef
-        if (!SCR_ROUTES.some((r) => r.id === row.id)) SCR_ROUTES.push(row);
-        // eslint-disable-next-line no-undef
-        V[row.id] = async () => {
-          const mod = await import('/static/src/features/analytics/manifest.js');
-          const screen = mod.analyticsScreenById(row.id);
-          // eslint-disable-next-line no-undef
-          setHeader(screen.title, screen.crumbs, []);
-          return screen.build();
-        };
-      }
-      window.__analyticsRoutesInstalled = rows.length;
+      // Count what the SHIPPED app declares. Nothing is pushed and no view is
+      // overridden: app.js:442 builds one `V` entry per SCR_ROUTES row, which
+      // resolves through router.js's SCREENS — the path a real browser uses.
+      // eslint-disable-next-line no-undef
+      window.__analyticsRoutesInstalled = SCR_ROUTES.filter((r) => r.id.startsWith('analytics-')).length;
     });
-  }, PASTE_ROWS);
+  });
 }
 
 /* ---------------- helpers ---------------- */

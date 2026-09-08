@@ -534,13 +534,19 @@ test.describe('SPA routing — the two declarations cannot drift', () => {
       expect(entry.scr, `${s.hash} lost its SCR number`).toBe(s.scr);
     }
 
-    // And the registry as a whole is exactly the twenty-eight routable
-    // screens: five shell screens, the approval engine's eight from Wave 4
-    // (tests/vrt/approvals.spec.js), Wave 7's eleven analytics screens
-    // (tests/vrt/analytics.spec.js) and its four mapping/connector screens
-    // (tests/vrt/mapping.spec.js). Naming every one rather than asserting
-    // "at least the five" keeps this an exact statement — a twenty-ninth
+    // And the registry as a whole is exactly the forty-six routable screens:
+    // five shell screens, the approval engine's eight from Wave 4
+    // (tests/vrt/approvals.spec.js), Wave 5's twelve integration screens
+    // (tests/vrt/integration.spec.js), Wave 7's eleven analytics screens
+    // (tests/vrt/analytics.spec.js), its four mapping/connector screens
+    // (tests/vrt/mapping.spec.js) and its six closure screens
+    // (tests/vrt/closure.spec.js). Naming every one rather than asserting
+    // "at least the five" keeps this an exact statement — a forty-seventh
     // screen appearing without a test still fails here.
+    //
+    // Those forty-six carry thirty-seven distinct SCR numbers; with the three
+    // legacy shell views `pos`, `grns` and `bills` (SCR-15/16/17) that is
+    // C8's full forty.
     //
     // This list was thirteen until Wave 7, and it FAILED when the fifteen new
     // screens were spliced into the registry. That is the assertion working,
@@ -549,6 +555,14 @@ test.describe('SPA routing — the two declarations cannot drift', () => {
     // is the condition the guard is checking for. Relaxing it to a subset
     // check would have removed the property entirely.
     expect(registry.map((r) => r.id).sort()).toEqual([
+      'closure-asset-allocation', 'closure-budget-revision',
+      'closure-budget-transfer', 'closure-capitalisation',
+      'closure-completion-review', 'closure-pr-control',
+      'integration-events', 'integration-exceptions', 'integration-health',
+      'integration-inbound-bill', 'integration-inbound-grn', 'integration-oauth',
+      'integration-organisation', 'integration-outbound-po',
+      'integration-reconciliation', 'integration-retry', 'integration-scopes',
+      'integration-setup',
       'analytics-commitment-ageing', 'analytics-controller', 'analytics-cwip-ageing',
       'analytics-cwip-ledger', 'analytics-exceptions', 'analytics-executive',
       'analytics-project-list', 'analytics-project-object', 'analytics-wbs-element',

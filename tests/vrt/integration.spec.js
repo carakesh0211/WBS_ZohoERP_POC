@@ -139,8 +139,16 @@ const PASTE_ROWS = [
 ];
 
 /**
- * Apply the manifest's two splices to the running page, before the shell's
- * first render.
+ * Publish, before the shell's first render, how many integration routes the
+ * SHIPPED build declares -- so `waitForFunction(... === 12)` is an assertion
+ * about app.js rather than about this file.
+ *
+ * It used to APPLY the manifest's two splices to the running page, because the
+ * lead had never applied them to the application. That made every integration
+ * test green against a build that existed only inside the test: the screens
+ * were unreachable in a real browser for three waves, and the assertion at
+ * "SCR_ROUTES and the manifest agree" was self-fulfilling because this function
+ * had just written the rows it then read back.
  *
  * TIMING. `addInitScript` runs before any page script, when neither SCR_ROUTES
  * nor V exists yet, so the work is deferred to DOMContentLoaded — which fires
@@ -160,23 +168,17 @@ const PASTE_ROWS = [
  * realm, so they resolve here as free identifiers.
  */
 async function installRoutes(page) {
-  await page.addInitScript((rows) => {
+  await page.addInitScript(() => {
     document.addEventListener('DOMContentLoaded', () => {
-      for (const row of rows) {
+      // Count what the SHIPPED app declares. Nothing is pushed and no view is
+      // overridden: app.js:442 already builds one `V` entry per SCR_ROUTES row,
+      // which resolves through router.js's SCREENS, so the screens mount by the
+      // same path a user's browser uses.
+      window.__integrationRoutesInstalled =
         // eslint-disable-next-line no-undef
-        if (!SCR_ROUTES.some((r) => r.id === row.id)) SCR_ROUTES.push(row);
-        // eslint-disable-next-line no-undef
-        V[row.id] = async () => {
-          const mod = await import('/static/src/features/integration/manifest.js');
-          const screen = mod.integrationScreenById(row.id);
-          // eslint-disable-next-line no-undef
-          setHeader(screen.title, screen.crumbs, []);
-          return screen.build();
-        };
-      }
-      window.__integrationRoutesInstalled = rows.length;
+        SCR_ROUTES.filter((r) => r.id.startsWith('integration-')).length;
     });
-  }, PASTE_ROWS);
+  });
 }
 
 /* ---------------- fixtures ---------------- */

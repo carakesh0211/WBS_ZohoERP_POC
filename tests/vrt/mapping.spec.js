@@ -109,19 +109,11 @@ const PASTE_ROWS = [
 async function installRoutes(page) {
   await page.addInitScript((rows) => {
     document.addEventListener('DOMContentLoaded', () => {
-      for (const row of rows) {
-        // eslint-disable-next-line no-undef
-        if (!SCR_ROUTES.some((r) => r.id === row.id)) SCR_ROUTES.push(row);
-        // eslint-disable-next-line no-undef
-        V[row.id] = async () => {
-          const mod = await import('/static/src/features/mapping/manifest.js');
-          const screen = mod.mappingScreenById(row.id);
-          // eslint-disable-next-line no-undef
-          setHeader(screen.title, screen.crumbs, []);
-          return screen.build();
-        };
-      }
-      window.__mappingRoutesInstalled = rows.length;
+      // Count what the SHIPPED app declares. Nothing is pushed and no view is
+      // overridden: app.js:442 builds one `V` entry per SCR_ROUTES row, which
+      // resolves through router.js's SCREENS — the path a real browser uses.
+      // eslint-disable-next-line no-undef
+      window.__mappingRoutesInstalled = rows.filter((row) => SCR_ROUTES.some((r) => r.id === row.id)).length;
     });
   }, PASTE_ROWS);
 }

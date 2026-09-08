@@ -250,6 +250,34 @@ const SCR_ROUTES = [
   { id: 'mapping-fields',   ico: '⇄', label: 'Transaction Field Mapping Workbench', need: ['connector.read'] },
   { id: 'mapping-sync',     ico: '◷', label: 'Sync Direction & Scheduling',         need: ['connector.read'] },
   { id: 'connector-audit',  ico: '⧉', label: 'Connector Audit & Credential Log',    need: ['audit.read'] },
+  // Wave 5's twelve integration screens, restated here because the gate in
+  // render() is synchronous and cannot await the manifest's dynamic import.
+  // Pasted verbatim from INTEGRATION_NAV_ROWS; deliberately NO nav-rail entry
+  // -- the manifest measured the rail overflowing by 194px at 1440 and 336px
+  // at 1024 when a previous stream added eight, and viewAllowed() resolves an
+  // SCR_ROUTES id whether or not NAV lists it, so these deep-link and stay
+  // permission-gated without one.
+  { id: 'integration-setup',          ico: '⊕', label: 'Connection Setup Wizard',        need: ['connector.manage'] },
+  { id: 'integration-oauth',          ico: '⚿', label: 'OAuth Authorisation & Consent',  need: ['connector.manage'] },
+  { id: 'integration-organisation',   ico: '⌾', label: 'Organisation Selection & Mapping', need: ['connector.manage'] },
+  { id: 'integration-scopes',         ico: '⊙', label: 'API Scope & Permission Validation', need: ['connector.read'] },
+  { id: 'integration-health',         ico: '◔', label: 'Integration Health & API Usage', need: ['connector.read'] },
+  { id: 'integration-outbound-po',    ico: '⇧', label: 'Outbound Purchase Order Queue',  need: ['connector.read'] },
+  { id: 'integration-inbound-grn',    ico: '⇩', label: 'Inbound GRN / Purchase Receive Status', need: ['connector.read'] },
+  { id: 'integration-inbound-bill',   ico: '⇵', label: 'Inbound Vendor Bill Status',     need: ['connector.read'] },
+  { id: 'integration-retry',          ico: '⟲', label: 'Failed Sync & Retry Queue',      need: ['connector.read'] },
+  { id: 'integration-events',         ico: '⇄', label: 'Sync History & Control Totals',  need: ['connector.read'] },
+  { id: 'integration-reconciliation', ico: '⚖', label: 'Commitment-to-Actual Reconciliation', need: ['budget.read'] },
+  { id: 'integration-exceptions',     ico: '⚑', label: 'Reconciliation Exception Queue', need: ['budget.read'] },
+  // The six closure screens. Every closure read route sits behind
+  // `require_closure_access`, which requires `budget.read` before any
+  // route-specific permission, so that is the gate here -- not a guess.
+  { id: 'closure-budget-revision',    ico: '✎', label: 'Budget Revision Request',       need: ['budget.read'] },
+  { id: 'closure-budget-transfer',    ico: '⇆', label: 'Budget Transfer',               need: ['budget.read'] },
+  { id: 'closure-pr-control',         ico: '⊟', label: 'Purchase Request Control View', need: ['budget.read'] },
+  { id: 'closure-completion-review',  ico: '◈', label: 'Project Completion Review',     need: ['budget.read'] },
+  { id: 'closure-capitalisation',     ico: '▦', label: 'Capitalisation Workbench',      need: ['budget.read'] },
+  { id: 'closure-asset-allocation',   ico: '▩', label: 'Asset Allocation',              need: ['budget.read'] },
 ];
 
 /** The SCR_ROUTES row for an id, spliced into NAV by reference. */

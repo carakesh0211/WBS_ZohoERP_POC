@@ -42,6 +42,8 @@
 */
 
 import { h } from './dom.js';
+import { INTEGRATION_SCREENS } from '../features/integration/manifest.js';
+import { CLOSURE_SCREENS } from '../features/closure/manifest.js';
 import { ANALYTICS_SCREENS } from '../features/analytics/manifest.js';
 import { MAPPING_SCREENS } from '../features/mapping/manifest.js';
 
@@ -415,8 +417,16 @@ export const SCREENS = [
   // group, ico, label, title, crumbs, need, build() -> { node, mount } -- with
   // per-route stylesheet injection done inside build().mount(), so router.js
   // needs no constant of its own for either.
+  // Wave 5's twelve, spliced late: the manifest asked for this in Wave 5
+  // and it was not done, so the screens shipped unreachable. See the
+  // commit message.
+  ...INTEGRATION_SCREENS,
   ...ANALYTICS_SCREENS,
   ...MAPPING_SCREENS,
+  // The six closure screens, which had no manifest at all until now and
+  // were therefore the only implementation of SCR-11/12/14/20/21/22
+  // sitting entirely outside the application.
+  ...CLOSURE_SCREENS,
 ];
 
 /** @returns {Object|undefined} the screen declared at this hash. */
