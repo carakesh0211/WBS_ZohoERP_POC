@@ -203,6 +203,23 @@
   color: var(--n500);
 }
 
+/* The frozen C10 message id under an alert, made readable.
+   styles.css sets `.msg .mid { font-size:11px; opacity:.75 }`, and at 11px
+   normal weight WCAG asks for 4.5:1. Inside a warning block that lands at
+   4.12:1 — and dropping the opacity does not rescue it, because --warning
+   (#A66A00) on --warning-bg (#FDF3E2) is 4.08:1 on its own. The tint is the
+   problem, not the fade.
+   So the id takes the body text colour: --n700 on --warning-bg is 9.51:1. It
+   loses nothing by doing so — MSG-BUD-001 is a machine identifier a reader
+   quotes into a support request, not a warning signal, and the warning is
+   already carried by the icon, the border and the message itself. Scoped to
+   this feature's own quality host: styles.css is byte-frozen and this must not
+   restyle another feature's alerts. */
+.analytics-quality-host .msg .mid {
+  color: var(--n700);
+  opacity: 1;
+}
+
 /* ---------------- metric tiles ---------------- */
 
 .analytics-tiles {

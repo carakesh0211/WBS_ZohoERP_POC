@@ -301,8 +301,25 @@ async function settleScreen(page) {
   await page.waitForLoadState('networkidle');
 }
 
-/** Deep-link on a COLD LOAD: a full page.goto to the hash, not an in-app click. */
+/**
+ * Deep-link on a COLD LOAD: a full page.goto to the hash, not an in-app click.
+ *
+ * `about:blank` FIRST, AND IT IS NOT DEFENSIVE PADDING. Navigating to a URL
+ * that differs from the current one only in its fragment is a SAME-DOCUMENT
+ * navigation: the browser moves the hash and fetches nothing. So a test that
+ * changed a route stub and called this again with the same hash re-asserted
+ * against the page it already had — no reload, no new requests, the previous
+ * stub's DOM still on screen.
+ *
+ * That is exactly how the bare-503 check failed: phase one served a declared
+ * unavailability and fell through to the ledger, phase two flipped the stub to
+ * a bare 503 and re-visited the same URL, nothing was re-fetched, and the
+ * assertion read "a bare 503 was swallowed" about a request that was never
+ * made. Every call here now starts from a blank document, which is what "cold
+ * load" claims in the first place.
+ */
 async function gotoScreen(page, hash, search = '') {
+  await page.goto('about:blank');
   await page.goto(`/${search ? `?${search}` : ''}#${hash}`);
   await page.waitForFunction(() => window.__analyticsRoutesInstalled === 11, null, { timeout: 15_000 });
   await settleScreen(page);

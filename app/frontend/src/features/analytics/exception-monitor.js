@@ -55,7 +55,7 @@ import {
   bandBar, bandChip, card, countCard, createAnnouncer, exportButton, metricCard,
 } from './analytics-kit.js';
 import {
-  createFilterBar, drilldownHref, filterChips, readFilters, screenHref, writeFilters,
+  createFilterBar, drilldownHref, filterChips, readFilters, writeFilters,
 } from './analytics-filters.js';
 import { inr } from './analytics-metrics.js';
 import { METRIC_LABEL, projectRow, readAlerts, readRows, readTotals } from './analytics-shapes.js';
@@ -289,7 +289,9 @@ export function mountExceptionMonitor(root) {
         + 'collectively over budget.',
       accent: 'info',
       metric: 'available',
-      href: screenHref('analytics-controller', filters),
+      // See executive-dashboard.js: every tile declares which figure was
+      // clicked.
+      href: drilldownHref('analytics-controller', filters, { metric: 'available' }),
     }));
 
     tiles.appendChild(band);

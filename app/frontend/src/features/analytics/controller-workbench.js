@@ -47,7 +47,7 @@ import {
   card, countCard, createAnnouncer, exportButton, metricCard, reconciliationBlock,
 } from './analytics-kit.js';
 import {
-  createFilterBar, drilldownHref, filterChips, GROUP_DIMENSIONS, readFilters, screenHref,
+  createFilterBar, drilldownHref, filterChips, GROUP_DIMENSIONS, readFilters,
   writeFilters,
 } from './analytics-filters.js';
 import { assertSumsBack, inr } from './analytics-metrics.js';
@@ -185,7 +185,9 @@ export function mountControllerWorkbench(root) {
         + 'portfolio-wide figure',
       accent: breached.length ? 'breach' : 'safe',
       metric: 'breached_count',
-      href: screenHref('analytics-exceptions', filters),
+      // See executive-dashboard.js: a count tile declares which figure was
+      // clicked, like every other tile.
+      href: drilldownHref('analytics-exceptions', filters, { metric: 'breached_count' }),
     }));
 
     tiles.appendChild(band);

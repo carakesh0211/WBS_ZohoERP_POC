@@ -204,7 +204,9 @@ export function mountProjectObjectPage(root) {
       count: rows.length,
       sub: `at every level, of which ${roots.length} are roots`,
       metric: 'wbs_count',
-      href: screenHref('analytics-wbs-tree', filters),
+      // See executive-dashboard.js: every tile declares which figure was
+      // clicked.
+      href: drilldownHref('analytics-wbs-tree', filters, { metric: 'wbs_count' }),
     }));
     tiles.appendChild(band);
 

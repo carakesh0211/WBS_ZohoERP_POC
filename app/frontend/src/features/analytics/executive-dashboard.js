@@ -190,7 +190,13 @@ export function mountExecutiveDashboard(root) {
       count: rows.length,
       sub: 'the rows below, which are what every card above is the sum of',
       metric: 'project_count',
-      href: screenHref('analytics-project-list', filters),
+      /* `drilldownHref`, not `screenHref`, so this tile's link carries
+         `metric=project_count` like every other tile's does. A count is still
+         a figure that was clicked, the target still needs to know which, and a
+         tile whose href omits it is the one place a reader could arrive
+         somewhere with no record of what they pressed. It also clears the
+         cursor, which `screenHref` does not. */
+      href: drilldownHref('analytics-project-list', filters, { metric: 'project_count' }),
     }));
 
     tiles.appendChild(band);
