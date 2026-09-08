@@ -5,7 +5,7 @@
   "baseline": {
     "recorded_at": "2026-08-28",
     "commit_note": "POC baseline, branch phase-0a/foundations, before any port work",
-    "test_functions": 220,
+    "test_functions": 255,
     "collected_cases": 348,
     "collected_cases_note": "348 is the pytest-collected count after parametrisation expands 6 files; 220 is the count of `def test_` functions. Both are real and the Definition of Done refers to the function count.",
     "runtime_seconds_approx": 189,
@@ -5738,6 +5738,148 @@
         "body_sha": "5657bb9bec1d38d4"
       }
     },
+    "test_pg_closure.py": {
+      "test_a_clean_project_has_no_blockers_and_is_capitalisable": {
+        "assertions": 3,
+        "body_sha": "e2b9f63bec2d837c"
+      },
+      "test_open_commitment_blocks_and_names_the_figure": {
+        "assertions": 3,
+        "body_sha": "d1b08bce349641de"
+      },
+      "test_received_not_billed_blocks": {
+        "assertions": 1,
+        "body_sha": "ffa89664e33d84a1"
+      },
+      "test_a_live_pr_reservation_blocks": {
+        "assertions": 1,
+        "body_sha": "7df1e518abcf4c7e"
+      },
+      "test_an_open_reconciliation_exception_blocks": {
+        "assertions": 1,
+        "body_sha": "706f43aa795979d4"
+      },
+      "test_an_unattributed_exception_blocks_at_full_value": {
+        "assertions": 3,
+        "body_sha": "5319c0f29c78e9a9"
+      },
+      "test_no_accepted_completion_review_blocks": {
+        "assertions": 2,
+        "body_sha": "88deb7f0ddf642d0"
+      },
+      "test_an_allocation_shortfall_blocks_and_names_the_difference": {
+        "assertions": 2,
+        "body_sha": "18234891f76eaa80"
+      },
+      "test_the_allocation_check_is_skipped_when_no_request_is_named": {
+        "assertions": 1,
+        "body_sha": "8b03f2927952c1da"
+      },
+      "test_a_terminal_project_blocks": {
+        "assertions": 1,
+        "body_sha": "e0ae801914ba800d"
+      },
+      "test_the_position_says_not_posted_even_before_any_decision": {
+        "assertions": 2,
+        "body_sha": "2066d05a762ce810"
+      },
+      "test_a_project_outside_scope_is_reported_as_absent_not_forbidden": {
+        "assertions": 3,
+        "body_sha": "df4d2d471e6d83ee"
+      },
+      "test_a_negative_allocation_is_refused_rather_than_read_as_a_write_off": {
+        "assertions": 3,
+        "body_sha": "9937abb1fe3e0adc"
+      },
+      "test_a_zero_allocation_is_refused": {
+        "assertions": 2,
+        "body_sha": "8bd4f5a377e52b04"
+      },
+      "test_a_float_amount_is_refused_not_rounded": {
+        "assertions": 2,
+        "body_sha": "26aa644db326af5b"
+      },
+      "test_a_boolean_amount_is_refused": {
+        "assertions": 2,
+        "body_sha": "bf5282983144e06c"
+      },
+      "test_a_write_off_without_a_reason_is_refused": {
+        "assertions": 2,
+        "body_sha": "93e964d5eb695286"
+      },
+      "test_an_allocation_without_an_asset_name_is_refused": {
+        "assertions": 2,
+        "body_sha": "1fd3e33ff0c1474d"
+      },
+      "test_closure_service_error_carries_code_status_blockers_and_message_id": {
+        "assertions": 3,
+        "body_sha": "077b9d74bfa8c8e2"
+      },
+      "test_a_decision_without_a_note_is_refused_before_the_database": {
+        "assertions": 2,
+        "body_sha": "3404ba6b0506b927"
+      },
+      "test_a_review_decision_must_be_one_of_the_two": {
+        "assertions": 2,
+        "body_sha": "ac1ea01407c58e9c"
+      },
+      "test_submitting_a_review_requires_a_completion_date": {
+        "assertions": 2,
+        "body_sha": "4c76e062606a6a3f"
+      },
+      "test_terminal_project_states_are_the_two_that_cannot_be_capitalised_again": {
+        "assertions": 1,
+        "body_sha": "f2171b4523f12502"
+      },
+      "test_the_module_never_names_a_posting_status_other_than_not_posted": {
+        "assertions": 2,
+        "body_sha": "c6d7eb2e1aafb052"
+      },
+      "test_live_the_check_constraint_refuses_any_posting_claim": {
+        "assertions": 1,
+        "body_sha": "1000d0a99616d89e"
+      },
+      "test_live_a_second_open_request_is_refused_by_the_partial_index": {
+        "assertions": 2,
+        "body_sha": "e8e78d81496d6394"
+      },
+      "test_live_a_maker_cannot_approve_their_own_capitalisation": {
+        "assertions": 3,
+        "body_sha": "355bc392d710ca85"
+      },
+      "test_live_a_reviewer_cannot_decide_their_own_completion_assertion": {
+        "assertions": 2,
+        "body_sha": "ebb51d1b2b770f26"
+      },
+      "test_live_an_open_reconciliation_exception_blocks_capitalisation": {
+        "assertions": 2,
+        "body_sha": "f3b9dcd1748645c5"
+      },
+      "test_live_an_unattributed_exception_blocks_and_is_reported_at_full_value": {
+        "assertions": 2,
+        "body_sha": "2bbaa2bb1cfee7d6"
+      },
+      "test_live_a_clean_capitalisation_approves_and_says_not_posted": {
+        "assertions": 5,
+        "body_sha": "c00771c6ef9e5ab8"
+      },
+      "test_live_an_allocation_shortfall_refuses_the_approval": {
+        "assertions": 4,
+        "body_sha": "07e920e5f81bfc80"
+      },
+      "test_live_a_write_off_closes_the_shortfall_and_stays_visible_as_one": {
+        "assertions": 4,
+        "body_sha": "cf5fb601b0834615"
+      },
+      "test_live_an_out_of_scope_project_answers_as_absent": {
+        "assertions": 3,
+        "body_sha": "5f1b083c22d5602b"
+      },
+      "test_live_a_denied_scope_sees_no_capitalisation_requests": {
+        "assertions": 1,
+        "body_sha": "ce3e0554b5e2fafa"
+      }
+    },
     "test_pg_constraints.py": {
       "test_overlapping_accounting_periods_for_the_same_entity_are_rejected": {
         "assertions": 1,
@@ -9271,6 +9413,7 @@
     "test_pg_audit.py": 20,
     "test_pg_audit_api_e2e.py": 7,
     "test_pg_budget.py": 22,
+    "test_pg_closure.py": 35,
     "test_pg_constraints.py": 8,
     "test_pg_fixture_guard.py": 3,
     "test_pg_integration_rate_budget.py": 21,
@@ -9359,6 +9502,7 @@
     "test_pg_audit.py": 62,
     "test_pg_audit_api_e2e.py": 24,
     "test_pg_budget.py": 57,
+    "test_pg_closure.py": 77,
     "test_pg_constraints.py": 13,
     "test_pg_fixture_guard.py": 3,
     "test_pg_integration_rate_budget.py": 109,
