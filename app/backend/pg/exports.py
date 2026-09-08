@@ -1239,7 +1239,11 @@ def create_job(session: Session, *, dataset: str, filters: Any, scope: Scope,
     if row is None:                                    # pragma: no cover
         raise ExportError("EXPORT_JOB_NOT_CREATED",
                           "the export job insert returned no row", status=500)
-    job = _job_row_to_dict(row[:-1])
+    # RETURNING lists exactly `_JOB_COLUMNS`, so the row is passed whole --
+    # as every other `_job_row_to_dict` call site passes it. Dropping a
+    # trailing element here severed `expires_at`, the last column, and
+    # `_job_row_to_dict` then raised KeyError on its own timestamp loop.
+    job = _job_row_to_dict(row)
 
     audit_svc.append(
         session, actor=actor, action="export.requested",
