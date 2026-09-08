@@ -304,6 +304,76 @@
   cursor: not-allowed;
 }
 
+/* ---------------- sub-headings inside a card ---------------- */
+
+/* The card heading is an <h2>; a section inside it is an <h3>, so the document
+   outline stays intact and axe's heading-order check passes. These
+   declarations reproduce the weight and rhythm of the frozen stylesheet's own
+   headings from the same tokens; they do not restyle any existing selector. */
+.analytics-subhead {
+  margin: 14px 0 4px;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--n700);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.analytics-card-body > .analytics-subhead:first-child,
+.card-body > .analytics-subhead:first-child {
+  margin-top: 0;
+}
+
+/* ---------------- itemised lists ---------------- */
+
+.analytics-exception-items,
+.analytics-worklist-items {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.analytics-exception-items li,
+.analytics-worklist-items li {
+  overflow-wrap: anywhere;
+}
+
+.analytics-exception-class + .analytics-exception-class {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--n200);
+}
+
+/* ---------------- arrival banner, identity block, prompts ---------------- */
+
+.analytics-arrival:empty,
+.analytics-prompt:empty,
+.analytics-identity:empty,
+.analytics-quality-host:empty,
+.analytics-chip-host:empty {
+  display: none;
+}
+
+.analytics-identity {
+  margin-bottom: 12px;
+}
+
+.analytics-tree-controls {
+  margin: 0 0 8px;
+}
+
+.analytics-compare {
+  margin-bottom: 12px;
+}
+
+.analytics-pager {
+  align-items: center;
+}
+
 /* ---------------- cross-links to the operational views ---------------- */
 
 .analytics-crosslinks {

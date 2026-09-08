@@ -463,15 +463,66 @@ export function getWbs(projectId, filters, reportId = REPORT_IDS.wbsHierarchy) {
   ], A1_NOTE);
 }
 
-/** SCR-19: the CWIP ledger — posted vendor bills against WBS. */
+/**
+ * SCR-19: the CWIP ledger — posted vendor bills against WBS.
+ *
+ * THE LEDGER PATH MAKES TWO CALLS, AND THE SECOND ONE IS THE POINT.
+ * `/api/bills` returns the bill ROWS and no total. Summing those rows in the
+ * browser to produce a "Total actual CWIP" card would be exactly the
+ * fabrication this feature refuses — and worse than usual here, because
+ * `/api/bills` includes bills in accounting states that are NOT effective
+ * (voided, and anything outside `domain.ACCOUNTING_EFFECTIVE_BILL_STATES`),
+ * so a naive sum of the rows would OVERSTATE actual CWIP by every voided bill
+ * on the screen.
+ *
+ * `/api/dashboard`'s `totals.actual` is the server's own figure and already
+ * excludes them. So the card comes from there, the rows come from `/api/bills`,
+ * and the screen states which rows the card excludes rather than quietly
+ * dropping them from the list. A reader who needs to see a voided bill can;
+ * they simply cannot mistake it for CWIP.
+ */
 export function getCwipLedger(filters) {
   return firstAvailable([
     reportCandidate(REPORT_IDS.cwipLedger, filters),
     {
       source: 'ledger',
       template: LEDGER_ROUTES.bills,
-      label: '/api/bills',
-      call: () => ledger.get('/bills', ledgerParams(filters)),
+      label: '/api/bills with the total from /api/dashboard',
+      call: async () => {
+        const params = ledgerParams(filters);
+        const [bills, dashboard] = await Promise.all([
+          ledger.get('/bills', params),
+          // The total is a SEPARATE, server-computed figure. If the dashboard
+          // refuses or fails, the rows still render and the card renders "not
+          // reported" — which is true — rather than a sum of the rows.
+          ledger.get('/dashboard', params).catch(() => null),
+        ]);
+        return {
+          rows: Array.isArray(bills) ? bills : [],
+          totals: dashboard && dashboard.totals ? dashboard.totals : null,
+          total_excludes_ineffective: true,
+        };
+      },
+      unapplied: unappliedFilters(filters, LEDGER_HONOURS),
+    },
+  ], A1_NOTE);
+}
+
+/**
+ * SCR-24: the measured, un-bucketed actual-CWIP total — server-summed.
+ *
+ * Same shape as `getCommitmentTotal()`: the TOTAL is available today and the
+ * BUCKETS are not, and the two are fetched separately so a screen can show
+ * the one it has and be explicit about the one it does not.
+ */
+export function getCwipTotal(filters) {
+  return firstAvailable([
+    reportCandidate(REPORT_IDS.cwipAgeing, filters, { shape: 'total' }),
+    {
+      source: 'ledger',
+      template: LEDGER_ROUTES.dashboard,
+      label: '/api/dashboard',
+      call: () => ledger.get('/dashboard', ledgerParams(filters)),
       unapplied: unappliedFilters(filters, LEDGER_HONOURS),
     },
   ], A1_NOTE);
