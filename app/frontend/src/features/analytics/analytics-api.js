@@ -403,14 +403,49 @@ export const LEDGER_ROUTES = Object.freeze({
 });
 
 /**
- * The FilterSet dimensions the LEDGER routes can actually honour.
+ * The FilterSet dimensions each LEDGER route can actually honour — PER ROUTE,
+ * because they do not agree and a single list made the screens claim a scope
+ * three of them do not apply.
  *
- * Everything else in the canonical FilterSet is dropped when a screen falls
- * back, and every screen that falls back says which — see
- * `unappliedFilters()`. This constant is the single place that knowledge
- * lives, so a route that later grows a filter is updated once.
+ * READ `app/backend/main.py`, NOT THIS COMMENT, IF YOU CHANGE THIS. The entries
+ * below are the query parameters each route DECLARES, transcribed:
+ *
+ *   main.py:406  dashboard(entity_id, plant_id)        — no project_id
+ *   main.py:444  wbs(project_id in the PATH)           — project only
+ *   main.py:601  pos()                                 — none
+ *   main.py:684  grns()                                — none
+ *   main.py:704  bills()                               — none
+ *   main.py:735  recon(project_id)                     — project only
+ *   main.py:803  capitalisation()                      — none
+ *
+ * WHY THIS IS NOT A COSMETIC LIST. FastAPI SILENTLY DROPS an undeclared query
+ * parameter: it is neither applied nor refused, and the response is byte-for-
+ * byte the response to the unfiltered request. `GET /api/dashboard` and
+ * `GET /api/dashboard?project_id=PRJ-01` both return all three projects. The
+ * previous single list named `project_ids` as honoured everywhere, so a screen
+ * on the ledger fallback with `?project=PRJ-01` showed the WHOLE PORTFOLIO'S
+ * money under an active "Project: PRJ-01" chip and an EMPTY "could not apply"
+ * list. A fabricated claim about scope, on a screen showing money, is worse
+ * than showing no figure at all.
+ *
+ * Everything a route does not honour is reported through `unappliedFilters()`
+ * and named on screen. This constant is the single place that knowledge lives.
  */
-export const LEDGER_HONOURS = Object.freeze(['entity_ids', 'plant_ids', 'project_ids']);
+export const LEDGER_HONOURS = Object.freeze({
+  dashboard: Object.freeze(['entity_ids', 'plant_ids']),
+  wbs: Object.freeze(['project_ids']),
+  reconciliation: Object.freeze(['project_ids']),
+  bills: Object.freeze([]),
+  purchaseOrders: Object.freeze([]),
+  grns: Object.freeze([]),
+  capitalisation: Object.freeze([]),
+  /* `/api/bills` for the rows AND `/api/dashboard` for the total, in one
+     candidate. The honoured set is the INTERSECTION, which is empty: the rows
+     are unfiltered, so the payload as a whole cannot claim an entity or plant
+     narrowing even though the total half of it applied one. Under-claiming a
+     scope is recoverable; over-claiming one is the defect. */
+  billsWithDashboardTotal: Object.freeze([]),
+});
 
 const REPORTING_NOTE = 'This deployment does not mount the reporting endpoint this screen reads '
   + '(/api/reports/metrics, served by app/backend/api/reports.py). There is therefore no source '
@@ -698,17 +733,33 @@ export function unappliedFilters(filters, honoured) {
   return out;
 }
 
-/* Ledger query params, from the canonical FilterSet. Only the three the
-   ledger routes actually read; everything else is reported as unapplied
-   rather than silently appended to a URL that would ignore it. */
-function ledgerParams(filters) {
+/* The FilterSet key -> the query parameter name the ledger routes declare. */
+const LEDGER_PARAM_OF = Object.freeze({
+  entity_ids: 'entity_id',
+  plant_ids: 'plant_id',
+  project_ids: 'project_id',
+});
+
+/**
+ * Ledger query params for ONE route, from the canonical FilterSet.
+ *
+ * Only the keys THAT ROUTE declares are sent. Appending a parameter a route
+ * does not declare does not narrow anything — FastAPI drops it — it only makes
+ * a request log look as though a filter were applied, which is the same lie
+ * this module refuses to tell on screen.
+ *
+ * @param {string[]} honoured - one of the LEDGER_HONOURS entries.
+ * @param {Object} filters
+ */
+function ledgerParams(honoured, filters) {
   const f = filters || {};
   const first = (list) => (Array.isArray(list) && list.length ? list[0] : undefined);
-  return {
-    entity_id: first(f.entity_ids),
-    plant_id: first(f.plant_ids),
-    project_id: first(f.project_ids),
-  };
+  const out = {};
+  for (const key of honoured) {
+    const param = LEDGER_PARAM_OF[key];
+    if (param) out[param] = first(f[key]);
+  }
+  return out;
 }
 
 /**
@@ -820,8 +871,8 @@ export function getPortfolio(filters, screen = SCREENS.executive) {
       source: 'ledger',
       template: LEDGER_ROUTES.dashboard,
       label: '/api/dashboard',
-      call: () => ledger.get('/dashboard', ledgerParams(filters)),
-      unapplied: unappliedFilters(filters, LEDGER_HONOURS),
+      call: () => ledger.get('/dashboard', ledgerParams(LEDGER_HONOURS.dashboard, filters)),
+      unapplied: unappliedFilters(filters, LEDGER_HONOURS.dashboard),
     },
   ], REPORTING_NOTE);
 }
@@ -859,7 +910,7 @@ export function getWbs(projectId, filters, screen = SCREENS.wbsHierarchy) {
       template: LEDGER_ROUTES.wbs,
       label: `/api/projects/${projectId}/wbs`,
       call: () => ledger.get(`/projects/${encodeURIComponent(projectId)}/wbs`),
-      unapplied: unappliedFilters(filters, ['project_ids']),
+      unapplied: unappliedFilters(filters, LEDGER_HONOURS.wbs),
     },
     /* Second, not first, and it will rarely be reached: if the hierarchy route
        is ever unmounted, flat grouped rows honouring the WHOLE FilterSet are
@@ -896,13 +947,15 @@ export function getCwipLedger(filters) {
       template: LEDGER_ROUTES.bills,
       label: '/api/bills with the total from /api/dashboard',
       call: async () => {
-        const params = ledgerParams(filters);
         const [bills, dashboard] = await Promise.all([
-          ledger.get('/bills', params),
+          // `/api/bills` declares NO query parameter (main.py:704), so none is
+          // sent: the rows are the whole estate's, and `unapplied` says so.
+          ledger.get('/bills', ledgerParams(LEDGER_HONOURS.bills, filters)),
           // The total is a SEPARATE, server-computed figure. If the dashboard
           // refuses or fails, the rows still render and the card renders "not
           // reported" — which is true — rather than a sum of the rows.
-          ledger.get('/dashboard', params).catch(() => null),
+          ledger.get('/dashboard', ledgerParams(LEDGER_HONOURS.dashboard, filters))
+            .catch(() => null),
         ]);
         return {
           rows: Array.isArray(bills) ? bills : [],
@@ -910,7 +963,7 @@ export function getCwipLedger(filters) {
           total_excludes_ineffective: true,
         };
       },
-      unapplied: unappliedFilters(filters, LEDGER_HONOURS),
+      unapplied: unappliedFilters(filters, LEDGER_HONOURS.billsWithDashboardTotal),
     },
   ], REPORTING_NOTE);
 }
@@ -929,8 +982,8 @@ export function getCwipTotal(filters) {
       source: 'ledger',
       template: LEDGER_ROUTES.dashboard,
       label: '/api/dashboard',
-      call: () => ledger.get('/dashboard', ledgerParams(filters)),
-      unapplied: unappliedFilters(filters, LEDGER_HONOURS),
+      call: () => ledger.get('/dashboard', ledgerParams(LEDGER_HONOURS.dashboard, filters)),
+      unapplied: unappliedFilters(filters, LEDGER_HONOURS.dashboard),
     },
   ], REPORTING_NOTE);
 }
@@ -982,6 +1035,63 @@ export async function getAgeing(kind, filters) {
   );
 }
 
+/**
+ * `/api/reconciliation`'s summary, in the CANONICAL METRIC VOCABULARY.
+ *
+ * THE TWO SOURCES NAME THE SAME QUANTITIES DIFFERENTLY, AND THE SCREEN MUST
+ * ASK FOR ONE SET OF NAMES.
+ *
+ *   canonical (`domain._COMPONENTS`, and so `/api/dashboard`'s and
+ *   `/api/reports/metrics`' totals)   `commitment`  `actual`  `received_not_billed`
+ *   `/api/reconciliation`'s summary   `open_commitment_paise` `billed_paise`
+ *                                     `received_not_billed_paise`
+ *
+ * SCR-23's tiles were keyed on the SECOND set, which is the FALLBACK source's.
+ * The screen therefore worked on the degraded path and rendered "not reported"
+ * on the preferred one — the failure mode that hides itself, because the
+ * fallback is what a developer sees on a SQLite build. SCR-24 was keyed on the
+ * canonical names and was correct on both, which is what makes this a mismatch
+ * rather than a convention.
+ *
+ * The renaming happens HERE rather than in the screen so that exactly one
+ * vocabulary reaches `renderCards`, and so that a screen never has to know
+ * which source answered in order to read a figure.
+ *
+ * WHAT IS NOT IDENTICAL, SAID OUT LOUD. `actual` from the canonical sources is
+ * the value of every accounting-effective vendor bill in scope.
+ * `billed_paise` here is the subset of that value attributable to a PO LINE
+ * (`domain.reconciliation` joins `bill_line.po_line_id IS NOT NULL`). A bill
+ * booked with no purchase-order line behind it is in one and not the other.
+ * They are the same measurement of "what has been invoiced" over two different
+ * populations, and the screen states which source answered on every load, so a
+ * reader can tell which of the two they are looking at. Renaming does not make
+ * them equal and this comment exists so nobody later assumes it did.
+ */
+function canonicaliseReconciliation(raw) {
+  if (!raw || typeof raw !== 'object') return raw;
+  const summary = raw.summary && typeof raw.summary === 'object' ? raw.summary : null;
+  const canonicalSummary = summary ? (() => {
+    const { open_commitment_paise: com, billed_paise: act, ...rest } = summary;
+    return {
+      ...rest,
+      commitment: com === undefined ? null : com,
+      actual: act === undefined ? null : act,
+    };
+  })() : null;
+  /* The ROWS keep every key they arrived with and GAIN the canonical one, so
+     `assertSumsBack(total, rows, 'commitment')` can check the server's own
+     arithmetic on this path too. `sumColumn` reads `row[key]` EXACTLY — it does
+     no `_paise` aliasing — so the alias has to be the bare canonical name, the
+     same name `/api/reports/metrics` puts on its rows. Nothing is dropped: a
+     row's `open_commitment_paise` is still there for anything reading it by the
+     reconciliation's own name. */
+  const rows = Array.isArray(raw.rows) ? raw.rows.map((row) => (
+    row && typeof row === 'object' && row.open_commitment_paise !== undefined
+      ? { ...row, commitment: row.open_commitment_paise }
+      : row)) : raw.rows;
+  return { ...raw, summary: canonicalSummary, rows };
+}
+
 /** The measured, un-bucketed open-commitment total — server-summed. */
 export function getCommitmentTotal(filters) {
   return firstAvailable([
@@ -990,8 +1100,10 @@ export function getCommitmentTotal(filters) {
       source: 'ledger',
       template: LEDGER_ROUTES.reconciliation,
       label: '/api/reconciliation',
-      call: () => ledger.get('/reconciliation', ledgerParams(filters)),
-      unapplied: unappliedFilters(filters, LEDGER_HONOURS),
+      call: async () => canonicaliseReconciliation(await ledger.get(
+        '/reconciliation', ledgerParams(LEDGER_HONOURS.reconciliation, filters),
+      )),
+      unapplied: unappliedFilters(filters, LEDGER_HONOURS.reconciliation),
     },
   ], REPORTING_NOTE);
 }
@@ -1004,8 +1116,8 @@ export function getExceptions(filters) {
       source: 'ledger',
       template: LEDGER_ROUTES.dashboard,
       label: '/api/dashboard',
-      call: () => ledger.get('/dashboard', ledgerParams(filters)),
-      unapplied: unappliedFilters(filters, LEDGER_HONOURS),
+      call: () => ledger.get('/dashboard', ledgerParams(LEDGER_HONOURS.dashboard, filters)),
+      unapplied: unappliedFilters(filters, LEDGER_HONOURS.dashboard),
     },
   ], REPORTING_NOTE);
 }

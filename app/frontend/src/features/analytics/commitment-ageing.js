@@ -40,11 +40,22 @@ export const mountCommitmentAgeing = createAgeingScreen({
     + 'by design and are never added together.',
   report: SCREENS.commitmentAgeing,
   fetchTotal: getCommitmentTotal,
-  rowMetric: 'open_commitment_paise',
+  rowMetric: 'commitment',
   bucketWhat: 'Open commitment ageing',
+  /* THE KEYS ARE THE PREFERRED SOURCE'S, NOT THE FALLBACK'S.
+     These were `open_commitment` and `billed` — the names `/api/reconciliation`
+     uses, and names `/api/reports/metrics` has never returned. The screen
+     therefore rendered real figures on the DEGRADED path and "not reported" on
+     the good one, which is the failure that hides itself: the fallback is what
+     a SQLite build shows, so the broken case only appeared once the reporting
+     database existed. SCR-24 was already keyed on the canonical vocabulary
+     (`domain._COMPONENTS`) and was right on both sources.
+     `analytics-api.js::canonicaliseReconciliation` now renames the fallback's
+     summary into these names, so both sources answer to one vocabulary and
+     neither screen has to know which one replied. */
   totals: [
     {
-      key: 'open_commitment',
+      key: 'commitment',
       label: 'Open commitment',
       sub: 'Ordered less billed, floored at zero, released orders excluded. The server\'s own '
         + 'sum over your resolved scope.',
@@ -52,9 +63,12 @@ export const mountCommitmentAgeing = createAgeingScreen({
       target: 'analytics-controller',
     },
     {
-      key: 'billed',
+      key: 'actual',
       label: 'Billed against these orders',
-      sub: 'What has already been invoiced against the same lines.',
+      sub: 'What has already been invoiced. The reporting service reports every '
+        + 'accounting-effective vendor bill in scope; the reconciliation fallback reports the '
+        + 'part of that value attributable to a purchase-order line. The source line above says '
+        + 'which one answered.',
       accent: 'info',
       target: 'analytics-cwip-ledger',
     },
