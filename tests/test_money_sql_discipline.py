@@ -98,11 +98,21 @@ def test_no_pg_module_multiplies_or_divides_by_a_float_literal_in_money_code():
     """A float literal next to paise arithmetic is how a rounded rupee value
     gets back into a system that stores integers.
 
-    The percentage in `check_availability` is the one legitimate float: it is
-    a display and threshold value, never a monetary amount, and it is computed
-    from an integer numerator and an integer denominator.
+    Utilisation percentage is the one legitimate float, and it appears twice:
+    `budget.check_availability` and `reporting.derive`. Both are a display and
+    threshold value, never a monetary amount, both are computed from an integer
+    numerator and an integer denominator, and both are `domain._derive`'s
+    expression transcribed verbatim -- which is the rule the reporting layer is
+    held to, so rewriting the arithmetic to dodge this gate would break a
+    stronger guarantee than it satisfies.
+
+    THE ALLOW-LIST IS PER (MODULE, LITERAL) AND STAYS THAT WAY. It admits
+    `100.0` in two named files; every other float literal in every other
+    `pg/` module, and any other float in these two, still fails. Widening it to
+    a bare literal or to the whole package would be the weakening this gate
+    exists to prevent.
     """
-    allowed = {("budget.py", "100.0")}
+    allowed = {("budget.py", "100.0"), ("reporting.py", "100.0")}
     offenders = []
     for module in sorted(PG_DIR.glob("*.py")):
         source = module.read_text(encoding="utf-8")
