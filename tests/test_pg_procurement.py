@@ -1109,6 +1109,26 @@ def test_a_duplicate_refusal_does_not_move_the_circuit(
     It arrives as an exception because that is how Zoho reports a unique-field
     violation. Counting it toward the breaker would open the circuit on the one
     outcome that proves the mechanism works.
+
+    THE TENANT MODELLED HERE IS THE ONE THAT WILL NOT NAME THE RECORD, and it
+    has to be, because that is the only tenant whose refusal reaches the
+    refusal this test is about. `emit_purchase_order` splits on exactly that
+    fact (`outbound.py:1401-1405`): a `DuplicateDedupeKey` that CARRIES an
+    external id is ADOPTED -- `external_id, created, adopted = exc.external_id,
+    False, True` -- the row is marked SENT and `send_purchase_order` returns
+    `{"sent": True, "adopted": True, ...}` with no `refused` key at all. Only
+    the un-nameable refusal is re-raised, and only it reaches
+    `procurement_services.py:2884`'s `DUPLICATE_DEDUPE_KEY` arm.
+    The fixture used to raise `DuplicateDedupeKey(key, "ZPO-00042")` and then
+    assert the refusal shape, which is two different tenants in one test: the
+    named form has been adopted since `fae4690`, which predates this test. It
+    could not have been satisfied by any change short of breaking adoption --
+    and the adopted path also calls `record_circuit_success`, which INSERTS a
+    `CIRCUIT_CLOSED` row (`integration_store.py:2244`), so `circuit is None`
+    below could not have held either.
+    The adopted path keeps its own coverage in `tests/test_outbound_chaos.py`,
+    which drives both tenants through `names_duplicate`. What was untested, and
+    is tested here, is the service-level arm and its circuit invariant.
     """
     suffix = uuid.uuid4().hex[:10]
     ids = _seed_chain(pg_connection, suffix=suffix, budget_paise=10_000_00)
@@ -1118,7 +1138,9 @@ def test_a_duplicate_refusal_does_not_move_the_circuit(
             return None
 
         def create_purchase_order(self, po, dedupe_key):
-            raise ob.DuplicateDedupeKey(dedupe_key, "ZPO-00042")
+            # No external id: the tenant refused the duplicate and would not
+            # say which record already holds the key.
+            raise ob.DuplicateDedupeKey(dedupe_key, None)
 
     with pg_database.session(Scope.system()) as session:
         connection_id = _connection(session, ids, suffix=suffix)
@@ -1131,6 +1153,7 @@ def test_a_duplicate_refusal_does_not_move_the_circuit(
             document_date=DOCUMENT_DATE, actor="U-ADM", acknowledged=True,
             now=NOW)
         outbox_id = planned["outbox"][0]["outbox_id"]
+        dedupe_key = planned["outbox"][0]["dedupe_key"]
         result = proc.send_purchase_order(
             session, outbox_id=outbox_id, connection_id=connection_id,
             adapter=_AlreadyThere(), actor="U-ADM", now=NOW)
@@ -1139,7 +1162,13 @@ def test_a_duplicate_refusal_does_not_move_the_circuit(
             "AND module = %s", (connection_id, proc.PO_MODULE))
 
     assert result["refused"] == "DUPLICATE_DEDUPE_KEY"
-    assert result["external_id"] == "ZPO-00042"
+    # The key IS reported even though the record cannot be named: it is the
+    # only handle an operator has on the purchase order that exists in the
+    # tenant and that we cannot point at.
+    assert result["dedupe_key"] == dedupe_key
+    assert result["external_id"] is None, (
+        "the tenant refused without naming the record; inventing an id here "
+        "would let a later attempt believe the order was adopted")
     assert circuit is None, "no circuit row was written at all"
 
 
