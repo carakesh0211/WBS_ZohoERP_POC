@@ -36,6 +36,12 @@ MANIFEST = TESTS / "TEST_MANIFEST.json"
 # Files added after the POC baseline. Tracked, but excluded from the
 # "220 original functions" count so the baseline stays a fixed reference.
 POST_BASELINE_FILES = {
+    # --- Wave 7 stream A4: closure and capitalisation --------------------
+    # The completion/capitalisation blockers, the asset-allocation paise
+    # reconciliation and migration 019's own text. Post-baseline like every
+    # wave file: the 220 counts the POC's audit-remediation suite, and letting
+    # a new file inflate it makes the removal guard stop meaning anything.
+    "test_pg_closure.py",
     # --- Wave 7 stream A2: asynchronous exports --------------------------
     # `test_pg_exports.py` is the export machinery -- chunking, determinism,
     # integer-paise formatting, and migration 018's own text. `test_export_

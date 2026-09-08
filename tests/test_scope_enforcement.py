@@ -145,6 +145,16 @@ SCOPABLE = {
 
     "purchase_request", "pr_line", "purchase_order", "po_line",
     "grn", "grn_line", "bill", "bill_line",
+    # Migration 018, all three carrying a capex_scope_permits RLS policy that
+    # reaches `project` and filters all four dimensions. Added WITH the
+    # migration, not after it, for the reason the 013 block above gives.
+    #
+    # `capitalisation_request.cwip_balance_paise` is another entity's capital
+    # position and `asset_allocation.amount_paise` is how it was split; an
+    # unscoped read of either is a disclosure, and an unscoped WRITE to
+    # `capitalisation_request` is a capitalisation decision recorded against a
+    # project the caller cannot see.
+    "project_completion_review", "capitalisation_request", "asset_allocation",
     "entity", "division", "branch", "zone", "department", "plant", "location",
     "project", "wbs_element", "budget_control_cell", "budget_ledger_cell",
     "budget_line", "budget_revision", "budget_transfer", "budget_version",

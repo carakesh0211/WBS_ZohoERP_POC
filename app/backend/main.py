@@ -96,6 +96,8 @@ from .api import admin_access as admin_access_api
 from .api import approvals as approvals_api
 from .api import budget as budget_api
 from .api import exports as exports_api
+
+from .api import closure as closure_api
 from .api import integrations as integrations_api
 from .api import masters as masters_api
 from .api import procurement as procurement_api
@@ -133,6 +135,16 @@ app.include_router(reports_api.router)
 # mounts it. `/api/exports/*` answers 202 with a job id and never a file, so no
 # route here can exceed the 30-second AppSail budget however large the export.
 app.include_router(exports_api.router)
+
+# Wave 7. Same rule, same commit: the eight mutating paths this router serves
+# are in `tests/test_api_auth.py::MUTATING_ROUTES` in the commit that mounts
+# it. `/api/closure/*` is the PostgreSQL closure chain over migration 018's
+# three tables; the SQLite `/api/capitalisation` routes above are untouched and
+# stay deployable until the cutover. `/api/control/*` on the same router is
+# three READ-ONLY views (SCR-11 / SCR-12 / SCR-14) over tables whose write side
+# lives in `api/budget.py` and `api/procurement.py` and which offer no list
+# route -- see that module's docstring.
+app.include_router(closure_api.router)
 
 PUBLIC_PATHS = {"/api/health", "/api/auth/login"}
 

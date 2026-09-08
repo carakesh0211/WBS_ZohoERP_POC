@@ -1,0 +1,269 @@
+/* app/frontend/src/features/closure/closure.css
+   Additive stylesheet for Wave 7's ten screens: SCR-11, 12, 14, 20, 21, 22 in
+   features/closure/, and SCR-35, 36, 37, 40 in features/mapping/.
+
+   WHERE THIS FILE LIVES, AND WHY IT IS NOT app/frontend/closure.css
+   ------------------------------------------------------------------
+   budget.css, settings.css and approvals.css sit beside index.html. This one
+   sits inside the feature, exactly as integration.css does, because this
+   stream owns app/frontend/src/features/closure/** and owns nothing at the
+   frontend root. A <link> to it is same-origin and static, so `style-src
+   'self'` permits it, and src/core/router.js injects it per route.
+
+   RULES THIS FILE KEEPS, and why
+   ------------------------------
+   1. app/frontend/styles.css IS BYTE-FROZEN AND SHA-256 PINNED. Nothing here
+      touches it. NO :root block, NO custom property declared here, and NO raw
+      hex anywhere in this file: every colour is a var() naming a token already
+      frozen in research/30_contracts/C6_tokens.json and declared in
+      styles.css. A new colour belongs in the token registry, not in a feature
+      stylesheet.
+
+   2. EVERY SELECTOR IS SCOPED to a `closure-` class. settings.css shipped two
+      UNSCOPED selectors -- `input:disabled, textarea:disabled` and
+      `.field label` -- which restyle every approved shell view the moment that
+      stylesheet loads. That defect is why router.js injects these per route,
+      and this file is written so it would be harmless even if that containment
+      failed.
+
+   3. Layout and size only. Nothing here restyles a `.status`, a `.msg`, a
+      `.tile`, a table or a button -- those are the approved design and they
+      come from styles.css unchanged.
+
+   4. No `style=` attribute is ever produced by the screens that use this file.
+      The CSP is `style-src 'self'`; core/dom.js's h() throws on one.
+
+   5. Spacing is the C6 scale (4 / 8 / 12 / 16 / 24 / 32) and nothing else.
+      Type sizes are the C6 scale. Money is tabular-nums and right-aligned,
+      which C6 calls non-negotiable for financial review.
+*/
+
+/* ---------------- layout ---------------- */
+
+.closure-screen > * + * {
+  margin-top: 16px;
+}
+
+.closure-card + .closure-card {
+  margin-top: 16px;
+}
+
+.closure-card {
+  background: var(--n0);
+  border: 1px solid var(--n200);
+  border-radius: var(--radius);
+}
+
+/* An <h2>, not the frozen stylesheet's `.card > h3`: the shell renders the
+   screen name as the page <h1>, so an h3 here would skip a heading level --
+   axe flags it and a screen-reader user navigating by heading loses the
+   outline. These declarations reproduce `.card > h3` from the same tokens, so
+   the card is visually identical and only the element name differs.
+   budget.css, approvals.css and integration.css all solve it this way. */
+.closure-card > .closure-card-title {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--n900);
+  background: var(--n100);
+  border-bottom: 1px solid var(--n200);
+}
+
+.closure-card-body {
+  padding: 12px;
+}
+
+/* ---------------- the position strip ---------------- */
+
+.closure-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.closure-figure {
+  flex: 1 1 160px;
+  min-width: 0;
+  padding: 8px 12px;
+  background: var(--n50);
+  border: 1px solid var(--n200);
+  border-radius: var(--radius);
+}
+
+.closure-figure-label {
+  display: block;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--n500);
+}
+
+.closure-figure-value {
+  display: block;
+  margin-top: 4px;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--n900);
+}
+
+/* An UNAVAILABLE figure. It is not zero and must never render as zero:
+   "no number" and "the number is nought" are different facts, and a control
+   screen that confuses them invites a decision on a total nobody computed. */
+.closure-figure-value.closure-figure-missing {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+  color: var(--n500);
+}
+
+/* ---------------- the posting-status banner ---------------- */
+
+/* Exclusion X-01, rendered. This is the single most misreadable moment in the
+   application, so it is stated on every screen that shows a CWIP figure, above
+   the figure, in the warning tone rather than a neutral one. */
+.closure-posting-note {
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--warning);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+}
+
+.closure-posting-note strong {
+  font-weight: 600;
+}
+
+/* ---------------- blockers ---------------- */
+
+.closure-blockers {
+  margin: 0;
+  padding-left: 24px;
+}
+
+.closure-blockers > li {
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.closure-blockers > li:first-child {
+  margin-top: 0;
+}
+
+/* ---------------- tables ---------------- */
+
+/* AUD-M-004: the document never scrolls horizontally. A wide table scrolls
+   inside its own container. */
+.closure-tablewrap {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.closure-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.closure-table th,
+.closure-table td {
+  padding: 4px 8px;
+  height: var(--row-h);
+  text-align: left;
+  border-bottom: 1px solid var(--n200);
+  white-space: nowrap;
+}
+
+.closure-table th {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--n700);
+  background: var(--n100);
+}
+
+.closure-table td {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* C6 typography.rule_numeric: ALL monetary and quantity columns use
+   tabular-nums and are right-aligned so digits align down a column. */
+.closure-table th.closure-num,
+.closure-table td.closure-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.closure-table td.closure-wrap {
+  white-space: normal;
+  min-width: 200px;
+}
+
+/* ---------------- forms ---------------- */
+
+.closure-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.closure-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+}
+
+.closure-field > label {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--n700);
+}
+
+.closure-field-wide {
+  flex: 1 1 280px;
+}
+
+.closure-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* ---------------- write-off marker ---------------- */
+
+/* A write-off is a POSITIVE amount carrying a flag, never a negative
+   allocation. The badge is what makes it visible AS a write-off; the sign
+   never carries that meaning. */
+.closure-writeoff {
+  display: inline-block;
+  padding: 0 4px;
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 600;
+  color: var(--warning);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+}
+
+/* ---------------- responsive ---------------- */
+
+@media (max-width: 900px) {
+  .closure-figure {
+    flex-basis: 100%;
+  }
+
+  .closure-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

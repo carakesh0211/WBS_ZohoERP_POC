@@ -341,6 +341,56 @@ MUTATING_ROUTES = [
     ("/api/exports/{export_job_id}/retry", "POST",
      "/api/exports/EXP-DOES-NOT-EXIST/retry", {},
      "export.create", "Auditor"),
+
+    # ---------------------------------------------------------- Wave 7
+    # `/api/closure/*`. The router floor is `budget.read`, which every role in
+    # `auth.ROLES` holds, so the denied role below always clears the floor and
+    # can only be refused by the route's own permission -- which is what these
+    # rows are meant to prove.
+    #
+    # Requestor is the denied role for both permissions: it holds neither
+    # `capitalisation.allocate` (BudgetController, FinanceApprover) nor
+    # `capitalisation.approve` (CapitalisationApprover). Auditor is NOT usable
+    # here -- `test_aud_c_006_auditor_is_read_only` pins Auditor to an
+    # allow-list, and it holds `budget.read`, so it would also produce a 403,
+    # but from a role the suite already constrains elsewhere; Requestor is the
+    # narrower and more honest control.
+    #
+    # Registered in the same commit that mounts the router in `main.py`. This
+    # matrix is built from the live OpenAPI schema, so a mounted route with no
+    # row here fails
+    # `test_aud_c_006_every_mutating_route_is_covered_by_the_authorisation_matrix`
+    # on the very next run.
+    ("/api/closure/reviews", "POST", "/api/closure/reviews",
+     {"project_id": "PRJ-DM-01", "summary": "unauthorised attempt"},
+     "capitalisation.allocate", "Requestor"),
+    ("/api/closure/reviews/{review_id}/submit", "POST",
+     "/api/closure/reviews/PCR-DEMO-0001/submit",
+     {"completion_date": "2026-09-01"},
+     "capitalisation.allocate", "Requestor"),
+    ("/api/closure/reviews/{review_id}/decide", "POST",
+     "/api/closure/reviews/PCR-DEMO-0001/decide",
+     {"decision": "Accepted", "note": "unauthorised attempt"},
+     "capitalisation.approve", "Requestor"),
+    ("/api/closure/requests", "POST", "/api/closure/requests",
+     {"project_id": "PRJ-DM-01"},
+     "capitalisation.allocate", "Requestor"),
+    ("/api/closure/requests/{cap_id}/submit", "POST",
+     "/api/closure/requests/CAP-DEMO-0001/submit", {},
+     "capitalisation.allocate", "Requestor"),
+    ("/api/closure/requests/{cap_id}/approve", "POST",
+     "/api/closure/requests/CAP-DEMO-0001/approve",
+     {"note": "unauthorised attempt"},
+     "capitalisation.approve", "Requestor"),
+    ("/api/closure/requests/{cap_id}/reject", "POST",
+     "/api/closure/requests/CAP-DEMO-0001/reject",
+     {"note": "unauthorised attempt"},
+     "capitalisation.approve", "Requestor"),
+    ("/api/closure/requests/{cap_id}/allocations", "POST",
+     "/api/closure/requests/CAP-DEMO-0001/allocations",
+     {"wbs_id": "WBS-A-CIVIL", "asset_name": "unauthorised attempt",
+      "amount_paise": 100000},
+     "capitalisation.allocate", "Requestor"),
 ]
 
 PUBLIC_MUTATING_ROUTES = {"/api/auth/login"}

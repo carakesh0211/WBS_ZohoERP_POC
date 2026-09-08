@@ -214,6 +214,11 @@ JOINED_VIA_PROJECT = frozenset(RLS_PROCUREMENT_TABLE_COLUMNS) | {
     # reaches the request's project by construction -- the `pr_line` shape: one
     # join, FK-guaranteed.
     "pr_reservation",
+    # 018. All three carry a denormalised `project_id` bound by foreign key to
+    # a real project, and `asset_allocation` binds its `wbs_id` to the SAME
+    # project by `fk_asset_allocation_wbs_project`, so reaching `project`
+    # through the column reaches the row's real project by construction.
+    "project_completion_review", "capitalisation_request", "asset_allocation",
 }
 
 #: Every table 013 enables RLS on.
@@ -321,11 +326,47 @@ JOINED_VIA_REPORT_SAVED_VIEW = frozenset({"report_view_default"})
 #: Every table 017 enables RLS on.
 RLS_REPORTING_TABLES: tuple[str, ...] = tuple(RLS_REPORTING_TABLE_COLUMNS)
 
-#: Every RLS-protected table, from any of the five migrations.
+#: Table -> dimension column mapping for the three closure documents
+#: `migrations/pg/019_closure.sql` adds, in the same shape as the registries
+#: above.
+#:
+#: A SEPARATE DICT again, for the reason `RLS_PROCUREMENT_TABLE_COLUMNS` gives:
+#: `RLS_MIGRATION_BY_TABLE` attributes coverage by which registry a table is
+#: in, so folding these into 013's would make the inventory-vs-registry
+#: agreement test report the wrong file.
+#:
+#: EVERY DIMENSION IS `None` FOR ALL THREE, and all three are in
+#: :data:`JOINED_VIA_PROJECT`. Each carries its own `project_id` column and
+#: each policy still does NOT filter on it directly: a
+#: `capex_scope_permits(NULL, NULL, NULL, project_id)` predicate filters the
+#: PROJECT dimension only, and dimensions resolve independently
+#: (`principal_scope.py`, property 2), so a principal restricted to one entity
+#: and to no project carries `project_ids=None` -- unrestricted -- and would
+#: read every other entity's CWIP balance and capitalisation decision. 018's
+#: policies reach `project` and pass all four of its dimension columns.
+RLS_CLOSURE_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
+    "project_completion_review": {
+        "entity": None, "plant": None, "location": None, "project": None},
+    "capitalisation_request": {
+        "entity": None, "plant": None, "location": None, "project": None},
+    "asset_allocation": {
+        "entity": None, "plant": None, "location": None, "project": None},
+}
+
+#: Every table 019 enables RLS on.
+RLS_CLOSURE_TABLES: tuple[str, ...] = tuple(RLS_CLOSURE_TABLE_COLUMNS)
+
+#: Every RLS-protected table, from any of the six registries.
+#:
+#: Reporting (017) and closure (019) were written in parallel and each added
+#: itself to this dict, so the merge produced two definitions -- the second
+#: silently winning and dropping the first's tables out of RLS coverage
+#: entirely. `test_pg_rls_coverage.py` asserts set equality in BOTH directions
+#: and is what would have caught it; both are named here so it does not have to.
 ALL_RLS_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
     **RLS_TABLE_COLUMNS, **RLS_COVERAGE_TABLE_COLUMNS,
     **RLS_PROCUREMENT_TABLE_COLUMNS, **RLS_CORRECTION_TABLE_COLUMNS,
-    **RLS_REPORTING_TABLE_COLUMNS,
+    **RLS_REPORTING_TABLE_COLUMNS, **RLS_CLOSURE_TABLE_COLUMNS,
 }
 
 #: Every RLS-protected table, from any migration, in registry order.
@@ -342,6 +383,8 @@ RLS_MIGRATION_BY_TABLE: dict[str, str] = {
     **{table: "014_procurement_corrections.sql"
        for table in RLS_CORRECTION_TABLES},
     **{table: "017_reporting.sql" for table in RLS_REPORTING_TABLES},
+
+    **{table: "019_closure.sql" for table in RLS_CLOSURE_TABLES},
 }
 
 
