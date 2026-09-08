@@ -45,7 +45,7 @@ import { statusChip } from '../../components/capex-statuschip.js';
  * @param {string} [opts.evidence] - the finding id or document that established
  *   the reason, e.g. 'OAS-02'. Rendered as a separate, quotable token.
  */
-export function disabledControl(control, { reason, evidence } = {}) {
+export function disabledControl(control, { reason, evidence, labelText } = {}) {
   const id = control.id ? `${control.id}Reason` : null;
   control.disabled = true;
   control.setAttribute('aria-disabled', 'true');
@@ -54,8 +54,15 @@ export function disabledControl(control, { reason, evidence } = {}) {
     control.setAttribute('aria-describedby',
       [control.getAttribute('aria-describedby'), id].filter(Boolean).join(' '));
   }
+  /* A disabled control still needs a name. A bare checkbox with the reason
+     only in a following paragraph is a control a screen reader announces as
+     "checkbox, unchecked" and nothing else — which is precisely the reader who
+     most needs to be told why it cannot be operated. */
+  const labelled = labelText && control.id
+    ? h('label', { class: 'mapping-switch', for: control.id }, [control, text(' '), text(labelText)])
+    : control;
   return h('div', { class: 'mapping-disabled' }, [
-    control,
+    labelled,
     h('p', id ? { id, class: 'xs muted mapping-reason' } : { class: 'xs muted mapping-reason' }, [
       h('span', { class: 'sym', 'aria-hidden': 'true' }, '⊘'),
       text(' '),
