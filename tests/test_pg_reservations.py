@@ -441,9 +441,8 @@ def _seed(connection, *, suffix: str, root_budget: int = 10_000_00,
     for root in ("root_a", "root_b"):
         ex("INSERT INTO wbs_element (wbs_id, project_id, wbs_code, "
            "description, wbs_path, status, created_by, updated_by) "
-           "VALUES (%s,%s,%s,'root','Released','t','t')".replace(
-               "'root','Released'", "%s,'Released'"),
-           (ids[root], ids["project"], ids[root], ids[root], "root"))
+           "VALUES (%s,%s,%s,'root',%s,'Released','t','t')",
+           (ids[root], ids["project"], ids[root], ids[root]))
     for child, parent in (("child_a1", "root_a"), ("child_a2", "root_a"),
                           ("child_b1", "root_b")):
         ex("INSERT INTO wbs_element (wbs_id, project_id, parent_wbs_id, "

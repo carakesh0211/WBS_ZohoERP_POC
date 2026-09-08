@@ -2962,3 +2962,101 @@ no existing assertion was weakened, deleted or re-pointed, so there is no
 sign-off being substituted for. A `| ADAPT-` register row naming an individual
 remains outstanding for the Wave 6 stream as a whole and is not fabricated
 here.
+
+---
+
+## 2026-09-08 — migration 016: 014's replay fix reached rows that have no identity
+
+### What changed, and why 014 is not edited
+
+`014_procurement_corrections.sql`'s D5 replaced 013's `ux_grn_line_external`
+(NULLS DISTINCT, and therefore not a constraint at all on the ordinary Zoho ERP
+receive line, which carries no external LINE id) with
+
+    ux_grn_line_external_v2
+        UNIQUE NULLS NOT DISTINCT
+            (po_line_id, receive_external_id, line_external_id, line_no)
+
+**That fix is correct and 016 keeps every part of it.** What 014 did not
+account for is that `receive_external_id` and `line_external_id` are BOTH
+nullable (`013_procurement.sql:544-545`) and a receipt line raised in this
+product rather than mirrored from a tenant carries **neither**. Under 014 every
+one of those rows keys as `(po_line_id, NULL, NULL, NULL)` with NULLs no longer
+distinct, so **one PO line may hold exactly one locally-raised receipt line for
+ever**: the second genuine receipt is refused outright, or — through
+`record_receive_line`'s upsert — silently overwrites the first and the earlier
+delivery's value disappears.
+
+013 had said so in its own comment, verbatim: *"a locally-raised receipt line
+carries neither external id, and every such line must remain insertable rather
+than all colliding on one NULL row."* 014's header claimed the replacement was
+"strictly stronger, never weaker"; it is strictly stronger over rows that HAVE
+an external identity and simply wrong over rows that have none, because for
+those there is no identity for it to be an identity check on.
+
+016 makes the index partial on `receive_external_id IS NOT NULL` and changes
+nothing else about it. The predicate is exact rather than convenient:
+`pg/procurement.py::record_receive_line` refuses a blank receive id before it
+writes anything (`BLANK_RECEIVE_EXTERNAL_ID`), so every row arriving from a
+sweep satisfies it and every row that does not was raised locally.
+
+### `line_no` was NOT made NOT NULL, and that was the other option
+
+It was weighed and refused for three reasons, stated at length in the migration
+header. Nothing populates the column — `record_receive_line` accepts a
+`line_no` and `sweeps.py::_attribute` never passes one — so there is no ordinal
+to backfill; any constant backfill would stop matching the moment a writer
+began supplying real ordinals, re-inserting every mirrored line on the next
+walk, which is the duplicated receipt D5 exists to stop; and a locally-raised
+line has no ordinal either, so NOT NULL would only change its refusal from a
+duplicate-key error to a not-null one. The column stays nullable and stays in
+the index, ready for the migration that can do the backfill with the source
+payloads in hand.
+
+### The assertions that changed, and what each says now
+
+| Test | Was | Is | Why it is not a weakening |
+|---|---|---|---|
+| `test_the_rollback_block_actually_works_live` | un-comments and runs **013's** ROLLBACK block alone | reverts the whole stack from newest to 013, derived from `migrate_pg.discover()` | 013's block began failing with `DependentObjectsStillExist` because 014 added `pr_reservation` with an FK to `purchase_order` — and the failure was 013 being RIGHT. Its own comment says the DROPs are ordered by dependency "rather than using CASCADE, so a table this block has forgotten raises instead of being silently taken with something else". CASCADE would have silently destroyed a table 013 never created. You cannot revert a migration later ones are stacked on. Now **four** blocks are executed rather than one, and the version list is derived so the next migration is covered the day it lands |
+| `test_a_database_already_at_013_upgrades_to_014_live` | `performed == ["014"]` | `performed[0] == "014"` and nothing `<= "013"` was replayed | The equality asserted that 014 was the LAST migration, not that 013 → 014 ran. It became false when 015 landed and would break on every wave. The replacement states the properties actually under test and additionally catches a re-applied migration, which the old form could not |
+| `test_a_human_triaged_exception_is_not_reopened_or_overwritten` | `action="accept"` | `action="ignore"` | `accept` is not a verb. `store.EXCEPTION_ACTIONS` is `{resolve, retry, ignore, write_off}` and `ignore` maps to the `'Accepted'` status this test already asserted. The outcome asserted is unchanged; only the non-existent verb reaching it is |
+| `test_the_grn_line_conflict_target_matches_the_migrations_constraint` | 014's four columns and `NULLS NOT DISTINCT` | additionally 016's `ux_grn_line_external_v3` and its predicate, in the source AND the migration | A partial index is **not** inferable from a column list, so a target that omits the predicate infers no index at all and raises when the statement runs — inside a cron function, in CI at the earliest. Strictly more is required than before |
+| `test_the_identifierless_receive_line_has_no_read_then_write_window` | 014's four-column target | additionally requires the predicate | Same strengthening, in the reconciliation suite's copy of the check |
+| the bill quarantine key-symmetry assertion | raise and retract both spell `{bill_external_id}:{line_key}` | both spell `{bill_external_id}:{quarantine_key}`, **and** neither spells `line_key` | Keying on one string was necessary and never sufficient: `line_key` falls back to the PO LINE's external id, the one value that CHANGES between the pass that quarantines and the pass that attributes. Both passes built the same shape from different values and never met. The added negative assertion is what the old form was missing |
+
+Two seeds in `tests/test_pg_migration_014.py` were corrected rather than any
+assertion touched: the `BILL-C` bill now carries `po_id`, because
+`fk_bill_line_bill_po` is COMPOSITE on `(bill_id, po_id)`
+(`013_procurement.sql:684-686`) and its bill line claims `PO-014`; and the
+expected `UniqueViolation` in
+`test_exactly_one_live_reservation_per_purchase_request_live` was moved into
+its own session, because a violation aborts the transaction and
+`Database.session`'s commit on exit then executes as a ROLLBACK, discarding the
+reservation the test goes on to settle.
+
+### Two new tests, and they pull against each other on purpose
+
+The whole difficulty of this migration is that its two required properties are
+in tension, so each has its own live test and neither may be satisfied by
+loosening the other:
+
+* `test_replaying_a_line_without_a_line_id_duplicates_nothing`
+  (`test_pg_procurement_ingest.py`) — three passes of an identifierless receive
+  line produce **one** row, at the original value, at `version_no` 3. No test
+  in that file had ever passed `line_id=None`, so the case 013 and 014 were
+  both rewritten for had no coverage at all.
+* `test_two_locally_raised_receipt_lines_on_one_po_line_both_exist_live`
+  (`test_pg_procurement_schema.py`) — a second receipt with no external ids on
+  a PO line that already holds one is **inserted**, and the two amounts add up.
+  The sum is asserted separately from the count, because the silent half of the
+  014 defect was an overwrite rather than a refusal.
+
+### Approval of record
+
+No individual approver is named, and none is fabricated. This is a **defect
+correction**, not a decision: 016 restores an intent 013 stated in writing and
+014 removed without noticing, and every assertion changed above is either a
+stale literal about which migration is newest or a check strengthened to match
+an index that is now partial. No existing assertion was weakened or deleted.
+The `| ADAPT-` register row naming an individual remains outstanding for the
+Wave 6 stream as a whole, exactly as the 015 entry above records.

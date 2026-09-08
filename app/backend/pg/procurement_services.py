@@ -2492,7 +2492,8 @@ def plan_po_emission(session: Session, *, po_id: str, connection_id: str,
                      adapter: Any, vendor_external_id: str,
                      document_date: date, actor: str,
                      acknowledged: bool = False,
-                     correlation_id: str | None = None) -> dict[str, Any]:
+                     correlation_id: str | None = None,
+                     now: datetime | None = None) -> dict[str, Any]:
     """Decide the emission shape, then write one outbox row per purchase order.
 
     ONE PURCHASE ORDER PER CONTROL CELL, WHEN D-7 SAYS SO. ``plan_emission``
@@ -2559,11 +2560,19 @@ def plan_po_emission(session: Session, *, po_id: str, connection_id: str,
 
     enqueued: list[dict[str, Any]] = []
     for entry in planned:
+        # `now` IS FORWARDED, and the missing seam was a real defect rather
+        # than an untidiness. `enqueue_outbound` stamps `created_at` from it,
+        # and `PgOutboxStore.claim` will not claim a row until
+        # `coalesce(next_attempt_at, created_at) <= now`. With the plan reading
+        # the wall clock and the send reading an injected instant, every
+        # planned row sat in the future of its own sender and refused as
+        # NOT_EMITTABLE -- a caller that drives the two halves from one clock
+        # could not make the pair agree, and neither could a test.
         outbox_id, created = store.enqueue_outbound(
             session, outbox_id=_new_id("OUT"), connection_id=connection_id,
             module=PO_MODULE, local_id=entry["local_id"],
             dedupe_key=entry["dedupe_key"], payload=entry["payload"],
-            actor=actor, correlation_id=correlation_id)
+            actor=actor, correlation_id=correlation_id, now=now)
         enqueued.append({"outbox_id": outbox_id,
                          "local_id": entry["local_id"],
                          "dedupe_key": entry["dedupe_key"], "created": created,
