@@ -30,13 +30,24 @@
 //
 // MOST OF THIS RUNS AGAINST THE REAL BACKEND, WITH NO STUB
 // --------------------------------------------------------
-// Today's build mounts no /api/reports/* and no /api/exports/*. That is not a
-// gap to be simulated — it is the state under test. So the deep-link, source,
-// unavailable, axe and drill-down tests intercept NOTHING: the screens probe
-// the application's own /openapi.json, find the reporting routes absent, fall
-// through to the ledger routes that ARE mounted, and render what really
-// happens. A fallback proven against a stub proves only that the stub
-// answered.
+// This build MOUNTS /api/reports/* and /api/exports/*, and this harness gives
+// them no database. `run.py::check_postgres_schema` builds the PostgreSQL
+// runtime only when CAPEX_DB_URL or CAPEX_DB_HOST is set, and the webServer
+// block in playwright.config.js sets neither — it sets CAPEX_DB_PATH, SQLite.
+// So every reporting route that touches a database answers
+//
+//     503 {"detail": {"code": "DATABASE_NOT_CONFIGURED",
+//                     "state": "unavailable", "message": "…"}}
+//
+// which is MOUNTED-BUT-CANNOT-ANSWER, not absence and not a fault. The screens
+// fall through to the ledger routes and name both what answered and why the
+// reporting service did not. `/api/reports/dimensions` needs no database and
+// answers for real, which is how the ageing screens learn — rather than assume
+// — that this build defines no age-band dimension.
+//
+// That is the state under test, so the deep-link, source, unavailable, axe and
+// drill-down tests intercept NOTHING. A fallback proven against a stub proves
+// only that the stub answered.
 //
 // Stubs appear only where a state cannot be produced from the real server:
 // a declared scope refusal, a declared staleness, a server fault, a mounted
@@ -176,18 +187,71 @@ async function routeOpenApi(page, paths) {
   await routeJson(page, '**/openapi.json', schema);
 }
 
-/** The reporting and export surfaces, as A1 and A2 will publish them. */
+/**
+ * The reporting and export surfaces, as api/reports.py and api/exports.py
+ * actually publish them.
+ *
+ * These templates are matched against /openapi.json character for character,
+ * so a wrong one makes a MOUNTED route read as absent. That is not a
+ * hypothetical: the screens shipped probing `/api/reports/{report_id}`,
+ * `/api/reports/saved-views`, `/api/reports/export` and
+ * `/api/exports/{job_id}` — a guess written before the backend existed, and
+ * not one of the four is in the build. Every screen therefore declared itself
+ * unavailable while the service that answers it was mounted.
+ */
 const REPORT_PATHS = [
-  '/api/reports/{report_id}',
-  '/api/reports/saved-views',
-  '/api/reports/export',
+  '/api/reports/metrics',
+  '/api/reports/drill-down',
+  '/api/reports/dimensions',
+  '/api/reports/freshness',
+  '/api/reports/views',
+  '/api/reports/views/{view_id}',
   '/api/exports',
-  '/api/exports/{job_id}',
+  '/api/exports/{export_job_id}',
+  '/api/exports/datasets',
   '/api/dashboard',
   '/api/projects/{project_id}/wbs',
   '/api/reconciliation',
   '/api/bills',
 ];
+
+/**
+ * A `/api/reports/metrics` payload in the shape `reporting.aggregate` returns:
+ * grouped rows carrying `key` and `labels` side-maps plus flat integer-paise
+ * metrics, a `totals` block computed over the WHOLE filtered population, and
+ * the `freshness` block `reporting.freshness()` produces.
+ *
+ * Written out rather than hand-waved because the row shape is exactly what
+ * this wave got wrong: the screens expected `project_id` and `capex_code` on
+ * the row, and the service puts them in `key.project` and `labels.project`.
+ */
+function metricsPayload({ rows, totals, freshness = null, state = 'ok' }) {
+  return {
+    state,
+    detail: null,
+    group_by: ['project'],
+    next_cursor: null,
+    has_more: false,
+    rows,
+    totals,
+    freshness: freshness || {
+      state: 'local',
+      source_label: 'capex-control-hub',
+      last_sync_at: null,
+      high_water_mark: null,
+      detail: 'Every figure on this report is ours.',
+    },
+  };
+}
+
+/** One grouped row: the metrics flat, the identity in `key` and `labels`. */
+function metricsRow(projectId, capexCode, measures) {
+  return {
+    key: { project: projectId },
+    labels: { project: capexCode },
+    ...measures,
+  };
+}
 
 async function signIn(page, who = ADMIN) {
   await page.goto('/');
@@ -685,48 +749,190 @@ test.describe('Wave 7 analytics screens — four states that never collapse', ()
   test('a mounted reporting service is used, and named as the reporting service',
     async ({ page }) => {
       await routeOpenApi(page, REPORT_PATHS);
-      await routeJson(page, '**/api/reports/portfolio-summary**', {
-        meta: { as_of: '2026-09-08T06:00:00Z' },
-        rows: [{
-          project_id: 'P-1', capex_code: 'CX-1', name: 'One', entity: 'E', plant: 'PL',
-          status: 'RELEASED',
-          budget: 500000, commitment: 100000, actual: 200000, available: 200000,
-          exposure: 300000, received_not_billed: 0, pr_reserved: 0,
-          ordered: 100000, received: 0, original: 500000, revisions: 0,
-        }],
-        totals: {
-          budget: 500000, commitment: 100000, actual: 200000, available: 200000,
-          exposure: 300000, received_not_billed: 0, pr_reserved: 0,
-          ordered: 100000, received: 0, original: 500000, revisions: 0,
+      const measures = {
+        budget: 500000, commitment: 100000, actual: 200000, available: 200000,
+        exposure: 300000, received_not_billed: 0, pr_reserved: 0,
+        ordered: 100000, received: 0, original: 500000, revisions: 0,
+      };
+      await routeJson(page, '**/api/reports/metrics**', metricsPayload({
+        rows: [metricsRow('P-1', 'CX-1', measures)],
+        totals: measures,
+        freshness: {
+          state: 'synced',
+          source_label: 'capex-control-hub',
+          last_sync_at: '2026-09-08T06:00:00Z',
+          high_water_mark: '2026-09-08T05:59:00Z',
+          detail: null,
         },
-      });
+      }));
       await signIn(page);
       await gotoScreen(page, 'analytics-executive');
 
       await expect(page.locator('#content .analytics-source[data-source="reports"]')).toBeAttached();
       const line = await page.locator('#content .analytics-source').first().innerText();
-      expect(line).toContain('/api/reports/portfolio-summary');
+      expect(line).toContain('/api/reports/metrics');
+
       // And the freshness the report declared is rendered, not the fetch time.
       await expect(page.locator('#content .analytics-freshness[data-freshness="fresh"]'))
         .toBeAttached();
+
+      // The grouped row's identity survived the read: `labels.project` became
+      // the capex code the table renders. The screens expected `capex_code` on
+      // the row and the service sends it in a side-map, which is the exact
+      // mismatch that made this wave's contract wrong.
+      expect(await page.locator('#content .scr-host').innerText()).toContain('CX-1');
+    });
+
+  test('a reporting 503 that DECLARES it cannot answer falls through, and says why',
+    async ({ page }) => {
+      // The state this harness is really in: /api/reports/metrics is mounted
+      // and has no database. Nothing is intercepted — the real 503 is the
+      // thing under test.
+      await signIn(page);
+      await gotoScreen(page, 'analytics-executive');
+
+      // It fell through rather than rendering a fault...
+      const states = await loaderStates(page);
+      expect(states, 'a declared "cannot answer" was rendered as a system failure')
+        .not.toContain('error');
+      await expect(page.locator('#content .analytics-source[data-source="ledger"]')).toBeAttached();
+
+      // ...and the reader is told WHY the reporting service stood aside, in the
+      // server's own words. "not mounted" and "mounted with no database" are
+      // different problems with different remedies, and this module knows only
+      // that some source declined.
+      const declined = page.locator('#content .analytics-declined');
+      await expect(declined).toBeAttached();
+      expect(await declined.first().innerText()).toContain('no database is configured');
     });
 
   test('a ledger fallback names the filters it could NOT apply', async ({ page }) => {
-    // A figure narrowed by three of nine filters, presented as though it had
-    // been narrowed by nine, is a wrong number wearing a right number's
-    // clothes. The dropped dimensions are named individually.
+    // A figure narrowed by three of eighteen filters, presented as though it
+    // had been narrowed by eighteen, is a wrong number wearing a right
+    // number's clothes. The dropped dimensions are named individually.
+    //
+    // The filters here are ones the REPORTING service accepts — budget head
+    // and category are real FilterSet fields — so the fall-through to the
+    // ledger is caused by the 503, not by a refusal. A vendor filter would
+    // take the other path entirely; that is the next test.
     await signIn(page);
-    await gotoScreen(page, 'analytics-executive', 'vendor=V-1&head=BH-1&category=C-1');
+    await gotoScreen(page, 'analytics-executive', 'head=BH-1&category=C-1');
 
     await expect(page.locator('#content .analytics-source[data-source="ledger"]')).toBeAttached();
     const warning = page.locator('#content .analytics-unapplied');
     await expect(warning).toBeVisible();
     const text = await warning.innerText();
-    expect(text).toContain('Vendor');
     expect(text).toContain('Budget head');
+    expect(text).toContain('Category');
     // The chips mark the same filters as dropped, so the warning and the chip
     // row cannot disagree.
     await expect(page.locator('#content .analytics-chip-dropped').first()).toBeVisible();
+  });
+
+  test('a REFUSED filter is UNAVAILABLE naming the field — not validation, not a fallback',
+    async ({ page }) => {
+      // `reporting.UNSUPPORTED_FILTERS` refuses vendor_ids with a 422 carrying
+      // state "unavailable": purchase_order holds a vendor NAME while bill
+      // holds a vendor id, so the filter would narrow the actuals and leave
+      // the commitments across the whole estate.
+      //
+      // THREE THINGS MUST NOT HAPPEN, and each has its own assertion below.
+      // It must not render as a form-validation error ("correct the
+      // highlighted fields" is advice the reader cannot take — nothing they
+      // typed is malformed). It must not fall through to the ledger, which
+      // honours fewer filters still and would answer a question nobody asked.
+      // And it must not show a figure.
+      await routeOpenApi(page, REPORT_PATHS);
+      await routeJson(page, '**/api/reports/metrics**', {
+        type: 'about:blank',
+        title: 'Vendor Dimension Incomplete',
+        status: 422,
+        code: 'VENDOR_DIMENSION_INCOMPLETE',
+        state: 'unavailable',
+        detail: 'Filtering by vendor is not available.',
+        unsupported_filters: [{
+          field: 'vendor_ids',
+          code: 'VENDOR_DIMENSION_INCOMPLETE',
+          detail: 'purchase_order still carries only vendor_name as text.',
+        }],
+      }, 422);
+      await signIn(page);
+      await gotoScreen(page, 'analytics-executive', 'vendor=V-1');
+
+      expect(await loaderStates(page)).toContain('unavailable');
+      const block = page.locator('#content .analytics-filter-unavailable');
+      await expect(block).toBeVisible();
+      const text = await block.innerText();
+      expect(text, 'the refused field was not named').toContain('Vendor');
+      expect(text).toContain('VENDOR_DIMENSION_INCOMPLETE');
+
+      // Not validation wording, and not a ledger answer standing in for it.
+      const host = await page.locator('#content .scr-host').innerText();
+      expect(host).not.toContain('Correct the highlighted fields');
+      await expect(page.locator('#content .analytics-source[data-source="ledger"]'))
+        .toHaveCount(0);
+    });
+
+  test('NEVER SYNCED is stale, and is not rendered like data nothing syncs', async ({ page }) => {
+    // `reporting.freshness()` returns a null last_sync_at for BOTH `local`
+    // (nothing syncs this, which is complete provenance) and `never_synced` (a
+    // connector is configured and has never completed a poll, so mirrored
+    // documents are absent rather than out of date). Reading only the
+    // timestamp renders the second exactly like the first — a calm screen over
+    // a connector that has never delivered a row.
+    await routeOpenApi(page, REPORT_PATHS);
+    const measures = {
+      budget: 500000, commitment: 0, actual: 0, available: 500000, exposure: 0,
+      received_not_billed: 0, pr_reserved: 0, ordered: 0, received: 0,
+      original: 500000, revisions: 0,
+    };
+    await routeJson(page, '**/api/reports/metrics**', metricsPayload({
+      rows: [metricsRow('P-1', 'CX-NEVER', measures)],
+      totals: measures,
+      freshness: {
+        state: 'never_synced',
+        source_label: 'capex-control-hub',
+        last_sync_at: null,
+        high_water_mark: null,
+        detail: 'A connector is configured for this data but has never completed a poll.',
+      },
+    }));
+    await signIn(page);
+    await gotoScreen(page, 'analytics-executive');
+
+    expect(await loaderStates(page)).toContain('stale');
+    await expect(page.locator('#content .analytics-freshness[data-freshness="stale"]'))
+      .toBeAttached();
+    await expect(
+      page.locator('#content .analytics-freshness[data-freshness-state="never_synced"]'),
+    ).toBeAttached();
+    // The figures are still shown — a labelled old figure beats a blank panel.
+    expect(await page.locator('#content .scr-host').innerText()).toContain('CX-NEVER');
+  });
+
+  test('LOCAL freshness is complete provenance, not a missing timestamp', async ({ page }) => {
+    await routeOpenApi(page, REPORT_PATHS);
+    const measures = {
+      budget: 400000, commitment: 0, actual: 0, available: 400000, exposure: 0,
+      received_not_billed: 0, pr_reserved: 0, ordered: 0, received: 0,
+      original: 400000, revisions: 0,
+    };
+    await routeJson(page, '**/api/reports/metrics**', metricsPayload({
+      rows: [metricsRow('P-1', 'CX-LOCAL', measures)],
+      totals: measures,
+    }));
+    await signIn(page);
+    await gotoScreen(page, 'analytics-executive');
+
+    // Reported, not "unknown": a figure computed from documents this
+    // application raised has no sync time BECAUSE nothing syncs it, and
+    // saying "freshness not reported" of it would be false.
+    const line = page.locator('#content .analytics-freshness[data-freshness-state="local"]');
+    await expect(line).toBeAttached();
+    const text = await line.first().innerText();
+    expect(text).toContain('capex-control-hub');
+    expect(text).not.toContain('Freshness not reported');
+    expect(await loaderStates(page)).not.toContain('stale');
   });
 });
 
@@ -927,26 +1133,73 @@ test.describe('Wave 7 analytics screens — one FilterSet, cascading', () => {
     expect(await page.locator('#plist-entity').inputValue()).toBe('E-1');
   });
 
-  test('the export carries the same FilterSet, or is disabled and says why', async ({ page }) => {
-    await signIn(page);
-    await gotoScreen(page, 'analytics-project-list', 'plant=PL-1');
-    // No export route is mounted in this build, so the control must be
-    // disabled with the reason ON it rather than failing when pressed.
-    const button = page.locator('#content .analytics-export');
-    await expect(button).toBeVisible();
-    await expect(button).toBeDisabled();
-    expect(await button.getAttribute('data-export')).toBe('unavailable');
-    expect(await button.getAttribute('title')).toContain('No export endpoint is mounted');
-  });
+  test('the export goes to /api/exports as {dataset, filters}, carrying the same FilterSet',
+    async ({ page }) => {
+      // THE EXPORT ROUTE IS /api/exports AND THE BODY IS {dataset, filters}.
+      // The screens shipped posting {report_id, format, filters} to
+      // /api/reports/export — a route that does not exist — and
+      // `CreateExportRequest` declares extra="forbid", so even against the
+      // right path the old body would have been a 422 rather than a silently
+      // ignored field.
+      await routeOpenApi(page, REPORT_PATHS);
+      const posted = [];
+      await page.route('**/api/exports', async (route) => {
+        const request = route.request();
+        if (request.method() !== 'POST') return route.continue();
+        posted.push(JSON.parse(request.postData() || '{}'));
+        return route.fulfill({
+          status: 202,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            export_job_id: 'EX-1', dataset: 'budget_ledger_cells', format: 'csv',
+            state: 'QUEUED', requested_by: 'admin', columns: [], filters: {},
+            progress: { rows_written: 0, rows_total: null, chunks_written: 0, percent: null },
+          }),
+        });
+      });
 
-  test('the export control becomes live when an export route is mounted', async ({ page }) => {
-    await routeOpenApi(page, REPORT_PATHS);
-    await signIn(page);
-    await gotoScreen(page, 'analytics-project-list');
-    const button = page.locator('#content .analytics-export');
-    await expect(button).toBeEnabled();
-    expect(await button.getAttribute('data-export')).toBe('available');
-  });
+      await signIn(page);
+      await gotoScreen(page, 'analytics-project-list', 'plant=PL-1&limit=25&sort=budget');
+      const button = page.locator('#content .analytics-export');
+      await expect(button).toBeEnabled();
+      expect(await button.getAttribute('data-export')).toBe('available');
+      await button.click();
+      await expect.poll(() => posted.length, { timeout: 10_000 }).toBeGreaterThan(0);
+
+      const body = posted[0];
+      expect(body.dataset, 'the export named no dataset').toBe('budget_ledger_cells');
+      expect(body.report_id, 'the export still sends the invented report_id').toBeUndefined();
+      expect(body.format, 'the export sends a format the dataset already fixes').toBeUndefined();
+
+      // THE SAME FilterSet the screen is showing...
+      expect(body.filters.plant_ids).toEqual(['PL-1']);
+      // ...minus the four fields an export refuses outright. These are the
+      // screen's paging and shape, not narrowing filters, and
+      // `FILTER_FIELDS_NOT_APPLICABLE_TO_AN_EXPORT` rejects all four: an
+      // export delivers the whole result set in a captured column and row
+      // order, so a `limit` would truncate the file while the reader believed
+      // they had the portfolio.
+      for (const shape of ['cursor', 'limit', 'sort', 'group_by']) {
+        expect(body.filters[shape], `the export sent ${shape}, which it refuses`).toBeUndefined();
+      }
+    });
+
+  test('the export control is disabled, with the reason on it, when /api/exports is absent',
+    async ({ page }) => {
+      // A button that looks live and does nothing teaches an operator that the
+      // application is unreliable. The openapi stub omits /api/exports.
+      await routeOpenApi(page, REPORT_PATHS.filter((p) => !p.startsWith('/api/exports')));
+      await signIn(page);
+      await gotoScreen(page, 'analytics-project-list');
+      const button = page.locator('#content .analytics-export');
+      await expect(button).toBeVisible();
+      await expect(button).toBeDisabled();
+      expect(await button.getAttribute('data-export')).toBe('unavailable');
+      expect(await button.getAttribute('title')).toContain('No export endpoint is mounted');
+      // And it names the dataset, so an operator can check the catalogue at
+      // /api/exports/datasets for the columns they would have got.
+      expect(await button.getAttribute('title')).toContain('budget_ledger_cells');
+    });
 
   test('the filter round trip is lossless and deterministic', async ({ page }) => {
     await signIn(page);
@@ -979,6 +1232,197 @@ test.describe('Wave 7 analytics screens — one FilterSet, cascading', () => {
     expect(result.drill).toContain('metric=actual');
     expect(result.drill).not.toContain('cursor=');
   });
+
+  test('a list filter reaches the wire as REPEATED KEYS, never comma-joined', async ({ page }) => {
+    // THE FAILURE THIS PINS IS SILENT AND TOTAL.
+    // `core/api-client.js::buildQuery` builds parameters with
+    // URLSearchParams.set, and `set` stringifies an array by joining it with
+    // commas — set('entity_ids', ['E1','E2']) emits entity_ids=E1%2CE2, ONE
+    // value, the eight-character string "E1,E2". api/reports.py declares every
+    // list filter as `list[str] | None = Query()`, so FastAPI would read that
+    // as a single entity id nobody has, match no row, and answer state
+    // "empty". The screen would then say "no data matches these filters" —
+    // confident, wrong, and unfalsifiable — about a question it never asked.
+    //
+    // So the assertion is on the URL the browser actually requests, not on a
+    // helper's return value: the helper could be right and the call site still
+    // hand the array to buildQuery.
+    await routeOpenApi(page, REPORT_PATHS);
+    const urls = [];
+    await page.route('**/api/reports/metrics**', (route) => {
+      urls.push(route.request().url());
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(metricsPayload({ rows: [], totals: {}, state: 'empty' })),
+      });
+    });
+    await signIn(page);
+    await gotoScreen(page, 'analytics-executive', 'entity=E1,E2&plant=P1,P2');
+
+    expect(urls.length, 'the reporting service was never called').toBeGreaterThan(0);
+    const query = new URL(urls[0]).searchParams;
+    expect(query.getAll('entity_ids'), 'the entity list was comma-joined into one value')
+      .toEqual(['E1', 'E2']);
+    expect(query.getAll('plant_ids')).toEqual(['P1', 'P2']);
+    expect(urls[0], 'a comma survived into the query string').not.toContain('%2C');
+  });
+
+  test('the drill-down carries the SAME FilterSet plus the clicked dimension, and sums back',
+    async ({ page }) => {
+      // THE CONTRACT: "a drill-down that does not sum back to the figure
+      // clicked is a defect". This exercises the real client path — the same
+      // FilterSet object goes to the card and to the drill-down — and then
+      // does the arithmetic the contract names, in integers.
+      await routeOpenApi(page, REPORT_PATHS);
+
+      // The card: one grand total over two projects.
+      const totals = {
+        budget: 900000, commitment: 150000, actual: 250000, available: 500000,
+        exposure: 400000, received_not_billed: 0, pr_reserved: 0,
+        ordered: 150000, received: 0, original: 900000, revisions: 0,
+      };
+      await routeJson(page, '**/api/reports/metrics**', metricsPayload({
+        rows: [
+          metricsRow('P-1', 'CX-1', {
+            budget: 500000, commitment: 100000, actual: 200000, available: 200000,
+            exposure: 300000, received_not_billed: 0, pr_reserved: 0,
+            ordered: 100000, received: 0, original: 500000, revisions: 0,
+          }),
+          metricsRow('P-2', 'CX-2', {
+            budget: 400000, commitment: 50000, actual: 50000, available: 300000,
+            exposure: 100000, received_not_billed: 0, pr_reserved: 0,
+            ordered: 50000, received: 0, original: 400000, revisions: 0,
+          }),
+        ],
+        totals,
+      }));
+
+      // The drill-down: the rows behind the clicked project, at the finer
+      // grain. Their budgets sum to that project's own figure, exactly.
+      const drillUrls = [];
+      await page.route('**/api/reports/drill-down**', (route) => {
+        drillUrls.push(route.request().url());
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            state: 'ok',
+            detail: null,
+            group_by: ['project', 'wbs', 'budget_head'],
+            next_cursor: null,
+            has_more: false,
+            drill_of: { dimension: 'project', key: 'P-1' },
+            rows: [
+              {
+                key: { project: 'P-1', wbs: 'W-1', budget_head: 'BH-1' },
+                labels: { project: 'CX-1', wbs: 'W.1', budget_head: 'Civil' },
+                budget: 300000, commitment: 60000, actual: 120000, available: 120000,
+                exposure: 180000, received_not_billed: 0, pr_reserved: 0,
+                ordered: 60000, received: 0, original: 300000, revisions: 0,
+              },
+              {
+                key: { project: 'P-1', wbs: 'W-2', budget_head: 'BH-2' },
+                labels: { project: 'CX-1', wbs: 'W.2', budget_head: 'Plant' },
+                budget: 200000, commitment: 40000, actual: 80000, available: 80000,
+                exposure: 120000, received_not_billed: 0, pr_reserved: 0,
+                ordered: 40000, received: 0, original: 200000, revisions: 0,
+              },
+            ],
+            totals: {
+              budget: 500000, commitment: 100000, actual: 200000, available: 200000,
+              exposure: 300000, received_not_billed: 0, pr_reserved: 0,
+              ordered: 100000, received: 0, original: 500000, revisions: 0,
+            },
+            freshness: {
+              state: 'local', source_label: 'capex-control-hub',
+              last_sync_at: null, high_water_mark: null, detail: null,
+            },
+          }),
+        });
+      });
+
+      await signIn(page);
+      await gotoScreen(page, 'analytics-executive', 'entity=E1&plant=PL-1&from=2026-04-01');
+
+      const outcome = await page.evaluate(async () => {
+        const api = await import('/static/src/features/analytics/analytics-api.js');
+        const filtersMod = await import('/static/src/features/analytics/analytics-filters.js');
+        const metrics = await import('/static/src/features/analytics/analytics-metrics.js');
+
+        // ONE FilterSet, read from the URL exactly as the screen read it.
+        const filters = filtersMod.readFilters(window.location.search);
+
+        const card = await api.getPortfolio(filters, api.SCREENS.executive);
+        const clicked = card.data.rows.find((r) => r.project_id === 'P-1');
+
+        // The SAME object, plus the clicked dimension and key.
+        const drill = await api.getDrilldown(filters, 'project', 'P-1', ['wbs', 'budget_head']);
+
+        return {
+          cardRowBudget: clicked.budget,
+          drillRows: drill.data.rows.length,
+          // The contract's arithmetic, in integers, over the real payloads.
+          sumsBack: metrics.assertSumsBack(clicked.budget, drill.data.rows, 'budget'),
+          exposureSumsBack: metrics.assertSumsBack(
+            clicked.exposure, drill.data.rows, 'exposure',
+          ),
+        };
+      });
+
+      expect(outcome.drillRows, 'the drill-down returned no rows').toBe(2);
+      expect(outcome.sumsBack.checked, 'the round trip could not be checked').toBe(true);
+      expect(outcome.sumsBack.ok, outcome.sumsBack.message).toBe(true);
+      expect(outcome.sumsBack.sum).toBe(outcome.cardRowBudget);
+      expect(outcome.exposureSumsBack.ok, outcome.exposureSumsBack.message).toBe(true);
+
+      // And the request really did carry the card's whole FilterSet plus the
+      // click — not a fresh query, and not a subset.
+      expect(drillUrls.length, 'the drill-down endpoint was never called').toBeGreaterThan(0);
+      const q = new URL(drillUrls[0]).searchParams;
+      expect(q.getAll('entity_ids')).toEqual(['E1']);
+      expect(q.getAll('plant_ids')).toEqual(['PL-1']);
+      expect(q.get('date_from')).toBe('2026-04-01');
+      expect(q.get('dimension')).toBe('project');
+      expect(q.get('key')).toBe('P-1');
+      expect(q.getAll('grain')).toEqual(['wbs', 'budget_head']);
+      // A drill-down starts at the first page of its OWN result: inheriting
+      // the card screen's cursor would page into the middle of a different
+      // result set and return rows that cannot sum back to anything.
+      expect(q.get('cursor')).toBeNull();
+    });
+
+  test('DENIED SCOPE from the reporting service is state "denied", never state "empty"',
+    async ({ page }) => {
+      // `reporting.aggregate` short-circuits a denied scope BEFORE the query
+      // and labels it, rather than inferring "denied" from an empty result —
+      // which it could not do, because a denied scope and a quiet month both
+      // return no rows. The client must not undo that on the way in.
+      await routeOpenApi(page, REPORT_PATHS);
+      await routeJson(page, '**/api/reports/metrics**', {
+        state: 'denied',
+        detail: 'You have no grant that reaches any of this data. This is not an empty report; '
+          + 'it is a report you cannot see.',
+        rows: [],
+        totals: {},
+        group_by: ['project'],
+        next_cursor: null,
+        has_more: false,
+      });
+      await signIn(page);
+      await gotoScreen(page, 'analytics-exceptions');
+
+      expect(await loaderStates(page)).toContain('denied');
+      const text = await page.locator('#content .scr-host').innerText();
+      expect(text).toContain('access scope reaches none of it');
+      expect(text).not.toContain('measured "none"');
+      // And it did NOT quietly answer from the ledger instead: falling through
+      // would answer a scope question from a source applying a different
+      // scope, which is how a screen comes to show a number the caller was
+      // not entitled to.
+      await expect(page.locator('#content .analytics-source[data-source="ledger"]'))
+        .toHaveCount(0);
+    });
 });
 
 /* ============================================================ accessibility = */

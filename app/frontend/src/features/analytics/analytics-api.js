@@ -179,6 +179,37 @@ export class FilterUnavailableError extends Error {
  * validation error and keeps rendering as one; only a body that says
  * `state: "unavailable"` is this.
  */
+/**
+ * The reporting route is MOUNTED and has declared it cannot answer.
+ *
+ * `api/reports.py::_get_database` answers 503 with
+ * `{"code": "DATABASE_NOT_CONFIGURED", "state": "unavailable", "message": …}`
+ * when the router is mounted into a process that has no reporting database —
+ * which is the state of any deployment still running on SQLite, including the
+ * VRT harness, because `run.py` builds the PostgreSQL runtime only when
+ * `CAPEX_DB_URL` or `CAPEX_DB_HOST` is set.
+ *
+ * This is the seam `integration-api.js::classifyUnavailable` already models —
+ * mounted, working, and saying which half is missing — spelled with a `state`
+ * rather than an `unavailable` flag. Both are read, here, because the shared
+ * classifier tests only for the flag and would let this reach the screen as
+ * "the reporting service returned an unexpected error (HTTP 503)": a red fault
+ * on a build that is simply not configured for it, and one that would hide the
+ * ledger data the screen could have shown.
+ *
+ * A BARE 503 IS STILL A FAULT. The test is the declaration, not the status: a
+ * 503 from a proxy, a cold start or a crashed upstream carries neither flag
+ * and keeps rendering as the failure it is. Treating every 503 as "not
+ * configured" would give a broken reporting service a permanently calm face.
+ */
+export function classifyDeclaredUnavailable(err) {
+  if (classifyUnavailable(err)) return true;
+  if (!err || err.status !== 503) return false;
+  const body = err.body;
+  const detail = body && typeof body === 'object' ? body.detail : null;
+  return !!(detail && typeof detail === 'object' && detail.state === 'unavailable');
+}
+
 export function classifyFilterUnavailable(err) {
   if (!err || (err.status !== 422 && err.status !== 400)) return null;
   const body = err.body;
@@ -572,6 +603,27 @@ export function freshnessOf(data) {
  * @returns {Promise<{data:*, source:string, template:string, label:string,
  *                    freshness:Object, unapplied:string[]}>}
  */
+/**
+ * The declared reason a route could not answer, for rendering verbatim.
+ *
+ * Reads `missing`/`remedy` (the integration router's shape, via
+ * `unavailableNoteFrom`) AND `message`/`detail` (the reporting router's). A
+ * reader is better served by "no database is configured for this process" than
+ * by this module's generic sentence, and the server is the only party that
+ * knows which it is.
+ */
+export function declaredNoteFrom(err) {
+  const fromIntegration = unavailableNoteFrom(err);
+  if (fromIntegration) return fromIntegration;
+  const body = err && err.body && typeof err.body === 'object' ? err.body : null;
+  const detail = body && typeof body.detail === 'object' ? body.detail : null;
+  if (!detail) return '';
+  for (const key of ['message', 'detail', 'title']) {
+    if (typeof detail[key] === 'string' && detail[key].trim()) return detail[key];
+  }
+  return '';
+}
+
 export async function firstAvailable(candidates, unavailableNote) {
   let lastAbsent = null;
   let declaredNote = '';
@@ -591,9 +643,9 @@ export async function firstAvailable(candidates, unavailableNote) {
          prevent, re-created on the client. */
       const refused = classifyFilterUnavailable(err);
       if (refused) throw refused;
-      if (classifyUnavailable(err)) {
+      if (classifyDeclaredUnavailable(err)) {
         lastAbsent = candidate;
-        declaredNote = unavailableNoteFrom(err) || declaredNote;
+        declaredNote = declaredNoteFrom(err) || declaredNote;
         continue;
       }
       if (present === null && classifyMissing(err)) { lastAbsent = candidate; continue; }
@@ -608,6 +660,14 @@ export async function firstAvailable(candidates, unavailableNote) {
       label: candidate.label || candidate.template,
       freshness: freshnessOf(raw),
       unapplied: candidate.unapplied || [],
+      /* WHY THE PREFERRED SOURCE DID NOT ANSWER, in the server's own words,
+         carried onto the source that did. Without this the reader is told
+         they are on the ledger and never told why — and "the reporting route
+         is not mounted" and "it is mounted and has no database configured"
+         are different facts with different remedies. The note was previously
+         kept only for the case where EVERY candidate failed, which is the one
+         case where the reader can already see something is wrong. */
+      declaredNote,
     };
   }
   throw new EndpointUnavailableError(
@@ -904,10 +964,21 @@ export async function getAgeing(kind, filters) {
     (d) => /age|ageing|aging|bucket/i.test(String(d && d.name || '')),
   );
   if (!band) {
-    throw new EndpointUnavailableError(REPORT_ROUTES.dimensions, AGEING_NOTE);
+    const err = new EndpointUnavailableError(REPORT_ROUTES.dimensions, AGEING_NOTE);
+    /* The route is MOUNTED and answered. What is missing is a dimension, and
+       `reason` is what stops the block saying "this deployment does not mount
+       /api/reports/dimensions" about a route that just replied. */
+    err.reason = 'the reportable dimensions it publishes contain no age band, so there is no '
+      + 'grouping to ask it for.';
+    throw err;
   }
+  /* The band goes in as the FilterSet's own `group_by`, not as an extra query
+     parameter. `toSearch` appends rather than replaces — it has to, because
+     repeated keys are how a list travels — so passing it as an extra would
+     emit the screen's grouping AND the band, and the report would be broken
+     down twice. */
   return firstAvailable(
-    [metricsCandidate(filters, screen, { group_by: band.name })], AGEING_NOTE,
+    [metricsCandidate({ ...filters, group_by: [band.name] }, screen)], AGEING_NOTE,
   );
 }
 

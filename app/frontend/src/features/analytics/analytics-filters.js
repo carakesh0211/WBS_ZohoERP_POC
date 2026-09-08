@@ -90,7 +90,26 @@ const BY_KEY = new Map(FILTER_FIELDS.map((f) => [f.key, f]));
 /** The document types C15/C3 recognise, offered as a filter. */
 export const DOCUMENT_TYPES = Object.freeze(['PR', 'PO', 'GRN', 'BILL']);
 
-/** The dimensions a report may be grouped by, and drilled down into. */
+/**
+ * The dimensions a report may be grouped by, and drilled down into.
+ *
+ * These are `reporting.DIMENSIONS`, exactly — the seven the backend defines
+ * and no more. `vendor` and `period` were offered here and are NOT: neither is
+ * a reportable dimension, so choosing either sent `group_by=vendor` and got
+ * back a 422 UNKNOWN_DIMENSION. The refusal was honest, but a control that
+ * exists only to be refused is a trap, and the reader has no way to know which
+ * of the nine entries are real until they pick a bad one.
+ *
+ * `category` and `budget_head` are both here and both select the SAME column
+ * (AMB-04 reads "category" as the budget head). Naming both in one grouping is
+ * refused by `FilterSet.validate` as ALIASED_DIMENSION rather than silently
+ * de-duplicated, so the two are offered as what they are: two names a reader
+ * might look for, one axis underneath.
+ *
+ * The authoritative list is published at `/api/reports/dimensions`;
+ * `analytics-api.js::getDimensions()` reads it. This constant is what the
+ * filter bar renders synchronously, and a test pins the two together.
+ */
 export const GROUP_DIMENSIONS = Object.freeze([
   { key: 'entity', label: 'Entity' },
   { key: 'plant', label: 'Plant' },
@@ -98,9 +117,7 @@ export const GROUP_DIMENSIONS = Object.freeze([
   { key: 'project', label: 'Project' },
   { key: 'wbs', label: 'WBS element' },
   { key: 'budget_head', label: 'Budget head' },
-  { key: 'category', label: 'Category' },
-  { key: 'vendor', label: 'Vendor' },
-  { key: 'period', label: 'Accounting period' },
+  { key: 'category', label: 'Category (AMB-04: the budget head)' },
 ]);
 
 /** An empty FilterSet with every key present, so no consumer sees `undefined`. */

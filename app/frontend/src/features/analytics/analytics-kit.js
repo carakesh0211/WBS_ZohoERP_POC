@@ -63,7 +63,13 @@ const SOURCE_TEXT = {
      accept entity, plant and project and ignore the rest. The dropped
      dimensions are named individually beside this line rather than left for a
      reader to deduce. */
-  ledger: (label) => `The reporting endpoint for this screen is not mounted in this build. Shown `
+  /* "DID NOT ANSWER", not "is not mounted". The reporting route can be absent
+     from the build OR mounted and unable to answer — /api/reports/metrics
+     replies 503 DATABASE_NOT_CONFIGURED in any deployment still running on
+     SQLite — and those are different facts with different remedies. The
+     server's own reason is rendered beside this line when it gave one, so the
+     generic sentence never has to guess which case it is in. */
+  ledger: (label) => `The reporting endpoint for this screen did not answer. Shown `
     + `from this application's own ledger (${label}) instead. These are measured, server-computed `
     + 'figures from the same frozen formula registry — but the ledger routes narrow by entity, '
     + 'plant and project only, so any other filter you set was NOT applied to them.',
@@ -90,7 +96,13 @@ export function sourceLine(result) {
     h('span', { class: 'sym', 'aria-hidden': 'true' }, compat ? '!' : '·'),
     text(' '),
     text(build(result.label || result.template)),
-  ]);
+    /* The preferred source's OWN account of why it stood aside. Rendered
+       verbatim and only when it gave one — this module knows that some source
+       declined, and nothing about which half was missing. */
+    result.declaredNote
+      ? h('span', { class: 'analytics-declined' }, ` ${result.declaredNote}`)
+      : null,
+  ].filter(Boolean));
 }
 
 /**
@@ -223,19 +235,38 @@ export function scopeDeniedBlock(err, { what }) {
  * work lands. It names the route and offers no retry.
  */
 export function unavailableBlock(err, { what }) {
+  /* TWO WAYS TO BE UNAVAILABLE, AND ONLY ONE OF THEM IS "NOT MOUNTED".
+     A route can be absent from the build, OR mounted and lacking the
+     capability the screen needs — the ageing screens reach
+     /api/reports/dimensions successfully and find that this build defines no
+     age band to group by. Telling an operator that a mounted, answering route
+     "is not mounted" sends them looking for a deployment problem that does not
+     exist, so a caller that knows better supplies `err.reason` and this block
+     prints that instead of guessing. */
+  const reason = err && err.reason;
   return h('div', {
-    class: 'msg msg-info analytics-unavailable', role: 'status', 'data-state': 'unavailable',
+    class: 'msg msg-info analytics-unavailable',
+    role: 'status',
+    'data-state': 'unavailable',
+    'data-unavailable': reason ? 'capability' : 'route',
   }, [
     h('span', { class: 'ico', 'aria-hidden': 'true' }, '·'),
     h('div', { class: 'body' }, [
       h('strong', {}, `${what} is not available in this build.`),
-      h('div', {}, [
-        text('This screen reads '),
-        h('code', { class: 'mono' }, err && err.path ? err.path : 'an endpoint'),
-        text(', which this deployment does not mount. No figure is shown, because there is '
-          + 'nothing to compute one from — not because the result was empty, and not because it '
-          + 'was zero.'),
-      ]),
+      h('div', {}, reason
+        ? [
+          text('This screen reads '),
+          h('code', { class: 'mono' }, err && err.path ? err.path : 'an endpoint'),
+          text(`, which answers — and ${reason} No figure is shown, because there is nothing to `
+            + 'compute one from: not because the result was empty, and not because it was zero.'),
+        ]
+        : [
+          text('This screen reads '),
+          h('code', { class: 'mono' }, err && err.path ? err.path : 'an endpoint'),
+          text(', which this deployment does not mount. No figure is shown, because there is '
+            + 'nothing to compute one from — not because the result was empty, and not because '
+            + 'it was zero.'),
+        ]),
       err && err.note ? h('div', { class: 'small' }, err.note) : null,
     ].filter(Boolean)),
   ]);
