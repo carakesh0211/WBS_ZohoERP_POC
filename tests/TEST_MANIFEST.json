@@ -7963,6 +7963,10 @@
         "assertions": 5,
         "body_sha": "46652498c255c8f0"
       },
+      "test_every_revertible_migrations_ledger_row_is_deleted_at_or_above_its_own_number": {
+        "assertions": 2,
+        "body_sha": "5e8aec58b91cf450"
+      },
       "test_013_is_not_excluded_as_a_data_file": {
         "assertions": 1,
         "body_sha": "d515c229428c7c94"
@@ -10175,7 +10179,7 @@
     "test_pg_procurement.py": 50,
     "test_pg_procurement_ingest.py": 66,
     "test_pg_procurement_reconciliation.py": 23,
-    "test_pg_procurement_schema.py": 74,
+    "test_pg_procurement_schema.py": 75,
     "test_pg_reconciliation.py": 36,
     "test_pg_repo.py": 23,
     "test_pg_reporting.py": 17,
@@ -10268,7 +10272,7 @@
     "test_pg_procurement.py": 139,
     "test_pg_procurement_ingest.py": 281,
     "test_pg_procurement_reconciliation.py": 71,
-    "test_pg_procurement_schema.py": 147,
+    "test_pg_procurement_schema.py": 149,
     "test_pg_reconciliation.py": 117,
     "test_pg_repo.py": 37,
     "test_pg_reporting.py": 55,
