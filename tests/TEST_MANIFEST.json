@@ -6571,7 +6571,7 @@
       },
       "test_concurrent_duplicate_bill_line_ingestion_is_refused_live": {
         "assertions": 1,
-        "body_sha": "5877c43c636c4620"
+        "body_sha": "a7778fc9c65f4c49"
       },
       "test_an_identifierless_receive_line_replays_without_duplicating_live": {
         "assertions": 2,
@@ -6603,7 +6603,7 @@
       },
       "test_exactly_one_live_reservation_per_purchase_request_live": {
         "assertions": 3,
-        "body_sha": "3d3ea7674e94df46"
+        "body_sha": "fc8cab91bd3eabf7"
       },
       "test_a_reservation_lowers_availability_live": {
         "assertions": 1,
@@ -6634,8 +6634,8 @@
         "body_sha": "c646151afb72db8c"
       },
       "test_a_database_already_at_013_upgrades_to_014_live": {
-        "assertions": 3,
-        "body_sha": "3e300842b1b83d22"
+        "assertions": 4,
+        "body_sha": "677ac2e2e3c57aab"
       },
       "test_rerunning_the_upgrade_is_a_no_op_live": {
         "assertions": 1,
@@ -7117,7 +7117,7 @@
       },
       "test_plan_po_emission_writes_one_outbox_row_per_purchase_order": {
         "assertions": 5,
-        "body_sha": "1b88438bc732018f"
+        "body_sha": "6b756568d321baf2"
       },
       "test_replanning_the_same_purchase_order_reuses_its_outbox_rows": {
         "assertions": 4,
@@ -7129,35 +7129,35 @@
       },
       "test_send_reports_a_failure_instead_of_raising_it": {
         "assertions": 4,
-        "body_sha": "e79ee9fd3cc8b2d0"
+        "body_sha": "8d547558eff99473"
       },
       "test_a_daily_quota_refusal_costs_no_attempt_and_opens_the_circuit": {
         "assertions": 4,
-        "body_sha": "26982aaabed5a877"
+        "body_sha": "5c38fbf3bec88ca5"
       },
       "test_a_duplicate_refusal_does_not_move_the_circuit": {
         "assertions": 3,
-        "body_sha": "214cca89bb81340d"
+        "body_sha": "e7502817422be784"
       },
       "test_an_unclaimable_row_is_reported_without_moving_the_circuit": {
         "assertions": 3,
-        "body_sha": "c6841e6c38735bf5"
+        "body_sha": "ba63183ee8541b66"
       },
       "test_an_open_circuit_refuses_before_a_call_is_made": {
         "assertions": 2,
-        "body_sha": "bfee7753973cf475"
+        "body_sha": "6dc869aa6d823f8a"
       },
       "test_a_successful_send_records_the_external_id_and_closes_the_circuit": {
         "assertions": 6,
-        "body_sha": "7d7a75a9c9cce526"
+        "body_sha": "88cdfed1488640ad"
       },
       "test_a_settled_outbox_row_costs_no_second_call": {
         "assertions": 4,
-        "body_sha": "ee82fcf02e883f57"
+        "body_sha": "f3f6ee47709799e2"
       },
       "test_the_planned_payload_survives_the_round_trip_through_jsonb": {
         "assertions": 3,
-        "body_sha": "6c1e273b26b86d6a"
+        "body_sha": "262d8ea58cf7a00b"
       }
     },
     "test_pg_procurement_ingest.py": {
@@ -7174,8 +7174,8 @@
         "body_sha": "66338334447bd13b"
       },
       "test_the_grn_line_conflict_target_matches_the_migrations_constraint": {
-        "assertions": 4,
-        "body_sha": "5a8ea8b13e15eb98"
+        "assertions": 7,
+        "body_sha": "4cf297791fe9f1e8"
       },
       "test_every_partial_mirror_index_is_targeted_with_its_predicate": {
         "assertions": 3,
@@ -7224,6 +7224,10 @@
       "test_replaying_both_receipts_duplicates_neither": {
         "assertions": 4,
         "body_sha": "65d71fafe3125f27"
+      },
+      "test_replaying_a_line_without_a_line_id_duplicates_nothing": {
+        "assertions": 5,
+        "body_sha": "66057cd582362f0c"
       },
       "test_a_reversal_receipt_carries_negative_quantity_and_negative_paise": {
         "assertions": 3,
@@ -7330,8 +7334,8 @@
         "body_sha": "6952ed02f5473796"
       },
       "test_both_attribution_paths_retract_the_quarantine_they_may_have_raised": {
-        "assertions": 8,
-        "body_sha": "ddd9c364912449d4"
+        "assertions": 9,
+        "body_sha": "c447cdc4570749b3"
       },
       "test_a_retracted_quarantine_is_transitioned_and_never_deleted": {
         "assertions": 6,
@@ -7399,7 +7403,7 @@
       },
       "test_a_human_triaged_exception_is_not_reopened_or_overwritten": {
         "assertions": 2,
-        "body_sha": "f333dc73da4362bb"
+        "body_sha": "20ffe0c4345ca8ea"
       },
       "test_a_void_bill_stays_void_and_moves_no_money": {
         "assertions": 5,
@@ -7492,8 +7496,8 @@
         "body_sha": "16519284f5961f96"
       },
       "test_an_identifierless_receive_line_is_deduplicated_before_it_is_inserted": {
-        "assertions": 5,
-        "body_sha": "5c158ec2e3907ccb"
+        "assertions": 8,
+        "body_sha": "3dd96ec530cf1a39"
       },
       "test_record_receive_line_will_not_write_against_a_po_line_it_cannot_see": {
         "assertions": 5,
@@ -7686,8 +7690,8 @@
         "body_sha": "ac7aab5a171ec346"
       },
       "test_the_rollback_block_actually_works_live": {
-        "assertions": 5,
-        "body_sha": "af4074f7f6b4ae52"
+        "assertions": 8,
+        "body_sha": "c9fad278dbf525de"
       },
       "test_entity_a_cannot_read_entity_bs_po_lines_live": {
         "assertions": 1,
@@ -7744,6 +7748,10 @@
       "test_a_grn_line_cannot_be_repointed_by_update_live": {
         "assertions": 1,
         "body_sha": "29f2021e4185ae46"
+      },
+      "test_two_locally_raised_receipt_lines_on_one_po_line_both_exist_live": {
+        "assertions": 2,
+        "body_sha": "33a80485fead752f"
       },
       "test_a_po_line_cannot_name_a_wbs_in_another_project_live": {
         "assertions": 1,
@@ -9284,9 +9292,9 @@
     "test_pg_periods.py": 18,
     "test_pg_principal_scope.py": 37,
     "test_pg_procurement.py": 50,
-    "test_pg_procurement_ingest.py": 65,
+    "test_pg_procurement_ingest.py": 66,
     "test_pg_procurement_reconciliation.py": 23,
-    "test_pg_procurement_schema.py": 73,
+    "test_pg_procurement_schema.py": 74,
     "test_pg_reconciliation.py": 36,
     "test_pg_repo.py": 23,
     "test_pg_reservations.py": 33,
@@ -9366,15 +9374,15 @@
     "test_pg_locking.py": 36,
     "test_pg_locking_order.py": 30,
     "test_pg_masters.py": 82,
-    "test_pg_migration_014.py": 108,
+    "test_pg_migration_014.py": 109,
     "test_pg_migrations_runner.py": 32,
     "test_pg_period_concurrency.py": 28,
     "test_pg_periods.py": 49,
     "test_pg_principal_scope.py": 83,
     "test_pg_procurement.py": 138,
-    "test_pg_procurement_ingest.py": 272,
-    "test_pg_procurement_reconciliation.py": 68,
-    "test_pg_procurement_schema.py": 142,
+    "test_pg_procurement_ingest.py": 281,
+    "test_pg_procurement_reconciliation.py": 71,
+    "test_pg_procurement_schema.py": 147,
     "test_pg_reconciliation.py": 117,
     "test_pg_repo.py": 37,
     "test_pg_reservations.py": 107,
