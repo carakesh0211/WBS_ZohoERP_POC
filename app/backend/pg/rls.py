@@ -277,10 +277,55 @@ RLS_CORRECTION_TABLES: tuple[str, ...] = tuple(RLS_CORRECTION_TABLE_COLUMNS)
 #: four dimensions it always did.
 _RESERVATION_GRAIN_MIGRATION = "015_reservation_grain.sql"
 
-#: Every RLS-protected table, from any of the four migrations.
+#: Table -> dimension column mapping for the two tables
+#: `migrations/pg/016_reporting.sql` adds: the saved reporting views and the
+#: per-user default that points at one.
+#:
+#: A SEPARATE DICT again, for the reason `RLS_PROCUREMENT_TABLE_COLUMNS` gives:
+#: `RLS_MIGRATION_BY_TABLE` attributes coverage by which registry a table is
+#: in, so folding these into an earlier wave's would make the
+#: inventory-vs-registry agreement test name the wrong file.
+#:
+#: `report_saved_view` filters `entity_id` DIRECTLY, the same shape `entity`,
+#: `division` and `branch` carry. The other three dimensions are `None`
+#: because the table genuinely has no column for them -- a saved view belongs
+#: to an entity, not to a plant.
+#:
+#: `report_view_default` maps every dimension to `None` and is in
+#: :data:`JOINED_VIA_REPORT_SAVED_VIEW`: it carries no dimension column at all
+#: and reaches `entity_id` through `view_id`. Its policy is NOT an all-NULL
+#: `capex_scope_permits` call -- that would be literally TRUE for every row,
+#: the fail-open shape 006's header names. It is an `EXISTS` against
+#: `report_saved_view`, which is itself under RLS, so a default pointing at a
+#: view the principal may not read is invisible rather than an error naming a
+#: view id they were not entitled to learn exists.
+#:
+#: NEITHER MAPPING IS THE WHOLE CONTROL, and the registry cannot express the
+#: rest. `capex_scope_permits(entity_id, ...)` decides whose ENTITY's views a
+#: principal sees; it does not decide private from shared, because a colleague
+#: in the same entity passes it. The `visibility`/`owner_user_id` disjunction
+#: in 016's policy is the other half, and the two are one expression in one
+#: policy so there is no window where only one holds.
+RLS_REPORTING_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
+    "report_saved_view": {"entity": "entity_id", "plant": None,
+                          "location": None, "project": None},
+    "report_view_default": {"entity": None, "plant": None,
+                            "location": None, "project": None},
+}
+
+#: The dimensionless table in 016 that IS filtered, through a join, so it is
+#: not mistaken for one nobody wrote a predicate for. Same distinction
+#: :data:`JOINED_VIA_WBS_ELEMENT` and :data:`JOINED_VIA_PROJECT` draw.
+JOINED_VIA_REPORT_SAVED_VIEW = frozenset({"report_view_default"})
+
+#: Every table 016 enables RLS on.
+RLS_REPORTING_TABLES: tuple[str, ...] = tuple(RLS_REPORTING_TABLE_COLUMNS)
+
+#: Every RLS-protected table, from any of the five migrations.
 ALL_RLS_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
     **RLS_TABLE_COLUMNS, **RLS_COVERAGE_TABLE_COLUMNS,
     **RLS_PROCUREMENT_TABLE_COLUMNS, **RLS_CORRECTION_TABLE_COLUMNS,
+    **RLS_REPORTING_TABLE_COLUMNS,
 }
 
 #: Every RLS-protected table, from any migration, in registry order.
@@ -296,6 +341,7 @@ RLS_MIGRATION_BY_TABLE: dict[str, str] = {
     **{table: "013_procurement.sql" for table in RLS_PROCUREMENT_TABLES},
     **{table: "014_procurement_corrections.sql"
        for table in RLS_CORRECTION_TABLES},
+    **{table: "016_reporting.sql" for table in RLS_REPORTING_TABLES},
 }
 
 

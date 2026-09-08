@@ -569,6 +569,39 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
         note="Plan section 12's PR and PO state machines as data. A legal "
              "state change is legal estate-wide. READ-ONLY to capex_app, as "
              "lifecycle_state."),
+
+    # ------------------------------------------------ 016_reporting.sql
+    # Read from 016's CREATE TABLE statements, before looking at its policies
+    # -- the maintenance rule in this module's docstring. `report_saved_view`
+    # has a literal `entity_id text NOT NULL REFERENCES entity`, so it carries
+    # a dimension whether or not anything protects it; `report_view_default`
+    # has no dimension column at all and one foreign key that reaches one.
+    ScopedTable(
+        table="report_saved_view", dimensions=("entity",), reach="direct",
+        path="report_saved_view.entity_id", status="covered",
+        migration="016_reporting.sql",
+        note="A saved view stores a QUESTION -- a FilterSet and a grouping -- "
+             "and never an answer, so opening one runs under the OPENER'S "
+             "scope and cannot serve the author's rows. What it can still "
+             "leak is the filter itself: a project or vendor id the reader "
+             "holds no grant for, sitting in `definition`. That is why this "
+             "is scoped data and not a user preference. NOTE that the entity "
+             "predicate is only half the control -- a colleague in the same "
+             "entity passes it and must still not read a PRIVATE view; 016's "
+             "policy carries the visibility/owner disjunction in the same "
+             "expression, and its WITH CHECK is narrower than its USING so a "
+             "shared view cannot be edited under everyone who uses it."),
+    ScopedTable(
+        table="report_view_default", dimensions=(), reach="joined",
+        path="report_view_default.view_id -> report_saved_view.entity_id",
+        status="covered", migration="016_reporting.sql",
+        note="One default per (user, report); the primary key IS that rule. "
+             "Carries no dimension column, so its policy is an EXISTS against "
+             "`report_saved_view` -- itself under RLS -- and NOT an all-NULL "
+             "`capex_scope_permits` call, which would be literally TRUE for "
+             "every row. A default pointing at a view the principal may not "
+             "read is therefore absent rather than an error naming a view id "
+             "they were not entitled to learn exists."),
 )
 
 #: Tables deliberately left WITHOUT a scope policy, each with the reason.
