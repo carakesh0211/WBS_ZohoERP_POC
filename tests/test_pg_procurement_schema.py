@@ -1571,9 +1571,28 @@ def test_two_locally_raised_receive_lines_without_external_ids_both_insert_live(
     ordinal -- which is a real property of the two lines -- instead of from the
     absence of a value, which was a property of nothing.
 
-    The assertion is not weakened. It still requires both lines to insert, and
-    it now also requires the converse, which the old form could not state: two
-    lines that are NOT distinct are REFUSED rather than silently duplicated.
+    AND THEN MIGRATION 016 CHANGED IT AGAIN, WHICH IS WHY THE CONVERSE BELOW
+    MOVED. 014's index keyed every locally-raised line as
+    `(po_line_id, NULL, NULL, NULL)` with NULLs grouped, so a PO line could
+    hold EXACTLY ONE of them for ever and the second genuine receipt was
+    refused or silently overwritten -- D5 pointed the other way.
+    `016_grn_line_ordinal.sql:134-137` therefore made the index PARTIAL,
+    `WHERE receive_external_id IS NOT NULL`, and named it
+    `ux_grn_line_external_v3`. A row with no receive id is now outside the
+    index entirely and "its identity is its own primary key, exactly as 013
+    intended" (016's header). `line_no` is still in the index and still
+    NULLABLE, and 016 states at length why it is deliberately not populated
+    and not made NOT NULL.
+    So a third line carrying `line_no = 2` and no receive id is no longer
+    refused, and asserting that it is would be asserting the defect 016 exists
+    to close. The converse is asserted where 016 kept it instead: over the rows
+    the index still governs. The case chosen is the ORDINARY Zoho ERP shape --
+    a receive id, no line id, no ordinal -- which is the one 016's header names
+    as the reason `NULLS NOT DISTINCT` is retained, and which
+    `test_a_duplicate_receive_line_is_refused_live` above does not reach
+    because it supplies a `line_external_id`. That is a stronger converse: it
+    pins the exact population and the exact NULL-grouping that a further
+    relaxation of this index would break.
     """
     _seed_documents(pg_connection)
     for line_id, line_no in (("GRNL-N1", 1), ("GRNL-N2", 2)):
@@ -1586,13 +1605,33 @@ def test_two_locally_raised_receive_lines_without_external_ids_both_insert_live(
     assert pg_connection.execute(
         "SELECT count(*) FROM grn_line WHERE grn_id = 'GRN-A'").fetchone()[0] == 3
 
-    # ...and the half 013 could not enforce: a THIRD line indistinguishable
-    # from the second is a re-walk, not a receipt, and is refused.
+    # A THIRD locally-raised line indistinguishable from the second on every
+    # indexed column is nonetheless INSERTABLE, because 016's predicate puts
+    # all three outside the index. This is 013's rule restored, and it is
+    # asserted rather than left implicit so that narrowing the predicate later
+    # is caught here rather than in production.
+    pg_connection.execute(
+        "INSERT INTO grn_line (grn_line_id, grn_id, po_id, po_line_id,"
+        " line_no, quantity, amount_paise, created_by, updated_by)"
+        " VALUES ('GRNL-N3', 'GRN-A', 'PO-A', 'POL-A', 2, 1, 100, 'T', 'T')")
+    pg_connection.commit()
+
+    # ...and the half 013 could not enforce, over the rows 016 still governs.
+    # A receive id with NO line id and NO ordinal is the ordinary Zoho ERP
+    # shape; under NULLS NOT DISTINCT its re-walk collides with itself instead
+    # of being re-inserted on every 300-second overlap.
+    pg_connection.execute(
+        "INSERT INTO grn_line (grn_line_id, grn_id, po_id, po_line_id,"
+        " receive_external_id, quantity, amount_paise, created_by, updated_by)"
+        " VALUES ('GRNL-N4', 'GRN-A', 'PO-A', 'POL-A', 'RCV-N', 1, 100,"
+        " 'T', 'T')")
+    pg_connection.commit()
     with pytest.raises(psycopg.errors.UniqueViolation):
         pg_connection.execute(
             "INSERT INTO grn_line (grn_line_id, grn_id, po_id, po_line_id,"
-            " line_no, quantity, amount_paise, created_by, updated_by)"
-            " VALUES ('GRNL-N3', 'GRN-A', 'PO-A', 'POL-A', 2, 1, 100,"
+            " receive_external_id, quantity, amount_paise, created_by,"
+            " updated_by)"
+            " VALUES ('GRNL-N5', 'GRN-A', 'PO-A', 'POL-A', 'RCV-N', 1, 100,"
             " 'T', 'T')")
     pg_connection.rollback()
 

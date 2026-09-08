@@ -1,0 +1,113 @@
+-- 020_reservation_revert_ledger.sql
+-- 015's revert block drops its objects and leaves its `schema_migrations` row; 015 cannot be corrected in place, so the deletion is owned here.
+--
+-- THE DEFECT, STATED AS THE OPERATOR MEETS IT
+--
+-- Every migration in this directory ends with a commented revert block, and
+-- every one of them is meant to leave a database that `upgrade()` can move
+-- forward from again. 013's block ends
+--
+--     DELETE FROM schema_migrations WHERE version = '013';
+--
+-- 014's and 016's end with the same line for their own versions.
+-- `015_reservation_grain.sql` does not. Its block drops
+-- `ix_pr_reservation_live_by_pr` and `ux_pr_reservation_live_cell`, restores
+-- 014's `ux_pr_reservation_live`, drops `ck_pr_reservation_cell_grain` and
+-- drops the `cell_grain` column -- and then commits, leaving the row that says
+-- 015 is applied.
+--
+-- An operator who reverts 015 therefore holds a database that CLAIMS the
+-- approved reservation grain and does not have it. The next `upgrade()` reads
+-- the ledger, sees '015' recorded, and SKIPS it
+-- (`migrate_pg.upgrade`, app/backend/pg/migrate_pg.py:873-881). The column
+-- never comes back; `create_pr` writes `cell_grain` into a column that is not
+-- there. The revert is not merely incomplete, it is silently unrecoverable by
+-- the product's own runner, which is the one thing a revert block exists to
+-- prevent.
+--
+--
+-- WHY THIS IS NOT FIXED BY EDITING 015, WHICH WAS THE OBVIOUS REPAIR
+--
+-- Because the checksum recorded in `schema_migrations` is taken over the WHOLE
+-- FILE, not over the executable half:
+--
+--     body = self.path.read_bytes().replace(b"\r\n", b"\n")
+--     return hashlib.sha256(body).hexdigest()
+--                                     -- migrate_pg.py:138-142
+--
+-- There is no comment stripping and no split at COMMIT. Adding one commented
+-- line to 015's revert block changes its checksum exactly as much as rewriting
+-- its DDL would, and the two places that read the checksum treat that as a
+-- fatal condition rather than a cosmetic one:
+--
+--   * `assert_schema_current` raises `schema drift: applied migrations ['015']
+--     no longer match the files on disk` at BOOT, so every deployment that ran
+--     015 stops serving (migrate_pg.py:933-937);
+--   * `upgrade()` raises `was already applied but its contents have changed.
+--     Never edit an applied migration -- add a new one. Environments have now
+--     diverged.` and refuses to proceed (migrate_pg.py:876-880).
+--
+-- Neither has a repair path. There is no re-record, no `--force`, no adopt
+-- step that reconciles a changed checksum: the adoption branch in `upgrade()`
+-- is reached only for a migration with NO ledger row whose objects already
+-- exist, never for one whose row disagrees. 015 is on
+-- `origin/full-application/build`. So the file is frozen, and the missing
+-- statement has to live somewhere else.
+--
+--
+-- WHY IT LIVES HERE, AND WHY THAT IS NOT A TRICK
+--
+-- A revert block's duty is to leave the database recoverable. Reverts run
+-- newest-first, because a migration stacked on another cannot be taken out
+-- from underneath it -- that is the reasoning
+-- `test_the_rollback_block_actually_works_live` already sets out for why 013's
+-- block alone stopped being a valid revert the moment 014 added
+-- `pr_reservation`. 020 is stacked directly on 015's objects, and its own
+-- revert therefore runs IMMEDIATELY BEFORE 015's. That makes it the only place
+-- in the stack from which 015's ledger row can be cleared as part of an
+-- ordinary reverse walk, with no operator being asked to remember a manual
+-- step that the blocks are supposed to spare them.
+--
+-- The intermediate state is sound, and is worth being explicit about. Revert
+-- 020 and stop: `pr_reservation` still carries `cell_grain`,
+-- `ck_pr_reservation_cell_grain`, `ux_pr_reservation_live_cell` and
+-- `ix_pr_reservation_live_by_pr`, and no '015' row records them. The next
+-- `upgrade()` re-runs 015, its first `ALTER TABLE ... ADD COLUMN cell_grain`
+-- raises `DuplicateColumn`, and that is precisely the case `upgrade()`'s
+-- adoption branch exists for: `_adoption_problems` confirms 015's column, its
+-- named CHECK and BOTH of its indexes are present and correctly shaped, and
+-- the migration is recorded as satisfied rather than replayed. The database
+-- ends adopted and current. It is not left guessing.
+--
+-- 020 is deliberately additive and carries no DDL of its own beyond the
+-- comment below. It is not a second attempt at 015's grain -- 015's objects are
+-- correct and stay exactly as they are.
+--
+--
+-- WHAT THE COMMENT IS FOR
+--
+-- The coupling above is invisible in the schema, and an operator reverting by
+-- hand reads the schema, not this directory. `COMMENT ON` is how 007 records a
+-- rationale where the person who needs it will meet it
+-- (`007_scope_sentinel.sql:174`), and `\d+ pr_reservation` is where someone
+-- about to revert the reservation grain is already looking.
+
+BEGIN;
+
+COMMENT ON COLUMN pr_reservation.cell_grain IS
+    'The approved reservation grain: one live hold per (purchase request x resolved budget control cell), added by 015_reservation_grain.sql. REVERT NOTE: 015''s own revert block drops this column and the two indexes beside it but does NOT delete its schema_migrations row, and 015 cannot be edited because its recorded checksum is taken over the whole file. Migration 020 owns that deletion, and 020 is reverted first. Reverting 015 WITHOUT having reverted 020 leaves a database claiming a grain it does not have, which upgrade() will then skip.';
+
+COMMIT;
+
+-- ROLLBACK:
+--
+--   BEGIN;
+--   COMMENT ON COLUMN pr_reservation.cell_grain IS NULL;
+--   DELETE FROM schema_migrations WHERE version = '020';
+--   -- AND 015's, which 015's own block omits and cannot be edited to add.
+--   -- See this file's header. Reverting 020 alone leaves 015's objects in
+--   -- place with no ledger row, which upgrade() re-adopts rather than
+--   -- replays; continuing down the stack into 015's block drops them for
+--   -- real. Nothing here touches a reservation row.
+--   DELETE FROM schema_migrations WHERE version = '015';
+--   COMMIT;
