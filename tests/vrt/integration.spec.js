@@ -218,8 +218,17 @@ const SCOPES = {
     business_impact_if_missing: 'Commitment cannot be mirrored.',
     modules: ['purchase-order'],
   }],
+  /* THE ID AND THE TITLE MUST BE THE SAME FINDING.
+     This fixture invented an OAS-02 that says what OAS-03 says.
+     `research/20_verified/openapi_findings.json` is the register: OAS-02 is
+     "Purchase Request does not exist anywhere in the official ERP API
+     specification"; OAS-03 is the GRN-leg finding that carries the missing
+     Purchase Receives list endpoint. A fixture that contradicts the register
+     does not merely fail to catch a miscitation — it PINS one, which is what
+     it did: the assertion below read `toContainText('OAS-02')` and so required
+     the screen to keep citing the wrong finding. */
   hard_negatives: [{
-    id: 'OAS-02',
+    id: 'OAS-03',
     severity: 'HIGH',
     title: 'Zoho ERP Purchase Receives has no list endpoint',
     impact: 'PO-anchored discovery is the sole acquisition mechanism for GRNs.',
@@ -1193,15 +1202,23 @@ test.describe('The ledger fallback answers a different question, and says so', (
       .toEqual([]);
   });
 
-  test('the inbound GRN screen states OAS-02 whether or not the inbox is mounted', async ({ page }) => {
+  test('the inbound GRN screen states OAS-03 whether or not the inbox is mounted', async ({ page }) => {
     // Purchase Receives have NO list endpoint. Acquisition is PO-anchored, so
     // a receive against a PO we never saw is invisible — not missing, not
     // late. That is a standing condition of the screen and it is stated as a
     // note, not as an error, because nothing has gone wrong.
+    //
+    // OAS-03 IS THE FINDING, and this assertion used to demand OAS-02 — the
+    // Purchase REQUEST finding, a different module entirely. A citation is a
+    // promise that following the id reaches the evidence, so the WRONG id is
+    // asserted against too: a reader sent to OAS-02 lands on a statement about
+    // Purchase Requests that says nothing about receives.
     await gotoScreen(page, 'integration-inbound-grn');
     const note = page.locator('#grnAnchorNote');
     await expect(note).toBeVisible();
-    await expect(note).toContainText('OAS-02');
+    await expect(note).toContainText('OAS-03');
+    await expect(note, 'the note cites the Purchase Request finding for a receives fact')
+      .not.toContainText('OAS-02');
     await expect(note).toContainText('PO-anchored');
     await expect(note).toContainText('invisible');
     await expect(page.locator('#grnCaveat .msg-warning')).toContainText('not acquisitions');

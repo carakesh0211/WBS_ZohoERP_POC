@@ -659,7 +659,7 @@ export function listOutbox(params) {
 /**
  * Inbound Purchase Receive / GRN acquisition status.
  *
- * OAS-02 is why this screen is not a simple list: Zoho ERP publishes NO list
+ * OAS-03 is why this screen is not a simple list: Zoho ERP publishes NO list
  * endpoint for Purchase Receives, so acquisition is PO-anchored — each PO is
  * walked for its receives. A screen that showed a flat "GRNs received" count
  * without saying that would imply a completeness the mechanism cannot offer.

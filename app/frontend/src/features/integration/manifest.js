@@ -261,7 +261,7 @@ export const INTEGRATION_SCREENS = [
   {
     /* NOT IN C8. SCR-16 "GRN and Unbilled Receipt View" is the financial view;
        the acquisition status of a Purchase Receive — which is PO-anchored,
-       because Zoho ERP has no Purchase Receives list endpoint (OAS-02) — has no
+       because Zoho ERP has no Purchase Receives list endpoint (OAS-03) — has no
        screen in the frozen forty. Reported as a contract gap. */
     id: 'integration-inbound-grn',
     scr: null,

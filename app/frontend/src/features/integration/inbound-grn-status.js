@@ -10,8 +10,20 @@
    the inbound status of a Purchase Receive, so this one carries no number
    rather than an invented one.
 
-   OAS-02 IS THE REASON THIS SCREEN CANNOT CLAIM COMPLETENESS
+   OAS-03 IS THE REASON THIS SCREEN CANNOT CLAIM COMPLETENESS
    ---------------------------------------------------------
+   THE FINDING ID IS OAS-03, NOT OAS-02, and the difference is not clerical.
+   `research/20_verified/openapi_findings.json` records OAS-02 as "Purchase
+   REQUEST does not exist anywhere in the official ERP API specification" — a
+   proven clean negative about a different module — and OAS-03 as "the GRN leg
+   of line-level matching is broken", which is the finding that carries the
+   missing Purchase Receives list endpoint. This screen cites the id on a
+   RENDERED chip and in a rendered note, so a reader who followed OAS-02 back
+   to the register would arrive at a statement about Purchase Requests and find
+   nothing about receives at all. `app.js:736`, `S04.md`, `S10.md` and
+   `mapping/sync-scheduling.js` all bind this fact to OAS-03; this file and its
+   two neighbours were the outliers.
+
    Zoho ERP publishes NO list endpoint for Purchase Receives. That is a
    verified hard negative, not a gap in our reading of the documentation, and
    it has a direct consequence for what this screen may say: acquisition is
@@ -108,7 +120,7 @@ export function mountInboundGrnStatus(root) {
           statusChip({
             label: 'UNANCHORED',
             tone: 'negative',
-            title: 'Purchase Receives have no list endpoint (OAS-02), so acquisition is '
+            title: 'Purchase Receives have no list endpoint (OAS-03), so acquisition is '
               + 'PO-anchored. A receive with no purchase order could not have been discovered by '
               + 'this mechanism at all, and its presence is itself the defect.',
           }),
@@ -204,12 +216,12 @@ export function mountInboundGrnStatus(root) {
 
   root.appendChild(banner);
   root.appendChild(card('grnTitle', 'Inbound GRN and Purchase Receive Status', [
-    /* OAS-02, stated as a standing condition of the screen rather than as a
+    /* OAS-03, stated as a standing condition of the screen rather than as a
        warning about something going wrong. Nothing IS going wrong. */
     h('div', { class: 'msg msg-info', role: 'note', id: 'grnAnchorNote' }, [
       h('span', { class: 'ico', 'aria-hidden': 'true' }, '·'),
       h('div', { class: 'body' }, [
-        h('strong', {}, 'Purchase Receives have no list endpoint in Zoho ERP (OAS-02).'),
+        h('strong', {}, 'Purchase Receives have no list endpoint in Zoho ERP (OAS-03).'),
         h('div', {}, 'Acquisition is PO-anchored: every purchase order this application knows '
           + 'about is walked for its receives. A receive against a purchase order we have never '
           + 'seen is invisible to that mechanism, so the rows below are what we HAVE ACQUIRED and '
