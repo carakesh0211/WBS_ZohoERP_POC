@@ -92,6 +92,68 @@ def _migration(version: str) -> migrate_pg.Migration:
 
 
 # =========================================================================
+# The job row mapping: width, and every statement that produces one
+# =========================================================================
+def test_every_statement_that_feeds_the_job_mapping_selects_the_whole_column_set():
+    """`_job_row_to_dict` zips a row against `_JOB_COLUMNS`, and `zip` stops at
+    the shorter of the two -- so a row one column short does not raise, it
+    returns a mapping missing its LAST key and defers the failure to whoever
+    reads it. That is exactly how `create_job` shipped: it passed `row[:-1]`,
+    which severed `expires_at`, and the KeyError surfaced four lines later
+    inside the timestamp loop, pointing at the loop rather than at the slice.
+
+    Nothing but a live database ever ran that line. So this asserts the two
+    halves of the contract offline: that the module builds one column list and
+    every statement selects exactly it, and that the reader now refuses a row
+    of any other width instead of silently truncating it.
+    """
+    source = _Path(export_svc.__file__).read_text(encoding="utf-8")
+
+    # Every call passes a row through unsliced. `row[:-1]` is the defect this
+    # test exists for, and a scan is the only thing that can see it without a
+    # database, since these call sites are all inside live statements.
+    calls = re.findall(r"_job_row_to_dict\(([^)]*)\)", source)
+    calls = [c for c in calls if c != "row: Sequence[Any]"]
+    assert calls, "no _job_row_to_dict call sites found; this test is vacuous"
+    sliced = [c for c in calls if "[" in c and ":" in c]
+    assert sliced == [], (
+        f"these call sites reshape the row before the mapping is built, and "
+        f"`zip` will not report the mismatch: {sliced}")
+
+    # ...and every statement that produces such a row selects the whole set,
+    # rather than naming its own columns and drifting from `_JOB_COLUMNS`.
+    # Counted against the call sites, not against occurrences of the name:
+    # prose mentions it too, and an assertion a comment can break is noise.
+    statements = re.findall(r"(?:SELECT|RETURNING)\s*\{_JOB_SELECT", source)
+    assert len(statements) >= len(calls), (
+        f"{len(calls)} call sites build a job mapping but only "
+        f"{len(statements)} statements select {{_JOB_SELECT}}; one is naming "
+        f"its own columns, which is how the two lists drift apart")
+
+
+def test_a_job_row_of_the_wrong_width_is_refused_rather_than_truncated():
+    """The refusal names the column set, not the first key that went missing."""
+    # `column_order` is unpacked into a list and the four timestamps are run
+    # through `.isoformat()` if they have one, so the row carries values those
+    # two steps accept rather than a bare range.
+    full = tuple([] if column == "column_order" else column
+                 for column in export_svc._JOB_COLUMNS)
+    mapping = export_svc._job_row_to_dict(full)
+    assert set(mapping) == set(export_svc._JOB_COLUMNS)
+    assert "expires_at" in mapping, (
+        "the key whose absence took down fifteen live export tests")
+
+    with pytest.raises(export_svc.ExportError) as short:
+        export_svc._job_row_to_dict(full[:-1])
+    assert short.value.code == "EXPORT_JOB_ROW_SHAPE"
+    assert short.value.status == 500
+
+    with pytest.raises(export_svc.ExportError) as long:
+        export_svc._job_row_to_dict(full + (None,))
+    assert long.value.code == "EXPORT_JOB_ROW_SHAPE"
+
+
+# =========================================================================
 # Migration 018: it is a migration, it is additive, and it is complete
 # =========================================================================
 def test_018_is_discovered_named_and_numbered():

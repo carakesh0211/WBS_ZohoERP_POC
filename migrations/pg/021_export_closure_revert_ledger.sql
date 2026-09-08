@@ -1,0 +1,121 @@
+-- 021_export_closure_revert_ledger.sql
+-- 018's and 019's revert blocks drop their objects and leave their `schema_migrations` rows; neither file can be corrected in place, so both deletions are owned here.
+--
+-- THIS IS 020'S DEFECT AGAIN, IN TWO MORE MIGRATIONS
+--
+-- `020_reservation_revert_ledger.sql` exists because 015's revert block drops
+-- its objects and never deletes its ledger row. Its header sets out the whole
+-- argument -- why that is unrecoverable, why 015 cannot be edited, and why the
+-- deletion belongs in the migration stacked immediately on top. All of it is
+-- true of 018 and 019 as well, and 020 did not cover them: its header
+-- enumerates 013, 014, 015 and 016 and stops there, which is the state of the
+-- directory it was written against.
+--
+-- `test_the_rollback_block_actually_works_live` reverts the whole stack and
+-- then asks the ledger what survived. It answered
+--
+--     a block dropped its objects but left its ledger row, so `upgrade` will
+--     not re-apply it: ['018', '019']
+--
+-- so this is not a prediction. 015 is absent from that list because 020
+-- already owns it; the mechanism is identical and only the versions differ.
+--
+--   * `018_export_jobs.sql`'s block drops three policies, two triggers,
+--     `export_job_chunk`, `export_job` and two functions, and commits.
+--   * `019_closure.sql`'s block drops three policies and
+--     `asset_allocation`, `capitalisation_request` and
+--     `project_completion_review`, in that order, and commits.
+--
+-- Neither ends with the `DELETE FROM schema_migrations WHERE version = ...`
+-- that 013, 014, 016, 017 and 020 all end with. An operator who runs either
+-- block holds a database whose ledger claims a set of tables it does not have,
+-- and the product's own runner then SKIPS the migration that would rebuild
+-- them (`migrate_pg.upgrade`, app/backend/pg/migrate_pg.py:873-881). For 018
+-- that means `export_job` is gone while `exports.create_job` still inserts
+-- into it; for 019, the three closure tables are gone while the capitalisation
+-- path still writes them.
+--
+--
+-- WHY 018 AND 019 ARE NOT EDITED, WHICH IS AGAIN THE OBVIOUS REPAIR
+--
+-- The checksum recorded in `schema_migrations` is `sha256` over the WHOLE
+-- FILE. There is no comment stripping and no split at COMMIT:
+--
+--     body = self.path.read_bytes().replace(b"\r\n", b"\n")
+--     return hashlib.sha256(body).hexdigest()
+--                                     -- migrate_pg.py:138-142
+--
+-- So adding one commented line to 018's revert block moves its checksum
+-- exactly as far as rewriting its DDL would, and both readers of that checksum
+-- treat the difference as fatal rather than cosmetic: `assert_schema_current`
+-- refuses to BOOT with `schema drift` (migrate_pg.py:933-937), and `upgrade()`
+-- refuses to proceed with `Never edit an applied migration -- add a new one.`
+-- (migrate_pg.py:876-880). Neither has a repair path -- the adoption branch is
+-- reached only for a migration with NO ledger row, never for one whose row
+-- disagrees. 018 and 019 are on `origin/full-application/build`. The files are
+-- frozen and the missing statements have to live somewhere else.
+--
+--
+-- WHY THEY LIVE HERE
+--
+-- Reverts run newest-first, because a migration stacked on another cannot be
+-- taken out from underneath it. 021 is the newest, so its block runs before
+-- 020's, 019's and 018's -- which makes it the only place from which either
+-- ledger row can be cleared during an ordinary reverse walk, with no operator
+-- asked to remember a manual step the blocks exist to spare them. This is
+-- precisely the position 020 holds relative to 015.
+--
+-- THE INTERMEDIATE STATE IS SOUND, and is worth being explicit about, because
+-- it is one step longer than 020's. Revert 021 and stop: `export_job`,
+-- `export_job_chunk` and the three closure tables are all still there, with no
+-- '018' and no '019' row recording them. The next `upgrade()` re-runs 018,
+-- whose first `CREATE TABLE export_job` raises `DuplicateTable` -- and that is
+-- the case the adoption branch exists for. `_adoption_problems` derives what
+-- it checks from the migration's own text (migrate_pg.py:779-851), so it
+-- confirms 018's two tables, its two functions, its two triggers, its named
+-- constraints, its indexes and its policies -- and that RLS is ENABLEd and
+-- FORCEd on both tables, not merely that a policy exists -- before recording
+-- 018 as satisfied. 019 is then adopted on the same evidence. The database
+-- ends adopted and current. It is not left guessing.
+--
+-- 021 is deliberately additive and carries no DDL of its own beyond the two
+-- comments below. It is not a second attempt at either migration: 018's and
+-- 019's objects are correct and stay exactly as they are. It creates no table,
+-- no index, no constraint and no `*_paise` column, so it has none to name.
+--
+--
+-- WHAT THE COMMENTS ARE FOR
+--
+-- The coupling above is invisible in the schema, and an operator reverting by
+-- hand reads the schema, not this directory. `COMMENT ON` is how 007 records a
+-- rationale where the person who needs it will meet it
+-- (`007_scope_sentinel.sql:174`) and how 020 records this same one. `\d+
+-- export_job` is where someone about to revert the export jobs is already
+-- looking, and `\d+ project_completion_review` is the first of the three
+-- tables 019's block names -- and the LAST one it drops, so it is the one
+-- still standing if that block is interrupted part-way.
+
+BEGIN;
+
+COMMENT ON TABLE export_job IS
+    'One requested CSV export, its captured scope and its progress, added by 018_export_jobs.sql. REVERT NOTE: 018''s own revert block drops this table, export_job_chunk, both triggers, both functions and all three policies but does NOT delete its schema_migrations row, and 018 cannot be edited because its recorded checksum is taken over the whole file. Migration 021 owns that deletion, and 021 is reverted first. Reverting 018 WITHOUT having reverted 021 leaves a database claiming an export subsystem it does not have, which upgrade() will then skip.';
+
+COMMENT ON TABLE project_completion_review IS
+    'The completion review a capitalisation request is raised against, added by 019_closure.sql. REVERT NOTE: 019''s own revert block drops this table, capitalisation_request, asset_allocation and all three policies but does NOT delete its schema_migrations row, and 019 cannot be edited because its recorded checksum is taken over the whole file. Migration 021 owns that deletion, and 021 is reverted first. Reverting 019 WITHOUT having reverted 021 leaves a database claiming the closure tables it does not have, which upgrade() will then skip.';
+
+COMMIT;
+
+-- ROLLBACK:
+--
+--   BEGIN;
+--   COMMENT ON TABLE export_job IS NULL;
+--   COMMENT ON TABLE project_completion_review IS NULL;
+--   DELETE FROM schema_migrations WHERE version = '021';
+--   -- AND 019's and 018's, which their own blocks omit and which cannot be
+--   -- edited to add. See this file's header. Reverting 021 alone leaves both
+--   -- sets of objects in place with no ledger row, which upgrade() re-adopts
+--   -- rather than replays; continuing down the stack into 019's and 018's
+--   -- blocks drops them for real. Newest first, as the walk runs.
+--   DELETE FROM schema_migrations WHERE version = '019';
+--   DELETE FROM schema_migrations WHERE version = '018';
+--   COMMIT;

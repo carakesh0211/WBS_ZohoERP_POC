@@ -138,6 +138,80 @@ def test_migrations_discover_as_an_unbroken_sequence_and_013_sits_at_its_number(
     assert _migration_013().name == "procurement"
 
 
+#: `DELETE FROM schema_migrations WHERE version = 'NNN';` as the revert blocks
+#: write it, once un-commented. Whitespace around `=` is normalised first so a
+#: block that spaces it differently is still recognised rather than silently
+#: reported as missing its own deletion.
+_LEDGER_DELETE_RE = re.compile(
+    r"DELETE\s+FROM\s+schema_migrations\s+WHERE\s+version\s*=\s*'(\d{3})'",
+    re.IGNORECASE)
+
+
+def _ledger_rows_deleted_by(migration: migrate_pg.Migration) -> list[str]:
+    """The versions `migration`'s revert block deletes from the ledger.
+
+    Un-commented exactly as `test_the_rollback_block_actually_works_live` does
+    it, and for the same reason: the block is a comment until somebody strips
+    the prefix, so reading the raw text would find these lines whether or not
+    they are inside the block that runs.
+    """
+    if "-- ROLLBACK:" not in migration.sql:
+        return []
+    block = migration.sql.split("-- ROLLBACK:", 1)[1]
+    statements = [re.sub(r"^--[ ]{0,3}", "", line.strip())
+                  for line in block.splitlines() if line.strip().startswith("--")]
+    return _LEDGER_DELETE_RE.findall("\n".join(statements))
+
+
+def test_every_revertible_migrations_ledger_row_is_deleted_at_or_above_its_own_number():
+    """A revert that drops the objects and leaves the ledger row is worse than
+    no revert at all, and NOTHING SHORT OF A LIVE DATABASE CAUGHT IT.
+
+    `test_the_rollback_block_actually_works_live` catches it, but only where
+    PostgreSQL is attached -- so 015, 018 and 019 each shipped with the defect
+    and 015's survived long enough to need `020_reservation_revert_ledger.sql`
+    written for it alone. This asks the same question of the files, so the
+    answer arrives on any machine, on the commit that introduces the block
+    rather than on the next live run.
+
+    THE PROPERTY IS "AT OR ABOVE", NOT "SOMEWHERE". Reverts run newest-first,
+    so a block numbered above V runs BEFORE V's own. A deletion sitting below V
+    would still leave the end state clean, which is all the live assertion can
+    see, while leaving an operator who stops part-way holding a ledger that
+    claims objects the walk has already dropped -- exactly the unrecoverable
+    state 020's header sets out. So the owner must be V itself or something
+    later, and this asserts that and not merely that some block mentions V.
+
+    SCOPED TO 013 AND ABOVE, deliberately, which is the stack the live test
+    reverts. The earlier blocks are a different shape -- 001's is not even a
+    trailing block; it sits at the top of the file with no BEGIN/COMMIT -- and
+    none of them deletes its ledger row. That is a real gap, but it is a
+    pre-existing one about migrations nothing here reverts, and widening this
+    assertion to cover it would be asserting a property those files have never
+    had rather than guarding the one 013..N do.
+    """
+    stack = [m for m in migrate_pg.discover() if m.version >= "013"]
+    assert len(stack) >= 9, (
+        f"the revertible stack collapsed to {[m.version for m in stack]}; "
+        f"this test would pass vacuously")
+
+    owners: dict[str, list[str]] = {m.version: [] for m in stack}
+    for migration in stack:
+        for version in _ledger_rows_deleted_by(migration):
+            if version in owners and version <= migration.version:
+                owners[version].append(migration.version)
+
+    orphans = sorted(v for v, by in owners.items() if not by)
+    assert orphans == [], (
+        f"these migrations' revert blocks drop their objects but no block at "
+        f"or above their own number deletes their schema_migrations row, so "
+        f"`upgrade` will skip them and the objects never come back: {orphans}. "
+        f"The file itself cannot be edited to add the line -- its checksum is "
+        f"taken over the whole file (migrate_pg.py:138-142) -- so the deletion "
+        f"belongs in the revert block of a NEW migration on top, the way 020 "
+        f"owns 015's and 021 owns 018's and 019's.")
+
+
 def test_013_is_not_excluded_as_a_data_file():
     """`NON_MIGRATION_FILES` excludes by EXACT NAME, not by pattern. A new data
     file has to be added there; a new migration must NOT be."""
