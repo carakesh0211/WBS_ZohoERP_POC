@@ -5,7 +5,7 @@
   "baseline": {
     "recorded_at": "2026-08-28",
     "commit_note": "POC baseline, branch phase-0a/foundations, before any port work",
-    "test_functions": 220,
+    "test_functions": 293,
     "collected_cases": 348,
     "collected_cases_note": "348 is the pytest-collected count after parametrisation expands 6 files; 220 is the count of `def test_` functions. Both are real and the Definition of Done refers to the function count.",
     "runtime_seconds_approx": 189,
@@ -1452,6 +1452,112 @@
       "test_aud_m_005_a_normal_hierarchy_still_serialises_as_a_nested_tree": {
         "assertions": 4,
         "body_sha": "693e89c59be310fa"
+      }
+    },
+    "test_export_scope.py": {
+      "test_the_meet_of_two_dimensions_admits_no_row_either_side_would_refuse": {
+        "assertions": 1,
+        "body_sha": "8aa6a01bba26e2bb"
+      },
+      "test_the_meet_never_turns_read_all_on": {
+        "assertions": 4,
+        "body_sha": "4c0367fa91050cf8"
+      },
+      "test_the_meet_never_turns_triage_unattributed_on": {
+        "assertions": 2,
+        "body_sha": "58f73d05551b6a9d"
+      },
+      "test_the_meet_with_a_denied_scope_is_denied": {
+        "assertions": 2,
+        "body_sha": "ac295bd035a65c3e"
+      },
+      "test_the_meet_keeps_the_captured_requester_not_the_live_one": {
+        "assertions": 2,
+        "body_sha": "c19cd157f4151497"
+      },
+      "test_the_three_scope_states_survive_serialisation": {
+        "assertions": 2,
+        "body_sha": "a7a90aa3f5da624c"
+      },
+      "test_serialisation_sorts_ids_so_the_digest_is_a_function_of_the_scope": {
+        "assertions": 1,
+        "body_sha": "0d082ffd03ba7376"
+      },
+      "test_the_digest_binds_the_scope_to_ITS_job": {
+        "assertions": 3,
+        "body_sha": "fe9b85e4eddce1b5"
+      },
+      "test_a_widened_scope_changes_the_digest": {
+        "assertions": 2,
+        "body_sha": "7f944d33de28a236"
+      },
+      "test_an_unreadable_stored_scope_is_refused_not_guessed_at": {
+        "assertions": 2,
+        "body_sha": "f88195784f63c464"
+      },
+      "test_a_truthy_non_bool_read_all_is_not_read_all": {
+        "assertions": 2,
+        "body_sha": "6ed0e05a97ae47be"
+      },
+      "test_the_service_scope_compiles_to_false_against_every_dataset": {
+        "assertions": 1,
+        "body_sha": "124880d464b553b0"
+      },
+      "test_the_service_scope_is_false_even_where_every_dimension_is_waived": {
+        "assertions": 1,
+        "body_sha": "fadc8c7a1e9d37b0"
+      },
+      "test_the_registry_override_never_sets_read_all": {
+        "assertions": 3,
+        "body_sha": "caeca8f4e7872ec7"
+      },
+      "test_the_registry_override_is_used_only_where_it_is_declared_to_be": {
+        "assertions": 1,
+        "body_sha": "66f67fada36c3baa"
+      },
+      "test_the_worker_entry_points_open_their_session_with_the_requesters_scope": {
+        "assertions": 3,
+        "body_sha": "f93f3bbd8eb3747f"
+      },
+      "test_no_dataset_waives_a_scope_dimension": {
+        "assertions": 2,
+        "body_sha": "f779cf5dba684d1e"
+      },
+      "test_every_dataset_query_carries_the_scope_token": {
+        "assertions": 1,
+        "body_sha": "0a659e67b240b506"
+      },
+      "test_a_plant_scoped_users_export_contains_no_out_of_scope_row": {
+        "assertions": 6,
+        "body_sha": "43575c1b382f1a5b"
+      },
+      "test_a_tampered_scope_is_refused_before_a_row_is_read": {
+        "assertions": 5,
+        "body_sha": "d7f802a9aa6c3de5"
+      },
+      "test_a_widened_scope_with_a_matching_digest_still_reads_nothing_extra": {
+        "assertions": 5,
+        "body_sha": "87d185e7a5f8a81a"
+      },
+      "test_the_migration_trigger_refuses_to_update_a_captured_scope": {
+        "assertions": 2,
+        "body_sha": "edc2c886ee9334e0"
+      },
+      "test_a_requester_whose_grants_were_revoked_fails_rather_than_exporting_nothing": {
+        "assertions": 5,
+        "body_sha": "653257fd90fc7d4e"
+      },
+      "test_one_users_export_job_is_invisible_to_another": {
+        "assertions": 5,
+        "body_sha": "dd35d15c2e2b3cf4"
+      },
+      "test_a_denied_principal_cannot_even_queue_an_export": {
+        "assertions": 4,
+        "body_sha": "5243feb851d55f43"
+      },
+      "test_a_job_cannot_be_created_carrying_somebody_elses_scope": {
+        "assertions": 2,
+        "body_sha": "25d3cbdde8900ee8"
       }
     },
     "test_financial_controls.py": {
@@ -5772,6 +5878,196 @@
         "body_sha": "150633a809ef5291"
       }
     },
+    "test_pg_exports.py": {
+      "test_017_is_discovered_named_and_numbered": {
+        "assertions": 4,
+        "body_sha": "588ef51f48989541"
+      },
+      "test_017_does_not_touch_an_already_applied_migration": {
+        "assertions": 1,
+        "body_sha": "6e27460778a7185b"
+      },
+      "test_017_creates_only_its_own_two_tables": {
+        "assertions": 1,
+        "body_sha": "bf55334959a8dbb8"
+      },
+      "test_017_names_every_constraint_it_creates": {
+        "assertions": 1,
+        "body_sha": "d0e584724ee6d7f1"
+      },
+      "test_017_declares_the_named_constraint": {
+        "assertions": 1,
+        "body_sha": "afa2d7556b011ae9"
+      },
+      "test_017_makes_the_captured_authorisation_immutable_in_the_database": {
+        "assertions": 2,
+        "body_sha": "d6f97aa7985605ad"
+      },
+      "test_017_makes_chunks_append_only_by_privilege_as_well_as_by_trigger": {
+        "assertions": 4,
+        "body_sha": "a78b22fe54d85090"
+      },
+      "test_017_enables_forces_and_policies_both_tables": {
+        "assertions": 3,
+        "body_sha": "5d06a5b4fb0b05d3"
+      },
+      "test_017_declares_a_rollback_naming_every_policy_and_trigger_it_creates": {
+        "assertions": 3,
+        "body_sha": "d0ecd44236f48990"
+      },
+      "test_017_does_not_redefine_the_frozen_scope_functions": {
+        "assertions": 2,
+        "body_sha": "a5fda798582c2345"
+      },
+      "test_017_carries_no_paise_column": {
+        "assertions": 1,
+        "body_sha": "23addeb347193470"
+      },
+      "test_money_is_formatted_exactly_from_integer_paise": {
+        "assertions": 1,
+        "body_sha": "4f3aa7f4bfc18528"
+      },
+      "test_the_money_formatter_would_fail_on_a_float_path": {
+        "assertions": 2,
+        "body_sha": "2b692ffb61a091bf"
+      },
+      "test_the_money_formatter_refuses_anything_that_is_not_an_int": {
+        "assertions": 2,
+        "body_sha": "1cac4ecf9ef09715"
+      },
+      "test_only_a_paise_column_goes_through_the_money_formatter": {
+        "assertions": 2,
+        "body_sha": "8d2674276715cb99"
+      },
+      "test_a_chunk_carries_no_header": {
+        "assertions": 2,
+        "body_sha": "83f3f66450c857b6"
+      },
+      "test_chunks_use_a_bare_newline_so_byte_counts_and_digests_are_portable": {
+        "assertions": 2,
+        "body_sha": "672906a0865b5d56"
+      },
+      "test_a_text_cell_that_a_spreadsheet_would_evaluate_is_neutralised": {
+        "assertions": 2,
+        "body_sha": "c79d239d3873f083"
+      },
+      "test_a_timestamp_renders_in_utc_whatever_the_connection_is_set_to": {
+        "assertions": 2,
+        "body_sha": "26b711c98d0e2a42"
+      },
+      "test_a_row_of_the_wrong_width_is_a_refusal_not_a_ragged_file": {
+        "assertions": 2,
+        "body_sha": "a6a9399a52956bfc"
+      },
+      "test_every_dataset_declares_a_non_empty_ordered_column_list": {
+        "assertions": 3,
+        "body_sha": "bf1d83ce52843a49"
+      },
+      "test_every_dataset_sort_key_is_backed_by_a_uniqueness_guarantee": {
+        "assertions": 6,
+        "body_sha": "192c983de964f1d7"
+      },
+      "test_the_ordered_column_is_transcribed_from_compute_ledger_not_re_derived": {
+        "assertions": 3,
+        "body_sha": "5e5894e0db725c4b"
+      },
+      "test_a_filter_this_dataset_cannot_apply_is_refused_by_name": {
+        "assertions": 3,
+        "body_sha": "e6aeabe31cc94edc"
+      },
+      "test_an_unknown_filter_field_is_refused_rather_than_ignored": {
+        "assertions": 2,
+        "body_sha": "ef827ad5e0a3161e"
+      },
+      "test_paging_and_sorting_fields_are_refused_on_an_export": {
+        "assertions": 2,
+        "body_sha": "0ce1a86c874cfde7"
+      },
+      "test_every_declared_filter_actually_compiles_to_sql": {
+        "assertions": 3,
+        "body_sha": "be2175208510a5ea"
+      },
+      "test_no_filter_parameter_can_collide_with_the_scope_predicate": {
+        "assertions": 1,
+        "body_sha": "6d8d5f795869e55b"
+      },
+      "test_an_empty_filter_list_is_not_a_filter": {
+        "assertions": 3,
+        "body_sha": "42792bc8bdcc6f9d"
+      },
+      "test_the_public_job_never_echoes_the_captured_scope": {
+        "assertions": 3,
+        "body_sha": "e37acd9538f27cda"
+      },
+      "test_progress_reports_no_percentage_while_the_total_is_unknown": {
+        "assertions": 5,
+        "body_sha": "ac12c7ae78be4dd6"
+      },
+      "test_a_result_is_advertised_only_once_the_job_has_succeeded": {
+        "assertions": 2,
+        "body_sha": "ce413ae5682abb54"
+      },
+      "test_a_chunked_export_completes_and_reports_a_counted_total": {
+        "assertions": 8,
+        "body_sha": "bd7b48d0a33e2ac5"
+      },
+      "test_chunking_is_invisible_in_the_output": {
+        "assertions": 3,
+        "body_sha": "59e6f9d032df3afe"
+      },
+      "test_no_invocation_reads_more_than_its_row_budget": {
+        "assertions": 1,
+        "body_sha": "349d7152182431c7"
+      },
+      "test_the_rows_are_contiguous_across_a_resume": {
+        "assertions": 3,
+        "body_sha": "d7d457e3ff12d953"
+      },
+      "test_the_exported_ledger_figures_equal_the_budget_services_own": {
+        "assertions": 2,
+        "body_sha": "44303082d07b38ce"
+      },
+      "test_an_export_writes_its_audit_events": {
+        "assertions": 4,
+        "body_sha": "c2e2274f18862407"
+      },
+      "test_cancelling_stops_the_export_at_a_chunk_boundary": {
+        "assertions": 7,
+        "body_sha": "4b83f8648c49e5da"
+      },
+      "test_cancelling_a_queued_export_finishes_it_without_running_anything": {
+        "assertions": 3,
+        "body_sha": "62cc371612dcdc21"
+      },
+      "test_a_retry_discards_every_committed_chunk": {
+        "assertions": 6,
+        "body_sha": "1c01e7bc3c3b3129"
+      },
+      "test_a_retry_does_not_recapture_the_scope": {
+        "assertions": 1,
+        "body_sha": "fde3b70a04cbe308"
+      },
+      "test_expiry_purges_the_bytes_and_keeps_the_record": {
+        "assertions": 5,
+        "body_sha": "bd34f76091d2076c"
+      },
+      "test_the_result_is_not_served_if_its_bytes_no_longer_match_the_digest": {
+        "assertions": 2,
+        "body_sha": "4c128c36c0e6718f"
+      },
+      "test_a_succeeded_job_cannot_carry_a_total_its_file_does_not_contain": {
+        "assertions": 2,
+        "body_sha": "1740947dab36fdde"
+      },
+      "test_a_filter_narrows_the_export_within_the_scope": {
+        "assertions": 3,
+        "body_sha": "987ae1dd62eee2c5"
+      },
+      "test_the_column_order_captured_at_creation_is_the_files_header": {
+        "assertions": 2,
+        "body_sha": "70788ecd553874e4"
+      }
+    },
     "test_pg_fixture_guard.py": {
       "test_disposable_names_are_accepted": {
         "assertions": 1,
@@ -9241,6 +9537,7 @@
     "test_contracts.py": 47,
     "test_contracts_integration_statuses.py": 23,
     "test_domain_invariants.py": 34,
+    "test_export_scope.py": 26,
     "test_financial_controls.py": 61,
     "test_integration_adapter_contract.py": 72,
     "test_integration_capabilities.py": 19,
@@ -9280,6 +9577,7 @@
     "test_pg_audit_api_e2e.py": 7,
     "test_pg_budget.py": 22,
     "test_pg_constraints.py": 8,
+    "test_pg_exports.py": 47,
     "test_pg_fixture_guard.py": 3,
     "test_pg_integration_rate_budget.py": 21,
     "test_pg_integration_schema.py": 81,
@@ -9329,6 +9627,7 @@
     "test_contracts.py": 73,
     "test_contracts_integration_statuses.py": 48,
     "test_domain_invariants.py": 94,
+    "test_export_scope.py": 69,
     "test_financial_controls.py": 159,
     "test_integration_adapter_contract.py": 169,
     "test_integration_capabilities.py": 56,
@@ -9368,6 +9667,7 @@
     "test_pg_audit_api_e2e.py": 24,
     "test_pg_budget.py": 57,
     "test_pg_constraints.py": 13,
+    "test_pg_exports.py": 128,
     "test_pg_fixture_guard.py": 3,
     "test_pg_integration_rate_budget.py": 109,
     "test_pg_integration_schema.py": 132,
