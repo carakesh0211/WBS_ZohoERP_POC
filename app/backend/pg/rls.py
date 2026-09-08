@@ -283,7 +283,7 @@ RLS_CORRECTION_TABLES: tuple[str, ...] = tuple(RLS_CORRECTION_TABLE_COLUMNS)
 _RESERVATION_GRAIN_MIGRATION = "015_reservation_grain.sql"
 
 #: Table -> dimension column mapping for the three closure documents
-#: `migrations/pg/018_closure.sql` adds, in the same shape as the registries
+#: `migrations/pg/019_closure.sql` adds, in the same shape as the registries
 #: above.
 #:
 #: A SEPARATE DICT again, for the reason `RLS_PROCUREMENT_TABLE_COLUMNS` gives:
@@ -332,7 +332,7 @@ RLS_MIGRATION_BY_TABLE: dict[str, str] = {
     **{table: "013_procurement.sql" for table in RLS_PROCUREMENT_TABLES},
     **{table: "014_procurement_corrections.sql"
        for table in RLS_CORRECTION_TABLES},
-    **{table: "018_closure.sql" for table in RLS_CLOSURE_TABLES},
+    **{table: "019_closure.sql" for table in RLS_CLOSURE_TABLES},
 }
 
 

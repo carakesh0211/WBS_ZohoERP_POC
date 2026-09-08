@@ -200,7 +200,7 @@ def _get_database() -> Database:
             "capitalisation request or asset allocation can be read or "
             "written here.",
             remedy="Set CAPEX_DB_URL and run the migrations, including "
-                   "018_closure.sql. The SQLite ledger still answers at "
+                   "019_closure.sql. The SQLite ledger still answers at "
                    "/api/capitalisation.",
         ) from exc
 

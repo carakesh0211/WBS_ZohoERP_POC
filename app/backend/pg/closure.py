@@ -1,6 +1,6 @@
 """Project closure, capitalisation and asset allocation, on PostgreSQL.
 
-The service layer over ``migrations/pg/018_closure.sql``. Three documents:
+The service layer over ``migrations/pg/019_closure.sql``. Three documents:
 
 * ``project_completion_review``  -- SCR-20. The project side ASSERTS technical
   completion; someone else decides on that assertion.
@@ -16,7 +16,7 @@ THE ONE THING THIS MODULE MUST NEVER LET ANYONE BELIEVE
 Exclusion X-01: this system records the capitalisation decision. There is no
 general-ledger posting and no fixed-asset register write anywhere in this
 build, and nothing here should be worded so that a reader could think there
-is. ``018_closure.sql`` makes that structural --
+is. ``019_closure.sql`` makes that structural --
 ``ck_capitalisation_request_not_posted CHECK (posting_status = 'NOT POSTED')``
 -- so this module could not record a posting even if a future edit here tried
 to; the database refuses the row. Every response carries the string, and

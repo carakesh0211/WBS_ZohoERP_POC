@@ -570,7 +570,7 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
              "state change is legal estate-wide. READ-ONLY to capex_app, as "
              "lifecycle_state."),
 
-    # ---------------------------------------------------- 018_closure.sql
+    # ---------------------------------------------------- 019_closure.sql
     # The 013 shape, restated for the three closure documents: a denormalised
     # `project_id` bound by FK to a real project, reached through `project` so
     # that ALL FOUR dimensions are filtered. Filtering the column directly
@@ -582,7 +582,7 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
         dimensions=("entity", "plant", "location", "project"), reach="joined",
         path="project_completion_review.project_id -> project.entity_id / "
              "plant_id / location_id / project_id",
-        status="covered", migration="018_closure.sql",
+        status="covered", migration="019_closure.sql",
         note="ONE live review per project (ux_project_completion_review_live, "
              "partial on Draft/Submitted), so a project cannot accumulate "
              "competing completion assertions."),
@@ -591,7 +591,7 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
         dimensions=("entity", "plant", "location", "project"), reach="joined",
         path="capitalisation_request.project_id -> project.entity_id / "
              "plant_id / location_id / project_id",
-        status="covered", migration="018_closure.sql",
+        status="covered", migration="019_closure.sql",
         note="Carries cwip_balance_paise and allocated_paise -- an unscoped "
              "read is another entity's capital position. `review_id` is bound "
              "to the SAME project by fk_capitalisation_request_review_project, "
@@ -601,7 +601,7 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
         dimensions=("entity", "plant", "location", "project"), reach="joined",
         path="asset_allocation.project_id -> project.entity_id / plant_id / "
              "location_id / project_id",
-        status="covered", migration="018_closure.sql",
+        status="covered", migration="019_closure.sql",
         note="`wbs_id` is bound to the same project by "
              "fk_asset_allocation_wbs_project against wbs_element "
              "(wbs_id, project_id); without it an allocation could name "

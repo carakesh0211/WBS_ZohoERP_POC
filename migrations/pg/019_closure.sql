@@ -1,4 +1,4 @@
--- 018_closure.sql
+-- 019_closure.sql
 -- Project closure, capitalisation and asset allocation: the three tables the
 -- SQLite build has had since `app/backend/db.py` and PostgreSQL has never had.
 --
