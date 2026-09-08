@@ -640,9 +640,19 @@ def record_receive_line(session: Session, *, po_line_id: str,
     # line reaches the ledger without it; only the duplicate call site went,
     # with the branch that needed it.
     #
-    # The index is a plain (non-partial) unique index, so the column list alone
-    # infers it; there is no predicate to name, unlike the two partial mirror
-    # indexes on `grn`.
+    # THE INDEX IS PARTIAL SINCE MIGRATION 019, so the predicate IS named --
+    # a partial index is not inferable from its column list alone, exactly like
+    # the two partial mirror indexes on `grn`.
+    #
+    # 019 narrowed `ux_grn_line_external_v2` to
+    # `WHERE receive_external_id IS NOT NULL` and renamed it
+    # `ux_grn_line_external_v3`. 014's version constrained rows that carry NO
+    # external identity at all, under which a PO line could hold exactly one
+    # locally-raised receipt line for ever and a second one overwrote the first.
+    # Nothing this statement writes is affected by the narrowing: the refusal
+    # above makes `receive_external_id` non-NULL on every row that reaches here,
+    # so this INSERT always falls inside the predicate and the conflict target
+    # matches exactly as before.
     written = repo.query(
         session,
         f"""
@@ -658,6 +668,7 @@ def record_receive_line(session: Session, *, po_line_id: str,
         JOIN project p ON p.project_id = pl.project_id
         WHERE pl.po_line_id = %(po_line_id)s AND {{scope}}
         ON CONFLICT (po_line_id, receive_external_id, line_external_id, line_no)
+            WHERE receive_external_id IS NOT NULL
         DO UPDATE SET quantity = EXCLUDED.quantity,
                       amount_paise = EXCLUDED.amount_paise,
                       external_status_raw = EXCLUDED.external_status_raw,
@@ -1365,7 +1376,23 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
         "line_external_id", "line_item_id", "purchaseorder_item_id"))
     external_line_id = _text(_line_field(
         line, "bill_line_external_id", "external_line_id", "line_id"))
-    line_key = line_external_id or f"#{index}"
+    # THE LINE'S OWN ID COMES FIRST, and reading it second was the defect.
+    # The docstring above already says these are two identities and that "only
+    # the second is an identity for this row" -- then the key was built from
+    # the FIRST. `bill_line_id` is `derived_id("BLL", bill_id, line_key)`, so
+    # two lines sharing one `po_line_external_id` were separated only by
+    # ARRIVAL ORDER through `seen_keys` below. Replay the same bill with the
+    # lines transposed and `BL-2` takes the id currently holding `BL-1`; the
+    # upsert below then writes external_line_id 'BL-2' onto it while the other
+    # row still holds 'BL-2', and `ux_bill_line_external` (014:537-539) refuses
+    # it. Ordering by the line's own id makes such a bill order-independent by
+    # construction, which is what the reordered replay has always claimed to
+    # prove.
+    #
+    # `line_external_id` REMAINS THE FALLBACK, so every id derived before 014
+    # is byte-identical: no row written then carried an `external_line_id` at
+    # all, the column not existing yet.
+    line_key = external_line_id or line_external_id or f"#{index}"
     # See `mirror_bill`'s `seen_keys` note: two bill lines against ONE purchase
     # order line are ordinary, and until this they collided on one derived id
     # and the second overwrote the first. Only the repeat is disambiguated, so
@@ -1374,6 +1401,21 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
         if line_key in seen_keys:
             line_key = f"{line_key}#{index}"
         seen_keys.add(line_key)
+    # THE QUARANTINE KEY IS NOT `line_key`, and conflating them cost the money
+    # twice. `line_key` is derived from the PO LINE's external id whenever the
+    # line carries no id of its own -- and that is precisely the value that
+    # ARRIVES between passes, because an unresolved linkage becoming resolved
+    # is the ordinary sequence. So pass 1 raised
+    # `{bill}:{NOT-A-LINE}` and pass 2 tried to retract `{bill}:{ZPOL-5001}`,
+    # the two never met, and the exception stayed Open while the line posted:
+    # the value counted in `bill_line` AND in `open_exception_exposure`, with
+    # capitalisation blocked for ever on a line that is correctly posted.
+    #
+    # This key is the LINE's own identity, ordinal where the source gave none,
+    # and is therefore stable across the linkage becoming known -- which is the
+    # same property the GRN half already had for free, its key being
+    # `{receive_external_id}:{line_external_id}` with no PO line in it.
+    quarantine_key = external_line_id or f"#{index}"
     amount_paise = int(_line_field(
         line, "line_total_paise", "amount_paise", "total_paise", default=0) or 0)
 
@@ -1396,7 +1438,7 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
         if not wbs_id or not budget_head_id:
             exception_id = store.raise_exception(
                 session, kind="CONTROL_TOTAL_MISMATCH", object_type="bill_line",
-                object_id=f"{bill_external_id}:{line_key}",
+                object_id=f"{bill_external_id}:{quarantine_key}",
                 detail=(f"Bill {bill_external_id} line "
                         f"{line_external_id or '(no line identifier)'} does "
                         f"not resolve to a known po_line on PO "
@@ -1516,7 +1558,7 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
     kind, object_type = QUARANTINE_BILL_LINE
     retract_quarantine(
         session, kind=kind, object_type=object_type,
-        object_id=f"{bill_external_id}:{line_key}",
+        object_id=f"{bill_external_id}:{quarantine_key}",
         reason=(f"Bill line attributed to control cell "
                 f"({wbs_id}, {budget_head_id}) and posted as "
                 f"{bill_line_id}. Held at full value while it named neither a "

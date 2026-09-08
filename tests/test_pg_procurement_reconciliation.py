@@ -706,8 +706,16 @@ def test_an_identifierless_receive_line_is_deduplicated_before_it_is_inserted():
 
     assert ("ON CONFLICT (po_line_id, receive_external_id, line_external_id, "
             "line_no)" in body), (
-        "the insert's conflict target no longer names ux_grn_line_external_v2's "
-        "four columns, so a replayed receive line matches no index")
+        "the insert's conflict target no longer names the four columns, so a "
+        "replayed receive line matches no index")
+    # The index has been PARTIAL since 019, and a partial index cannot be
+    # inferred from its column list alone. A target missing the predicate is a
+    # runtime error, not a weaker rule.
+    assert re.search(
+        r"ON CONFLICT \(po_line_id, receive_external_id, line_external_id, "
+        r"line_no\)\s+WHERE receive_external_id IS NOT NULL", body), (
+        "the conflict target does not name the predicate of "
+        "ux_grn_line_external_v3, so it infers no index at all")
 
     correction = (_MIGRATIONS / "014_procurement_corrections.sql").read_text(
         encoding="utf-8")
@@ -721,6 +729,22 @@ def test_an_identifierless_receive_line_is_deduplicated_before_it_is_inserted():
     assert "DROP CONSTRAINT IF EXISTS ux_grn_line_external" in correction, (
         "013's NULLS DISTINCT constraint is still in place alongside the new "
         "index")
+
+    # 019 is the migration that actually leaves an index behind, so it is the
+    # one the target above has to match. It keeps 014's columns AND its NULLS
+    # NOT DISTINCT -- both are load-bearing for the replay -- and adds the
+    # predicate that stops the rule reaching rows with no external identity.
+    ordinal = (_MIGRATIONS / "019_grn_line_ordinal.sql").read_text(
+        encoding="utf-8")
+    assert re.search(
+        r"CREATE UNIQUE INDEX ux_grn_line_external_v3\s+ON grn_line\s+"
+        r"\(po_line_id, receive_external_id, line_external_id, line_no\)\s+"
+        r"NULLS NOT DISTINCT\s+WHERE receive_external_id IS NOT NULL",
+        ordinal), (
+        "ux_grn_line_external_v3 must keep 014's four columns and NULLS NOT "
+        "DISTINCT and be partial on receive_external_id IS NOT NULL")
+    assert "DROP INDEX ux_grn_line_external_v2" in ordinal, (
+        "014's unpartitioned index is still in place alongside the new one")
 
 
 def test_record_receive_line_will_not_write_against_a_po_line_it_cannot_see():

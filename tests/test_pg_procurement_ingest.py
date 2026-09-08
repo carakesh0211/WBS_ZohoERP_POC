@@ -140,6 +140,17 @@ MIGRATION = (_Path(__file__).resolve().parents[1] / "migrations" / "pg"
 CORRECTION = (_Path(__file__).resolve().parents[1] / "migrations" / "pg"
               / "014_procurement_corrections.sql").read_text(encoding="utf-8")
 
+#: ...and 019 corrects 014 in turn, for the same additive reason. 014's
+#: `ux_grn_line_external_v2` was UNIQUE NULLS NOT DISTINCT with NO predicate,
+#: so it also constrained rows carrying NO external identity at all -- a
+#: locally-raised receipt line keys as (po_line_id, NULL, NULL, NULL) and a PO
+#: line could hold exactly one of them for ever. 019 keeps every column and
+#: keeps NULLS NOT DISTINCT, and makes the index PARTIAL on
+#: `receive_external_id IS NOT NULL`. The index the ON CONFLICT below infers
+#: lives HERE now.
+ORDINAL = (_Path(__file__).resolve().parents[1] / "migrations" / "pg"
+           / "019_grn_line_ordinal.sql").read_text(encoding="utf-8")
+
 ORG = "ORG-ING"
 ENTITY = "ENT-ING"
 OTHER_ENTITY = "ENT-ING-B"
@@ -265,8 +276,37 @@ def test_the_grn_line_conflict_target_matches_the_migrations_constraint():
         r"NULLS NOT DISTINCT", CORRECTION), (
         "ux_grn_line_external_v2 must be NULLS NOT DISTINCT over four columns; "
         "without the clause it is 013's defect under a new name")
+
+    # ...and 019 is the index that is actually THERE, so it is what the
+    # conflict target must match. Same four columns, same NULLS NOT DISTINCT,
+    # PARTIAL on `receive_external_id IS NOT NULL` -- without the predicate the
+    # index also constrains locally-raised lines, which carry no external
+    # identity for it to be an identity check on, and a PO line may hold only
+    # one of them.
+    assert re.search(
+        r"CREATE UNIQUE INDEX ux_grn_line_external_v3\s+ON grn_line\s+"
+        r"\(po_line_id, receive_external_id, line_external_id, line_no\)\s+"
+        r"NULLS NOT DISTINCT\s+WHERE receive_external_id IS NOT NULL",
+        ORDINAL), (
+        "ux_grn_line_external_v3 must keep 014's four columns and its NULLS "
+        "NOT DISTINCT and add the predicate; dropping any of the three "
+        "reintroduces a defect this pair of migrations has already had")
+    assert "DROP INDEX ux_grn_line_external_v2" in ORDINAL, (
+        "014's unpartitioned index must be dropped by name, not shadowed: two "
+        "indexes disagreeing about which rows carry an identity means the "
+        "broader one silently wins")
+
+    # A PARTIAL index is NOT inferable from its column list alone. The target
+    # must name the predicate too, or PostgreSQL raises "no unique or exclusion
+    # constraint matching the ON CONFLICT specification" when the statement
+    # RUNS -- inside a cron function, in CI at the earliest.
     assert ("ON CONFLICT (po_line_id, receive_external_id, line_external_id, "
             "line_no)" in SOURCE)
+    assert re.search(
+        r"ON CONFLICT \(po_line_id, receive_external_id, line_external_id, "
+        r"line_no\)\s+WHERE receive_external_id IS NOT NULL", SOURCE), (
+        "the conflict target does not name ux_grn_line_external_v3's "
+        "predicate, so it infers no index at all")
     columns = store.GRN_LINE_EXTERNAL_UNIQUE
     assert columns == ("po_line_id", "receive_external_id",
                        "line_external_id", "line_no")
@@ -693,6 +733,48 @@ def test_replaying_both_receipts_duplicates_neither(seeded):
     versions = [v for (v,) in seeded.execute(
         "SELECT version_no FROM grn_line ORDER BY receive_external_id")]
     assert versions == [3, 3]
+
+
+@PG
+def test_replaying_a_line_without_a_line_id_duplicates_nothing(seeded):
+    """PROPERTY (a) OF `ux_grn_line_external_v3`, AND THE ORDINARY ZOHO CASE.
+
+    Zoho ERP publishes no receives-list endpoint, so receive lines are
+    discovered PO-anchored and arrive carrying NO `line_external_id` at all.
+    Every test above this one passes a line id and therefore never exercised
+    the case the index was rewritten twice for.
+
+    013's `ux_grn_line_external` was NULLS DISTINCT, so it did not constrain
+    this row AT ALL: the 300-second re-walk re-inserted it on every pass and
+    `received` climbed with no new receipt arriving. 014 closed that with
+    NULLS NOT DISTINCT.
+
+    019 KEEPS IT CLOSED. The row HAS a `receive_external_id` --
+    `record_receive_line` refuses a blank one before writing anything -- so it
+    falls inside 019's `WHERE receive_external_id IS NOT NULL` predicate and
+    014's rule applies to it in full. This is the half of the tension that
+    019's partiality must not give back.
+    """
+    session = _session(seeded)
+    for _pass in range(3):
+        _receive(session, receive_id="RCV-1", line_id=None,
+                 quantity="0.3", paise=300_000)
+    seeded.commit()
+
+    rows = _grn_lines(seeded)
+    assert len(rows) == 1, (
+        "the re-walk duplicated an identifierless receive line -- the index no "
+        "longer constrains the ordinary Zoho ERP case, which is 013's defect")
+    assert rows[0][2] is None, (
+        "the fixture stopped exercising the NULL line_external_id case, so "
+        "this test would pass without proving anything")
+    assert int(rows[0][4]) == 300_000, (
+        "three passes tripled the received value")
+    # UPDATED rather than re-inserted, which is what distinguishes "the upsert
+    # matched a real index" from "the insert was skipped".
+    assert seeded.execute(
+        "SELECT version_no FROM grn_line").fetchone()[0] == 3
+    assert seeded.execute("SELECT count(*) FROM grn").fetchone()[0] == 1
 
 
 @PG
@@ -1537,9 +1619,18 @@ def test_both_attribution_paths_retract_the_quarantine_they_may_have_raised():
     # makes the two keys impossible to drift apart.
     line = _sql("_mirror_bill_line").replace('"', "'")
     assert "retract_quarantine" in line
-    assert line.count("f'{bill_external_id}:{line_key}'") >= 2, (
+    assert line.count("f'{bill_external_id}:{quarantine_key}'") >= 2, (
         "the raise and the retraction do not key on the same object_id, so "
         "the exception a first pass raised is never found by the second")
+    # ...and the key they share is NOT `line_key`. Keying on the same string
+    # is necessary and was never sufficient: `line_key` falls back to the PO
+    # LINE's external id, which is the one value that CHANGES between the pass
+    # that quarantines and the pass that attributes -- an unresolved linkage
+    # becoming resolved is the ordinary sequence, not an edge case. Both passes
+    # then built the same shape out of different values and never met.
+    assert "f'{bill_external_id}:{line_key}'" not in line, (
+        "the bill quarantine is keyed on the PO line's external id again, so "
+        "it moves the moment the linkage arrives and the retraction misses")
 
 
 def test_a_retracted_quarantine_is_transitioned_and_never_deleted():
@@ -2046,7 +2137,14 @@ def test_a_human_triaged_exception_is_not_reopened_or_overwritten(seeded):
         session, kind="GRN_LINE_UNATTRIBUTED", object_type="grn_line",
         object_id="RCV-1:" + POL_EXTERNAL, detail="unattributed",
         raised_at=T0, entity_id=ENTITY, project_id=PROJECT)
-    store.act_on_exception(session, exception_id=exception_id, action="accept",
+    # The VERB is `ignore`; the STATUS it lands on is 'Accepted'. There is no
+    # `accept` action -- `store.EXCEPTION_ACTIONS` is
+    # {resolve, retry, ignore, write_off} and `ignore` maps to
+    # EXCEPTION_ACCEPTED, which is the status
+    # `ck_reconciliation_exception_status` admits
+    # (011_reconciliation_exception.sql:91-93). This test asserted the right
+    # outcome through a verb that does not exist.
+    store.act_on_exception(session, exception_id=exception_id, action="ignore",
                            actor="U-FINANCE", reason="Known vendor shortfall.")
     seeded.commit()
 

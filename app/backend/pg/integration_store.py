@@ -3152,11 +3152,20 @@ def bills_awaiting_detail(session: Session, *, connection_id: str,
                 AND e.detail ->> 'external_id' = i.external_id)
           AND {_via_connection('i.connection_id')}
         GROUP BY i.external_id
-        HAVING NOT bool_or(
+        -- COALESCE, AND WITHOUT IT THIS QUEUE DROPPED THE ONE CASE IT EXISTS
+        -- FOR. A bill whose payload carries NEITHER key makes
+        -- `i.payload -> 'line_items'` SQL NULL; `jsonb_typeof(NULL) = 'array'`
+        -- is NULL, so each conjunct is NULL, the OR is NULL, `bool_or` over an
+        -- all-NULL input returns NULL, and `HAVING NOT NULL` is NULL --
+        -- which EXCLUDES the group. A bill that HAS lines yields true and is
+        -- correctly excluded; one carrying `line_items: []` yields false and is
+        -- correctly included. Only the missing-key case inverted, and a bill
+        -- with no line_items key at all is exactly a line-less bill.
+        HAVING NOT COALESCE(bool_or(
             (jsonb_typeof(i.payload -> 'line_items') = 'array'
                 AND jsonb_array_length(i.payload -> 'line_items') > 0)
             OR (jsonb_typeof(i.payload -> 'lines') = 'array'
-                AND jsonb_array_length(i.payload -> 'lines') > 0))
+                AND jsonb_array_length(i.payload -> 'lines') > 0)), false)
         ORDER BY min(i.received_at), i.external_id
         LIMIT %(limit)s
         """,
