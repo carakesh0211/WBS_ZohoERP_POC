@@ -14,7 +14,7 @@ registry. Both sides agree, both sides are wrong, every test passes.
 sat in exactly that hole from Wave 2 until Wave 3.
 
 This module is the second, *independent* source: written from
-``migrations/pg/001..014``'s **CREATE TABLE** statements -- the schema, not the
+``migrations/pg/001..018``'s **CREATE TABLE** statements -- the schema, not the
 policies -- asking of each table only "does a row of this carry, or reach, a
 scope dimension?". A table that must be protected appears here whether or not
 any migration protects it, which is what makes "protected nowhere" detectable.
@@ -89,7 +89,7 @@ class ScopedTable:
     note: str = ""
 
 
-#: Every table in `migrations/pg/001..014` whose rows carry or reach a scope
+#: Every table in `migrations/pg/001..018` whose rows carry or reach a scope
 #: dimension. Hand-maintained from the CREATE TABLE statements -- see the
 #: module docstring. Ordered by migration, then by table name.
 SCOPED_TABLES: tuple[ScopedTable, ...] = (
@@ -569,11 +569,49 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
         note="Plan section 12's PR and PO state machines as data. A legal "
              "state change is legal estate-wide. READ-ONLY to capex_app, as "
              "lifecycle_state."),
+
+    # ---------------------------------------------------- 018_closure.sql
+    # The 013 shape, restated for the three closure documents: a denormalised
+    # `project_id` bound by FK to a real project, reached through `project` so
+    # that ALL FOUR dimensions are filtered. Filtering the column directly
+    # would waive entity, plant and location -- and a principal restricted to
+    # one entity but to no project carries `project_ids = NULL`, so such a
+    # predicate is TRUE for every project in the estate.
+    ScopedTable(
+        table="project_completion_review",
+        dimensions=("entity", "plant", "location", "project"), reach="joined",
+        path="project_completion_review.project_id -> project.entity_id / "
+             "plant_id / location_id / project_id",
+        status="covered", migration="018_closure.sql",
+        note="ONE live review per project (ux_project_completion_review_live, "
+             "partial on Draft/Submitted), so a project cannot accumulate "
+             "competing completion assertions."),
+    ScopedTable(
+        table="capitalisation_request",
+        dimensions=("entity", "plant", "location", "project"), reach="joined",
+        path="capitalisation_request.project_id -> project.entity_id / "
+             "plant_id / location_id / project_id",
+        status="covered", migration="018_closure.sql",
+        note="Carries cwip_balance_paise and allocated_paise -- an unscoped "
+             "read is another entity's capital position. `review_id` is bound "
+             "to the SAME project by fk_capitalisation_request_review_project, "
+             "so a request cannot cite another project's completion review."),
+    ScopedTable(
+        table="asset_allocation",
+        dimensions=("entity", "plant", "location", "project"), reach="joined",
+        path="asset_allocation.project_id -> project.entity_id / plant_id / "
+             "location_id / project_id",
+        status="covered", migration="018_closure.sql",
+        note="`wbs_id` is bound to the same project by "
+             "fk_asset_allocation_wbs_project against wbs_element "
+             "(wbs_id, project_id); without it an allocation could name "
+             "another project's element and the project_id-based policy would "
+             "still admit the row."),
 )
 
 #: Tables deliberately left WITHOUT a scope policy, each with the reason.
 #: Kept here so "not in SCOPED_TABLES" is a decision on record rather than an
-#: omission nobody ever looked at. Reviewed against `001..014`'s full
+#: omission nobody ever looked at. Reviewed against `001..018`'s full
 #: CREATE TABLE list; every table in the schema appears in exactly one of
 #: these two structures.
 UNSCOPED_TABLES: dict[str, str] = {
