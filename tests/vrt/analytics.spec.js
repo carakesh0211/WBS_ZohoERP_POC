@@ -877,6 +877,118 @@ test.describe('Wave 7 analytics screens — four states that never collapse', ()
     await expect(page.locator('#content .analytics-chip-dropped').first()).toBeVisible();
   });
 
+  test('the ledger fallback does not claim a project filter /api/dashboard cannot apply',
+    async ({ page }) => {
+      /* main.py:406 declares `dashboard(entity_id, plant_id)` and NO
+         project_id. FastAPI drops an undeclared query parameter silently —
+         neither applied nor refused — so
+             GET /api/dashboard                   -> 3 projects
+             GET /api/dashboard?project_id=PRJ-01 -> 3 projects, identically.
+         `LEDGER_HONOURS` nonetheless named `project_ids` as honoured on every
+         ledger route, so a screen on the fallback with ?project=X showed the
+         WHOLE PORTFOLIO'S money under an active "Project: X" chip and an EMPTY
+         "could not apply" list. A fabricated claim about scope, on a screen
+         showing money, is worse than showing no figure at all. */
+      const urls = [];
+      await page.route('**/api/dashboard**', (route) => {
+        urls.push(route.request().url());
+        return route.continue();
+      });
+      await signIn(page);
+      const project = await seededProject(page);
+      await gotoScreen(page, 'analytics-executive',
+        `project=${encodeURIComponent(project.project_id)}`);
+
+      await expect(page.locator('#content .analytics-source[data-source="ledger"]')).toBeAttached();
+
+      // It is NAMED as dropped, in the warning and on the chip.
+      const warning = page.locator('#content .analytics-unapplied');
+      await expect(warning).toBeVisible();
+      expect(await warning.innerText(),
+        'the screen showed the whole portfolio while claiming a project filter')
+        .toContain('Project');
+      const dropped = await page.locator('#content .analytics-chip-dropped').allInnerTexts();
+      expect(dropped.join(' | '), 'the project chip was not marked as dropped')
+        .toContain(project.project_id);
+
+      // And the request does not pretend either: a parameter the route does not
+      // declare is not sent, because sending it narrows nothing and makes a
+      // request log read as though a filter had been applied.
+      expect(urls.length, '/api/dashboard was never called').toBeGreaterThan(0);
+      for (const url of urls) {
+        expect(new URL(url).searchParams.get('project_id'),
+          '/api/dashboard was sent a project_id it does not declare').toBeNull();
+      }
+    });
+
+  test('SCR-23 and SCR-24 read tile keys the PREFERRED source actually returns',
+    async ({ page }) => {
+      /* THE FAILURE THIS PINS ONLY APPEARS ON THE GOOD PATH.
+         SCR-23's tiles were keyed `open_commitment` and `billed` — the names
+         /api/reconciliation returns — so the screen worked on the FALLBACK and
+         rendered "not reported" on /api/reports/metrics, which returns the
+         canonical `commitment` and `actual`. A SQLite build shows the fallback,
+         so the broken case was invisible until a reporting database existed.
+         SCR-24 was canonical already and correct on both.
+
+         The stub therefore carries the canonical vocabulary and NOTHING ELSE:
+         a tile asking for a name the reporting service does not return renders
+         `data-reported="false"` and fails here. */
+      await routeOpenApi(page, REPORT_PATHS);
+      const measures = {
+        budget: 500000, commitment: 100000, actual: 200000, available: 200000,
+        exposure: 300000, received_not_billed: 40000, pr_reserved: 0,
+        ordered: 100000, received: 60000, original: 500000, revisions: 0,
+      };
+      await routeJson(page, '**/api/reports/metrics**', metricsPayload({
+        rows: [metricsRow('P-1', 'CX-1', measures)],
+        totals: measures,
+      }));
+      await signIn(page);
+
+      for (const hash of ['analytics-commitment-ageing', 'analytics-cwip-ageing']) {
+        await gotoScreen(page, hash);
+        await expect(page.locator('#content .analytics-source[data-source="reports"]'))
+          .toBeAttached();
+
+        const tiles = await page.evaluate(() => [...document.querySelectorAll(
+          '#content .analytics-tile')].map((el) => ({
+          metric: el.getAttribute('data-metric'),
+          reported: el.getAttribute('data-reported'),
+        })));
+        expect(tiles.length, `${hash} rendered no tile`).toBeGreaterThan(0);
+        const unreported = tiles.filter((t) => t.reported !== 'true').map((t) => t.metric);
+        expect(unreported, `${hash} asked /api/reports/metrics for ${unreported.join(', ')}, `
+          + 'which is not a key its totals carry — the tile is keyed on the fallback\'s '
+          + 'vocabulary and renders NOT REPORTED whenever the preferred source answers')
+          .toEqual([]);
+
+        // The reconciliation block ran against a real figure rather than a null.
+        const quality = await page.locator('#content .analytics-quality-host').innerText()
+          .catch(() => '');
+        expect(quality, `${hash} checked its total against the rows while the total was null`)
+          .not.toContain('The card reported no figure');
+      }
+    });
+
+  test('SCR-23 still reads the same tiles when the reconciliation fallback answers',
+    async ({ page }) => {
+      // The other half of the same contract: renaming the tile keys must not
+      // break the path that was working. /api/reports/metrics is not mounted in
+      // this harness, so this is the real fallback, and the summary it returns
+      // is renamed into the canonical vocabulary before the cards see it.
+      await signIn(page);
+      await gotoScreen(page, 'analytics-commitment-ageing');
+      await expect(page.locator('#content .analytics-source[data-source="ledger"]'))
+        .toBeAttached();
+      const unreported = await page.evaluate(() => [...document.querySelectorAll(
+        '#content .analytics-tile')]
+        .filter((el) => el.getAttribute('data-reported') !== 'true')
+        .map((el) => el.getAttribute('data-metric')));
+      expect(unreported, 'the canonical tile keys stopped resolving on /api/reconciliation')
+        .toEqual([]);
+    });
+
   test('a REFUSED filter is UNAVAILABLE naming the field — not validation, not a fallback',
     async ({ page }) => {
       // `reporting.UNSUPPORTED_FILTERS` refuses vendor_ids with a 422 carrying
@@ -1329,6 +1441,67 @@ test.describe('Wave 7 analytics screens — one FilterSet, cascading', () => {
     expect(urls[0], 'a comma survived into the query string').not.toContain('%2C');
   });
 
+  test('buildQuery skips an empty array instead of restricting to the empty string',
+    async ({ page }) => {
+      /* THE EMPTY ARRAY INVERTED THE THREE-STATE DISTINCTION THE BACKEND
+         PRESERVES. `[] !== ''`, so an empty array passed buildQuery's skip test
+         and reached URLSearchParams.set, which stringifies it to '':
+         buildQuery({entity_ids: []}) emitted `?entity_ids=`, and FastAPI parses
+         that as ['']  — restrict the result to records whose entity id is the
+         empty string, which is none of them. "The caller chose nothing" became
+         "restrict to nothing".
+         `exports.py::serialise_scope` and `FilterSet._tuple` exist to keep
+         None (do not filter), () (an explicit empty selection) and a populated
+         tuple apart. A query string cannot express the middle one — there is no
+         way to send a repeated key zero times — so the honest encoding of "no
+         value chosen" is no parameter, which is what is asserted here.
+
+         This is a SHARED helper: core, budget, approvals, settings,
+         integration, closure and mapping all call through it, and every one of
+         their call sites is scalar. The scalar cases are asserted alongside so
+         a change made for the array case cannot move them. */
+      await signIn(page);
+      const out = await page.evaluate(async () => {
+        const m = await import('/static/src/core/api-client.js');
+        return {
+          emptyArray: m.buildQuery({ entity_ids: [] }),
+          emptyAmongOthers: m.buildQuery({ entity_ids: [], limit: 50 }),
+          list: m.buildQuery({ entity_ids: ['E1', 'E2'] }),
+          listWithHoles: m.buildQuery({ entity_ids: ['E1', '', null, 'E2'] }),
+          // Unchanged scalar behaviour, in every shape a call site uses.
+          scalar: m.buildQuery({ project_id: 'PRJ-01' }),
+          twoScalars: m.buildQuery({ entity_id: 'E1', plant_id: 'P1' }),
+          zero: m.buildQuery({ limit: 0 }),
+          falseValue: m.buildQuery({ include_void: false }),
+          emptyString: m.buildQuery({ q: '' }),
+          nulls: m.buildQuery({ a: null, b: undefined }),
+          nothing: m.buildQuery({}),
+          undef: m.buildQuery(undefined),
+          needsEncoding: m.buildQuery({ q: 'a b&c' }),
+        };
+      });
+
+      expect(out.emptyArray, 'an empty array was sent as ?entity_ids=, which FastAPI reads as '
+        + 'a filter on the empty string').toBe('');
+      expect(out.emptyAmongOthers, 'the empty array survived beside a real parameter')
+        .toBe('?limit=50');
+      expect(out.list, 'a list was comma-joined into one value')
+        .toBe('?entity_ids=E1&entity_ids=E2');
+      expect(out.listWithHoles).toBe('?entity_ids=E1&entity_ids=E2');
+
+      expect(out.scalar).toBe('?project_id=PRJ-01');
+      expect(out.twoScalars).toBe('?entity_id=E1&plant_id=P1');
+      // Zero and false are VALUES. Dropping them would be the mirror of the
+      // bug above: a measurement turned into "not specified".
+      expect(out.zero).toBe('?limit=0');
+      expect(out.falseValue).toBe('?include_void=false');
+      expect(out.emptyString).toBe('');
+      expect(out.nulls).toBe('');
+      expect(out.nothing).toBe('');
+      expect(out.undef).toBe('');
+      expect(out.needsEncoding).toBe('?q=a+b%26c');
+    });
+
   test('the drill-down carries the SAME FilterSet plus the clicked dimension, and sums back',
     async ({ page }) => {
       // THE CONTRACT: "a drill-down that does not sum back to the figure
@@ -1514,6 +1687,30 @@ test.describe('Wave 7 analytics screens — axe-core clean', () => {
       );
       expect(summary, `${screen.scr} has accessibility violations`).toEqual([]);
     });
+
+    /* WHY THIS SUITE MISSED A TREE THAT DESTROYED FOCUS ON EVERY KEYPRESS.
+       `mapping.spec.js:1150` and `spa-routing.spec.js:1068` carry a per-screen
+       "every control takes focus" test; this suite carried none, so eleven
+       screens were audited by axe — which reports on the STATIC tree — and by
+       nothing at all for keyboard reachability. Modelled on mapping.spec.js
+       and deliberately identical to it: the same four selectors, the same
+       tabIndex test, the same message. A control that cannot be reached by
+       keyboard is not reachable by anyone using a screen reader, and axe does
+       not fail a negative tabindex on its own. */
+    test(`${screen.scr} is keyboard reachable — every control takes focus`, async ({ page }) => {
+      const search = NEEDS_PROJECT.has(screen.hash)
+        ? `project=${encodeURIComponent((await seededProject(page)).project_id)}`
+        : '';
+      await gotoScreen(page, screen.hash, search);
+      const unreachable = await page.evaluate(() => {
+        const controls = [...document.querySelectorAll(
+          '#content button, #content select, #content input, #content a[href]')];
+        return controls
+          .filter((el) => !el.disabled && el.tabIndex < 0)
+          .map((el) => el.id || el.tagName);
+      });
+      expect(unreachable, 'an enabled control cannot be reached by keyboard').toEqual([]);
+    });
   }
 
   test('the WBS tree exposes its hierarchy to assistive technology', async ({ page }) => {
@@ -1540,13 +1737,157 @@ test.describe('Wave 7 analytics screens — axe-core clean', () => {
     const project = await seededProject(page);
     await gotoScreen(page, 'analytics-wbs-explorer', `project=${encodeURIComponent(project.project_id)}`);
     const toggle = page.locator('#content .tree-toggle:not(.leaf)').first();
-    if (await toggle.count()) {
-      await expect(toggle).toHaveAttribute('aria-expanded', /true|false/);
-      const before = await toggle.getAttribute('aria-expanded');
-      await toggle.focus();
-      await page.keyboard.press('Enter');
-      await expect(toggle).not.toHaveAttribute('aria-expanded', before);
-    }
+    /* THE ASSERTION IS THAT A TOGGLE EXISTS, NOT AN `if` AROUND THE ONES THAT
+       DO. This block used to be wrapped in `if (await toggle.count())`, which
+       makes the test PASS when the feature it names is entirely gone: an
+       explorer that regressed to emitting no `.tree-toggle`, or that marked
+       every node `.leaf`, would skip every assertion and report success. The
+       correct pattern is twelve lines above, in the hierarchy test, which
+       asserts `rows.length` before looking at rows. */
+    expect(await toggle.count(), 'the explorer rendered no expandable node, so expand and '
+      + 'collapse could not be exercised at all').toBeGreaterThan(0);
+    await expect(toggle).toHaveAttribute('aria-expanded', /true|false/);
+    const before = await toggle.getAttribute('aria-expanded');
+    await toggle.focus();
+    await page.keyboard.press('Enter');
+    await expect(toggle).not.toHaveAttribute('aria-expanded', before);
+  });
+
+  test('pressing a toggle does not throw the keyboard out of the tree', async ({ page }) => {
+    /* `paint()` clears the tbody and rebuilds the button that was pressed, so
+       the focused element stops existing and the browser moves focus to
+       <body>. A keyboard user lost their place on EVERY expand and collapse.
+       The old test never noticed because it re-resolved `.first()` to the NEW
+       button and asserted on its attribute; nothing ever read
+       `document.activeElement`. That is what is read here. */
+    const project = await seededProject(page);
+    await gotoScreen(page, 'analytics-wbs-explorer', `project=${encodeURIComponent(project.project_id)}`);
+    const toggle = page.locator('#content .tree-toggle:not(.leaf)').first();
+    expect(await toggle.count(), 'no expandable node to press').toBeGreaterThan(0);
+    const wbs = await toggle.getAttribute('data-wbs');
+    await toggle.focus();
+    await page.keyboard.press('Enter');
+
+    const after = await page.evaluate(() => {
+      const el = document.activeElement;
+      return {
+        tag: el ? el.tagName : null,
+        cls: el ? el.className : null,
+        wbs: el ? el.getAttribute('data-wbs') : null,
+      };
+    });
+    expect(after.tag, 'focus fell out of the tree when the toggle repainted it').not.toBe('BODY');
+    expect(after.cls, 'focus did not return to the toggle that was pressed')
+      .toContain('tree-toggle');
+    expect(after.wbs, 'focus returned to a DIFFERENT row than the one toggled').toBe(wbs);
+  });
+
+  test('the bulk controls survive a successful load', async ({ page }) => {
+    /* load() un-hid the controls and then ran the loader, whose first act is
+       onState('loading') — which hid them again. Nothing ever put them back,
+       so on every successful load the expand/collapse buttons were present in
+       the DOM, named in the accessibility tree, and permanently hidden. */
+    const project = await seededProject(page);
+    await gotoScreen(page, 'analytics-wbs-explorer', `project=${encodeURIComponent(project.project_id)}`);
+    const controls = page.locator('#content .analytics-tree-controls');
+    await expect(controls).toBeVisible();
+    await expect(controls.locator('button')).toHaveCount(2);
+    await expect(page.locator('#content .analytics-tree-row').first()).toBeVisible();
+  });
+
+  test('a collapse announces the count it produced, not the one before it', async ({ page }) => {
+    /* announceCount() was wired to the two bulk buttons and to the end of a
+       load, and never to a row toggle. Collapsing a subtree therefore left the
+       live region asserting the PREVIOUS count — a wrong number read aloud,
+       which is worse than a missing one. */
+    const project = await seededProject(page);
+    await gotoScreen(page, 'analytics-wbs-explorer', `project=${encodeURIComponent(project.project_id)}`);
+    const toggle = page.locator('#content .tree-toggle[aria-expanded="true"]').first();
+    expect(await toggle.count(), 'no expanded node to collapse').toBeGreaterThan(0);
+
+    const before = await page.locator('#content .analytics-tree-row').count();
+    await toggle.click();
+    const after = await page.locator('#content .analytics-tree-row').count();
+    expect(after, 'the collapse hid no row, so the announcement cannot be checked')
+      .toBeLessThan(before);
+
+    const said = await page.locator('#analyticsLiveRegion').innerText();
+    expect(said, `the live region announced a count of ${before} while ${after} rows are on screen`)
+      .toContain(`${after} WBS element(s) visible.`);
+  });
+
+  test('role="treegrid" is a promise the widget keeps — arrow keys navigate it',
+    async ({ page }) => {
+      /* The role tells assistive technology that arrow keys move between rows,
+         that Right expands and Left collapses, and that the widget owns a
+         focus point. The tree declared the role, implemented none of it and
+         had no focusable row at all. A role that promises an interaction the
+         widget does not implement is worse than the plain table role, because
+         the reader is told to press keys that do nothing. */
+      const project = await seededProject(page);
+      await gotoScreen(page, 'analytics-wbs-tree', `project=${encodeURIComponent(project.project_id)}`);
+
+      // Exactly one row is in the tab sequence — a treegrid with none cannot be
+      // reached by Tab, and one with many must be tabbed THROUGH, not INTO.
+      const roving = await page.evaluate(() => {
+        const rows = [...document.querySelectorAll('#content .analytics-tree-row')];
+        return {
+          total: rows.length,
+          stops: rows.filter((r) => r.getAttribute('tabindex') === '0').length,
+          focusable: rows.every((r) => r.hasAttribute('tabindex')),
+        };
+      });
+      expect(roving.total, 'the tree rendered no row').toBeGreaterThan(0);
+      expect(roving.focusable, 'a tree row is not focusable at all').toBe(true);
+      expect(roving.stops, 'a treegrid must have exactly one row in the tab sequence').toBe(1);
+
+      // Down moves to the next visible row, and focus lands on the row itself.
+      await page.locator('#content .analytics-tree-row[tabindex="0"]').focus();
+      const first = await page.evaluate(() => document.activeElement.getAttribute('data-wbs'));
+      await page.keyboard.press('ArrowDown');
+      const second = await page.evaluate(() => ({
+        wbs: document.activeElement.getAttribute('data-wbs'),
+        isRow: document.activeElement.classList.contains('analytics-tree-row'),
+      }));
+      expect(second.isRow, 'ArrowDown did not move focus to a tree row').toBe(true);
+      expect(second.wbs, 'ArrowDown did not move to a different row').not.toBe(first);
+
+      // Up comes back, so navigation is not one-way.
+      await page.keyboard.press('ArrowUp');
+      expect(await page.evaluate(() => document.activeElement.getAttribute('data-wbs')))
+        .toBe(first);
+
+      // Left collapses an expanded node; the row count falls and focus stays.
+      const expandedRows = await page.locator(
+        '#content .analytics-tree-row[aria-expanded="true"]').count();
+      expect(expandedRows, 'no expanded node, so Left cannot be exercised').toBeGreaterThan(0);
+      await page.locator('#content .analytics-tree-row[aria-expanded="true"]').first().focus();
+      const target = await page.evaluate(() => document.activeElement.getAttribute('data-wbs'));
+      const rowsBefore = await page.locator('#content .analytics-tree-row').count();
+      await page.keyboard.press('ArrowLeft');
+      expect(await page.locator('#content .analytics-tree-row').count(),
+        'ArrowLeft did not collapse the node').toBeLessThan(rowsBefore);
+      expect(await page.evaluate(() => document.activeElement.getAttribute('data-wbs')),
+        'ArrowLeft collapsed the node and lost the reader').toBe(target);
+
+      // Right expands it again.
+      await page.keyboard.press('ArrowRight');
+      expect(await page.locator('#content .analytics-tree-row').count(),
+        'ArrowRight did not expand the node it had just collapsed').toBe(rowsBefore);
+    });
+
+  test('the tree\'s scroll container is a named stop, not an anonymous one', async ({ page }) => {
+    // A tabindex="0" element with no role and no accessible name is a stop
+    // that announces nothing. The stop is correct — a wide table must be
+    // pannable without a mouse — so it is named rather than removed.
+    const project = await seededProject(page);
+    await gotoScreen(page, 'analytics-wbs-tree', `project=${encodeURIComponent(project.project_id)}`);
+    const wrap = page.locator('#content .table-wrap[tabindex="0"]').first();
+    expect(await wrap.count(), 'the tree rendered no scroll container').toBeGreaterThan(0);
+    await expect(wrap).toHaveAttribute('role', /.+/);
+    const name = await wrap.getAttribute('aria-label');
+    expect(name && name.trim().length, 'the focus stop carries no accessible name')
+      .toBeTruthy();
   });
 
   test('no screen emits a style attribute — the CSP forbids it', async ({ page }) => {

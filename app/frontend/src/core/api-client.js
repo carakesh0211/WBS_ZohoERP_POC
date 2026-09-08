@@ -80,10 +80,48 @@ export function newCorrelationId() {
   return 'cid-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
 }
 
+/**
+ * Serialise a parameter object into a query string.
+ *
+ * THE EMPTY ARRAY WAS THE BUG, and it inverted the one distinction the backend
+ * takes trouble to preserve. `[] !== ''`, so an empty array passed the skip
+ * test above and reached `URLSearchParams.set`, which stringifies it to the
+ * empty string: `buildQuery({entity_ids: []})` emitted `?entity_ids=`. FastAPI
+ * parses that as `['']` — a filter restricting the result to records whose
+ * entity id is the empty string, which is none of them. So "the caller chose
+ * nothing" became "restrict to nothing", and a screen that meant "do not
+ * filter on entity" got an empty table.
+ *
+ * `exports.py::serialise_scope` and `FilterSet._tuple` exist to keep three
+ * states apart — `None` (do not filter), `()` (an explicit empty selection)
+ * and a populated tuple — and a query string cannot express the middle one at
+ * all: there is no way to send a repeated key zero times. The honest encoding
+ * of "no value chosen" is therefore NO PARAMETER, which is what this now does.
+ *
+ * A POPULATED ARRAY IS REPEATED KEYS, not a comma-join. `set(k, ['A','B'])`
+ * emitted `k=A%2CB` — ONE value, the five-character string "A,B" — which
+ * FastAPI parses as a single id literally named "A,B", matching no row and
+ * returning an empty result. Every non-analytics call site is scalar today, so
+ * this corrects no live defect; it removes a trap that fires silently the
+ * first time one of them grows a list. `analytics-api.js::toSearch` already
+ * encodes lists this way and now agrees with this function rather than
+ * working around it.
+ *
+ * SCALAR BEHAVIOUR IS UNCHANGED. `Object.entries` yields each key once, so
+ * `append` and `set` are identical for a scalar; the skip test for undefined,
+ * null and the empty string is untouched.
+ */
 export function buildQuery(params) {
   const q = new URLSearchParams();
   for (const [key, value] of Object.entries(params || {})) {
     if (value === undefined || value === null || value === '') continue;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item === undefined || item === null || item === '') continue;
+        q.append(key, String(item));
+      }
+      continue;
+    }
     q.set(key, value);
   }
   const s = q.toString();

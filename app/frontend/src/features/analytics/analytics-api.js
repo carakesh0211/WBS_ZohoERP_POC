@@ -785,24 +785,27 @@ export function toQuery(filters) {
 /**
  * A FilterSet as a REPEATED-KEY search string: `?entity_ids=A&entity_ids=B`.
  *
- * THIS EXISTS BECAUSE `core/api-client.js::buildQuery` CANNOT EXPRESS A LIST,
- * AND FAILS SILENTLY WHEN ASKED TO. It builds parameters with
+ * THIS EXISTED BECAUSE `core/api-client.js::buildQuery` COULD NOT EXPRESS A
+ * LIST AND FAILED SILENTLY WHEN ASKED TO. It built parameters with
  * `URLSearchParams.set(key, value)`, and `set` stringifies an array by joining
- * it with commas: `set('entity_ids', ['E1','E2'])` emits
+ * it with commas: `set('entity_ids', ['E1','E2'])` emitted
  * `entity_ids=E1%2CE2` — ONE value, the eight-character string "E1,E2".
- *
  * `api/reports.py` declares every list filter as `list[str] | None = Query()`,
- * so FastAPI would parse that as a single entity id literally named "E1,E2",
- * match no row, and return `state: "empty"`. The screen would then render "no
- * data matches these filters" — a confident, wrong, unfalsifiable answer to a
- * question that was never asked. A two-entity filter would silently become a
- * no-entity one.
+ * so FastAPI parsed that as a single entity id literally named "E1,E2",
+ * matched no row, and returned `state: "empty"` — a confident, wrong,
+ * unfalsifiable answer to a question that was never asked.
  *
- * `buildQuery` is in `core/` and is shared by every feature; changing it is
- * not this feature's to make. So the query string is built here, correctly,
- * and appended to the path — `request()` concatenates
- * `basePath + path + buildQuery(params)` and `buildQuery(undefined)` is the
- * empty string, so a path that already carries its own search survives intact.
+ * `buildQuery` NOW ENCODES LISTS AS REPEATED KEYS AND DROPS AN EMPTY ARRAY, so
+ * the two agree and neither is a workaround for the other. This function stays
+ * for the two properties `buildQuery` does not have and should not grow:
+ *
+ *   * it returns a SEARCH STRING to append to a path, so a drill-down URL can
+ *     be built without a params object — `request()` concatenates
+ *     `basePath + path + buildQuery(params)` and `buildQuery(undefined)` is the
+ *     empty string, so a path carrying its own search survives intact;
+ *   * its order is DETERMINISTIC (FilterSet-key order, then list order), which
+ *     is what makes a drill-down link comparable by eye with the card link it
+ *     came from.
  *
  * Order is FilterSet-key order and then list order, so the same FilterSet
  * always produces the same URL — which is what makes a drill-down link
