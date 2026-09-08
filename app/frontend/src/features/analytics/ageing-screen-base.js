@@ -241,6 +241,22 @@ export function createAgeingScreen(spec) {
             while (quality.firstChild) quality.removeChild(quality.firstChild);
           }
         },
+        /* SCR-23 AND SCR-24 WERE THE TWO SCREENS THAT ANNOUNCED NOTHING ON
+           SUCCESS. Every other analytics screen says how much it rendered from
+           inside its own render; these two rendered cards and said nothing, so
+           applying a filter here was silent to anyone not looking at the tiles.
+           The primary card IS the screen, so the primary card is the sentence —
+           and "not reported" is announced as such, because a figure the source
+           withheld must not be announced as a figure. */
+        readyAnnouncement: (data) => {
+          const summary = (data && (data.summary || data.totals)) || null;
+          const primary = spec.totals[0];
+          const value = summary
+            ? (summary[primary.key] ?? summary[`${primary.key}_paise`] ?? null) : null;
+          return value === null || value === undefined
+            ? `${primary.label} was not reported by the source that answered.`
+            : `${primary.label}: ${inr(value)}.`;
+        },
       });
     }
 

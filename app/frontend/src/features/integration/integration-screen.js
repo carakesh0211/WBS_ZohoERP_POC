@@ -100,9 +100,11 @@ export function createLoader({
    *   carries the rows.
    * @param {(state:string)=>void} [handlers.onState] - told every state
    *   change, so a screen can hide its table without re-deriving the state.
+   * @param {(data:*, result:Object)=>string} [handlers.readyAnnouncement] -
+   *   what the live region says once the data is on screen.
    * @returns {Promise<'ready'|'empty'|'error'|'permission'|'unavailable'>}
    */
-  async function run(call, { render, onState = () => {} }) {
+  async function run(call, { render, onState = () => {}, readyAnnouncement = null }) {
     clearNotes();
     host.set('loading');
     onState('loading');
@@ -118,10 +120,21 @@ export function createLoader({
       const line = sourceLine(result);
       if (line) notes.appendChild(line);
 
+      const saidBefore = typeof announce.calls === 'number' ? announce.calls : null;
       const hasRows = render(result.data, result);
       if (hasRows) {
         host.set('ready');
         onState('ready');
+        /* Every other outcome here reaches the live region; `ready` reached it
+           only when the screen's own render happened to announce. The default
+           closes that gap WITHOUT talking over a screen that did announce — a
+           live region holds one message, so a generic sentence emitted after a
+           row count would replace it. See analytics-screen.js for the same
+           rule, and analytics-kit.js::createAnnouncer for the counter. */
+        const said = readyAnnouncement ? readyAnnouncement(result.data, result) : '';
+        const screenSpoke = saidBefore !== null && announce.calls > saidBefore;
+        if (said) announce(said);
+        else if (!screenSpoke) announce(`${what} is shown.`);
         return 'ready';
       }
       host.set('empty');

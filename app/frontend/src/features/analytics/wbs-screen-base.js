@@ -79,6 +79,14 @@ export function createWbsScreen(spec) {
     const tree = createWbsTree({
       metrics: spec.metrics,
       getFilters,
+      /* THE TOGGLE ANNOUNCES ITS OWN RESULT. It used not to: `announceCount()`
+         was wired to the two bulk buttons and to the end of a successful load,
+         and never to a row's expand/collapse. Collapsing a subtree therefore
+         left the live region asserting the count from BEFORE the collapse — 15
+         elements announced while 11 were on screen. A wrong number read aloud
+         is worse than none, and the fix belongs here rather than in the widget:
+         the widget knows a repaint happened, the screen owns the live region. */
+      onToggle: () => announceCount(),
       caption: `The WBS hierarchy of the selected project, one row per element, with the budget `
         + `and exposure rolled up to each node`,
       rowHref: (row) => drilldownHref('analytics-wbs-element', getFilters(), {
@@ -275,16 +283,30 @@ export function createWbsScreen(spec) {
           // only the success path can put it back.
           tree.el.hidden = false;
           tree.setRows(rows, { collapseBelow: spec.collapseBelow });
-          announceCount();
           return true;
         },
+        /* The count is announced from HERE and not from inside `render`.
+           `run()` now announces on `ready` for every screen, and an
+           announcement made mid-render would be overwritten a moment later by
+           that one — the live region holds one message, and the last writer
+           wins. Announcing from the hook makes the count the message. */
+        readyAnnouncement: () => `${tree.visibleCount()} WBS element(s) visible.`,
         onState: (state) => {
-          if (state !== 'ready' && state !== 'stale') {
-            tree.setRows([]);
-            tree.el.hidden = true;
-            controls.hidden = true;
-            while (tiles.firstChild) tiles.removeChild(tiles.firstChild);
+          if (state === 'ready' || state === 'stale') {
+            /* AND BACK AGAIN. `load()` un-hid the controls at :247 and then
+               ran the loader, whose first act is `onState('loading')` — which
+               hid them. Nothing ever put them back, so on every successful
+               load the bulk expand/collapse buttons were permanently hidden:
+               `{"controlsHiddenAttr":true,"loaderState":"ready",
+               "treeRowsRendered":15}`. The un-hide has to live on the branch
+               that knows there is a tree to operate on, which is this one. */
+            controls.hidden = false;
+            return;
           }
+          tree.setRows([]);
+          tree.el.hidden = true;
+          controls.hidden = true;
+          while (tiles.firstChild) tiles.removeChild(tiles.firstChild);
         },
       });
 

@@ -528,9 +528,19 @@ export function keyValues(pairs) {
 /** An announcer bound to a live region the HOST created. Never creates one. */
 export function createAnnouncer(regionId) {
   const region = document.getElementById(regionId);
-  return function announce(message) {
+  function announce(message) {
+    announce.calls += 1;
     if (region) region.textContent = String(message ?? '');
-  };
+  }
+  /* HOW MANY TIMES THIS REGION HAS BEEN WRITTEN, and it is load-bearing rather
+     than diagnostic. A live region holds ONE message and the last writer wins,
+     so a generic "the screen is shown" emitted after a screen already
+     announced "40 projects in scope" would replace a useful sentence with a
+     useless one. `analytics-screen.js::run` reads this counter across the
+     render call and only supplies its default when the screen said nothing at
+     all — see the note there. */
+  announce.calls = 0;
+  return announce;
 }
 
 /** Replace a host's children with one node. */

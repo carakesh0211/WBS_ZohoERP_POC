@@ -454,9 +454,16 @@ export function selectInput(options, attrs = {}) {
 /** An announcer bound to a live region the HOST created. Never creates one. */
 export function createAnnouncer(regionId) {
   const region = document.getElementById(regionId);
-  return function announce(message) {
+  function announce(message) {
+    announce.calls += 1;
     if (region) region.textContent = String(message ?? '');
-  };
+  }
+  /* See the twin in analytics-kit.js. A live region holds one message, so
+     `integration-screen.js::run` counts the writes across the render call and
+     announces its own default only when the screen announced nothing — a
+     generic sentence must never replace a screen's row count. */
+  announce.calls = 0;
+  return announce;
 }
 
 /** Replace a host's children with one node. */

@@ -116,9 +116,12 @@ export function createLoader({
    *   The distinction is the caller's because only the caller knows which
    *   field carries the rows.
    * @param {(state:string)=>void} [handlers.onState]
+   * @param {(data:*, result:Object)=>string} [handlers.readyAnnouncement] -
+   *   what the live region should say once the data IS on screen. See the note
+   *   in `run()`; a screen that can count what it rendered should say so.
    * @returns {Promise<string>} one of STATES.
    */
-  async function run(call, { render, onState = () => {} }) {
+  async function run(call, { render, onState = () => {}, readyAnnouncement = null }) {
     clearNotes();
     host.set('loading');
     setState('loading');
@@ -138,6 +141,7 @@ export function createLoader({
       const stale = staleBlock(result.freshness);
       if (stale) notes.appendChild(stale);
 
+      const saidBefore = typeof announce.calls === 'number' ? announce.calls : null;
       const hasRows = render(result.data, result);
       if (!hasRows) {
         host.set('empty');
@@ -150,8 +154,25 @@ export function createLoader({
       const next = result.freshness && result.freshness.stale ? 'stale' : 'ready';
       setState(next);
       onState(next);
+      /* SUCCESS WAS THE ONE STATE THAT COULD GO UNANNOUNCED. Every other
+         outcome reaches the live region here — empty, stale, unavailable,
+         denied, error, permission — while `ready` reached it only if the
+         screen's own `render` happened to announce. Most do; SCR-23 and SCR-24
+         did not, so applying a filter to an ageing screen said nothing at all
+         to anyone not looking at it, which is indistinguishable from a filter
+         bar that did nothing.
+         THE DEFAULT MUST NOT TALK OVER THE SCREEN. A live region holds one
+         message and the last writer wins, so emitting "The CWIP ledger is
+         shown." after the screen already said "12 bill(s); 9 counted in CWIP"
+         would replace a useful sentence with an empty one. The announcer counts
+         its writes; the default is used only when the count did not move. */
       if (next === 'stale') {
         announce(`${what} is shown from stale data that could not be refreshed.`);
+      } else {
+        const said = readyAnnouncement ? readyAnnouncement(result.data, result) : '';
+        const screenSpoke = saidBefore !== null && announce.calls > saidBefore;
+        if (said) announce(said);
+        else if (!screenSpoke) announce(`${what} is shown.`);
       }
       return next;
     } catch (err) {
