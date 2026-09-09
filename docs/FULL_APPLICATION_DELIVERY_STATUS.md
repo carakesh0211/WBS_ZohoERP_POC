@@ -1,7 +1,8 @@
 # Full application — delivery status
 
-**Branch:** `full-application/build` · **Wave 7 in its completion gate** ·
-full local suite **3601 passed, 615 skipped, 1 xfailed, 0 failed** at `1b7f08e`
+**Branch:** `full-application/build` · **Wave 7 CLOSED** · **Wave 8 in
+progress** · full local suite **3601 passed, 615 skipped, 1 xfailed,
+0 failed**
 
 ## Current milestone
 
@@ -112,16 +113,42 @@ Both are recorded here rather than fixed because neither produces a wrong
 answer today and both touch surfaces the gate is measuring. Owner: Wave 8's
 security and audit stream.
 
+## Wave 7 gate — MET, on evidence
+
+CI run **34317944466** at commit **`872f57a`**: **all five jobs green.**
+
+| Job | Result |
+|---|---|
+| Contract and inventory gates | green |
+| Supply chain | green |
+| Regression suite | green |
+| PostgreSQL integration suite | green — **1520 collected, 1519 executed, 1 skipped, 0 failed, 0 errored** |
+| Visual regression (approved UI) | green — **1814 passed, 4 skipped** |
+
+The PostgreSQL result is the one worth naming. `tests/test_pg_rls_wave7_matrix.py`
+had never passed anywhere: it skips on every machine here, and its first two CI
+runs failed — three tests, then two, every one of them in the test's own
+seeding rather than in a policy assertion. All eight now execute against a live
+database as `capex_app` and pass, so migrations 017–019's policies are enforced
+and proven rather than declared. That was the finding where weakening any 019
+policy to `USING (true)` left the whole suite green.
+
+The single PostgreSQL skip is pre-existing and not from this wave:
+`test_pg_reconciliation.py:821` skips on "got empty parameter set" — a
+parametrised test with nothing to run. Recorded as a mild vacuity for a later
+pass rather than counted as coverage.
+
 ## Current slice
 
-**Wave 7 completion gate.** Outstanding: five green CI jobs on one commit.
+**Wave 8** — foreign-currency and period controls; security and audit closure;
+migration and operational hardening; UAT and release package.
 
 ## Next three deliverables
 
-1. CI green on `1b7f08e`, then push and close the Wave 7 gate.
-2. Wave 8 — foreign-currency and period controls; security and audit closure;
-   migration and operational hardening; UAT and release package.
-3. Final adversarial review and the application gate.
+1. Wave 8's four streams, on migrations 023 (FX) and 024 (audit identity).
+2. Final independent adversarial review; fix every high and medium finding.
+3. The application gate: full local suite, live PostgreSQL, VRT, five green
+   CI jobs, 40/40 screens, clean branch.
 
 ## Genuine blockers
 
