@@ -98,9 +98,12 @@
 -- `currency` and `exchange_rate`, `dto.PurchaseOrderDTO` carries
 -- `currency_code`, and `C13_conflicts.json` names "foreign currency PO and
 -- exchange-rate variance" as one of the required commitment-to-actual
--- positions. Its rate is still applied to nothing; `procurement.py:1988`
--- renders it to a STRING for a JSON body and that remains the whole of its
--- use.
+-- positions. Its rate is still applied to nothing:
+-- `procurement.reconciliation_lines` renders it to a STRING for a JSON body
+-- and that remains the whole of its use. (023's header cites that as
+-- `procurement.py:1988`; it is at 2419-2420 as this file is written, having
+-- moved while this file was being written -- which is a small argument for
+-- naming the function as well as the line.)
 --
 -- It gets no columns here BECAUSE IT HAS NO INGESTION PATH TO WRITE THEM.
 -- `_write_po` (`procurement_services.py:2119`) is the only writer of
