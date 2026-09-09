@@ -2,10 +2,28 @@
 
 Four ways to demonstrate, from least to most exposed. Pick the lowest one that meets the need.
 
-> **Read this first.** The POC has no user model. Every visitor can approve purchase requests,
-> cancel purchase orders and capitalise projects. On a laptop that is fine. On a public URL it is
-> not. Anything beyond option 1 must have `DEMO_USER` and `DEMO_PASSWORD` set — the app then
-> demands a username and password before a single screen loads.
+> **Read this first.** This block previously said two things, and both were wrong in
+> opposite directions.
+>
+> **"The POC has no user model" — false since Wave 3.** There is one: server-side
+> sessions, thirteen roles, a permission table, row-level data scope, and maker-checker
+> that refuses self-approval. Every screen and every API route requires a sign-in.
+>
+> **"`DEMO_USER` and `DEMO_PASSWORD` … demands a username and password" — never true.**
+> Those two variables are read at exactly one place, `app/run.py`, to decide whether to
+> print a warning. `grep` finds neither name anywhere in `app/backend/`. No middleware,
+> dependency or route consults them. **Setting them changes no behaviour at all.**
+>
+> **What actually protects a deployment, and why it is not enough for a public URL.**
+> The sign-in is real, but in the `local-demo` profile the only accounts that exist are
+> seeded development identities whose passwords are the user id followed by `!demo` —
+> `U-ADM!demo`, and so on. The sign-in screen lists the user ids, so the passwords are
+> guessable by anyone who loads the page.
+>
+> **Therefore: do not put this on a public URL.** Not because it is ungated, but because
+> its gate is a known credential scheme. Option 1 remains the recommendation; anything
+> beyond it needs a real access control in front of the application, and that control
+> does not exist in this repository today.
 
 ---
 
@@ -80,7 +98,8 @@ Use this when Atha Group want to explore without you on the call.
 
 1. Push this repository to GitHub (private).
 2. In Render: **New → Blueprint**, select the repository. `render.yaml` configures the rest.
-3. In the dashboard, set `DEMO_USER` and `DEMO_PASSWORD` before you share the URL.
+3. Do **not** share the URL. `DEMO_USER` / `DEMO_PASSWORD` gate nothing (see the
+   header); the deployment is protected only by seeded, guessable credentials.
 4. Wait for the first build, then open the `.onrender.com` address.
 
 Two things to expect on the free tier:
@@ -116,7 +135,8 @@ docker run -p 8000:8000 -e DEMO_USER=atha -e DEMO_PASSWORD=<strong> -v capexdata
 
 Best once they want their own people clicking around, and it avoids any public exposure. Their IT
 team runs the container on an internal host; only staff on the network can reach it. Still set
-`DEMO_USER` and `DEMO_PASSWORD` — an internal network is not an access control.
+a real access control in front of the app — an internal network is not one, and
+neither is `DEMO_USER` / `DEMO_PASSWORD`, which nothing reads.
 
 ---
 
@@ -156,7 +176,8 @@ needs a session:
 
 ## Before you share a link with anyone
 
-- [ ] `DEMO_USER` and `DEMO_PASSWORD` are set, and you have confirmed the login prompt appears
+- [ ] You have NOT relied on `DEMO_USER` / `DEMO_PASSWORD`, which gate nothing, and
+      you have a real access control in front of the application
 - [ ] The password went by a different channel from the link
 - [ ] The data is the demo dataset only — no real Atha Group figures have been loaded
 - [ ] The Zoho connector is in mock mode and holds no real credentials

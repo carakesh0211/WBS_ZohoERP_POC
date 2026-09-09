@@ -1,6 +1,8 @@
 # One-click deploy to Render. Push this repository to GitHub, then in Render:
 #   New  ->  Blueprint  ->  select the repository.
-# Set DEMO_USER and DEMO_PASSWORD in the dashboard before sharing the URL.
+# DO NOT SHARE THE URL. DEMO_USER / DEMO_PASSWORD gate nothing -- no
+# middleware reads them -- and the only accounts in the demo profile are
+# seeded identities whose passwords are the user id plus '!demo'. DEPLOY.md.
 services:
   - type: web
     name: capex-wbs-control-hub

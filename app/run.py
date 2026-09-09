@@ -14,8 +14,11 @@ Environment:
                     of the port: unset, this process serves purely on SQLite
                     as before, and /readyz honestly reports "not configured"
                     rather than 200.
-    DEMO_USER       set both of these to require a username and password
-    DEMO_PASSWORD   before anything in the app is reachable
+    DEMO_USER       READ ONLY, TO DECIDE WHETHER TO PRINT A WARNING BELOW.
+    DEMO_PASSWORD   These gate NOTHING. No middleware, dependency or route
+                    in `app/backend/` reads either name -- grep finds them
+                    nowhere outside this file. They were documented for
+                    three waves as an access control and never were one.
 
 DEF-01
 ------
@@ -179,10 +182,20 @@ def main(argv: list[str] | None = None) -> int:
         or os.environ.get("PORT", "8000")
     )
 
-    if host != "127.0.0.1" and not (os.environ.get("DEMO_USER") and os.environ.get("DEMO_PASSWORD")):
-        print("\n  WARNING: binding to", host, "with no DEMO_USER / DEMO_PASSWORD set.")
-        print("  Anyone who reaches this address can approve, cancel and capitalise.")
-        print("  Set both variables before exposing this beyond your own machine.\n")
+    # The warning names the REAL risk. It used to say "set DEMO_USER and
+    # DEMO_PASSWORD", which reads as a remedy and is not one: nothing in
+    # `app/backend/` consults either variable, so setting them changes no
+    # behaviour at all. Telling an operator to set them was worse than
+    # saying nothing -- it left them believing the address was gated.
+    if host != "127.0.0.1":
+        print("\n  WARNING: binding to", host, "-- beyond this machine.")
+        print("  Every screen requires a sign-in, but in the local-demo")
+        print("  profile the only accounts that exist are SEEDED DEVELOPMENT")
+        print("  IDENTITIES whose passwords are the user id followed by")
+        print("  '!demo'. The sign-in screen lists the user ids, so they are")
+        print("  guessable by anyone who reaches it.")
+        print("  DEMO_USER / DEMO_PASSWORD do NOT help: nothing reads them.")
+        print("  Do not expose this address without a real access control.\n")
 
     import uvicorn
     print(f"CAPEX & WBS Control Hub -> http://{'localhost' if host == '127.0.0.1' else host}:{port}")
