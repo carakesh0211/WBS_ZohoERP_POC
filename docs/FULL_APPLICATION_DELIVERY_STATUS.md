@@ -74,7 +74,8 @@ Verified in a browser, not inferred.
 | M8 | A VRT test that passed when its feature was gone | **Closed** |
 | M9 | "All four dimensions" true of the call, not the effect | **Documented** |
 | L3, L4, L5 | `buildQuery` empty array; `SCOPABLE` gap; attribution | **Closed** |
-| L1, L2, L6 | `FilterSet.buckets()` dead code; SCR-40 reveal gate; duplicate button names | **Recorded, not fixed** |
+| L1 | `FilterSet.buckets()` mapped `received_not_billed` to GRN | **Closed** — `0c8253e` moved it to PO, where the branch that emits it lives |
+| L2, L6 | SCR-40 reveal gate; datatable's duplicate "Details" names | **Open, owner Wave 8 Agent B**, no live defect today |
 
 ### M3 is open by decision, not by oversight
 
@@ -88,6 +89,28 @@ measuring 8.313:1 and 7.558:1. It is **not applied** because `styles.css` is
 byte-frozen behind a SHA-256 pin and darkening an approved token is a visual
 change requiring the product owner's approval. The false claim is corrected in
 the contract with the measurements and the reason it is unapplied.
+
+### The two LOW findings left open, and why
+
+**L2 — SCR-40's reveal gate is non-discriminating.**
+`connector-audit-log.js:80` gates the reveal on `connector.read` while the
+route behind it gates on `audit.read`. The holder sets are not merely
+overlapping, they are IDENTICAL — `('Administrator', 'Auditor')` for both — so
+`state.canReveal` is unconditionally true and the withheld branch is
+unreachable by any role in this build. No live defect. It becomes one the day
+the two sets diverge, at which point the screen offers a control the API
+refuses. One-line fix; deferred rather than taken mid-gate because
+`mapping.spec.js` asserts against that constant.
+
+**L6 — every per-row disclosure button is named "Details".**
+`capex-datatable.js:113-131` gives them no `aria-label` and no `aria-controls`,
+so a screen-reader user hears the same name for every row. It is a shared
+Wave-2 component used by many screens, and changing a button's accessible name
+mid-gate would move assertions in specs that are currently green.
+
+Both are recorded here rather than fixed because neither produces a wrong
+answer today and both touch surfaces the gate is measuring. Owner: Wave 8's
+security and audit stream.
 
 ## Current slice
 
