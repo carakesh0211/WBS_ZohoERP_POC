@@ -227,10 +227,35 @@ def require(principal_: dict, permission: str) -> None:
 
 
 def require_separation(principal_: dict, permission: str, maker_user_id: str | None,
-                       *, object_label: str = "this item") -> None:
-    """Maker-checker. The person who raised something may never approve it."""
-    if permission in MAKER_CHECKER and maker_user_id and \
-            principal_["user_id"] == maker_user_id:
+                       *, object_label: str = "this item",
+                       require_maker: bool = False) -> None:
+    """Maker-checker. The person who raised something may never approve it.
+
+    A falsy ``maker_user_id`` means "this caller did not tell me who the maker
+    is". By default that is PERMISSIVE, and deliberately so: several callers
+    resolve the maker from a row they may not be able to see yet, and turning
+    "not found" into a segregation refusal would answer the wrong question
+    with the wrong status code.
+
+    That default is also how ``bill.void`` shipped a control that never ran:
+    ``services.void_bill`` read a ``created_by`` column the `bill` table did
+    not have, so the maker was always ``None``, the ``and`` short-circuited,
+    and the function returned having compared nobody. Callers that MUST know
+    the maker now say so with ``require_maker=True`` and get a refusal instead
+    of silent permission -- the same reasoning as an empty scope meaning
+    "nothing", never "everything".
+    """
+    if permission not in MAKER_CHECKER:
+        return
+    if not maker_user_id:
+        if require_maker:
+            raise AuthError(
+                403, "MAKER_UNKNOWN",
+                f"{object_label} does not record who raised it, so segregation "
+                f"of duties cannot be verified. It cannot be approved until the "
+                f"maker is known.")
+        return
+    if principal_["user_id"] == maker_user_id:
         raise AuthError(
             403, "SELF_APPROVAL",
             f"You raised {object_label} and cannot also approve it. "

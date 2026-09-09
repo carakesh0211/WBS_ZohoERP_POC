@@ -408,8 +408,18 @@ def void_bill(con, actor: dict, bill_id: str, *, reason: str | None):
             raise BusinessError(409, "INVALID_TRANSITION", f"{b['bill_number']} is already void.")
         if not (reason or "").strip():
             raise BusinessError(422, "REASON_REQUIRED", "Voiding a bill requires a reason.")
+        # `created_by` is the MAKER of the bill (db.py CREATE TABLE bill). The
+        # column was added in Wave 8: until then this call read a column that
+        # did not exist, always passed None, and enforced nothing at all -- a
+        # FinanceApprover could void a bill they had raised themselves and the
+        # segregation-of-duties report stayed clean.
+        #
+        # `require_maker=True` is what keeps that from silently recurring: if a
+        # bill row carries no maker, the void is REFUSED rather than waved
+        # through, so a future ingestion path that forgets to populate the
+        # column fails loudly instead of disabling the control.
         auth.require_separation(actor, "bill.void", b.get("created_by"),
-                                object_label=b["bill_number"])
+                                object_label=b["bill_number"], require_maker=True)
         con.execute("""UPDATE bill SET accounting_status='Void', status='Void', voided_by=?,
                        voided_at=?, void_reason=?, version_no=version_no+1 WHERE bill_id=?""",
                     (actor["user_id"], now(), reason, bill_id))

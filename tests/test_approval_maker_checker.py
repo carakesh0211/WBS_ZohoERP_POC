@@ -65,10 +65,17 @@ RECONCILIATION NOTES (what moved between the frozen contract and the build)
   ``approval_stage``, none of which has an ``updated_by``.
 
 Ownership: stream 5 owns this file and ``tests/test_approval_e2e.py`` only.
-Nothing here edits an application file, a migration, another test, or
-``TEST_MANIFEST.json``. Defects found are reported, not patched -- see
-``test_bill_void_maker_checker_is_structurally_inert`` and this module's
-report.
+Defects found were reported, not patched.
+
+WAVE 8 UPDATE. The defect this file reported -- ``bill.void`` carrying a
+maker-checker call that compared nobody, because ``services.void_bill`` read a
+``created_by`` column the `bill` table did not have -- has been CLOSED by the
+wave that owns those files: the column exists and is seeded
+(``app/backend/db.py``), and ``services.void_bill`` now passes
+``require_maker=True`` so an unattributed bill is refused rather than waved
+through. ``KNOWN_INERT`` is consequently empty and the strict xfail is gone;
+see ``test_bill_void_maker_checker_reads_a_real_maker_column`` and
+``test_an_unattributed_bill_cannot_be_voided_at_all``.
 """
 from __future__ import annotations
 
@@ -223,10 +230,15 @@ def _scenario_capitalisation_approve(make_user, raw_con):
 def _scenario_bill_void(make_user, raw_con):
     """Bill void: the maker also holds FinanceApprover.
 
-    This scenario is expected to FAIL until the product records who raised a
-    bill -- see ``test_bill_void_maker_checker_is_structurally_inert``. It
-    still runs, and still asserts the desired behaviour, so the day the gap is
-    closed the xfail turns into an XPASS and forces the marker off.
+    Wave 8: this scenario used to be an expected failure. The `bill` table now
+    carries `created_by` (``app/backend/db.py``), which is the column
+    ``services.void_bill`` has always read, so the control is real and the
+    xfail is gone -- see
+    ``test_bill_void_maker_checker_reads_a_real_maker_column``.
+
+    ``conftest.insert_bill`` does not take a maker (it predates the column and
+    belongs to another owner), so the maker is written here with an explicit
+    UPDATE rather than by widening a shared helper.
     """
     from conftest import insert_bill
 
@@ -237,9 +249,8 @@ def _scenario_bill_void(make_user, raw_con):
     insert_bill(raw_con, bill_id="BILL-MC-SELF", bill_number="BILL-2026-8801",
                 po_id=None, po_line_id=None, wbs_id=DEMO_WBS,
                 budget_head_id=DEMO_HEAD, amount_paise=100_00_000)
-    # The maker of this bill is `maker`. There is no column in which to say so:
-    # that is precisely the defect, and it is asserted separately below rather
-    # than worked around here.
+    raw_con.execute("UPDATE bill SET created_by=? WHERE bill_id='BILL-MC-SELF'",
+                    (maker.user_id,))
     raw_con.commit()
 
     return maker.post("/api/bills/BILL-MC-SELF/void",
@@ -260,14 +271,19 @@ SCENARIOS = {
 #: Permissions whose enforcement is currently impossible, with the reason.
 #: Kept as data so the parametrisation stays generated from
 #: ``auth.MAKER_CHECKER`` rather than hand-listed.
-KNOWN_INERT = {
-    "bill.void": (
-        "services.void_bill passes b.get('created_by') as the maker, but the "
-        "`bill` table has no created_by column (app/backend/db.py CREATE TABLE "
-        "bill, and migration 002 adds voided_by but never created_by), so the "
-        "maker is always None and require_separation returns immediately. "
-        "See test_bill_void_maker_checker_is_structurally_inert."),
-}
+#:
+#: EMPTY, and that is the point of the structure rather than an oversight.
+#: ``bill.void`` lived here for three waves: ``services.void_bill`` passed
+#: ``b.get("created_by")`` as the maker while the `bill` table had no such
+#: column, so the maker was always ``None``, ``require_separation``
+#: short-circuited on the falsy value, and a FinanceApprover could void a bill
+#: they had raised themselves while the segregation-of-duties report stayed
+#: clean. Wave 8 added the column to ``app/backend/db.py`` (PostgreSQL had
+#: carried ``bill.created_by NOT NULL`` since migration 013), seeds it, and
+#: passes ``require_maker=True`` so an unattributed bill is REFUSED rather
+#: than waved through. The xfail was strict, so the fix could not land without
+#: this dictionary being emptied in the same change.
+KNOWN_INERT: dict[str, str] = {}
 
 
 def _params():
@@ -353,58 +369,120 @@ def test_the_refusal_comes_from_require_separation_and_nothing_else(
         "and deleting the require_separation call would go unnoticed.")
 
 
-def test_bill_void_maker_checker_is_structurally_inert(raw_con):
-    """REPORTED DEFECT, pinned as a test rather than left in prose.
+def test_bill_void_maker_checker_reads_a_real_maker_column(raw_con):
+    """The CLOSURE of the defect this file reported for three waves.
 
-    ``app/backend/services.py:411`` reads::
+    Formerly ``test_bill_void_maker_checker_is_structurally_inert``, which
+    asserted the cause: ``services.void_bill`` passed ``b.get("created_by")``
+    as the maker while the `bill` table had no such column, so the maker was
+    always ``None``, ``require_separation`` short-circuited, and the call
+    enforced nothing.
 
-        auth.require_separation(actor, "bill.void", b.get("created_by"), ...)
-
-    ``_row`` returns ``dict(row)``, so ``.get`` yields ``None`` rather than
-    raising -- and ``auth.require_separation`` short-circuits on a falsy
-    ``maker_user_id``. The call therefore never enforces anything: a
-    FinanceApprover may void a bill they raised themselves.
-
-    ``bill.void`` is in ``auth.MAKER_CHECKER``, and
-    ``test_api_auth.py::test_aud_c_006_a_bill_void_is_subject_to_segregation_of_duties``
-    asserts only that membership -- which is true, and tells you nothing about
-    whether the control runs.
-
-    This test asserts the CAUSE (no maker column anywhere in the bill schema)
-    so the finding is on record and cannot be lost. Stream 5 does not own
-    ``db.py``, ``services.py`` or the migrations, so it is reported, not fixed.
+    It now asserts the opposite, against the same schema, so the fix cannot be
+    reverted quietly: the column must exist, the seeded bills must actually
+    carry a maker (a column of NULLs enforces exactly as much as no column at
+    all), and ``services.void_bill`` must still be reading it.
     """
     columns = {row[1] for row in raw_con.execute("PRAGMA table_info(bill)")}
     assert columns, "the `bill` table does not exist; this assertion is against the wrong schema"
 
-    maker_columns = columns & {"created_by", "raised_by", "requested_by", "entered_by"}
-    assert not maker_columns, (
-        "the `bill` table now records a maker "
-        f"({sorted(maker_columns)}). If services.void_bill has been wired to "
-        "it, remove the xfail marker for 'bill.void' in KNOWN_INERT above -- "
-        "the control is real now and must be proved, not excused.")
-
+    assert "created_by" in columns, (
+        "the `bill` table has lost its maker column. `bill.void` is in "
+        "auth.MAKER_CHECKER and services.void_bill reads `created_by`; without "
+        "the column the maker is always None and segregation of duties on a "
+        "void enforces nothing.")
     assert "voided_by" in columns, (
-        "sanity check on the schema this finding is about: migration 002 adds "
-        "voided_by to `bill`, so the table IS the one carrying the void "
-        "lifecycle -- it simply never records who raised the bill.")
+        "sanity check: migration 002 adds voided_by, so this IS the table "
+        "carrying the void lifecycle.")
+
+    attributed = raw_con.execute(
+        "SELECT COUNT(*) FROM bill WHERE created_by IS NOT NULL AND created_by <> ''"
+    ).fetchone()[0]
+    total = raw_con.execute("SELECT COUNT(*) FROM bill").fetchone()[0]
+    assert total and attributed == total, (
+        f"{total - attributed} of {total} seeded bills record no maker. A "
+        "column that is always NULL restores the exact defect it was added to "
+        "close, because require_separation cannot compare against NULL.")
+
+    source = (PROJECT_ROOT / "app" / "backend" / "services.py").read_text(encoding="utf-8")
+    assert 'auth.require_separation(actor, "bill.void", b.get("created_by")' in source, (
+        "services.void_bill no longer passes the bill's created_by to "
+        "require_separation. The column exists but nothing reads it, which is "
+        "the same inert control wearing a schema.")
+    assert "require_maker=True" in source, (
+        "services.void_bill no longer demands a known maker. An unattributed "
+        "bill would then be voidable by anyone, which is how this defect "
+        "behaved before it was found.")
 
 
-def test_require_separation_is_a_no_op_without_a_maker():
-    """The mechanism behind the finding above, stated directly.
+def test_require_separation_refuses_rather_than_waves_through_an_unknown_maker():
+    """The mechanism behind the original finding, and its fix.
 
-    Not a defect in ``auth.require_separation`` -- refusing to guess a maker is
-    correct. It does mean every caller is responsible for passing a real one,
-    and that a caller passing ``None`` gets silent permission rather than a
-    loud failure.
+    Refusing to GUESS a maker is correct, so the permissive default stays:
+    several callers resolve the maker from a row they may not be able to read,
+    and turning "not found" into a segregation refusal would answer the wrong
+    question. What was wrong was that a caller who MUST know the maker had no
+    way to say so, and silence read as permission.
+
+    ``require_maker=True`` is that way. Both halves are asserted here, because
+    a fail-closed flag that also fires on the permissive path would break every
+    other call site, and one that never fires would be decoration.
     """
     approver = {"user_id": "U-SOMEONE", "roles": ["FinanceApprover"]}
 
+    # permissive by default, unchanged
     auth.require_separation(approver, "bill.void", None, object_label="a bill")
+
+    # fail-closed on request
+    with pytest.raises(auth.AuthError) as unknown:
+        auth.require_separation(approver, "bill.void", None,
+                                object_label="a bill", require_maker=True)
+    assert unknown.value.code == "MAKER_UNKNOWN"
+    assert unknown.value.status == 403
+
+    # a permission that is NOT maker-checked is never refused by either mode
+    auth.require_separation(approver, "budget.read", None,
+                            object_label="a budget", require_maker=True)
 
     with pytest.raises(auth.AuthError) as excinfo:
         auth.require_separation(approver, "bill.void", "U-SOMEONE", object_label="a bill")
     assert excinfo.value.code == "SELF_APPROVAL"
+
+    # and an independent maker is still permitted, in both modes
+    auth.require_separation(approver, "bill.void", "U-SOMEBODY-ELSE",
+                            object_label="a bill", require_maker=True)
+
+
+def test_an_unattributed_bill_cannot_be_voided_at_all(make_user, raw_con):
+    """Fail-closed, end to end: no maker recorded means no void.
+
+    The regression this guards is precise. A future ingestion path that writes
+    `bill` rows without a `created_by` would not break any test that asserts a
+    maker is refused -- it would simply produce bills nobody is recorded as
+    having raised, and the segregation check would go back to comparing
+    ``None`` against a user id and permitting everyone.
+    """
+    from conftest import insert_bill
+
+    voider = make_user(["FinanceApprover"])
+    insert_bill(raw_con, bill_id="BILL-MC-ORPHAN", bill_number="BILL-2026-8802",
+                po_id=None, po_line_id=None, wbs_id=DEMO_WBS,
+                budget_head_id=DEMO_HEAD, amount_paise=50_00_000)
+    raw_con.commit()
+    assert raw_con.execute(
+        "SELECT created_by FROM bill WHERE bill_id='BILL-MC-ORPHAN'"
+    ).fetchone()[0] is None, "this scenario requires a bill with no recorded maker"
+
+    resp = voider.post("/api/bills/BILL-MC-ORPHAN/void",
+                       json={"reason": "voiding a bill nobody is recorded as raising"})
+
+    assert resp.status_code == 403, (
+        "a bill with no recorded maker was voided anyway "
+        f"({resp.status_code}: {resp.text}). Segregation of duties could not be "
+        "verified, and 'cannot verify' was treated as 'permitted'.")
+    assert code_of(resp) == "MAKER_UNKNOWN", (
+        f"refused, but with {code_of(resp)!r}. The caller must be told the "
+        "maker is unknown, not that they approved their own work.")
 
 
 def test_an_independent_approver_is_not_blocked_by_maker_checker(make_user, raw_con):

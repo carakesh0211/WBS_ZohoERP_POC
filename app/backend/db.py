@@ -196,7 +196,18 @@ CREATE TABLE bill (
   is_reversal  INTEGER NOT NULL DEFAULT 0,
   doc_type     TEXT NOT NULL DEFAULT 'BILL',   -- BILL | CREDIT_NOTE | DEBIT_NOTE
   zoho_bill_id TEXT,
-  created_at   TEXT NOT NULL
+  created_at   TEXT NOT NULL,
+  -- The MAKER. `bill.void` is in auth.MAKER_CHECKER and services.void_bill
+  -- reads this column, so without it segregation of duties on a void was
+  -- structurally inert: require_separation short-circuits on a falsy maker
+  -- and compared nobody, letting the raiser of a bill void it themselves.
+  --
+  -- Nullable, because bills arrive by ingestion as well as by seeding and a
+  -- NOT NULL here would make an unattributed source row unstorable rather
+  -- than unvoidable. An ABSENT maker is not a waiver: services.void_bill
+  -- passes require_maker=True and refuses the void outright, so "we do not
+  -- know who raised this" can never read as "anyone may void it".
+  created_by   TEXT
 );
 
 CREATE TABLE bill_line (
@@ -582,8 +593,15 @@ def _seed(con):
     def bill(po_id, vendor, date, doc="BILL", reversal=0):
         b[0] += 1
         bid = f"BILL-{b[0]:03d}"
+        # created_by is the MAKER, and it is seeded deliberately as U-PM rather
+        # than left NULL: `bill.void` is a maker-checker permission, and a
+        # dataset whose bills have no maker would leave the control with
+        # nothing to compare and nothing to demonstrate. U-PM is not the
+        # FinanceApprover who voids in the demo script, so the seeded bills
+        # stay voidable by an INDEPENDENT approver, which is the behaviour
+        # segregation of duties is supposed to leave intact.
         bills.append((bid, f"BILL-2026-{b[0]:04d}", po_id, vendor, date, "Approved", reversal, doc,
-                      f"ZBILL-{b[0]:05d}", NOW))
+                      f"ZBILL-{b[0]:05d}", NOW, "U-PM"))
         return bid
     def billline(bid, pol, wid, head, desc, rupees, qty=1.0, ncr=0, freight=0):
         blines.append((f"BLL-{len(blines)+1:04d}", bid, pol, wid, head, desc, qty, L(rupees),
@@ -601,7 +619,7 @@ def _seed(con):
     billline(bill("PO-005", "Eastern Cranes Ltd", "2026-08-02", doc="CREDIT_NOTE"), POL["PO-005"][0], "W-03-02", "BH-PM", "Rate correction credit", -50_000)
     # A deliberate bill-exceeds-PO exception, so the reconciliation queue has a real case to show.
     billline(bill("PO-008", "Sriram Erectors", "2026-08-03"), POL["PO-008"][0], "W-05", "BH-INST", "Erection - final claim above PO", 7_60_000)
-    x_many("INSERT INTO bill VALUES (?,?,?,?,?,?,?,?,?,?)", bills)
+    x_many("INSERT INTO bill VALUES (?,?,?,?,?,?,?,?,?,?,?)", bills)
     x_many("INSERT INTO bill_line VALUES (?,?,?,?,?,?,?,?,?,?,?)", blines)
 
     # --- Capitalisation case (Land & Site Development, technically complete)
