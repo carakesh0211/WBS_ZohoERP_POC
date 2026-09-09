@@ -5114,6 +5114,136 @@
         "body_sha": "6a9bf4a2b10513e0"
       }
     },
+    "test_pg_anchor_job.py": {
+      "test_the_job_handler_actually_invokes_the_writer": {
+        "assertions": 5,
+        "body_sha": "cc492491b0979d3c"
+      },
+      "test_the_cli_entry_point_reaches_the_writer_through_the_handler": {
+        "assertions": 3,
+        "body_sha": "26a7cc59e6ea793e"
+      },
+      "test_no_production_code_reaches_write_anchor_except_the_job_handler": {
+        "assertions": 1,
+        "body_sha": "dce556060770c114"
+      },
+      "test_the_handler_runs_under_an_unrestricted_service_scope": {
+        "assertions": 6,
+        "body_sha": "c8082abec8eb3b63"
+      },
+      "test_an_unauthenticated_invocation_writes_nothing": {
+        "assertions": 3,
+        "body_sha": "a7fff81e24720ad2"
+      },
+      "test_a_wrong_token_is_refused_and_says_nothing_about_why": {
+        "assertions": 4,
+        "body_sha": "a9ff8c66c93e8537"
+      },
+      "test_a_deployment_with_no_configured_token_cannot_run_the_job": {
+        "assertions": 3,
+        "body_sha": "ffdc4178435aba2a"
+      },
+      "test_a_short_configured_token_is_refused_as_not_a_credential": {
+        "assertions": 2,
+        "body_sha": "537730e71a5f0c41"
+      },
+      "test_the_token_is_compared_in_constant_time": {
+        "assertions": 2,
+        "body_sha": "80b0ade7b93c61c2"
+      },
+      "test_the_cli_has_no_flag_that_puts_the_token_on_a_command_line": {
+        "assertions": 2,
+        "body_sha": "6ddf7e71cbe5ddfc"
+      },
+      "test_a_second_invocation_on_the_same_day_writes_nothing_and_still_succeeds": {
+        "assertions": 4,
+        "body_sha": "662cea586b92f456"
+      },
+      "test_anchoring_a_past_day_is_refused": {
+        "assertions": 3,
+        "body_sha": "0ce028f4470a43bd"
+      },
+      "test_a_gap_since_the_previous_anchor_is_reported_not_filled": {
+        "assertions": 2,
+        "body_sha": "dd1f9858faffb698"
+      },
+      "test_a_checkpoint_from_another_date_is_discarded_rather_than_trusted": {
+        "assertions": 2,
+        "body_sha": "37b2841c6eff4227"
+      },
+      "test_a_checkpoint_for_today_skips_the_phase_it_names": {
+        "assertions": 4,
+        "body_sha": "b2459d4bde5e2ea5"
+      },
+      "test_the_checkpoint_survives_json": {
+        "assertions": 2,
+        "body_sha": "11547dc1c924a727"
+      },
+      "test_a_run_that_reaches_the_soft_deadline_still_anchors_and_reports_partial": {
+        "assertions": 6,
+        "body_sha": "4606ac34f4098be9"
+      },
+      "test_a_soft_deadline_past_the_platform_ceiling_is_refused": {
+        "assertions": 2,
+        "body_sha": "d26b1c9bb5ba9634"
+      },
+      "test_the_handler_holds_the_platform_contract_it_claims_to": {
+        "assertions": 3,
+        "body_sha": "0342c81340017c75"
+      },
+      "test_tampering_found_by_the_job_is_not_reported_as_a_failed_job": {
+        "assertions": 5,
+        "body_sha": "9ff8895b2c3050e8"
+      },
+      "test_the_five_outcomes_have_distinct_exit_codes": {
+        "assertions": 4,
+        "body_sha": "72d46caef6a918e4"
+      },
+      "test_retry_safety_is_stated_per_outcome_and_only_permanent_is_not": {
+        "assertions": 2,
+        "body_sha": "c18c2506584ef969"
+      },
+      "test_a_transient_database_fault_is_retryable_and_a_permanent_one_is_not": {
+        "assertions": 8,
+        "body_sha": "edc06764ae745afe"
+      },
+      "test_a_failure_never_carries_the_exception_text_or_the_sql": {
+        "assertions": 4,
+        "body_sha": "4e1a4402ce4189ca"
+      },
+      "test_a_result_carries_no_audit_payload_and_no_full_hash": {
+        "assertions": 3,
+        "body_sha": "846e779869d6bc87"
+      },
+      "test_the_job_writes_a_real_anchor_row_live": {
+        "assertions": 6,
+        "body_sha": "c8bad441898d43de"
+      },
+      "test_a_duplicate_invocation_on_one_day_writes_one_row_live": {
+        "assertions": 4,
+        "body_sha": "cd66c09222c518d0"
+      },
+      "test_concurrent_invocations_produce_exactly_one_anchor_live": {
+        "assertions": 5,
+        "body_sha": "a37ab4beec98112b"
+      },
+      "test_a_whole_stream_deleted_is_caught_through_the_job_live": {
+        "assertions": 5,
+        "body_sha": "4d59b89ba0d330ac"
+      },
+      "test_a_partial_run_commits_its_anchor_live": {
+        "assertions": 6,
+        "body_sha": "d986f21fcca72ef6"
+      },
+      "test_a_retryable_failure_leaves_the_day_anchorable_live": {
+        "assertions": 3,
+        "body_sha": "347f33d89619a964"
+      },
+      "test_an_unauthenticated_invocation_writes_no_row_live": {
+        "assertions": 2,
+        "body_sha": "14c1c4fd4d02492c"
+      }
+    },
     "test_pg_approval_concurrency.py": {
       "test_two_simultaneous_decisions_on_the_final_stage_produce_one_transition": {
         "assertions": 8,
@@ -6844,6 +6974,196 @@
       "test_an_unknown_currency_refuses_rather_than_guessing_an_exponent": {
         "assertions": 3,
         "body_sha": "cc836ec03424a130"
+      }
+    },
+    "test_pg_fx_ingest.py": {
+      "test_the_dtos_currency_survives_normalisation": {
+        "assertions": 1,
+        "body_sha": "7c0bafcca902bce5"
+      },
+      "test_a_source_that_names_no_currency_is_the_base_currency": {
+        "assertions": 1,
+        "body_sha": "7ad8ff1c6fb3229e"
+      },
+      "test_the_sweep_hands_the_ledger_the_currency_the_bill_is_denominated_in": {
+        "assertions": 3,
+        "body_sha": "4680ca259e25bb20"
+      },
+      "test_the_ledger_surface_declares_a_parameter_that_can_receive_it": {
+        "assertions": 3,
+        "body_sha": "74ec082aa5e302b8"
+      },
+      "test_mirror_bill_reaches_the_canonical_fx_service_and_not_a_second_one": {
+        "assertions": 5,
+        "body_sha": "00f0909be169443a"
+      },
+      "test_the_seeds_own_eur_bill_becomes_the_figure_it_should_always_have_had": {
+        "assertions": 2,
+        "body_sha": "cf449c2a27f0dc1f"
+      },
+      "test_a_zero_exponent_currency_is_not_read_as_hundredths_of_itself": {
+        "assertions": 3,
+        "body_sha": "3b4eb9b7b2f4db30"
+      },
+      "test_a_three_decimal_currency_is_honoured_too": {
+        "assertions": 1,
+        "body_sha": "ce63be58c191520e"
+      },
+      "test_all_three_money_columns_are_translated_and_not_only_the_first": {
+        "assertions": 4,
+        "body_sha": "e3a592ca66b443e3"
+      },
+      "test_the_lines_always_sum_to_the_translated_header": {
+        "assertions": 1,
+        "body_sha": "892eb1685240d7fe"
+      },
+      "test_the_allocation_does_not_depend_on_the_order_the_payload_arrived_in": {
+        "assertions": 2,
+        "body_sha": "19496cdbf0240db4"
+      },
+      "test_a_credit_note_keeps_its_sign_and_rounds_symmetrically": {
+        "assertions": 2,
+        "body_sha": "15b9ff2a9c3aedec"
+      },
+      "test_a_rounding_boundary_rounds_away_from_zero_in_both_directions": {
+        "assertions": 4,
+        "body_sha": "c858d19a4df994f2"
+      },
+      "test_a_document_with_both_signs_is_refused_rather_than_guessed_at": {
+        "assertions": 2,
+        "body_sha": "8118b9b5037e197d"
+      },
+      "test_an_inr_document_is_not_routed_through_the_rounding_at_all": {
+        "assertions": 3,
+        "body_sha": "e8f388f8f04fd709"
+      },
+      "test_a_bill_with_no_lines_translates_to_nothing_rather_than_raising": {
+        "assertions": 1,
+        "body_sha": "3c47bb275ea0ff10"
+      },
+      "test_the_identity_basis_is_the_shape_the_check_constraint_requires": {
+        "assertions": 4,
+        "body_sha": "434e35d31d6ba3be"
+      },
+      "test_a_basis_matches_the_four_facts_the_trigger_compares_and_no_others": {
+        "assertions": 5,
+        "body_sha": "d8491bda2a4c1c52"
+      },
+      "test_an_unknown_document_type_is_a_migration_and_not_a_string": {
+        "assertions": 1,
+        "body_sha": "3221e8279a4fa22b"
+      },
+      "test_the_document_types_mirror_the_migrations_own_check": {
+        "assertions": 2,
+        "body_sha": "8e8afe3014589bbf"
+      },
+      "test_one_rounding_rule_and_not_two": {
+        "assertions": 3,
+        "body_sha": "dac21b4eaf9bb679"
+      },
+      "test_the_migration_is_additive": {
+        "assertions": 1,
+        "body_sha": "e02f8f67009cce59"
+      },
+      "test_the_rollback_block_deletes_its_own_ledger_row": {
+        "assertions": 1,
+        "body_sha": "da99c5b5d9f62227"
+      },
+      "test_the_new_table_carries_rls_enabled_forced_and_a_policy": {
+        "assertions": 4,
+        "body_sha": "e48e4ffdc42f35e5"
+      },
+      "test_the_event_table_is_append_only_in_privileges_and_in_a_trigger": {
+        "assertions": 3,
+        "body_sha": "e3e9a02ba0706a82"
+      },
+      "test_every_paise_column_the_migration_creates_is_bigint_and_visible": {
+        "assertions": 1,
+        "body_sha": "f47a237bfcfd0f4a"
+      },
+      "test_the_source_columns_are_not_named_paise": {
+        "assertions": 3,
+        "body_sha": "f2f2f39ca1d2309d"
+      },
+      "test_the_purchase_order_is_named_as_a_gap_and_not_given_dead_columns": {
+        "assertions": 5,
+        "body_sha": "b8eb4aed57aa974e"
+      },
+      "test_no_constraint_is_added_to_any_table_001_to_024_created": {
+        "assertions": 1,
+        "body_sha": "7c02643476bae61a"
+      },
+      "test_a_eur_bill_ingested_lands_translated_with_its_source_preserved": {
+        "assertions": 9,
+        "body_sha": "26ac2393b25b456c"
+      },
+      "test_the_translation_is_recorded_as_a_row_an_auditor_can_recompute_from": {
+        "assertions": 7,
+        "body_sha": "110f6d8ba88d791d"
+      },
+      "test_replaying_the_same_bill_translates_once_and_changes_nothing": {
+        "assertions": 4,
+        "body_sha": "90e38aaf4ceb29e2"
+      },
+      "test_a_revised_source_amount_is_refused_and_never_drifts": {
+        "assertions": 3,
+        "body_sha": "a8ba742ce910b9fa"
+      },
+      "test_the_database_refuses_the_revision_even_with_the_service_bypassed": {
+        "assertions": 1,
+        "body_sha": "0adcd8718afbc115"
+      },
+      "test_a_translation_event_can_be_neither_updated_nor_deleted": {
+        "assertions": 1,
+        "body_sha": "7d3fb8c469597bcc"
+      },
+      "test_a_bill_with_no_rate_on_file_is_refused_and_nothing_is_written": {
+        "assertions": 4,
+        "body_sha": "0f84f5bc5905550a"
+      },
+      "test_two_sources_quoting_one_day_is_refused_rather_than_resolved": {
+        "assertions": 2,
+        "body_sha": "6b98c87c1be42b63"
+      },
+      "test_a_rate_for_another_day_cannot_be_borrowed": {
+        "assertions": 2,
+        "body_sha": "27d1d05631acf7f2"
+      },
+      "test_a_bill_re_presented_in_another_currency_is_refused": {
+        "assertions": 2,
+        "body_sha": "90c4a35dee390479"
+      },
+      "test_a_credit_note_is_translated_and_reverses_to_the_paisa": {
+        "assertions": 1,
+        "body_sha": "92e24f426121e26b"
+      },
+      "test_a_zero_exponent_currency_posts_at_its_own_scale": {
+        "assertions": 1,
+        "body_sha": "6d81d3173ddc49c0"
+      },
+      "test_a_three_decimal_currency_posts_at_its_own_scale": {
+        "assertions": 1,
+        "body_sha": "1906539efee61afd"
+      },
+      "test_an_unknown_currency_refuses_rather_than_guessing_an_exponent": {
+        "assertions": 2,
+        "body_sha": "f39bfd4bb103094a"
+      },
+      "test_an_inr_bill_is_untouched_by_any_of_this": {
+        "assertions": 4,
+        "body_sha": "f6c425459fa7138e"
+      },
+      "test_the_quarantined_value_is_held_in_rupees_and_not_in_euros": {
+        "assertions": 3,
+        "body_sha": "a7e6accf140e12eb"
+      },
+      "test_the_repair_path_translates_all_three_money_columns_too": {
+        "assertions": 4,
+        "body_sha": "c02efcec3f5d7053"
+      },
+      "test_a_revaluation_delta_is_measured_against_the_base_the_ledger_reports": {
+        "assertions": 5,
+        "body_sha": "e6449d0dffbb01e8"
       }
     },
     "test_pg_integration_rate_budget.py": {
@@ -11026,36 +11346,64 @@
         "body_sha": "efaa711c496a4956"
       },
       "test_an_intact_database_verifies": {
-        "assertions": 6,
-        "body_sha": "ca002cfc4f49700e"
+        "assertions": 7,
+        "body_sha": "fa4905ba95f63b56"
       },
       "test_a_growing_stream_is_not_a_finding": {
         "assertions": 1,
-        "body_sha": "044e3237e543dda8"
+        "body_sha": "3017d74fcc55252a"
       },
       "test_a_wholly_deleted_stream_is_reported_missing": {
-        "assertions": 3,
-        "body_sha": "221dcca1229c55c2"
+        "assertions": 4,
+        "body_sha": "f85da3ae26f27c14"
       },
       "test_a_truncated_tail_is_reported": {
-        "assertions": 3,
-        "body_sha": "6b324a4c1cd4ef3b"
+        "assertions": 4,
+        "body_sha": "8a9739a1786a491e"
       },
       "test_a_rewritten_entry_below_the_anchor_point_is_reported_diverged": {
+        "assertions": 3,
+        "body_sha": "51b556b74967c7d0"
+      },
+      "test_a_stream_deleted_after_its_anchor_and_re_anchored_is_still_missing": {
+        "assertions": 6,
+        "body_sha": "50747358465035fb"
+      },
+      "test_the_floor_is_the_highest_seq_any_anchor_ever_recorded": {
+        "assertions": 3,
+        "body_sha": "1da943c9998acf32"
+      },
+      "test_an_anchor_that_forgot_a_live_stream_is_reported_as_incomplete": {
+        "assertions": 4,
+        "body_sha": "7189158ed1ded8c0"
+      },
+      "test_a_deleted_stream_is_not_also_blamed_on_the_anchor": {
         "assertions": 2,
-        "body_sha": "633a37257659f220"
+        "body_sha": "d635a5f422cdb21f"
+      },
+      "test_an_anchor_older_than_the_horizon_is_stale_and_not_intact": {
+        "assertions": 7,
+        "body_sha": "b6c69365a92bbead"
+      },
+      "test_a_malformed_head_does_not_crash_the_verifier": {
+        "assertions": 3,
+        "body_sha": "08f10da80d8f2935"
+      },
+      "test_every_state_name_is_distinct_and_ordered": {
+        "assertions": 4,
+        "body_sha": "51bbbcf0e93f3181"
       },
       "test_a_forged_anchor_breaks_the_anchor_chain": {
-        "assertions": 4,
-        "body_sha": "347adf544d30d6b8"
+        "assertions": 5,
+        "body_sha": "156d725881667b0a"
       },
       "test_an_anchor_edited_to_hide_a_deletion_is_caught": {
         "assertions": 3,
-        "body_sha": "e0943be2fa35c677"
+        "body_sha": "be7adccf0a412edd"
       },
       "test_a_database_that_was_never_anchored_is_not_reported_intact": {
-        "assertions": 4,
-        "body_sha": "a5c98b1391970f80"
+        "assertions": 5,
+        "body_sha": "22f3627dbee5c80f"
       },
       "test_the_fake_dispatches_every_statement_the_module_issues": {
         "assertions": 1,
@@ -11063,7 +11411,7 @@
       },
       "test_write_anchor_and_verify_anchors_round_trip_live": {
         "assertions": 7,
-        "body_sha": "c3f76a3d576ada66"
+        "body_sha": "3a94ea2bf4ce5842"
       },
       "test_a_second_anchor_for_the_same_day_does_not_raise_live": {
         "assertions": 3,
@@ -11071,7 +11419,7 @@
       },
       "test_a_whole_stream_deleted_behind_the_triggers_is_still_caught_live": {
         "assertions": 2,
-        "body_sha": "6696dfd192287a26"
+        "body_sha": "1a59d39f0c531f5d"
       },
       "test_migration_024_refuses_a_degenerate_anchor_live": {
         "assertions": 3,
@@ -11337,6 +11685,7 @@
     "test_outbound_emission.py": 52,
     "test_outbound_unsanctioned.py": 20,
     "test_pg_adoption.py": 16,
+    "test_pg_anchor_job.py": 32,
     "test_pg_approval_concurrency.py": 12,
     "test_pg_approval_schema.py": 66,
     "test_pg_approval_writeback_e2e.py": 13,
@@ -11349,6 +11698,7 @@
     "test_pg_exports.py": 49,
     "test_pg_fixture_guard.py": 3,
     "test_pg_fx.py": 34,
+    "test_pg_fx_ingest.py": 47,
     "test_pg_integration_rate_budget.py": 21,
     "test_pg_integration_schema.py": 81,
     "test_pg_locking.py": 17,
@@ -11388,7 +11738,7 @@
     "test_scope_negative_matrix.py": 25,
     "test_scope_sentinel.py": 29,
     "test_security_approval_oracle.py": 8,
-    "test_security_audit_anchor.py": 25,
+    "test_security_audit_anchor.py": 32,
     "test_security_frontend.py": 11,
     "test_security_identity.py": 10,
     "test_security_scope_tristate.py": 13,
@@ -11448,6 +11798,7 @@
     "test_outbound_emission.py": 154,
     "test_outbound_unsanctioned.py": 55,
     "test_pg_adoption.py": 39,
+    "test_pg_anchor_job.py": 116,
     "test_pg_approval_concurrency.py": 53,
     "test_pg_approval_schema.py": 96,
     "test_pg_approval_writeback_e2e.py": 57,
@@ -11460,6 +11811,7 @@
     "test_pg_exports.py": 138,
     "test_pg_fixture_guard.py": 3,
     "test_pg_fx.py": 89,
+    "test_pg_fx_ingest.py": 128,
     "test_pg_integration_rate_budget.py": 109,
     "test_pg_integration_schema.py": 132,
     "test_pg_locking.py": 36,
@@ -11499,7 +11851,7 @@
     "test_scope_negative_matrix.py": 82,
     "test_scope_sentinel.py": 54,
     "test_security_approval_oracle.py": 11,
-    "test_security_audit_anchor.py": 70,
+    "test_security_audit_anchor.py": 105,
     "test_security_frontend.py": 22,
     "test_security_identity.py": 18,
     "test_security_scope_tristate.py": 39,

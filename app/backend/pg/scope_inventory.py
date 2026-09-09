@@ -762,6 +762,19 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
              "`period_id` reaches accounting_period, which carries its own "
              "entity-scoped policy from 006, so the two agree by "
              "construction rather than by coincidence."),
+    ScopedTable(
+        table="fx_translation_event", dimensions=("entity",), reach="direct",
+        path="fx_translation_event.entity_id", status="covered",
+        migration="025_fx_applied_at_ingestion.sql",
+        note="One row per translated document: the rate, its provenance, the "
+             "source total and the base total it produced. An unscoped read is "
+             "another entity's foreign-currency exposure with the amounts. "
+             "`entity_id` is NOT NULL with an FK to entity, so the direct "
+             "predicate cannot be waived by a NULL row value. Note the "
+             "contrast with 023's `fx_rate`, which carries no dimension at "
+             "all: a RATE belongs to nobody and is reference data, while an "
+             "APPLICATION of a rate belongs to the document it was applied "
+             "to."),
 )
 
 #: Tables deliberately left WITHOUT a scope policy, each with the reason.

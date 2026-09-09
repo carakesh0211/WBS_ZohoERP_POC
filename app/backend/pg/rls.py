@@ -532,6 +532,33 @@ RLS_FX_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
 #: Every table 023 enables RLS on.
 RLS_FX_TABLES: tuple[str, ...] = tuple(RLS_FX_TABLE_COLUMNS)
 
+#: Table -> dimension column mapping for the one table
+#: `migrations/pg/025_fx_applied_at_ingestion.sql` adds.
+#:
+#: `fx_translation_event` is one row per translated document: the rate, its
+#: provenance, the source total, and the base total it produced. It is the
+#: record that a rate was APPLIED, which is a different thing from the rate
+#: itself -- and it is scoped where the rate is not.
+#:
+#: `fx_rate`, `fx_policy` and `currency_denomination` above carry every
+#: dimension `None` because a rate belongs to nobody; they are reference data
+#: and a EUR/INR rate is the same number for every entity. An APPLICATION of
+#: that rate belongs to a document, and a document belongs to an entity, so an
+#: unscoped read here is another entity's foreign-currency exposure -- document
+#: by document, with the amounts.
+#:
+#: `entity_id` is NOT NULL with an FK to `entity`, which matters beyond
+#: tidiness: `capex_dimension_permits` WAIVES a NULL row value, so a nullable
+#: dimension column is not a weaker filter but an ABSENT one. See
+#: `PROJECT_JOIN_NULL_DIMENSIONS_ARE_WAIVED`.
+RLS_FX_INGEST_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
+    "fx_translation_event": {"entity": "entity_id", "plant": None,
+                             "location": None, "project": None},
+}
+
+#: Every table 025 enables RLS on.
+RLS_FX_INGEST_TABLES: tuple[str, ...] = tuple(RLS_FX_INGEST_TABLE_COLUMNS)
+
 #: Every RLS-protected table, from any of the seven registries.
 #:
 #: Reporting (017) and closure (019) were written in parallel and each added
@@ -553,6 +580,7 @@ ALL_RLS_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
     **RLS_PROCUREMENT_TABLE_COLUMNS, **RLS_CORRECTION_TABLE_COLUMNS,
     **RLS_REPORTING_TABLE_COLUMNS, **RLS_EXPORT_TABLE_COLUMNS,
     **RLS_CLOSURE_TABLE_COLUMNS, **RLS_FX_TABLE_COLUMNS,
+    **RLS_FX_INGEST_TABLE_COLUMNS,
 }
 
 #: Every RLS-protected table, from any migration, in registry order.
@@ -576,6 +604,8 @@ RLS_MIGRATION_BY_TABLE: dict[str, str] = {
     **{table: "019_closure.sql" for table in RLS_CLOSURE_TABLES},
     **{table: "023_fx_translation_and_period_reopen.sql"
        for table in RLS_FX_TABLES},
+    **{table: "025_fx_applied_at_ingestion.sql"
+       for table in RLS_FX_INGEST_TABLES},
 }
 
 

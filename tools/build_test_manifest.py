@@ -402,6 +402,21 @@ POST_BASELINE_FILES = {
     # the docstrings say which, and which one does not.
     "test_security_approval_oracle.py",
 
+    # --- Wave 8 stream B: the audit anchor's invocation path --------------
+    # `write_anchor` was correct and called by nothing, so `audit_anchor` was
+    # empty in every deployment and whole-stream truncation was undetectable.
+    # This file holds the job entry point, its authentication, and the
+    # live-PostgreSQL invocation tests -- including the one that asserts
+    # exactly one production caller reaches the writer.
+    "test_pg_anchor_job.py",
+
+    # --- Wave 8 stream A: FX at the ingestion boundary --------------------
+    # The FX engine existed and nothing called it. This file holds the wire
+    # proof (a real BillDTO in EUR through the real sweep), the currency
+    # exponent cases, the rounding boundaries in both directions, replay,
+    # and the revised-source refusal. Its live half first executes in CI.
+    "test_pg_fx_ingest.py",
+
     # --- Wave 8 security and audit closure --------------------------------
     # Six files from the Wave 8 security stream. Registered here by the LEAD
     # because that stream owns none of `tools/`, and its agent stopped at a

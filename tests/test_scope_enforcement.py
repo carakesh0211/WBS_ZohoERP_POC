@@ -163,6 +163,11 @@ SCOPABLE = {
     # the foot of this file now derives the requirement rather than trusting
     # the next person to remember.
     "report_saved_view",
+    # Migration 025. Derived, not remembered: once `rls.py` names
+    # `entity_id` for this table, `test_scopable_covers_every_rls_table_
+    # that_names_a_dimension_column` REQUIRES the entry below, so the
+    # completeness check added for `report_saved_view` is what put this here.
+    "fx_translation_event",
     "entity", "division", "branch", "zone", "department", "plant", "location",
     "project", "wbs_element", "budget_control_cell", "budget_ledger_cell",
     "budget_line", "budget_revision", "budget_transfer", "budget_version",
