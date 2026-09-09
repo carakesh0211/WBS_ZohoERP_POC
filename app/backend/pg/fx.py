@@ -799,3 +799,452 @@ def bill_fx_summary(session: Session, bill_id: str) -> Mapping[str, Any]:
         "rounding": "HALF_UP, half away from zero, applied once to the product",
         "rate_scale": RATE_SCALE,
     }
+
+
+# ===========================================================================
+# INGESTION-TIME TRANSLATION -- the path production actually takes
+# ===========================================================================
+# WHY THIS EXISTS ALONGSIDE `translate_bill`, AND WHY IT IS NOT THE SAME CALL.
+#
+# `translate_bill` is a REPAIR. It reads the figure sitting in
+# `bill_line.amount_paise` -- which, on a bill mirrored before this section
+# existed, IS the vendor's source amount mis-stored as though it were rupees --
+# captures it into `source_amount_minor`, and writes the translation back over
+# it. That is the right shape for rows that are ALREADY WRONG and the wrong
+# shape for a row being written for the first time: it requires the
+# untranslated figure to be sitting in the base column, which is the very state
+# AUD-H-007 names.
+#
+# AT INGESTION THE SOURCE AMOUNT IS IN HAND AND THE BASE COLUMN IS EMPTY. The
+# vendor's currency and amounts arrive together in one payload, so the base
+# figure is derived BEFORE the first write and the untranslated figure never
+# enters `amount_paise` at all. Nothing to repair, because nothing was ever
+# wrong.
+#
+# THE ARITHMETIC IS NOT DUPLICATED. Both paths end at `translate_document`,
+# which is the one implementation of the rule; what differs is only where the
+# source amounts come from and whether a row already exists. A second
+# implementation of "multiply by the rate" is exactly the divergence rule 1
+# warns about, written in code instead of in columns.
+
+#: Document kinds `fx_translation_event` accepts. Mirrors migration 025's
+#: `ck_fx_translation_event_document_type`;
+#: `tests/test_pg_fx_ingest.py::test_the_document_types_mirror_the_migration`
+#: parses the migration's own CHECK and fails if the two drift -- the same
+#: guard :data:`SEEDED_MINOR_EXPONENTS` carries for the exponents.
+TRANSLATABLE_DOCUMENT_TYPES: tuple[str, ...] = ("BILL", "PURCHASE_ORDER")
+
+#: The rounding rule, named ONCE.
+#:
+#: It is the only value `fx_policy.FX_RATE_ROUNDING` permits (migration 023),
+#: it is what :func:`translate_to_base_paise` implements, and it is what
+#: `fx_translation_event.rounding` records and `ck_fx_translation_rounding`
+#: constrains. Three names for one rule is already one too many, so every one
+#: of those places is written from this constant or checked against it.
+ROUNDING_RULE = "HALF_UP"
+
+
+class TranslationBasis:
+    """The rate a document is translated by, resolved ONCE, with its provenance.
+
+    Carried by value through the whole of one ingestion, so a document cannot
+    have its rate resolved twice and get two answers. That is requirement 4 --
+    "apply a rate exactly once" -- expressed as a type rather than as a
+    convention somebody has to remember.
+
+    THE IDENTITY BASIS IS A REAL BASIS, NOT A NULL. An INR document has
+    ``rate == 1``, ``fx_rate_id is None`` and ``rate_date is None``, which is
+    precisely the shape `ck_bill_fx_provenance` (023) requires of an INR bill.
+    Modelling it as "no basis" would put an ``if basis is None`` in every
+    caller, and one of them would eventually get it wrong in the direction that
+    writes an untranslated figure into a base column -- which is the defect,
+    not a way of avoiding it.
+    """
+
+    __slots__ = ("source_currency", "minor_exponent", "rate", "rate_date",
+                 "rate_source", "fx_rate_id")
+
+    def __init__(self, *, source_currency: str, minor_exponent: int,
+                 rate: Decimal, rate_date: date | None,
+                 rate_source: str | None, fx_rate_id: str | None):
+        self.source_currency = source_currency
+        self.minor_exponent = int(minor_exponent)
+        self.rate = rate
+        self.rate_date = rate_date
+        self.rate_source = rate_source
+        self.fx_rate_id = fx_rate_id
+
+    @property
+    def is_identity(self) -> bool:
+        """True for the base currency: nothing multiplied, nothing rounded."""
+        return self.source_currency == BASE_CURRENCY
+
+    def matches(self, *, source_currency: Any, rate: Any, rate_date: Any,
+                fx_rate_id: Any) -> bool:
+        """Is that stored basis THIS basis? What makes a replay a no-op.
+
+        Compares the four facts `trg_bill_fx_basis_immutable` (023) compares,
+        and no others. `rate_source` is carried for evidence but is not
+        compared: a feed that renamed itself must not turn an ordinary sweep
+        re-walk into a refusal, and the row it names is compared by id anyway.
+        """
+        if _currency_code(source_currency) != self.source_currency:
+            return False
+        if rate is None or Decimal(rate) != self.rate:
+            return False
+        stored = rate_date.date() if isinstance(rate_date, datetime) else rate_date
+        if stored != self.rate_date:
+            return False
+        return (fx_rate_id or None) == (self.fx_rate_id or None)
+
+    def describe(self) -> str:
+        if self.is_identity:
+            return f"{BASE_CURRENCY} (identity translation, rate 1, no fx_rate row)"
+        return (f"{self.source_currency}/{BASE_CURRENCY} at {self.rate} for "
+                f"{self.rate_date} from {self.rate_source} ({self.fx_rate_id})")
+
+    def as_columns(self) -> dict[str, Any]:
+        """The five FX basis columns, ready to bind. Satisfies 023's CHECK.
+
+        `fx_translated_at` is deliberately NOT here. It is set by the writer in
+        the same statement, because it is the flag `trg_bill_fx_basis_immutable`
+        keys on: a row carrying a rate but no translation timestamp is a basis
+        the trigger will let the next UPDATE move.
+        """
+        return {
+            "source_currency": self.source_currency,
+            "fx_rate": self.rate,
+            "fx_rate_id": self.fx_rate_id,
+            "fx_rate_date": self.rate_date,
+            "fx_rate_source": self.rate_source,
+        }
+
+
+def identity_basis() -> TranslationBasis:
+    """The base currency's own basis. No rate lookup, no rounding, no row."""
+    return TranslationBasis(
+        source_currency=BASE_CURRENCY, minor_exponent=BASE_MINOR_EXPONENT,
+        rate=Decimal(1), rate_date=None, rate_source=None, fx_rate_id=None)
+
+
+def resolve_basis(session: Session, *, source_currency: Any,
+                  document_date: date, actor: str,
+                  exchange_rate: Any = None, rate_source: str | None = None,
+                  fx_rate_id: str | None = None,
+                  source_reference: str | None = None) -> TranslationBasis:
+    """The rate this document is translated by, resolved once -- or refused.
+
+    THREE WAYS A RATE MAY ARRIVE, and all three end at an ``fx_rate`` row, so
+    every translation cites provenance however it was fed (rule 2):
+
+    * ``fx_rate_id`` -- a row already recorded. Validated for PAIR and DATE.
+    * ``exchange_rate`` + ``rate_source`` -- the figure on the vendor's own
+      document. :func:`record_rate` stores it against ``document_date``,
+      idempotently, so a replay of the same payload finds the row it wrote last
+      time instead of minting a second one for the same fact.
+    * neither -- the rate already on file for this currency and this date.
+
+    A DOCUMENT WITH NO RATE IS REFUSED, NOT BOOKED AT FACE VALUE. Booking it at
+    face value IS AUD-H-007: a EUR 1,00,000 bill standing at Rs 1,00,000
+    because nothing multiplied. The refusal names the currency and the date, so
+    an operator records the missing rate and the ingestion re-runs.
+
+    TWO SOURCES FOR ONE DATE IS ALSO REFUSED. `ux_fx_rate_natural` admits an
+    RBI reference rate and a bank's dealt rate for the same day deliberately
+    (023), because both are real -- which means choosing between them here
+    would be this module deciding, silently and on a row ordering, which rate
+    the estate books at. The caller names the source, or names the row.
+    """
+    currency = _currency_code(source_currency)
+    if currency == BASE_CURRENCY:
+        if fx_rate_id or exchange_rate is not None:
+            _err("FX_IDENTITY_TRANSLATION",
+                 f"a {BASE_CURRENCY} document is the identity translation and "
+                 f"carries no rate, but this one was sent with an explicit "
+                 f"rate. ck_bill_fx_provenance refuses the same combination at "
+                 f"the database.")
+        return identity_basis()
+
+    exponent = minor_exponent(session, currency)
+
+    if fx_rate_id:
+        row = session.fetchone(  # scope-exempt: fx_rate is organisation-wide reference data with no dimension column, scoped by capex_principal_present() in migration 023
+            "SELECT from_currency, to_currency, rate_date, rate, rate_source "
+            "FROM fx_rate WHERE fx_rate_id = %s", (fx_rate_id,))
+        if row is None:
+            _err("FX_RATE_NOT_FOUND", f"No fx_rate row {fx_rate_id}.",
+                 status=404)
+        frm, to, found_date, found_rate, found_source = row
+        if frm != currency or to != BASE_CURRENCY:
+            _err("FX_RATE_WRONG_PAIR",
+                 f"fx_rate {fx_rate_id} is {frm}/{to}; this document is "
+                 f"{currency}/{BASE_CURRENCY}.")
+        if found_date != document_date:
+            _err("FX_RATE_WRONG_DATE",
+                 f"fx_rate {fx_rate_id} is the {frm} rate for {found_date}; "
+                 f"this document is dated {document_date}. D-5 translates at "
+                 f"DOCUMENT DATE, and a rate for another day is not that rate "
+                 f"however close it is. Record the rate you intend against "
+                 f"{document_date}, with a source that says what it is.")
+        return TranslationBasis(
+            source_currency=currency, minor_exponent=exponent,
+            rate=parse_rate(found_rate, field="fx_rate.rate"),
+            rate_date=found_date, rate_source=found_source,
+            fx_rate_id=fx_rate_id)
+
+    if exchange_rate is not None:
+        if not str(rate_source or "").strip():
+            _err("FX_RATE_SOURCE_REQUIRED",
+                 f"this document supplies its own {currency}/{BASE_CURRENCY} "
+                 f"rate but names no source for it. A rate with no provenance "
+                 f"is not evidence (rule 2): say where the figure came from -- "
+                 f"the vendor's own document, a bank advice, a reference feed "
+                 f"-- and the translation becomes reproducible.")
+        recorded = record_rate(
+            session, from_currency=currency, rate_date=document_date,
+            rate=exchange_rate, rate_source=str(rate_source), actor=actor,
+            source_reference=source_reference)
+        return TranslationBasis(
+            source_currency=currency, minor_exponent=exponent,
+            rate=parse_rate(recorded["rate"], field="exchange_rate"),
+            rate_date=document_date, rate_source=str(rate_source),
+            fx_rate_id=str(recorded["fx_rate_id"]))
+
+    candidates = session.fetchall(  # scope-exempt: fx_rate is organisation-wide reference data with no dimension column, scoped by capex_principal_present() in migration 023
+        "SELECT fx_rate_id, rate, rate_source FROM fx_rate "
+        "WHERE from_currency = %s AND to_currency = %s AND rate_date = %s "
+        "ORDER BY fx_rate_id", (currency, BASE_CURRENCY, document_date))
+    if not candidates:
+        _err("FX_RATE_UNAVAILABLE",
+             f"no {currency}/{BASE_CURRENCY} rate is on file for "
+             f"{document_date}, and this document is in {currency}. It is "
+             f"REFUSED rather than written at face value: writing it would put "
+             f"a {currency} amount in a base-currency column as though it were "
+             f"rupees, which is AUD-H-007 exactly. Record the rate for "
+             f"{document_date} with its source and re-run the ingestion.",
+             status=409)
+    if len(candidates) > 1:
+        sources = ", ".join(sorted(str(c[2]) for c in candidates))
+        _err("FX_RATE_AMBIGUOUS",
+             f"{len(candidates)} sources quote {currency}/{BASE_CURRENCY} for "
+             f"{document_date} ({sources}). ux_fx_rate_natural admits that "
+             f"deliberately -- a reference rate and a dealt rate for one day "
+             f"are both real -- so choosing between them is a decision about "
+             f"which rate the estate books at, and it is not made here on a "
+             f"row ordering. Name the rate_source, or pass the fx_rate_id.",
+             status=409)
+    found_id, found_rate, found_source = candidates[0]
+    return TranslationBasis(
+        source_currency=currency, minor_exponent=exponent,
+        rate=parse_rate(found_rate, field="fx_rate.rate"),
+        rate_date=document_date, rate_source=found_source,
+        fx_rate_id=found_id)
+
+
+def translate_lines(basis: TranslationBasis,
+                    source_line_minors: Sequence[int]) -> tuple[int, list[int]]:
+    """``(header_base_paise, per_line_base_paise)`` for one document's lines.
+
+    THE IDENTITY SHORT-CIRCUIT IS NOT AN OPTIMISATION. For an INR document the
+    source amount ALREADY IS the base amount, so multiplying by 1 and
+    quantising would be a no-op that nonetheless routed every rupee figure in
+    the product through a rounding step -- and a rounding step that is a no-op
+    today is one policy edit away from not being one. The integers are returned
+    unchanged and `split_pro_rata` never sees them.
+
+    ORDER IS THE CALLER'S RESPONSIBILITY, AND IT MATTERS. `split_pro_rata`
+    hands the leftover paise to the largest fractional remainders, so the same
+    document with its lines in a different order can allocate the odd paisa to
+    a different line. The header total is identical either way; the per-line
+    figures are not. :func:`app.backend.pg.procurement.mirror_bill` sorts by
+    the DERIVED `bill_line_id` before calling this, which is stable across a
+    reordered replay -- a caller that passes payload order gets payload-order
+    answers, and a reordered replay would then rewrite `amount_paise` by a
+    paisa with `source_amount_minor` unchanged, which is precisely the silent
+    drift this module exists to prevent.
+    """
+    minors = [int(m) for m in source_line_minors]
+    if basis.is_identity:
+        return sum(minors), list(minors)
+    return translate_document(minors, basis.rate,
+                              source_minor_exponent=basis.minor_exponent)
+
+
+# ---------------------------------------------------------------------------
+# Once, exactly once: the translation event ledger
+# ---------------------------------------------------------------------------
+def register_translation(session: Session, *, document_type: str,
+                         document_id: str, entity_id: str,
+                         basis: TranslationBasis, source_total_minor: int,
+                         base_total_paise: int, line_count: int, actor: str,
+                         correlation_id: str | None = None) -> dict[str, Any]:
+    """Record that this document was translated -- or prove that it already was.
+
+    ONE ROW PER DOCUMENT, ENFORCED BY THE PRIMARY KEY, which is what makes
+    requirement 4 structural rather than a property of whichever caller
+    happened to run. `pk_fx_translation_event` is
+    ``(document_type, document_id)``: a second translation of one document
+    cannot be inserted, so a code path that tried would fail loudly instead of
+    quietly applying a rate twice.
+
+    FOUR OUTCOMES, and the three that are not "first time" are the whole reason
+    this is a ledger rather than a boolean:
+
+    ``created``
+        No row existed. Written, and audited.
+    ``replayed``
+        A row existed and every figure in it agrees with what this pass
+        recomputed -- the ordinary sweep re-walk on its 300-second overlap.
+        NOTHING is written and nothing is raised: an idempotent replay must be
+        a no-op, not a conflict.
+    ``FX_SOURCE_DOCUMENT_CHANGED``
+        The basis agrees, the SOURCE TOTAL does not: the vendor revised the
+        document. REFUSED. This is requirement 8's exception, and refusing is
+        not timidity -- the booked base figure was derived at a rate fixed on
+        the document's own date, so re-deriving it from a new source amount
+        without a record is exactly the value drift the requirement forbids.
+    ``FX_TRANSLATION_BASIS_CONFLICT``
+        The document is being presented in a different currency, or at a
+        different rate, from the one it posted under. REFUSED for the reason
+        `trg_bill_fx_basis_immutable` refuses it at the database: re-basing in
+        place moves a posted CWIP figure with nothing recording that it moved.
+        A period-end movement goes through :func:`assess_revaluation`, which
+        records it.
+
+    A FIFTH OUTCOME WOULD BE A BUG IN THIS MODULE, NOT IN THE DATA.
+    ``FX_TRANSLATION_NOT_REPRODUCIBLE`` fires when the basis and the source
+    total both agree and the BASE figure does not -- which cannot happen if the
+    arithmetic is deterministic, and is therefore reported as the determinism
+    failure it is rather than absorbed as a difference.
+    """
+    if document_type not in TRANSLATABLE_DOCUMENT_TYPES:
+        raise KeyError(
+            f"{document_type!r} is not a translatable document type; known "
+            f"types are {list(TRANSLATABLE_DOCUMENT_TYPES)}. Adding one is a "
+            f"migration (ck_fx_translation_event_document_type), not a string.")
+
+    existing = session.fetchone(  # scope-exempt: this is the read-back of the row this call is about to write or replay, and the entity predicate is applied by fx_translation_event's own RLS policy (migration 025). A scoped re-read here would answer "no translation" for a row that DOES exist whenever the caller's scope is narrower than the writer's -- the one wrong answer that would let a rate be applied twice.
+        "SELECT source_currency, fx_rate, fx_rate_date, fx_rate_id, "
+        "       source_total_minor, base_total_paise "
+        "FROM fx_translation_event "
+        "WHERE document_type = %s AND document_id = %s",
+        (document_type, document_id))
+
+    if existing is not None:
+        (had_currency, had_rate, had_rate_date, had_rate_id,
+         had_source_total, had_base_total) = existing
+        if not basis.matches(source_currency=had_currency, rate=had_rate,
+                             rate_date=had_rate_date, fx_rate_id=had_rate_id):
+            _err("FX_TRANSLATION_BASIS_CONFLICT",
+                 f"{document_type} {document_id} was translated as "
+                 f"{had_currency} at {had_rate} for {had_rate_date} (fx_rate "
+                 f"{had_rate_id}); this pass presents it as "
+                 f"{basis.describe()}. A rate is applied EXACTLY ONCE: "
+                 f"re-basing a document that has already posted would move its "
+                 f"booked figure with nothing recording the movement, which is "
+                 f"what plan decision D-5 and trg_bill_fx_basis_immutable both "
+                 f"refuse. A period-end movement goes through "
+                 f"assess_revaluation, which records it.",
+                 status=409)
+        if int(had_source_total) != int(source_total_minor):
+            _err("FX_SOURCE_DOCUMENT_CHANGED",
+                 f"{document_type} {document_id} posted a source total of "
+                 f"{had_source_total} {had_currency} minor units; this pass "
+                 f"carries {source_total_minor}. The source document was "
+                 f"REVISED. Its base figure was derived at the "
+                 f"{had_rate_date} rate and is not silently re-derived from a "
+                 f"new source amount -- that is value drift with nothing "
+                 f"recording it. Nothing was written. The revision needs a "
+                 f"recorded correction against the document, not a quieter "
+                 f"re-mirror.",
+                 status=409)
+        if int(had_base_total) != int(base_total_paise):
+            _err("FX_TRANSLATION_NOT_REPRODUCIBLE",
+                 f"{document_type} {document_id}: the same source total "
+                 f"({source_total_minor}) at the same rate ({had_rate}) "
+                 f"produced {base_total_paise} paise now and {had_base_total} "
+                 f"paise when it posted. This translation is deterministic by "
+                 f"construction, so the difference is a defect in the "
+                 f"arithmetic, not a difference in the data.",
+                 status=500)
+        return {"document_type": document_type, "document_id": document_id,
+                "created": False, "replayed": True,
+                "base_total_paise": int(had_base_total),
+                "source_total_minor": int(had_source_total)}
+
+    session.execute(
+        """
+        INSERT INTO fx_translation_event (
+            document_type, document_id, entity_id, source_currency,
+            source_minor_exponent, source_total_minor, fx_rate, fx_rate_date,
+            fx_rate_source, fx_rate_id, base_total_paise, line_count,
+            rounding, correlation_id, translated_by)
+        VALUES (%(document_type)s, %(document_id)s, %(entity_id)s,
+                %(source_currency)s, %(exponent)s, %(source_total)s,
+                %(rate)s, %(rate_date)s, %(rate_source)s, %(rate_id)s,
+                %(base_total)s, %(line_count)s, %(rounding)s,
+                %(correlation_id)s, %(actor)s)
+        """,
+        {"document_type": document_type, "document_id": document_id,
+         "entity_id": entity_id, "source_currency": basis.source_currency,
+         "exponent": basis.minor_exponent,
+         "source_total": int(source_total_minor), "rate": basis.rate,
+         "rate_date": basis.rate_date, "rate_source": basis.rate_source,
+         "rate_id": basis.fx_rate_id, "base_total": int(base_total_paise),
+         "line_count": int(line_count), "rounding": ROUNDING_RULE,
+         "correlation_id": correlation_id, "actor": actor},
+    )
+    # AUDITED ONLY WHEN SOMETHING HAPPENED. A replay returns above without
+    # reaching this, so `audit_log` records translations rather than sweep
+    # passes. The chain is evidence; one entry every fifteen minutes on a
+    # document nothing touched is noise that makes the entries that matter
+    # harder to find.
+    audit_mod.append(
+        session, actor, "FX_DOCUMENT_TRANSLATED", document_type, document_id,
+        f"{basis.describe()}: {source_total_minor} minor units across "
+        f"{line_count} line(s) = {base_total_paise} paise "
+        f"({ROUNDING_RULE}, applied once to the product)")
+    return {"document_type": document_type, "document_id": document_id,
+            "created": True, "replayed": False,
+            "base_total_paise": int(base_total_paise),
+            "source_total_minor": int(source_total_minor)}
+
+
+def translation_event(session: Session, *, document_type: str,
+                      document_id: str) -> dict[str, Any] | None:
+    """The recorded translation of one document, SCOPED, or None.
+
+    Read-only, and everything an auditor needs to recompute the figure:
+    the source total in its own minor units, the exponent that scaled it, the
+    rate with its date and source, the base total it produced, and the rounding
+    rule under which it was produced.
+    """
+    row = repo.query_one(
+        session,
+        """
+        SELECT e.document_type, e.document_id, e.entity_id, e.source_currency,
+               e.source_minor_exponent, e.source_total_minor, e.fx_rate,
+               e.fx_rate_date, e.fx_rate_source, e.fx_rate_id,
+               e.base_total_paise, e.line_count, e.rounding, e.translated_at,
+               e.translated_by
+        FROM fx_translation_event e
+        WHERE e.document_type = %(document_type)s
+          AND e.document_id = %(document_id)s
+          AND {scope}
+        """,
+        {"document_type": document_type, "document_id": document_id},
+        columns={"entity": "e.entity_id", "plant": None,
+                 "location": None, "project": None},
+    )
+    if row is None:
+        return None
+    keys = ("document_type", "document_id", "entity_id", "source_currency",
+            "source_minor_exponent", "source_total_minor", "fx_rate",
+            "fx_rate_date", "fx_rate_source", "fx_rate_id", "base_total_paise",
+            "line_count", "rounding", "translated_at", "translated_by")
+    out: dict[str, Any] = dict(zip(keys, row, strict=True))
+    out["fx_rate"] = str(out["fx_rate"]) if out["fx_rate"] is not None else None
+    for key in ("fx_rate_date", "translated_at"):
+        value = out[key]
+        out[key] = value.isoformat() if value is not None else None
+    return out
