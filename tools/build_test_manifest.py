@@ -394,6 +394,37 @@ POST_BASELINE_FILES = {
     # softened into something a reader could mistake for one.
     "test_pg_reporting.py",
 
+    # --- Wave 8 security and audit closure --------------------------------
+    # Six files from the Wave 8 security stream. Registered here by the LEAD
+    # because that stream owns none of `tools/`, and its agent stopped at a
+    # usage limit before it could hand the entries over. Each names the
+    # property it holds, so a later reader does not have to open six files to
+    # learn why the baseline excludes them.
+    #
+    # `test_data_classification.py` -- plan section 10.4 and the specific
+    # mistake v1.0 withdrew: nothing needed for matching, compliance or
+    # reporting may be irreversibly hashed. GSTIN/PAN masked by default,
+    # revealed only with permission, and every reveal audited.
+    "test_data_classification.py",
+    # The audit anchor: a writer, a verifier, and whole-stream truncation
+    # detection. A per-stream chain cannot see rows removed from the end or a
+    # stream that no longer exists -- both leave a self-consistent database.
+    "test_security_audit_anchor.py",
+    # No JavaScript floating-point arithmetic on a monetary value. Lives here
+    # rather than under `tests/vrt/` because it reads source, not a rendered
+    # page, and needs no browser.
+    "test_security_frontend.py",
+    # AUD-C-006: the acting user comes from the authenticated session and can
+    # never be asserted by a caller through a header or a body field.
+    "test_security_identity.py",
+    # The three scope states stay distinct end to end -- `None` unrestricted,
+    # `frozenset()` nothing, populated restricted. Collapsing the middle one
+    # into the first turns "no grants" into "all rows".
+    "test_security_scope_tristate.py",
+    # Secrets reach no response, no DOM, no log and no traceback. Exception
+    # handlers emit static messages, never `str(exc)` or SQL.
+    "test_security_secrets.py",
+
     # --- Wave 7 remediation: the saved-view write gate --------------------
     # `test_api_auth_saved_views.py` holds the two tests that belong beside
     # MUTATING_ROUTES and cannot live there: `test_api_auth.py` is measured by

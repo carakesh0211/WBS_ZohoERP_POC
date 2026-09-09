@@ -3121,3 +3121,42 @@ goes green again.
 mechanical entry for a newly added spec, which the inventory's own comment
 describes as the normal path — *"a new spec or baseline that nobody recorded"*
 is reported so that it can be recorded.
+
+---
+
+## 2026-09-09 — `tests/test_approval_maker_checker.py`, two tests removed
+
+`test_bill_void_maker_checker_is_structurally_inert` and
+`test_require_separation_is_a_no_op_without_a_maker` were **removed**, and
+three tests were added in their place:
+
+* `test_bill_void_maker_checker_reads_a_real_maker_column`
+* `test_an_unattributed_bill_cannot_be_voided_at_all`
+* `test_require_separation_refuses_rather_than_waves_through_an_unknown_maker`
+
+**Why the removal is required rather than permitted.** The two removed tests
+pinned a defect, and the defect is fixed. `services.py` called
+`auth.require_separation(actor, "bill.void", b.get("created_by"), …)` against a
+`bill` table that had **no `created_by` column**, so `maker_user_id` was always
+`None`, `auth.py:218`'s `and` short-circuited, and the function returned having
+compared nobody — the person who raised a bill could void it while segregation
+of duties reported clean.
+
+The first removed test was marked `xfail(strict=True)` and parametrised from
+`auth.MAKER_CHECKER` itself, precisely so that it would **fail the day someone
+fixed the defect**. Wave 8 added `created_by` to `bill` in both the SQLite
+schema and PostgreSQL, and populated it at creation. A strict xfail that now
+passes IS a failure, so leaving it would have broken the suite; and deleting it
+without replacing its coverage would have removed the only evidence that the
+control works.
+
+Nothing was weakened. The three replacements assert the capability the
+absences used to assert, and one of them —
+`test_require_separation_refuses_rather_than_waves_through_an_unknown_maker` —
+covers strictly more than its predecessor: the old test asserted that a missing
+maker was a no-op, and the new one asserts that a missing maker is **refused**,
+which is the behaviour a fail-closed control requires.
+
+**Approved by:** the product-owner instruction of 2026-09-09 authorising Wave 8
+security and audit closure, which names "separation of duties" among the items
+to prove. No individual approver is fabricated.
