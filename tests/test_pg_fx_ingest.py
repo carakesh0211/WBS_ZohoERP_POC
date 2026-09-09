@@ -1113,3 +1113,95 @@ def test_the_quarantined_value_is_held_in_rupees_and_not_in_euros(seeded):
     assert int(seeded.execute(
         "SELECT source_paise FROM reconciliation_exception"
         " WHERE object_id = 'ZB-QTN:BL-X'").fetchone()[0]) == EUR_BASE_PAISE
+
+
+@pytest.mark.pg
+@PG
+def test_the_repair_path_translates_all_three_money_columns_too(seeded):
+    """`translate_bill` is for rows that are ALREADY WRONG, and it was wrong in
+    the same way itself.
+
+    It translated `amount_paise` and left `non_creditable_tax_paise` and
+    `freight_paise` at their source-currency face value -- there is not one
+    occurrence of either column anywhere in `fx.py` as 023 shipped it. Every
+    consumer then summed one rupee figure and two euro figures and reported the
+    total as CWIP. Migration 025's two source columns are what let the repair
+    path capture all three before it overwrites them.
+
+    Written with raw SQL rather than through `mirror_bill`, deliberately: this
+    is the state of a bill mirrored BEFORE the ingestion wire existed, which is
+    every foreign-currency bill in an existing deployment, and going through
+    `mirror_bill` would translate it on the way in and prove nothing about the
+    repair.
+    """
+    session = _session(seeded)
+    fx_rate_id = _rate(session, currency="EUR", rate="92.50")
+    seeded.execute(
+        "INSERT INTO bill (bill_id, bill_number, project_id, entity_id,"
+        " vendor_name, bill_date, created_by, updated_by)"
+        " VALUES ('BILL-RPR', 'BN-RPR', %s, %s, 'SunPeak Energy GmbH', %s,"
+        " 'T', 'T')", (PROJECT, ENTITY, BILL_DATE))
+    seeded.execute(
+        "INSERT INTO bill_line (bill_line_id, bill_id, wbs_id, budget_head_id,"
+        " amount_paise, non_creditable_tax_paise, freight_paise, line_no,"
+        " created_by, updated_by)"
+        " VALUES ('BL-RPR', 'BILL-RPR', %s, %s, 1000000, 500000, 250000, 1,"
+        " 'T', 'T')", (f"{WBS}-a", f"{HEAD}-a"))
+    seeded.commit()
+
+    fx.translate_bill(_session(seeded), bill_id="BILL-RPR",
+                      source_currency="EUR", fx_rate_id=fx_rate_id,
+                      actor="SVC-SWEEP")
+    seeded.commit()
+
+    row = seeded.execute(
+        "SELECT amount_paise, non_creditable_tax_paise, freight_paise,"
+        " source_amount_minor, source_tax_minor, source_freight_minor"
+        " FROM bill_line WHERE bill_line_id = 'BL-RPR'").fetchone()
+    amount, tax, freight, s_amount, s_tax, s_freight = (int(v) for v in row)
+    assert (s_amount, s_tax, s_freight) == (1_000_000, 500_000, 250_000), (
+        "the source figures were not captured before being overwritten")
+    assert tax != 500_000, "the tax column was left in euros"
+    assert freight != 250_000, "the freight column was left in euros"
+    # 17,50,000 cents at 92.50 = Rs 16,18,750.00, and the three cells sum to it.
+    assert amount + tax + freight == 161_875_000
+
+
+@pytest.mark.pg
+@PG
+def test_a_revaluation_delta_is_measured_against_the_base_the_ledger_reports(seeded):
+    """`assess_revaluation` summed `amount_paise` ALONE on the booked side and
+    `source_amount_minor` alone on the source side.
+
+    `budget_ledger_cell.actual_paise` -- the figure every report, every
+    capitalisation gate and every period close quotes -- is derived from all
+    three columns. A delta measured against a different base is a movement
+    against a number nothing else in the product reports, recorded in
+    `fx_revaluation_attempt` as though it were the exposure.
+    """
+    session = _session(seeded)
+    _rate(session, currency="EUR", rate="92.50")
+    _mirror(session, external_id="ZB-RVL", currency="EUR",
+            lines=[_line(1_000_000, line_id="BL-1", tax=500_000,
+                         freight=250_000)])
+    seeded.commit()
+
+    bill_id = seeded.execute(
+        "SELECT bill_id FROM bill WHERE external_id = 'ZB-RVL'").fetchone()[0]
+    ledger_base = int(seeded.execute(
+        "SELECT SUM(amount_paise + non_creditable_tax_paise + freight_paise)"
+        " FROM bill_line WHERE bill_id = %s", (bill_id,)).fetchone()[0])
+
+    result = fx.assess_revaluation(
+        _session(seeded), bill_id=bill_id, proposed_rate="93.10",
+        proposed_rate_date=date(2026, 9, 30),
+        proposed_rate_source="RBI_REFERENCE", actor="SVC-SWEEP")
+    seeded.commit()
+
+    assert result["booked_base_paise"] == ledger_base, (
+        "the revaluation is measured against a base the ledger does not hold")
+    assert result["source_amount_minor"] == 1_750_000
+    assert result["applied"] is False, "D-5 does not revalue"
+    assert result["outcome"] == "REFUSED"
+    assert result["delta_paise"] == (
+        result["proposed_base_paise"] - result["booked_base_paise"])

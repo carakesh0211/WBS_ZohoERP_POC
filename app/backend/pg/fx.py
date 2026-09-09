@@ -500,6 +500,19 @@ def translate_bill(session: Session, *, bill_id: str, source_currency: str,
     overwritten, in one transaction, and ``trg_bill_line_source_amount_immutable``
     then refuses any second attempt.
 
+    ALL THREE MONEY COLUMNS, and translating only the first was a defect of
+    the same KIND as AUD-H-007 sitting inside the remedy for it. Every rollup
+    in the product sums ``amount_paise + non_creditable_tax_paise +
+    freight_paise`` -- ``domain.compute_ledger`` twice,
+    ``procurement_services._RECOMPUTE_DERIVED_SQL`` twice and it is the ONLY
+    writer of ``budget_ledger_cell``, both reconciliation readers, both of
+    ``reporting.py``'s branches, and ``/api/bills``. A bill whose
+    ``amount_paise`` was translated and whose tax and freight were not would
+    have had one rupee figure added to two euro figures and the total reported
+    as CWIP. Migration 025 adds ``source_tax_minor`` and
+    ``source_freight_minor`` so all three can be captured before they are
+    overwritten.
+
     REFUSES a bill that is already translated. D-5 translates at bill date and
     does not revalue; a second translation is a revaluation wearing a different
     name, and it belongs in :func:`assess_revaluation`.
@@ -555,7 +568,9 @@ def translate_bill(session: Session, *, bill_id: str, source_currency: str,
     lines = repo.query(
         session,
         """
-        SELECT bl.bill_line_id, bl.amount_paise, bl.source_amount_minor
+        SELECT bl.bill_line_id, bl.amount_paise, bl.non_creditable_tax_paise,
+               bl.freight_paise, bl.source_amount_minor, bl.source_tax_minor,
+               bl.source_freight_minor
         FROM bill_line bl
         JOIN bill b ON b.bill_id = bl.bill_id
         JOIN project p ON p.project_id = b.project_id
@@ -568,24 +583,40 @@ def translate_bill(session: Session, *, bill_id: str, source_currency: str,
     if not lines:
         _err("BILL_HAS_NO_LINES",
              f"Bill {bill_id} has no lines, so there is nothing to translate.")
-    if any(existing is not None for _id, _amt, existing in lines):
+    if any(existing is not None
+           for row in lines for existing in row[4:7]):
         _err("BILL_LINE_ALREADY_HAS_SOURCE",
-             f"Bill {bill_id} has at least one line whose source_amount_minor "
-             f"is already set, but the header records no translation. That is "
-             f"a half-written translation, not a fresh one; it is refused "
-             f"rather than completed on a guess.",
+             f"Bill {bill_id} has at least one line whose source amount, tax "
+             f"or freight is already captured, but the header records no "
+             f"translation. That is a half-written translation, not a fresh "
+             f"one; it is refused rather than completed on a guess.",
              status=409)
 
-    source_minors = [int(amount) for _id, amount, _existing in lines]
-    header_base, line_bases = translate_document(
-        source_minors, parsed, source_minor_exponent=exponent)
+    # FLATTENED, THEN TRANSLATED ONCE, THEN ALLOCATED -- the same shape
+    # `procurement._translate_bill_payload` uses at ingestion, and the same
+    # shape for the same reason: quantising each cell separately and summing
+    # can differ from quantising the document total by up to one paisa per
+    # cell, and the document total is the figure on the vendor's invoice.
+    # `ORDER BY bl.bill_line_id` above is what makes the allocation
+    # reproducible; it is the id the row is written under, not an arrival
+    # order.
+    cells = [int(value) for row in lines for value in row[1:4]]
+    header_base, cell_bases = translate_document(
+        cells, parsed, source_minor_exponent=exponent)
+    source_minors = cells
 
-    for (line_id, _amount, _existing), base in zip(lines, line_bases,
-                                                   strict=True):
+    for index, row in enumerate(lines):
+        line_id = row[0]
+        amount, tax, freight = (int(row[1]), int(row[2]), int(row[3]))
+        base = cell_bases[index * 3:index * 3 + 3]
         session.execute(
-            "UPDATE bill_line SET source_amount_minor = %s, amount_paise = %s, "
-            "updated_at = now(), updated_by = %s WHERE bill_line_id = %s",
-            (int(_amount), int(base), actor, line_id))
+            "UPDATE bill_line SET source_amount_minor = %s, "
+            "source_tax_minor = %s, source_freight_minor = %s, "
+            "amount_paise = %s, non_creditable_tax_paise = %s, "
+            "freight_paise = %s, updated_at = now(), updated_by = %s "
+            "WHERE bill_line_id = %s",
+            (amount, tax, freight, int(base[0]), int(base[1]), int(base[2]),
+             actor, line_id))
 
     now = datetime.now(timezone.utc)
     session.execute(
@@ -668,11 +699,27 @@ def assess_revaluation(session: Session, *, bill_id: str, proposed_rate: Any,
     booked = parse_rate(booked_rate, field="bill.fx_rate")
     exponent = minor_exponent(session, currency)
 
+    # BOTH SIDES SUM ALL THREE MONEY COLUMNS, and summing only the first was
+    # wrong on both of them at once. The booked base has to be the figure the
+    # LEDGER holds -- `budget_ledger_cell.actual_paise` is derived from
+    # `amount_paise + non_creditable_tax_paise + freight_paise` -- or the delta
+    # recorded in `fx_revaluation_attempt` is a movement against a base nothing
+    # else in the product reports. And the source total has to be the total the
+    # booked figure was derived FROM, or the proposed base is computed from a
+    # fraction of the document.
+    #
+    # COALESCE on the two 025 columns, because a bill translated before they
+    # existed has them NULL with its tax and freight untranslated. Such a row
+    # is already inconsistent; what this must not do is make the arithmetic
+    # silently treat NULL as though the whole document were smaller than it is.
     row = repo.query_one(
         session,
         """
-        SELECT COALESCE(SUM(bl.source_amount_minor), 0)::bigint,
-               COALESCE(SUM(bl.amount_paise), 0)::bigint
+        SELECT COALESCE(SUM(COALESCE(bl.source_amount_minor, 0)
+                            + COALESCE(bl.source_tax_minor, 0)
+                            + COALESCE(bl.source_freight_minor, 0)), 0)::bigint,
+               COALESCE(SUM(bl.amount_paise + bl.non_creditable_tax_paise
+                            + bl.freight_paise), 0)::bigint
         FROM bill_line bl
         JOIN bill b ON b.bill_id = bl.bill_id
         JOIN project p ON p.project_id = b.project_id
