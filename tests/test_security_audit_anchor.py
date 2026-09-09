@@ -591,3 +591,62 @@ def test_an_empty_object_of_heads_is_still_accepted_live(pg_connection):
         "anchor_hash) VALUES (%s, %s, %s, %s)",
         (date(2026, 1, 6), Jsonb({}), None, "empty-heads-is-legal"))
     pg_connection.rollback()
+
+
+# ======================================================================
+# The verifier has to be REACHABLE, or it is code nobody runs
+# ======================================================================
+def test_the_anchor_verifier_is_exposed_as_a_read_only_route():
+    """A control an operator cannot invoke is the empty-table problem again.
+
+    `audit_anchor` had triggers, grants and no writer for three waves. A
+    verifier with no route would be the same story with a different noun, so
+    the route is asserted to exist, to be a GET, and to sit under the router's
+    own `audit.read` dependency rather than carrying a guard of its own that a
+    future route could forget to copy.
+    """
+    from app.backend.api import audit as audit_api
+
+    paths = {
+        route.path: sorted(route.methods)
+        for route in audit_api.router.routes
+        if hasattr(route, "methods")
+    }
+    assert "/api/audit/anchors/verify" in paths, (
+        f"the anchor verifier is not reachable. Routes: {sorted(paths)}")
+    assert paths["/api/audit/anchors/verify"] == ["GET"], (
+        "verification is a read; it must not be reachable by any writing verb.")
+
+    # BY IDENTITY, not by name. `require_audit_read` is an instance of
+    # `_AuditRead`, so it has no `__name__` and `str()` of it renders
+    # `_AuditRead` -- a name-based check misses the guard that is actually
+    # there, which is how the first version of this test failed against a
+    # correct router. Identity is also the stronger check: a name match would
+    # still pass if the router were handed a different callable that happened
+    # to be called `require_audit_read`, which is the substitution this
+    # assertion exists to catch.
+    guards = [getattr(d, "dependency", None) for d in audit_api.router.dependencies]
+    assert audit_api.require_audit_read in guards, (
+        "the audit router no longer carries its own `audit.read` dependency, "
+        f"so every route in it -- including this one -- is open. Guards: {guards}")
+
+
+def test_no_route_in_the_audit_router_writes_an_anchor():
+    """Writing one is a scheduled job's work, not an HTTP verb.
+
+    Giving it a route would mean deciding which role may cause an anchor to
+    exist. `test_aud_c_006_auditor_is_read_only` pins the Auditor to four
+    permissions, and widening an audit-finding assertion so a new feature
+    reads tidily is not a call to make in passing -- the same reasoning
+    `approval.read` and `export.create` are recorded under.
+    """
+    from app.backend.api import audit as audit_api
+
+    writing = [
+        route.path for route in audit_api.router.routes
+        if hasattr(route, "methods") and set(route.methods) - {"GET", "HEAD", "OPTIONS"}
+    ]
+    assert writing == [], (
+        f"the audit router now has writing routes: {writing}. If one of them "
+        "writes an anchor, the permission it needs is a role-mapping decision "
+        "and belongs in auth.PERMISSIONS with a reason.")

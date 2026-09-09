@@ -15,6 +15,12 @@ parallel, so it must not drift)::
           "first_break_seq":int|null,"stream_found":bool,
           "sequence_contiguous":bool,"head_seq":int|null,
           "whole_stream_truncation_note":str,"verified_at":iso8601}
+    GET /api/audit/anchors/verify
+      -> {"anchored":bool,"intact":bool,"anchors_checked":int,
+          "anchor_chain_intact":bool,"first_broken_anchor_date":str|null,
+          "newest_anchor_date":str|null,"streams_anchored":int|null,
+          "missing_streams":[str],"truncated_streams":[obj],
+          "diverged_streams":[obj],"note":str,"verified_at":iso8601}
 
 `router = APIRouter()` is exported and mounted by `app/backend/main.py`, which
 this module does not touch. Its routes carry their full `/api/audit/...` path
@@ -41,7 +47,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 
 from ..pg import principal_scope
-from ..pg.audit import verify_chain
+from ..pg.audit import verify_anchors, verify_chain
 from ..pg.engine import Database, Scope, get_database
 
 class _AuditRead:
@@ -296,3 +302,39 @@ def verify(
         "whole_stream_truncation_note": result["whole_stream_truncation_note"],
         "verified_at": datetime.now(timezone.utc).isoformat(),
     }
+
+
+@router.get("/api/audit/anchors/verify")
+def verify_anchors_route(
+    response: Response,
+    request: Request,
+    database: Database = Depends(_get_database),
+) -> dict[str, Any]:
+    """The question `/api/audit/chain/verify` provably cannot answer.
+
+    A per-stream chain proves that the rows a stream STILL HAS link to each
+    other. It cannot see rows removed from the end, and it cannot see a stream
+    that no longer exists -- both leave a self-consistent database, and the
+    second one leaves nothing to ask a question about. Only the daily anchors
+    remember what was there.
+
+    READ-ONLY, and deliberately. This route verifies; it does not write an
+    anchor. Writing one is a scheduled job's work, and giving it an HTTP verb
+    would mean deciding which role may cause an anchor to exist -- a
+    role-mapping decision recorded against D-12, not one to make in passing
+    while adding a verifier. The router's `audit.read` guard applies here as
+    it does to every other route in this file, so an Auditor -- the role whose
+    whole purpose is this question -- can ask it without being granted a
+    single new permission.
+
+    `anchored: false` is NOT a pass. It means nobody has ever written an
+    anchor, which is precisely the state in which a deleted stream is
+    undetectable, and reporting that as intact is the defect the anchor exists
+    to close.
+    """
+    _set_correlation_header(response, request)
+
+    with database.session(_audit_service_scope()) as session:
+        result = verify_anchors(session)
+
+    return {**result, "verified_at": datetime.now(timezone.utc).isoformat()}
