@@ -51,17 +51,19 @@ refresh.
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ..integration.adapter import IntegrationError
 from ..integration.books_inventory import BooksInventoryAdapter
 from ..integration.erp import ErpAdapter
 from ..pg import integration_store as store_svc
 from ..pg import principal_scope
+from ..pg import fx as fx_svc
 from ..pg import procurement_services as procurement_svc
 from ..pg.engine import Database, Scope, get_database
 
@@ -255,13 +257,49 @@ class _ApproveIn(BaseModel):
     acting_for_user_id: str | None = None
 
 
+
+# ------------------------------------------------------- exchange rate (H-4)
+# `exchange_rate` was `int = 1` on both models below, which is review finding
+# H-4 and is the second, independent reason AUD-H-007's rate has never been
+# applied to anything: Pydantic REJECTED 92.50 outright, so no non-integer rate
+# could reach the database at all. The POC's own seed carries EUR at 92.50
+# (`app/backend/db.py:540`), so the one foreign-currency purchase order in the
+# fixtures could not have been created through this API.
+#
+# `Decimal`, parsed by `app/backend/pg/fx.parse_rate`, which is the SAME parser
+# the FX service and migration 023's `numeric(18,8)` columns agree on: exact,
+# scale 8, positive, and a FLOAT REFUSED rather than silently rounded. Declaring
+# the field `float` would have been the other obvious repair and is the defect
+# `app/backend/money.py` opens by recounting -- a rate is multiplied into money,
+# so a float rate makes the product a float.
+#
+# `mode="before"`, so the raw JSON value is inspected BEFORE Pydantic coerces
+# it. Without that, a JSON `92.5` arrives as a Python float, Pydantic converts
+# it to Decimal, and the float refusal never sees the float it exists to refuse.
+def _validate_exchange_rate(value: Any) -> Decimal:
+    """`fx.parse_rate`, with its refusal re-raised as a ValueError.
+
+    Pydantic v2 turns a ValueError inside a validator into a 422 with the
+    message attached; any other exception type propagates and becomes a 500.
+    An unparseable rate is a bad request, not a server fault, so the FxError is
+    translated rather than allowed through.
+    """
+    try:
+        return fx_svc.parse_rate(value)
+    except fx_svc.FxError as exc:
+        raise ValueError(exc.message) from exc
+
+
 class _ConvertIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     vendor_name: str
     po_number: str | None = None
     currency: str = "INR"
-    exchange_rate: int = 1
+    exchange_rate: Decimal = Decimal(1)
     version_no: int | None = None
+
+    _rate = field_validator("exchange_rate", mode="before")(
+        classmethod(lambda cls, v: _validate_exchange_rate(v)))
 
 
 class _PurchaseOrderIn(BaseModel):
@@ -271,7 +309,10 @@ class _PurchaseOrderIn(BaseModel):
     lines: list[_LineIn] = Field(min_length=1)
     po_number: str | None = None
     currency: str = "INR"
-    exchange_rate: int = 1
+    exchange_rate: Decimal = Decimal(1)
+
+    _rate = field_validator("exchange_rate", mode="before")(
+        classmethod(lambda cls, v: _validate_exchange_rate(v)))
 
 
 class _EmitIn(BaseModel):
