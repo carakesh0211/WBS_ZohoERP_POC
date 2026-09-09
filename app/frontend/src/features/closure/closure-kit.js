@@ -129,7 +129,20 @@ export function table({ caption, columns, rows, cell }) {
     if (value === null || value === undefined || value === '') return '—';
     return String(value);
   });
-  return h('div', { class: 'closure-tablewrap' }, [
+  // FOCUSABLE. `overflow-x: auto` makes this a scroll container whenever the
+  // table is wider than the viewport, and a scroll container that cannot take
+  // focus is unreachable by keyboard -- axe `scrollable-region-focusable`,
+  // raised on all six screens at 1024 and 800 and on none at 1440, because at
+  // 1440 nothing overflowed. Set exactly as `capex-datatable.js:72` sets it.
+  //
+  // NO `role="region"`, and that was tried. Adding it made the wrapper a
+  // LANDMARK, and on the three screens sharing `closure-list.js` the panel's
+  // <section> and this table's caption carry the same title -- two landmarks,
+  // same role, same accessible name, axe `landmark-unique`. The review is
+  // right that these wrappers are unnamed tab stops, but the fix for that is a
+  // name DISTINCT from the section's, not a copy of it, and that is a change
+  // to the call sites rather than something to fold into this repair.
+  return h('div', { class: 'closure-tablewrap', tabindex: '0' }, [
     h('table', { class: 'closure-table' }, [
       h('caption', { class: 'sr-only' }, caption),
       h('thead', {}, h('tr', {}, columns.map((col) => h(
