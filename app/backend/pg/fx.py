@@ -605,17 +605,19 @@ def translate_bill(session: Session, *, bill_id: str, source_currency: str,
         cells, parsed, source_minor_exponent=exponent)
     source_minors = cells
 
+    per_line_bases: list[tuple[int, int, int]] = []
     for index, row in enumerate(lines):
         line_id = row[0]
         amount, tax, freight = (int(row[1]), int(row[2]), int(row[3]))
-        base = cell_bases[index * 3:index * 3 + 3]
+        base = tuple(int(v) for v in cell_bases[index * 3:index * 3 + 3])
+        per_line_bases.append(base)
         session.execute(
             "UPDATE bill_line SET source_amount_minor = %s, "
             "source_tax_minor = %s, source_freight_minor = %s, "
             "amount_paise = %s, non_creditable_tax_paise = %s, "
             "freight_paise = %s, updated_at = now(), updated_by = %s "
             "WHERE bill_line_id = %s",
-            (amount, tax, freight, int(base[0]), int(base[1]), int(base[2]),
+            (amount, tax, freight, base[0], base[1], base[2],
              actor, line_id))
 
     now = datetime.now(timezone.utc)
@@ -638,7 +640,19 @@ def translate_bill(session: Session, *, bill_id: str, source_currency: str,
         "source_minor_exponent": exponent,
         "fx_rate": str(parsed), "fx_rate_date": rate_date.isoformat(),
         "fx_rate_source": rate_source, "fx_rate_id": fx_rate_id,
-        "base_paise": header_base, "line_base_paise": line_bases,
+        "base_paise": header_base,
+        # PER LINE AND PER COLUMN, in the `ORDER BY bl.bill_line_id` this
+        # function read them in. It was `line_bases` -- a name that stopped
+        # existing when this function started translating all three money
+        # columns instead of one, and that Python would have resolved at CALL
+        # time, so the module imported cleanly and the first EUR bill anybody
+        # repaired against a live server raised NameError. Caught by
+        # `tests/test_no_undefined_names.py`, which is the only check here that
+        # could have: every test of this path is `@pytest.mark.pg` and skips on
+        # a machine with no PostgreSQL, which is every machine this was written
+        # on.
+        "line_base_paise": [cells[0] for cells in per_line_bases],
+        "line_base_cells": per_line_bases,
         "translated_at": now.isoformat(),
     }
 
