@@ -1,0 +1,104 @@
+{
+  "schema_version": "1",
+  "bound_to": "app/backend/observability.py::ALERT_CONDITIONS",
+  "binding_note": "tests/test_ops_readiness.py asserts that the key set here is exactly ALERT_CONDITIONS's key set. A condition cannot exist in code without a written response, and a response cannot be written for a condition that does not exist. observability.alert() already refuses an unknown condition at runtime; this closes the other direction.",
+  "verification": {
+    "definitions": "VERIFIED-LOCAL - the definitions are read and bound to the code by tests/test_ops_readiness.py, which runs everywhere.",
+    "firing": "UNVERIFIED - no alert has ever been delivered to a sink. ALERT_CONDITIONS's own comment says 'Wired to the sink in Phase 1'. observability.alert() writes a log record with an `alert` field and nothing consumes it. Every `notification` below describes the intended route, not an observed one."
+  },
+  "alerts": {
+    "LEDGER_DIVERGENCE": {
+      "severity": "P1",
+      "summary": "A materialised control cell disagrees with the derived ledger.",
+      "why_it_matters": "budget_ledger_cell carries six derived money columns. If a materialised value drifts from the ledger it is derived from, availability is wrong, and a purchase request is checked against a number that does not exist. This is AUD-C-001's failure mode.",
+      "detection": "Scheduled recomputation of each cell's derived columns from the underlying ledger rows, compared to the stored value.",
+      "threshold": "ANY non-zero difference, in paise. There is no tolerance: a one-paisa divergence is a defect in the derivation, not noise.",
+      "evaluation_window": "each scheduled run",
+      "notification": "page immediately",
+      "first_response": [
+        "Do NOT repair the cell. The stored value is the evidence of what the system believed when it authorised spend.",
+        "Record the diverging cell ids, both values, and the difference in paise.",
+        "Freeze budget approval for the affected WBS subtree.",
+        "Establish which side is wrong by recomputing from audit history, not from the cell."
+      ],
+      "escalate_if": "more than one cell diverges, or the difference moves between runs"
+    },
+    "AUDIT_CHAIN_BROKEN": {
+      "severity": "P1",
+      "summary": "verify_chain reported intact=False for a stream.",
+      "why_it_matters": "The hash chain is the control that makes history non-repudiable. A break means either a genuine edit or a defect in how entries are written. Both are P1, and they are not distinguishable from the alert alone.",
+      "detection": "Scheduled run of app.backend.pg.audit.verify_chain over every stream_key, plus the same call at the end of any migration.",
+      "threshold": "any stream with intact=False, OR stream_found=False for a stream that is expected to exist",
+      "evaluation_window": "each scheduled run",
+      "notification": "page immediately",
+      "first_response": [
+        "Do NOT recompute any hash. Recomputation makes a tampered chain verify and destroys the only evidence there is.",
+        "Capture first_break_seq, head_seq and sequence_contiguous from the result, and the rows either side of the break.",
+        "Take a backup BEFORE any further writes to the stream.",
+        "A break at seq 1 with entry_hash IS NULL rows in the stream is the pre-002 legacy shape, not tampering - see docs/runbooks/poc-to-postgres-migration.md.",
+        "sequence_contiguous=false with no hash mismatch means entries were DELETED, not edited."
+      ],
+      "escalate_if": "the break is in a stream carrying approval or capitalisation decisions"
+    },
+    "CIRCUIT_OPEN": {
+      "severity": "P2",
+      "summary": "A Zoho connection circuit opened.",
+      "why_it_matters": "Outbound emission stops while the circuit is open. Commitments raised in the Hub do not reach the ERP, so the two systems diverge silently until it closes.",
+      "detection": "circuit state transition to open, per connection_id",
+      "threshold": "any transition to open",
+      "evaluation_window": "immediate",
+      "notification": "ticket; page if open longer than 30 minutes",
+      "first_response": [
+        "Read the connection's recent failures: an expired refresh token and a Zoho outage need different responses.",
+        "Do NOT force the circuit closed to 'unblock' a queue. The queue is durable; a forced close against a failing tenant burns the daily quota.",
+        "Check DLQ depth at the same time - an open circuit usually precedes a DLQ_DEPTH alert."
+      ],
+      "escalate_if": "more than one connection opens within an hour, or a circuit reopens immediately after closing"
+    },
+    "DLQ_DEPTH": {
+      "severity": "P2",
+      "summary": "The dead-letter queue is above threshold.",
+      "why_it_matters": "Every dead-lettered message is a business event that has not reached its destination. Depth is a proxy for how far the two systems have diverged.",
+      "detection": "count of undiscarded dead-letter rows",
+      "threshold": "warn at 25, page at 100, or any single item older than 24 hours",
+      "evaluation_window": "5 minutes",
+      "notification": "ticket at warn; page at the page threshold",
+      "first_response": [
+        "Group by failure reason before retrying anything. A uniform reason is one fix; a scattered one is a systemic problem.",
+        "Retrying is idempotent by dedupe key, so a retry cannot double-count a commitment - but confirm the key is present before bulk-retrying.",
+        "Discard only with a recorded reason. A discarded item is a business event deliberately abandoned."
+      ],
+      "escalate_if": "depth grows while retries are running"
+    },
+    "DAILY_QUOTA_EXHAUSTED": {
+      "severity": "P2",
+      "summary": "The Zoho daily API ceiling has been reached.",
+      "why_it_matters": "No further calls succeed until the quota window resets. Every sweep and every outbound emission stalls, and the backlog lands at once when it resets.",
+      "detection": "rate-budget counter reaching the configured daily ceiling",
+      "threshold": "page at 100% of the ceiling; warn at 85%",
+      "evaluation_window": "the quota window",
+      "notification": "ticket at warn; page at exhaustion",
+      "first_response": [
+        "Identify the consumer: an unbounded sweep and a legitimate volume day look identical in the counter.",
+        "Do NOT raise the ceiling as a first response. If a defect is spending the quota, a larger ceiling spends more.",
+        "Confirm the reset time and warn finance if a period close depends on a sync landing today."
+      ],
+      "escalate_if": "the ceiling is reached on consecutive days"
+    },
+    "JOB_RESUME_LIMIT": {
+      "severity": "P2",
+      "summary": "A job exceeded max_resume_count.",
+      "why_it_matters": "A job that keeps resuming is not making progress. The framework pauses it rather than looping forever, so the work it was doing is now not being done at all.",
+      "detection": "app.backend.integration.jobs raises this when claimed.resume_count >= max_resume_count",
+      "threshold": "resume_count >= DEFAULT_MAX_RESUME_COUNT for any job",
+      "evaluation_window": "each job claim",
+      "notification": "ticket",
+      "first_response": [
+        "Read the job's checkpoint. A cursor that has not advanced across resumes means the chunk itself fails, not the deadline.",
+        "Do NOT raise max_resume_count to clear the alert - that converts a stuck job into a silently stuck job.",
+        "Check whether the job's soft deadline is being hit legitimately because the chunk grew."
+      ],
+      "escalate_if": "the same job kind breaches for more than one tenant"
+    }
+  }
+}

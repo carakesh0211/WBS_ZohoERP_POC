@@ -11,22 +11,84 @@
     "properties": [
       {
         "name": "transitive_closure_complete",
-        "value": "false"
+        "value": "true"
       },
       {
         "name": "generation_note",
-        "value": "Direct declared dependencies only. Regenerate with --resolved from a clean virtualenv for the full set."
+        "value": "Full resolved dependency set."
       }
     ]
   },
   "components": [
     {
       "type": "library",
+      "name": "annotated-types",
+      "version": "0.8.0",
+      "purl": "pkg:pypi/annotated-types@0.8.0",
+      "licenses": [],
+      "description": "Reusable constraint types to use with typing.Annotated"
+    },
+    {
+      "type": "library",
+      "name": "anyio",
+      "version": "4.15.1",
+      "purl": "pkg:pypi/anyio@4.15.1",
+      "licenses": [],
+      "description": "High-level concurrency and networking framework on top of asyncio or Trio"
+    },
+    {
+      "type": "library",
+      "name": "click",
+      "version": "8.5.0",
+      "purl": "pkg:pypi/click@8.5.0",
+      "licenses": [],
+      "description": "Composable command line interface toolkit"
+    },
+    {
+      "type": "library",
+      "name": "colorama",
+      "version": "0.4.6",
+      "purl": "pkg:pypi/colorama@0.4.6",
+      "licenses": [],
+      "description": "Cross-platform colored terminal text."
+    },
+    {
+      "type": "library",
       "name": "fastapi",
-      "version": "0.133.1",
-      "purl": "pkg:pypi/fastapi@0.133.1",
+      "version": "0.141.1",
+      "purl": "pkg:pypi/fastapi@0.141.1",
       "licenses": [],
       "description": "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
+    },
+    {
+      "type": "library",
+      "name": "h11",
+      "version": "0.16.0",
+      "purl": "pkg:pypi/h11@0.16.0",
+      "licenses": [
+        {
+          "license": {
+            "name": "MIT"
+          }
+        }
+      ],
+      "description": "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
+    },
+    {
+      "type": "library",
+      "name": "httpcore",
+      "version": "1.0.9",
+      "purl": "pkg:pypi/httpcore@1.0.9",
+      "licenses": [],
+      "description": "A minimal low-level HTTP client."
+    },
+    {
+      "type": "library",
+      "name": "httptools",
+      "version": "0.8.0",
+      "purl": "pkg:pypi/httptools@0.8.0",
+      "licenses": [],
+      "description": "A collection of framework independent HTTP protocol utils."
     },
     {
       "type": "library",
@@ -44,11 +106,81 @@
     },
     {
       "type": "library",
+      "name": "iniconfig",
+      "version": "2.3.0",
+      "purl": "pkg:pypi/iniconfig@2.3.0",
+      "licenses": [],
+      "description": "brain-dead simple config-ini parsing"
+    },
+    {
+      "type": "library",
+      "name": "packaging",
+      "version": "26.3",
+      "purl": "pkg:pypi/packaging@26.3",
+      "licenses": [],
+      "description": "Core utilities for Python packages"
+    },
+    {
+      "type": "library",
+      "name": "pluggy",
+      "version": "1.6.0",
+      "purl": "pkg:pypi/pluggy@1.6.0",
+      "licenses": [
+        {
+          "license": {
+            "name": "MIT"
+          }
+        }
+      ],
+      "description": "plugin and hook calling mechanisms for python"
+    },
+    {
+      "type": "library",
+      "name": "psycopg",
+      "version": "3.3.5",
+      "purl": "pkg:pypi/psycopg@3.3.5",
+      "licenses": [],
+      "description": "PostgreSQL database adapter for Python"
+    },
+    {
+      "type": "library",
+      "name": "psycopg-binary",
+      "version": "3.3.5",
+      "purl": "pkg:pypi/psycopg-binary@3.3.5",
+      "licenses": [],
+      "description": "PostgreSQL database adapter for Python -- C optimisation distribution"
+    },
+    {
+      "type": "library",
+      "name": "psycopg-pool",
+      "version": "3.3.1",
+      "purl": "pkg:pypi/psycopg-pool@3.3.1",
+      "licenses": [],
+      "description": "Connection Pool for Psycopg"
+    },
+    {
+      "type": "library",
       "name": "pydantic",
-      "version": "2.13.4",
-      "purl": "pkg:pypi/pydantic@2.13.4",
+      "version": "2.13.5",
+      "purl": "pkg:pypi/pydantic@2.13.5",
       "licenses": [],
       "description": "Data validation using Python type hints"
+    },
+    {
+      "type": "library",
+      "name": "pydantic_core",
+      "version": "2.46.5",
+      "purl": "pkg:pypi/pydantic_core@2.46.5",
+      "licenses": [],
+      "description": "Core functionality for Pydantic validation and serialization"
+    },
+    {
+      "type": "library",
+      "name": "pyparsing",
+      "version": "3.3.2",
+      "purl": "pkg:pypi/pyparsing@3.3.2",
+      "licenses": [],
+      "description": "pyparsing - Classes and methods to define and execute parsing grammars"
     },
     {
       "type": "library",
@@ -60,11 +192,99 @@
     },
     {
       "type": "library",
+      "name": "python-dotenv",
+      "version": "1.2.3",
+      "purl": "pkg:pypi/python-dotenv@1.2.3",
+      "licenses": [
+        {
+          "license": {
+            "name": "BSD-3-Clause"
+          }
+        }
+      ],
+      "description": "Read key-value pairs from a .env file and set them as environment variables"
+    },
+    {
+      "type": "library",
+      "name": "PyYAML",
+      "version": "6.0.3",
+      "purl": "pkg:pypi/pyyaml@6.0.3",
+      "licenses": [
+        {
+          "license": {
+            "name": "MIT"
+          }
+        }
+      ],
+      "description": "YAML parser and emitter for Python"
+    },
+    {
+      "type": "library",
+      "name": "starlette",
+      "version": "1.6.0",
+      "purl": "pkg:pypi/starlette@1.6.0",
+      "licenses": [],
+      "description": "The little ASGI library that shines."
+    },
+    {
+      "type": "library",
+      "name": "typing-inspection",
+      "version": "0.4.4",
+      "purl": "pkg:pypi/typing-inspection@0.4.4",
+      "licenses": [],
+      "description": "Runtime typing introspection tools"
+    },
+    {
+      "type": "library",
+      "name": "typing_extensions",
+      "version": "4.16.0",
+      "purl": "pkg:pypi/typing_extensions@4.16.0",
+      "licenses": [],
+      "description": "Backported and Experimental Type Hints for Python 3.9+"
+    },
+    {
+      "type": "library",
+      "name": "tzdata",
+      "version": "2026.3",
+      "purl": "pkg:pypi/tzdata@2026.3",
+      "licenses": [
+        {
+          "license": {
+            "name": "Apache-2.0"
+          }
+        }
+      ],
+      "description": "Provider of IANA time zone data"
+    },
+    {
+      "type": "library",
       "name": "uvicorn",
-      "version": "0.41.0",
-      "purl": "pkg:pypi/uvicorn@0.41.0",
+      "version": "0.52.4",
+      "purl": "pkg:pypi/uvicorn@0.52.4",
       "licenses": [],
       "description": "The lightning-fast ASGI server."
+    },
+    {
+      "type": "library",
+      "name": "watchfiles",
+      "version": "1.2.0",
+      "purl": "pkg:pypi/watchfiles@1.2.0",
+      "licenses": [
+        {
+          "license": {
+            "name": "MIT"
+          }
+        }
+      ],
+      "description": "Simple, modern and high performance file watching and code reload in python."
+    },
+    {
+      "type": "library",
+      "name": "websockets",
+      "version": "17.1",
+      "purl": "pkg:pypi/websockets@17.1",
+      "licenses": [],
+      "description": "An implementation of the WebSocket Protocol (RFC 6455 & 7692)"
     }
   ]
 }
