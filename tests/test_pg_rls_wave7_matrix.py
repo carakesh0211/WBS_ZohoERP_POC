@@ -328,6 +328,14 @@ def test_live_a_saved_views_owner_cannot_be_reassigned(
 # 018 -- export_job. The policy alone, with no application predicate.
 # =========================================================================
 
+#: A shape-valid `scope_digest`. `ck_export_job_scope_digest_shape` requires
+#: `^[0-9a-f]{64}$`, and 'digest' is a word -- which is what the second CI run
+#: on this seed discovered. It is not a hash OF anything: nothing in these
+#: tests verifies it, and the constraint is about shape, so a constant is
+#: honest where a `sha256(...)` call dressed up as derivation would not be.
+_SCOPE_DIGEST = "0" * 63 + "1"
+
+
 def _seed_jobs(con, ids) -> None:
     for job_id, requester in (("EXP-A", ids["user_a"]), ("EXP-B", ids["user_b"])):
         con.execute(
@@ -341,8 +349,9 @@ def _seed_jobs(con, ids) -> None:
             # has to hold whenever the suite runs.
             "INSERT INTO export_job (export_job_id, dataset, requested_by,"
             " scope_json, scope_digest, column_order, expires_at)"
-            " VALUES (%s, 'wbs_positions', %s, '{}'::jsonb, 'digest',"
-            " ARRAY['a'], now() + interval '7 days')", (job_id, requester))
+            " VALUES (%s, 'wbs_positions', %s, '{}'::jsonb, %s,"
+            " ARRAY['a'], now() + interval '7 days')",
+            (job_id, requester, _SCOPE_DIGEST))
     con.commit()
 
 
