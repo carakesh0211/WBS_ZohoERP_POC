@@ -69,8 +69,8 @@ python app/run.py
 A tunnel gives a public HTTPS URL that points at your machine. It lasts as long as the command runs.
 
 ```bash
-set DEMO_USER=atha
-set DEMO_PASSWORD=<choose-a-strong-one>
+rem DEMO_USER / DEMO_PASSWORD are deliberately NOT set here: nothing reads
+rem them, so setting them protects nothing. See the header of this file.
 python app/run.py --public
 ```
 
@@ -126,7 +126,14 @@ the one in this repository:
 
 ```bash
 docker build -t capex-hub .
-docker run -p 8000:8000 -e DEMO_USER=atha -e DEMO_PASSWORD=<strong> -v capexdata:/data capex-hub
+# The schema is a DEPLOY STEP -- run.py does not migrate itself (DEF-01) --
+# so a fresh volume needs this first, or the server starts against nothing:
+docker run --rm -v capexdata:/data capex-hub python -m app.backend.migrate --upgrade
+
+# No -e DEMO_USER / -e DEMO_PASSWORD: nothing reads them. They are omitted
+# rather than shown with a placeholder, because a placeholder is an
+# instruction.
+docker run -p 8000:8000 -v capexdata:/data capex-hub
 ```
 
 ---

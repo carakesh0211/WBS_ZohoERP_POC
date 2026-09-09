@@ -15,9 +15,15 @@ services:
       - key: HOST
         value: 0.0.0.0
       - key: CAPEX_DB_PATH
-        value: /tmp/capex.db      # free tier has no persistent disk; the demo
-                                  # dataset reseeds automatically on restart
-      - key: DEMO_USER
-        sync: false               # set in the dashboard, never committed
-      - key: DEMO_PASSWORD
-        sync: false
+        value: /tmp/capex.db      # free tier has no persistent disk. THE DATA
+                                  # DOES NOT RESEED ON RESTART: `run.py`
+                                  # refuses to migrate on boot (DEF-01) and
+                                  # exits on a missing schema, so a restart
+                                  # onto an empty /tmp yields a dead service
+                                  # until the migration is run as a deploy
+                                  # step. This line said "reseeds
+                                  # automatically" and it never did.
+      # DEMO_USER and DEMO_PASSWORD are NOT declared here. They were, as
+      # `sync: false` secrets, which made them look load-bearing. Nothing in
+      # `app/backend/` reads either name, so declaring them invited an
+      # operator to believe the URL was gated.

@@ -217,7 +217,7 @@ asserts this.
 
 `DEPLOY.md:7` says the app "demands a username and password before a single
 screen loads" when these are set. They are read at exactly one place —
-`app/run.py:182` — inside a condition that only prints a console warning. No
+`app/run.py`'s `main()` (the non-loopback bind warning) — inside a condition that only prints a console warning. No
 middleware or auth path in `app/backend/**` reads either. Setting them changes
 nothing.
 
@@ -230,7 +230,10 @@ this build on a public URL.** See `docs/DEPLOYMENT_RUNBOOK.md` §4.
 
 `Dockerfile` and `render.yaml` both start `python app/run.py` against an empty
 volume without migrating first, and the process deliberately refuses to migrate
-itself. Both exit 1 on first boot. `Dockerfile` also omits `migrations/pg/`, so
+itself. Both exit 1 on first boot ON AN EMPTY VOLUME, which is the designed
+behaviour: the schema is a deploy step (DEF-01). `Dockerfile` USED TO omit
+`migrations/pg/` — it now copies them, and the two-command sequence is in the
+file. What remains true is that
 the image cannot apply a PostgreSQL migration at all. Corrected commands are in
 `docs/DEPLOYMENT_RUNBOOK.md` §2.
 

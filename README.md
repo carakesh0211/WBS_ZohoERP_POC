@@ -6,9 +6,11 @@ available budget is visible *before* further procurement is approved.
 
 > **Status: proof of concept, post-remediation. Not production software.**
 > An independent quality audit on 2026-08-06 found the original build "technically functional but not
-> reliable as a financial-control system" and recommended Production No-Go. All ten Critical findings
-> have since been corrected and regression-tested — see `FINDINGS_REMEDIATION_STATUS.csv` for the
-> finding-by-finding position, including what remains **unresolved**.
+> reliable as a financial-control system" and recommended Production No-Go. Nine of the ten
+> Critical findings have since been corrected and regression-tested. **AUD-C-007 is recorded as
+> Partially fixed**, not closed — see `FINDINGS_REMEDIATION_STATUS.csv` for the finding-by-finding
+> position, including what remains **unresolved**. This paragraph said "all ten" while that file
+> said "Partially fixed"; the file is the record and this is now consistent with it.
 
 ## Run it
 

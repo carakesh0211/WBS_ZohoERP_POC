@@ -261,7 +261,7 @@ this dataset**; do not promise one.
 `DEPLOY.md:7` states the app "demands a username and password before a single
 screen loads" when these are set, and `render.yaml:3` instructs the operator to
 set them before sharing the URL. They are read at exactly one place —
-`app/run.py:182` — inside a condition that **only prints a warning**. No
+`app/run.py`'s `main()` (the non-loopback bind warning) — inside a condition that **only prints a warning**. No
 middleware, dependency or auth path in `app/backend/**` reads either variable.
 Setting them changes nothing except suppressing the console warning.
 
@@ -292,7 +292,8 @@ comment "the demo dataset reseeds automatically on restart", which stopped being
 true when DEF-01 was fixed.
 
 Separately, `Dockerfile` copies `app/` (which contains the SQLite migrations) but
-**not** `migrations/pg/`, so the image cannot run a PostgreSQL migration at all.
+**not** `migrations/pg/`. **FIXED** — `Dockerfile` now copies `migrations`, and
+the migrate-then-serve sequence is documented in the file itself.
 
 *See `docs/DEPLOYMENT_RUNBOOK.md` §2 for the corrected start command.*
 

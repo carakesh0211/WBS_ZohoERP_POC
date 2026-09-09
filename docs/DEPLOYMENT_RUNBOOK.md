@@ -177,8 +177,8 @@ store and must never be committed, logged, or written into evidence.
 | `HOST` | `127.0.0.1`, or `0.0.0.0` with `--public` | Bind address | no | `app/run.py:174` |
 | `PORT` | `8000` | Listen port | no | `app/run.py:179` |
 | `X_ZOHO_CATALYST_LISTEN_PORT` | *(none)* | Catalyst AppSail's assigned port. **Takes precedence over `PORT`** | no | `app/run.py:178` |
-| `DEMO_USER` | *(none)* | **Enforces nothing.** See the warning below | credential-adjacent | `app/run.py:182` |
-| `DEMO_PASSWORD` | *(none)* | **Enforces nothing.** See the warning below | **YES** | `app/run.py:182` |
+| `DEMO_USER` | *(none)* | **Enforces nothing.** See the warning below | credential-adjacent | `app/run.py`, `main()` |
+| `DEMO_PASSWORD` | *(none)* | **Enforces nothing.** See the warning below | **YES** | `app/run.py`, `main()` |
 
 Not connection-configurable: `connect_timeout` (10 s) and `application_name`
 (`capex-wbs-hub`) are dataclass defaults at `pg/config.py:134-135`, not
@@ -212,7 +212,7 @@ environment variables.
 
 `DEPLOY.md:7` states the app "demands a username and password before a single
 screen loads" when these are set. **It does not.** They are read once, at
-`app/run.py:182`, inside a condition that only prints a console warning. No
+`app/run.py`'s `main()` (the non-loopback bind warning), inside a condition that only prints a console warning. No
 middleware, dependency or auth path in `app/backend/**` reads either variable.
 
 The application *does* have a real user model — server-derived sessions, PBKDF2

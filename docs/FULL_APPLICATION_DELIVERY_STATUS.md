@@ -180,26 +180,107 @@ migration and operational hardening; UAT and release package.
 - `spa-routing.spec.js`: 55 passed · `integration.spec.js`: 161 passed against
   the real wiring · `analytics` + `mapping`: 122 passed, axe clean
 - Manifest `--check` clean; baseline back at exactly **220**
-- Migrations: **001…022, contiguous, no gaps**
+- Migrations: **001…024, contiguous, no gaps**
 - CI run 34309336564: Contract, Supply chain, Regression **green**; PostgreSQL
   **red on two tests**, both failing in the seed of the new RLS matrix and
   neither reaching an assertion about a policy (1517 passed); the fix is
   committed at `1b7f08e` and not yet pushed. Visual regression still running —
   the push is deliberately held, because three earlier pushes each cancelled
   that job before it could finish.
-- Wave 7 is **not closed**.
+- Wave 7 is **CLOSED**; Wave 8 is **not**.
 
-## The new RLS matrix has never passed, and that is stated plainly
+## The Wave 7 RLS matrix — it has now passed, and here is the whole arc
 
-`tests/test_pg_rls_wave7_matrix.py` is the coverage for H3. Every test in it is
-`@pytest.mark.pg` and skips on every machine here; all eight first executed in
-CI, where three failed on the first run and two on the second — every one of
-them in the test's own seeding, not in a policy assertion. Three CI cycles were
-spent on one INSERT written from memory rather than from migration 018. The
-seed is now derived from the migration: every NOT NULL column with no default,
-and every CHECK on all seven tables the file seeds.
+This section previously read "has never passed" and sat two screens below a
+table saying the gate was MET. Both were written honestly and one went stale;
+carrying a contradiction in the same file is worse than either.
 
-**No claim is made that these tests pass until CI says so.**
+`tests/test_pg_rls_wave7_matrix.py` skips on every machine here. All eight
+tests first executed in CI, where **three failed on the first run and two on
+the second** — every one of them in the test's own seeding, none reaching a
+policy assertion. Three CI cycles went on one INSERT written from memory
+rather than from migration 018. **They passed in run 34317944466**, which is
+what let Wave 7 close.
+
+## Wave 8 — delivered, and what the final review found
+
+| Stream | Delivered |
+|---|---|
+| **A** financial & period | Migration 023: FX translation engine, approval-gated period reopen with concurrency and idempotency tests that bite |
+| **B** security & audit | Migration 024: `bill.created_by` closing an inert maker-checker, audit anchor writer and verifier, secret-provider concurrency, L2 and L6 |
+| **C** migration & ops | Deterministic export/import, reconciliation to the paisa, restore drill, SBOM, `pip-audit` clean |
+| **D** UAT & release | 358-assertion role matrix, browser UAT, four client documents |
+
+**Two of the four agents died at a usage limit mid-task.** The final
+adversarial review was pointed at that seam and found three HIGH defects there.
+
+### H-1 — the FX engine has no caller. AUD-H-007 IS NOT CLOSED.
+
+`translate_bill`, `assess_revaluation`, `record_rate`, `revaluation_exposure`
+and `bill_fx_summary` are invoked from **nothing** outside `pg/fx.py` and
+`tests/`. No route, no service, no job, no screen. `grep` for
+`source_currency` outside `fx.py` returns nothing.
+
+The arithmetic is correct and well tested — `Decimal` throughout, exponent
+honoured per currency, half-away-from-zero symmetric, rate applied exactly
+once, every `SUM()` cast `::bigint`. **It is a wiring gap, not a money bug.**
+But migration 023's headline — "applies the exchange rate that 013 stored and
+nobody ever multiplied" — is true of `fx.py` and **false of the product**.
+`FINDINGS_REMEDIATION_STATUS.csv` still records AUD-H-007 as not implemented,
+and it is accidentally right.
+
+### H-2 — the bill-ingestion path can silently un-translate a translated bill.
+
+`pg/procurement.py` writes the vendor's amount straight into `amount_paise`
+(declared INR base) and never sets `source_currency` or `source_amount_minor`.
+Its `ON CONFLICT DO UPDATE` overwrites `amount_paise` on re-mirror, and 023's
+immutability triggers do not fire because the columns they watch are unchanged.
+`fx_translated_at` would then assert a translation the lines no longer carry.
+
+**Not executed** — it needs PostgreSQL. Derived from the trigger bodies and the
+`DO UPDATE` set-list.
+
+### H-3 — the read-before-authorise fix was applied to one function of three.
+
+`approve_revision` and `approve_capitalisation` had `approve_pr`'s exact shape
+behind routes gated on authentication only. Reproduced over HTTP as a read-only
+Auditor: 404 = does not exist, 409 = exists and here is its status, 403 =
+exists and is approvable. **FIXED**, with a pattern guard that walks the AST of
+every `approve_*` so a fourth one fails there rather than in the next review.
+
+### Also open, from the same review
+
+- **M-1** the audit anchor **writer has no invocation path** — no route (by
+  design), no CLI, no schedule. `audit_anchor` stays empty, so whole-stream
+  truncation detection is inert in every deployment. The verifier is honest
+  about it: `anchored: false` is explicitly not a pass.
+- **M-2** `verify_anchors` compares only against the **newest** anchor, so a
+  stream deleted and then re-anchored reports `intact=True`.
+- **M-3** `period.reopen` is in neither `auth.PERMISSIONS` nor `MAKER_CHECKER`,
+  so that limb of `require_separation` is inert. Mitigated: `periods.py`
+  compares unconditionally, 023 adds two CHECK constraints, and a test
+  monkeypatches `require_separation` to a no-op and proves the refusal still
+  fires.
+- **M-4** no **live** RLS enforcement test for migration 023's five tables.
+  Registered correctly on both sides and covered by catalog introspection;
+  whether an ENT-A principal can read ENT-B's `period_reopen_request` is
+  UNVERIFIED.
+
+## CI IS BLOCKED, AND NOT BY THIS CODE
+
+Every job in both runs since 06:10 fails in 3–4 seconds having executed **zero
+steps**, with no logs written at all (`BlobNotFound`). `.github/workflows/` is
+byte-identical to run **34317944466**, which was green on all five jobs.
+
+Most likely cause: **exhausted GitHub Actions minutes** on a private repo. Not
+confirmed — the billing endpoint needs an auth scope this session does not
+hold.
+
+**Consequence, stated rather than worked around: the Wave 8 batch is
+UNVERIFIED in CI.** The local suite is green, but the two jobs that have caught
+a real defect in every wave — PostgreSQL and VRT — have not run against it. 656
+tests skip locally and have only ever executed in CI; migrations 023 and 024's
+tests are in that set.
 
 ## Local preview
 
