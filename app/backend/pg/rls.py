@@ -201,25 +201,75 @@ RLS_PROCUREMENT_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
     "bill_line": {"entity": None, "plant": None, "location": None, "project": None},
 }
 
-#: Tables whose predicate reaches ALL FOUR dimensions by joining `project`,
-#: rather than filtering a dimension column of their own.
+#: Tables whose predicate reaches the `project` row and passes ALL FOUR of its
+#: dimension columns to `capex_scope_permits`, rather than filtering a
+#: dimension column of their own.
 #:
 #: This is the distinction `RLS_PROCUREMENT_TABLE_COLUMNS`' all-`None` rows
 #: cannot make on their own: "unfiltered because someone forgot" versus
-#: "filtered on entity, plant, location AND project, through a join". These are
-#: filtered harder than any table in 004 or 006, not less.
+#: "filtered through a join on every dimension the joined project actually
+#: carries". These are filtered harder than any table in 004 or 006, not less.
+#:
+#: **WHAT "ALL FOUR" DOES AND DOES NOT MEAN.** See
+#: :data:`PROJECT_JOIN_NULL_DIMENSIONS_ARE_WAIVED` immediately below. The
+#: policies pass all four columns; how many of them RESTRICT depends on the
+#: joined project row, because `project.plant_id` and `project.location_id`
+#: are NULLABLE (`002_budget_control.sql:41-42`) and `capex_dimension_permits`
+#: WAIVES a NULL row value. For a project with no plant, the plant dimension
+#: is UNRESTRICTED for every row reaching it -- not invisible. Unqualified
+#: "filters all four dimensions" is therefore true of the CALL and false of
+#: the EFFECT on such a project, and this module states the difference rather
+#: than leaving the next reader to re-derive it.
 JOINED_VIA_PROJECT = frozenset(RLS_PROCUREMENT_TABLE_COLUMNS) | {
     # 014. `fk_pr_reservation_pr_project` binds this table's denormalised
     # `project_id` to its purchase request's, so reaching `project` through it
     # reaches the request's project by construction -- the `pr_line` shape: one
     # join, FK-guaranteed.
     "pr_reservation",
-    # 018. All three carry a denormalised `project_id` bound by foreign key to
-    # a real project, and `asset_allocation` binds its `wbs_id` to the SAME
+    # 019 (NOT 018 -- 018 is `018_export_jobs.sql`). This line said "018"; the
+    # same misnaming survives inside 019 itself, whose checksum is frozen, and
+    # is recorded in `022_saved_view_policies_and_revert_ledger.sql`'s header
+    # instead. All three carry a denormalised `project_id` bound by foreign key
+    # to a real project, and `asset_allocation` binds its `wbs_id` to the SAME
     # project by `fk_asset_allocation_wbs_project`, so reaching `project`
     # through the column reaches the row's real project by construction.
     "project_completion_review", "capitalisation_request", "asset_allocation",
 }
+
+#: THE QUALIFICATION EVERY "ALL FOUR DIMENSIONS" CLAIM IN THIS MODULE NEEDS,
+#: stated once, in one place, so no restatement of it can drift.
+#:
+#: `project.plant_id` and `project.location_id` are NULLABLE by design
+#: (`002_budget_control.sql:41-42`: "a CAPEX project can span more than one, in
+#: which case the WBS elements underneath it carry their own"). The two sides
+#: of the enforcement read that NULL in OPPOSITE directions, and both readings
+#: are deliberate in their own context:
+#:
+#:   * SQL -- `capex_dimension_permits` (`004_identity_scope.sql:198-213`)
+#:     returns TRUE `WHEN p_value IS NULL`, because it is built to waive a
+#:     dimension the ROW SHAPE lacks. A project with `plant_id IS NULL`
+#:     therefore passes the plant limb for every principal, however narrow
+#:     their plant grant. :func:`permits` mirrors this exactly.
+#:   * Application -- `repo.compile_scope` emits `(<column> = ANY(%(ids)s))`
+#:     (`repo.py:172`). SQL `NULL = ANY(...)` is NULL, not TRUE, so the same
+#:     row is EXCLUDED by the primary control.
+#:
+#: So on a project carrying no plant, the RLS backstop is UNRESTRICTED on the
+#: plant dimension while `repo.query` is fully restrictive. The backstop
+#: over-permits rather than over-denies, which is the direction that matters:
+#: for `capitalisation_request` and `asset_allocation` a principal granted
+#: only ENTITY-A but restricted to plant P still cannot see another entity's
+#: rows (the entity limb holds), but CAN see rows on an ENTITY-A project that
+#: names no plant.
+#:
+#: THIS IS INHERITED, NOT A WAVE 7 REGRESSION. `project`'s own policy in
+#: `004_identity_scope.sql` has always had it, and every table joining
+#: `project` inherits it unchanged -- 013's eight, 014's reservation and 019's
+#: three alike. Changing the semantics is a scope decision about 004 and about
+#: `capex_dimension_permits`, not a repair to a Wave 7 file; recording exactly
+#: what holds today is what stops a reader assuming the stronger claim.
+#: `tests/test_pg_rls_wave7_matrix.py` pins the behaviour in both layers.
+PROJECT_JOIN_NULL_DIMENSIONS_ARE_WAIVED: tuple[str, ...] = ("plant", "location")
 
 #: Every table 013 enables RLS on.
 RLS_PROCUREMENT_TABLES: tuple[str, ...] = tuple(RLS_PROCUREMENT_TABLE_COLUMNS)
@@ -326,6 +376,67 @@ JOINED_VIA_REPORT_SAVED_VIEW = frozenset({"report_view_default"})
 #: Every table 017 enables RLS on.
 RLS_REPORTING_TABLES: tuple[str, ...] = tuple(RLS_REPORTING_TABLE_COLUMNS)
 
+#: Table -> dimension column mapping for the two tables
+#: `migrations/pg/018_export_jobs.sql` adds: the export job and its rendered
+#: chunks.
+#:
+#: THIS REGISTRY WAS MISSING ENTIRELY UNTIL THE WAVE 7 REVIEW, AND ITS ABSENCE
+#: WAS INVISIBLE. Both tables sat at `status="protected_pending_registry"` in
+#: `scope_inventory`, and that status excludes a table from BOTH sides of
+#: `test_pg_rls_coverage.py`'s `set(covered_tables()) == set(ALL_RLS_TABLES)`
+#: -- so the equality held vacuously over them, exactly the "absent from both
+#: sources, both sources agree, every test passes" failure this module's own
+#: header warns about, one status value later. Deleting `ALTER TABLE export_job
+#: FORCE ROW LEVEL SECURITY` from 018 failed a single string grep in
+#: `tests/test_pg_exports.py` and nothing else, while in production the
+#: migration-running identity would read every requester's `scope_json` and
+#: every rendered CSV chunk with no policy, no error and no log line.
+#:
+#: EVERY DIMENSION IS `None` FOR BOTH, and neither is an oversight nor a
+#: dimension predicate:
+#:
+#: `export_job` is in :data:`OWNER_SCOPED_TABLES`. Its authorisation is the
+#: REQUESTER named on the row, not a dimension: `export_job_owner` admits
+#: `capex_principal_present() AND requested_by = capex.user_id`, and
+#: `export_job_service` admits the `SVC-EXPORT` worker so it can claim and
+#: advance jobs. That is NARROWER than any dimension predicate in this module,
+#: not a waiver of one -- it has to be, because the row carries the requester's
+#: whole resolved scope in `scope_json` and a rendered export of scoped
+#: financial data hangs off it. It is NOT in :data:`REFERENCE_TABLES`: those
+#: admit ANY established principal, and this admits exactly one plus the
+#: worker, so folding it in there would both misdescribe it and break
+#: `test_reference_tables_are_not_left_on_the_fail_open_all_null_predicate`'s
+#: meaning.
+#:
+#: `export_job_chunk` is in :data:`JOINED_VIA_EXPORT_JOB`: it carries no
+#: dimension column and no requester of its own, and its policy is an `EXISTS`
+#: over `export_job` -- itself under RLS -- so the parent's two policies are
+#: the single definition of "may see this export" rather than two that can
+#: drift. Same shape as `report_view_default`'s EXISTS over
+#: `report_saved_view`, and NOT an all-NULL `capex_scope_permits` call, which
+#: would be literally TRUE for every row.
+RLS_EXPORT_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
+    "export_job": {"entity": None, "plant": None,
+                   "location": None, "project": None},
+    "export_job_chunk": {"entity": None, "plant": None,
+                         "location": None, "project": None},
+}
+
+#: Tables whose policy filters by the PRINCIPAL NAMED ON THE ROW rather than by
+#: any scope dimension. The distinction :data:`REFERENCE_TABLES` cannot make:
+#: a reference table admits every established principal, an owner-scoped table
+#: admits one (plus, here, the declared service worker).
+OWNER_SCOPED_TABLES = frozenset({"export_job"})
+
+#: The dimensionless table in 018 that IS filtered, through an EXISTS against
+#: its parent job, so it is not mistaken for one nobody wrote a predicate for.
+#: Same distinction :data:`JOINED_VIA_WBS_ELEMENT`, :data:`JOINED_VIA_PROJECT`
+#: and :data:`JOINED_VIA_REPORT_SAVED_VIEW` draw.
+JOINED_VIA_EXPORT_JOB = frozenset({"export_job_chunk"})
+
+#: Every table 018 enables RLS on.
+RLS_EXPORT_TABLES: tuple[str, ...] = tuple(RLS_EXPORT_TABLE_COLUMNS)
+
 #: Table -> dimension column mapping for the three closure documents
 #: `migrations/pg/019_closure.sql` adds, in the same shape as the registries
 #: above.
@@ -342,8 +453,23 @@ RLS_REPORTING_TABLES: tuple[str, ...] = tuple(RLS_REPORTING_TABLE_COLUMNS)
 #: PROJECT dimension only, and dimensions resolve independently
 #: (`principal_scope.py`, property 2), so a principal restricted to one entity
 #: and to no project carries `project_ids=None` -- unrestricted -- and would
-#: read every other entity's CWIP balance and capitalisation decision. 018's
-#: policies reach `project` and pass all four of its dimension columns.
+#: read every other entity's CWIP balance and capitalisation decision. 019's
+#: policies (this block said "018"; 019's own header repeats the same
+#: misnaming and is checksum-frozen, so the correction is recorded in
+#: `022_saved_view_policies_and_revert_ledger.sql`) reach `project` and PASS
+#: all four of its dimension columns to `capex_scope_permits`.
+#:
+#: PASS, NOT NECESSARILY RESTRICT, and the difference is load-bearing on
+#: exactly these tables. `project.plant_id` and `project.location_id` are
+#: nullable, and `capex_dimension_permits` WAIVES a NULL row value, so for a
+#: project that names no plant the plant limb is TRUE for every principal --
+#: the policy restricts on entity and project and is UNRESTRICTED on plant,
+#: not "invisible". A principal granted ENTITY-A but restricted to plant P
+#: still cannot read another entity's capital position, and CAN read an
+#: ENTITY-A project that carries no plant. The full statement, both layers and
+#: why this is inherited from 004 rather than introduced here, is
+#: :data:`PROJECT_JOIN_NULL_DIMENSIONS_ARE_WAIVED`; the behaviour is pinned by
+#: `tests/test_pg_rls_wave7_matrix.py`.
 RLS_CLOSURE_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
     "project_completion_review": {
         "entity": None, "plant": None, "location": None, "project": None},
@@ -356,17 +482,27 @@ RLS_CLOSURE_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
 #: Every table 019 enables RLS on.
 RLS_CLOSURE_TABLES: tuple[str, ...] = tuple(RLS_CLOSURE_TABLE_COLUMNS)
 
-#: Every RLS-protected table, from any of the six registries.
+#: Every RLS-protected table, from any of the seven registries.
 #:
 #: Reporting (017) and closure (019) were written in parallel and each added
 #: itself to this dict, so the merge produced two definitions -- the second
 #: silently winning and dropping the first's tables out of RLS coverage
 #: entirely. `test_pg_rls_coverage.py` asserts set equality in BOTH directions
 #: and is what would have caught it; both are named here so it does not have to.
+#:
+#: EXPORTS (018) WERE ABSENT FROM THIS MERGE ALTOGETHER, which the same
+#: equality could NOT have caught, because the two export tables were also
+#: absent from `covered_tables()` -- `scope_inventory` held them at
+#: `protected_pending_registry`, a status excluded from both sides. That is the
+#: precise shape of the Wave 2 defect this whole apparatus exists to prevent,
+#: reproduced through a status value rather than through an omission.
+#: `test_every_pending_registry_table_is_actually_protected_by_the_migration_it_names`
+#: and its handoff sibling are what make the third status non-vacuous.
 ALL_RLS_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
     **RLS_TABLE_COLUMNS, **RLS_COVERAGE_TABLE_COLUMNS,
     **RLS_PROCUREMENT_TABLE_COLUMNS, **RLS_CORRECTION_TABLE_COLUMNS,
-    **RLS_REPORTING_TABLE_COLUMNS, **RLS_CLOSURE_TABLE_COLUMNS,
+    **RLS_REPORTING_TABLE_COLUMNS, **RLS_EXPORT_TABLE_COLUMNS,
+    **RLS_CLOSURE_TABLE_COLUMNS,
 }
 
 #: Every RLS-protected table, from any migration, in registry order.
@@ -383,7 +519,10 @@ RLS_MIGRATION_BY_TABLE: dict[str, str] = {
     **{table: "014_procurement_corrections.sql"
        for table in RLS_CORRECTION_TABLES},
     **{table: "017_reporting.sql" for table in RLS_REPORTING_TABLES},
-
+    # This line was a BLANK one. 018 protects `export_job` and
+    # `export_job_chunk` and nothing here attributed them to it, because
+    # nothing here named them at all -- see `RLS_EXPORT_TABLE_COLUMNS`.
+    **{table: "018_export_jobs.sql" for table in RLS_EXPORT_TABLES},
     **{table: "019_closure.sql" for table in RLS_CLOSURE_TABLES},
 }
 

@@ -177,6 +177,106 @@ def test_the_coverage_check_rejects_enable_without_force():
     assert _protection_defects("demo_table", text) == ["no FORCE ROW LEVEL SECURITY"]
 
 
+def test_every_pending_registry_table_is_actually_protected_by_the_migration_it_names():
+    """THE HOLE IN THE THIRD STATUS, CLOSED.
+
+    `scope_inventory.Status` has three values and only two of them are checked
+    by anything above. `covered` is swept against the migrations by the two
+    tests at the top of this section; `gap` is swept by
+    `test_reported_gaps_are_still_gaps`. `protected_pending_registry` was swept
+    by NOTHING -- and it is the status that makes the strongest claim of the
+    three, because it asserts the migration DOES enable, force and policy the
+    table and only the `rls.py` half is outstanding.
+
+    The cost of that was not theoretical. `export_job` and `export_job_chunk`
+    were parked here for a whole wave, and the status also removes a table from
+    both sides of
+    `test_rls_registry_and_the_independent_inventory_name_the_same_tables`, so
+    that equality held over them vacuously. Deleting
+
+        ALTER TABLE export_job FORCE ROW LEVEL SECURITY;
+
+    from `018_export_jobs.sql` failed exactly one assertion in the whole suite
+    -- a string grep in `tests/test_pg_exports.py` -- while in production the
+    migration-running identity would read every requester's `scope_json` and
+    every rendered CSV chunk with no policy, no error and no log line.
+
+    This asks the pending entries the same question the covered ones are
+    asked, using the same `_protection_defects` checker
+    `test_the_coverage_check_detects_a_table_covered_nowhere` proves has teeth.
+    A pending table whose migration stops enabling, forcing or policying it now
+    fails here whether or not anyone has got round to the registry half.
+    """
+    wrong: dict[str, str] = {}
+    for entry in scope_inventory.SCOPED_TABLES:
+        if entry.status != "protected_pending_registry":
+            continue
+        assert entry.migration in MIGRATION_SOURCES, (
+            f"{entry.table}: inventory names migration {entry.migration!r}, "
+            f"which does not exist")
+        defects = _protection_defects(entry.table, MIGRATION_SOURCES[entry.migration])
+        if defects:
+            wrong[entry.table] = f"{entry.migration}: {defects}"
+    assert wrong == {}, (
+        "these tables are recorded as PROTECTED (registry handoff outstanding), "
+        f"but the migration named does not protect them: {wrong}. Either the "
+        "migration lost a statement, or the entry should be status='gap'.")
+
+
+#: Test modules that enumerate the outstanding `rls.py` handoff. Read as TEXT,
+#: deliberately: the point is that a human wrote a test naming the table, and
+#: importing them here would drag live-database modules into a source-only
+#: check.
+#:
+#: THIS FILE IS EXCLUDED FROM ITS OWN SCAN, and that is not tidiness. The first
+#: version of the guard below included it, and passed on a deliberately parked
+#: `export_job` -- because the prose in THIS file names `export_job` several
+#: times over while explaining the defect. A generic guard that its own
+#: explanatory docstrings can satisfy is not a guard. A handoff test must be
+#: written where the migration's own schema tests live, as 008's and 010's are.
+_HANDOFF_SOURCES: dict[str, str] = {
+    path.name: text
+    for path in sorted((PROJECT_ROOT / "tests").rglob("test_*.py"))
+    if path.name != _Path(__file__).name
+    and "pending_registry_tables" in (text := path.read_text(encoding="utf-8"))
+}
+
+
+def test_every_pending_registry_table_is_named_by_a_handoff_test():
+    """The second half of closing the third status: a parked table must be
+    ENUMERATED somewhere, so the outstanding handoff is visible work rather
+    than a quiet exit from every check.
+
+    008 has `test_pg_approval_schema.py::test_the_pending_registry_handoff_is_
+    enumerable` and 010 has `test_pg_integration_schema.py::test_the_rls_
+    handoff_for_this_migration_is_enumerable`. 018 had neither, which is how
+    two tables protected by a migration nobody was checking stayed invisible
+    for a wave, and 011's `reconciliation_exception` had neither either --
+    `tests/test_pg_rls_registry_handoff.py` is that missing third one.
+
+    This is a TEXTUAL guard and says so. It cannot judge whether the naming
+    test asserts anything useful; the behaviour-bearing half is
+    `test_every_pending_registry_table_is_actually_protected_by_the_migration_it_names`
+    above. What it does guarantee is that a table cannot be parked in the
+    in-between status without somebody writing its name into a test that reads
+    the handoff list -- which is the step that did not happen for 018.
+    """
+    assert _HANDOFF_SOURCES, (
+        "no test module references pending_registry_tables at all; this guard "
+        "would pass vacuously")
+    unnamed = sorted(
+        table for table in scope_inventory.pending_registry_tables()
+        if not any(table in text for text in _HANDOFF_SOURCES.values()))
+    assert unnamed == [], (
+        f"these tables are parked at status='protected_pending_registry' and "
+        f"no handoff test names them: {unnamed}. The status excludes a table "
+        f"from every other check in this file, so an unnamed one is protected "
+        f"by nothing but the migration author's memory. Add it to a test that "
+        f"reads scope_inventory.pending_registry_tables(), the way "
+        f"test_pg_approval_schema.py does for 008 and "
+        f"test_pg_integration_schema.py does for 010.")
+
+
 def test_reported_gaps_are_still_gaps():
     """A gap the inventory records must still BE a gap.
 

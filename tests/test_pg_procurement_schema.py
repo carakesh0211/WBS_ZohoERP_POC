@@ -182,18 +182,36 @@ def test_every_revertible_migrations_ledger_row_is_deleted_at_or_above_its_own_n
     state 020's header sets out. So the owner must be V itself or something
     later, and this asserts that and not merely that some block mentions V.
 
-    SCOPED TO 013 AND ABOVE, deliberately, which is the stack the live test
-    reverts. The earlier blocks are a different shape -- 001's is not even a
-    trailing block; it sits at the top of the file with no BEGIN/COMMIT -- and
-    none of them deletes its ledger row. That is a real gap, but it is a
-    pre-existing one about migrations nothing here reverts, and widening this
-    assertion to cover it would be asserting a property those files have never
-    had rather than guarding the one 013..N do.
+    WIDENED FROM "013 AND ABOVE" TO THE WHOLE DIRECTORY, and the twelve
+    deletions that made the widening possible are in
+    `022_saved_view_policies_and_revert_ledger.sql`'s revert block.
+
+    This test used to start at 013 -- the stack the live test reverts -- and
+    said so: the earlier blocks are a different shape (001's is not even a
+    trailing block; it sits at the top of the file with no BEGIN/COMMIT) and
+    none of them deleted its ledger row, which was recorded here as a real but
+    pre-existing gap. It was a gap with teeth. `_status_from` decides `pending`
+    purely on KEY PRESENCE (`migrate_pg.py:182-198`), so reverting 010 left the
+    '010' row behind, `upgrade()` SKIPPED it, and `assert_schema_current`
+    reported `is_current: True` -- the application booting and serving a
+    database missing `zoho_connection`, the integration tables and every RLS
+    policy they carry while claiming to be fully migrated. Reverting 004 is the
+    same shape with `capex_scope_permits`, `capex_app` and eleven tables'
+    policies gone.
+
+    The scoping was never a statement that 001..012 were fine; it was a
+    statement that nothing yet owned their deletions. 022 owns all twelve, so
+    the assertion now covers 001..022 and the exemption is gone rather than
+    re-worded. Nothing about 013..021 is relaxed: the same property, the same
+    "at or above", over a strictly larger set.
     """
-    stack = [m for m in migrate_pg.discover() if m.version >= "013"]
-    assert len(stack) >= 9, (
+    stack = list(migrate_pg.discover())
+    assert len(stack) >= 22, (
         f"the revertible stack collapsed to {[m.version for m in stack]}; "
         f"this test would pass vacuously")
+    assert stack[0].version == "001", (
+        f"the sweep no longer starts at 001 but at {stack[0].version}; the "
+        f"whole point of the widening is that no migration is exempt")
 
     owners: dict[str, list[str]] = {m.version: [] for m in stack}
     for migration in stack:

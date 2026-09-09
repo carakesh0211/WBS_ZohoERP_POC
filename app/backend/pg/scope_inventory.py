@@ -69,6 +69,21 @@ Reach = Literal["direct", "joined", "reference"]
 #: outstanding handoff visible instead of hiding it in one of two labels that
 #: would each be a lie. :func:`pending_registry_tables` enumerates them for
 #: whoever extends ``rls.py``; reclassify to ``"covered"`` in the same commit.
+#:
+#: **THE THIRD VALUE IS ALSO A HOLE, AND IT HAS BEEN EXPLOITED ONCE.** Because
+#: it belongs to neither :func:`covered_tables` nor :func:`gap_tables`, a table
+#: parked here is checked by NOTHING in ``tests/test_pg_rls_coverage.py``: the
+#: covered-vs-migration sweep skips it, the still-a-gap sweep skips it, and the
+#: ``set(covered_tables()) == set(rls.ALL_RLS_TABLES)`` equality holds over it
+#: vacuously from both sides. ``export_job`` and ``export_job_chunk`` sat here
+#: for a whole wave with no handoff test, and deleting 018's ``FORCE ROW LEVEL
+#: SECURITY`` failed a single string grep. Two guards now make the status
+#: cost something rather than hide something --
+#: ``test_every_pending_registry_table_is_actually_protected_by_the_migration_it_names``
+#: (the migration must really do all three things) and
+#: ``test_every_pending_registry_table_is_named_by_a_handoff_test`` (the
+#: outstanding handoff must be enumerated by a test, as 008's and 010's are).
+#: Parking a table here is now a declaration with an owner, not a quiet exit.
 Status = Literal["covered", "gap", "protected_pending_registry"]
 
 
@@ -604,17 +619,25 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
              "they were not entitled to learn exists."),
 
     # ------------------------------------------------ 018_export_jobs.sql
-    # Wave 7 stream A2. `app.backend.pg.rls`'s registry is lead-owned and is
-    # not edited by this stream, so both entries are
-    # `protected_pending_registry`, exactly as 008's and 010's are: the
-    # migration DOES enable, force and policy them; only the registry half is
-    # outstanding.
+    # Wave 7 stream A2. Both entries were `protected_pending_registry` because
+    # `app.backend.pg.rls`'s registry was lead-owned and not edited by that
+    # stream. THE HANDOFF WAS NEVER MADE, AND NOTHING COULD SEE THAT: unlike
+    # 008's and 010's, 018's pending pair had no `pending_registry_tables()`
+    # handoff test, and the status itself removes a table from BOTH sides of
+    # `test_pg_rls_coverage.py`'s `set(covered_tables()) == set(ALL_RLS_TABLES)`
+    # -- so the equality held over them vacuously for the whole wave. Deleting
+    # `ALTER TABLE export_job FORCE ROW LEVEL SECURITY` from 018 failed one
+    # string grep in `tests/test_pg_exports.py` and nothing else.
+    #
+    # Both are now `covered`: `rls.RLS_EXPORT_TABLE_COLUMNS` names them and
+    # `rls.RLS_MIGRATION_BY_TABLE` attributes them to 018, in the same commit
+    # as this reclassification, exactly as the Status docstring requires.
     ScopedTable(
         table="export_job", dimensions=(), reach="reference",
         path="no dimension column -- the row's authorisation is its REQUESTER, "
              "and its scope_json is a SET of ids across all four dimensions, "
              "which is not a value a per-row predicate can filter on",
-        status="protected_pending_registry",
+        status="covered",
         migration="018_export_jobs.sql",
         note="Classified `reference` for the shape of its predicate, NOT "
              "because it is organisation-wide data -- it is the opposite of "
@@ -630,7 +653,7 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
         table="export_job_chunk", dimensions=(), reach="joined",
         path="export_job_chunk.export_job_id -> export_job, whose own two "
              "policies decide",
-        status="protected_pending_registry",
+        status="covered",
         migration="018_export_jobs.sql",
         note="The rendered bytes. Visible to exactly whoever the parent job is "
              "visible to, expressed as an EXISTS over `export_job` so there is "
