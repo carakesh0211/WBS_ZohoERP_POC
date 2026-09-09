@@ -501,8 +501,34 @@ def test_a_plant_scoped_principal_gets_no_row_from_the_other_plant(
     superuser bypasses row-level security unconditionally, so RLS contributes
     nothing here -- which is the point: this test would still fail if every
     policy in the schema were dropped, and that is the layer it is written
-    against. The policies themselves are held by `test_pg_rls_coverage.py`
-    and `test_pg_rls_integration_matrix.py`, through the scoped-role fixture.
+    against.
+
+    WHAT IT DOES NOT PROVE, AND WHAT NOTHING IN THIS FILE DOES: that 017's two
+    policies -- `report_saved_view_scope` on `report_saved_view` and
+    `report_view_default_scope` on `report_view_default` -- hide a row from a
+    principal who is not entitled to it.
+
+    This paragraph used to say those policies were held by
+    `test_pg_rls_coverage.py` and `test_pg_rls_integration_matrix.py`,
+    "through the scoped-role fixture". Both halves were false, and a false
+    pointer to coverage is worse than an admission of none -- it is the reason
+    a reader stops looking:
+
+      * `test_pg_rls_coverage.py` never opens a scoped-role session at all. It
+        reads migrations and `pg/scope_inventory.py` and walks
+        `rls.RLS_COVERAGE_TABLES`, which is 006's eight tables. It is a
+        registry test, and it asserts that policies are DECLARED -- never that
+        one hides a row.
+      * `test_pg_rls_integration_matrix.py` is behavioural and does use the
+        scoped-role fixture, but over `MATRIX_TABLES`, which its own
+        completeness test derives from `010_integration.sql` and
+        `011_reconciliation_exception.sql`. 017 is not among them, and neither
+        `report_saved_view` nor `report_view_default` appears in its probes.
+
+    So the behavioural coverage of 017's policies is being written separately;
+    grep for `report_saved_view_scope` to find it. Until it lands, the honest
+    statement is that the two policies are declared and unexercised, and this
+    test says nothing about them either way.
     """
     ids = estate
     everywhere = rp.FilterSet.build(group_by=["plant"])
@@ -543,10 +569,44 @@ def test_an_unscoped_principal_is_denied_and_not_merely_empty(
 # 3. Pagination
 # ===========================================================================
 
+#: EVERY sortable, in a stable order so a failure names the one that broke.
+#: Read from the module rather than listed here, so a sortable added later is
+#: paginated by this test on the day it is added rather than the day somebody
+#: remembers to extend a literal.
+SORTABLES = sorted(rp.SORTABLE)
+
+
+def _walk(session, ids, *, sort: str, sort_desc: bool,
+          limit: int = 2) -> tuple[list[tuple], int]:
+    """One full paginated walk, returning the rows visited and the page count."""
+    seen: list[tuple] = []
+    cursor, pages = None, 0
+    while True:
+        page = rp.aggregate(session, _project_a_filters(
+            ids, group_by=["wbs", "budget_head"], sort=sort,
+            sort_desc=sort_desc, limit=limit, cursor=cursor))
+        assert page["state"] == "ok"
+        seen.extend((row["key"]["wbs"], row["key"]["budget_head"])
+                    for row in page["rows"])
+        pages += 1
+        cursor = page["next_cursor"]
+        if not cursor:
+            assert not page["has_more"]
+            return seen, pages
+        assert pages < 50, (
+            f"sort={sort} desc={sort_desc}: the cursor is not advancing -- "
+            f"{pages} pages and still more. A resume comparing the cursor "
+            f"against a DIFFERENT expression from the one the query ordered "
+            f"by re-returns the same page forever; that is exactly how "
+            f"`utilisation_pct` behaved when the cursor was a percentage and "
+            f"the ORDER BY a ratio. Visited so far: {seen}")
+
+
 @pytest.mark.pg
 @PG
+@pytest.mark.parametrize("sort", SORTABLES)
 def test_pagination_skips_no_row_and_repeats_none_across_every_page(
-        pg_database, estate):
+        pg_database, estate, sort):
     """A keyset cursor over a NON-DETERMINISTIC order skips a row on one page
     and repeats it on the next, and the pages then do not sum to the total the
     same query reports.
@@ -556,39 +616,63 @@ def test_pagination_skips_no_row_and_repeats_none_across_every_page(
     free to order them however it likes on each execution. Only the group key
     appended to every ordering -- unique per row by construction -- makes the
     walk exact.
+
+    PARAMETERISED OVER EVERY SORTABLE, AND OVER BOTH DIRECTIONS, BECAUSE THE
+    ONE THAT BROKE WAS THE ONE NOT COVERED. This test used to hardcode
+    `sort="budget"` -- a plain column, the easiest of the thirteen -- and
+    passed while `sort=utilisation_pct` truncated or infinitely repeated every
+    paginated report on the two screens that offer it. The defect was not in
+    pagination at all but in the pairing of two expressions: the ORDER BY was
+    a RATIO (`exposure / budget`) and the cursor a PERCENTAGE
+    (`round(ratio * 100, 1)`), so the resume compared 20.0 against a column
+    near 0.2. Ordering looked right the whole time, because multiplying by 100
+    is monotonic. Only a walk can see it.
+
+    BOTH DIRECTIONS, because the two failures do not look alike: ascending, a
+    cursor too large for its column runs off the end and the walk stops early
+    (4 of 6 rows unreachable); descending, a cursor too large lets every row
+    through again and the walk never terminates.
+
+    THE ZERO-BUDGET GROUP IS ASSERTED PRESENT, not hoped for. `utilisation_pct`
+    divided by `NULLIF(budget, 0)`, so a zero-budget group sorted as SQL NULL
+    while `derive` reported 0.0 for it -- every comparison against NULL is
+    NULL rather than TRUE, so those rows appeared on page 1 and then vanished.
+    They are the over-commitment cells SCR-25 exists to surface, so a fixture
+    without one would prove the least interesting half of this.
     """
     ids = estate
-    scope = _scope(ids)
-    seen: list[tuple] = []
-    cursor = None
-    pages = 0
-    with pg_database.session(scope) as session:
-        while True:
-            page = rp.aggregate(session, _project_a_filters(
-                ids, group_by=["wbs", "budget_head"], sort="budget",
-                sort_desc=True, limit=2, cursor=cursor))
-            assert page["state"] == "ok"
-            seen.extend((row["key"]["wbs"], row["key"]["budget_head"])
-                        for row in page["rows"])
-            pages += 1
-            cursor = page["next_cursor"]
-            if not cursor:
-                assert not page["has_more"]
-                break
-            assert pages < 50, "cursor is not advancing"
-
+    with pg_database.session(_scope(ids)) as session:
         whole = rp.aggregate(session, _project_a_filters(
-            ids, group_by=["wbs", "budget_head"], sort="budget",
+            ids, group_by=["wbs", "budget_head"], sort=sort,
             sort_desc=True, limit=rp.MAX_LIMIT))
+        assert any(row["budget"] == 0 for row in whole["rows"]), (
+            "the fixture must carry a zero-budget group -- (CHILD_A, HEAD_2) "
+            "holds a reservation and no budget line -- or the NULLIF half of "
+            "this is untested")
+        assert any(row["budget"] > 0 for row in whole["rows"])
 
-    assert pages > 1, "the fixture must span more than one page to prove anything"
-    assert len(seen) == len(set(seen)), f"a row was repeated across pages: {seen}"
-    expected = [(row["key"]["wbs"], row["key"]["budget_head"])
-                for row in whole["rows"]]
-    assert sorted(seen) == sorted(expected), "a row was skipped across pages"
-    assert seen == expected, (
-        "the paginated walk must be in the SAME order as the unpaginated one; "
-        "a cursor that resumes from the wrong place still returns every row")
+        for sort_desc in (False, True):
+            seen, pages = _walk(session, ids, sort=sort, sort_desc=sort_desc)
+            expected = [
+                (row["key"]["wbs"], row["key"]["budget_head"])
+                for row in rp.aggregate(session, _project_a_filters(
+                    ids, group_by=["wbs", "budget_head"], sort=sort,
+                    sort_desc=sort_desc, limit=rp.MAX_LIMIT))["rows"]]
+
+            direction = "DESC" if sort_desc else "ASC"
+            assert pages > 1, (
+                f"sort={sort} {direction}: the fixture must span more than "
+                f"one page to prove anything")
+            assert len(seen) == len(set(seen)), (
+                f"sort={sort} {direction}: a row was repeated across pages: "
+                f"{seen}")
+            assert sorted(seen) == sorted(expected), (
+                f"sort={sort} {direction}: a row was skipped across pages. "
+                f"Visited {len(seen)} of {len(expected)}: {seen}")
+            assert seen == expected, (
+                f"sort={sort} {direction}: the paginated walk must be in the "
+                f"SAME order as the unpaginated one; a cursor that resumes "
+                f"from the wrong place still returns every row")
 
 
 @pytest.mark.pg
