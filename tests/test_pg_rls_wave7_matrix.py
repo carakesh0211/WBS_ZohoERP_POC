@@ -331,14 +331,18 @@ def test_live_a_saved_views_owner_cannot_be_reassigned(
 def _seed_jobs(con, ids) -> None:
     for job_id, requester in (("EXP-A", ids["user_a"]), ("EXP-B", ids["user_b"])):
         con.execute(
-            # No `created_by`/`updated_by`: 018 gives this table `created_at`
-            # and `requested_by` and no other authorship column, because the
-            # requester IS the authorship -- the row exists to carry that one
-            # principal's resolved scope.
+            # EVERY `NOT NULL` COLUMN WITH NO DEFAULT, taken from 018's
+            # CREATE TABLE rather than from memory. Two CI runs were spent on
+            # this INSERT: the first invented `created_by`/`updated_by`, which
+            # this table does not have (the requester IS the authorship), and
+            # the second omitted `expires_at`, which is mandatory and carries
+            # `ck_export_job_expires_after_creation CHECK (expires_at >
+            # created_at)`. Hence the interval rather than a literal: the CHECK
+            # has to hold whenever the suite runs.
             "INSERT INTO export_job (export_job_id, dataset, requested_by,"
-            " scope_json, scope_digest, column_order)"
+            " scope_json, scope_digest, column_order, expires_at)"
             " VALUES (%s, 'wbs_positions', %s, '{}'::jsonb, 'digest',"
-            " ARRAY['a'])", (job_id, requester))
+            " ARRAY['a'], now() + interval '7 days')", (job_id, requester))
     con.commit()
 
 
