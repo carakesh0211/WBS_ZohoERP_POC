@@ -78,25 +78,53 @@
 --       INSERTed), and the replay oracle (requirement 7 -- a re-mirror
 --       recomputes and compares rather than rewrites).
 --
---   (b) `purchase_order` FX provenance, mirroring what 023 gave `bill`.
---       013 has stored `currency` and `exchange_rate` since it was written and
---       the product has never multiplied either; `procurement.py:1988` renders
---       the rate to a STRING for a JSON body and that remains the whole of its
---       use. Four columns and `po_line.source_amount_minor` put the purchase
---       order on the same footing as the bill: an ordered figure in a foreign
---       currency stops being counted as rupees of commitment.
---
---   (c) `bill_line.source_tax_minor` and `bill_line.source_freight_minor`,
+--   (b) `bill_line.source_tax_minor` and `bill_line.source_freight_minor`,
 --       for the reason set out above: a bill line's money is three columns,
 --       not one, and every consumer sums all three.
 --
---   (d) The COMMENTs. 023 corrected `bill_line.amount_paise` where a reader is
+--   (c) The COMMENTs. 023 corrected `bill_line.amount_paise` where a reader is
 --       already looking. The same sentence is owed to every other column that
---       is now either a SOURCE figure or a TRANSLATED one -- `bill`,
---       `bill_line`, `purchase_order` and `po_line` -- because requirement 2
---       is that WHICH COLUMN IS THE SOURCE AND WHICH IS THE TRANSLATION is
---       stated in the schema, not only in a module nobody reads before
---       writing a query.
+--       is now either a SOURCE figure or a TRANSLATED one, because
+--       requirement 2 is that WHICH COLUMN IS THE SOURCE AND WHICH IS THE
+--       TRANSLATION is stated in the schema, not only in a module nobody
+--       reads before writing a query.
+--
+--
+-- WHAT THIS FILE DELIBERATELY DOES NOT ADD
+-- ========================================
+--
+-- THE PURCHASE ORDER. It is the other document the approved contracts
+-- identify as carrying money that may be foreign -- `013:381-384` gives it
+-- `currency` and `exchange_rate`, `dto.PurchaseOrderDTO` carries
+-- `currency_code`, and `C13_conflicts.json` names "foreign currency PO and
+-- exchange-rate variance" as one of the required commitment-to-actual
+-- positions. Its rate is still applied to nothing; `procurement.py:1988`
+-- renders it to a STRING for a JSON body and that remains the whole of its
+-- use.
+--
+-- It gets no columns here BECAUSE IT HAS NO INGESTION PATH TO WRITE THEM.
+-- `_write_po` (`procurement_services.py:2119`) is the only writer of
+-- `purchase_order` and `po_line`, and its only two callers are `create_po`
+-- and `convert_pr_to_po` -- both reached from the API, neither from a sweep.
+-- A purchase order is ORIGINATED in this product and EMITTED to Zoho; it does
+-- not arrive.
+--
+-- Adding four provenance columns and a `po_line.source_amount_minor` with
+-- nothing to write them would reproduce, exactly, the defect this migration
+-- exists to remedy: 023 added `bill.source_currency` and
+-- `bill_line.source_amount_minor` and no writer, and the guard built on the
+-- second of them stayed unreachable for two waves. The columns and their
+-- writer arrive together or they do not arrive.
+--
+-- THE GRN, for a different reason: it has an ingestion path and NO CURRENCY
+-- ANYWHERE IN THE CONTRACT. `dto.ReceiveDTO` is the only inbound money
+-- document DTO without a `currency_code` field, and `grn`/`grn_line` (013)
+-- have no currency column -- while `grn_line.amount_paise` feeds
+-- `received_paise` and `received_not_billed_paise`. A receipt against a
+-- foreign-currency order therefore posts at face value with nothing naming the
+-- currency. That is a CONTRACT gap, not an implementation one; it is absent
+-- from `CONTRACT_GAPS.md` and is reported by this stream rather than papered
+-- over with a column the contract does not sanction.
 --
 -- Nothing here edits a byte of 001..024. The checksum recorded in
 -- `schema_migrations` is `sha256` over the WHOLE FILE, comments included
@@ -105,12 +133,20 @@
 -- readers of that checksum treat the difference as fatal. 020, 021, 022 and
 -- 023 set this argument out at length; it is not restated.
 --
--- ADDITIVE. One new table, seven added columns, two added constraints, five
--- triggers, nine comments. No table dropped, no column dropped, no constraint
--- replaced, no existing row's meaning changed: every added column is NULLable,
--- and the one added CHECK is written so that every row now in the database
--- satisfies it (see `ck_purchase_order_fx_provenance` for why it is keyed on
--- `fx_translated_at` and not on `currency`).
+-- ADDITIVE, AND NOT ONE CONSTRAINT IS ADDED TO AN EXISTING TABLE. One new
+-- table, two added columns, three triggers, seven comments. No table dropped,
+-- no column dropped, no constraint replaced, no existing row's meaning
+-- changed.
+--
+-- Both added columns are NULLable, so every row now in `bill_line` reads
+-- exactly as it read before -- an untranslated line, which is what it is. No
+-- CHECK is added to `bill`, `bill_line` or any other 001..024 table, which
+-- matters more than it sounds: `ALTER TABLE ... ADD CONSTRAINT` VALIDATES
+-- against every existing row, so a CHECK that is true of new rows and false of
+-- old ones does not fail at the first bad write, it fails the migration -- on
+-- exactly the database it was written for. The one constraint that would have
+-- had that shape is discussed under "what this file deliberately does not
+-- add".
 --
 -- Every `*_paise` column below is `bigint`, integer paise, and STARTS its
 -- declaration line: `migrate_pg.py::_PAISE_COLUMN_RE` is anchored at `^`
@@ -168,14 +204,19 @@ base_total_paise      bigint NOT NULL,
     translated_at         timestamptz NOT NULL DEFAULT now(),
     translated_by         text NOT NULL,
     CONSTRAINT pk_fx_translation_event PRIMARY KEY (document_type, document_id),
-    -- The two document kinds the approved contracts identify as carrying money
-    -- that may be in a foreign currency: the vendor bill (plan decision D-5,
-    -- `BillDTO.currency_code`) and the purchase order (013's `currency` and
-    -- `exchange_rate`, `PurchaseOrderDTO.currency_code`). A third kind is a
-    -- contract change and therefore a migration, which is the point of naming
-    -- them here rather than accepting any string.
+    -- ONE KIND, BECAUSE ONE KIND HAS A WRITER. The vendor bill is the only
+    -- inbound document that carries money which may be in a foreign currency
+    -- AND has an ingestion path to translate it on. See the header for the
+    -- purchase order, which has a currency and a rate and no ingestion path at
+    -- all, and for the GRN, which has an ingestion path and no currency
+    -- anywhere in the contract.
+    --
+    -- A SECOND KIND IS A MIGRATION, and that is the point of naming them here
+    -- rather than accepting any string: it forces the schema change and the
+    -- writer to arrive together, which is precisely what did not happen for
+    -- the columns 023 added.
     CONSTRAINT ck_fx_translation_event_document_type
-        CHECK (document_type IN ('BILL', 'PURCHASE_ORDER')),
+        CHECK (document_type IN ('BILL')),
     CONSTRAINT ck_fx_translation_event_document_id_not_blank
         CHECK (btrim(document_id) <> ''),
     CONSTRAINT ck_fx_translation_rate_positive CHECK (fx_rate > 0),
@@ -208,77 +249,6 @@ CREATE INDEX ix_fx_translation_event_entity
     ON fx_translation_event (entity_id, translated_at DESC);
 CREATE INDEX ix_fx_translation_event_rate
     ON fx_translation_event (fx_rate_id);
-
--- ====================================== purchase_order FX provenance (b)
--- 013 gave `purchase_order` a currency and a rate and its own comment said why
--- the type was right: "numeric, never real: a rate is multiplied into money."
--- It is still not multiplied into money by anything that ships. These four
--- columns are what a translated purchase order needs and `bill` has had since
--- 023: the rate row it cites, and the date, source and moment of the
--- translation copied onto the document so that CORRECTING an `fx_rate` row can
--- never retranslate an order that has already committed budget.
---
--- Every column is NULLable, so an existing row -- including the seed's EUR
--- PO-012 -- reads exactly as it read before: an untranslated order, which is
--- what it is.
-ALTER TABLE purchase_order ADD COLUMN fx_rate_id text;
-ALTER TABLE purchase_order ADD COLUMN fx_rate_date date;
-ALTER TABLE purchase_order ADD COLUMN fx_rate_source text;
-ALTER TABLE purchase_order ADD COLUMN fx_translated_at timestamptz;
-
-ALTER TABLE purchase_order
-    ADD CONSTRAINT fk_purchase_order_fx_rate
-        FOREIGN KEY (fx_rate_id) REFERENCES fx_rate (fx_rate_id),
-    -- KEYED ON `fx_translated_at`, NOT ON `currency`, AND THAT IS THE WHOLE
-    -- REASON THIS CONSTRAINT CAN BE ADDED AT ALL.
-    --
-    -- 023 could write `ck_bill_fx_provenance` unconditionally because `bill`
-    -- had no currency column before it, so every existing row was INR by
-    -- construction. `purchase_order` has carried a currency since 013 and the
-    -- POC's own seed contains a EUR order at 92.50 (`app/backend/db.py:540`)
-    -- with no fx_rate row anywhere -- because no fx_rate table existed when it
-    -- was written. An unconditional version of this CHECK would refuse to
-    -- validate against that row, and the migration would fail on exactly the
-    -- database it was written for.
-    --
-    -- So the rule binds TRANSLATED orders and says nothing about untranslated
-    -- ones. That is not a loophole: an untranslated foreign-currency order IS
-    -- the AUD-H-007 state, this migration's job is to stop NEW ones being
-    -- created, and retro-validating rows that predate the mechanism would
-    -- assert something about them that is not true.
-    ADD CONSTRAINT ck_purchase_order_fx_provenance CHECK (
-        fx_translated_at IS NULL
-        OR (currency = 'INR'
-            AND exchange_rate = 1
-            AND fx_rate_id IS NULL AND fx_rate_date IS NULL)
-        OR (currency <> 'INR'
-            AND fx_rate_id IS NOT NULL
-            AND fx_rate_date IS NOT NULL
-            AND btrim(coalesce(fx_rate_source, '')) <> '')
-    );
-
--- NO FOREIGN KEY FROM `purchase_order.currency` TO `currency_denomination`,
--- deliberately. `bill.source_currency` could take one in 023 because the
--- column was created in the same statement and every row defaulted to 'INR'.
--- This column has held free text since 013 and this migration cannot know what
--- is in it across every deployment; an FK that fails to validate makes the
--- database unadoptable, which is a worse outcome than an unconstrained code.
--- The guard that actually matters is `fx.minor_exponent`, which REFUSES a
--- currency with no `currency_denomination` row rather than assuming an
--- exponent of 2 -- and refusing is what stops the money being wrong.
-
--- THE SOURCE AMOUNT, IN THE SOURCE CURRENCY'S OWN MINOR UNITS.
--- Named `_minor` and not `_paise` for the reason 023 gives for
--- `bill_line.source_amount_minor`: for a JPY line it is whole yen and for a
--- KWD line it is fils, so calling it paise would write the defect into the
--- column name and `migrate_pg`'s paise-type rule would then certify a figure
--- that is not in paise.
---
--- `po_line.amount_paise` KEEPS ITS MEANING: INR base, integer paise. There is
--- deliberately no second base column, for the reason 023's header (a) gives --
--- two base figures diverge on the first write that updates one and not the
--- other.
-ALTER TABLE po_line ADD COLUMN source_amount_minor bigint;
 
 -- ======================= bill_line: THE OTHER TWO THIRDS OF THE MONEY (a-ii)
 -- 023 gave `bill_line` ONE source column, for `amount_paise`. A bill line
@@ -384,70 +354,6 @@ CREATE TRIGGER trg_fx_translation_event_no_delete
     BEFORE DELETE ON fx_translation_event
     FOR EACH ROW EXECUTE FUNCTION fx_translation_event_is_immutable();
 
--- ============================ immutability: the purchase order's FX basis
--- The same rule 023 wrote for `bill`, for the document 013 stored the rate on
--- and never applied. Once an order is translated, the four facts that
--- determine its base figure cannot move: a single UPDATE would otherwise
--- retranslate a committed order, moving `ordered_paise` and
--- `commitment_paise` in `budget_ledger_cell` with nothing recording that they
--- moved.
---
--- WRITING the basis for the first time is allowed -- the guard fires only when
--- `OLD.fx_translated_at` is already set -- so the seed's untranslated EUR
--- order can still be given its provenance exactly once.
-CREATE OR REPLACE FUNCTION purchase_order_fx_basis_is_immutable() RETURNS trigger
-LANGUAGE plpgsql AS $$
-BEGIN
-    IF OLD.fx_translated_at IS NOT NULL AND (
-           NEW.currency      IS DISTINCT FROM OLD.currency
-        OR NEW.exchange_rate IS DISTINCT FROM OLD.exchange_rate
-        OR NEW.fx_rate_date  IS DISTINCT FROM OLD.fx_rate_date
-        OR NEW.fx_rate_id    IS DISTINCT FROM OLD.fx_rate_id) THEN
-        RAISE EXCEPTION
-            'purchase_order %: the foreign-currency basis is immutable once '
-            'translated (currency % rate % on %). Plan decision D-5 translates '
-            'at document date and does not revalue; changing the basis in place '
-            'would move a committed figure -- ordered_paise and '
-            'commitment_paise both -- with nothing recording that it moved.',
-            OLD.po_id, OLD.currency, OLD.exchange_rate, OLD.fx_rate_date
-            USING ERRCODE = 'insufficient_privilege';
-    END IF;
-    RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER trg_purchase_order_fx_basis_immutable
-    BEFORE UPDATE ON purchase_order
-    FOR EACH ROW EXECUTE FUNCTION purchase_order_fx_basis_is_immutable();
-
--- =========================== immutability: the purchase order's source amount
--- The twin of `trg_bill_line_source_amount_immutable` (023:557), and it is
--- written here for the reason that trigger's own history makes plain: 023's
--- guard was correct and UNREACHABLE for two waves because no writer ever set
--- the column it watches. `po_line.source_amount_minor` is written by
--- `api/procurement.py`'s purchase-order routes from the day this migration
--- lands, so this guard is live from the first translated order.
-CREATE OR REPLACE FUNCTION po_line_source_amount_is_immutable() RETURNS trigger
-LANGUAGE plpgsql AS $$
-BEGIN
-    IF OLD.source_amount_minor IS NOT NULL
-       AND NEW.source_amount_minor IS DISTINCT FROM OLD.source_amount_minor THEN
-        RAISE EXCEPTION
-            'po_line %: source_amount_minor is immutable (% to %). The source '
-            'amount is the evidence the INR figure was derived from; '
-            'overwriting it makes the translation unverifiable, which is the '
-            'state AUD-H-007 exists to end.',
-            OLD.po_line_id, OLD.source_amount_minor, NEW.source_amount_minor
-            USING ERRCODE = 'insufficient_privilege';
-    END IF;
-    RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER trg_po_line_source_amount_immutable
-    BEFORE UPDATE ON po_line
-    FOR EACH ROW EXECUTE FUNCTION po_line_source_amount_is_immutable();
-
 -- ========================================================= row level security
 -- ENABLE, FORCE and a policy, verified by `migrate_pg._rls_problems` from this
 -- file's own text, so a database that has the table but not the enforcement
@@ -520,12 +426,6 @@ COMMENT ON COLUMN bill_line.source_tax_minor IS
 COMMENT ON COLUMN bill_line.source_freight_minor IS
     'THE IMMUTABLE SOURCE-DOCUMENT freight, in bill.source_currency''s own minor units. freight_paise is the TRANSLATED figure, INR base paise. See bill_line.source_tax_minor for why all three of a bill line''s money columns are translated together and not just amount_paise. NULL on an INR bill by design. Immutable once written (trg_bill_line_source_tax_freight_immutable).';
 
-COMMENT ON COLUMN purchase_order.currency IS
-    'The currency of the SOURCE PURCHASE ORDER -- what po_line.source_amount_minor is denominated in. It is NOT the currency of po_line.amount_paise, which is always INR base. Stored since migration 013 and multiplied into nothing until 025: procurement.py:1988 rendered exchange_rate to a string for a JSON body and that was the whole of its use. ''INR'' means the identity translation: exchange_rate = 1, no fx_rate row, source_amount_minor NULL. Immutable once purchase_order.fx_translated_at is set (trg_purchase_order_fx_basis_immutable).';
-
-COMMENT ON COLUMN po_line.source_amount_minor IS
-    'THE IMMUTABLE SOURCE-DOCUMENT AMOUNT, in purchase_order.currency''s own minor units. po_line.amount_paise is the TRANSLATED figure: INR base, integer paise, and the column every commitment rollup sums -- ordered_paise and commitment_paise in budget_ledger_cell are built from it, so a foreign-currency order left untranslated overstates or understates committed budget by the rate. NULL on an INR order by design, exactly as bill_line.source_amount_minor is. Immutable once written (trg_po_line_source_amount_immutable).';
-
 COMMIT;
 
 -- ROLLBACK:
@@ -542,47 +442,31 @@ COMMIT;
 --   -- translated a second time by a caller that no longer has a row telling
 --   -- it not to. Export it before this runs.
 --   --
---   -- The purchase-order columns go with the drop, which returns a
---   -- foreign-currency order to the pre-025 state of being counted as rupees
---   -- of commitment -- the AUD-H-007 defect, restored, which is what "revert"
---   -- has to mean. `po_line.amount_paise` is NOT converted back: it holds a
---   -- translated figure and this block cannot know the rate to undo, so the
---   -- source amounts must be exported with the event table if the translation
---   -- is to be reversible at all.
+--   -- `bill_line.amount_paise` is NOT converted back: it holds a TRANSLATED
+--   -- figure and this block cannot know the rate to undo. The rate is on
+--   -- `bill.fx_rate`, which 023 owns and this revert does not touch, so a
+--   -- translated bill stays translated and stays verifiable -- but the two
+--   -- source columns dropped below are the tax and freight evidence, and they
+--   -- must be exported first or two thirds of every translated line becomes
+--   -- unrecomputable.
 --   --
 --   -- The hash-chained FX_DOCUMENT_TRANSLATED entries in `audit_log` SURVIVE
 --   -- and are the record of record.
 --   DROP TRIGGER IF EXISTS trg_bill_line_source_tax_freight_immutable
 --       ON bill_line;
---   DROP TRIGGER IF EXISTS trg_po_line_source_amount_immutable ON po_line;
---   DROP TRIGGER IF EXISTS trg_purchase_order_fx_basis_immutable
---       ON purchase_order;
 --   DROP TRIGGER IF EXISTS trg_fx_translation_event_no_delete
 --       ON fx_translation_event;
 --   DROP TRIGGER IF EXISTS trg_fx_translation_event_no_update
 --       ON fx_translation_event;
 --   DROP FUNCTION IF EXISTS bill_line_source_tax_freight_is_immutable();
---   DROP FUNCTION IF EXISTS po_line_source_amount_is_immutable();
---   DROP FUNCTION IF EXISTS purchase_order_fx_basis_is_immutable();
 --   DROP FUNCTION IF EXISTS fx_translation_event_is_immutable();
 --   COMMENT ON COLUMN bill_line.source_freight_minor IS NULL;
 --   COMMENT ON COLUMN bill_line.source_tax_minor IS NULL;
---   COMMENT ON COLUMN po_line.source_amount_minor IS NULL;
---   COMMENT ON COLUMN purchase_order.currency IS NULL;
 --   COMMENT ON COLUMN bill_line.source_amount_minor IS NULL;
 --   COMMENT ON COLUMN bill.source_currency IS NULL;
 --   ALTER TABLE bill_line
 --       DROP COLUMN IF EXISTS source_freight_minor,
 --       DROP COLUMN IF EXISTS source_tax_minor;
---   ALTER TABLE po_line DROP COLUMN IF EXISTS source_amount_minor;
---   ALTER TABLE purchase_order
---       DROP CONSTRAINT IF EXISTS ck_purchase_order_fx_provenance,
---       DROP CONSTRAINT IF EXISTS fk_purchase_order_fx_rate;
---   ALTER TABLE purchase_order
---       DROP COLUMN IF EXISTS fx_translated_at,
---       DROP COLUMN IF EXISTS fx_rate_source,
---       DROP COLUMN IF EXISTS fx_rate_date,
---       DROP COLUMN IF EXISTS fx_rate_id;
 --   DROP TABLE IF EXISTS fx_translation_event;
 --   DELETE FROM schema_migrations WHERE version = '025';
 --   COMMIT;

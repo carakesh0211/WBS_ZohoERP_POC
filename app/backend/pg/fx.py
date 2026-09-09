@@ -829,10 +829,28 @@ def bill_fx_summary(session: Session, bill_id: str) -> Mapping[str, Any]:
 
 #: Document kinds `fx_translation_event` accepts. Mirrors migration 025's
 #: `ck_fx_translation_event_document_type`;
-#: `tests/test_pg_fx_ingest.py::test_the_document_types_mirror_the_migration`
+#: `tests/test_pg_fx_ingest.py::test_the_document_types_mirror_the_migrations_own_check`
 #: parses the migration's own CHECK and fails if the two drift -- the same
 #: guard :data:`SEEDED_MINOR_EXPONENTS` carries for the exponents.
-TRANSLATABLE_DOCUMENT_TYPES: tuple[str, ...] = ("BILL", "PURCHASE_ORDER")
+#:
+#: ONE KIND, AND THE SHORTNESS OF THIS TUPLE IS THE POINT. The vendor bill is
+#: the only inbound document that both carries money which may be in a foreign
+#: currency AND has an ingestion path to translate it on.
+#:
+#: The PURCHASE ORDER carries a currency and a rate (013:381-384) and its rate
+#: is still applied to nothing -- but it is ORIGINATED here and EMITTED to
+#: Zoho, never ingested: `procurement_services._write_po` is its only writer
+#: and `create_po`/`convert_pr_to_po` its only callers, both reached from the
+#: API. The GRN has the ingestion path and no currency anywhere in the
+#: contract: `dto.ReceiveDTO` is the only inbound money-document DTO without a
+#: `currency_code`, and `grn_line.amount_paise` feeds `received_paise` all the
+#: same. Both are reported as gaps rather than half-built here.
+#:
+#: ADDING A KIND IS A MIGRATION, not a string appended to this tuple, which is
+#: what forces the schema change and its writer to arrive together. 023 added
+#: `bill.source_currency` and `bill_line.source_amount_minor` with no writer,
+#: and the guard built on the second of them stayed unreachable for two waves.
+TRANSLATABLE_DOCUMENT_TYPES: tuple[str, ...] = ("BILL",)
 
 #: The rounding rule, named ONCE.
 #:
@@ -1156,7 +1174,7 @@ def register_translation(session: Session, *, document_type: str,
                 "base_total_paise": int(had_base_total),
                 "source_total_minor": int(had_source_total)}
 
-    session.execute(
+    session.execute(  # scope-exempt: an INSERT names its own entity_id in the VALUES list and fx_translation_event's RLS policy (migration 025) checks it with WITH CHECK, so an out-of-scope row is refused by the database rather than admitted by a predicate this statement has no FROM clause to carry
         """
         INSERT INTO fx_translation_event (
             document_type, document_id, entity_id, source_currency,

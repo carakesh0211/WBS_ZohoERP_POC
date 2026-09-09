@@ -491,9 +491,10 @@ def test_a_basis_matches_the_four_facts_the_trigger_compares_and_no_others():
 
 
 def test_an_unknown_document_type_is_a_migration_and_not_a_string():
-    """`ck_fx_translation_event_document_type` names the two kinds the approved
-    contracts identify as carrying money that may be foreign. A third is a
-    contract change."""
+    """`ck_fx_translation_event_document_type` names the one kind that has both
+    foreign money and an ingestion path. A second is a contract change AND a
+    migration, deliberately together -- which is the discipline whose absence
+    left 023's columns without a writer."""
     with pytest.raises(KeyError):
         fx.register_translation(
             None, document_type="EXPENSE_CLAIM", document_id="X",
@@ -597,41 +598,53 @@ def test_the_source_columns_are_not_named_paise():
     paise. 023 made this argument for `bill_line.source_amount_minor`; the four
     columns 025 adds obey it."""
     sql = _applied_sql()
-    for column in ("po_line.source_amount_minor", "bill_line.source_tax_minor",
-                   "bill_line.source_freight_minor"):
-        assert column.split(".")[1] in sql
+    for column in ("source_tax_minor", "source_freight_minor"):
+        assert column in sql
     assert "source_total_paise" not in sql
     assert "source_amount_paise" not in sql
 
 
-def test_the_purchase_order_provenance_check_validates_against_the_seeds_own_row():
-    """THE ONE CONSTRAINT THAT COULD HAVE MADE THE MIGRATION UNADOPTABLE.
+def test_the_purchase_order_is_named_as_a_gap_and_not_given_dead_columns():
+    """THE DISCIPLINE THIS WHOLE FINDING IS ABOUT, APPLIED TO ITS OWN REMEDY.
 
-    023 could write `ck_bill_fx_provenance` unconditionally because `bill` had
-    no currency column before it, so every existing row was INR by
-    construction. `purchase_order` has carried a currency since 013 and the
-    POC's own seed contains a EUR order at 92.50 with no `fx_rate` row
-    anywhere, because no `fx_rate` table existed when it was written. An
-    unconditional version would refuse to validate against exactly the database
-    this migration was written for.
+    The approved contracts identify TWO documents carrying money that may be
+    foreign: the vendor bill and the purchase order. Only the bill is wired
+    here, and 025 adds the purchase order NO COLUMNS -- because
+    `procurement_services._write_po` is its only writer and its only callers
+    are `create_po` and `convert_pr_to_po`, both reached from the API. A
+    purchase order is ORIGINATED in this product and EMITTED to Zoho; it does
+    not arrive, so there is no ingestion path on which to translate it.
+
+    Adding provenance columns with nothing to write them is EXACTLY what 023
+    did -- `bill.source_currency` and `bill_line.source_amount_minor`, and the
+    guard built on the second stayed unreachable for two waves. Repeating it
+    inside the remedy would be worse than leaving the gap named.
     """
     sql = _applied_sql()
-    check = sql[sql.index("ck_purchase_order_fx_provenance"):]
-    check = check[:check.index(";")]
-    assert "fx_translated_at IS NULL" in check, (
-        "the CHECK binds untranslated legacy orders; ALTER TABLE ... ADD "
-        "CONSTRAINT validates against every existing row and the seed's EUR "
-        "PO-012 would fail it")
+    assert "purchase_order ADD COLUMN" not in sql
+    assert "po_line ADD COLUMN" not in sql
+    assert "PURCHASE_ORDER" not in sql.upper(), (
+        "the event table admits a document type nothing writes")
+    # ...and the absence is ARGUED in the migration, not merely present.
+    header = MIGRATION.read_text(encoding="utf-8")
+    assert "WHAT THIS FILE DELIBERATELY DOES NOT ADD" in header
+    assert "_write_po" in header, (
+        "the reason the purchase order is absent is not recorded where the "
+        "next person will look for it")
 
 
-def test_no_foreign_key_is_added_to_a_column_that_has_held_free_text():
-    """The same argument, one column along. `purchase_order.currency` has been
-    free text since 013 and this migration cannot know what is in it across
-    every deployment. An FK that fails to validate makes the database
-    unadoptable, which is worse than an unconstrained code -- and the guard
-    that actually matters is `fx.minor_exponent`, which REFUSES an unknown
-    currency rather than assuming an exponent of 2."""
-    assert "FOREIGN KEY (currency)" not in _applied_sql()
+def test_no_constraint_is_added_to_any_table_001_to_024_created():
+    """`ALTER TABLE ... ADD CONSTRAINT` VALIDATES against every existing row.
+
+    A CHECK true of new rows and false of old ones does not fail at the first
+    bad write -- it fails the migration, on exactly the database it was written
+    for. 023 could add `ck_bill_fx_provenance` unconditionally only because
+    `bill` had no currency column before it, so every row was INR by
+    construction. Nothing here has that luxury, so nothing here tries.
+    """
+    assert "ADD CONSTRAINT" not in _applied_sql(), (
+        "a constraint is being added to an existing table; it will be "
+        "validated against every row already in it")
 
 
 # ===========================================================================
