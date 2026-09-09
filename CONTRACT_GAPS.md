@@ -41,7 +41,7 @@ Nine further hex literals appear elsewhere in the stylesheet and are absent from
 |---|---|
 | `#7D1A15` | `.msg-error` text |
 | `#F0C4C1` | `.msg-error` border |
-| `#6D4600` | `.msg-warning` text |
+| `#6D4600` | `.msg-warning` text, and — since the Wave 8 approved contrast correction — all warning TEXT: `.st-warning`, `.nav-item .pill.warn`, `.mock-chip` |
 | `#ECD6A8` | `.msg-warning` border, `.mock-chip` border |
 | `#145232` | `.msg-success` text |
 | `#BFE0CC` | `.msg-success` border |
@@ -49,7 +49,9 @@ Nine further hex literals appear elsewhere in the stylesheet and are absent from
 | `#C5D4F0` | `.msg-info` border |
 | `#7A1A15` | `.bar.breach > i.actual` |
 
-These are message-strip text/border tones and one chart-bar breach tone — real design decisions that were never lifted into the token registry. **`styles.css` is the approved visual baseline and must not change**, so the fix is to complete `C6_tokens.json`, not to edit the stylesheet.
+These are message-strip text/border tones and one chart-bar breach tone — real design decisions that were never lifted into the token registry. `styles.css` is the approved visual baseline; it changes only through the documented approved-change procedure (product-owner approval recorded in the same commit that re-pins `APPROVED_STYLES_CSS_SHA256`), so the fix for this gap is still to complete `C6_tokens.json`, not to edit the stylesheet on a whim.
+
+The count did not change in Wave 8: the approved warning-contrast correction re-used `#6D4600`, which was already on this list, rather than introducing a tenth colour.
 
 **Recommendation:** add these nine as `colour.feedback.*` tokens in `C6_tokens.json` during the D-13 conversation, which is already open on the same file (see GAP-03). Until then they are allowlisted in `tests/test_contracts.py` so that any **new** off-token colour still fails.
 

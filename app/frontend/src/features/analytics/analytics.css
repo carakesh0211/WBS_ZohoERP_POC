@@ -129,7 +129,11 @@
 .analytics-chip-dropped {
   border-color: var(--warning);
   background: var(--warning-bg);
-  color: var(--warning);
+  /* 11px normal text on the warning tint. The --warning token itself measures
+     4.0775:1 there and fails AA, so the TEXT takes the darker amber 6D4600
+     (7.5585:1) while the BORDER keeps --warning -- a non-text indicator needs
+     only 3:1, which it clears, so the amber still carries the signal. */
+  color: #6d4600;
   text-decoration: line-through;
 }
 
@@ -164,8 +168,10 @@
   padding-left: 8px;
 }
 
+/* Body-size text on --n0/--n50, where --warning measures 4.4843:1 / 4.2173:1
+   and fails AA. The darker amber reaches 8.3125:1 / 7.8176:1. */
 .analytics-freshness[data-freshness='stale'] {
-  color: var(--warning);
+  color: #6d4600;
 }
 
 .analytics-reconciled {

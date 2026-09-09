@@ -129,7 +129,10 @@
   padding: 8px 12px;
   font-size: 12px;
   line-height: 16px;
-  color: var(--warning);
+  /* 12px normal text on the warning tint: --warning is 4.0775:1 and fails AA,
+     the darker amber is 7.5585:1. The border keeps --warning -- 3:1 is the
+     non-text threshold and it clears it. */
+  color: #6d4600;
   background: var(--warning-bg);
   border: 1px solid var(--warning);
   border-radius: var(--radius);
@@ -249,7 +252,9 @@
   font-size: 11px;
   line-height: 15px;
   font-weight: 600;
-  color: var(--warning);
+  /* 11px/600 is normal text, not large text, so 4.5:1 applies: --warning is
+     4.0775:1 on the tint, the darker amber 7.5585:1. Border unchanged. */
+  color: #6d4600;
   background: var(--warning-bg);
   border: 1px solid var(--warning);
   border-radius: var(--radius);

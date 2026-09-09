@@ -87,9 +87,9 @@
   white-space: nowrap;
 }
 
-/* A REPORTED DEFECT IN THE FROZEN TOKEN REGISTRY, MITIGATED HERE ONLY.
+/* THE UNDERLYING DEFECT IS NOW FIXED; THIS SCOPED RULE REMAINS BY CHOICE.
    ---------------------------------------------------------------------
-   `--warning` (#A66A00) is the ONLY semantic token that fails WCAG 2.2 AA at
+   `--warning` (#A66A00) was the ONLY semantic token that failed WCAG 2.2 AA at
    body size. Measured against every surface in the design:
 
        on --n0        #FFFFFF   4.4843:1   FAIL
@@ -98,22 +98,24 @@
        on --n100      #EFF1F3   3.9604:1   FAIL
 
    (--positive 5.35, --negative 6.54, --progress 6.73, --info 6.62 and
-   --n500 4.83 all pass.) C6_tokens.json's `contrast_rule` asserts that
-   "Every text/background pairing above meets WCAG 2.2 AA (4.5:1 for body
-   text ...)". For warning-600 that is not true, and styles.css inherits it
-   through `.st-warning { color: var(--warning) }`.
+   --n500 4.83 all pass.)
 
-   The registry has no darker amber, so there is NO compliant fix inside the
-   tokens, and inventing a hex would be exactly the off-token colour the
-   contract tests exist to prevent. Both C6_tokens.json and styles.css are
-   outside this stream's ownership, so the DEFECT IS REPORTED, not fixed.
+   That is HISTORY as of the Wave 8 approved visual change. The product owner
+   approved replacing the failing warning-TEXT colour, and `.st-warning` in
+   styles.css now takes the darker amber 6D4600 that `.msg-warning` always
+   used — 8.3125:1 on white, 7.8176:1 on --n50, 7.5585:1 on the warning tint.
+   C6_tokens.json's `contrast_rule` has been corrected to record that the
+   warning TOKEN is a non-text tone and that warning text uses the darker
+   amber, so the contract no longer asserts something untrue.
 
-   Meanwhile these screens must be axe-clean, so on approval screens the
-   warning status takes the primary text colour and keeps its amber DOT. The
-   dot is a non-text indicator needing 3:1, which #A66A00 clears at 4.48:1, so
-   the semantic colour still carries — alongside the '!' glyph and the label,
-   neither of which is colour at all. Delete this rule once the token is
-   corrected. */
+   The rule below therefore no longer mitigates a defect: `.st-warning` is
+   compliant everywhere now. It is kept because approval cards deliberately
+   read their status as primary body text and carry the warning in the amber
+   DOT, the '!' glyph and the label instead. The dot is a non-text indicator
+   needing 3:1, which #A66A00 clears at 4.48:1. Removing this override would
+   be a NEW visual decision — compliant either way — and is outside the
+   approved scope, so it is left as a question for the product owner rather
+   than changed here. */
 .approval-card .status.st-warning {
   color: var(--n900);
 }

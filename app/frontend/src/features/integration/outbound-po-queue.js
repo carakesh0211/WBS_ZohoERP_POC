@@ -281,8 +281,10 @@ export function mountOutboundPoQueue(root) {
   /**
    * The standing warning shown whenever the ledger answered instead of the
    * outbox. It is a `.msg-warning` with an `!` glyph and a full sentence: the
-   * `--warning` token alone fails contrast, so the meaning is carried by the
-   * glyph and the words, never by the colour.
+   * meaning is carried by the glyph and the words, never by the colour. (The
+   * `--warning` token used to fail contrast as text and no longer does — the
+   * warning text colour was corrected in Wave 8 — but this block never relied
+   * on the colour and still does not.)
    */
   function renderCaveat() {
     while (caveat.firstChild) caveat.removeChild(caveat.firstChild);

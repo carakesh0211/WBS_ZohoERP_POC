@@ -56,10 +56,11 @@ import { getReconciliation } from './integration-api.js';
  * The reconciliation flags, their tone, and — the part that matters — a
  * GLYPH and a full-word label, so the meaning survives greyscale.
  *
- * The `--warning` token fails WCAG AA 4.5:1 on every background in the frozen
- * stylesheet. That is a known open item and this stream may not change the
- * token, so nothing here relies on colour: every flag carries a symbol from
- * the chip component plus its own word.
+ * The `--warning` token used to fail WCAG AA 4.5:1 as text on every background
+ * in the frozen stylesheet; the Wave 8 approved change moved warning TEXT to
+ * the darker amber and closed that. Nothing here ever relied on colour and
+ * nothing here relies on it now: every flag carries a symbol from the chip
+ * component plus its own word.
  */
 const FLAGS = {
   'over-billed': {
