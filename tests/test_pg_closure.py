@@ -96,9 +96,17 @@ class _FakeSession:
 
 
 def _position_row(*, actual=0, commitment=0, rnb=0, reserved=0,
-                  status="Released"):
+                  status="Released", wbs_elements=1, ledger_cells=1):
+    """The row `_POSITION_SQL` returns, as a tuple in column order.
+
+    `wbs_elements` and `ledger_cells` default to 1/1 -- a project whose
+    position EXISTS -- because that is what every test here means by "a
+    project". The 1/0 case is the finding: four `COALESCE(SUM(...), 0)` zeros
+    over a LEFT JOIN used to produce an EMPTY blocker list, so an absent
+    position read as a clean one.
+    """
     return ("PRJ-1", "CX-1", "A project", status, "ENT-1",
-            actual, commitment, rnb, reserved)
+            actual, commitment, rnb, reserved, wbs_elements, ledger_cells)
 
 
 def _clean_session(**kwargs):
@@ -640,3 +648,45 @@ def test_live_a_denied_scope_sees_no_capitalisation_requests(
             session, project_id=ids["project"], actor="U-PM")
     with _session(pg_database, project_ids=frozenset()) as session:
         assert closure.list_capitalisation_requests(session) == []
+
+
+# ---------------------------------------------------- an ABSENT position
+def test_a_project_with_no_ledger_cell_is_refused_not_declared_clean():
+    """The gate used to fail OPEN, which is the direction that matters.
+
+    Every money figure in `_POSITION_SQL` is `COALESCE(SUM(...), 0)` over a
+    LEFT JOIN. A project whose WBS elements carry no `budget_ledger_cell` rows
+    therefore reported CWIP 0, commitment 0, received-not-billed 0 and
+    reservations 0 -- and four zeros produced an EMPTY blocker list, which
+    `closure_position`'s own docstring calls THE AUTHORITY. It said "nothing is
+    blocking" when it had found nothing at all.
+
+    Reachable, not theoretical: `INSERT INTO budget_ledger_cell` appears
+    nowhere in `app/`, only in the demo seed and in fixtures, so a project
+    created through the product is exactly this case.
+    """
+    session = _clean_session(
+        position_row=_position_row(actual=0, wbs_elements=3, ledger_cells=0))
+    result = closure.closure_position(session, project_id="PRJ-1",
+                                      cap_id="CAP-1")
+
+    assert result["capitalisable"] is False, (
+        "a project with WBS elements and no ledger cell was declared "
+        "capitalisable on the strength of four zeros it never computed")
+    assert any("no budget ledger cell" in b for b in result["blockers"]), (
+        result["blockers"])
+
+
+def test_a_project_with_no_wbs_elements_is_left_alone():
+    """The neighbouring case, which is NOT the same and must not be caught.
+
+    A project with no WBS elements has genuinely nothing to capitalise. Saying
+    so is correct, and a blocker written for the absent-ledger case must not
+    swallow it.
+    """
+    session = _clean_session(
+        position_row=_position_row(actual=0, wbs_elements=0, ledger_cells=0))
+    result = closure.closure_position(session, project_id="PRJ-1",
+                                      cap_id="CAP-1")
+    assert not any("no budget ledger cell" in b for b in result["blockers"]), (
+        result["blockers"])

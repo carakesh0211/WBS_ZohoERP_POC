@@ -167,7 +167,21 @@ _POSITION_SQL = """
         COALESCE(SUM(bl.actual_paise), 0)::bigint                AS actual_paise,
         COALESCE(SUM(bl.commitment_paise), 0)::bigint            AS commitment_paise,
         COALESCE(SUM(bl.received_not_billed_paise), 0)::bigint   AS received_not_billed_paise,
-        COALESCE(SUM(bl.pr_reserved_paise), 0)::bigint           AS pr_reserved_paise
+        COALESCE(SUM(bl.pr_reserved_paise), 0)::bigint           AS pr_reserved_paise,
+        -- HOW MUCH OF THE POSITION ACTUALLY EXISTS.
+        --
+        -- Every figure above is `COALESCE(SUM(...), 0)` over a LEFT JOIN, so a
+        -- project whose WBS elements carry NO `budget_ledger_cell` rows reports
+        -- four zeros -- and four zeros produce an EMPTY blocker list, which
+        -- reads as "clear to capitalise". An absent input was answering as a
+        -- clean result, on a financial control.
+        --
+        -- This is reachable, not theoretical: no application code inserts a
+        -- ledger cell anywhere (`INSERT INTO budget_ledger_cell` appears only
+        -- in the demo seed and in fixtures), so a project created through the
+        -- product is precisely this case.
+        COUNT(DISTINCT w.wbs_id)::bigint                         AS wbs_element_count,
+        COUNT(DISTINCT bl.wbs_id)::bigint                        AS ledger_cell_count
     FROM project p
     LEFT JOIN wbs_element w ON w.project_id = p.project_id
     LEFT JOIN budget_ledger_cell bl ON bl.wbs_id = w.wbs_id
@@ -200,6 +214,11 @@ def _project_position(session: Session, project_id: str) -> dict[str, Any]:
         "open_commitment_paise": row[6],
         "received_not_billed_paise": row[7],
         "pr_reserved_paise": row[8],
+        # How much of the position EXISTS. See `_POSITION_SQL`: without these
+        # a project with no ledger cells reported four zeros and no blockers,
+        # so an absent position read as a clean one.
+        "wbs_element_count": row[9],
+        "ledger_cell_count": row[10],
     }
 
 
@@ -305,6 +324,26 @@ def closure_position(session: Session, *, project_id: str,
     allocated = _allocated_total(session, cap_id) if cap_id else 0
 
     blockers: list[str] = []
+
+    # AN ABSENT POSITION IS NOT A CLEAN POSITION, and this blocker exists
+    # because the difference was being lost. Every money figure above is
+    # `COALESCE(SUM(...), 0)` over a LEFT JOIN, so a project whose WBS elements
+    # carry no `budget_ledger_cell` rows produced four zeros -- and four zeros
+    # produced an EMPTY blocker list, which this function's own docstring calls
+    # THE AUTHORITY. The gate said "nothing is blocking" when it had found
+    # nothing at all.
+    #
+    # A project with no WBS elements is a different case and keeps its previous
+    # behaviour: there is genuinely nothing to capitalise, and saying so is
+    # correct.
+    if position["wbs_element_count"] and not position["ledger_cell_count"]:
+        blockers.append(
+            f"this project has {position['wbs_element_count']} WBS element(s) "
+            "and no budget ledger cell, so its CWIP position cannot be "
+            "computed. The zeros shown are the ABSENCE of a position, not a "
+            "position of zero. Run the ledger recompute for this project "
+            "before capitalising.")
+
     if position["open_commitment_paise"] != 0:
         blockers.append(
             f"{format_inr(position['open_commitment_paise'])} of open "

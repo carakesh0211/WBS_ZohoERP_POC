@@ -6590,6 +6590,14 @@
       "test_live_a_denied_scope_sees_no_capitalisation_requests": {
         "assertions": 1,
         "body_sha": "ce3e0554b5e2fafa"
+      },
+      "test_a_project_with_no_ledger_cell_is_refused_not_declared_clean": {
+        "assertions": 2,
+        "body_sha": "d093bc3418e490ed"
+      },
+      "test_a_project_with_no_wbs_elements_is_left_alone": {
+        "assertions": 1,
+        "body_sha": "1592884562d81b39"
       }
     },
     "test_pg_constraints.py": {
@@ -11731,7 +11739,7 @@
     "test_pg_audit.py": 20,
     "test_pg_audit_api_e2e.py": 7,
     "test_pg_budget.py": 22,
-    "test_pg_closure.py": 35,
+    "test_pg_closure.py": 37,
     "test_pg_constraints.py": 8,
     "test_pg_exports.py": 49,
     "test_pg_fixture_guard.py": 3,
@@ -11845,7 +11853,7 @@
     "test_pg_audit.py": 62,
     "test_pg_audit_api_e2e.py": 24,
     "test_pg_budget.py": 57,
-    "test_pg_closure.py": 77,
+    "test_pg_closure.py": 80,
     "test_pg_constraints.py": 13,
     "test_pg_exports.py": 138,
     "test_pg_fixture_guard.py": 3,
