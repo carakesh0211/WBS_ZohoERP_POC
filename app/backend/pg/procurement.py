@@ -1323,9 +1323,11 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
     # SAME figures and writes them back identically.
     posted = session.fetchone(  # scope-exempt: the row this statement is about to write, read by its own primary key. The scope predicate is applied where it belongs -- the INSERT below is an INSERT ... SELECT FROM project WHERE {scope}, so an out-of-scope bill is never written at all. Re-applying it here would answer "not translated" for a bill that IS translated whenever the caller's scope is narrower than the writer's, which is the one wrong answer that would let a rate be applied twice.
         f"SELECT source_currency, fx_rate, fx_rate_date, fx_rate_id, "
-        f"fx_translated_at FROM {BILL} WHERE bill_id = %s", (bill_id,))
-    if posted is not None and posted[4] is not None:
-        posted_currency, posted_rate, posted_date, posted_rate_id, _at = posted
+        f"fx_rate_source, fx_translated_at FROM {BILL} WHERE bill_id = %s",
+        (bill_id,))
+    if posted is not None and posted[5] is not None:
+        (posted_currency, posted_rate, posted_date, posted_rate_id,
+         posted_source, _at) = posted
         if str(source_currency or "").strip().upper() != posted_currency:
             raise ProcurementIngestError(
                 "BILL_FX_BASIS_CONFLICT",
@@ -1342,7 +1344,12 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
                             if posted_currency == fx_svc.BASE_CURRENCY
                             else fx_svc.minor_exponent(session, posted_currency)),
             rate=fx_svc.parse_rate(posted_rate, field="bill.fx_rate"),
-            rate_date=posted_date, rate_source=None,
+            # The STORED source, not None. It is not compared by
+            # `TranslationBasis.matches` -- a feed that renamed itself must not
+            # turn a sweep re-walk into a refusal -- but it IS what
+            # `describe()` prints into a conflict message, and "from None" is
+            # not a sentence anyone can act on.
+            rate_date=posted_date, rate_source=posted_source,
             fx_rate_id=posted_rate_id)
     else:
         # `FxError` carries `code`/`status` exactly as `ProcurementIngestError`
