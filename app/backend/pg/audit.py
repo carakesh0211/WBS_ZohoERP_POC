@@ -469,6 +469,16 @@ def verify_anchors(session: Session, *, as_of: date | None = None,
     # that anchor recorded at that seq, and which anchor said so.
     floor: dict[str, dict[str, Any]] = {}
     first_seen: dict[str, str] = {}
+    # EVERY anchored point, not only the highest. stream_key -> {seq: {...}}.
+    #
+    # Keeping only the maximum discarded every earlier anchor's claim as soon
+    # as a later anchor recorded a higher seq -- and `append` restarts seq at 1
+    # after a stream's rows are deleted. So a stream could be deleted, regrow
+    # past its old head, take one honest nightly anchor, and verify INTACT:
+    # the only row that remembered what it used to contain was never consulted
+    # again. A re-created stream diverges at the LOWEST anchored seq, which is
+    # exactly the pair that was being thrown away.
+    points: dict[str, dict[int, dict[str, Any]]] = {}
     for anchor_date_value, heads, _prev, _hash in anchors:
         iso_date = anchor_date_value.isoformat()
         for stream_key, anchored in (heads or {}).items():
@@ -476,6 +486,14 @@ def verify_anchors(session: Session, *, as_of: date | None = None,
             seq = _anchored_seq(anchored)
             if seq is None:
                 continue
+            # First anchor to record a given seq wins: if two anchors disagree
+            # about the hash at one seq, the EARLIER one is the evidence and
+            # the later one is already suspect.
+            points.setdefault(stream_key, {}).setdefault(seq, {
+                "seq": seq,
+                "entry_hash": anchored.get("entry_hash"),
+                "anchor_date": iso_date,
+            })
             prior = floor.get(stream_key)
             if prior is None or seq > prior["seq"]:
                 floor[stream_key] = {
@@ -528,6 +546,54 @@ def verify_anchors(session: Session, *, as_of: date | None = None,
                              "anchored_on": anchored["anchor_date"],
                              "anchored_entry_hash": anchored.get("entry_hash"),
                              "current_entry_hash": None if at_anchor is None else at_anchor[0]})
+
+    # ---- 2b. every anchored point below the head, not only the highest ----
+    #
+    # The loop above checks the max-seq pair, which catches an edit at the
+    # head and a truncation below it. It cannot catch a stream that was
+    # deleted and rebuilt taller: its head is higher than anything anchored,
+    # so nothing above looks wrong. The rows underneath are new rows wearing
+    # old seq numbers, and the earlier anchors are what say so.
+    for stream_key, anchored_points in sorted(points.items()):
+        now = current.get(stream_key)
+        if now is None:
+            continue                       # already reported as missing
+        mismatched = []
+        for seq in sorted(anchored_points):
+            if seq > int(now["seq"]):
+                continue                   # already reported as truncated
+            point = anchored_points[seq]
+            row = session.fetchone(
+                "SELECT entry_hash FROM audit_log "
+                "WHERE stream_key = %s AND seq = %s", (stream_key, seq))
+            if row is None or row[0] != point.get("entry_hash"):
+                mismatched.append({
+                    "seq": seq,
+                    "anchored_on": point["anchor_date"],
+                    "anchored_entry_hash": point.get("entry_hash"),
+                    "current_entry_hash": None if row is None else row[0],
+                })
+        if not mismatched:
+            continue
+        # A REBUILT STREAM AND AN EDITED HEAD ARE NOT DISTINGUISHABLE HERE, and
+        # this deliberately does not pretend otherwise. An anchor records each
+        # stream's HEAD, so the evidence is a set of (head_seq, hash) pairs --
+        # and when only one point is anchored, a stream deleted and regrown
+        # produces exactly the same mismatch as one rewritten row. Reporting
+        # both as DIVERGED_BELOW_ANCHOR is true of both; inventing a
+        # `RECREATED` state would be a guess wearing a label.
+        #
+        # Detecting a rebuild for real needs `write_anchor` to record more than
+        # the head -- seq 1, or a sampled ladder. That is a change to what is
+        # stored, and it is recorded rather than half-built.
+        first = mismatched[0]
+        if not any(d["stream_key"] == stream_key and d["seq"] == first["seq"]
+                   for d in diverged):
+            diverged.append({"stream_key": stream_key,
+                             "seq": first["seq"],
+                             "anchored_on": first["anchored_on"],
+                             "anchored_entry_hash": first["anchored_entry_hash"],
+                             "current_entry_hash": first["current_entry_hash"]})
 
     anchor_age_days = (as_of - newest_date).days
     stale = anchor_age_days > max_anchor_age_days

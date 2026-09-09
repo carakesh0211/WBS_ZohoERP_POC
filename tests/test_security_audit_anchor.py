@@ -855,3 +855,73 @@ def test_no_route_in_the_audit_router_writes_an_anchor():
         f"the audit router now has writing routes: {writing}. If one of them "
         "writes an anchor, the permission it needs is a role-mapping decision "
         "and belongs in auth.PERMISSIONS with a reason.")
+
+
+# ======================================================================
+# HIGH: a stream deleted and REGROWN PAST ITS OLD HEAD
+# ======================================================================
+def test_a_stream_deleted_and_regrown_past_its_old_head_is_not_intact():
+    """The case that read as INTACT_ANCHORED, and why it did.
+
+    The floor kept, per stream, only the HIGHEST seq any anchor recorded --
+    discarding every earlier anchor's claim the moment a later one recorded a
+    higher seq. `append` restarts seq at 1 after a stream's rows are deleted.
+    So: delete a stream, let it regrow past its old head, let ONE honest
+    nightly anchor run, and the day-0 anchor -- the only record of what the
+    stream used to contain -- was never consulted again.
+
+    An adversarial review demonstrated it: two damning APPROVAL_INSTANCE
+    entries deleted, three appended, one anchor, `intact=True` with every
+    finding list empty.
+
+    `test_a_stream_deleted_after_its_anchor_and_re_anchored_is_still_missing`
+    above covers the stream that STAYS deleted. The moment the object keeps
+    being used -- the normal case for any live business object -- that finding
+    evaporated. This is the half that was missing.
+    """
+    for regrown in (4, 5):
+        session = _session_with_two_streams()
+        audit_mod.write_anchor(session, anchor_date=date(2026, 9, 9))
+
+        # The whole stream is removed and rebuilt; seq restarts at 1.
+        session.entries["PROJECT:PRJ-1"] = [
+            (i, f"rebuilt{i}") for i in range(1, regrown + 1)]
+
+        # One HONEST anchor after the rebuild -- the attacker does not have to
+        # tamper with the anchor, only to wait for the job to run.
+        audit_mod.write_anchor(session, anchor_date=date(2026, 9, 10))
+
+        result = audit_mod.verify_anchors(session, as_of=date(2026, 9, 10))
+        assert result["intact"] is False, (
+            f"a stream deleted and regrown to seq {regrown} reported intact; "
+            f"state={result['state']}")
+        assert result["state"] == audit_mod.ANCHOR_STATE_DIVERGED, result["state"]
+        assert any(d["stream_key"] == "PROJECT:PRJ-1"
+                   for d in result["diverged_streams"]), result["diverged_streams"]
+
+
+def test_every_anchored_point_is_verified_not_only_the_highest():
+    """The mechanism, asserted directly.
+
+    If only the highest anchored seq were checked, a mismatch at a LOWER
+    anchored seq would go unreported whenever a later anchor recorded a higher
+    one. This rewrites a row at the earlier anchor's head while leaving the
+    later anchor's head intact.
+    """
+    session = _session_with_two_streams()
+    audit_mod.write_anchor(session, anchor_date=date(2026, 9, 9))
+
+    # Grow the stream, then anchor again: two anchored points now exist.
+    session.entries["PROJECT:PRJ-1"].append((4, "h1d"))
+    audit_mod.write_anchor(session, anchor_date=date(2026, 9, 10))
+
+    # Rewrite the row the EARLIER anchor recorded. The newest anchor's head
+    # (seq 4) still matches, so a highest-only check sees nothing.
+    session.entries["PROJECT:PRJ-1"][2] = (3, "REWRITTEN")
+
+    result = audit_mod.verify_anchors(session, as_of=date(2026, 9, 10))
+    assert result["intact"] is False, (
+        "a rewrite at an earlier anchor's head was invisible because a later "
+        "anchor recorded a higher seq")
+    assert [d["seq"] for d in result["diverged_streams"]] == [3], (
+        result["diverged_streams"])

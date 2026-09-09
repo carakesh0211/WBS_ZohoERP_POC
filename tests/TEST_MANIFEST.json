@@ -11436,6 +11436,14 @@
       "test_no_route_in_the_audit_router_writes_an_anchor": {
         "assertions": 1,
         "body_sha": "53f304f7b483848d"
+      },
+      "test_a_stream_deleted_and_regrown_past_its_old_head_is_not_intact": {
+        "assertions": 3,
+        "body_sha": "702d590fc08ea250"
+      },
+      "test_every_anchored_point_is_verified_not_only_the_highest": {
+        "assertions": 2,
+        "body_sha": "79759869d111161e"
       }
     },
     "test_security_audit_forgery.py": {
@@ -11768,7 +11776,7 @@
     "test_scope_negative_matrix.py": 25,
     "test_scope_sentinel.py": 29,
     "test_security_approval_oracle.py": 8,
-    "test_security_audit_anchor.py": 32,
+    "test_security_audit_anchor.py": 34,
     "test_security_audit_forgery.py": 7,
     "test_security_frontend.py": 11,
     "test_security_identity.py": 10,
@@ -11882,7 +11890,7 @@
     "test_scope_negative_matrix.py": 82,
     "test_scope_sentinel.py": 54,
     "test_security_approval_oracle.py": 11,
-    "test_security_audit_anchor.py": 105,
+    "test_security_audit_anchor.py": 110,
     "test_security_audit_forgery.py": 14,
     "test_security_frontend.py": 22,
     "test_security_identity.py": 18,
