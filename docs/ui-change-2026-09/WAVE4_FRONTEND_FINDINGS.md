@@ -10,7 +10,7 @@ files you do not own". Ordered by severity.
 | # | Was | Now |
 |---|---|---|
 | 1 | `approval.*` absent from `auth.PERMISSIONS` — BLOCKING | **CLOSED.** All four landed in `1224b83`. The `grantApprovalPermissions` stub is gone and `requireApprovalPermissions` asserts instead. See §1a for what the fix changed underneath. |
-| 2 | `--warning` fails AA | open — unchanged, `C6_tokens.json` is not this stream's file |
+| 2 | `--warning` fails AA | **CLOSED in Wave 8** — approved, applied as `#6D4600` for warning text; `--warning` kept as a non-text tone |
 | 2b | `--n500` fails AA on a hovered row | open — unchanged, `styles.css` is byte-frozen |
 | 3 | `playwright.config.js` `threshold: 0.2` | open — unchanged; re-verified at HEAD |
 | 4 | Two screens both titled "My Approval Inbox" | open — unchanged, still pinned by a test |
@@ -61,6 +61,20 @@ bootstrap, so the gate cannot pass by being absent.
 ## 2. `--warning` (#A66A00) fails WCAG 2.2 AA at body size, on every surface
 
 **Files:** `research/30_contracts/C6_tokens.json`, `app/frontend/styles.css`
+
+> **CLOSED IN WAVE 8 — this section is the Wave 4 record and is left as
+> written.** The product owner approved the fix. Warning TEXT now takes
+> `#6D4600`, the darker amber `.msg-warning` already used: 8.3125:1 on `--n0`,
+> 7.8176:1 on `--n50`, 7.5585:1 on `--warning-bg`, 7.3413:1 on `--n100`. No new
+> colour entered the registry. `--warning` is kept, unchanged, as a NON-TEXT
+> tone (dots, accents, borders, meter fills), where 3:1 applies and it passes
+> everywhere. `C6_tokens.json`'s `contrast_rule` now records that split. The
+> paragraph below saying no compliant fix exists inside the registry was true
+> of a *token*; the fix was to stop using the token for text.
+>
+> The `--n500` row in the table below is still marked `pass`, and on white it
+> is (4.8345:1). On a **hovered** row (`--primary-50` #EAF4F6) it is 4.3210:1
+> and fails. That remains OPEN and was not covered by the approval.
 
 `--warning` is the only semantic token that fails the 4.5:1 body-text minimum,
 and it fails against every background in the design:
