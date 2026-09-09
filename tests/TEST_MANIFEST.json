@@ -10974,6 +10974,18 @@
       "test_actor_holds_agrees_with_require_for_every_permission_and_role": {
         "assertions": 1,
         "body_sha": "e713b00e75e517cb"
+      },
+      "test_the_approval_twins_authorise_before_they_read": {
+        "assertions": 2,
+        "body_sha": "34e852f0d3930b3f"
+      },
+      "test_the_approval_twins_still_answer_a_caller_who_may_approve": {
+        "assertions": 2,
+        "body_sha": "be72476a51aaea16"
+      },
+      "test_no_approval_service_reads_its_row_before_authorising": {
+        "assertions": 1,
+        "body_sha": "3e34f90d81c4f973"
       }
     },
     "test_security_audit_anchor.py": {
@@ -11375,7 +11387,7 @@
     "test_scope_enforcement.py": 10,
     "test_scope_negative_matrix.py": 25,
     "test_scope_sentinel.py": 29,
-    "test_security_approval_oracle.py": 5,
+    "test_security_approval_oracle.py": 8,
     "test_security_audit_anchor.py": 25,
     "test_security_frontend.py": 11,
     "test_security_identity.py": 10,
@@ -11486,7 +11498,7 @@
     "test_scope_enforcement.py": 12,
     "test_scope_negative_matrix.py": 82,
     "test_scope_sentinel.py": 54,
-    "test_security_approval_oracle.py": 6,
+    "test_security_approval_oracle.py": 11,
     "test_security_audit_anchor.py": 70,
     "test_security_frontend.py": 22,
     "test_security_identity.py": 18,

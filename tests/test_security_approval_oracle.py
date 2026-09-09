@@ -156,3 +156,89 @@ def test_actor_holds_agrees_with_require_for_every_permission_and_role(raw_con):
             assert held == required_ok, (
                 f"actor_holds and auth.require disagree for {permission} "
                 f"with roles {roles}: {held} vs {required_ok}")
+
+
+# =========================================================================
+# The two structural twins. The oracle was fixed in `approve_pr` alone.
+# =========================================================================
+#
+# `approve_revision` and `approve_capitalisation` had the same read-before-
+# authorise shape and sat behind routes gated on AUTHENTICATION ONLY. The
+# final adversarial review reproduced the leak over HTTP as a read-only
+# Auditor, discriminating three ways on any id: 404 = does not exist,
+# 409 = exists and here is its workflow state, 403 = exists AND is approvable.
+#
+# Parametrised over both, and written so a THIRD sibling appearing with the
+# same shape is a one-line addition rather than a new file nobody writes.
+
+_TWINS = (
+    ("approve_revision", "revision.approve", "FinanceApprover",
+     "REVISION_NOT_FOUND"),
+    ("approve_capitalisation", "capitalisation.approve", "CapitalisationApprover",
+     "CAP_NOT_FOUND"),
+)
+
+
+@pytest.mark.parametrize("func_name,permission,holder_role,not_found_code", _TWINS,
+                         ids=[t[0] for t in _TWINS])
+def test_the_approval_twins_authorise_before_they_read(
+        raw_con, func_name, permission, holder_role, not_found_code):
+    """An unauthorised caller must not learn whether the id exists."""
+    func = getattr(services, func_name)
+    with pytest.raises(Exception) as excinfo:
+        func(raw_con, _actor("Auditor"), "DOES-NOT-EXIST")
+    exc = excinfo.value
+    assert getattr(exc, "status", None) == 403, (
+        f"{func_name} told an unauthorised caller about an id: "
+        f"{getattr(exc, 'status', None)} {getattr(exc, 'code', None)}")
+
+
+@pytest.mark.parametrize("func_name,permission,holder_role,not_found_code", _TWINS,
+                         ids=[t[0] for t in _TWINS])
+def test_the_approval_twins_still_answer_a_caller_who_may_approve(
+        raw_con, func_name, permission, holder_role, not_found_code):
+    """...and the fix did not become a blanket refusal.
+
+    Without this, moving `auth.require` to the top would satisfy the test
+    above even if it refused everyone.
+    """
+    func = getattr(services, func_name)
+    with pytest.raises(Exception) as excinfo:
+        func(raw_con, _actor(holder_role), "DOES-NOT-EXIST")
+    assert getattr(excinfo.value, "code", None) == not_found_code, (
+        f"an entitled approver was denied the ordinary 404 from {func_name}: "
+        f"{getattr(excinfo.value, 'code', None)}")
+
+
+def test_no_approval_service_reads_its_row_before_authorising():
+    """The pattern, not the three instances.
+
+    `approve_pr` was fixed, then its twins were found unfixed two waves later.
+    This walks the AST of every `approve_*` in `services.py` and asserts the
+    first thing each does inside `critical()` is an authorisation call -- so a
+    FOURTH one written tomorrow in the old shape fails here rather than being
+    found by the next review.
+
+    `approve_pr` is the declared exception and is checked separately above: its
+    permission depends on the row, so it opens with a coarse gate over
+    `_PR_APPROVAL_PERMISSIONS` instead of a bare `auth.require`.
+    """
+    import ast
+    import inspect
+
+    tree = ast.parse(inspect.getsource(services))
+    offenders = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.FunctionDef) or not node.name.startswith("approve_"):
+            continue
+        with_nodes = [n for n in node.body if isinstance(n, ast.With)]
+        if not with_nodes:
+            continue
+        first = with_nodes[0].body[0]
+        rendered = ast.unparse(first)
+        if "auth.require" in rendered or "_PR_APPROVAL_PERMISSIONS" in rendered:
+            continue
+        offenders.append(f"{node.name}: first statement is `{rendered.splitlines()[0]}`")
+    assert not offenders, (
+        "these approval services read before they authorise, which tells an "
+        "unauthorised caller whether the id exists:\n  " + "\n  ".join(offenders))

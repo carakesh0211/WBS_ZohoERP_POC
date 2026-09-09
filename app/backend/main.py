@@ -792,7 +792,7 @@ class RevApproveIn(BaseModel):
 
 @app.post("/api/budget-revisions/{rev_id}/approve")
 def approve_revision(rev_id: str, body: RevApproveIn = Body(default=RevApproveIn()),
-                     p: dict = Depends(principal)):
+                     p: dict = Depends(perm("revision.approve"))):
     c = con()
     try:
         return services.approve_revision(c, p, rev_id, effective_date=body.effective_date)
@@ -848,7 +848,7 @@ class CapApproveIn(BaseModel):
 
 @app.post("/api/capitalisation/{cap_id}/approve")
 def approve_cap(cap_id: str, body: CapApproveIn = Body(default=CapApproveIn()),
-                p: dict = Depends(principal)):
+                p: dict = Depends(perm("capitalisation.approve"))):
     c = con()
     try:
         return services.approve_capitalisation(c, p, cap_id, override_ref=body.override_ref)

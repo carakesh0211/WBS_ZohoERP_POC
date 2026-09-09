@@ -410,12 +410,19 @@ def create_revision(con, actor: dict, *, project_id, wbs_id, budget_head_id, kin
 
 def approve_revision(con, actor: dict, revision_id: str, *, effective_date=None):
     with critical(con):
+        # AUTHORISE FIRST. This used to read the row and check its status
+        # before asking whether the caller could approve anything, so a
+        # principal without `revision.approve` learned whether a revision id
+        # existed (404) and what state it was in (409, naming the status).
+        # Unlike `approve_pr` -- whose permission depends on the row and so
+        # needs a coarse gate first -- this one requires exactly one
+        # permission, known before any read, so it simply moves.
+        auth.require(actor, "revision.approve")
         r = _row(con, "SELECT * FROM budget_revision WHERE revision_id=?", (revision_id,),
                  "REVISION_NOT_FOUND", f"Revision {revision_id} does not exist.")
         if r["status"] != "Submitted":
             raise BusinessError(409, "INVALID_TRANSITION",
                                 f"{revision_id} is {r['status']} and cannot be approved again.")
-        auth.require(actor, "revision.approve")
         auth.require_separation(actor, "revision.approve", r["requested_by"],
                                 object_label=revision_id)
         eff = effective_date or r["effective_date"] or now()[:10]
@@ -499,12 +506,15 @@ def allocate(con, actor: dict, cap_id: str, *, wbs_id, asset_name, asset_categor
 def approve_capitalisation(con, actor: dict, cap_id: str, *, override_ref: str | None = None):
     """AUD-C-009: eligibility is a gate, not a warning."""
     with critical(con):
+        # AUTHORISE FIRST, for the reason given on `approve_revision`. This
+        # leak was the worse of the two: its 409 disclosed `cap_number`, a
+        # business identifier, not merely the status.
+        auth.require(actor, "capitalisation.approve")
         cap = _row(con, "SELECT * FROM capitalisation_request WHERE cap_id=?", (cap_id,),
                    "CAP_NOT_FOUND", f"Capitalisation request {cap_id} does not exist.")
         if cap["status"] != "Submitted":
             raise BusinessError(409, "INVALID_TRANSITION",
                                 f"{cap['cap_number']} is already {cap['status']}.")
-        auth.require(actor, "capitalisation.approve")
         auth.require_separation(actor, "capitalisation.approve", cap["requested_by"],
                                 object_label=cap["cap_number"])
 
