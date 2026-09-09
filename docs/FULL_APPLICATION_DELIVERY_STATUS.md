@@ -1,13 +1,13 @@
 # Full application — delivery status
 
 **Branch:** `full-application/build` · **Wave 7 in its completion gate** ·
-full local suite **3589 passed, 589 skipped, 1 xfailed** at `824974d`
+full local suite **3601 passed, 615 skipped, 1 xfailed, 0 failed** at `1b7f08e`
 
 ## Current milestone
 
 **M7 — Reconciliation, dashboards and reports.** Reporting backend, export
-jobs, closure services and migrations 017–021 are merged. What remained was
-not backend work at all: the screens existed and could not be reached.
+jobs, closure services and migrations 017–022 are merged, and the adversarial
+review's findings are closed. What is outstanding is CI evidence, not code.
 
 ## Completed vertical slices
 
@@ -15,98 +15,174 @@ not backend work at all: the screens existed and could not be reached.
 |---|---|
 | 1–4 | PostgreSQL foundation, settings/masters, budget control cells and periods, identity/scope/RLS, configurable approval engine |
 | 5 | Integration platform: schema, inbox/outbox, chunked jobs, rate budget, circuit breaker, outbound PO emission, `/api/integrations/*` with six coded refusals, unattributed-exception triage |
-| 6 | Migration 013's eight procurement tables · PR→PO services · GRN and vendor-bill inbound · PostgreSQL reconciliation · migration 014's twelve corrections · migration 015's PR reservation grain |
-| 7 | Migrations 016–021 · reporting backend and canonical `FilterSet` · export jobs under the requester's scope · closure services · 11 analytics screens · 4 mapping/connector screens · **the SPA registry repair below** |
+| 6 | Migration 013's eight procurement tables · PR→PO services · GRN and vendor-bill inbound · PostgreSQL reconciliation · 014's twelve corrections · 015's PR reservation grain |
+| 7 | Migrations 016–022 · reporting backend and canonical `FilterSet` · export jobs under the requester's scope · closure services · 11 analytics screens · 4 mapping screens · 6 closure screens · **the SPA registry repair** · **the adversarial review's 8 HIGH and 8 of 9 MEDIUM findings** |
 
 ## The Wave 7 finding that mattered most
 
-**Thirty-three screens were built, tested and unreachable.** Not one of them
-was registered in the running application:
+**Thirty-three screens were built, tested and unreachable.** None was
+registered in the running application:
 
 * Wave 5's **twelve integration screens** — `features/integration/manifest.js`
   states the two splices verbatim and says "the lead performs the two splices
   below". The lead never did. `viewAllowed('integration-setup')` returned
   `false` in a real browser for three waves.
-* Wave 7's **eleven analytics** and **four mapping/connector** screens — same
-  omission, discovered when the registry control finally failed.
-* Wave 7's **six closure screens** (SCR-11/12/14/20/21/22) — worse: no
-  manifest existed at all, nothing imported them, and **no test referred to
-  them**, so nothing could have failed.
+* Wave 7's **eleven analytics** and **four mapping** screens — same omission.
+* Wave 7's **six closure screens** (SCR-11/12/14/20/21/22) — worse: no manifest
+  existed, nothing imported them, and **no test referred to them**, so nothing
+  could have failed.
 
-**Why the VRT suite never said so.** `integration.spec.js`, `analytics.spec.js`
-and `mapping.spec.js` each performed the missing splices *themselves* with
+**Why the suite never said so.** `integration.spec.js`, `analytics.spec.js` and
+`mapping.spec.js` each performed the missing splices *themselves* with
 `page.addInitScript`, pushing rows into `SCR_ROUTES` and overriding `V`. Each
-suite was green against a build that existed only inside the test, and
-integration's "SCR_ROUTES and the manifest agree" assertion was self-fulfilling
-— it wrote the rows it then read back.
+was green against a build that existed only inside the test, and integration's
+"the two tables agree" assertion was self-fulfilling — it wrote the rows it then
+read back. The one test that caught it reads the registry instead of writing to
+it.
 
-The one test that caught it was the one that **reads** the registry instead of
-writing to it: `spa-routing.spec.js:505`, whose exact-list assertion failed the
-moment the screens were spliced in. That list has been **extended, not
-relaxed** — from 13 to 46 — because its stated purpose is that a screen cannot
-become routable without a human naming it, and naming it is only honest if the
-screen has a test. Turning it into an "at least these" check would have deleted
-the property rather than satisfied it.
-
-All three specs now count what the **shipped** build declares, so
-`waitForFunction(… === 12)` is an assertion about `app.js` rather than a wait on
-the test's own side effect. If a splice is ever reverted, the suite fails.
+All three helpers now count what the **shipped** build declares, so
+`waitForFunction(… === 12)` is an assertion about `app.js`. The exact registry
+list went 13 → 46, **extended and never relaxed**: its purpose is that a screen
+cannot become routable without a human naming it, and naming it is honest only
+if the screen has a test.
 
 ## Screen inventory — 40 of 40
 
 46 routable screens carrying **37 distinct SCR numbers**; with the three legacy
-shell views `pos`, `grns` and `bills` (SCR-15/16/17) that is C8's full forty.
-Verified in a browser, not inferred: `closure-capitalisation`,
-`closure-asset-allocation`, `integration-setup` and `analytics-executive` each
-mount with `data-mounted="1"`, their C8 verbatim headings, and real content.
+shell views `pos`, `grns`, `bills` (SCR-15/16/17) that is C8's full forty.
+Verified in a browser, not inferred.
+
+## Adversarial review — 8 HIGH, 9 MEDIUM, 6 LOW
+
+| | Finding | Status |
+|---|---|---|
+| H1 | `sort=utilisation_pct` paginated on a ratio, cursored on a percentage | **Closed** |
+| H2 | Period close ignored unattributed reconciliation exceptions | **Closed** |
+| H3 | 017–019 policies never enforced (superuser bypass) | **Closed** — behavioural matrix |
+| H4 | `export_job` in no RLS registry; guard vacuous | **Closed** |
+| H5 | SCR-23 read totals keys the API never returns | **Closed** |
+| H6 | Fallback declared filters applied that the routes ignore | **Closed** |
+| H7 | WBS tree unusable by keyboard | **Closed** |
+| H8 | `closure.spec.js` untracked | **Closed** |
+| M1 | Saved-view `FOR ALL` policy defeatable on DELETE and UPDATE | **Closed** — 022 |
+| M2 | Reports router had no write permission above the floor | **Closed** |
+| **M3** | **`--warning` fails WCAG AA on every background it is used on** | **OPEN — needs approval, see below** |
+| M4 | Six OAS-02 citations should be OAS-03 | **Closed** |
+| M5 | Migrations 001–012 orphaned their ledger rows | **Closed** — 022 |
+| M6 | Money-SQL gate blind across a nested paren | **Closed** |
+| M7 | VRT inventory did not record `closure.spec.js` | **Closed** |
+| M8 | A VRT test that passed when its feature was gone | **Closed** |
+| M9 | "All four dimensions" true of the call, not the effect | **Documented** |
+| L3, L4, L5 | `buildQuery` empty array; `SCOPABLE` gap; attribution | **Closed** |
+| L1, L2, L6 | `FilterSet.buckets()` dead code; SCR-40 reveal gate; duplicate button names | **Recorded, not fixed** |
+
+### M3 is open by decision, not by oversight
+
+`--warning` measures **4.484:1 on white** and **4.077:1 on its own tint**, and
+`.st-warning` renders at 12px/600 — normal text, so AA needs 4.5:1. It fails on
+every background it is actually used on; the shortfall is 0.42, not the 0.016
+previously recorded in `C6_tokens.json`.
+
+The remedy needs no new colour: `.msg-warning` already uses a darker warning
+measuring 8.313:1 and 7.558:1. It is **not applied** because `styles.css` is
+byte-frozen behind a SHA-256 pin and darkening an approved token is a visual
+change requiring the product owner's approval. The false claim is corrected in
+the contract with the measurements and the reason it is unapplied.
 
 ## Current slice
 
-**Wave 7 completion gate.** Outstanding: `tests/vrt/closure.spec.js` (the six
-closure screens have wiring but not yet their own spec), the full VRT run at
-the current tree, and five green CI jobs.
+**Wave 7 completion gate.** Outstanding: five green CI jobs on one commit.
 
 ## Next three deliverables
 
-1. `closure.spec.js`, then the full VRT and local suites at the gate commit.
-2. Wave 7 adversarial review; fix every high and medium finding.
-3. Wave 8 — foreign-currency and period controls, security and audit closure,
-   migration and operational hardening, UAT and release package.
+1. CI green on `1b7f08e`, then push and close the Wave 7 gate.
+2. Wave 8 — foreign-currency and period controls; security and audit closure;
+   migration and operational hardening; UAT and release package.
+3. Final adversarial review and the application gate.
 
 ## Genuine blockers
 
 **None blocking the build.** Open items, recorded rather than assumed closed:
 
-- **Repair batch B, not yet written.** `rate = amount // units` truncates and
-  the adapters emit *rate × quantity* rather than the line total, so a 3-unit
-  ₹1,000.00 line reaches the vendor as ₹999.99 (H-3); `currency` /
-  `exchange_rate` are stored and never applied, and the API types the rate as
-  `int` (H-4); `recompute_commitment` updates zero rows when a ledger cell is
-  absent (H-6) and, being a full re-derive, zeroes any commitment not
-  originating in PostgreSQL `po_line` (H-7).
-- **Repair batch C, not yet written.** Three guards do not cover the code they
-  were written for (H-9), plus M-1 float quantity, M-4 scope waived on NULL,
-  M-5 dead `tax_paise`.
-- **`core/api-client.js::buildQuery` comma-joins arrays** via `q.set`. Analytics
-  worked around it locally with `toSearch()`; **the shared helper is still
-  wrong for every other caller.**
-- **No local PostgreSQL.** 589 tests skip here and first execute in CI. A skip
+- **M3 above** — awaiting a visual-change approval.
+- **`bill.void` maker-checker is structurally inert.** `services.py:411` passes
+  `b.get("created_by")` and the `bill` table has no such column, so
+  `require_separation` short-circuits and the raiser of a bill can void it.
+  Known, pinned by a **strict** xfail parametrised from `auth.MAKER_CHECKER`
+  itself, so it cannot rot silently. The fix — add `created_by` to `bill` and
+  populate it — is Wave 8 Agent B's.
+- **Repair batches B and C, not yet written.** `rate = amount // units`
+  truncates and the adapters emit *rate × quantity* rather than the line total
+  (H-3); `currency`/`exchange_rate` stored and never applied (H-4);
+  `recompute_commitment` zeroes commitment not originating in PostgreSQL
+  `po_line` (H-7); three guards do not cover the code they were written for
+  (H-9).
+- **No local PostgreSQL.** 615 tests skip here and first execute in CI. A skip
   is not a pass.
 - **Zoho remains MOCK.** No sandbox credentials, no live call has been made,
   and nothing is marked LIVE or VERIFIED.
 
 ## Test and commit status
 
-- Full local suite: **3589 passed, 589 skipped, 1 xfailed** (`824974d`)
-- Contract and inventory gates: 61 passed · manifest `--check` clean
-- Authorisation matrix: 290 passed
-- `integration.spec.js`: **161 passed against the real shipped wiring**, no
-  self-installed routes
-- `spa-routing.spec.js`: 55 passed at `824974d`; re-running at 46 screens
-- Migrations: **001…021, contiguous, no gaps**
-- CI run 34266699000 at `824974d`: Contract, Supply chain, PostgreSQL and
-  Regression **green**; Visual regression still running
+- Full local suite: **3601 passed, 615 skipped, 1 xfailed, 0 failed** (`1b7f08e`)
+- `closure.spec.js`: **119 passed, exit 0** — the six closure screens' first
+  coverage, and it installs no routes
+- `spa-routing.spec.js`: 55 passed · `integration.spec.js`: 161 passed against
+  the real wiring · `analytics` + `mapping`: 122 passed, axe clean
+- Manifest `--check` clean; baseline back at exactly **220**
+- Migrations: **001…022, contiguous, no gaps**
+- CI run 34309336564: Contract, Supply chain, Regression **green**; PostgreSQL
+  **red on two tests**, both failing in the seed of the new RLS matrix and
+  neither reaching an assertion about a policy (1517 passed); the fix is
+  committed at `1b7f08e` and not yet pushed. Visual regression still running —
+  the push is deliberately held, because three earlier pushes each cancelled
+  that job before it could finish.
 - Wave 7 is **not closed**.
+
+## The new RLS matrix has never passed, and that is stated plainly
+
+`tests/test_pg_rls_wave7_matrix.py` is the coverage for H3. Every test in it is
+`@pytest.mark.pg` and skips on every machine here; all eight first executed in
+CI, where three failed on the first run and two on the second — every one of
+them in the test's own seeding, not in a policy assertion. Three CI cycles were
+spent on one INSERT written from memory rather than from migration 018. The
+seed is now derived from the migration: every NOT NULL column with no default,
+and every CHECK on all seven tables the file seeds.
+
+**No claim is made that these tests pass until CI says so.**
+
+## Local preview
+
+```
+CAPEX_PROFILE=local-demo CAPEX_DB_PATH=app/data/capex_demo-8790.db PORT=8790 \
+  python -m app.backend.migrate --fresh --seed && python app/run.py
+```
+
+**http://127.0.0.1:8790** — demo identities `U-REQ, U-PM, U-PLH, U-PROC, U-FIN,
+U-PFC, U-CFO, U-AUD, U-ADM`; the password is the user id followed by `!demo`.
+Seeded development credentials, displayed by the app's own sign-in screen; no
+production credential exists.
+
+**What shows live data without PostgreSQL:** the 14 legacy shell views. Every
+PostgreSQL-backed API answers `503 DATABASE_NOT_CONFIGURED` with
+`state: unavailable`, so the other 32 screens render their honest unavailable
+state — verified by probing each endpoint, not assumed. Zoho shows
+`MOCK — NOT VERIFIED`.
+
+## Flake classification of record — SCR-39, 2026-09-08
+
+CI run 34203327903 failed one VRT test at laptop-1024 only, on a 15 s selector
+timeout. **Classified as resource contention on evidence:** the failing run took
+54 minutes for a spec that takes ~17, with five agents competing for the
+machine; the same test passed at the other two viewports in that run; and it
+passed 3/3 sequentially on an idle machine in 37.0 s, 23.2 s and 25.5 s. Nothing
+was changed to obtain that. If it recurs on an idle machine the classification
+is wrong rather than merely re-asserted.
+
+A second timeout of the same shape appeared at tablet-800 in run 34266699000 —
+`#loginForm` hidden for 30 s, 47 minutes into the run. It is **not** classified
+here: that commit's `integration.spec.js` still carried the `addInitScript`
+route simulation since removed, so the build it failed against no longer exists.
 
 ## Corrections of record
 
@@ -116,18 +192,5 @@ edited:
 - *"Phase 1 — PostgreSQL port, behaviour-identical | complete"* — the port
   omitted the entire procurement document chain. Migration 013 closed that.
 - *"Waves 1-3 COMPLETE … Wave 4 in progress"* — stale by two waves.
-- *"19 of C8's 40 screens still unbuilt — Wave 7 delivers 21 of them"* — the
-  screens were built. Thirty-three of them were unreachable, which this file
-  reported as delivery.
-
-## Flake classification of record — SCR-39, 2026-09-08
-
-CI run 34203327903 failed one VRT test, `SCR-39 is gated on connector.read even
-though it offers a write`, at laptop-1024 only, on a 15 s selector timeout.
-**Classified as resource contention on evidence:** the failing run took 54
-minutes for a spec that takes ~17 with five agents competing for the machine;
-the same test passed at desktop-1440 and tablet-800 in that run; and it passed
-3/3 sequentially on an idle machine in 37.0 s, 23.2 s and 25.5 s. Nothing was
-changed to obtain that — no timeout raised, no assertion weakened, no baseline
-touched. If it recurs on an idle machine this classification is wrong rather
-than merely re-asserted.
+- *"19 of C8's 40 screens still unbuilt"* — they were built. Thirty-three were
+  unreachable, which this file reported as delivery.
