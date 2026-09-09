@@ -155,6 +155,14 @@ SCOPABLE = {
     # `capitalisation_request` is a capitalisation decision recorded against a
     # project the caller cannot see.
     "project_completion_review", "capitalisation_request", "asset_allocation",
+    # Migration 017. `report_saved_view` carries `entity_id text NOT NULL` and
+    # a `capex_scope_permits` policy of its own. An unscoped read returns
+    # another entity's saved views -- and a saved view IS a filter set, so it
+    # discloses what that entity measures itself on, not merely that the view
+    # exists. It was missing until the Wave 7 review; the completeness check at
+    # the foot of this file now derives the requirement rather than trusting
+    # the next person to remember.
+    "report_saved_view",
     "entity", "division", "branch", "zone", "department", "plant", "location",
     "project", "wbs_element", "budget_control_cell", "budget_ledger_cell",
     "budget_line", "budget_revision", "budget_transfer", "budget_version",
@@ -419,3 +427,31 @@ def test_no_row_scope_declarations_each_state_a_reason():
     for key, reason in NO_ROW_SCOPE.items():
         assert reason and len(reason) > 20, (
             f"{key} opts out of row-level scope without a usable reason")
+
+
+def test_scopable_covers_every_rls_table_that_names_a_dimension_column():
+    """SCOPABLE is hand-maintained, and that is how `report_saved_view` went
+    missing. This derives the requirement instead.
+
+    `app.backend.pg.rls.ALL_RLS_TABLE_COLUMNS` maps every RLS-protected table
+    to its dimension columns, and it already has to be right for
+    `tests/test_pg_rls_coverage.py` to pass -- so a table that names a real
+    column there and is absent here is a gap in THIS gate, reported here rather
+    than found by a reviewer two waves later.
+
+    All-`None` entries are deliberately not required. Those tables reach their
+    dimension through a join, or are owner-scoped like `export_job`; whether
+    the AST walk should cover them is a separate judgement, and a completeness
+    check that forced it would be making that judgement silently.
+    """
+    from app.backend.pg import rls
+
+    dimensioned = {
+        table for table, columns in rls.ALL_RLS_TABLE_COLUMNS.items()
+        if any(column is not None for column in columns.values())
+    }
+    missing = sorted(dimensioned - SCOPABLE)
+    assert not missing, (
+        f"these RLS tables name a dimension column of their own but are not "
+        f"in SCOPABLE, so an unscoped read of them passes this gate: {missing}"
+    )

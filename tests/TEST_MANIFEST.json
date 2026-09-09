@@ -9996,6 +9996,10 @@
       "test_no_row_scope_declarations_each_state_a_reason": {
         "assertions": 1,
         "body_sha": "6ec3ead0d76cb9e1"
+      },
+      "test_scopable_covers_every_rls_table_that_names_a_dimension_column": {
+        "assertions": 1,
+        "body_sha": "6fd3a841bc9fb7b1"
       }
     },
     "test_scope_negative_matrix.py": {
@@ -10312,7 +10316,7 @@
     "test_procurement_emission.py": 27,
     "test_reporting_filterset.py": 92,
     "test_runtime_startup.py": 11,
-    "test_scope_enforcement.py": 9,
+    "test_scope_enforcement.py": 10,
     "test_scope_negative_matrix.py": 25,
     "test_scope_sentinel.py": 29
   },
@@ -10409,7 +10413,7 @@
     "test_procurement_emission.py": 98,
     "test_reporting_filterset.py": 182,
     "test_runtime_startup.py": 31,
-    "test_scope_enforcement.py": 11,
+    "test_scope_enforcement.py": 12,
     "test_scope_negative_matrix.py": 82,
     "test_scope_sentinel.py": 54
   }
