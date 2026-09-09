@@ -16,11 +16,23 @@ parallel, so it must not drift)::
           "sequence_contiguous":bool,"head_seq":int|null,
           "whole_stream_truncation_note":str,"verified_at":iso8601}
     GET /api/audit/anchors/verify
-      -> {"anchored":bool,"intact":bool,"anchors_checked":int,
+      -> {"anchored":bool,"intact":bool,"state":str,"anchors_checked":int,
           "anchor_chain_intact":bool,"first_broken_anchor_date":str|null,
-          "newest_anchor_date":str|null,"streams_anchored":int|null,
+          "malformed_anchor_dates":[str],
+          "newest_anchor_date":str|null,"anchor_age_days":int|null,
+          "anchor_stale":bool,"streams_anchored":int,
+          "streams_anchored_ever":int,
           "missing_streams":[str],"truncated_streams":[obj],
-          "diverged_streams":[obj],"note":str,"verified_at":iso8601}
+          "diverged_streams":[obj],"dropped_from_newest_anchor":[obj],
+          "note":str,"verified_at":iso8601}
+
+`state` is the field to read, not `intact`. It is one of
+``NEVER_ANCHORED`` | ``ANCHOR_INVALID_OR_STALE`` | ``MISSING_STREAM`` |
+``TRUNCATED_AFTER_LAST_ANCHOR`` | ``DIVERGED_BELOW_ANCHOR`` |
+``INTACT_ANCHORED`` (``pg.audit.ANCHOR_STATE_*``). ``intact: false`` collapses
+five materially different situations into one, and the commonest of them --
+nobody has ever run the anchor writer -- calls for a scheduler fix, not an
+investigation. Existing keys are unchanged; the additions are additive.
 
 `router = APIRouter()` is exported and mounted by `app/backend/main.py`, which
 this module does not touch. Its routes carry their full `/api/audit/...` path

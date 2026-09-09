@@ -320,8 +320,78 @@ def write_anchor(session: Session, *, anchor_date: date | None = None) -> dict[s
             "streams_anchored": len(heads), "written": True}
 
 
-def verify_anchors(session: Session) -> dict[str, Any]:
-    """Verify the anchor chain, and the audit log against the newest anchor.
+# ---------------------------------------------------------------------
+# The five states verification must be able to tell apart
+# ---------------------------------------------------------------------
+#
+# `intact: bool` collapses six materially different situations into two, and
+# the two it produces are the wrong two: "not intact" reads as "somebody
+# tampered" when the far commoner cause is that nobody has ever run the
+# writer. An operator who cannot tell those apart either ignores the alarm or
+# investigates a crime that did not happen.
+#
+# Precedence runs from "you cannot trust the evidence" down to "the evidence
+# says something specific", because a broken anchor chain makes every
+# finding computed against those anchors unreliable, and reporting a missing
+# stream from an anchor set that has itself been edited sends the
+# investigation to the wrong place.
+ANCHOR_STATE_NEVER_ANCHORED = "NEVER_ANCHORED"
+ANCHOR_STATE_ANCHOR_INVALID_OR_STALE = "ANCHOR_INVALID_OR_STALE"
+ANCHOR_STATE_MISSING_STREAM = "MISSING_STREAM"
+ANCHOR_STATE_TRUNCATED = "TRUNCATED_AFTER_LAST_ANCHOR"
+#: NOT one of the five the brief names, and deliberately kept separate rather
+#: than folded into TRUNCATED. `verify_anchors` has always distinguished
+#: divergence -- a rewritten entry BELOW the anchor point, where the head seq
+#: is still right and the hash is not -- and collapsing an already-detected,
+#: differently-remediated finding into a neighbouring bucket to hit a count of
+#: five would lose information the verifier had.
+ANCHOR_STATE_DIVERGED = "DIVERGED_BELOW_ANCHOR"
+ANCHOR_STATE_INTACT = "INTACT_ANCHORED"
+
+#: The order findings are reported in. First match wins.
+ANCHOR_STATE_PRECEDENCE: tuple[str, ...] = (
+    ANCHOR_STATE_NEVER_ANCHORED,
+    ANCHOR_STATE_ANCHOR_INVALID_OR_STALE,
+    ANCHOR_STATE_MISSING_STREAM,
+    ANCHOR_STATE_TRUNCATED,
+    ANCHOR_STATE_DIVERGED,
+    ANCHOR_STATE_INTACT,
+)
+
+#: How old the newest anchor may be before the database is reported STALE.
+#:
+#: The writer runs daily. One day of slack absorbs a run that fired either
+#: side of midnight UTC and a verification that runs before the day's anchor;
+#: two days means the writer missed a night, and 024's own COMMENT says what
+#: that costs -- "a day on which the writer did not run is a day with no
+#: evidence". Stale is not the same finding as tampered and is not reported as
+#: one, but it is emphatically not a pass: the control is degrading in exactly
+#: the direction that ends in it being inoperative again.
+MAX_ANCHOR_AGE_DAYS = 1
+
+
+def _anchored_seq(anchored: Any) -> int | None:
+    """The `seq` an anchor recorded for one stream, or None if unreadable.
+
+    Migration 024 constrains `stream_heads` to a jsonb OBJECT; it does not and
+    cannot constrain its VALUES. A head of ``5``, ``null`` or ``"x"`` therefore
+    reaches this code, and ``int(anchored["seq"])`` raises on every one of
+    them. A verifier that raises inside a scheduled Function does not report a
+    finding -- it reports a stack trace to a log nobody is reading, and the
+    day's verification silently does not happen. A malformed head is treated
+    as what it is: an anchor that cannot be trusted.
+    """
+    if not isinstance(anchored, dict):
+        return None
+    try:
+        return int(anchored["seq"])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def verify_anchors(session: Session, *, as_of: date | None = None,
+                   max_anchor_age_days: int = MAX_ANCHOR_AGE_DAYS) -> dict[str, Any]:
+    """Verify the anchor chain, and the audit log against EVERY anchor.
 
     Two independent questions, and both have to be asked:
 
@@ -329,12 +399,26 @@ def verify_anchors(session: Session) -> dict[str, Any]:
        from its own stored heads and its recorded `prev_anchor_hash`, and each
        is required to name its predecessor. Editing one anchor to cover up a
        deletion therefore breaks every anchor after it.
-    2. **Does the audit log still contain what the newest anchor saw?** For
-       every stream the anchor recorded: it must still exist (`missing` --
+    2. **Does the audit log still contain what the anchors saw?** For every
+       stream ANY anchor recorded: it must still exist (`missing` --
        WHOLE-STREAM TRUNCATION, the case `verify_chain` provably cannot see),
        its head seq must not have gone BACKWARDS (`truncated` -- tail
-       truncation), and the entry hash at the anchored seq must be unchanged
-       (`diverged` -- history rewritten below the anchor point).
+       truncation), and the entry hash at the highest anchored seq must be
+       unchanged (`diverged` -- history rewritten below the anchor point).
+
+    **Against every anchor, not merely the newest.** This function used to
+    iterate `anchors[-1]` alone, and that left a hole big enough to drive the
+    whole attack through: delete a stream on day 0 *after* its anchor is
+    written, then let day 1's anchor be written normally. Day 1 legitimately
+    does not mention the stream -- it no longer exists -- so `missing_streams`
+    came back empty; the anchor chain hashes verify, because nothing was
+    edited; and the day-0 anchor, the one row in the database that remembers
+    the stream existed, was checked for its own hash and never for whether
+    what it recorded is still there. `intact=True`. The union of stream keys
+    across all anchors, with the highest seq each was ever anchored at, is the
+    floor the log is held to, and a key an earlier anchor recorded that the
+    newest one has dropped is reported in its own right
+    (`dropped_from_newest_anchor`).
 
     A stream growing, or a brand-new stream appearing, is normal and is not a
     finding: an anchor is a floor, not an equality.
@@ -343,15 +427,24 @@ def verify_anchors(session: Session) -> dict[str, Any]:
     ``intact=True`` -- "nobody has ever anchored this database" is the state in
     which a whole-stream deletion is undetectable, and reporting it as a pass
     is how the gap this function closes stayed open.
+
+    `as_of` and `max_anchor_age_days` exist so staleness is testable without
+    waiting a day; production passes neither.
     """
+    as_of = as_of or datetime.now(timezone.utc).date()
     anchors = session.fetchall(
         "SELECT anchor_date, stream_heads, prev_anchor_hash, anchor_hash "
         "FROM audit_anchor ORDER BY anchor_date")
     if not anchors:
         return {
             "anchored": False, "intact": False, "anchors_checked": 0,
+            "state": ANCHOR_STATE_NEVER_ANCHORED,
             "anchor_chain_intact": False, "first_broken_anchor_date": None,
+            "newest_anchor_date": None, "anchor_age_days": None,
+            "anchor_stale": False, "streams_anchored": 0,
+            "streams_anchored_ever": 0, "malformed_anchor_dates": [],
             "missing_streams": [], "truncated_streams": [], "diverged_streams": [],
+            "dropped_from_newest_anchor": [],
             "note": ("No audit anchor has ever been written, so deletion of an "
                      "entire audit stream is not detectable. Run write_anchor()."),
         }
@@ -359,6 +452,7 @@ def verify_anchors(session: Session) -> dict[str, Any]:
     # ---- 1. the anchor chain ----------------------------------------
     first_broken: str | None = None
     expected_prev: str | None = None
+    malformed: list[str] = []
     for anchor_date_value, heads, prev_anchor_hash, anchor_hash in anchors:
         recomputed = compute_anchor_hash(prev_anchor_hash,
                                          anchor_date_value.isoformat(),
@@ -367,46 +461,110 @@ def verify_anchors(session: Session) -> dict[str, Any]:
         if broken and first_broken is None:
             first_broken = anchor_date_value.isoformat()
         expected_prev = anchor_hash
+        if any(_anchored_seq(head) is None for head in (heads or {}).values()):
+            malformed.append(anchor_date_value.isoformat())
 
-    # ---- 2. the log against the newest anchor ------------------------
+    # ---- 2. the FLOOR every anchor together establishes ---------------
+    # stream_key -> the highest seq any anchor ever recorded, the entry hash
+    # that anchor recorded at that seq, and which anchor said so.
+    floor: dict[str, dict[str, Any]] = {}
+    first_seen: dict[str, str] = {}
+    for anchor_date_value, heads, _prev, _hash in anchors:
+        iso_date = anchor_date_value.isoformat()
+        for stream_key, anchored in (heads or {}).items():
+            first_seen.setdefault(stream_key, iso_date)
+            seq = _anchored_seq(anchored)
+            if seq is None:
+                continue
+            prior = floor.get(stream_key)
+            if prior is None or seq > prior["seq"]:
+                floor[stream_key] = {
+                    "seq": seq,
+                    "entry_hash": anchored.get("entry_hash"),
+                    "anchor_date": iso_date,
+                }
+
     newest_date, newest_heads, _prev, _hash = anchors[-1]
     newest_heads = newest_heads or {}
     current = stream_heads(session)
 
-    missing, truncated, diverged = [], [], []
-    for stream_key, anchored in sorted(newest_heads.items()):
+    missing, truncated, diverged, dropped = [], [], [], []
+    for stream_key, anchored in sorted(floor.items()):
         now = current.get(stream_key)
+        if stream_key not in newest_heads and now is not None:
+            # An earlier anchor recorded this stream, the newest one does not,
+            # and the stream is STILL THERE. `stream_heads` returns every
+            # stream that has rows, so the newest anchor cannot have missed it
+            # honestly: that anchor is incomplete, and an incomplete anchor is
+            # the record every future verification would be held to.
+            #
+            # The other half of "in an earlier anchor, absent from the newest"
+            # -- the stream is gone from the log too -- is NOT reported here.
+            # Dropping a stream that no longer exists is the correct, innocent
+            # behaviour of an honest anchor, and the finding in that case is
+            # `missing_streams` below, which is the finding an operator has to
+            # act on. Reporting it twice, under a heading that accuses the
+            # anchor, would send the investigation at the writer instead of at
+            # whoever deleted the stream.
+            dropped.append({"stream_key": stream_key,
+                            "first_anchored_on": first_seen.get(stream_key),
+                            "last_anchored_on": anchored["anchor_date"],
+                            "newest_anchor_date": newest_date.isoformat()})
         if now is None:
             missing.append(stream_key)
             continue
-        if int(now["seq"]) < int(anchored["seq"]):
+        if int(now["seq"]) < anchored["seq"]:
             truncated.append({"stream_key": stream_key,
-                              "anchored_seq": int(anchored["seq"]),
-                              "current_seq": int(now["seq"])})
+                              "anchored_seq": anchored["seq"],
+                              "current_seq": int(now["seq"]),
+                              "anchored_on": anchored["anchor_date"]})
             continue
         at_anchor = session.fetchone(
             "SELECT entry_hash FROM audit_log WHERE stream_key = %s AND seq = %s",
-            (stream_key, int(anchored["seq"])))
+            (stream_key, anchored["seq"]))
         if at_anchor is None or at_anchor[0] != anchored.get("entry_hash"):
             diverged.append({"stream_key": stream_key,
-                             "seq": int(anchored["seq"]),
+                             "seq": anchored["seq"],
+                             "anchored_on": anchored["anchor_date"],
                              "anchored_entry_hash": anchored.get("entry_hash"),
                              "current_entry_hash": None if at_anchor is None else at_anchor[0]})
 
+    anchor_age_days = (as_of - newest_date).days
+    stale = anchor_age_days > max_anchor_age_days
+
+    if first_broken is not None or malformed or dropped or stale:
+        state = ANCHOR_STATE_ANCHOR_INVALID_OR_STALE
+    elif missing:
+        state = ANCHOR_STATE_MISSING_STREAM
+    elif truncated:
+        state = ANCHOR_STATE_TRUNCATED
+    elif diverged:
+        state = ANCHOR_STATE_DIVERGED
+    else:
+        state = ANCHOR_STATE_INTACT
+
     return {
         "anchored": True,
+        "state": state,
         "anchors_checked": len(anchors),
         "anchor_chain_intact": first_broken is None,
         "first_broken_anchor_date": first_broken,
+        "malformed_anchor_dates": malformed,
         "newest_anchor_date": newest_date.isoformat(),
+        "anchor_age_days": anchor_age_days,
+        "anchor_stale": stale,
         "streams_anchored": len(newest_heads),
+        "streams_anchored_ever": len(floor),
         "missing_streams": missing,
         "truncated_streams": truncated,
         "diverged_streams": diverged,
-        "intact": (first_broken is None and not missing and not truncated
-                   and not diverged),
+        "dropped_from_newest_anchor": dropped,
+        "intact": state == ANCHOR_STATE_INTACT,
         "note": ("Whole-stream deletion and tail truncation are detectable only "
-                 "against these anchors; the per-stream chain cannot see either."),
+                 "against these anchors; the per-stream chain cannot see either. "
+                 "Every anchor is checked, not only the newest: a stream deleted "
+                 "after its anchor was written is absent from every later anchor "
+                 "for a perfectly innocent-looking reason."),
     }
 
 

@@ -298,9 +298,10 @@ def test_an_intact_database_verifies():
     session = _session_with_two_streams()
     audit_mod.write_anchor(session, anchor_date=date(2026, 9, 9))
 
-    result = audit_mod.verify_anchors(session)
+    result = audit_mod.verify_anchors(session, as_of=date(2026, 9, 9))
 
     assert result["intact"] is True
+    assert result["state"] == audit_mod.ANCHOR_STATE_INTACT
     assert result["anchored"] is True
     assert result["anchor_chain_intact"] is True
     assert result["missing_streams"] == []
@@ -319,7 +320,7 @@ def test_a_growing_stream_is_not_a_finding():
     session.entries["PROJECT:PRJ-1"].append((4, "h1d"))
     session.entries["PROJECT:PRJ-3"] = [(1, "h3a")]
 
-    assert audit_mod.verify_anchors(session)["intact"] is True
+    assert audit_mod.verify_anchors(session, as_of=date(2026, 9, 9))["intact"] is True
 
 
 def test_a_wholly_deleted_stream_is_reported_missing():
@@ -334,8 +335,9 @@ def test_a_wholly_deleted_stream_is_reported_missing():
 
     del session.entries["PROJECT:PRJ-2"]
 
-    result = audit_mod.verify_anchors(session)
+    result = audit_mod.verify_anchors(session, as_of=date(2026, 9, 9))
     assert result["intact"] is False
+    assert result["state"] == audit_mod.ANCHOR_STATE_MISSING_STREAM
     assert result["missing_streams"] == ["PROJECT:PRJ-2"]
     assert result["anchor_chain_intact"] is True, (
         "the anchors themselves were not touched; saying they were would send "
@@ -354,10 +356,16 @@ def test_a_truncated_tail_is_reported():
 
     session.entries["PROJECT:PRJ-1"] = [(1, "h1a")]
 
-    result = audit_mod.verify_anchors(session)
+    result = audit_mod.verify_anchors(session, as_of=date(2026, 9, 9))
     assert result["intact"] is False
+    assert result["state"] == audit_mod.ANCHOR_STATE_TRUNCATED
+    # `anchored_on` names WHICH anchor established the floor. It is not
+    # decoration: the floor is now the highest seq ANY anchor recorded, so an
+    # operator has to be able to see which day is being held against the log
+    # without re-deriving it.
     assert result["truncated_streams"] == [
-        {"stream_key": "PROJECT:PRJ-1", "anchored_seq": 3, "current_seq": 1}]
+        {"stream_key": "PROJECT:PRJ-1", "anchored_seq": 3, "current_seq": 1,
+         "anchored_on": "2026-09-09"}]
     assert result["missing_streams"] == []
 
 
@@ -368,11 +376,196 @@ def test_a_rewritten_entry_below_the_anchor_point_is_reported_diverged():
 
     session.entries["PROJECT:PRJ-1"][2] = (3, "REWRITTEN")
 
-    result = audit_mod.verify_anchors(session)
+    result = audit_mod.verify_anchors(session, as_of=date(2026, 9, 9))
     assert result["intact"] is False
+    assert result["state"] == audit_mod.ANCHOR_STATE_DIVERGED
     assert result["diverged_streams"] == [{
-        "stream_key": "PROJECT:PRJ-1", "seq": 3,
+        "stream_key": "PROJECT:PRJ-1", "seq": 3, "anchored_on": "2026-09-09",
         "anchored_entry_hash": "h1c", "current_entry_hash": "REWRITTEN"}]
+
+
+# ======================================================================
+# M-2: the NEWEST anchor is not the only anchor
+# ======================================================================
+def test_a_stream_deleted_after_its_anchor_and_re_anchored_is_still_missing():
+    """THE HOLE THE NEWEST-ANCHOR-ONLY COMPARISON LEFT.
+
+    `verify_anchors` used to iterate ``anchors[-1]`` and nothing else. So:
+    anchor day 9, delete a stream, let day 10's anchor be written normally.
+    Day 10 legitimately does not mention the stream -- it no longer exists --
+    so ``missing_streams`` came back empty. Nothing was edited, so the anchor
+    hashes all verify. The day-9 anchor, the one row in the database that
+    remembers the stream existed, was checked for its OWN hash and never for
+    whether what it recorded is still there.
+
+    ``intact=True``. A whole audit stream gone, and the control built
+    specifically to see that reported a pass -- for the cost of waiting one
+    day before running the writer again.
+
+    Deleting the union in `verify_anchors` (comparing `anchors[-1]` alone
+    again) makes this test red.
+    """
+    session = _session_with_two_streams()
+    audit_mod.write_anchor(session, anchor_date=date(2026, 9, 9))
+
+    del session.entries["PROJECT:PRJ-2"]
+    audit_mod.write_anchor(session, anchor_date=date(2026, 9, 10))
+
+    result = audit_mod.verify_anchors(session, as_of=date(2026, 9, 10))
+
+    assert result["anchor_chain_intact"] is True, (
+        "no anchor was edited; accusing the anchors sends the investigation "
+        "to the wrong place")
+    assert result["missing_streams"] == ["PROJECT:PRJ-2"], (
+        "a stream deleted between two anchors was invisible: the newest "
+        "anchor never saw it, and only the earlier one remembers it existed.")
+    assert result["state"] == audit_mod.ANCHOR_STATE_MISSING_STREAM
+    assert result["intact"] is False
+    assert result["streams_anchored"] == 1, "the newest anchor holds one stream"
+    assert result["streams_anchored_ever"] == 2, (
+        "two streams have been anchored at some point, and that is the floor "
+        "the log is held to")
+
+
+def test_the_floor_is_the_highest_seq_any_anchor_ever_recorded():
+    """A tail truncated below an OLDER anchor is still a truncation.
+
+    Anchor at seq 3, truncate to seq 1, anchor again at seq 1. The newest
+    anchor agrees with the log perfectly -- they were written from the same
+    rows -- so a newest-only comparison reports nothing. The floor is the
+    highest seq ever anchored, not the most recently anchored one.
+    """
+    session = _session_with_two_streams()
+    audit_mod.write_anchor(session, anchor_date=date(2026, 9, 9))
+
+    session.entries["PROJECT:PRJ-1"] = [(1, "h1a")]
+    audit_mod.write_anchor(session, anchor_date=date(2026, 9, 10))
+
+    result = audit_mod.verify_anchors(session, as_of=date(2026, 9, 10))
+
+    assert result["truncated_streams"] == [
+        {"stream_key": "PROJECT:PRJ-1", "anchored_seq": 3, "current_seq": 1,
+         "anchored_on": "2026-09-09"}]
+    assert result["state"] == audit_mod.ANCHOR_STATE_TRUNCATED
+    assert result["intact"] is False
+
+
+def test_an_anchor_that_forgot_a_live_stream_is_reported_as_incomplete():
+    """The other direction: the stream is fine, the newest anchor is not.
+
+    `stream_heads` returns every stream that has rows, so a newest anchor
+    missing a stream that IS present cannot have missed it honestly. That is
+    an incomplete anchor -- the record every future verification would be held
+    to -- and it is a different finding from a deleted stream, with a
+    different response.
+    """
+    session = _session_with_two_streams()
+    audit_mod.write_anchor(session, anchor_date=date(2026, 9, 9))
+    audit_mod.write_anchor(session, anchor_date=date(2026, 9, 10))
+
+    stored_date, heads, prev, _hash = session.anchors[-1]
+    forged = {k: v for k, v in heads.items() if k != "PROJECT:PRJ-2"}
+    session.anchors[-1] = (stored_date, forged, prev,
+                           audit_mod.compute_anchor_hash(
+                               prev, "2026-09-10", forged))
+
+    result = audit_mod.verify_anchors(session, as_of=date(2026, 9, 10))
+
+    assert result["missing_streams"] == [], "the stream was never deleted"
+    assert result["dropped_from_newest_anchor"] == [{
+        "stream_key": "PROJECT:PRJ-2",
+        "first_anchored_on": "2026-09-09",
+        "last_anchored_on": "2026-09-09",
+        "newest_anchor_date": "2026-09-10"}]
+    assert result["state"] == audit_mod.ANCHOR_STATE_ANCHOR_INVALID_OR_STALE
+    assert result["intact"] is False
+
+
+def test_a_deleted_stream_is_not_also_blamed_on_the_anchor():
+    """An honest anchor drops a stream that no longer exists.
+
+    Both findings are true of the same row, and reporting both would point an
+    operator at the writer when the thing that happened is a deletion. Only
+    `missing_streams` fires.
+    """
+    session = _session_with_two_streams()
+    audit_mod.write_anchor(session, anchor_date=date(2026, 9, 9))
+    del session.entries["PROJECT:PRJ-2"]
+    audit_mod.write_anchor(session, anchor_date=date(2026, 9, 10))
+
+    result = audit_mod.verify_anchors(session, as_of=date(2026, 9, 10))
+
+    assert result["missing_streams"] == ["PROJECT:PRJ-2"]
+    assert result["dropped_from_newest_anchor"] == []
+
+
+# ======================================================================
+# Staleness: the control degrading back towards inoperative
+# ======================================================================
+def test_an_anchor_older_than_the_horizon_is_stale_and_not_intact():
+    """A writer that stopped running is where this whole finding started.
+
+    `audit_anchor` sat empty for three waves behind triggers and grants. The
+    same end state is reached by a writer that ran once and then stopped, and
+    a verification that answered `intact=True` about it would be describing a
+    database whose newest evidence is a month old.
+    """
+    session = _session_with_two_streams()
+    audit_mod.write_anchor(session, anchor_date=date(2026, 9, 9))
+
+    fresh = audit_mod.verify_anchors(session, as_of=date(2026, 9, 10))
+    assert fresh["anchor_stale"] is False, "one day of slack is tolerated"
+    assert fresh["anchor_age_days"] == 1
+    assert fresh["intact"] is True
+
+    stale = audit_mod.verify_anchors(session, as_of=date(2026, 9, 12))
+    assert stale["anchor_stale"] is True
+    assert stale["anchor_age_days"] == 3
+    assert stale["state"] == audit_mod.ANCHOR_STATE_ANCHOR_INVALID_OR_STALE
+    assert stale["intact"] is False
+
+
+def test_a_malformed_head_does_not_crash_the_verifier():
+    """Migration 024 constrains `stream_heads` to an object, not its VALUES.
+
+    ``int(anchored["seq"])`` raises on a head of ``5`` or ``null``, and a
+    verifier that raises inside a scheduled Function does not report a
+    finding: it reports a stack trace to a log nobody is reading, and the
+    day's verification silently does not happen.
+    """
+    session = _session_with_two_streams()
+    audit_mod.write_anchor(session, anchor_date=date(2026, 9, 9))
+    stored_date, heads, prev, anchor_hash = session.anchors[0]
+    session.anchors[0] = (stored_date, {**heads, "PROJECT:PRJ-1": 5},
+                          prev, anchor_hash)
+
+    result = audit_mod.verify_anchors(session, as_of=date(2026, 9, 9))
+
+    assert result["malformed_anchor_dates"] == ["2026-09-09"]
+    assert result["state"] == audit_mod.ANCHOR_STATE_ANCHOR_INVALID_OR_STALE
+    assert result["intact"] is False
+
+
+def test_every_state_name_is_distinct_and_ordered():
+    """Five states, not two -- and the precedence is part of the contract.
+
+    A verifier that reported `intact: bool` alone collapsed "nobody ever ran
+    the writer" into the same answer as "somebody deleted a stream", and those
+    two call for entirely different responses.
+    """
+    assert len(set(audit_mod.ANCHOR_STATE_PRECEDENCE)) == \
+        len(audit_mod.ANCHOR_STATE_PRECEDENCE)
+    assert audit_mod.ANCHOR_STATE_PRECEDENCE[0] == \
+        audit_mod.ANCHOR_STATE_NEVER_ANCHORED, (
+            "an unanchored database cannot support any other finding, so it "
+            "is reported first")
+    assert audit_mod.ANCHOR_STATE_PRECEDENCE[-1] == audit_mod.ANCHOR_STATE_INTACT
+    assert {audit_mod.ANCHOR_STATE_NEVER_ANCHORED,
+            audit_mod.ANCHOR_STATE_ANCHOR_INVALID_OR_STALE,
+            audit_mod.ANCHOR_STATE_MISSING_STREAM,
+            audit_mod.ANCHOR_STATE_TRUNCATED,
+            audit_mod.ANCHOR_STATE_INTACT}.issubset(
+                set(audit_mod.ANCHOR_STATE_PRECEDENCE))
 
 
 def test_a_forged_anchor_breaks_the_anchor_chain():
@@ -391,8 +584,9 @@ def test_a_forged_anchor_breaks_the_anchor_chain():
     session.anchors[0] = (stored_date, forged, prev, anchor_hash)
     del session.entries["PROJECT:PRJ-2"]
 
-    result = audit_mod.verify_anchors(session)
+    result = audit_mod.verify_anchors(session, as_of=date(2026, 9, 9))
     assert result["intact"] is False
+    assert result["state"] == audit_mod.ANCHOR_STATE_ANCHOR_INVALID_OR_STALE
     assert result["anchor_chain_intact"] is False
     assert result["first_broken_anchor_date"] == "2026-09-09"
     assert result["missing_streams"] == [], (
@@ -418,7 +612,7 @@ def test_an_anchor_edited_to_hide_a_deletion_is_caught():
                           audit_mod.compute_anchor_hash(None, "2026-09-09", forged_heads))
     del session.entries["PROJECT:PRJ-2"]
 
-    result = audit_mod.verify_anchors(session)
+    result = audit_mod.verify_anchors(session, as_of=date(2026, 9, 10))
     assert result["anchor_chain_intact"] is False, (
         "a re-hashed anchor was accepted. The day-2 anchor still names the "
         "ORIGINAL day-1 hash as its predecessor, and that mismatch is the "
@@ -440,6 +634,7 @@ def test_a_database_that_was_never_anchored_is_not_reported_intact():
 
     assert result["anchored"] is False
     assert result["intact"] is False
+    assert result["state"] == audit_mod.ANCHOR_STATE_NEVER_ANCHORED
     assert result["anchors_checked"] == 0
     assert "write_anchor" in result["note"]
 
@@ -480,7 +675,7 @@ def test_write_anchor_and_verify_anchors_round_trip_live(pg_database, pg_scope):
     assert written["stream_heads"][stream_key]["entries"] == 2
 
     with pg_database.session(pg_scope) as session:
-        result = audit_mod.verify_anchors(session)
+        result = audit_mod.verify_anchors(session, as_of=date(2026, 9, 9))
 
     assert result["anchored"] is True
     assert result["intact"] is True
@@ -533,7 +728,7 @@ def test_a_whole_stream_deleted_behind_the_triggers_is_still_caught_live(
         pg_connection.commit()
 
     with pg_database.session(pg_scope) as session:
-        result = audit_mod.verify_anchors(session)
+        result = audit_mod.verify_anchors(session, as_of=date(2026, 9, 9))
 
     assert result["intact"] is False
     assert stream_key in result["missing_streams"], (
