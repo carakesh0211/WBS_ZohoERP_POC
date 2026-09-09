@@ -120,6 +120,16 @@ class FakeSession:
             return "execute"
         if "FROM audit_anchor WHERE anchor_date = " in statement:
             return next((a for a in self.anchors if a[0] == params[0]), None)
+        # BEFORE the prev-hash branch below, which its text is a substring of.
+        # The anchor job asks for the previous anchor's DATE (to report the
+        # days that carry no anchor); `write_anchor` asks for its HASH. Two
+        # different columns from statements that differ only in their SELECT
+        # list, and a fake that answered both with the hash would hand the job
+        # a string where it expects a date -- passing the test while the
+        # production path raised.
+        if "SELECT anchor_date FROM audit_anchor WHERE anchor_date < " in statement:
+            earlier = [a for a in self.anchors if a[0] < params[0]]
+            return (earlier[-1][0],) if earlier else None
         if "FROM audit_anchor WHERE anchor_date < " in statement:
             earlier = [a for a in self.anchors if a[0] < params[0]]
             return (earlier[-1][3],) if earlier else None
