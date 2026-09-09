@@ -6,8 +6,12 @@ Four ways to demonstrate, from least to most exposed. Pick the lowest one that m
 > opposite directions.
 >
 > **"The POC has no user model" — false since Wave 3.** There is one: server-side
-> sessions, thirteen roles, a permission table, row-level data scope, and maker-checker
-> that refuses self-approval. Every screen and every API route requires a sign-in.
+> sessions, **seven** roles (`auth.ROLES`: Requestor, BudgetController,
+> ProcurementApprover, FinanceApprover, CapitalisationApprover, Auditor,
+> Administrator — this block used to say thirteen, which is the count of the
+> unreconciled *business* roles, not of the roles the code has), a permission table,
+> row-level data scope, and maker-checker that refuses self-approval. Every screen and
+> every API route requires a sign-in.
 >
 > **"`DEMO_USER` and `DEMO_PASSWORD` … demands a username and password" — never true.**
 > Those two variables are read at exactly one place, `app/run.py`, to decide whether to
@@ -59,7 +63,7 @@ python app/run.py
 | 6 | Commitment Reconciliation | Billed + open commitment = ordered, on every line |
 | 7 | Commitments — cancel a PO | The released commitment returns to available budget |
 | 8 | Capitalisation | Approval refused until allocations equal the CWIP balance |
-| 9 | Zoho ERP Connector — run connectivity tests | Real endpoints, real scopes, honest limitations |
+| 9 | Zoho ERP Connector — open the connector screen and **read the `Not Connected` status out loud first** | The connector is **MOCK**. The endpoint paths and OAuth scopes are real, taken from the verified inventory; **no call has ever been made to Zoho.** `app/backend/zoho.py` declares `MODE = "MOCK"` and issues no network request — the connectivity result is derived from a stored status column, and its latency and record counts are synthesised. Never say connected, synced, live or verified |
 | 10 | Audit Trail | Everything just done is recorded |
 
 ---
@@ -80,8 +84,14 @@ Then in a second terminal:
 cloudflared tunnel --url http://localhost:8000
 ```
 
-Cloudflare prints a `https://<random>.trycloudflare.com` address. Send that plus the username and
-password **through separate channels** — the link in email, the password by phone or WhatsApp.
+Cloudflare prints a `https://<random>.trycloudflare.com` address.
+
+**There is no password to send.** This sentence used to say to send the link and the password
+through separate channels; that was written when `DEMO_USER` / `DEMO_PASSWORD` were believed to be
+an operator-chosen credential. They are not, and there is no other. The only accounts are the nine
+seeded identities whose passwords are the user id plus `!demo`, and the sign-in screen prints the
+user ids — so anyone who can open the link already has the credential. Out-of-band handling
+protects nothing here. **What protects the tunnel is not sharing the URL, and taking it down.**
 
 Install once with `winget install --id Cloudflare.cloudflared`. `ngrok http 8000` works the same way
 if you already have an ngrok account.
@@ -185,7 +195,8 @@ needs a session:
 
 - [ ] You have NOT relied on `DEMO_USER` / `DEMO_PASSWORD`, which gate nothing, and
       you have a real access control in front of the application
-- [ ] The password went by a different channel from the link
+- [ ] You understand there is **no password to send separately** — every seeded password is
+      the user id plus `!demo`, and the sign-in screen lists the user ids
 - [ ] The data is the demo dataset only — no real Atha Group figures have been loaded
 - [ ] The Zoho connector is in mock mode and holds no real credentials
 - [ ] You have agreed how long the link stays up, and who takes it down

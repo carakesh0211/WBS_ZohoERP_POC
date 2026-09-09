@@ -22,7 +22,15 @@ CAPEX_DB_PATH=app/data/capex_v2.db python app/run.py
 
 Open <http://127.0.0.1:8000> and sign in. Demo identities are `U-REQ`, `U-PM`, `U-PLH`, `U-PROC`,
 `U-FIN`, `U-PFC`, `U-CFO`, `U-AUD`, `U-ADM`; the password is the user id followed by `!demo`
-(for example `U-ADM!demo`). These are seeded **development** credentials, not an identity provider.
+(for example `U-ADM!demo`).
+
+> **These are VISIBLE SEEDED CREDENTIALS, and they are the whole of the access control.**
+> The sign-in screen lists the user ids, so every password is derivable in one guess.
+> `DEMO_USER` / `DEMO_PASSWORD` do not change that: they are read at exactly one place —
+> `app/run.py`'s `main()`, only to decide whether to print a warning — and nothing in
+> `app/backend/**` reads either. **Do not expose this build on a public URL or run it in
+> production.** Keep it on a trusted network. See `DEPLOY.md` and
+> `docs/DEPLOYMENT_RUNBOOK.md` §4.
 
 Requires Python 3.11+. The database is a single SQLite file.
 
@@ -65,6 +73,13 @@ acting.** Seven roles — Requestor, BudgetController, ProcurementApprover, Fina
 CapitalisationApprover, Auditor, Administrator — hold a least-privilege permission set, and approvals
 are subject to maker-checker: whoever raised something may never approve it.
 
+**With one honest qualification.** `auth.require_separation` is real and unit-provable, but for the
+three approval permissions a demo would show — `pr.approve`, `revision.approve`,
+`capitalisation.approve` — the role model already separates the duties one layer earlier, so
+`auth.require` refuses first and the guard is never reached by any seeded identity. **A
+demonstrator cannot show maker-checker refusing a self-approval on this dataset; do not promise
+one.** See `docs/UAT_ROLE_BASED_PLAN.md` F-02.
+
 Audit history is append-only (database triggers block UPDATE and DELETE) and SHA-256 hash-chained, so
 tampering by a privileged identity is still detectable. `GET /api/audit/verify` reports chain
 integrity. `POST /api/admin/reset` is refused unless `CAPEX_PROFILE=local-demo`.
@@ -94,11 +109,17 @@ Constraints the design already reflects, each evidenced from the specification:
 
 ## Known limitations
 
-- **SQLite is not suitable for production.** The demonstrated concurrency overspend is prevented by
-  `BEGIN IMMEDIATE`, but there is no HA, no online backup story, and the earlier claim that the schema
-  ports unchanged to PostgreSQL is **withdrawn** — the triggers and partial indexes need rewriting.
-- **Foreign currency is not converted.** Exchange rates are stored but not applied; this needs a client
-  policy on rate source and revaluation date.
+- **SQLite is not suitable for production**, and is not the deployment target. It backs the local
+  demo and the VRT harness. The earlier claim that this schema ports *unchanged* to PostgreSQL was
+  withdrawn, and the rewrite that replaced it **has since been done**: `migrations/pg/` holds 25
+  tracked migrations, with composite foreign keys, re-expressed partial indexes and
+  `SELECT … FOR UPDATE` in place of `BEGIN IMMEDIATE`. See `MIGRATIONS.md`. The port is complete;
+  it is **not verified**, because no PostgreSQL runs locally and CI cannot currently start jobs.
+- **Foreign currency conversion is wired, and unverified.** This used to read "exchange rates are
+  stored but not applied", which was true until migration 025 applied them at ingestion.
+  `app/backend/pg/procurement.py` now translates on the bill-mirror path. A client policy on rate
+  source and revaluation date (D-5) is still required, and none of it has executed against a real
+  database.
 - **No ERP or GL posting exists.** Capitalisation approval is a local status change and says so
   (`posting_status: NOT POSTED`).
 - **External reconciliation is structural only** (AUD-H-005) — there is no external ledger to reconcile
@@ -115,7 +136,8 @@ app/backend/services.py    guarded operations in locked transactions
 app/backend/auth.py        sessions, roles, maker-checker
 app/backend/main.py        API routes
 app/backend/zoho.py        connector (MOCK)
-app/backend/migrate.py     migration runner  ·  migrations/*.sql
+app/backend/migrate.py     SQLite migration runner  ·  app/backend/migrations/*.sql
+app/backend/pg/migrate_pg.py  PostgreSQL migration runner  ·  migrations/pg/*.sql
 app/frontend/              dense desktop UI, no build step
 tests/                     regression suite
 research/                  evidence base and frozen contracts

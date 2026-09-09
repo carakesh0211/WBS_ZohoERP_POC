@@ -80,7 +80,11 @@ authority to do each thing genuinely sits with a different person:
 | 10, 12, 13 | `U-ADM` | Administration and the connector |
 | 14 | `U-CFO` | Only the Capitalisation Approver may approve one |
 
-Password is always the user id followed by `!demo`. Keep the `U-PM` and `U-AUD`
+Password is always the user id followed by `!demo` — and the sign-in screen lists
+the user ids, so **these credentials are published and guess-able by design.**
+That is fine on a laptop or a trusted network and is the reason this build must
+not be put on a public URL; if the client asks to explore it themselves, see the
+"Can we see it live next week?" answer below. Keep the `U-PM` and `U-AUD`
 windows open side by side so step 9 is a switch of window, not a re-login in
 front of the client.
 
@@ -246,7 +250,7 @@ the posting note.**
 | "Does it post to our GL?" | No. It records the capitalisation decision and the allocation. Posting the journal and creating the asset record is unspecified and needs your finance team. |
 | "How near real-time is the sync?" | One minute is the floor, set by the platform's scheduler. Anything faster would need a different architecture. |
 | "Can we run it on our own database?" | Yes — PostgreSQL, with row-level security per entity. There is one open question with Zoho about whether their hosting tier can reach an external database; we are waiting on their written answer, and it is a go/no-go for that deployment shape. |
-| "Is it accessible?" | Mostly. One colour token — the amber used for warning statuses — measures 4.48:1 against a 4.5:1 requirement, so it fails AA on every background it is used on. We have measured a compliant replacement; applying it changes an approved visual, so it is waiting on your sign-off, not on us. |
+| "Is it accessible?" | Largely, and one specific gap remains. The amber used for **warning text** did fail AA — 4.48:1 against 4.5:1 — and that is **fixed**: warning text now measures 8.31:1 on white and 7.56:1 on its own tint. The amber itself is kept for dots and borders, where the requirement is 3:1 and it passes. What is **still open** is a different one: muted grey text inside a *hovered* table row measures 4.32:1. And Edge and screen-reader conformance have never been verified by us — treat those as untested, not as passing. |
 | "Is the role model final?" | No. It is a documented least-privilege default and it needs your sign-off — particularly what the Auditor may see. Changing it is a configuration decision, and our tests read the live table, so nothing drifts quietly. |
 | "How many people can use it?" | We have not measured that. No load or concurrency testing has been done, and we would rather say so than guess. |
 | "Has it been security tested?" | Not by an external party. The financial controls, segregation of duties and audit chain are covered by an automated suite; a penetration test is separate work that has not happened. |

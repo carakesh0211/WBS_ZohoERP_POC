@@ -65,6 +65,13 @@ These are **seeded development credentials in a demo profile**. They are the onl
 credentials that appear anywhere in this release package. No production
 credential exists in this build, and none may be added to it.
 
+> **These credentials ARE the access control, and they are published.** Every
+> password above is the user id plus `!demo`, and the sign-in screen lists the
+> user ids — so anyone who can reach the application can sign in as anybody.
+> `DEMO_USER` / `DEMO_PASSWORD` do not add a gate; see F-03 below. **This build
+> is unsuitable for a publicly shared or production deployment.** Run UAT on a
+> trusted network.
+
 Two mappings that are easy to get wrong and were checked rather than assumed:
 
 * `U-PLH` and `U-PROC` read like different jobs and carry **identical** grants.
@@ -256,11 +263,32 @@ path exercises. `UAT-SOD-04` asserts the disjointness so that change cannot land
 silently. **A demonstrator cannot show maker-checker refusing a self-approval on
 this dataset**; do not promise one.
 
+**Update — this finding no longer covers the whole of `auth.MAKER_CHECKER`.**
+That set now holds five permissions: the three analysed above plus
+`pr.approve_exception` and **`bill.void`**. `bill.void` was inert when this was
+written (the `bill` table had no `created_by`); it now has one, and
+`services.py` passes it with `require_maker=True`. Whether any seeded identity
+holds both `bill.create` and `bill.void` has **not** been re-analysed here, so
+the disjointness claim above should be read as covering `pr`, `revision` and
+`capitalisation` only.
+
 ### F-03 — `DEMO_USER` / `DEMO_PASSWORD` gate nothing
 
-`DEPLOY.md:7` states the app "demands a username and password before a single
-screen loads" when these are set, and `render.yaml:3` instructs the operator to
-set them before sharing the URL. They are read at exactly one place —
+This finding cited two things that **have since been corrected in the files
+themselves, and the citations here were left pointing the wrong way:**
+
+* `DEPLOY.md` once said the app "demands a username and password before a single
+  screen loads" when these are set. It no longer says so — the sentence survives
+  there only inside its own retraction.
+* `render.yaml` was said to *instruct the operator to set them before sharing the
+  URL*. **It does the opposite**, and did even when this sentence was written
+  against it: its header reads `DO NOT SHARE THE URL. DEMO_USER /
+  DEMO_PASSWORD gate nothing`, and it declares neither variable. A reader who
+  trusted this document over the file would think a dangerous instruction was
+  still live, or "restore" one.
+
+The finding itself stands, and the facts behind it are unchanged. They are read
+at exactly one place —
 `app/run.py`'s `main()` (the non-loopback bind warning) — inside a condition that **only prints a warning**. No
 middleware, dependency or auth path in `app/backend/**` reads either variable.
 Setting them changes nothing except suppressing the console warning.
@@ -271,7 +299,8 @@ passwords are published and derivable (`user_id + '!demo'`), so **a public URL i
 protected by nothing an attacker could not guess.**
 
 *Impact: high if anyone follows `DEPLOY.md` option 2 or 3. See
-`docs/DEPLOYMENT_RUNBOOK.md` §6.*
+`docs/DEPLOYMENT_RUNBOOK.md` **§4**, whose boxed warning carries this — the
+runbook has five sections and no §6, so the old pointer led nowhere.*
 
 ### F-04 — the shipped deployment artifact cannot start
 
@@ -287,9 +316,12 @@ EXIT: 1
 `Dockerfile` CMD is `python app/run.py` against an empty `/data` volume, and
 `render.yaml` `startCommand` is the same against `/tmp/capex.db`. Neither runs a
 migration first, and `app/run.py` deliberately no longer migrates itself (DEF-01).
-Both therefore exit 1 on a fresh volume. `render.yaml:16` still carries the
-comment "the demo dataset reseeds automatically on restart", which stopped being
-true when DEF-01 was fixed.
+Both therefore exit 1 on a fresh volume.
+
+The second half of this finding — that `render.yaml` carried the comment "the
+demo dataset reseeds automatically on restart" — **is FIXED.** `render.yaml` now
+states the opposite and records that the old line was never true. (The line
+number cited here has moved with it; a comment is found by reading the file.)
 
 Separately, `Dockerfile` copies `app/` (which contains the SQLite migrations) but
 **not** `migrations/pg/`. **FIXED** — `Dockerfile` now copies `migrations`, and
