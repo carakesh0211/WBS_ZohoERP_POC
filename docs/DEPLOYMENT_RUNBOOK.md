@@ -77,22 +77,26 @@ SQLite-only demo forever.
 | Item | Contents |
 |---|---|
 | Application | `app/` — FastAPI backend, static frontend, SQLite migrations |
-| PostgreSQL schema | `migrations/pg/001..022_*.sql` — applied by `python -m app.backend.pg.migrate_pg --upgrade` |
+| PostgreSQL schema | `migrations/pg/001..025_*.sql` — **25 files, all tracked**, applied by `python -m app.backend.pg.migrate_pg --upgrade` |
 | Connector data | `research/20_verified/zoho_endpoint_inventory.json`, `openapi_findings.json` — **read at runtime**, so application data, not documentation |
 | Dependencies | `requirements.txt` (`requirements.lock` for a pinned build) |
 | Entrypoint | `python app/run.py` — binds `X_ZOHO_CATALYST_LISTEN_PORT` → `PORT` → `8000` |
 
-### Two defects in the artifact as currently committed
+### Defects in the artifact: one still open, one since closed
 
-Both were verified, neither is fixed here — `Dockerfile` and `render.yaml` are
-outside this stream's ownership.
+Both were verified when written. **D-2 has since been fixed and this entry is
+kept only so the record shows what changed.** D-1 stands.
 
 **D-1. The container cannot start on a fresh volume.** `Dockerfile` CMD is
 `python app/run.py` against an empty `/data`; `render.yaml` `startCommand` is the
 same against `/tmp/capex.db`. Neither migrates first, and the process refuses to
-migrate itself. Both exit 1 on first boot. `render.yaml:16` still carries the
-comment *"the demo dataset reseeds automatically on restart"*, which stopped
-being true when DEF-01 was fixed.
+migrate itself. Both exit 1 on first boot.
+
+(The second half of this entry — that `render.yaml` carried the comment *"the
+demo dataset reseeds automatically on restart"* — **is fixed.** `render.yaml`
+now says the opposite and records that the old line was never true. The line
+number this runbook used to cite has moved with it; a comment is found by
+reading the file, not by line number.)
 
 The corrected start command, for both:
 
@@ -103,16 +107,22 @@ python -m app.backend.migrate --db "$CAPEX_DB_PATH" --fresh --seed && python app
 (`--fresh` is correct for a **disposable demo volume only**. For anything with
 data to keep, `--upgrade`, and see §5.)
 
-**D-2. The image cannot run a PostgreSQL migration.** `Dockerfile` copies `app/`
-— which carries the SQLite migrations at `app/backend/migrations/` — but **not**
-`migrations/pg/`. Add:
+**D-2. FIXED — do not re-apply this.** This entry used to say the image could
+not run a PostgreSQL migration, because `Dockerfile` copied `app/` but not
+`migrations/pg/`, and it prescribed adding a `COPY`. That `COPY` is present:
 
 ```dockerfile
-COPY migrations/pg ./migrations/pg
+COPY migrations ./migrations      # Dockerfile, with a comment recording the fix
 ```
 
-…or accept that PostgreSQL schema changes are applied from outside the image,
-and say so.
+The image therefore carries all three things a PostgreSQL migration needs: the
+runner (`COPY app ./app`), the SQL (`COPY migrations ./migrations`), and the
+driver (`requirements.txt` pins `psycopg[binary]>=3.2` and `psycopg_pool>=3.2`).
+`python -m app.backend.pg.migrate_pg --upgrade` runs inside the image.
+
+Two other release documents already recorded this as fixed while this one still
+prescribed the change — and both send deployers HERE for the commands, so this
+entry was the one an engineer would have acted on.
 
 ### Deployment shape, given the platform
 
@@ -164,7 +174,7 @@ store and must never be committed, logged, or written into evidence.
 | Variable | Default | Controls | Secret | Read at |
 |---|---|---|---|---|
 | `CAPEX_DB_PATH` | `<repo>/app/data/capex.db` | SQLite file location. Evaluated at **import**, so changing it after start-up does nothing | no | `app/backend/db.py:11-14` |
-| `CAPEX_DB_URL` | *(none — optional)* | Full PostgreSQL DSN. Its presence is what makes PostgreSQL "configured" | **YES** (embeds a password) | `app/run.py:103`, `pg/config.py:199` |
+| `CAPEX_DB_URL` | *(none — optional)* | Full PostgreSQL DSN. Its presence is what makes PostgreSQL "configured" | **YES** (embeds a password) | `app/run.py` (`_postgres_configured()`), `pg/config.py:199` |
 | `CAPEX_DB_HOST` | *(none — required if `CAPEX_DB_URL` unset)* | PostgreSQL host | no | `pg/config.py:203` |
 | `CAPEX_DB_PORT` | `5432` | PostgreSQL port | no | `pg/config.py:210` |
 | `CAPEX_DB_NAME` | `capex` | Database name | no | `pg/config.py:211` |
@@ -174,9 +184,9 @@ store and must never be committed, logged, or written into evidence.
 | `CAPEX_DB_PASSWORD` | *(none — required)* | PostgreSQL password, resolved only at DSN-assembly time and never stored on the config object | **YES** | `pg/config.py:39` (`EnvSecretProvider.get`), named by `from_env` |
 | `CAPEX_DB_URL_PASSWORD` | *(none)* | Password lifted **out of** `CAPEX_DB_URL` into an in-memory provider, so a `repr()` cannot reach it | **YES** | `pg/config.py:39`, named by `_from_url` |
 | `CAPEX_PROFILE` | `""` (`"unset"` at one site) | `local-demo` enables destructive administration (`/api/admin/reset`) and PostgreSQL seeding | no | `auth.is_demo_profile()`, `pg/seed.py`, `main.py` (`/api/health`) |
-| `HOST` | `127.0.0.1`, or `0.0.0.0` with `--public` | Bind address | no | `app/run.py:174` |
-| `PORT` | `8000` | Listen port | no | `app/run.py:179` |
-| `X_ZOHO_CATALYST_LISTEN_PORT` | *(none)* | Catalyst AppSail's assigned port. **Takes precedence over `PORT`** | no | `app/run.py:178` |
+| `HOST` | `127.0.0.1`, or `0.0.0.0` with `--public` | Bind address | no | `app/run.py`, `main()` |
+| `PORT` | `8000` | Listen port | no | `app/run.py`, `main()` |
+| `X_ZOHO_CATALYST_LISTEN_PORT` | *(none)* | Catalyst AppSail's assigned port. **Takes precedence over `PORT`** | no | `app/run.py`, `main()` |
 | `DEMO_USER` | *(none)* | **Enforces nothing.** See the warning below | credential-adjacent | `app/run.py`, `main()` |
 | `DEMO_PASSWORD` | *(none)* | **Enforces nothing.** See the warning below | **YES** | `app/run.py`, `main()` |
 
@@ -210,8 +220,11 @@ environment variables.
 
 ### ⚠ `DEMO_USER` and `DEMO_PASSWORD` protect nothing
 
-`DEPLOY.md:7` states the app "demands a username and password before a single
-screen loads" when these are set. **It does not.** They are read once, at
+`DEPLOY.md` once stated that the app "demands a username and password before a
+single screen loads" when these are set. **It does not — and DEPLOY.md no
+longer says so**: that sentence survives there only inside its own retraction,
+so do not go hunting for it as a live claim. The facts are unchanged. They are
+read once, at
 `app/run.py`'s `main()` (the non-loopback bind warning), inside a condition that only prints a console warning. No
 middleware, dependency or auth path in `app/backend/**` reads either variable.
 
@@ -230,7 +243,7 @@ implemented. `DEPLOY.md` options 2 and 3 should not be followed as written.
 ## 5. Rollback checklist
 
 **There is no down-migration.** `app/backend/pg/migrate_pg.py` has no
-`downgrade`, no `--down`, and no reverse SQL; migrations `001`–`022` are
+`downgrade`, no `--down`, and no reverse SQL; migrations `001`–`025` are
 checksum-frozen and applied forward only. Rollback is therefore
 **restore-from-backup plus redeploy the previous code**, and it depends
 entirely on step 2 of §3 having been done.

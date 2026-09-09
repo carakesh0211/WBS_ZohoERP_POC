@@ -143,11 +143,12 @@ The application is built for it: `POLL_OVERLAP_SECONDS = 300` re-enters each
 window 300 s behind its own boundary and a `UNIQUE (connection_id, module,
 external_id, payload_sha)` constraint discards the duplicates.
 
-### L-06 — The `--warning` colour fails WCAG 2.2 AA everywhere it is used. **VERIFIED — independently recomputed**
+### L-06 — The `--warning` colour failed WCAG 2.2 AA as TEXT. **FIXED, on the product owner's approval**
 
-`--warning: #A66A00` is the only semantic token below the 4.5:1 body-text
-minimum, and it fails against **every** background it appears on. Recomputed from
-the hex values by this stream, matching the Wave 4 finding to four decimals:
+`--warning: #A66A00` was the only semantic token below the 4.5:1 body-text
+minimum, and it failed against **every** background it appeared on. Recomputed
+from the hex values by this stream, matching the Wave 4 finding to four
+decimals — this is the BEFORE state:
 
 | Foreground | Background | Ratio | |
 |---|---|---|---|
@@ -157,24 +158,41 @@ the hex values by this stream, matching the Wave 4 finding to four decimals:
 | `--warning` #A66A00 | `--primary-50` #EAF4F6 (row hover) | **4.0080:1** | FAIL |
 | `--warning` #A66A00 | `--n100` #EFF1F3 | **3.9604:1** | FAIL |
 
-`styles.css` inherits it through `.st-warning { color: var(--warning) }`, so
-**every warning status anywhere in the application is below AA.** `--warning-bg`
-and white are the two backgrounds it is actually used on
-(`styles.css:16, 164, 273, 332, 335`).
+**FIXED IN WAVE 8, under the product owner's written approval.** The remedy
+this section proposed was a NEW amber near `#8A5800`. That is not what was
+applied, and the difference matters: inventing a hex is exactly what
+`test_no_new_off_token_colour_is_introduced` exists to prevent. What was applied
+is `#6D4600` — the darker amber `.msg-warning` had used all along — so the token
+registry gained nothing and both palette gates were unaffected:
 
-**The remedy is identified and measured.** A darker amber at approximately
-`#8A5800` clears AA on all five backgrounds — 6.04:1 on white, 5.49:1 on its own
-tint, 5.40:1 on hover — and no existing token in the registry does.
+| Foreground | Background | Ratio | |
+|---|---|---|---|
+| `#6D4600` | `--n0` #FFFFFF | **8.3125:1** | PASS |
+| `#6D4600` | `--n50` #F7F8F9 | **7.8176:1** | PASS |
+| `#6D4600` | `--warning-bg` #FDF3E2 | **7.5585:1** | PASS |
+| `#6D4600` | `--primary-50` #EAF4F6 (row hover) | **7.4296:1** | PASS |
+| `#6D4600` | `--n100` #EFF1F3 | **7.3413:1** | PASS |
 
-**It is not applied here.** `app/frontend/styles.css` is byte-frozen behind a
-SHA-256 checksum gate, the client has approved the current UI, and inventing a
-hex is what `test_no_new_off_token_colour_is_introduced` exists to prevent.
-**This awaits the product owner's approval**, not engineering work. An interim
-mitigation exists in `approvals.css` only, and is scoped to that file.
+Every warning-TEXT rule now takes it: `.st-warning`, `.nav-item .pill.warn` and
+`.mock-chip` in `styles.css`, plus the dropped-filter chip and the stale
+freshness line in `analytics.css` and the posting note and write-off badge in
+`closure.css` — the last two found by measurement, not by the earlier review.
 
-Related, same cause, also unfixed: `--n500` #6B7280 measures 4.8345:1 on white
-but **4.3210:1 on a hovered table row**, so any muted text inside a table row
-fails AA while that row is hovered, application-wide.
+**`--warning` itself is unchanged and still declared**, because it is now a
+NON-TEXT tone only: status dots, tile and border accents, meter fills and chip
+borders. Those need 3:1, which #A66A00 clears on every surface (3.9604:1 worst
+case), so the amber still carries the semantics. The `contrast_rule` in
+`C6_tokens.json` records that split.
+
+`styles.css` is byte-frozen behind a SHA-256 checksum gate; the pin was updated
+in the same commit through the documented approved-change procedure, with the
+approval and the before/after measurements recorded beside it.
+
+**STILL OPEN, same cause, NOT covered by that approval:** `--n500` #6B7280
+measures 4.8345:1 on white but **4.3210:1 on a hovered table row**
+(`--primary-50` #EAF4F6), so any muted text inside a table row fails AA while
+that row is hovered, application-wide. Nothing in Wave 8 touched it and it needs
+its own decision.
 
 ### L-07 — Without PostgreSQL, most of the application is honestly unavailable. **VERIFIED by probing every endpoint**
 
@@ -199,14 +217,16 @@ degrade to a **labelled** SQLite fallback that says so on screen — *"The
 reporting endpoint for this screen did not answer. Shown from this application's
 own ledger instead."* — rather than to a blank unavailable state.
 
-> **Correction for the record.** `docs/FULL_APPLICATION_DELIVERY_STATUS.md`
-> states *"the 14 legacy shell views … so the other 32 screens render their
-> honest unavailable state"*. Neither number matches the code: it is 17 and 46,
-> the tables are disjoint, and `state: "unavailable"` is emitted by exactly one
-> router (`api/reports.py`) out of eleven — exports, integrations and closure use
-> `unavailable: true` instead, and seven routers emit neither flag. That file is
-> lead-owned and is not edited here; the measurement is reported so the lead can
-> decide.
+> **Correction for the record — SINCE ACTED ON.**
+> `docs/FULL_APPLICATION_DELIVERY_STATUS.md` used to state *"the 14 legacy shell
+> views … so the other 32 screens render their honest unavailable state"*.
+> Neither number matched the code: it is **17 NAV entries and 46 `SCR_ROUTES`**,
+> and the two sets are disjoint, so "the other 32" was never a real population.
+> That file has since been corrected and now carries 17 and 46. This notice is
+> kept only because the measurement below it still stands and is unresolved:
+> `state: "unavailable"` is emitted by exactly one router (`api/reports.py`) out
+> of eleven — exports, integrations and closure use `unavailable: true` instead,
+> and seven routers emit neither flag.
 
 **The important half is that an absent database never reads as an empty result.**
 A screen that said "no exceptions found" when the route was not mounted would be
@@ -215,8 +235,11 @@ asserts this.
 
 ### L-08 — `DEMO_USER` / `DEMO_PASSWORD` protect nothing. **VERIFIED**
 
-`DEPLOY.md:7` says the app "demands a username and password before a single
-screen loads" when these are set. They are read at exactly one place —
+`DEPLOY.md` once said the app "demands a username and password before a single
+screen loads" when these are set. **That sentence has since been withdrawn in
+`DEPLOY.md` itself**, where it now survives only inside its own retraction, so
+it is no longer a live claim to be found there. The underlying facts are
+unchanged. They are read at exactly one place —
 `app/run.py`'s `main()` (the non-loopback bind warning) — inside a condition that only prints a console warning. No
 middleware or auth path in `app/backend/**` reads either. Setting them changes
 nothing.
@@ -233,14 +256,18 @@ volume without migrating first, and the process deliberately refuses to migrate
 itself. Both exit 1 on first boot ON AN EMPTY VOLUME, which is the designed
 behaviour: the schema is a deploy step (DEF-01). `Dockerfile` USED TO omit
 `migrations/pg/` — it now copies them, and the two-command sequence is in the
-file. What remains true is that
-the image cannot apply a PostgreSQL migration at all. Corrected commands are in
-`docs/DEPLOYMENT_RUNBOOK.md` §2.
+file. The claim that used to follow here — that the image *still* cannot apply
+a PostgreSQL migration at all — **is no longer true and has been removed.** The
+image carries the runner (`COPY app ./app`), the SQL (`COPY migrations
+./migrations`) and the driver (`psycopg[binary]>=3.2`), so
+`python -m app.backend.pg.migrate_pg --upgrade` runs inside it. What remains
+true is only the first sentence: neither entrypoint migrates before starting.
+Corrected commands are in `docs/DEPLOYMENT_RUNBOOK.md` §2.
 
 ### L-10 — There is no down-migration. **VERIFIED**
 
 `app/backend/pg/migrate_pg.py` has no `downgrade`, no `--down` and no reverse
-SQL; migrations `001`–`022` are checksum-frozen and forward-only. **Rollback is
+SQL; migrations `001`–`025` are checksum-frozen and forward-only. **Rollback is
 restore-from-backup**, and it depends on a backup having been taken before the
 deploy. See `docs/DEPLOYMENT_RUNBOOK.md` §5.
 
@@ -306,7 +333,7 @@ None of these can be closed by engineering. Each needs a third party.
 | **E-03** | Confirmation of the target product: **Zoho ERP v3** or **Books v3 + Inventory v1**. Recorded as D-14 and unresolved. Clients routinely say "Zoho ERP" about a Books + Inventory estate, and the two differ materially — Inventory can list purchase receives, ERP cannot | connector implementation, and the GRN design | Client |
 | **E-04** | **Zoho ERP plan tier.** ERP is India-only, Standard/Premium only, and rate-limited to **2,000 / 10,000 API calls per day**. ERP Purchase Receives has four endpoints and **no list endpoint**, so PO-anchored discovery is the only GRN mechanism and its cost scales with open-PO count. On Standard this may bind hard enough to require a client conversation about sync frequency | sync frequency, and possibly feasibility | Client |
 | **E-05** | Client **sign-off on the role-to-permission matrix** (D-12) | L-14; the final authorisation model | Client |
-| **E-06** | **Product owner's approval of the `--warning` token change** (L-06). The remedy is identified and measured; `styles.css` is byte-frozen and the current UI is client-approved | WCAG 2.2 AA conformance | Product owner |
+| **E-06** | ~~Product owner's approval of the `--warning` token change (L-06)~~ — **GRANTED, and applied in Wave 8.** What remains is a DIFFERENT decision: the `--n500` muted-text-on-hovered-row failure (4.3210:1) described under L-06, which that approval did not cover | WCAG 2.2 AA conformance | Product owner |
 | **E-07** | A **decision on the exposed-demo posture** (L-08). Either provision real identities and remove the seeded ones, or accept that the build stays on a trusted network | any hosted client demo | Client / lead |
 | **E-08** | **GL and fixed-asset register integration design** (L-02, X-01). This build records the capitalisation decision; where the journal and the asset record are actually created is unspecified | closing X-01 | Client / Finance |
 | **E-09** | Note that **Catalyst Circuits and Integration Functions are not available in the India data centre** (Circuits also excluded in EU/AU/JP/SA/CA). Any design that assumed them needs a different mechanism | background orchestration design | Architecture |
