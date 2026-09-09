@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import os
 import urllib.parse
+import threading
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -47,19 +48,72 @@ class MappingSecretProvider:
     def get(self, name: str) -> str | None:
         return self._values.get(name)
 
+    def put(self, name: str, value: str) -> None:
+        """Add or replace one secret.
+
+        Exists so :func:`_install_secret` never has to reach into another
+        object's ``_values`` to add one -- see the lock's docstring below.
+        """
+        self._values[name] = value
+
+
+#: Guards `_provider` and `_module_overlay` TOGETHER.
+#:
+#: Reassigning a module global is atomic under CPython, so the old code could
+#: not observe a torn provider -- but `_from_url` did a READ-MODIFY-WRITE of it
+#: (`get_secret_provider()` ... `set_secret_provider(...)`), and two callers
+#: interleaving between those two statements silently dropped one password.
+#: Worse, the read reached into the current provider's PRIVATE `_values`,
+#: which yields `{}` for `EnvSecretProvider` or for any provider a deployment
+#: installs, and each call wrapped the previous provider in another
+#: `_ChainedProvider`, so repeated calls grew an unbounded lookup chain.
+#:
+#: An RLock, not a Lock: `_install_secret` calls `get_secret_provider`.
+_LOCK = threading.RLock()
 
 #: Overridable so a deployment can install its own provider once, at start-up,
 #: without every call site learning about it.
 _provider: SecretProvider = EnvSecretProvider()
 
+#: The overlay THIS MODULE installed when it lifted a password out of a URL.
+#: Tracked so a second lift updates that overlay instead of nesting another
+#: chain link in front of it.
+_module_overlay: MappingSecretProvider | None = None
+
 
 def set_secret_provider(provider: SecretProvider) -> None:
-    global _provider
-    _provider = provider
+    global _provider, _module_overlay
+    with _LOCK:
+        _provider = provider
+        # A caller installing a provider is replacing the whole arrangement,
+        # including any overlay this module put in front of the old one.
+        # Keeping the stale reference would make the next `_install_secret`
+        # mutate an overlay that is no longer in the lookup path -- a secret
+        # written somewhere nothing reads.
+        _module_overlay = None
 
 
 def get_secret_provider() -> SecretProvider:
-    return _provider
+    with _LOCK:
+        return _provider
+
+
+def _install_secret(name: str, value: str) -> None:
+    """Make `name` resolvable, without disturbing the installed provider.
+
+    Atomic: the whole read-decide-write runs under `_LOCK`, so concurrent
+    callers cannot each read "no overlay yet" and one of them lose.
+    """
+    global _provider, _module_overlay
+    with _LOCK:
+        overlay = _module_overlay
+        if overlay is not None and isinstance(_provider, _ChainedProvider) \
+                and _provider.first is overlay:
+            overlay.put(name, value)
+            return
+        overlay = MappingSecretProvider({name: value})
+        _provider = _ChainedProvider(overlay, _provider)
+        _module_overlay = overlay
 
 
 @dataclass(frozen=True)
@@ -170,11 +224,9 @@ def _from_url(url: str) -> DatabaseConfig:
     secret_name = "CAPEX_DB_URL_PASSWORD"
     if parsed.password:
         # Lift it out of the URL and into a provider, so it is not carried on
-        # the config object where a repr could reach it.
-        merged = dict(getattr(get_secret_provider(), "_values", {}) or {})
-        merged[secret_name] = urllib.parse.unquote(parsed.password)
-        set_secret_provider(_ChainedProvider(MappingSecretProvider(merged),
-                                             get_secret_provider()))
+        # the config object where a repr could reach it. Atomic, and without
+        # copying anybody else's private `_values` -- see `_install_secret`.
+        _install_secret(secret_name, urllib.parse.unquote(parsed.password))
 
     return DatabaseConfig(
         host=parsed.hostname or "localhost",
@@ -194,11 +246,17 @@ def _from_url(url: str) -> DatabaseConfig:
 
 
 class _ChainedProvider:
-    """First provider wins; the second is the fallback."""
+    """First provider wins; the second is the fallback.
+
+    `first` and `second` are public, deliberately: `_install_secret` has to ask
+    "is the front of this chain the overlay I installed?", and having to reach
+    for a private attribute to answer it is what made the old code reach into
+    `MappingSecretProvider._values` as well.
+    """
 
     def __init__(self, first: SecretProvider, second: SecretProvider) -> None:
-        self._first, self._second = first, second
+        self.first, self.second = first, second
 
     def get(self, name: str) -> str | None:
-        value = self._first.get(name)
-        return value if value is not None else self._second.get(name)
+        value = self.first.get(name)
+        return value if value is not None else self.second.get(name)

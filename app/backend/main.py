@@ -888,7 +888,28 @@ def recon_exceptions(p: dict = Depends(principal)):
 def zoho_connections(p: dict = Depends(perm("connector.read"))):
     c = con()
     try:
-        return {"mode": zoho.MODE, "connections": rows(c, "SELECT * FROM zoho_connection"),
+        # COLUMNS NAMED EXPLICITLY, and the `SELECT *` this replaced is the
+        # reason. `zoho_connection` is the one table in the schema whose column
+        # names are secret-SHAPED -- `client_id_ref`, `client_secret_ref`,
+        # `refresh_token_ref` -- and `SELECT *` publishes whatever the table
+        # grows next with no code change and no review. The three `_ref`
+        # columns are POINTERS (`secretref://...`), never values, which
+        # `tests/test_connector.py::test_aud_h_003_authorisation_stores_secret_
+        # references_not_secrets` pins; a column called `client_secret` added
+        # tomorrow would have travelled the same path silently.
+        #
+        # Adding a column here is now a deliberate act. That is the whole
+        # control: a list somebody has to edit, rather than a wildcard nobody
+        # re-reads.
+        connections = rows(c, """
+            SELECT connection_id, name, entity_id, environment, data_centre,
+                   accounts_domain, api_domain, client_id_ref, client_secret_ref,
+                   refresh_token_ref, redirect_uri, oauth_status,
+                   access_token_expiry, token_last_refreshed, zoho_org_id,
+                   zoho_org_name, granted_scopes, status, last_success_at,
+                   last_failure_at, created_at
+            FROM zoho_connection""")
+        return {"mode": zoho.MODE, "connections": connections,
                 "data_centres": zoho.DATA_CENTRES}
     finally:
         c.close()
