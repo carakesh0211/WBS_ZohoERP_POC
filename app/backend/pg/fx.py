@@ -903,22 +903,6 @@ class TranslationBasis:
         return (f"{self.source_currency}/{BASE_CURRENCY} at {self.rate} for "
                 f"{self.rate_date} from {self.rate_source} ({self.fx_rate_id})")
 
-    def as_columns(self) -> dict[str, Any]:
-        """The five FX basis columns, ready to bind. Satisfies 023's CHECK.
-
-        `fx_translated_at` is deliberately NOT here. It is set by the writer in
-        the same statement, because it is the flag `trg_bill_fx_basis_immutable`
-        keys on: a row carrying a rate but no translation timestamp is a basis
-        the trigger will let the next UPDATE move.
-        """
-        return {
-            "source_currency": self.source_currency,
-            "fx_rate": self.rate,
-            "fx_rate_id": self.fx_rate_id,
-            "fx_rate_date": self.rate_date,
-            "fx_rate_source": self.rate_source,
-        }
-
 
 def identity_basis() -> TranslationBasis:
     """The base currency's own basis. No rate lookup, no rounding, no row."""

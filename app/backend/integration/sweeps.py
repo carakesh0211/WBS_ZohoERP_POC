@@ -296,6 +296,24 @@ class SourceRecord:
     #: mirrorable, none is a non-PO bill, and two or more is refused rather
     #: than resolved by picking the first.
     po_external_ids: tuple[str, ...] = ()
+    #: THE CURRENCY THE DOCUMENT IS DENOMINATED IN, and the field whose absence
+    #: kept AUD-H-007 open through two migrations that were written to close it.
+    #:
+    #: `dto.BillDTO.currency_code` and `dto.PurchaseOrderDTO.currency_code` have
+    #: existed since the adapter boundary was frozen, and both adapters populate
+    #: them -- `books_inventory.py` and `erp.py` each read
+    #: `row.get("currency_code")` in four places. `normalise` then dropped the
+    #: value on the floor building this record, and `_mirror` had nothing to
+    #: pass even if `mirror_bill` had had a parameter to receive it, which it
+    #: did not. Migration 023 built an entire FX engine downstream of a value
+    #: that never arrived.
+    #:
+    #: DEFAULTS TO THE BASE CURRENCY, so a source that genuinely says nothing
+    #: is treated as INR -- which is what every such document has silently been
+    #: treated as since the product was written, and is correct for an estate
+    #: whose base currency is INR. The difference is that a document that DOES
+    #: say EUR is now believed.
+    currency_code: str = "INR"
     lines: tuple[Any, ...] = ()
 
     @property
@@ -345,6 +363,14 @@ def normalise(record: Any, *, module: str) -> SourceRecord:
         # self-reference that reads like a linkage and is not one.
         po_external_ids=(_po_external_ids(record)
                          if module == MODULE_BILLS else ()),
+        # `currency_code` FIRST for the reason `vendor_name` is: it is what
+        # `dto.BillDTO` and `dto.PurchaseOrderDTO` actually carry, and
+        # `currency` is the alias a raw Zoho mapping that has not been through
+        # an adapter would use. Blank or absent falls back to the base
+        # currency, which is what the value has effectively been for every
+        # document ever mirrored.
+        currency_code=(str(_first_attr(record, ("currency_code", "currency"))
+                           or "INR").strip().upper() or "INR"),
         lines=tuple(lines),
     )
 
@@ -527,8 +553,18 @@ class SweepStore(Protocol):
                     external_status_raw: str | None = None,
                     external_last_modified: datetime | None = None,
                     payload_sha: str | None = None,
+                    source_currency: str = "INR",
                     correlation_id: str | None = None) -> Mapping[str, Any]:
         """Mirror one hydrated vendor bill and its lines into the ledger.
+
+        `source_currency` IS PART OF THE VERB, not an optional extra. A bill's
+        amounts are denominated in it, `bill_line.amount_paise` is INR base
+        paise, and a store handed the amounts without the currency has no way
+        to tell the two apart -- which is the state the product was in for two
+        migrations: `BillDTO.currency_code` populated by both adapters, dropped
+        by `normalise`, and an FX engine downstream of a value that never
+        arrived. It is declared here so a store that ignores it is ignoring
+        something the protocol says exists.
 
         THE VERB THAT WAS MISSING, AND WHAT ITS ABSENCE COST. The ledger has
         been able to do this since 013; nothing called it.
@@ -1172,6 +1208,14 @@ class SweepBillDetail:
             # disagrees is detectable rather than merely different.
             external_last_modified=record.last_modified_time,
             payload_sha=record.sha,
+            # THE WIRE THAT WAS MISSING. Everything downstream of this argument
+            # -- migration 023's five FX tables, its two immutability triggers,
+            # the whole of `pg/fx.py` -- existed and was reachable from
+            # nothing, because the currency stopped here. `mirror_bill`
+            # resolves the rate for `record.document_date` and refuses the bill
+            # outright if none is on file, rather than writing a euro figure
+            # into a rupee column, which is what it did before.
+            source_currency=record.currency_code,
             correlation_id=ctx.correlation_id)
 
 

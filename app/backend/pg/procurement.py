@@ -80,6 +80,7 @@ from datetime import date, datetime
 from typing import Any, Mapping, Sequence
 
 from . import audit as audit_mod
+from . import fx as fx_svc
 from . import integration_store as store
 from . import procurement_services as svc
 from . import repo
@@ -982,6 +983,153 @@ def resolve_accounting_status(session: Session, *, adapter_product: str,
 
 
 # ================================================================ the bill
+# ===========================================================================
+# The bill line's identity and its money, decided BEFORE anything is written
+# ===========================================================================
+# BOTH OF THESE USED TO LIVE INSIDE `_mirror_bill_line`, and they had to move
+# for one reason: a foreign-currency bill is translated ONCE, at the HEADER,
+# and the header total cannot be known until every line's source amount has
+# been read. So the payload is now walked twice -- once to establish what each
+# line IS and what it is WORTH in the vendor's currency, and once to write the
+# rows -- with the translation in between.
+#
+# The derivation itself is UNCHANGED, deliberately and to the character.
+# `bill_line_id` is `derived_id("BLL", bill_id, line_key)`, so any change to
+# how `line_key` is built would give every existing row a new id, and
+# `capex_app` has DELETE revoked: the old rows could not be removed and every
+# replay would double the estate's billed figure. Moving the code must not
+# move the ids.
+
+
+def _bill_line_identity(line: Any, index: int,
+                        seen_keys: set[str] | None) -> dict[str, Any]:
+    """The four identifiers one bill line is written under.
+
+    TWO IDENTITIES, AND THEY ARE NOT THE SAME THING. `po_line_external_id` is
+    the PURCHASE ORDER LINE's id -- what 013 named the column for, because the
+    POC's `bill_line.zoho_purchaseorder_item_id` held exactly that.
+    `external_line_id` (migration 014) is THIS line's own id, which the source
+    may or may not supply. Only the second is an identity for this row, which
+    is why `ux_bill_line_external` keys on it and why the fingerprint index
+    takes over when it is absent.
+
+    Reading the bill line's own id from explicit names only
+    (`bill_line_external_id`, `external_line_id`, `line_id`) is deliberate: the
+    PO-line lookup claims `line_item_id`, and re-using that name for both would
+    make the two identities the same value again.
+
+    THE LINE'S OWN ID COMES FIRST, and reading it second was a defect.
+    `bill_line_id` is derived from `line_key`, so two lines sharing one
+    `po_line_external_id` were separated only by ARRIVAL ORDER through
+    `seen_keys`. Replay the same bill with the lines transposed and `BL-2`
+    takes the id currently holding `BL-1`; the upsert then writes
+    external_line_id 'BL-2' onto it while the other row still holds 'BL-2', and
+    `ux_bill_line_external` (014:537-539) refuses it. Ordering by the line's own
+    id makes such a bill order-independent by construction.
+
+    `line_external_id` REMAINS THE FALLBACK, so every id derived before 014 is
+    byte-identical: no row written then carried an `external_line_id` at all,
+    the column not existing yet.
+
+    THE QUARANTINE KEY IS NOT `line_key`, and conflating them cost the money
+    twice -- `line_key` falls back to the PO LINE's external id, which is
+    precisely the value that ARRIVES between passes as an unresolved linkage
+    becomes resolved. This key is the LINE's own identity, ordinal where the
+    source gave none, and is stable across that.
+    """
+    line_external_id = _text(_line_field(
+        line, "purchase_order_line_external_id", "po_line_external_id",
+        "line_external_id", "line_item_id", "purchaseorder_item_id"))
+    external_line_id = _text(_line_field(
+        line, "bill_line_external_id", "external_line_id", "line_id"))
+    line_key = external_line_id or line_external_id or f"#{index}"
+    # Two bill lines against ONE purchase order line are ordinary, and until
+    # this they collided on one derived id and the second overwrote the first.
+    # Only the REPEAT is disambiguated, so every id written before migration 014
+    # is unchanged.
+    if seen_keys is not None:
+        if line_key in seen_keys:
+            line_key = f"{line_key}#{index}"
+        seen_keys.add(line_key)
+    return {
+        "line_external_id": line_external_id,
+        "external_line_id": external_line_id,
+        "line_key": line_key,
+        "quarantine_key": external_line_id or f"#{index}",
+    }
+
+
+def _bill_line_source_money(line: Any) -> tuple[int, int, int]:
+    """``(amount, non_creditable_tax, freight)`` AS THE SOURCE DOCUMENT STATES.
+
+    In the SOURCE currency's own minor units -- cents on a EUR bill, whole yen
+    on a JPY one -- not paise, whatever the payload keys happen to be called.
+    For an INR bill the two are the same integer and nothing is multiplied.
+
+    ALL THREE, AND THAT IS THE POINT. Every rollup in the product sums
+    ``amount_paise + non_creditable_tax_paise + freight_paise``:
+    `domain.compute_ledger` twice, `_RECOMPUTE_DERIVED_SQL` twice (and it is
+    the ONLY writer of `budget_ledger_cell`, so it is where every reported
+    actual comes from), :func:`reconcile_po_lines`, :func:`reconciliation_lines`
+    and both of `reporting.py`'s branches. `fx.py` mentions only the first of
+    the three. Translating one column and leaving two would add a rupee figure
+    to two euro figures and report the total as CWIP -- the AUD-H-007 defect
+    reproduced inside its own remedy.
+    """
+    return (
+        int(_line_field(line, "line_total_paise", "amount_paise",
+                        "total_paise", default=0) or 0),
+        int(_line_field(line, "non_creditable_tax_paise", default=0) or 0),
+        int(_line_field(line, "freight_paise", default=0) or 0),
+    )
+
+
+def _translate_bill_payload(session: Session, *, bill_id: str,
+                            identities: Sequence[Mapping[str, Any]],
+                            source_money: Sequence[tuple[int, int, int]],
+                            basis: "fx_svc.TranslationBasis",
+                            ) -> tuple[int, list[tuple[int, int, int]]]:
+    """Translate one bill's whole money surface ONCE, then allocate it.
+
+    Returns ``(header_base_paise, [(amount, tax, freight) per line])`` in the
+    order `identities` was given, every figure INR base paise.
+
+    ONE QUANTISATION FOR THE WHOLE DOCUMENT. The three money columns of every
+    line are flattened into a single vector, its total is translated once, and
+    `fx.allocate_base_paise` distributes the result by largest remainder --
+    so ``sum(every returned cell) == header_base_paise`` exactly, and the
+    document reconciles to the paisa against the figure on the vendor's own
+    invoice. Translating each cell independently and summing is the other
+    obvious implementation and it disagrees: thirty-six cells rounded
+    separately can differ from their translated total by up to eighteen paise,
+    and the total is what the vendor is owed.
+
+    THE ORDER IS THE DERIVED `bill_line_id`, NOT THE PAYLOAD'S. `split_pro_rata`
+    hands the leftover paise to the largest fractional remainders, so payload
+    order would decide which line receives the odd paisa -- and the same bill
+    replayed with its lines transposed would then rewrite `amount_paise` by a
+    paisa while `source_amount_minor` stayed identical, which is exactly the
+    silent drift 023's immutability trigger cannot see. Sorting by the id the
+    row is written under makes the allocation a function of the document rather
+    than of the order it arrived in, which is what "order-independent replay"
+    has always claimed to mean here.
+    """
+    if not identities:
+        return 0, []
+    order = sorted(
+        range(len(identities)),
+        key=lambda i: derived_id("BLL", bill_id, identities[i]["line_key"]))
+    cells: list[int] = []
+    for i in order:
+        cells.extend(source_money[i])
+    header_base, allocated = fx_svc.translate_lines(basis, cells)
+    out: list[tuple[int, int, int]] = [(0, 0, 0)] * len(identities)
+    for position, i in enumerate(order):
+        chunk = allocated[position * 3:position * 3 + 3]
+        out[i] = (int(chunk[0]), int(chunk[1]), int(chunk[2]))
+    return header_base, out
+
+
 def mirror_bill(session: Session, *, external_source: str, external_id: str,
                 bill_number: str, vendor_name: str, bill_date: date,
                 lines: Sequence[Any],
@@ -997,6 +1145,18 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
                 payload_sha: str | None = None,
                 connection_id: str | None = None,
                 vendor_id: str | None = None,
+                # ---- the vendor's own currency, and how its rate is found.
+                # `BillDTO.currency_code` has existed since the adapter
+                # boundary was frozen and reached NOTHING: `sweeps.normalise`
+                # dropped it building `SourceRecord`, and this function had no
+                # parameter to receive it if it had not. Defaulting to the base
+                # currency keeps every existing caller and every existing test
+                # byte-for-byte correct -- an INR bill is the identity
+                # translation and always was.
+                source_currency: str = fx_svc.BASE_CURRENCY,
+                exchange_rate: Any = None,
+                fx_rate_source: str | None = None,
+                fx_rate_id: str | None = None,
                 correlation_id: str | None = None,
                 actor: str = "SVC-SWEEP",
                 now: datetime | None = None,
@@ -1132,6 +1292,74 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
     # when the resolver's answer counts is a second place to get it wrong.
     accounting_status = effective_status
 
+    # ================================================== THE TRANSLATION, FIRST
+    #
+    # BEFORE THE HEADER IS WRITTEN AND BEFORE ANY LINE IS. The vendor's figures
+    # arrive in the vendor's currency; `bill_line.amount_paise` is INR base
+    # paise and has been since 013, and migration 023's own COMMENT says so.
+    # Until this block, `mirror_bill` wrote the first straight into the second
+    # -- so a EUR 1,00,000 bill stood at Rs 1,00,000, understating that
+    # project's capital position by a factor of 92.5, and AUD-H-007 stayed open
+    # while a whole module sat behind it with no caller.
+    #
+    # THE PAYLOAD IS WALKED TWICE and that is structural, not clumsy. D-5
+    # translates the DOCUMENT once at document date and allocates the result
+    # across its lines; the document total cannot be known until every line has
+    # been read, and a line cannot be written until its share is known. So:
+    # identities and source amounts first, one translation, then the writes.
+    seen_keys: set[str] = set()
+    identities = [_bill_line_identity(line, index, seen_keys)
+                  for index, line in enumerate(lines or ())]
+    source_money = [_bill_line_source_money(line) for line in (lines or ())]
+
+    # A BILL ALREADY TRANSLATED IS NOT TRANSLATED AGAIN -- requirement 4, and
+    # the reason this reads the row before deciding anything. The sweeps
+    # re-walk on a 300-second overlap, so re-presenting a bill that has already
+    # posted is the ORDINARY case, not an edge one. Re-resolving the rate for
+    # it would find whatever is on file TODAY, which on any day but the first
+    # is a different number, and 023's `trg_bill_fx_basis_immutable` would then
+    # refuse the write with a database error where a service-level refusal
+    # belongs. The stored basis is reused instead, so the replay recomputes the
+    # SAME figures and writes them back identically.
+    posted = session.fetchone(  # scope-exempt: the row this statement is about to write, read by its own primary key. The scope predicate is applied where it belongs -- the INSERT below is an INSERT ... SELECT FROM project WHERE {scope}, so an out-of-scope bill is never written at all. Re-applying it here would answer "not translated" for a bill that IS translated whenever the caller's scope is narrower than the writer's, which is the one wrong answer that would let a rate be applied twice.
+        f"SELECT source_currency, fx_rate, fx_rate_date, fx_rate_id, "
+        f"fx_translated_at FROM {BILL} WHERE bill_id = %s", (bill_id,))
+    if posted is not None and posted[4] is not None:
+        posted_currency, posted_rate, posted_date, posted_rate_id, _at = posted
+        if str(source_currency or "").strip().upper() != posted_currency:
+            raise ProcurementIngestError(
+                "BILL_FX_BASIS_CONFLICT",
+                f"Bill {external_id!r} posted in {posted_currency} at "
+                f"{posted_rate} for {posted_date} and this pass presents it as "
+                f"{source_currency!r}. A rate is applied EXACTLY ONCE: "
+                f"re-basing a bill that has already posted would move its CWIP "
+                f"figure with nothing recording that it moved, which is what "
+                f"plan decision D-5 and trg_bill_fx_basis_immutable both "
+                f"refuse. Nothing was written.", status=409)
+        basis = fx_svc.TranslationBasis(
+            source_currency=posted_currency,
+            minor_exponent=(fx_svc.BASE_MINOR_EXPONENT
+                            if posted_currency == fx_svc.BASE_CURRENCY
+                            else fx_svc.minor_exponent(session, posted_currency)),
+            rate=fx_svc.parse_rate(posted_rate, field="bill.fx_rate"),
+            rate_date=posted_date, rate_source=None,
+            fx_rate_id=posted_rate_id)
+    else:
+        # `FxError` carries `code`/`status` exactly as `ProcurementIngestError`
+        # does and the routers match on both, so it is allowed to propagate
+        # rather than being flattened into a generic ingest failure: "no EUR
+        # rate is on file for 2026-06-15" is the sentence an operator can act
+        # on, and re-wrapping it would lose the currency and the date.
+        basis = fx_svc.resolve_basis(
+            session, source_currency=source_currency, document_date=bill_date,
+            actor=actor, exchange_rate=exchange_rate,
+            rate_source=fx_rate_source, fx_rate_id=fx_rate_id,
+            source_reference=f"{external_source} bill {external_id}")
+
+    header_base_paise, line_base_money = _translate_bill_payload(
+        session, bill_id=bill_id, identities=identities,
+        source_money=source_money, basis=basis)
+
     params = {
         "bill_id": bill_id, "bill_number": bill_number, "po_id": po_id,
         # `entity_id` is deliberately NOT here. `bill.entity_id` is NOT NULL
@@ -1158,6 +1386,45 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
         # and the document is accepted either way -- with the raw value
         # preserved, which is what this column is for.
         "external_status_raw": external_status_raw,
+        # THE FX BASIS, read from the resolved `TranslationBasis` and from
+        # nowhere else, so these five columns cannot disagree with the rate the
+        # lines were actually translated by. Between them they are the shape
+        # `ck_bill_fx_provenance` (023:469) requires: an INR bill carries rate
+        # 1, no fx_rate row and no rate date; anything else names the row, the
+        # date and the source.
+        #
+        # WRITTEN OUT, NOT SPLATTED FROM `basis.as_columns()`.
+        # `test_every_sql_placeholder_has_a_parameter_behind_it` walks this
+        # module's AST and matches every `%(name)s` in a statement against the
+        # keys of the dict bound to it; a `**` expansion is opaque to that walk,
+        # so five money-bearing placeholders would have become invisible to the
+        # check that exists to catch exactly a mistyped bind. The check was
+        # right and the splat was wrong.
+        "source_currency": basis.source_currency,
+        "fx_rate": basis.rate,
+        "fx_rate_id": basis.fx_rate_id,
+        "fx_rate_date": basis.rate_date,
+        "fx_rate_source": basis.rate_source,
+        # THE FLAG THE IMMUTABILITY TRIGGER KEYS ON, and NULL for an INR
+        # bill.
+        #
+        # `trg_bill_fx_basis_immutable` fires only once `fx_translated_at` is
+        # set, so a bill written with a basis and no timestamp is a basis the
+        # next UPDATE may quietly move -- which is why it is set in the SAME
+        # statement as the basis and never afterwards.
+        #
+        # AN INR BILL IS NOT TRANSLATED, AND SAYING SO COSTS NOTHING WHILE
+        # CLAIMING OTHERWISE COSTS A GREAT DEAL. It is the identity: one
+        # figure, no rate, no rounding, nothing derived from anything. Stamping
+        # it as translated would drag the entire existing estate -- every bill
+        # the product has ever mirrored -- inside a set of immutability rules
+        # written for DERIVED figures, and a vendor revising an ordinary rupee
+        # invoice from Rs 3,00,000 to Rs 3,20,000 would start being refused by
+        # a foreign-exchange control. The whole FX apparatus engages for a
+        # foreign-currency document and stays out of the way of every other
+        # one; see `_mirror_bill_line`'s `source_money` for the same rule at
+        # line level.
+        "fx_translated_at": None if basis.is_identity else moment,
         "actor": actor,
     }
     # `ux_bill_external` is PARTIAL. Both the columns AND the predicate, for
@@ -1187,14 +1454,19 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
             vendor_id, bill_date, accounting_status, is_reversal,
             reverses_bill_id, doc_type, connection_id, external_source,
             external_id, external_last_modified, payload_sha,
-            external_status_raw, created_by, updated_by)
+            external_status_raw, source_currency, fx_rate, fx_rate_id,
+            fx_rate_date, fx_rate_source, fx_translated_at,
+            created_by, updated_by)
         SELECT %(bill_id)s, %(bill_number)s, %(po_id)s, p.project_id,
                p.entity_id, %(vendor_name)s, %(vendor_id)s, %(bill_date)s,
                %(accounting_status)s, %(is_reversal)s, %(reverses_bill_id)s,
                %(doc_type)s, %(connection_id)s,
                %(external_source)s, %(external_id)s,
                %(external_last_modified)s, %(payload_sha)s,
-               %(external_status_raw)s, %(actor)s, %(actor)s
+               %(external_status_raw)s,
+               %(source_currency)s, %(fx_rate)s, %(fx_rate_id)s,
+               %(fx_rate_date)s, %(fx_rate_source)s, %(fx_translated_at)s,
+               %(actor)s, %(actor)s
         FROM project p
         WHERE p.project_id = %(project_id)s AND {{scope}}
         ON CONFLICT (connection_id, external_source, external_id)
@@ -1207,6 +1479,53 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
                       external_last_modified = EXCLUDED.external_last_modified,
                       payload_sha = EXCLUDED.payload_sha,
                       external_status_raw = EXCLUDED.external_status_raw,
+                      -- THE BASIS IS WRITTEN ONCE AND THEN NEVER AGAIN, and
+                      -- the CASE is what says so IN THE STATEMENT rather than
+                      -- in a comment above it.
+                      --
+                      -- Two populations meet on this conflict target. A bill
+                      -- mirrored BEFORE this change exists with
+                      -- `fx_translated_at IS NULL` and the 023 defaults
+                      -- standing in for a basis nobody supplied; it must be
+                      -- given one, and 023's trigger permits exactly that
+                      -- first write. A bill mirrored AFTER it is already
+                      -- translated, and re-basing it would move a posted CWIP
+                      -- figure -- so EXCLUDED is ignored and the stored value
+                      -- is written back to itself.
+                      --
+                      -- Writing the column to its own value rather than
+                      -- omitting it from the SET list is deliberate: omission
+                      -- reads as "we forgot this one", which is precisely how
+                      -- `po_id`, `po_line_id`, `wbs_id` and `budget_head_id`
+                      -- came to be missing from the line upsert below and left
+                      -- money posted against a control cell the source no
+                      -- longer named.
+                      --
+                      -- `trg_bill_fx_basis_immutable` (023:536) remains the
+                      -- backstop and now sees NEW = OLD on every replay, so it
+                      -- passes. Delete these four CASEs and it stops passing,
+                      -- which is the mutation this arrangement is meant to
+                      -- survive.
+                      source_currency = CASE
+                          WHEN {BILL}.fx_translated_at IS NULL
+                          THEN EXCLUDED.source_currency
+                          ELSE {BILL}.source_currency END,
+                      fx_rate = CASE
+                          WHEN {BILL}.fx_translated_at IS NULL
+                          THEN EXCLUDED.fx_rate ELSE {BILL}.fx_rate END,
+                      fx_rate_id = CASE
+                          WHEN {BILL}.fx_translated_at IS NULL
+                          THEN EXCLUDED.fx_rate_id ELSE {BILL}.fx_rate_id END,
+                      fx_rate_date = CASE
+                          WHEN {BILL}.fx_translated_at IS NULL
+                          THEN EXCLUDED.fx_rate_date
+                          ELSE {BILL}.fx_rate_date END,
+                      fx_rate_source = CASE
+                          WHEN {BILL}.fx_translated_at IS NULL
+                          THEN EXCLUDED.fx_rate_source
+                          ELSE {BILL}.fx_rate_source END,
+                      fx_translated_at = COALESCE({BILL}.fx_translated_at,
+                                                  EXCLUDED.fx_translated_at),
                       updated_at = now(),
                       updated_by = EXCLUDED.updated_by,
                       version_no = {BILL}.version_no + 1
@@ -1242,13 +1561,23 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
     # identical and no replay of an already-mirrored bill creates a second row
     # -- which matters more here than anywhere else in this module, because
     # `capex_app` has DELETE revoked and a duplicate could not be removed.
-    seen_keys: set[str] = set()
+    #
+    # `seen_keys` is consumed by `_bill_line_identity` in the pre-pass above,
+    # not here: the identities must be settled before the translation, because
+    # the allocation order is the derived `bill_line_id` and that id is built
+    # from the key.
     for index, line in enumerate(lines or ()):
         outcome = _mirror_bill_line(
             session, bill_id=bill_id, bill_external_id=external_id,
             po_id=po_id, po_external_id=po_external_id, line=line,
             index=index, project_id=project_id, entity_id=entity_id,
-            seen_keys=seen_keys, correlation_id=correlation_id, actor=actor,
+            identity=identities[index],
+            # None means "this document has one figure, not two". See
+            # `_mirror_bill_line`.
+            source_money=(None if basis.is_identity
+                          else source_money[index]),
+            base_money=line_base_money[index],
+            correlation_id=correlation_id, actor=actor,
             now=moment)
         if outcome["attributed"]:
             attributed += 1
@@ -1304,6 +1633,44 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
     # than inside `_supersede_withdrawn_bill_lines` alongside its UPDATE.
     svc.refresh_cells_after_ingest(session, touched_cells, actor=actor)
 
+    # THE TRANSLATION EVENT, AFTER THE LINES AND BEFORE THE AUDIT.
+    #
+    # AFTER, because the row asserts what was written and a row written before
+    # the writes would assert a thing that had not happened yet. BEFORE the
+    # audit appends below for Rule 3 of `locking.py`'s global order -- cells,
+    # then document rows, then the advisory audit lock last -- and
+    # `register_translation` appends to `audit_log` itself, so it belongs on
+    # this side of the boundary rather than scattered through the loop.
+    #
+    # WHAT IT ACTUALLY DOES ON A REPLAY, which is the ordinary case. It reads
+    # the row it wrote the first time, recomputes nothing, and compares: same
+    # basis and same source total means it returns `replayed` and writes
+    # nothing at all. A DIFFERENT source total is a REVISED vendor document and
+    # raises `FX_SOURCE_DOCUMENT_CHANGED` -- refused rather than re-derived,
+    # because the base figure was computed at a rate fixed on the bill date and
+    # re-deriving it from a new source amount is value drift with nothing
+    # recording it. That refusal is the one behaviour a foreign-currency bill
+    # gains that an INR bill does not have, and it is the requirement, not a
+    # regression: an INR bill is the identity translation, so a revised INR
+    # bill still re-mirrors exactly as it always did.
+    #
+    # NOT FOR AN INR BILL. There is no translation of an INR document to
+    # record: no rate was applied, no rounding was performed, and the base
+    # figure was not derived from anything. Writing an event row for it would
+    # do one thing only -- make every subsequent revision of an ordinary rupee
+    # invoice raise `FX_SOURCE_DOCUMENT_CHANGED`, because the source total
+    # would be the amount itself. That is not a control; it is a
+    # foreign-exchange rule applied to documents that have no foreign exchange
+    # in them, and it would break the ordinary revise-and-re-mirror path for
+    # the entire existing estate.
+    if not basis.is_identity:
+        fx_svc.register_translation(
+            session, document_type="BILL", document_id=bill_id,
+            entity_id=entity_id, basis=basis,
+            source_total_minor=sum(sum(cells) for cells in source_money),
+            base_total_paise=header_base_paise, line_count=len(identities),
+            actor=actor, correlation_id=correlation_id)
+
     _audit_superseded_bill_lines(
         session, bill_id=bill_id, bill_external_id=external_id,
         superseded=superseded, actor=actor, correlation_id=correlation_id)
@@ -1339,6 +1706,18 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
         "status_exception_id": status_exception,
         "accounting_status": accounting_status,
         "accounting_effective": accounting_status in ACCOUNTING_EFFECTIVE,
+        # THE TRANSLATION, REPORTED. `source_currency` and `base_paise` are
+        # what a sweep's progress detail can show an operator, and what a test
+        # asserts on to prove the rate reached the money rather than merely
+        # reaching a function.
+        "source_currency": basis.source_currency,
+        "fx_rate": str(basis.rate),
+        "fx_rate_id": basis.fx_rate_id,
+        "fx_rate_date": (basis.rate_date.isoformat()
+                         if basis.rate_date is not None else None),
+        "translated": not basis.is_identity,
+        "source_total_minor": sum(sum(cells) for cells in source_money),
+        "base_total_paise": header_base_paise,
     }
 
 
@@ -1346,7 +1725,9 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
                       bill_external_id: str, po_id: str | None,
                       po_external_id: str | None, line: Any, index: int,
                       project_id: str, entity_id: str | None,
-                      seen_keys: set[str] | None = None,
+                      identity: Mapping[str, Any],
+                      source_money: tuple[int, int, int] | None,
+                      base_money: tuple[int, int, int],
                       correlation_id: str | None = None, actor: str = "SVC-SWEEP",
                       now: datetime | None = None) -> dict[str, Any]:
     """One bill line: attributed to its PO line's control cell, or quarantined.
@@ -1372,53 +1753,45 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
     PO-line lookup above already claims `line_item_id`, and re-using that name
     for both would make the two identities the same value again.
     """
-    line_external_id = _text(_line_field(
-        line, "purchase_order_line_external_id", "po_line_external_id",
-        "line_external_id", "line_item_id", "purchaseorder_item_id"))
-    external_line_id = _text(_line_field(
-        line, "bill_line_external_id", "external_line_id", "line_id"))
-    # THE LINE'S OWN ID COMES FIRST, and reading it second was the defect.
-    # The docstring above already says these are two identities and that "only
-    # the second is an identity for this row" -- then the key was built from
-    # the FIRST. `bill_line_id` is `derived_id("BLL", bill_id, line_key)`, so
-    # two lines sharing one `po_line_external_id` were separated only by
-    # ARRIVAL ORDER through `seen_keys` below. Replay the same bill with the
-    # lines transposed and `BL-2` takes the id currently holding `BL-1`; the
-    # upsert below then writes external_line_id 'BL-2' onto it while the other
-    # row still holds 'BL-2', and `ux_bill_line_external` (014:537-539) refuses
-    # it. Ordering by the line's own id makes such a bill order-independent by
-    # construction, which is what the reordered replay has always claimed to
-    # prove.
+    # IDENTITY AND MONEY BOTH ARRIVE DECIDED. Both used to be computed here,
+    # and both had to move up into `mirror_bill`'s pre-pass for one reason: a
+    # foreign-currency bill is translated ONCE at the HEADER, and the header
+    # total is not knowable until every line has been read. The derivations
+    # themselves are unchanged to the character -- see `_bill_line_identity`
+    # and `_translate_bill_payload`. `bill_line_id` is
+    # `derived_id("BLL", bill_id, line_key)`, `capex_app` has DELETE revoked,
+    # and a key built even slightly differently would strand every row already
+    # written under the old one with no way to remove it.
+    line_external_id = identity["line_external_id"]
+    external_line_id = identity["external_line_id"]
+    line_key = identity["line_key"]
+    quarantine_key = identity["quarantine_key"]
+
+    # THE TWO FIGURES, AND WHICH IS WHICH. This is requirement 2 at the point
+    # where the two actually part company.
     #
-    # `line_external_id` REMAINS THE FALLBACK, so every id derived before 014
-    # is byte-identical: no row written then carried an `external_line_id` at
-    # all, the column not existing yet.
-    line_key = external_line_id or line_external_id or f"#{index}"
-    # See `mirror_bill`'s `seen_keys` note: two bill lines against ONE purchase
-    # order line are ordinary, and until this they collided on one derived id
-    # and the second overwrote the first. Only the repeat is disambiguated, so
-    # every id written before migration 014 is unchanged.
-    if seen_keys is not None:
-        if line_key in seen_keys:
-            line_key = f"{line_key}#{index}"
-        seen_keys.add(line_key)
-    # THE QUARANTINE KEY IS NOT `line_key`, and conflating them cost the money
-    # twice. `line_key` is derived from the PO LINE's external id whenever the
-    # line carries no id of its own -- and that is precisely the value that
-    # ARRIVES between passes, because an unresolved linkage becoming resolved
-    # is the ordinary sequence. So pass 1 raised
-    # `{bill}:{NOT-A-LINE}` and pass 2 tried to retract `{bill}:{ZPOL-5001}`,
-    # the two never met, and the exception stayed Open while the line posted:
-    # the value counted in `bill_line` AND in `open_exception_exposure`, with
-    # capitalisation blocked for ever on a line that is correctly posted.
+    # `base_money` is the TRANSLATED amount: INR base, integer paise, signed.
+    # It is what goes into `amount_paise`, `non_creditable_tax_paise` and
+    # `freight_paise` -- the three columns every rollup in the product sums --
+    # and until this change it held the vendor's UNTRANSLATED figure, which is
+    # AUD-H-007 stated as code.
     #
-    # This key is the LINE's own identity, ordinal where the source gave none,
-    # and is therefore stable across the linkage becoming known -- which is the
-    # same property the GRN half already had for free, its key being
-    # `{receive_external_id}:{line_external_id}` with no PO line in it.
-    quarantine_key = external_line_id or f"#{index}"
-    amount_paise = int(_line_field(
-        line, "line_total_paise", "amount_paise", "total_paise", default=0) or 0)
+    # `source_money` is what the VENDOR'S DOCUMENT says, in the SOURCE
+    # currency's own minor units: cents on a EUR bill, whole yen on a JPY one,
+    # fils on a KWD one. It goes into `source_amount_minor`,
+    # `source_tax_minor` and `source_freight_minor`, and 023's and 025's
+    # triggers refuse to change any of the three once set.
+    #
+    # `source_money is None` MEANS "THIS DOCUMENT HAS ONE FIGURE, NOT TWO",
+    # which is the INR case, which is almost every bill. The three source
+    # columns stay NULL exactly as 023 left them, `base_money` is the payload's
+    # own integers unmodified, and nothing about mirroring an ordinary rupee
+    # invoice changes -- including the ability to revise one and re-mirror it,
+    # which writing a source figure would have taken away. There is nothing to
+    # protect a derived figure from when no figure was derived.
+    amount_paise, tax_paise, freight_paise = base_money
+    source_amount_minor, source_tax_minor, source_freight_minor = (
+        source_money if source_money is not None else (None, None, None))
 
     po_line_id = None
     if po_external_id:
@@ -1464,10 +1837,15 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
         "wbs_id": wbs_id, "budget_head_id": budget_head_id,
         "description": _text(_line_field(line, "description")),
         "quantity": str(_line_field(line, "quantity", "qty", default="1")),
+        # TRANSLATED -- INR base paise, all three.
         "amount_paise": amount_paise,
-        "non_creditable_tax_paise": int(_line_field(
-            line, "non_creditable_tax_paise", default=0) or 0),
-        "freight_paise": int(_line_field(line, "freight_paise", default=0) or 0),
+        "non_creditable_tax_paise": tax_paise,
+        "freight_paise": freight_paise,
+        # SOURCE -- the vendor's own figures in the vendor's own minor units,
+        # or NULL throughout on an INR bill, which has only one figure.
+        "source_amount_minor": source_amount_minor,
+        "source_tax_minor": source_tax_minor,
+        "source_freight_minor": source_freight_minor,
         "po_line_external_id": line_external_id,
         "external_line_id": external_line_id,
         # The ORDINAL within this bill, 1-based. It is an input to
@@ -1509,12 +1887,15 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
         INSERT INTO {BILL_LINE} (
             bill_line_id, bill_id, po_id, po_line_id, wbs_id, budget_head_id,
             description, quantity, amount_paise, non_creditable_tax_paise,
-            freight_paise, po_line_external_id, external_line_id, line_no,
-            external_status_raw, created_by, updated_by)
+            freight_paise, source_amount_minor, source_tax_minor,
+            source_freight_minor, po_line_external_id, external_line_id,
+            line_no, external_status_raw, created_by, updated_by)
         SELECT %(bill_line_id)s, %(bill_id)s, %(po_id)s, %(po_line_id)s,
                %(wbs_id)s, %(budget_head_id)s, %(description)s,
                %(quantity)s::numeric, %(amount_paise)s,
                %(non_creditable_tax_paise)s, %(freight_paise)s,
+               %(source_amount_minor)s, %(source_tax_minor)s,
+               %(source_freight_minor)s,
                %(po_line_external_id)s, %(external_line_id)s, %(line_no)s,
                %(external_status_raw)s, %(actor)s, %(actor)s
         FROM {BILL} b
@@ -1528,9 +1909,52 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
                       po_line_external_id = EXCLUDED.po_line_external_id,
                       description = EXCLUDED.description,
                       quantity = EXCLUDED.quantity,
+                      -- THE SHARP EDGE, AND WHAT MAKES IT SAFE NOW.
+                      --
+                      -- These three columns were the whole of finding H-2. A
+                      -- re-mirror wrote the payload's UNTRANSLATED figure over
+                      -- a TRANSLATED one and `bill.fx_translated_at` went on
+                      -- asserting a translation the lines no longer carried.
+                      -- `trg_bill_line_source_amount_immutable` (023:557) was
+                      -- written to stop precisely that and COULD NOT: it fires
+                      -- only when `source_amount_minor` changes, ingestion
+                      -- never set that column, so NEW equalled OLD on every
+                      -- pass and the trigger passed while the money moved
+                      -- underneath it. The guard was not weak; it was
+                      -- unreachable.
+                      --
+                      -- Not a character of this clause changed. What changed
+                      -- is that EXCLUDED now HOLDS THE TRANSLATION --
+                      -- `mirror_bill` translates before this statement runs --
+                      -- so a replay writes the same translated figure back and
+                      -- the source columns below make the trigger reachable.
                       amount_paise = EXCLUDED.amount_paise,
                       non_creditable_tax_paise = EXCLUDED.non_creditable_tax_paise,
                       freight_paise = EXCLUDED.freight_paise,
+                      -- IN THE SET LIST DELIBERATELY. This is the load-bearing
+                      -- line of the H-2 repair, and omitting it would leave
+                      -- 023's trigger comparing OLD against OLD for ever.
+                      --
+                      -- With them present, a REVISED foreign-currency line --
+                      -- a source amount that genuinely moved -- makes NEW
+                      -- distinct from OLD and the DATABASE RAISES. That
+                      -- refusal is requirement 8 and it is deliberate: a base
+                      -- figure derived at the bill-date rate must never be
+                      -- silently re-derived from a new source amount.
+                      -- `fx.register_translation` refuses the same revision
+                      -- one layer up with a sentence naming both totals; this
+                      -- is the backstop for a caller that reaches the table
+                      -- another way -- the same relationship RLS has to
+                      -- `repo.compile_scope`.
+                      --
+                      -- AN INR BILL IS COMPLETELY UNAFFECTED. All three
+                      -- columns are NULL on both sides for it, so NEW is never
+                      -- distinct from OLD, the trigger never fires, and
+                      -- revising an ordinary rupee invoice and re-mirroring it
+                      -- works exactly as it always has.
+                      source_amount_minor = EXCLUDED.source_amount_minor,
+                      source_tax_minor = EXCLUDED.source_tax_minor,
+                      source_freight_minor = EXCLUDED.source_freight_minor,
                       external_line_id = EXCLUDED.external_line_id,
                       line_no = EXCLUDED.line_no,
                       updated_at = now(),
