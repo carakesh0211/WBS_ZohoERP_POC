@@ -52,6 +52,7 @@ from app.backend.integration.adapter import (
     verified_dedupe_match,
     window_params,
 )
+from app.backend.money import CURRENCY_EXPONENT, minor_exponent_of
 from app.backend.integration.dto import (
     BillDTO,
     ContactDTO,
@@ -601,7 +602,8 @@ class ErpAdapter:
 
 
 # ================================================================== mapping
-def _lines(rows: Sequence[Mapping[str, Any]], *, po_line_key: str) -> tuple[LineDTO, ...]:
+def _lines(rows: Sequence[Mapping[str, Any]], *, po_line_key: str,
+           minor_exponent: int = CURRENCY_EXPONENT) -> tuple[LineDTO, ...]:
     out = []
     for index, row in enumerate(rows, start=1):
         out.append(LineDTO(
@@ -609,9 +611,12 @@ def _lines(rows: Sequence[Mapping[str, Any]], *, po_line_key: str) -> tuple[Line
             line_number=int(row.get("line_number") or index),
             description=str(row.get("description") or row.get("name") or ""),
             quantity=quantity(row.get("quantity"), field="line.quantity"),
-            unit_price_paise=paise(row.get("rate"), field="line.rate"),
-            line_total_paise=paise(row.get("item_total"), field="line.item_total"),
-            tax_paise=paise(row.get("tax_total"), field="line.tax_total", allow_missing=True),
+            unit_price_paise=paise(row.get("rate"), field="line.rate",
+                                  minor_exponent=minor_exponent),
+            line_total_paise=paise(row.get("item_total"), field="line.item_total",
+                                  minor_exponent=minor_exponent),
+            tax_paise=paise(row.get("tax_total"), field="line.tax_total",
+                            allow_missing=True, minor_exponent=minor_exponent),
             item_external_id=_opt_str(row.get("item_id")),
             # AUD-H-004. Documented does not mean populated: when the source
             # omits the linkage this stays None and becomes a
@@ -625,6 +630,12 @@ def _lines(rows: Sequence[Mapping[str, Any]], *, po_line_key: str) -> tuple[Line
 
 
 def _bill(row: Mapping[str, Any], source: SourceRef, *, hydrated: bool) -> BillDTO:
+    # THE DOCUMENT'S OWN SCALE, resolved once and used for both the
+    # header and the lines. `to_paise` multiplied by 100 regardless,
+    # so a JPY document (exponent 0) was booked a hundred times too
+    # high and a KWD one (exponent 3) ten times too low -- and both
+    # are seeded as supported in migration 023.
+    _exp = minor_exponent_of(str(row.get("currency_code") or "INR"))
     return BillDTO(
         source=source,
         external_id=str(row["bill_id"]),
@@ -635,21 +646,27 @@ def _bill(row: Mapping[str, Any], source: SourceRef, *, hydrated: bool) -> BillD
         vendor_external_id=_opt_str(row.get("vendor_id")),
         vendor_name=str(row.get("vendor_name") or ""),
         currency_code=str(row.get("currency_code") or "INR"),
-        subtotal_paise=paise(row.get("sub_total"), field="bill.sub_total"),
-        tax_paise=paise(row.get("tax_total"), field="bill.tax_total", allow_missing=True),
-        total_paise=paise(row.get("total"), field="bill.total"),
+        subtotal_paise=paise(row.get("sub_total"), field="bill.sub_total", minor_exponent=_exp),
+        tax_paise=paise(row.get("tax_total"), field="bill.tax_total", allow_missing=True, minor_exponent=_exp),
+        total_paise=paise(row.get("total"), field="bill.total", minor_exponent=_exp),
         # Stored verbatim and never overwritten (C3/§8.4). An unmapped raw
         # value raises UNMAPPED_EXTERNAL_STATUS upstream; it is never guessed.
         external_status_raw=str(row.get("status") or ""),
         purchase_order_external_ids=tuple(
             str(x) for x in (row.get("purchaseorder_ids") or [])),
-        lines=_lines(row.get("line_items") or (), po_line_key="purchaseorder_item_id"),
+        lines=_lines(row.get("line_items") or (), po_line_key="purchaseorder_item_id", minor_exponent=_exp),
         lines_hydrated=hydrated,
         raw=freeze(row),
     )
 
 
 def _purchase_order(row: Mapping[str, Any], source: SourceRef, *, hydrated: bool) -> PurchaseOrderDTO:
+    # THE DOCUMENT'S OWN SCALE, resolved once and used for both the
+    # header and the lines. `to_paise` multiplied by 100 regardless,
+    # so a JPY document (exponent 0) was booked a hundred times too
+    # high and a KWD one (exponent 3) ten times too low -- and both
+    # are seeded as supported in migration 023.
+    _exp = minor_exponent_of(str(row.get("currency_code") or "INR"))
     return PurchaseOrderDTO(
         source=source,
         external_id=str(row["purchaseorder_id"]),
@@ -660,14 +677,14 @@ def _purchase_order(row: Mapping[str, Any], source: SourceRef, *, hydrated: bool
         vendor_external_id=_opt_str(row.get("vendor_id")),
         vendor_name=str(row.get("vendor_name") or ""),
         currency_code=str(row.get("currency_code") or "INR"),
-        subtotal_paise=paise(row.get("sub_total"), field="po.sub_total"),
-        tax_paise=paise(row.get("tax_total"), field="po.tax_total", allow_missing=True),
-        total_paise=paise(row.get("total"), field="po.total"),
+        subtotal_paise=paise(row.get("sub_total"), field="po.sub_total", minor_exponent=_exp),
+        tax_paise=paise(row.get("tax_total"), field="po.tax_total", allow_missing=True, minor_exponent=_exp),
+        total_paise=paise(row.get("total"), field="po.total", minor_exponent=_exp),
         external_status_raw=str(row.get("status") or ""),
         receive_external_ids=tuple(
             str(r.get("receive_id")) for r in (row.get("purchasereceives") or [])
             if r.get("receive_id")),
-        lines=_lines(row.get("line_items") or (), po_line_key="line_item_id"),
+        lines=_lines(row.get("line_items") or (), po_line_key="line_item_id", minor_exponent=_exp),
         lines_hydrated=hydrated,
         dedupe_key=_custom_field(row, DEDUPE_CUSTOM_FIELD),
         raw=freeze(row),
@@ -684,7 +701,14 @@ def _receive(row: Mapping[str, Any], source: SourceRef, *, fallback_po: str) -> 
             row.get("last_modified_time"), field="receive.last_modified_time"),
         purchase_order_external_id=_opt_str(row.get("purchaseorder_id")) or fallback_po,
         external_status_raw=str(row.get("status") or ""),
-        lines=_lines(row.get("line_items") or (), po_line_key="line_item_id"),
+        lines=# NO EXPONENT, because there is nothing to resolve one from.
+        # `ReceiveDTO` is the only inbound money-document DTO with no
+        # `currency_code` -- a reported contract gap -- so a receive is
+        # parsed at the base scale. A foreign-currency receipt is
+        # therefore booked at face value into `received_paise`, which is
+        # that gap's consequence and not something to paper over by
+        # inventing a currency the contract does not carry.
+        _lines(row.get("line_items") or (), po_line_key="line_item_id"),
         raw=freeze(row),
     )
 

@@ -85,6 +85,8 @@ BASE_CURRENCY = "INR"
 
 #: INR's own minor-unit exponent. Paise are hundredths, so the product of a
 #: translation is quantised at 1e-2 rupees and nothing else.
+from .. import money as _money
+
 BASE_MINOR_EXPONENT = 2
 
 #: Declared scale of ``fx_rate.rate`` and ``bill.fx_rate``, both
@@ -105,10 +107,11 @@ MAX_RATE = Decimal(10) ** 10
 #: with no PostgreSQL, which is every workstation here, and
 #: ``tests/test_pg_fx.py::test_the_seeded_exponents_mirror_the_migration``
 #: parses the migration's own INSERT and fails if the two drift.
-SEEDED_MINOR_EXPONENTS: dict[str, int] = {
-    "INR": 2, "USD": 2, "EUR": 2, "GBP": 2, "AED": 2, "SGD": 2,
-    "CHF": 2, "AUD": 2, "CNY": 2, "JPY": 0, "KWD": 3,
-}
+#: AN ALIAS, NOT A COPY. The table moved to `money.py` when the ingestion
+#: boundary needed it too -- `integration/` importing from `pg/` would invert
+#: the layering -- and aliasing rather than duplicating is what makes drift
+#: between the two impossible rather than merely tested for.
+SEEDED_MINOR_EXPONENTS: dict[str, int] = _money.MINOR_EXPONENTS
 
 #: Policy keys and their WORKING DEFAULTS, used when the row cannot be read.
 #:

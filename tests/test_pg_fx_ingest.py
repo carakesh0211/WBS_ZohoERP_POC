@@ -1205,3 +1205,88 @@ def test_a_revaluation_delta_is_measured_against_the_base_the_ledger_reports(see
     assert result["outcome"] == "REFUSED"
     assert result["delta_paise"] == (
         result["proposed_base_paise"] - result["booked_base_paise"])
+
+
+# ======================================================================
+# The ingestion boundary parsed every currency as if it had two decimals
+# ======================================================================
+#
+# `dto.paise()` called `money.to_paise()`, which was hardcoded `dec * 100`.
+# `fx.translate_to_base_paise` then scaled by `2 - source_minor_exponent`,
+# because its contract is "integers in the SOURCE currency's own minor units".
+# Nothing enforced that contract and the ingest path violated it:
+#
+#   JPY 1000 yen  -> parsed as 100000 minor units, then scaled x100  = x100 too high
+#   KWD 1.234     -> parsed as 123 (a decimal lost), then scaled /10 = x0.0997
+#
+# Both are seeded as supported in migration 023, so the engine advertised
+# currencies its own parser could not represent. `money.CURRENCY_EXPONENT = 2`
+# had been declared and unused since the first wave.
+
+def test_each_currency_is_parsed_at_its_own_scale():
+    from app.backend.integration import dto as dto_mod
+    from app.backend.money import minor_exponent_of
+
+    cases = [
+        ("EUR", "100000.00", 10000000),   # 2dp, unchanged
+        ("USD", "1.00", 100),
+        ("JPY", "1000", 1000),            # 0dp: yen ARE the minor unit
+        ("KWD", "1.234", 1234),           # 3dp: fils
+        ("INR", "1000.00", 100000),
+    ]
+    for code, amount, expected in cases:
+        exponent = minor_exponent_of(code)
+        got = dto_mod.paise(amount, field=f"{code}.amount",
+                            minor_exponent=exponent)
+        assert got == expected, (
+            f"{code} {amount} parsed to {got} minor units, expected {expected} "
+            f"(exponent {exponent})")
+
+
+def test_an_unknown_currency_falls_back_to_the_base_exponent_rather_than_raising():
+    """The parsing boundary must not be where an unknown currency dies.
+
+    A document in an unrecognised currency should reach the FX engine, which
+    refuses it with a coded error naming the missing `currency_denomination`
+    row. Raising a KeyError here would turn a business refusal into a 500.
+    """
+    from app.backend.money import CURRENCY_EXPONENT, minor_exponent_of
+    assert minor_exponent_of("ZZZ") == CURRENCY_EXPONENT
+    assert minor_exponent_of(None) == CURRENCY_EXPONENT
+    assert minor_exponent_of("") == CURRENCY_EXPONENT
+
+
+def test_the_exponent_table_is_one_object_shared_with_the_fx_engine():
+    """Aliased, not copied, so the two cannot drift.
+
+    The table lived in `pg/fx.py`. The ingestion boundary needed it too, and
+    `integration/` importing from `pg/` would invert the layering -- so it
+    moved to `money.py`, which owns what a monetary value is. `fx` now aliases
+    it. `test_the_seeded_exponents_mirror_the_migration` still guards the one
+    remaining definition against migration 023's own INSERT.
+    """
+    from app.backend import money
+    from app.backend.pg import fx as fx_mod
+    assert fx_mod.SEEDED_MINOR_EXPONENTS is money.MINOR_EXPONENTS
+
+
+def test_the_mappers_pass_the_document_currency_to_its_own_money_fields():
+    """The parameter existing is not the fix; something has to pass it.
+
+    `money.CURRENCY_EXPONENT` sat declared and unused for eight waves, which is
+    exactly what an unpassed parameter looks like. This reads the mappers and
+    asserts each resolves an exponent from the document's currency.
+    """
+    import re
+    from pathlib import Path
+
+    for path in ("app/backend/integration/erp.py",
+                 "app/backend/integration/books_inventory.py"):
+        source = Path(path).read_text(encoding="utf-8")
+        assert "minor_exponent_of(" in source, (
+            f"{path} never resolves a currency exponent, so every document is "
+            "parsed as if it had two decimals")
+        # Both document mappers, not just one.
+        assert len(re.findall(r"_exp = minor_exponent_of\(", source)) >= 2, path
+        assert "minor_exponent=_exp" in source, (
+            f"{path} resolves an exponent and does not use it")

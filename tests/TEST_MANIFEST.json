@@ -7172,6 +7172,22 @@
       "test_a_revaluation_delta_is_measured_against_the_base_the_ledger_reports": {
         "assertions": 5,
         "body_sha": "e6449d0dffbb01e8"
+      },
+      "test_each_currency_is_parsed_at_its_own_scale": {
+        "assertions": 1,
+        "body_sha": "06541a5657d2486c"
+      },
+      "test_an_unknown_currency_falls_back_to_the_base_exponent_rather_than_raising": {
+        "assertions": 3,
+        "body_sha": "e485397b93d1d0eb"
+      },
+      "test_the_exponent_table_is_one_object_shared_with_the_fx_engine": {
+        "assertions": 1,
+        "body_sha": "a6d2e4fe0370f2a2"
+      },
+      "test_the_mappers_pass_the_document_currency_to_its_own_money_fields": {
+        "assertions": 3,
+        "body_sha": "e9b5ee7184a4d166"
       }
     },
     "test_pg_integration_rate_budget.py": {
@@ -11744,7 +11760,7 @@
     "test_pg_exports.py": 49,
     "test_pg_fixture_guard.py": 3,
     "test_pg_fx.py": 34,
-    "test_pg_fx_ingest.py": 47,
+    "test_pg_fx_ingest.py": 51,
     "test_pg_integration_rate_budget.py": 21,
     "test_pg_integration_schema.py": 81,
     "test_pg_locking.py": 17,
@@ -11858,7 +11874,7 @@
     "test_pg_exports.py": 138,
     "test_pg_fixture_guard.py": 3,
     "test_pg_fx.py": 89,
-    "test_pg_fx_ingest.py": 128,
+    "test_pg_fx_ingest.py": 136,
     "test_pg_integration_rate_budget.py": 109,
     "test_pg_integration_schema.py": 132,
     "test_pg_locking.py": 36,

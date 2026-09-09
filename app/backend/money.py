@@ -19,17 +19,57 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP, localcontext
 MAX_PAISE = 10 ** 18          # ~1e16 rupees
 CURRENCY_EXPONENT = 2         # INR: 2 decimal places
 
+#: ISO 4217 minor-unit exponents, mirroring migration 023's
+#: ``currency_denomination`` seed.
+#:
+#: THIS LIVES HERE, in the module that owns what a monetary value is, because
+#: BOTH the ingestion boundary (`integration/dto.py`) and the translation
+#: engine (`pg/fx.py`) need it, and `integration/` importing from `pg/` would
+#: invert the layering. `fx.SEEDED_MINOR_EXPONENTS` is an alias of this dict,
+#: not a copy, so the two cannot drift; the database remains the source of
+#: truth and `fx.minor_exponent()` still reads the table.
+#:
+#: Not every currency is two decimals, and assuming so is not a rounding error:
+#: a yen amount parsed as if it had two decimals is booked a HUNDRED TIMES too
+#: high, and a dinar ten times too low.
+MINOR_EXPONENTS: dict[str, int] = {
+    "INR": 2, "USD": 2, "EUR": 2, "GBP": 2, "AED": 2, "SGD": 2,
+    "CHF": 2, "AUD": 2, "CNY": 2, "JPY": 0, "KWD": 3,
+}
+
+
+def minor_exponent_of(currency_code: str | None) -> int:
+    """How many decimal places `currency_code` has, defaulting to INR's two.
+
+    An unknown code returns the base exponent rather than raising: this is the
+    PARSING boundary, and a document in an unrecognised currency should reach
+    the FX engine -- which refuses it with a coded error naming the missing
+    `currency_denomination` row -- rather than dying here with a KeyError.
+    """
+    if not currency_code:
+        return CURRENCY_EXPONENT
+    return MINOR_EXPONENTS.get(str(currency_code).strip().upper(),
+                               CURRENCY_EXPONENT)
+
 
 class MoneyError(ValueError):
     """Raised when a monetary input cannot be represented exactly."""
 
 
-def to_paise(value, *, field: str = "amount", allow_negative: bool = False) -> int:
+def to_paise(value, *, field: str = "amount", allow_negative: bool = False,
+             minor_exponent: int = CURRENCY_EXPONENT) -> int:
     """Convert a user/API supplied amount in rupees to integer paise.
 
     Accepts str, int, Decimal. A float is accepted only when it is exactly
     representable at 2dp, because silently rounding a float is how the original
     defect happened; anything else is rejected so the caller sends a string.
+
+    `minor_exponent` is the number of decimal places the SOURCE currency has,
+    defaulting to INR's two so every existing caller is unchanged. It is not
+    cosmetic: this function was hardcoded to multiply by 100, so a JPY amount
+    (exponent 0) was booked a hundred times too high and a KWD amount
+    (exponent 3) ten times too low with a decimal silently dropped -- and both
+    currencies are seeded as supported.
     """
     if value is None:
         raise MoneyError(f"{field} is required.")
@@ -74,7 +114,11 @@ def to_paise(value, *, field: str = "amount", allow_negative: bool = False) -> i
     try:
         with localcontext() as ctx:
             ctx.prec = 34                   # IEEE decimal128: ample for CAPEX values
-            paise = (dec * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+            # SCALED BY THE CURRENCY'S OWN EXPONENT, not always by 100.
+            # `minor_exponent` defaults to INR's 2, so every existing caller
+            # is unchanged; a JPY amount passes 0 and a KWD amount 3.
+            paise = (dec * (10 ** minor_exponent)).quantize(
+                Decimal("1"), rounding=ROUND_HALF_UP)
     except InvalidOperation as exc:
         raise MoneyError(f"{field} is not a valid supported amount.") from exc
 

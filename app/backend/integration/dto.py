@@ -34,7 +34,8 @@ from datetime import date, datetime, timedelta, timezone
 from types import MappingProxyType
 from typing import Any, Generic, Literal, Mapping, TypeVar
 
-from app.backend.money import MoneyError, to_paise
+from app.backend.money import (CURRENCY_EXPONENT, MoneyError,
+                               minor_exponent_of, to_paise)
 
 __all__ = [
     "PRODUCTS",
@@ -90,7 +91,8 @@ def _EMPTY_MAPPING() -> Mapping[str, Any]:
     return MappingProxyType({})
 
 
-def paise(value: Any, *, field: str, allow_missing: bool = False) -> int:
+def paise(value: Any, *, field: str, allow_missing: bool = False,
+          minor_exponent: int = CURRENCY_EXPONENT) -> int:
     """A source monetary value as integer paise.
 
     ``value`` is expected to be a decimal *string* -- the transport parses JSON
@@ -107,7 +109,8 @@ def paise(value: Any, *, field: str, allow_missing: bool = False) -> int:
             f"{field} arrived as a float ({value!r}). Money must never exist as "
             f"a float: parse the source JSON with parse_float=str.")
     try:
-        return to_paise(value, field=field, allow_negative=True)
+        return to_paise(value, field=field, allow_negative=True,
+                        minor_exponent=minor_exponent)
     except MoneyError as exc:
         raise DtoError(str(exc)) from exc
 
