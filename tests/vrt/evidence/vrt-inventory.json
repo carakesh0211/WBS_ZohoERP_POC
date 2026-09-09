@@ -12,6 +12,7 @@
     "nav-rail-budget.spec.js",
     "settings.spec.js",
     "spa-routing.spec.js",
+    "uat-roles.spec.js",
     "vrt-inventory.spec.js"
   ],
   "baselines": {
