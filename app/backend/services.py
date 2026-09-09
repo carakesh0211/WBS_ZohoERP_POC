@@ -173,8 +173,45 @@ def create_pr(con, actor: dict, *, project_id, wbs_id, budget_head_id, descripti
         return {"pr_id": pid, "pr_number": num, "status": status, "check": chk}
 
 
+def actor_holds(actor: dict, permission: str) -> bool:
+    """Whether `actor` holds `permission`, as a question rather than a refusal.
+
+    `auth.require` raises, which is right at an enforcement point and wrong
+    when the caller needs to CHOOSE between permissions. Same source of truth:
+    `auth.PERMISSIONS`, read through the same role intersection, so this cannot
+    drift from what `require` would decide.
+    """
+    allowed = auth.PERMISSIONS.get(permission)
+    if allowed is None:
+        return False
+    return bool(set(actor.get("roles", ())) & set(allowed))
+
+
+#: The two permissions either of which entitles a caller to ASK about a
+#: purchase request's approvability. Which one is actually REQUIRED depends on
+#: the row -- see `approve_pr` -- so this coarse set exists to gate the read
+#: that determines it.
+_PR_APPROVAL_PERMISSIONS = ("pr.approve", "pr.approve_exception")
+
+
 def approve_pr(con, actor: dict, pr_id: str, *, reason: str | None):
     with critical(con):
+        # COARSE GATE FIRST, so the reads below cannot answer a caller who was
+        # never entitled to ask. `_row` raises 404 for an unknown id and the
+        # status check raises 409 naming the pr_number and status -- both of
+        # which told a principal holding NEITHER approval permission whether an
+        # id exists and what state it is in.
+        #
+        # It has to be coarse: the permission this call really requires is
+        # `pr.approve` or `pr.approve_exception` depending on the row's
+        # `check_result`, which is not knowable until the row is read. So a
+        # caller must hold at least one of the two to get that far, and the
+        # specific requirement is enforced unchanged below. A holder of only
+        # `pr.approve_exception` approving a within-budget request is still
+        # refused there, with the same code and message as before.
+        if not any(actor_holds(actor, p) for p in _PR_APPROVAL_PERMISSIONS):
+            auth.require(actor, _PR_APPROVAL_PERMISSIONS[0])
+
         pr = _row(con, "SELECT * FROM purchase_request WHERE pr_id=?", (pr_id,),
                   "PR_NOT_FOUND", f"Purchase request {pr_id} does not exist.")
         if pr["status"] not in ("Submitted", "Under Review", "Exception Pending"):

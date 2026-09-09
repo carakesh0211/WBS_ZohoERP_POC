@@ -394,6 +394,14 @@ POST_BASELINE_FILES = {
     # softened into something a reader could mistake for one.
     "test_pg_reporting.py",
 
+    # `test_security_approval_oracle.py` -- `approve_pr` read the row and
+    # checked its status BEFORE checking whether the caller could approve
+    # anything, so a principal holding neither approval permission learned
+    # whether an id existed (404) and what state it was in (409, naming the
+    # pr_number). Two of its five tests fail if the coarse gate is removed;
+    # the docstrings say which, and which one does not.
+    "test_security_approval_oracle.py",
+
     # --- Wave 8 security and audit closure --------------------------------
     # Six files from the Wave 8 security stream. Registered here by the LEAD
     # because that stream owns none of `tools/`, and its agent stopped at a

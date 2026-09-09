@@ -10954,6 +10954,28 @@
         "body_sha": "f2a1d5cd9af4c39e"
       }
     },
+    "test_security_approval_oracle.py": {
+      "test_a_caller_with_no_approval_permission_is_refused_before_the_row_is_read": {
+        "assertions": 1,
+        "body_sha": "4a0f138cabccadd6"
+      },
+      "test_a_caller_with_no_approval_permission_learns_nothing_about_a_real_pr": {
+        "assertions": 2,
+        "body_sha": "a5c398b1435c5836"
+      },
+      "test_the_refusal_does_not_distinguish_a_real_id_from_an_invented_one": {
+        "assertions": 1,
+        "body_sha": "bbbd54c355927406"
+      },
+      "test_an_approver_still_reaches_the_not_found_answer": {
+        "assertions": 1,
+        "body_sha": "faa89977ecfbd171"
+      },
+      "test_actor_holds_agrees_with_require_for_every_permission_and_role": {
+        "assertions": 1,
+        "body_sha": "e713b00e75e517cb"
+      }
+    },
     "test_security_audit_anchor.py": {
       "test_the_anchor_payload_is_the_frozen_format": {
         "assertions": 1,
@@ -11353,6 +11375,7 @@
     "test_scope_enforcement.py": 10,
     "test_scope_negative_matrix.py": 25,
     "test_scope_sentinel.py": 29,
+    "test_security_approval_oracle.py": 5,
     "test_security_audit_anchor.py": 25,
     "test_security_frontend.py": 11,
     "test_security_identity.py": 10,
@@ -11463,6 +11486,7 @@
     "test_scope_enforcement.py": 12,
     "test_scope_negative_matrix.py": 82,
     "test_scope_sentinel.py": 54,
+    "test_security_approval_oracle.py": 6,
     "test_security_audit_anchor.py": 70,
     "test_security_frontend.py": 22,
     "test_security_identity.py": 18,
