@@ -41,7 +41,8 @@
    The brief asks for a permission-gated reveal of NON-SECRET OPERATIONAL
    DETAIL, and that is what this is: correlation id, stream key, sequence
    number and chain hash, collapsed per row and offered to a principal holding
-   `connector.read`.
+   `audit.read` — the permission the audit router itself enforces. See
+   REVEAL_PERMISSION below for why it is not `connector.read`.
 
    It is stated on the screen as what it is — a disclosure of clutter, not a
    security boundary. The server decided the contents of the response before
@@ -76,8 +77,24 @@ import {
 
 const LIMIT = 50;
 
-/** The permission that opens the per-row operational detail. Presentational. */
-const REVEAL_PERMISSION = 'connector.read';
+/**
+ * The permission that opens the per-row operational detail. Presentational.
+ *
+ * `audit.read`, NOT `connector.read`, and the difference is the whole of
+ * finding L2. The rows this screen shows come from `GET /api/audit/entries`
+ * and `GET /api/audit/chain/verify`, and that router enforces `audit.read`
+ * (`app/backend/api/audit.py`, the router-level `require_audit_read`
+ * dependency). Gating the screen on a DIFFERENT permission than the API
+ * enforces is a latent defect, not a live one: both are held today by exactly
+ * `Administrator` and `Auditor` (`app/backend/auth.py`), so the two sets are
+ * identical and `state.canReveal` is unconditionally true. The day somebody
+ * grants `connector.read` to a third role — an integration operator, say —
+ * this screen would offer a control the API refuses, and the user would meet
+ * a 403 the interface had just told them they were entitled to.
+ *
+ * The screen now asks for the permission the server actually checks.
+ */
+const REVEAL_PERMISSION = 'audit.read';
 
 /**
  * The result of one recorded action, read from the fields the server sent.
