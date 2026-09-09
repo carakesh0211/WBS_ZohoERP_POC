@@ -76,6 +76,27 @@ MUTATING_ROUTES = [
     ("/api/budget/periods/{period_id}/transition", "POST",
      "/api/budget/periods/AP-2026-07/transition", {"to_state": "OPEN"},
      "period.transition", "Requestor"),
+    # Wave 8: the approval-gated reopen (AUD-C-008 residual). All three sit
+    # behind `period.transition` and NOT behind a `period.reopen` of their own,
+    # because `auth.PERMISSIONS` has no such key and `auth.require` answers
+    # 500 UNKNOWN_PERMISSION for one it does not know. Registering
+    # `period.reopen` (in PERMISSIONS and in MAKER_CHECKER) is a one-line
+    # change in `app/backend/auth.py`, which Wave 8 stream A does not own; the
+    # permission named here moves with it. What actually decides a reopen is an
+    # APPROVED approval_instance bound to the period plus the refusal of its
+    # closer as approver and as applier -- none of which is a permission.
+    ("/api/budget/periods/{period_id}/reopen-requests", "POST",
+     "/api/budget/periods/AP-2026-07/reopen-requests",
+     {"approval_instance_id": "AI-1", "reason": "closed a day early",
+      "idempotency_key": "k1"},
+     "period.transition", "Requestor"),
+    ("/api/budget/period-reopen-requests/{reopen_id}/apply", "POST",
+     "/api/budget/period-reopen-requests/RO-1/apply", {},
+     "period.transition", "Requestor"),
+    ("/api/budget/period-reopen-requests/{reopen_id}/refuse", "POST",
+     "/api/budget/period-reopen-requests/RO-1/refuse",
+     {"refusal_code": "NOT_MATERIAL"},
+     "period.transition", "Requestor"),
     ("/api/budget/revisions", "POST", "/api/budget/revisions",
      {"wbs_id": "WBS-A-CIVIL", "budget_head_id": "BH-DM1-CIVIL",
       "delta_paise": 100000, "effective_from": "2026-09-01",

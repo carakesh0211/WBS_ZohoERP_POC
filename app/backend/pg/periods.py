@@ -1,11 +1,27 @@
-"""Fiscal period state machine and the budget-roll at period open.
+"""Fiscal period state machine, the budget-roll at period open, and the
+approval-gated reopening of a closed period.
 
 See ``.claude/skills/wbs-full-app-builder/references/domain-controls.md``,
 "Fiscal periods": ``accounting_period`` states are ``FUTURE -> OPEN ->
-SOFT_CLOSED -> CLOSED`` (forward-only; there is no reopen in this milestone),
-``roll_period_effective_budget`` moves amounts between ``budget_paise`` and
-``future_budget_paise`` at period open, one entity per invocation, and a
-period cannot close while an Open reconciliation exception exists.
+SOFT_CLOSED -> CLOSED``, ``roll_period_effective_budget`` moves amounts between
+``budget_paise`` and ``future_budget_paise`` at period open, one entity per
+invocation, and a period cannot close while an Open reconciliation exception
+exists.
+
+REOPENING (AUD-C-008 residual, migration 023). The ordinary state machine is
+still forward-only and CLOSED is still terminal within it -- see
+:data:`_ALLOWED_TRANSITIONS`, which is deliberately NOT widened. A reopen is
+not a transition a caller may ask :func:`transition_period` for; it is its own
+two-step path, :func:`request_period_reopen` then :func:`apply_period_reopen`,
+gated on an APPROVED ``approval_instance`` bound to that very period and
+refused when the approver or the applier is the person who closed it.
+
+Why it exists at all, given "there is no reopen in this milestone" was a
+defensible position: a control that does not exist cannot be defeated, but a
+period closed a day early still has to be reopened by somebody, and the shape
+that arrives when the product has no path for it is a hand-run UPDATE against
+the state column -- which no approval gates, no scope filters and no audit
+chain records.
 
 ``reconciliation_exception`` does not exist yet in this schema -- it is a
 later milestone's table. :func:`_has_open_reconciliation_exceptions` checks
@@ -15,22 +31,53 @@ brief), not a hard dependency on a table nobody has created.
 """
 from __future__ import annotations
 
+import uuid
 from datetime import date, datetime, timezone
 from typing import Any
 
+from .. import auth as auth_mod
 from . import audit as audit_mod
 from . import repo
+from .approval_rules import ACTION_APPROVE, INST_APPROVED
 from .budget import recompute_cell
 from .engine import Session
 from .locking import lock_affected_cells
 
-#: Forward-only. There is no reopen path in this milestone.
+#: Forward-only, and CLOSED stays terminal HERE even though migration 023 adds
+#: a reopen path.
+#:
+#: WIDENING THIS MAPPING WITH ``"CLOSED": {"OPEN"}`` WOULD HAVE BEEN THE WHOLE
+#: FEATURE AND WOULD ALSO HAVE BEEN THE DEFECT. `transition_period` is reached
+#: from `POST /api/budget/periods/{id}/transition` behind the
+#: `period.transition` permission, which two roles hold; adding CLOSED -> OPEN
+#: to this table would make reopening a closed period exactly as easy as
+#: soft-closing an open one, gated by a permission and nothing else. AUD-C-008
+#: is that a reopen must be gated by an APPROVED APPROVAL INSTANCE, and an
+#: approval cannot be expressed as an entry in a state table.
+#:
+#: So the reopen is a separate entry point with its own request row, its own
+#: approval binding and its own separation-of-duties check, and this mapping is
+#: left saying what it has always said. `apply_period_reopen` is the ONLY
+#: writer of `state = 'OPEN'` over a CLOSED period, and
+#: `tests/test_pg_periods_reopen.py` holds that.
 _ALLOWED_TRANSITIONS: dict[str, set[str]] = {
     "FUTURE": {"OPEN"},
     "OPEN": {"SOFT_CLOSED"},
     "SOFT_CLOSED": {"CLOSED"},
     "CLOSED": set(),
 }
+
+#: The approval object type a reopen instance must be bound to.
+#:
+#: An instance for ANOTHER object cannot authorise this one: `object_type` and
+#: `object_id` are both checked, so an approval granted for a purchase request
+#: -- or for a DIFFERENT period -- is refused rather than counted.
+REOPEN_OBJECT_TYPE = "ACCOUNTING_PERIOD"
+
+#: The permission name the reopen path passes to `auth.require_separation`.
+#:
+#: READ THE NOTE ON :func:`_refuse_self_approval` BEFORE ASSUMING THIS FIRES.
+REOPEN_PERMISSION = "period.reopen"
 
 #: Expected shape once it lands: `entity_id` (scoping) and `status` (with an
 #: 'Open' value). Checked against `information_schema` rather than caught via
@@ -418,3 +465,400 @@ def roll_period_effective_budget(session: Session, period_id: str, *,
         f"recomputed as of {period_start}")
 
     return {"period_id": period_id, "entity_id": entity_id, "cells_recomputed": cells_recomputed}
+
+
+# ===========================================================================
+# AUD-C-008 residual: reopening a CLOSED period
+#
+# Two steps, not one, and the split is the control rather than ceremony.
+# A request NAMES the approval instance it will be authorised by and FREEZES
+# the identity of whoever closed the period; the apply demands that instance be
+# APPROVED and refuses if either the approver or the applier is that identity.
+# Collapsing the two would mean the separation check read
+# `accounting_period.closed_by` at apply time -- a column the NEXT close
+# overwrites, which is not an identity a control can be checked against.
+# ===========================================================================
+def _new_reopen_id() -> str:
+    return f"RO-{uuid.uuid4().hex[:16].upper()}"
+
+
+def _refuse_self_approval(actor: str, closed_by: str, *, what: str,
+                          period_id: str) -> None:
+    """Segregation of duties on the reopen path: the closer is not the checker.
+
+    TWO LAYERS, AND THE FIRST ONE DOES NOT FIRE YET. SAY SO PLAINLY.
+
+    `auth.require_separation` is the product's own maker-checker and is REUSED
+    here rather than reimplemented -- it is called below with
+    :data:`REOPEN_PERMISSION` and ``require_maker=True``. But its first line is
+
+        if permission not in MAKER_CHECKER:
+            return
+
+    and ``MAKER_CHECKER`` today is exactly ``{"pr.approve",
+    "pr.approve_exception", "revision.approve", "capitalisation.approve",
+    "bill.void"}``. ``"period.reopen"`` is not in it, and neither is it in
+    ``auth.PERMISSIONS``. `app/backend/auth.py` is owned by another stream this
+    wave and is not edited from here, so ON THE CODE AS IT STANDS THAT CALL
+    RETURNS HAVING COMPARED NOBODY. The one-line registration it needs is in
+    this stream's report.
+
+    That is the exact shape of the ``bill.void`` defect `require_separation`'s
+    own docstring recounts: the maker was always None, the ``and``
+    short-circuited, and the function returned having compared nobody. A
+    control whose only limb is a lookup in a set that does not contain its key
+    is a control that has never run, and a test asserting "it did not raise"
+    would pass for the wrong reason.
+
+    So the refusal below is UNCONDITIONAL and lives here. It is not a second
+    maker-checker implementation -- it takes no permission, consults no role
+    table and knows nothing about approval routing. It is one comparison, the
+    same one ``ck_period_reopen_separation`` and
+    ``ck_period_reopen_applier_separation`` make as CHECK constraints in
+    migration 023, so the rule holds in three places: this function, the
+    database, and `auth.require_separation` the moment the permission is
+    registered.
+    """
+    principal = {"user_id": actor}
+    # Reused, not reimplemented. Inert until "period.reopen" joins
+    # auth.MAKER_CHECKER -- see this function's docstring.
+    auth_mod.require_separation(
+        principal, REOPEN_PERMISSION, closed_by,
+        object_label=f"the close of period {period_id}", require_maker=True)
+
+    if actor == closed_by:
+        _err("SELF_APPROVAL",
+             f"{actor} closed period {period_id} and may not also {what} its "
+             f"reopening. Segregation of duties requires an independent "
+             f"party; ck_period_reopen_separation refuses the same pairing at "
+             f"the database.",
+             status=403)
+
+
+def _load_period_for_reopen(session: Session, period_id: str) -> tuple:
+    """The period, SCOPED, with the columns the reopen path needs.
+
+    Scoped exactly as `transition_period` scopes its read, and for the same
+    reason: authority over reopening is authority over the periods of the
+    entities in your scope, and an out-of-scope period answers 404 exactly as a
+    non-existent one does.
+    """
+    scope_sql, scope_columns = period_scope_sql_and_columns(session.scope)
+    row = repo.query_one(
+        session,
+        "SELECT period_id, entity_id, state, closed_at, closed_by, "
+        "reopen_count FROM accounting_period "
+        "WHERE period_id = %(period_id)s AND " + scope_sql,
+        {"period_id": period_id},
+        columns=scope_columns,
+    )
+    if row is None:
+        _err("PERIOD_NOT_FOUND", f"Period {period_id} does not exist.", status=404)
+    return row
+
+
+def _load_reopen_request(session: Session, reopen_id: str) -> tuple:
+    row = repo.query_one(
+        session,
+        """
+        SELECT reopen_id, period_id, entity_id, approval_instance_id,
+               idempotency_key, closed_by_at_request, requested_by, status,
+               approved_by, applied_by, applied_at
+        FROM period_reopen_request
+        WHERE reopen_id = %(reopen_id)s AND {scope}
+        """,
+        {"reopen_id": reopen_id},
+        columns={"entity": "entity_id", "plant": None,
+                 "location": None, "project": None},
+    )
+    if row is None:
+        _err("REOPEN_REQUEST_NOT_FOUND",
+             f"No reopen request {reopen_id}.", status=404)
+    return row
+
+
+def _approval_instance_for(session: Session, instance_id: str,
+                           period_id: str) -> tuple[str, str]:
+    """``(status, entity_id)`` for an instance BOUND TO THIS PERIOD.
+
+    An approval is authority over the object it names and nothing else. Both
+    `object_type` and `object_id` are checked here, so an APPROVED instance for
+    a purchase request, or for a different period, is refused rather than
+    counted -- which is the whole difference between "gated on an approval" and
+    "gated on the existence of an approval somewhere".
+    """
+    row = repo.query_one(
+        session,
+        """
+        SELECT status, entity_id, object_type, object_id
+        FROM approval_instance
+        WHERE instance_id = %(instance_id)s AND {scope}
+        """,
+        {"instance_id": instance_id},
+        columns={"entity": "entity_id", "plant": None,
+                 "location": None, "project": "project_id"},
+    )
+    if row is None:
+        _err("APPROVAL_INSTANCE_NOT_FOUND",
+             f"No approval instance {instance_id}.", status=404)
+    status, entity_id, object_type, object_id = row
+    if object_type != REOPEN_OBJECT_TYPE or object_id != period_id:
+        _err("APPROVAL_INSTANCE_MISBOUND",
+             f"Approval instance {instance_id} is for "
+             f"{object_type}:{object_id}, not {REOPEN_OBJECT_TYPE}:"
+             f"{period_id}. An approval authorises the object it names.",
+             status=409)
+    return status, entity_id
+
+
+def _approvers_of(session: Session, instance_id: str) -> list[str]:
+    """Every identity that actually approved this instance, effective first.
+
+    `acting_for_user_id` takes precedence where it is set: a decision made
+    under delegation is the DELEGATOR's approval, and reading only
+    `actor_user_id` would let the closer approve their own reopening through a
+    delegate. `pg/approvals.decide` already refuses a delegation that would
+    launder a self-approval; this reads the same two columns so the two agree.
+    """
+    rows = session.fetchall(  # scope-exempt: approval_action carries no dimension column of its own, and the instance it belongs to was scope-gated by _approval_instance_for one statement earlier
+        "SELECT actor_user_id, acting_for_user_id FROM approval_action "
+        "WHERE instance_id = %s AND action = %s ORDER BY seq",
+        (instance_id, ACTION_APPROVE))
+    return [(acting_for or actor) for actor, acting_for in rows]
+
+
+def request_period_reopen(session: Session, *, period_id: str,
+                          approval_instance_id: str, reason: str, actor: str,
+                          idempotency_key: str) -> dict[str, Any]:
+    """Record a request to reopen a CLOSED period. Reopens nothing.
+
+    Writes the row that :func:`apply_period_reopen` later reads, freezing
+    ``accounting_period.closed_by`` into ``closed_by_at_request`` -- see the
+    section header above for why the freeze is the control.
+
+    IDEMPOTENT on ``idempotency_key``: replaying the same request returns the
+    row already stored rather than minting a second one.
+    ``ux_period_reopen_one_open_per_period`` then stops two DIFFERENT requests
+    being outstanding against one period at once.
+    """
+    if not str(reason or "").strip():
+        _err("REOPEN_REASON_REQUIRED",
+             "a reopen request must say why. ck_period_reopen_reason_not_blank "
+             "refuses a blank reason at the database.")
+    if not str(idempotency_key or "").strip():
+        _err("IDEMPOTENCY_KEY_REQUIRED",
+             "a reopen request must carry an idempotency key, or a retried "
+             "call cannot be told from a second request.")
+
+    existing = repo.query_one(
+        session,
+        "SELECT reopen_id, period_id, status FROM period_reopen_request "
+        "WHERE idempotency_key = %(key)s AND {scope}",
+        {"key": idempotency_key},
+        columns={"entity": "entity_id", "plant": None,
+                 "location": None, "project": None},
+    )
+    if existing is not None:
+        return {"reopen_id": existing[0], "period_id": existing[1],
+                "status": existing[2], "replayed": True}
+
+    _pid, entity_id, state, closed_at, closed_by, _count = \
+        _load_period_for_reopen(session, period_id)
+
+    if state != "CLOSED":
+        _err("PERIOD_NOT_CLOSED",
+             f"Period {period_id} is {state}. Only a CLOSED period is "
+             f"reopened; {state} moves through transition_period.", status=409)
+    if not closed_by:
+        # 001 makes closed_by NULLable, and a period whose close recorded
+        # nobody cannot have a separation-of-duties rule applied to it. That is
+        # a refusal, not a waiver: "we cannot tell who closed it" must never
+        # become "anyone may approve reopening it".
+        _err("PERIOD_CLOSER_UNKNOWN",
+             f"Period {period_id} records no closed_by, so segregation of "
+             f"duties on its reopening cannot be verified. A gate that cannot "
+             f"be evaluated must refuse rather than permit.", status=409)
+
+    status, instance_entity = _approval_instance_for(
+        session, approval_instance_id, period_id)
+    if instance_entity != entity_id:
+        _err("APPROVAL_INSTANCE_WRONG_ENTITY",
+             f"Approval instance {approval_instance_id} belongs to entity "
+             f"{instance_entity}; period {period_id} belongs to {entity_id}.",
+             status=409)
+
+    reopen_id = _new_reopen_id()
+    session.execute(
+        """
+        INSERT INTO period_reopen_request (
+            reopen_id, period_id, entity_id, approval_instance_id,
+            idempotency_key, reason, closed_by_at_request,
+            closed_at_at_request, requested_by, status)
+        VALUES (%(reopen_id)s, %(period_id)s, %(entity_id)s, %(instance)s,
+                %(key)s, %(reason)s, %(closed_by)s, %(closed_at)s,
+                %(actor)s, 'REQUESTED')
+        """,
+        {"reopen_id": reopen_id, "period_id": period_id,
+         "entity_id": entity_id, "instance": approval_instance_id,
+         "key": idempotency_key, "reason": reason.strip(),
+         "closed_by": closed_by, "closed_at": closed_at, "actor": actor},
+    )
+    audit_mod.append(
+        session, actor, "PERIOD_REOPEN_REQUESTED", "ACCOUNTING_PERIOD",
+        period_id,
+        f"reopen {reopen_id} requested under approval {approval_instance_id} "
+        f"(currently {status}); closed by {closed_by}; reason: {reason.strip()}")
+
+    return {"reopen_id": reopen_id, "period_id": period_id,
+            "entity_id": entity_id, "status": "REQUESTED",
+            "approval_instance_id": approval_instance_id,
+            "approval_status": status, "replayed": False}
+
+
+def apply_period_reopen(session: Session, *, reopen_id: str,
+                        actor: str) -> dict[str, Any]:
+    """Reopen the period, if and only if its approval is APPROVED.
+
+    THE ONLY WRITER OF ``state = 'OPEN'`` OVER A CLOSED PERIOD.
+    `transition_period` cannot do it -- `_ALLOWED_TRANSITIONS` makes CLOSED
+    terminal and the mapping is deliberately not widened.
+
+    IDEMPOTENCY. A request already APPLIED returns its recorded outcome and
+    writes nothing. There is no second reopening and no second audit entry.
+
+    CONCURRENCY. `SELECT ... FOR UPDATE` on the period row, then on the request
+    row, then the state is re-read UNDER those locks -- the same shape
+    `transition_period` uses and `tests/test_pg_period_concurrency.py` already
+    proves for the forward transitions. Of two concurrent applies, the loser
+    wakes to find the period OPEN and refuses with PERIOD_NOT_CLOSED; it does
+    not reopen an already-open period, and it does not append a second
+    PERIOD_REOPEN to the chain.
+
+    THE CLOSE IS NOT ERASED. `closed_at`/`closed_by` keep recording the close
+    that is being reversed; `reopened_at`/`reopened_by`/`reopen_count` record
+    the reversal. Both are on the row, and the hash-chained PERIOD_REOPEN entry
+    goes onto the SAME `ACCOUNTING_PERIOD:<period_id>` stream the closes are
+    on, so close and reopen interleave in one verifiable sequence.
+    """
+    (reopen_id_, period_id, entity_id, instance_id, _key, closed_by_at_request,
+     _requested_by, status, approved_by, applied_by, applied_at) = \
+        _load_reopen_request(session, reopen_id)
+
+    if status == "APPLIED":
+        return {"reopen_id": reopen_id_, "period_id": period_id,
+                "entity_id": entity_id, "state": "OPEN", "status": "APPLIED",
+                "approved_by": approved_by, "applied_by": applied_by,
+                "applied_at": _iso(applied_at), "replayed": True}
+    if status == "REFUSED":
+        _err("REOPEN_REQUEST_REFUSED",
+             f"Reopen request {reopen_id} was refused and is closed. Raise a "
+             f"new request; a refused one is kept as the record that a "
+             f"reopening was asked for and did not happen.", status=409)
+
+    instance_status, _instance_entity = _approval_instance_for(
+        session, instance_id, period_id)
+    if instance_status != INST_APPROVED:
+        _err("REOPEN_NOT_APPROVED",
+             f"Approval instance {instance_id} is {instance_status}, not "
+             f"{INST_APPROVED}. A closed period is reopened on an APPROVED "
+             f"approval and on nothing else -- not on a permission, not on a "
+             f"flag, and not on an approval still in flight.", status=409)
+
+    approvers = _approvers_of(session, instance_id)
+    if not approvers:
+        _err("REOPEN_APPROVER_UNKNOWN",
+             f"Approval instance {instance_id} reports {INST_APPROVED} but "
+             f"records no {ACTION_APPROVE} action, so who approved it is "
+             f"UNKNOWN and separation of duties cannot be verified. A gate "
+             f"that cannot be evaluated must refuse.", status=409)
+    if closed_by_at_request in approvers:
+        _err("SELF_APPROVAL",
+             f"{closed_by_at_request} closed period {period_id} and also "
+             f"approved instance {instance_id}. Segregation of duties requires "
+             f"an independent approver; ck_period_reopen_separation refuses "
+             f"the same pairing at the database.", status=403)
+
+    # The APPLIER limb. Checked through `auth.require_separation` first, then
+    # unconditionally -- read `_refuse_self_approval`'s docstring for why the
+    # second half is not redundant today.
+    _refuse_self_approval(actor, closed_by_at_request,
+                          what="apply", period_id=period_id)
+
+    # Document rows, in a declared order: the period first (the older, more
+    # contended object), then the request row that points at it. Two callers
+    # taking them in the same order cannot deadlock against each other.
+    locked = session.execute(  # scope-exempt: locks the period already scope-gated by _load_reopen_request's entity filter, and re-read below
+        "SELECT state FROM accounting_period WHERE period_id = %s FOR UPDATE",
+        (period_id,)).fetchone()
+    if locked is None:
+        _err("PERIOD_NOT_FOUND", f"Period {period_id} does not exist.", status=404)
+    if locked[0] != "CLOSED":
+        _err("PERIOD_NOT_CLOSED",
+             f"Period {period_id} is {locked[0]}, not CLOSED. Another reopen "
+             f"reached it first, or it was never closed; either way there is "
+             f"nothing here to reopen.", status=409)
+
+    locked_request = session.execute(  # scope-exempt: re-reads under lock the request row already scope-gated at the top of this call
+        "SELECT status FROM period_reopen_request WHERE reopen_id = %s "
+        "FOR UPDATE", (reopen_id,)).fetchone()
+    if locked_request is None or locked_request[0] != "REQUESTED":
+        _err("REOPEN_ALREADY_SETTLED",
+             f"Reopen request {reopen_id} is "
+             f"{locked_request[0] if locked_request else 'gone'} and is no "
+             f"longer outstanding.", status=409)
+
+    now = datetime.now(timezone.utc)
+    approver = approvers[-1]
+    session.execute(
+        "UPDATE accounting_period SET state = 'OPEN', reopened_at = %s, "
+        "reopened_by = %s, reopen_count = reopen_count + 1 "
+        "WHERE period_id = %s",
+        (now, actor, period_id))
+    session.execute(
+        "UPDATE period_reopen_request SET status = 'APPLIED', "
+        "approved_by = %s, applied_by = %s, applied_at = %s "
+        "WHERE reopen_id = %s",
+        (approver, actor, now, reopen_id))
+
+    audit_mod.append(
+        session, actor, "PERIOD_REOPEN", "ACCOUNTING_PERIOD", period_id,
+        f"CLOSED -> OPEN under approval {instance_id} approved by {approver}; "
+        f"closed by {closed_by_at_request}; request {reopen_id}")
+
+    return {"reopen_id": reopen_id_, "period_id": period_id,
+            "entity_id": entity_id, "state": "OPEN", "status": "APPLIED",
+            "approved_by": approver, "applied_by": actor,
+            "applied_at": now.isoformat(), "replayed": False}
+
+
+def refuse_period_reopen(session: Session, *, reopen_id: str, actor: str,
+                         refusal_code: str, detail: str = "") -> dict[str, Any]:
+    """Close an outstanding request without reopening anything.
+
+    The request is never deleted -- ``trg_period_reopen_request_no_delete``
+    refuses that outright. A reopening that was asked for and did not happen is
+    part of the close/reopen trail, and its absence would be indistinguishable
+    from its never having been asked for.
+    """
+    (reopen_id_, period_id, entity_id, _instance, _key, _closed_by,
+     _requested_by, status, _approved_by, _applied_by, _applied_at) = \
+        _load_reopen_request(session, reopen_id)
+    if status != "REQUESTED":
+        _err("REOPEN_ALREADY_SETTLED",
+             f"Reopen request {reopen_id} is {status}.", status=409)
+    if not str(refusal_code or "").strip():
+        _err("REFUSAL_CODE_REQUIRED",
+             "a refusal must carry a code; ck_period_reopen_refused_says_why "
+             "refuses a blank one at the database.")
+
+    session.execute(
+        "UPDATE period_reopen_request SET status = 'REFUSED', "
+        "refusal_code = %s WHERE reopen_id = %s",
+        (refusal_code.strip(), reopen_id))
+    audit_mod.append(
+        session, actor, "PERIOD_REOPEN_REFUSED", "ACCOUNTING_PERIOD",
+        period_id, f"request {reopen_id} refused: {refusal_code.strip()}"
+                   + (f" -- {detail}" if detail else ""))
+    return {"reopen_id": reopen_id_, "period_id": period_id,
+            "entity_id": entity_id, "status": "REFUSED",
+            "refusal_code": refusal_code.strip()}

@@ -256,6 +256,112 @@ def post_period_transition(
     return result
 
 
+
+# ------------------------------------------------------ period reopening
+# AUD-C-008 residual. Three routes and not one, mirroring
+# `pg/periods.py`'s two-step path: requesting a reopen is not reopening, and
+# the row that records the request is what freezes the closer's identity for
+# the separation-of-duties check.
+#
+# PERMISSION NOTE, STATED RATHER THAN HIDDEN. These sit behind
+# `period.transition`, not behind a `period.reopen` of their own.
+# `auth.PERMISSIONS` has no `period.reopen` key, and `auth.require` raises
+# `500 UNKNOWN_PERMISSION` for a key it does not know -- so declaring one here
+# would make every call a server error rather than a considered refusal.
+# `app/backend/auth.py` is owned by another stream this wave and is not edited
+# from here; registering `period.reopen` (in `PERMISSIONS` and in
+# `MAKER_CHECKER`) is a one-line change carried in this stream's report, and
+# these routes move to it in the same commit.
+#
+# The floor is not the control. What decides a reopen is an APPROVED
+# `approval_instance` bound to this very period, plus the refusal of the
+# closer as approver and as applier -- all of it in `pg/periods.py` and in
+# migration 023's CHECK constraints, none of it in a permission.
+class _PeriodReopenRequestIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    #: The approval this reopening will be authorised by. NOT optional and not
+    #: defaulted: an approval-gated action whose approval is optional is a
+    #: permission-gated action wearing a different name.
+    approval_instance_id: str
+    reason: str
+    #: Required, so a retried POST is distinguishable from a second request.
+    idempotency_key: str
+
+
+@router.post("/api/budget/periods/{period_id}/reopen-requests",
+             status_code=201,
+             dependencies=[Depends(_requires("period.transition"))])
+def post_period_reopen_request(
+    period_id: str, body: _PeriodReopenRequestIn,
+    response: Response, request: Request,
+    database: Database = Depends(_get_database),
+) -> dict[str, Any]:
+    _set_correlation_header(response, request)
+    try:
+        with database.session(_scope_for(request, database)) as session:
+            result = periods_svc.request_period_reopen(
+                session, period_id=period_id,
+                approval_instance_id=body.approval_instance_id,
+                reason=body.reason, actor=_actor(request),
+                idempotency_key=body.idempotency_key)
+    except periods_svc.PeriodServiceError as exc:
+        raise _service_error_to_http(exc)
+    return result
+
+
+@router.post("/api/budget/period-reopen-requests/{reopen_id}/apply",
+             dependencies=[Depends(_requires("period.transition"))])
+def post_period_reopen_apply(
+    reopen_id: str, response: Response, request: Request,
+    database: Database = Depends(_get_database),
+) -> dict[str, Any]:
+    """Reopen the period. Refuses unless the named approval is APPROVED.
+
+    The actor is SERVER-DERIVED (`_actor`), which is load-bearing here rather
+    than incidental: it is the identity the separation-of-duties check compares
+    against the person who closed the period, and a caller-supplied one would
+    make that check trivially defeatable -- the AUD-C-006 shape.
+    """
+    _set_correlation_header(response, request)
+    try:
+        with database.session(_scope_for(request, database)) as session:
+            result = periods_svc.apply_period_reopen(
+                session, reopen_id=reopen_id, actor=_actor(request))
+    except periods_svc.PeriodServiceError as exc:
+        raise _service_error_to_http(exc)
+    return result
+
+
+class _PeriodReopenRefuseIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    refusal_code: str
+    detail: str = ""
+
+
+@router.post("/api/budget/period-reopen-requests/{reopen_id}/refuse",
+             dependencies=[Depends(_requires("period.transition"))])
+def post_period_reopen_refuse(
+    reopen_id: str, body: _PeriodReopenRefuseIn,
+    response: Response, request: Request,
+    database: Database = Depends(_get_database),
+) -> dict[str, Any]:
+    """Settle an outstanding request without reopening anything.
+
+    There is no DELETE route, and there will not be one:
+    `trg_period_reopen_request_no_delete` refuses the statement outright. A
+    reopening that was asked for and did not happen is part of the trail.
+    """
+    _set_correlation_header(response, request)
+    try:
+        with database.session(_scope_for(request, database)) as session:
+            result = periods_svc.refuse_period_reopen(
+                session, reopen_id=reopen_id, actor=_actor(request),
+                refusal_code=body.refusal_code, detail=body.detail)
+    except periods_svc.PeriodServiceError as exc:
+        raise _service_error_to_http(exc)
+    return result
+
+
 # ============================================================== cells
 @router.get("/api/budget/cells")
 def get_cells(
