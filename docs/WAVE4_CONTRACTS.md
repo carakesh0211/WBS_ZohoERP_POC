@@ -249,7 +249,19 @@ Every property the scenario demonstrates is preserved; only the document type
 changes. The PR module lands with Phase 5.
 
 **A2 — `bill.void` maker-checker is inert, and stays recorded rather than
-silently fixed.** `services.py:411` passes `b.get("created_by")`, but the
+silently fixed.**
+
+> **SINCE FIXED — and this note says it would force its own update, so here it
+> is.** `bill` now carries `created_by` (`app/backend/db.py`), `services.py`
+> passes it with `require_maker=True` so an unattributed bill is REFUSED rather
+> than waved through, and the strict xfail is gone:
+> `tests/test_approval_maker_checker.py` now reads `KNOWN_INERT: dict[str, str]
+> = {}`. The business decision the paragraph below said was needed — that the
+> defensible answer is a second person on the void itself — is the one that was
+> taken. The line citations below have drifted and are left as written; the
+> Wave 4 record is not rewritten.
+
+`services.py:411` passes `b.get("created_by")`, but the
 `bill` table has no such column (`db.py:189`), so the maker is always `None`
 and `auth.require_separation` short-circuits on a falsy maker. Verified: a
 FinanceApprover voiding their own bill gets 200.
