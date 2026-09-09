@@ -23,11 +23,18 @@ both read the same ``prev_hash`` and each mint a next entry chaining from it.
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+import json
+from datetime import date, datetime, timezone
 from typing import Any
+
+from psycopg.types.json import Jsonb
 
 from .engine import Session
 from .locking import advisory_audit_lock
+
+#: The advisory-lock key anchor writing serialises on. Not a stream_key: no
+#: audit_log row ever carries it, so it cannot collide with a business stream.
+_ANCHOR_LOCK_KEY = "audit_anchor:daily"
 
 
 def _payload(prev_hash: str | None, at_iso: str, actor: str, action: str,
@@ -165,8 +172,10 @@ def verify_chain(session: Session, stream_key: str) -> dict[str, Any]:
     # Contiguity is the available check: seq is assigned 1..n under the
     # advisory lock, so a gap or a short tail is detectable without trusting
     # any external record. It does NOT detect truncation of a whole stream --
-    # that needs the daily anchors, which exist as a table with no writer yet
-    # and are recorded as an open gap rather than implied by this result.
+    # that needs the daily anchors (`write_anchor` / `verify_anchors` below),
+    # and this result deliberately claims nothing about them: a database on
+    # which no anchor was ever written has no evidence either way, and saying
+    # so is the point.
     expected_seqs = list(range(1, checked + 1))
     actual_seqs = [row[0] for row in rows]
     contiguous = actual_seqs == expected_seqs
@@ -185,9 +194,219 @@ def verify_chain(session: Session, stream_key: str) -> dict[str, Any]:
         "stream_found": checked > 0,
         "whole_stream_truncation_note": (
             "Contiguity proves no entry is missing from WITHIN this stream. "
-            "Deletion of an entire stream is detectable only against the daily "
-            "anchors, which are not yet written."
+            "Deletion of an entire stream is invisible here by construction and "
+            "is detectable only against the daily anchors -- see "
+            "write_anchor()/verify_anchors(), and note that anchors detect it "
+            "only for the days on which one was actually written."
         ),
+    }
+
+
+# ======================================================================
+# Anchors -- the only thing that can detect a WHOLE STREAM being deleted
+# ======================================================================
+#
+# `verify_chain` above proves that the rows a stream still HAS link to each
+# other and carry no gap. It cannot prove anything about rows that are gone
+# from the end, and it cannot prove anything at all about a stream that no
+# longer exists: both leave a perfectly self-consistent database, because a
+# hash chain is a statement about the rows you are looking at.
+#
+# An anchor is the external record that makes those two cases detectable. It
+# writes down, once per day and immutably (`audit_anchor` is append-only by
+# trigger and has UPDATE/DELETE revoked from `capex_app`), the head of every
+# stream that existed at that moment. Verification then asks the question the
+# chain cannot: is every stream this anchor SAW still present, still at least
+# as long, and still carrying the same entry hash at the seq the anchor
+# recorded?
+#
+# Deleting a stream now requires also rewriting an append-only anchor row --
+# and because anchors chain to each other through `prev_anchor_hash`, rewriting
+# one invalidates every anchor after it.
+#
+# `audit_anchor` shipped in `migrations/pg/001_foundation.sql` with triggers,
+# grants and no writer. Everything below is that missing writer and its
+# verifier; `migrations/pg/024_audit_anchor_integrity.sql` adds the constraints
+# that stop a degenerate anchor (empty hash, non-object heads, a duplicate of
+# another day's) from being written in the first place.
+
+#: FROZEN, exactly as `_payload` is frozen: changing the assembly invalidates
+#: every anchor already written, and an anchor nobody can recompute is a record
+#: nobody can rely on.
+#:
+#:     prev_anchor_hash|anchor_date|canonical_json(stream_heads)
+#:
+#: `canonical_json` is `sort_keys=True` with no whitespace, so the digest is a
+#: function of the CONTENT and not of dict ordering or of how psycopg happened
+#: to render the jsonb on the way back out.
+def canonical_stream_heads(stream_heads: dict[str, Any]) -> str:
+    return json.dumps(stream_heads, sort_keys=True, separators=(",", ":"))
+
+
+def compute_anchor_hash(prev_anchor_hash: str | None, anchor_date_iso: str,
+                        stream_heads: dict[str, Any]) -> str:
+    payload = (f"{prev_anchor_hash or ''}|{anchor_date_iso}|"
+               f"{canonical_stream_heads(stream_heads)}")
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def stream_heads(session: Session) -> dict[str, dict[str, Any]]:
+    """Every stream's head seq, head entry hash and row count, right now.
+
+    One statement, not one per stream: the anchor must be a snapshot of a
+    single instant, and n+1 queries across a stream list read at a different
+    instant is not one.
+    """
+    rows = session.fetchall(
+        """
+        SELECT h.stream_key, h.head_seq, h.entries, l.entry_hash
+        FROM (
+            SELECT stream_key, max(seq) AS head_seq, count(*) AS entries
+            FROM audit_log GROUP BY stream_key
+        ) h
+        JOIN audit_log l ON l.stream_key = h.stream_key AND l.seq = h.head_seq
+        ORDER BY h.stream_key
+        """)
+    return {
+        stream_key: {"seq": int(head_seq), "entries": int(entries),
+                     "entry_hash": entry_hash}
+        for stream_key, head_seq, entries, entry_hash in rows
+    }
+
+
+def write_anchor(session: Session, *, anchor_date: date | None = None) -> dict[str, Any]:
+    """Write one day's anchor over every audit stream. Idempotent per date.
+
+    `anchor_date` is the PRIMARY KEY, and `audit_anchor` is append-only, so a
+    second write for the same date cannot overwrite the first and must not
+    pretend to. It returns the anchor that is actually stored, with
+    ``written=False``, and the caller can see that the day was already
+    anchored rather than believing it just anchored it.
+
+    Serialised on the same advisory-lock mechanism the chain itself uses, so
+    two concurrent nightly runs cannot both read "no anchor yet" and race into
+    the primary key.
+    """
+    anchor_date = anchor_date or datetime.now(timezone.utc).date()
+    advisory_audit_lock(session, _ANCHOR_LOCK_KEY)
+
+    existing = session.fetchone(
+        "SELECT anchor_date, stream_heads, prev_anchor_hash, anchor_hash "
+        "FROM audit_anchor WHERE anchor_date = %s", (anchor_date,))
+    if existing is not None:
+        return {"anchor_date": existing[0].isoformat(), "stream_heads": existing[1],
+                "prev_anchor_hash": existing[2], "anchor_hash": existing[3],
+                "streams_anchored": len(existing[1] or {}), "written": False}
+
+    prev = session.fetchone(
+        "SELECT anchor_hash FROM audit_anchor WHERE anchor_date < %s "
+        "ORDER BY anchor_date DESC LIMIT 1", (anchor_date,))
+    prev_anchor_hash = prev[0] if prev is not None else None
+
+    heads = stream_heads(session)
+    anchor_date_iso = anchor_date.isoformat()
+    anchor_hash = compute_anchor_hash(prev_anchor_hash, anchor_date_iso, heads)
+
+    session.execute(
+        """
+        INSERT INTO audit_anchor (anchor_date, stream_heads, prev_anchor_hash, anchor_hash)
+        VALUES (%(anchor_date)s, %(stream_heads)s, %(prev_anchor_hash)s, %(anchor_hash)s)
+        """,
+        {"anchor_date": anchor_date, "stream_heads": Jsonb(heads),
+         "prev_anchor_hash": prev_anchor_hash, "anchor_hash": anchor_hash})
+
+    return {"anchor_date": anchor_date_iso, "stream_heads": heads,
+            "prev_anchor_hash": prev_anchor_hash, "anchor_hash": anchor_hash,
+            "streams_anchored": len(heads), "written": True}
+
+
+def verify_anchors(session: Session) -> dict[str, Any]:
+    """Verify the anchor chain, and the audit log against the newest anchor.
+
+    Two independent questions, and both have to be asked:
+
+    1. **Are the anchors themselves intact?** Each anchor's hash is recomputed
+       from its own stored heads and its recorded `prev_anchor_hash`, and each
+       is required to name its predecessor. Editing one anchor to cover up a
+       deletion therefore breaks every anchor after it.
+    2. **Does the audit log still contain what the newest anchor saw?** For
+       every stream the anchor recorded: it must still exist (`missing` --
+       WHOLE-STREAM TRUNCATION, the case `verify_chain` provably cannot see),
+       its head seq must not have gone BACKWARDS (`truncated` -- tail
+       truncation), and the entry hash at the anchored seq must be unchanged
+       (`diverged` -- history rewritten below the anchor point).
+
+    A stream growing, or a brand-new stream appearing, is normal and is not a
+    finding: an anchor is a floor, not an equality.
+
+    Returns ``anchored=False`` when no anchor exists at all. That is NOT
+    ``intact=True`` -- "nobody has ever anchored this database" is the state in
+    which a whole-stream deletion is undetectable, and reporting it as a pass
+    is how the gap this function closes stayed open.
+    """
+    anchors = session.fetchall(
+        "SELECT anchor_date, stream_heads, prev_anchor_hash, anchor_hash "
+        "FROM audit_anchor ORDER BY anchor_date")
+    if not anchors:
+        return {
+            "anchored": False, "intact": False, "anchors_checked": 0,
+            "anchor_chain_intact": False, "first_broken_anchor_date": None,
+            "missing_streams": [], "truncated_streams": [], "diverged_streams": [],
+            "note": ("No audit anchor has ever been written, so deletion of an "
+                     "entire audit stream is not detectable. Run write_anchor()."),
+        }
+
+    # ---- 1. the anchor chain ----------------------------------------
+    first_broken: str | None = None
+    expected_prev: str | None = None
+    for anchor_date_value, heads, prev_anchor_hash, anchor_hash in anchors:
+        recomputed = compute_anchor_hash(prev_anchor_hash,
+                                         anchor_date_value.isoformat(),
+                                         heads or {})
+        broken = (recomputed != anchor_hash) or (prev_anchor_hash != expected_prev)
+        if broken and first_broken is None:
+            first_broken = anchor_date_value.isoformat()
+        expected_prev = anchor_hash
+
+    # ---- 2. the log against the newest anchor ------------------------
+    newest_date, newest_heads, _prev, _hash = anchors[-1]
+    newest_heads = newest_heads or {}
+    current = stream_heads(session)
+
+    missing, truncated, diverged = [], [], []
+    for stream_key, anchored in sorted(newest_heads.items()):
+        now = current.get(stream_key)
+        if now is None:
+            missing.append(stream_key)
+            continue
+        if int(now["seq"]) < int(anchored["seq"]):
+            truncated.append({"stream_key": stream_key,
+                              "anchored_seq": int(anchored["seq"]),
+                              "current_seq": int(now["seq"])})
+            continue
+        at_anchor = session.fetchone(
+            "SELECT entry_hash FROM audit_log WHERE stream_key = %s AND seq = %s",
+            (stream_key, int(anchored["seq"])))
+        if at_anchor is None or at_anchor[0] != anchored.get("entry_hash"):
+            diverged.append({"stream_key": stream_key,
+                             "seq": int(anchored["seq"]),
+                             "anchored_entry_hash": anchored.get("entry_hash"),
+                             "current_entry_hash": None if at_anchor is None else at_anchor[0]})
+
+    return {
+        "anchored": True,
+        "anchors_checked": len(anchors),
+        "anchor_chain_intact": first_broken is None,
+        "first_broken_anchor_date": first_broken,
+        "newest_anchor_date": newest_date.isoformat(),
+        "streams_anchored": len(newest_heads),
+        "missing_streams": missing,
+        "truncated_streams": truncated,
+        "diverged_streams": diverged,
+        "intact": (first_broken is None and not missing and not truncated
+                   and not diverged),
+        "note": ("Whole-stream deletion and tail truncation are detectable only "
+                 "against these anchors; the per-stream chain cannot see either."),
     }
 
 
