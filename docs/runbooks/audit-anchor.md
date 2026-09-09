@@ -169,10 +169,14 @@ observed at insert time, the unique index on `anchor_hash` and the append-only
 triggers exist to refuse exactly that, and a fabricated anchor is worse than a
 gap because the gap is honest.
 
-## 6. Verification status of this runbook
+## 6. Verification status
 
-The handler and CLI are exercised by `tests/test_pg_anchor_job.py`. The tests
-that need no database ran on the authoring machine; **every `@pytest.mark.pg`
-test in that file has never executed anywhere** and first runs in CI's
-`pg_tests` job. The Catalyst configuration in §2 has not been applied — this
-stream creates no cloud resource and deploys nothing.
+Mixed, and stated per section rather than as one label, because the sections
+differ by more than the labels would admit.
+
+| Section | Status | What that means |
+|---|---|---|
+| §1 the handler, §3 exit codes, §4 states | `VERIFIED-LOCAL` | Exercised by `tests/test_pg_anchor_job.py` and `tests/test_security_audit_anchor.py` on a machine with no PostgreSQL. Authentication, the backdate refusal, the deadline behaviour, the outcome/exit-code mapping and the redaction of results all ran. |
+| §1 behaviour against a real database | `UNVERIFIED` | **Every `@pytest.mark.pg` test in `tests/test_pg_anchor_job.py` has never executed anywhere** — concurrent invocation, duplicate invocation, partial failure, retryable failure and truncation found through the job. There is no PostgreSQL on the build host; they first run in CI's `pg_tests` job. A skip is not a pass. |
+| §2 Catalyst scheduling | `UNVERIFIED` | The cron, the function and the secret references have **never been created**. This stream creates no cloud resource, applies no configuration and deploys nothing. The values in §2 are what to apply, not a record of anything applied. |
+| §5 fault handling | `VERIFIED-LOCAL` for the classification; `UNVERIFIED` for the live faults | The SQLSTATE classification is unit-tested. No real deadlock, connection loss or privilege refusal has been observed through this job. |
