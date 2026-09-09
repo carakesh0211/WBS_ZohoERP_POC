@@ -161,7 +161,7 @@ body.cosy { --row-h:36px; --input-h:34px; }
   margin-left:auto; background:var(--n200); color:var(--n700);
   border-radius:8px; font-size:10px; padding:1px 6px; font-weight:600; flex:0 0 auto;
 }
-.nav-item .pill.warn { background:var(--warning-bg); color:var(--warning); }
+.nav-item .pill.warn { background:var(--warning-bg); color:#6d4600; }
 
 .nav-scrim {
   display:none; position:fixed; inset:0; z-index:39;
@@ -270,7 +270,7 @@ textarea { height:auto; padding:6px 8px; line-height:18px; }
 
 /* honest labelling of anything the mock connector produced */
 .mock-chip {
-  display:inline-block; background:var(--warning-bg); color:var(--warning);
+  display:inline-block; background:var(--warning-bg); color:#6d4600;
   border:1px solid #ecd6a8; border-radius:2px; padding:0 6px;
   font-size:10px; font-weight:700; letter-spacing:.4px; line-height:16px; white-space:nowrap;
 }
@@ -332,7 +332,7 @@ tr.lvl-1 th:first-child, tr.lvl-1 td:first-child { font-weight:600; }
 .st-warning::before  { background:var(--warning); }
 .st-negative::before { background:var(--negative); }
 .st-positive { color:var(--positive); }
-.st-warning  { color:var(--warning); }
+.st-warning  { color:#6d4600; }
 .st-negative { color:var(--negative); }
 .st-progress { color:var(--progress); }
 

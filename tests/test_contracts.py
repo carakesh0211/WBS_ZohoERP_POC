@@ -428,18 +428,44 @@ def test_no_new_off_token_colour_is_introduced():
 # Recompute with:
 #   python -c "import hashlib,pathlib;print(hashlib.sha256(pathlib.Path('app/frontend/styles.css').read_bytes().replace(b'\r\n',b'\n')).hexdigest())"
 #
-# Updated 2026-09-03, deliberately, for APPROVED UI CHANGE 2 of 2 (Wave 4,
-# stream 4). The product owner approved, in writing, the smallest `#userAvatar`
-# colour correction that reaches WCAG 2.2 AA. `.avatar` moved one step down the
-# existing brand ramp, `--primary-500` (#2E8A9A) -> `--primary-600` (#24707E):
-# white 11px text measured 4.0244:1 before and 5.6850:1 after, against a 4.5:1
-# requirement. Both values are already-frozen C6 tokens, so
+# Updated 2026-09-09, deliberately, for the APPROVED WARNING-TEXT CONTRAST
+# CORRECTION (Wave 8, stream C). The product owner approved, in writing, the
+# replacement of the FAILING warning-text colour and nothing else.
+#
+# The defect. `--warning` (#A66A00) fails WCAG 2.2 AA as normal text on every
+# background it is actually used on. Recomputed independently for this change
+# (sRGB relative luminance, WCAG 2.x formula):
+#
+#     on --n0        (FFFFFF)   4.4843:1   FAIL   (body text needs 4.5:1)
+#     on --n50       (F7F8F9)   4.2173:1   FAIL
+#     on --n100      (EFF1F3)   3.9604:1   FAIL
+#     on --warning-bg(FDF3E2)   4.0775:1   FAIL
+#
+# The three warning-TEXT rules in this stylesheet all render at body size --
+# `.st-warning` 12px/600, `.nav-item .pill.warn` 10px/600 and `.mock-chip`
+# 10px/700 -- none of which is WCAG "large text" (18.66px bold / 24px), so the
+# 4.5:1 threshold applies to all three. They now take 6D4600, the darker amber
+# `.msg-warning` has always used:
+#
+#     on --n0        (FFFFFF)   8.3125:1   PASS
+#     on --n50       (F7F8F9)   7.8176:1   PASS
+#     on --n100      (EFF1F3)   7.3413:1   PASS
+#     on --warning-bg(FDF3E2)   7.5585:1   PASS
+#
+# NO new colour was introduced: 6D4600 is already present in this stylesheet
+# and already allowlisted in KNOWN_OFF_TOKEN_HEXES, so
 # `test_the_root_palette_is_exactly_the_frozen_token_palette` and
-# `test_no_new_off_token_colour_is_introduced` are unaffected by design — the
-# correction had to be reachable without adding a colour to the registry.
-# Previous pin: 2908bf6725041060dfdaae8de9955043675214e45c9c169d17fab544b61d97a1
+# `test_no_new_off_token_colour_is_introduced` are unaffected by design -- the
+# correction had to be reachable without touching the token registry.
+#
+# The NON-text uses of `--warning` are deliberately UNCHANGED: the `.st-warning`
+# dot, the `.tile.accent-watch` rule and the `.mock-chip` border are non-text
+# indicators needing 3:1, which A66A00 clears everywhere (3.96:1 worst case).
+# Keeping them preserves the amber as the semantic signal while the text that
+# has to be READ becomes legible.
+# Previous pin: cae43990b8c3cb7ea047f80771eeb103d6022f1e55a03e07b4b68aa9060ff847
 APPROVED_STYLES_CSS_SHA256 = (
-    "cae43990b8c3cb7ea047f80771eeb103d6022f1e55a03e07b4b68aa9060ff847"
+    "04c89fe5f19683b238e4928059ac6fcc85f2bf276cc3890ac76c31bf2475c2a4"
 )
 
 
