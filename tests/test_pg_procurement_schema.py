@@ -1059,11 +1059,42 @@ def test_the_rollback_block_actually_works_live(pg_connection):
         f"a block dropped its objects but left its ledger row, so `upgrade` "
         f"will not re-apply it: {still_recorded}")
 
-    # ...and forward again, through the runner, on the reverted database.
+    # WHAT `upgrade()` MUST REPLAY IS WHAT THE LEDGER SAYS IS MISSING, and
+    # that is no longer the same list as `reverted`.
+    #
+    # It was, while every revert-ledger migration covered one inside this
+    # stack: 020 covers 015, 021 covers 019 and 018, all >= 013. 022 covers
+    # 001 to 012 -- below this test's floor -- so its block deletes twelve
+    # ledger rows whose objects this walk never drops. `upgrade()` then
+    # correctly replays those twelve, adopting the objects it finds already
+    # there, and `performed` is the whole twenty-two.
+    #
+    # That is the convention's own documented trade-off, not a defect: 020's
+    # block says it in as many words for 015 -- reverting the covering
+    # migration ALONE leaves the covered one's objects in place with no ledger
+    # row, which `upgrade()` re-adopts rather than replays. Adopted beats
+    # skipped; a silently skipped migration is the hole the whole
+    # revert-ledger convention exists to close.
+    #
+    # So the expectation is derived from the ledger, which is the stronger
+    # property: replay EXACTLY the migrations with no row, no more and no
+    # fewer. A block that drops its objects and keeps its row still fails
+    # here, and so does one that drops a row `upgrade()` cannot then replay.
+    recorded = {v for (v,) in pg_connection.execute(
+        "SELECT version FROM schema_migrations").fetchall()}
+    expected = [m.version for m in migrate_pg.discover()
+                if m.version not in recorded]
+    assert set(expected) >= set(reverted), (
+        f"the revert left ledger rows for migrations it reverted: "
+        f"{sorted(set(reverted) - set(expected))}")
+
     performed = migrate_pg.upgrade(pg_connection)
     pg_connection.commit()
-    assert performed == reverted, (
-        f"re-application performed {performed}, expected {reverted}")
+    # `performed` labels an adopted migration "NNN (adopted)"; compare versions.
+    performed_versions = [entry.split()[0] for entry in performed]
+    assert performed_versions == expected, (
+        f"re-application performed {performed}, but the ledger said "
+        f"{expected} were pending")
     back = pg_connection.execute(
         "SELECT table_name FROM information_schema.tables "
         "WHERE table_schema = current_schema() AND table_name = ANY(%s)",

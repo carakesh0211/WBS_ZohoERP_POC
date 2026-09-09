@@ -8192,8 +8192,8 @@
         "body_sha": "ac7aab5a171ec346"
       },
       "test_the_rollback_block_actually_works_live": {
-        "assertions": 8,
-        "body_sha": "c9fad278dbf525de"
+        "assertions": 9,
+        "body_sha": "08fc6df37c8a6ebc"
       },
       "test_entity_a_cannot_read_entity_bs_po_lines_live": {
         "assertions": 1,
@@ -9074,8 +9074,8 @@
         "body_sha": "9e166893b2cf7388"
       },
       "test_live_a_saved_views_owner_cannot_be_reassigned": {
-        "assertions": 3,
-        "body_sha": "bf3d310e7b3ccd0c"
+        "assertions": 4,
+        "body_sha": "3d943f032ef34936"
       },
       "test_live_an_export_job_is_invisible_to_anyone_but_its_requester": {
         "assertions": 3,
@@ -10390,7 +10390,7 @@
     "test_pg_procurement.py": 139,
     "test_pg_procurement_ingest.py": 281,
     "test_pg_procurement_reconciliation.py": 71,
-    "test_pg_procurement_schema.py": 150,
+    "test_pg_procurement_schema.py": 151,
     "test_pg_reconciliation.py": 117,
     "test_pg_repo.py": 37,
     "test_pg_reporting.py": 54,
@@ -10399,7 +10399,7 @@
     "test_pg_rls_coverage.py": 76,
     "test_pg_rls_integration_matrix.py": 34,
     "test_pg_rls_registry_handoff.py": 7,
-    "test_pg_rls_wave7_matrix.py": 18,
+    "test_pg_rls_wave7_matrix.py": 19,
     "test_pg_roles.py": 50,
     "test_pg_scope_leakage.py": 12,
     "test_pg_seed.py": 56,

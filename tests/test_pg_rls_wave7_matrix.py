@@ -272,30 +272,56 @@ def test_live_a_shared_view_cannot_be_deleted_by_someone_who_does_not_own_it(
 @pytest.mark.pg
 def test_live_a_saved_views_owner_cannot_be_reassigned(
         pg_connection, pg_app_database):
-    """022's trigger, from the side that matters.
+    """Two layers, and each one is asserted where it actually acts.
 
     Nothing in 017 made `owner_user_id` immutable, so `SET owner_user_id = me`
     passed both limbs of the single policy: the row's new owner is the caller,
-    so `WITH CHECK` is satisfied by the very edit that steals it.
+    so `WITH CHECK` is satisfied by the very edit that steals it. 022 adds the
+    trigger AND splits the policy per command.
+
+    THE FIRST VERSION OF THIS TEST DEMANDED THE WRONG MECHANISM and CI reported
+    `DID NOT RAISE`. A peer's UPDATE never reaches the trigger: the per-command
+    UPDATE policy filters the row out first, and RLS reduces the statement to
+    zero rows rather than raising. That is a refusal, just a silent one.
+
+    Both halves are asserted because either alone is passed by a broken build.
+    Asserting only the peer case passes if the trigger is dropped. Asserting
+    only the owner case passes if the policy is.
     """
     ids = _seed_estate(pg_connection)
     _seed_views(pg_connection, ids)
 
+    def owner_of(view_id: str) -> str:
+        # The superuser connection, RLS bypassed on purpose: this reads the
+        # truth of the row rather than what some principal may see of it.
+        with pg_connection.cursor() as cur:
+            cur.execute("SELECT owner_user_id FROM report_saved_view"
+                        " WHERE view_id = %s", (view_id,))
+            return cur.fetchone()[0]
+
+    # (1) A peer. Stopped by the policy, silently -- zero rows, no exception.
     peer = _scope(ids["user_b"], frozenset({ids["entity_a"]}))
+    with pg_app_database.session(peer) as session:
+        # scope-exempt: the UPDATE is the assertion.
+        session.execute(
+            "UPDATE report_saved_view SET owner_user_id = %s"
+            "  WHERE view_id = 'RV-A-SHAR'", (ids["user_b"],))
+    assert owner_of("RV-A-SHAR") == ids["user_a"], (
+        "a principal who does not own a SHARED saved view reassigned it to "
+        "themselves. The UPDATE policy did not filter the row out.")
+
+    # (2) The owner, for whom the row IS visible, so the trigger is reached.
+    # Handing your own view to someone else is the case RLS cannot refuse.
+    owner = _scope(ids["user_a"], frozenset({ids["entity_a"]}))
     with pytest.raises(Exception) as excinfo:
-        with pg_app_database.session(peer) as session:
+        with pg_app_database.session(owner) as session:
             session.execute(
                 "UPDATE report_saved_view SET owner_user_id = %s"
                 "  WHERE view_id = 'RV-A-SHAR'", (ids["user_b"],))
-    assert "owner" in str(excinfo.value).lower(), (
+    assert "immutable" in str(excinfo.value).lower(), (
         f"the refusal did not name the reason: {excinfo.value}")
-
-    with pg_connection.cursor() as cur:      # superuser, RLS bypassed on purpose
-        cur.execute("SELECT owner_user_id FROM report_saved_view"
-                    " WHERE view_id = 'RV-A-SHAR'")
-        owner = cur.fetchone()[0]
-    assert owner == ids["user_a"], (
-        f"the saved view changed hands: {owner}")
+    assert owner_of("RV-A-SHAR") == ids["user_a"], (
+        "the saved view changed hands despite the refusal")
 
 
 # =========================================================================
@@ -305,10 +331,14 @@ def test_live_a_saved_views_owner_cannot_be_reassigned(
 def _seed_jobs(con, ids) -> None:
     for job_id, requester in (("EXP-A", ids["user_a"]), ("EXP-B", ids["user_b"])):
         con.execute(
+            # No `created_by`/`updated_by`: 018 gives this table `created_at`
+            # and `requested_by` and no other authorship column, because the
+            # requester IS the authorship -- the row exists to carry that one
+            # principal's resolved scope.
             "INSERT INTO export_job (export_job_id, dataset, requested_by,"
-            " scope_json, scope_digest, column_order, created_by, updated_by)"
+            " scope_json, scope_digest, column_order)"
             " VALUES (%s, 'wbs_positions', %s, '{}'::jsonb, 'digest',"
-            " ARRAY['a'], 'T', 'T')", (job_id, requester))
+            " ARRAY['a'])", (job_id, requester))
     con.commit()
 
 
