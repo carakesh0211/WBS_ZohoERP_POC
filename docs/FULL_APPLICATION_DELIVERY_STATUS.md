@@ -1,13 +1,21 @@
 # Full application — delivery status
 
 **Branch:** `full-application/build` · **Wave 7 CLOSED** · **Wave 8 IN
-PROGRESS — not closed** · full local suite, re-measured on this branch:
-**4109 passed, 679 skipped, 5 FAILED**
+PROGRESS — NOT CLOSED** · full local suite at `64a164c`, after integration:
+**4114 passed, 681 skipped, 0 failed**
 
-The five failures are real and are named under "Genuine blockers". The figure
-this line used to carry (`3601 passed, 615 skipped, 1 xfailed, 0 failed`) was
-from commit `1b7f08e` and is no longer the state of the branch; the xfail it
-counted has since been removed along with the defect it pinned.
+**Historical figures, kept as the record of how the branch moved:**
+
+| Measured at | Result | What it was |
+|---|---|---|
+| `1b7f08e` | 3601 passed, 615 skipped, 1 xfailed, 0 failed | Wave 7 gate. The xfail has since been removed along with the defect it pinned |
+| mid-Wave-8 | 4109 passed, 679 skipped, **5 failed** | Measured by a stream agent BEFORE the lead applied the registry entries. All five WERE the missing integration: two manifest (two test files unregistered), two `test_pg_fx_ingest`, one `test_pg_rls_coverage` (`fx_translation_event` unregistered) |
+| `64a164c` | **4114 passed, 681 skipped, 0 failed** | Current. Every one of those five is closed |
+
+That middle row is kept deliberately. An agent measuring its own stream
+correctly, before the lead had done the integration only the lead could do, is
+not a defect in the agent's work — and deleting the number would hide that the
+five failures had a single cause.
 
 ## Current milestone
 
@@ -214,17 +222,17 @@ migration and operational hardening; UAT and release package.
 
 ## Test and commit status
 
-- Full local suite, re-measured on this branch: **4109 passed, 679 skipped,
-  5 failed**. The previous figure (`3601 passed, 615 skipped, 1 xfailed,
-  0 failed` at `1b7f08e`) is retained here only as the point of comparison.
+- Full local suite at `64a164c`: **4114 passed, 681 skipped, 0 failed**. See
+  the table at the head of this file for the two earlier measurements and why
+  each differed.
 - `closure.spec.js`: **119 passed, exit 0** — the six closure screens' first
   coverage, and it installs no routes
 - `spa-routing.spec.js`: 55 passed · `integration.spec.js`: 161 passed against
   the real wiring · `analytics` + `mapping`: 122 passed, axe clean
-- Manifest `--check` is **NOT clean**: the baseline measures **299** against a
-  pinned 220, because `tests/test_pg_anchor_job.py`'s 32 tests were never
-  recorded. Rebuild with `python tools/build_test_manifest.py` and record the
-  reason in `tests/ADAPTATIONS.md`.
+- Manifest `--check`: **clean**, baseline back at exactly **220**.
+  `test_pg_anchor_job.py` (32 tests) and `test_pg_fx_ingest.py` (47) are both
+  registered post-baseline with the reason each exists. The 299 this line used
+  to report was the pre-registration count.
 - Migrations: **001…025, contiguous, no gaps** — 25 files under
   `migrations/pg/`, all tracked, ending `025_fx_applied_at_ingestion.sql`
 - CI run 34309336564: Contract, Supply chain, Regression **green**; PostgreSQL
