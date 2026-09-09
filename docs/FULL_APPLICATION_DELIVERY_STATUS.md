@@ -1,8 +1,13 @@
 # Full application — delivery status
 
-**Branch:** `full-application/build` · **Wave 7 CLOSED** · **Wave 8 in
-progress** · full local suite **3601 passed, 615 skipped, 1 xfailed,
-0 failed**
+**Branch:** `full-application/build` · **Wave 7 CLOSED** · **Wave 8 IN
+PROGRESS — not closed** · full local suite, re-measured on this branch:
+**4109 passed, 679 skipped, 5 FAILED**
+
+The five failures are real and are named under "Genuine blockers". The figure
+this line used to carry (`3601 passed, 615 skipped, 1 xfailed, 0 failed`) was
+from commit `1b7f08e` and is no longer the state of the branch; the xfail it
+counted has since been removed along with the defect it pinned.
 
 ## Current milestone
 
@@ -67,7 +72,7 @@ Verified in a browser, not inferred.
 | H8 | `closure.spec.js` untracked | **Closed** |
 | M1 | Saved-view `FOR ALL` policy defeatable on DELETE and UPDATE | **Closed** — 022 |
 | M2 | Reports router had no write permission above the floor | **Closed** |
-| **M3** | **`--warning` fails WCAG AA on every background it is used on** | **OPEN — needs approval, see below** |
+| **M3** | `--warning` failed WCAG AA as TEXT on every background it is used on | **Closed** — approved and applied in Wave 8, see below |
 | M4 | Six OAS-02 citations should be OAS-03 | **Closed** |
 | M5 | Migrations 001–012 orphaned their ledger rows | **Closed** — 022 |
 | M6 | Money-SQL gate blind across a nested paren | **Closed** |
@@ -76,42 +81,60 @@ Verified in a browser, not inferred.
 | M9 | "All four dimensions" true of the call, not the effect | **Documented** |
 | L3, L4, L5 | `buildQuery` empty array; `SCOPABLE` gap; attribution | **Closed** |
 | L1 | `FilterSet.buckets()` mapped `received_not_billed` to GRN | **Closed** — `0c8253e` moved it to PO, where the branch that emits it lives |
-| L2, L6 | SCR-40 reveal gate; datatable's duplicate "Details" names | **Open, owner Wave 8 Agent B**, no live defect today |
+| L2, L6 | SCR-40 reveal gate; datatable's duplicate "Details" names | **Closed** — both delivered by Wave 8 stream B, see below |
 
-### M3 is open by decision, not by oversight
+### M3 was open by decision. The decision has now been made.
 
-`--warning` measures **4.484:1 on white** and **4.077:1 on its own tint**, and
-`.st-warning` renders at 12px/600 — normal text, so AA needs 4.5:1. It fails on
-every background it is actually used on; the shortfall is 0.42, not the 0.016
-previously recorded in `C6_tokens.json`.
+`--warning` measured **4.4843:1 on white**, **4.2173:1 on `--n50`**,
+**4.0775:1 on its own tint** and **3.9604:1 on `--n100`**, and `.st-warning`
+renders at 12px/600 — normal text, so AA needs 4.5:1. It failed on every
+background it was actually used on; the shortfall was 0.42, not the 0.016 once
+recorded in `C6_tokens.json`.
 
-The remedy needs no new colour: `.msg-warning` already uses a darker warning
-measuring 8.313:1 and 7.558:1. It is **not applied** because `styles.css` is
-byte-frozen behind a SHA-256 pin and darkening an approved token is a visual
-change requiring the product owner's approval. The false claim is corrected in
-the contract with the measurements and the reason it is unapplied.
+**The product owner approved the fix and it is applied.** Warning TEXT takes
+`#6D4600`, the darker amber `.msg-warning` always used — 8.3125:1 on white,
+7.8176:1 on `--n50`, 7.5585:1 on the tint, 7.3413:1 on `--n100`. No new colour
+entered the registry, so neither palette gate moved.
 
-### The two LOW findings left open, and why
+Two further body-size instances the review had listed as unmitigated
+(`analytics.css`'s dropped-filter chip and stale-freshness line) and **two more
+that measurement found and nobody had listed** (`closure.css`'s posting note at
+12px and write-off badge at 11px/600, both 4.0775:1 on the tint) are corrected
+in the same change.
 
-**L2 — SCR-40's reveal gate is non-discriminating.**
-`connector-audit-log.js:80` gates the reveal on `connector.read` while the
-route behind it gates on `audit.read`. The holder sets are not merely
-overlapping, they are IDENTICAL — `('Administrator', 'Auditor')` for both — so
-`state.canReveal` is unconditionally true and the withheld branch is
-unreachable by any role in this build. No live defect. It becomes one the day
-the two sets diverge, at which point the screen offers a control the API
-refuses. One-line fix; deferred rather than taken mid-gate because
-`mapping.spec.js` asserts against that constant.
+`--warning` itself is unchanged and still declared. It is now a NON-TEXT tone
+only — dots, tile and border accents, meter fills, chip borders — which need
+3:1 and clear it everywhere (3.9604:1 worst case). `C6_tokens.json`'s
+`contrast_rule` records that split instead of asserting a conformance that was
+not true. The `styles.css` SHA-256 pin was updated in the same commit through
+the documented approved-change procedure.
 
-**L6 — every per-row disclosure button is named "Details".**
-`capex-datatable.js:113-131` gives them no `aria-label` and no `aria-controls`,
-so a screen-reader user hears the same name for every row. It is a shared
-Wave-2 component used by many screens, and changing a button's accessible name
-mid-gate would move assertions in specs that are currently green.
+**Not closed by this, and not covered by that approval:** `--n500` (#6B7280)
+measures 4.8345:1 on white but **4.3210:1 on a hovered table row**, so muted
+text in a hovered row still fails AA application-wide. See `L-06` in
+`docs/RELEASE_PACKAGE.md`.
 
-Both are recorded here rather than fixed because neither produces a wrong
-answer today and both touch surfaces the gate is measuring. Owner: Wave 8's
-security and audit stream.
+### The two LOW findings that were left open — both are now fixed
+
+This section used to argue at length for leaving them open, and the table two
+screens above listed them as `Open, owner Wave 8 Agent B`. That stream
+delivered them. Both entries were stale; the code is the record.
+
+**L2 — SCR-40's reveal gate.** It gated the reveal on `connector.read` while
+the route behind it gated on `audit.read`. The holder sets were IDENTICAL —
+`('Administrator', 'Auditor')` — so there was no live defect, only one waiting
+for the day the sets diverged. **Fixed:** `connector-audit-log.js` now declares
+`const REVEAL_PERMISSION = 'audit.read';` and consumes it, with a comment
+naming this finding.
+
+**L6 — every per-row disclosure button was named "Details".** No `aria-label`
+and no `aria-controls`, so a screen-reader user heard the same name for every
+row. **Fixed:** `capex-datatable.js` now sets ``aria-label: `Details for
+${label}` `` and `aria-controls: detailId`, and updates the label on toggle.
+
+(The line numbers this section used to cite — `connector-audit-log.js:80` and
+`capex-datatable.js:113-131` — now point at comment openings and unrelated
+skeleton-row rendering. Symbols, not line numbers.)
 
 ## Wave 7 gate — MET, on evidence
 
@@ -145,7 +168,8 @@ migration and operational hardening; UAT and release package.
 
 ## Next three deliverables
 
-1. Wave 8's four streams, on migrations 023 (FX) and 024 (audit identity).
+1. Wave 8's four streams, on migrations 023 (FX), 024 (audit identity) and
+   025 (FX applied at ingestion).
 2. Final independent adversarial review; fix every high and medium finding.
 3. The application gate: full local suite, live PostgreSQL, VRT, five green
    CI jobs, 40/40 screens, clean branch.
@@ -154,33 +178,55 @@ migration and operational hardening; UAT and release package.
 
 **None blocking the build.** Open items, recorded rather than assumed closed:
 
-- **M3 above** — awaiting a visual-change approval.
-- **`bill.void` maker-checker is structurally inert.** `services.py:411` passes
-  `b.get("created_by")` and the `bill` table has no such column, so
-  `require_separation` short-circuits and the raiser of a bill can void it.
-  Known, pinned by a **strict** xfail parametrised from `auth.MAKER_CHECKER`
-  itself, so it cannot rot silently. The fix — add `created_by` to `bill` and
-  populate it — is Wave 8 Agent B's.
+- **Five local test failures**, none of them in this stream's files:
+  `test_manifest.py` x2 (a new `tests/test_pg_anchor_job.py` carrying 32
+  tests is not in the manifest, so the baseline reads 299 against a pinned
+  220 — `python tools/build_test_manifest.py` is the recorded remedy),
+  `test_pg_fx_ingest.py` x2, and `test_pg_rls_coverage.py` x1. Owners are
+  the backend streams.
+- ~~**`bill.void` maker-checker is structurally inert.**~~ **NO LONGER TRUE,
+  and this file contradicted itself about it** — it was listed here as a
+  blocker while the Wave 8 table below credited stream B with closing it. The
+  code settles it: `bill` carries `created_by` in `app/backend/db.py`,
+  `services.py` passes it with `require_maker=True` so an unattributed bill is
+  refused rather than waved through, and the strict xfail is gone —
+  `tests/test_approval_maker_checker.py` now reads `KNOWN_INERT: dict[str,
+  str] = {}`. (The old line citation, `services.py:411`, had also drifted; that
+  line is now a different function's signature.)
 - **Repair batches B and C, not yet written.** `rate = amount // units`
   truncates and the adapters emit *rate × quantity* rather than the line total
   (H-3); `currency`/`exchange_rate` stored and never applied (H-4);
   `recompute_commitment` zeroes commitment not originating in PostgreSQL
   `po_line` (H-7); three guards do not cover the code they were written for
   (H-9).
-- **No local PostgreSQL.** 615 tests skip here and first execute in CI. A skip
-  is not a pass.
-- **Zoho remains MOCK.** No sandbox credentials, no live call has been made,
-  and nothing is marked LIVE or VERIFIED.
+- **No local PostgreSQL.** Re-measured rather than restated: **593 of the
+  `test_pg_*` tests skip on this machine**, out of **679 skips** across the
+  whole suite. They first execute in CI. A skip is not a pass. (This file
+  carried `615` here and `656` further down — two numbers for one measurement,
+  neither reproducible today.)
+- **Zoho remains MOCK.** `app/backend/zoho.py` declares `MODE = "MOCK"` and
+  makes no network call at all: its connectivity screen derives its result from
+  a stored `oauth_status` column and a scope comparison. No sandbox credential
+  exists, no live call has ever been made, and nothing is marked LIVE or
+  VERIFIED.
+- **Repair batches H-1 and H-2 are closed, not open** — see the FX section
+  below, which used to describe them as outstanding.
 
 ## Test and commit status
 
-- Full local suite: **3601 passed, 615 skipped, 1 xfailed, 0 failed** (`1b7f08e`)
+- Full local suite, re-measured on this branch: **4109 passed, 679 skipped,
+  5 failed**. The previous figure (`3601 passed, 615 skipped, 1 xfailed,
+  0 failed` at `1b7f08e`) is retained here only as the point of comparison.
 - `closure.spec.js`: **119 passed, exit 0** — the six closure screens' first
   coverage, and it installs no routes
 - `spa-routing.spec.js`: 55 passed · `integration.spec.js`: 161 passed against
   the real wiring · `analytics` + `mapping`: 122 passed, axe clean
-- Manifest `--check` clean; baseline back at exactly **220**
-- Migrations: **001…024, contiguous, no gaps**
+- Manifest `--check` is **NOT clean**: the baseline measures **299** against a
+  pinned 220, because `tests/test_pg_anchor_job.py`'s 32 tests were never
+  recorded. Rebuild with `python tools/build_test_manifest.py` and record the
+  reason in `tests/ADAPTATIONS.md`.
+- Migrations: **001…025, contiguous, no gaps** — 25 files under
+  `migrations/pg/`, all tracked, ending `025_fx_applied_at_ingestion.sql`
 - CI run 34309336564: Contract, Supply chain, Regression **green**; PostgreSQL
   **red on two tests**, both failing in the seed of the new RLS matrix and
   neither reaching an assertion about a policy (1517 passed); the fix is
@@ -190,6 +236,10 @@ migration and operational hardening; UAT and release package.
 - Wave 7 is **CLOSED**; Wave 8 is **not**.
 
 ## The Wave 7 RLS matrix — it has now passed, and here is the whole arc
+
+> **Scope marker.** Everything in this section, and the all-green CI table
+> further up, is about **Wave 7**. It is not evidence about Wave 8 — see "CI IS
+> BLOCKED, AND NOT BY THIS CODE" below, which is the current state.
 
 This section previously read "has never passed" and sat two screens below a
 table saying the gate was MET. Both were written honestly and one went stale;
@@ -202,43 +252,62 @@ policy assertion. Three CI cycles went on one INSERT written from memory
 rather than from migration 018. **They passed in run 34317944466**, which is
 what let Wave 7 close.
 
-## Wave 8 — delivered, and what the final review found
+## Wave 8 — what each stream delivered, and what the final review found
+
+> Wave 8 is **not closed**. This section records delivery by stream; the
+> gate is not met while CI cannot run and five local tests fail.
 
 | Stream | Delivered |
 |---|---|
 | **A** financial & period | Migration 023: FX translation engine, approval-gated period reopen with concurrency and idempotency tests that bite |
-| **B** security & audit | Migration 024: `bill.created_by` closing an inert maker-checker, audit anchor writer and verifier, secret-provider concurrency, L2 and L6 |
+| **B** security & audit | Audit anchor writer and verifier (migration 024), `bill.created_by` closing an inert maker-checker — in `app/backend/db.py`, **not** in 024, which contains no such column; PostgreSQL has carried `bill.created_by` since 013 — secret-provider concurrency, L2 and L6 |
 | **C** migration & ops | Deterministic export/import, reconciliation to the paisa, restore drill, SBOM, `pip-audit` clean |
 | **D** UAT & release | 358-assertion role matrix, browser UAT, four client documents |
 
 **Two of the four agents died at a usage limit mid-task.** The final
 adversarial review was pointed at that seam and found three HIGH defects there.
 
-### H-1 — the FX engine has no caller. AUD-H-007 IS NOT CLOSED.
+### H-1 — the FX engine had no caller. SINCE WIRED; this entry was stale.
 
-`translate_bill`, `assess_revaluation`, `record_rate`, `revaluation_exposure`
-and `bill_fx_summary` are invoked from **nothing** outside `pg/fx.py` and
-`tests/`. No route, no service, no job, no screen. `grep` for
-`source_currency` outside `fx.py` returns nothing.
+**The falsifiable claim this finding rested on now returns the opposite
+result.** It said: *"`grep` for `source_currency` outside `fx.py` returns
+nothing."* It does not. `source_currency` appears in
+`app/backend/pg/procurement.py` and `app/backend/integration/sweeps.py`, and
+`procurement.py` opens with `from . import fx as fx_svc`, calls
+`fx_svc.translate_lines` from its bill-mirror path and reads
+`fx_svc.BASE_CURRENCY`. `migrations/pg/025_fx_applied_at_ingestion.sql` was
+written specifically to close this, and its own header quotes this grep as the
+state it was fixing.
 
-The arithmetic is correct and well tested — `Decimal` throughout, exponent
-honoured per currency, half-away-from-zero symmetric, rate applied exactly
-once, every `SUM()` cast `::bigint`. **It is a wiring gap, not a money bug.**
-But migration 023's headline — "applies the exchange rate that 013 stored and
-nobody ever multiplied" — is true of `fx.py` and **false of the product**.
-`FINDINGS_REMEDIATION_STATUS.csv` still records AUD-H-007 as not implemented,
-and it is accidentally right.
+The arithmetic was never the problem and is unchanged — `Decimal` throughout,
+exponent honoured per currency, half-away-from-zero symmetric, rate applied
+exactly once, every `SUM()` cast `::bigint`. It was a wiring gap, and the
+wiring is in.
 
-### H-2 — the bill-ingestion path can silently un-translate a translated bill.
+**One thing here is still true and still needs doing:**
+`FINDINGS_REMEDIATION_STATUS.csv` row `AUD-H-007` still carries the note
+*"Foreign-currency conversion is still NOT implemented - exchange_rate is
+stored but not applied"*. That note is now wrong, and the CSV is the record
+other documents defer to. It is not edited from this stream — flagged for its
+owner.
 
-`pg/procurement.py` writes the vendor's amount straight into `amount_paise`
-(declared INR base) and never sets `source_currency` or `source_amount_minor`.
-Its `ON CONFLICT DO UPDATE` overwrites `amount_paise` on re-mirror, and 023's
-immutability triggers do not fire because the columns they watch are unchanged.
-`fx_translated_at` would then assert a translation the lines no longer carry.
+### H-2 — the bill-ingestion path could silently un-translate. SINCE FIXED.
 
-**Not executed** — it needs PostgreSQL. Derived from the trigger bodies and the
-`DO UPDATE` set-list.
+Both halves of this finding have been closed, and both are readable in
+`app/backend/pg/procurement.py`:
+
+* it no longer *"never sets `source_currency` or `source_amount_minor`"* — the
+  bill insert writes `source_currency`, `fx_rate`, `fx_rate_id`,
+  `fx_rate_date`, `fx_rate_source` and `fx_translated_at`, and the line insert
+  writes `source_amount_minor`, `source_tax_minor` and `source_freight_minor`;
+* the `ON CONFLICT DO UPDATE` no longer overwrites a translated row. Each
+  affected column is now wrapped `CASE WHEN {BILL}.fx_translated_at IS NULL
+  THEN EXCLUDED.… ELSE {BILL}.… END`, and `fx_translated_at` itself is
+  `COALESCE`d — which is precisely the overwrite this finding described.
+
+**Still not executed against PostgreSQL**, for the same reason as everything
+else here: there is no local instance and CI cannot start jobs. Read as
+reviewed, not as verified.
 
 ### H-3 — the read-before-authorise fix was applied to one function of three.
 
@@ -272,15 +341,19 @@ Every job in both runs since 06:10 fails in 3–4 seconds having executed **zero
 steps**, with no logs written at all (`BlobNotFound`). `.github/workflows/` is
 byte-identical to run **34317944466**, which was green on all five jobs.
 
-Most likely cause: **exhausted GitHub Actions minutes** on a private repo. Not
-confirmed — the billing endpoint needs an auth scope this session does not
-hold.
+**This is an EXTERNAL BLOCKER whose cause is UNCONFIRMED.** Exhausted GitHub
+Actions minutes on a private repo is one hypothesis and it is **not proven** —
+the billing endpoint needs an auth scope this session does not hold, so it has
+not been checked. It is not the only hypothesis the observed facts fit: an
+organisation policy change, a repository or runner-label setting, and a
+provider-side incident would all look the same from here. Nothing above ranks
+them, and this file should not pretend otherwise.
 
 **Consequence, stated rather than worked around: the Wave 8 batch is
 UNVERIFIED in CI.** The local suite is green, but the two jobs that have caught
 a real defect in every wave — PostgreSQL and VRT — have not run against it. 656
-tests skip locally and have only ever executed in CI; migrations 023 and 024's
-tests are in that set.
+tests skip locally and have only ever executed in CI; the tests for migrations
+023, 024 and 025 are in that set.
 
 ## Local preview
 
@@ -291,8 +364,16 @@ CAPEX_PROFILE=local-demo CAPEX_DB_PATH=app/data/capex_demo-8790.db PORT=8790 \
 
 **http://127.0.0.1:8790** — demo identities `U-REQ, U-PM, U-PLH, U-PROC, U-FIN,
 U-PFC, U-CFO, U-AUD, U-ADM`; the password is the user id followed by `!demo`.
-Seeded development credentials, displayed by the app's own sign-in screen; no
-production credential exists.
+
+**These are VISIBLE SEEDED CREDENTIALS, and they are the whole of the
+authentication story.** The sign-in screen lists the user ids and every
+password is derivable from the id in one guess. `DEMO_USER` and
+`DEMO_PASSWORD` do not change that — they are read at exactly one place,
+`app/run.py`'s `main()`, only to decide whether to print a warning, and nothing
+in `app/backend/**` reads either. **This build is therefore unsuitable for a
+publicly shared or production deployment**; keep it on a trusted network. No
+production credential exists in it, which is a statement about what it
+contains, not a licence to host it.
 
 **What shows live data without PostgreSQL.** Measured on the running demo, and
 both numbers this file used to carry were wrong:
