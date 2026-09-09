@@ -964,3 +964,74 @@ def test_all_nineteen_rls_tables_are_enabled_and_forced_live(pg_connection):
     unprotected = sorted(t for t, s in status.items()
                          if not (s["enabled"] and s["forced"]))
     assert unprotected == [], unprotected
+
+
+# ============================================ live: a policy that is really a policy
+@pytest.mark.pg
+@PG
+def test_every_rls_table_in_the_registry_carries_a_policy_live(pg_connection):
+    """The other half of ENABLE + FORCE, for EVERY table rather than 006's eight.
+
+    `test_every_newly_covered_table_actually_carries_a_policy_live` above asks
+    this of `RLS_COVERAGE_TABLES` -- the eight tables 006 added -- because that
+    is what it was written for. The registry is now four times that size, and
+    the three states are not the same failure:
+
+      * ENABLE + FORCE with NO policy denies everything, which is an outage
+        and gets noticed within the hour;
+      * a policy that failed to create on a table that was never enabled
+        denies nothing, and gets noticed at the audit.
+
+    This asks the whole registry, so a table added by a future migration is
+    covered on the day it is registered rather than on the day somebody
+    remembers to widen a test.
+    """
+    missing = [table for table in rls.ALL_RLS_TABLES
+               if not rls.fetch_policy_names(pg_connection, table)]
+    pg_connection.rollback()
+    assert missing == [], (
+        f"RLS is enabled on these tables but no policy exists: {missing}. "
+        "Every read against them is denied, and every write too.")
+
+
+@pytest.mark.pg
+@PG
+def test_no_rls_policy_permits_every_row_live(pg_connection):
+    """A policy can exist, be enabled, be forced -- and protect nothing.
+
+    `USING (true)` satisfies every assertion this file makes about names and
+    flags. It is also the shape somebody reaches for when a migration is
+    failing and the release is today, and it leaves the registry, the
+    inventory and the coverage tests all reporting green.
+
+    No migration in `migrations/pg/` writes one today (grep for `USING (true)`
+    returns nothing), so this is a ratchet rather than a repair. It is read
+    from `pg_policies`, not from the files, because the question is what the
+    database is enforcing.
+    """
+    offenders = []
+    for table in rls.ALL_RLS_TABLES:
+        for policy in rls.fetch_policy_predicates(pg_connection, table):
+            for clause in ("qual", "with_check"):
+                if rls.is_unconditional(policy[clause]):
+                    offenders.append(f"{table}.{policy['name']}.{clause}")
+    pg_connection.rollback()
+    assert offenders == [], (
+        f"these policies permit every row: {offenders}. A policy that always "
+        "returns true is an RLS-shaped hole: enabled, forced, named in the "
+        "registry, and enforcing nothing.")
+
+
+def test_is_unconditional_reads_an_absent_clause_as_absent_not_as_permissive():
+    """Guards the helper the live test above depends on.
+
+    An INSERT-only policy has no `USING` clause, so `qual` is NULL. Reading
+    that as "permits everything" would report every correctly written insert
+    policy as a hole, and the noise would get the whole test deleted.
+    """
+    assert rls.is_unconditional(None) is False
+    assert rls.is_unconditional("true") is True
+    assert rls.is_unconditional("(true)") is True
+    assert rls.is_unconditional("((true))") is True
+    assert rls.is_unconditional("capex_scope_permits(entity_id, NULL, NULL, NULL)") is False
+    assert rls.is_unconditional("(visibility = 'SHARED')") is False

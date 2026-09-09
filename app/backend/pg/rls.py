@@ -161,6 +161,15 @@ REFERENCE_TABLES = frozenset({
     # session with an established principal reads them, a session with no scope
     # applied at all reads nothing.
     "lifecycle_state", "procurement_policy", "procurement_transition",
+    # 023's three FX reference tables, on the same argument. `fx_rate` is the
+    # one worth stating twice: an exchange rate is NOT owned by an entity.
+    # Two entities translating the same currency on the same date must read
+    # the same number, and a per-entity rate would make the consolidated
+    # position depend on who was looking. `currency_denomination` is ISO 4217
+    # minor units and `fx_policy` is the deployment's own three FX choices;
+    # both are estate-wide by construction. All three carry
+    # `capex_principal_present()` policies in 023.
+    "currency_denomination", "fx_rate", "fx_policy",
 })
 
 #: Every table 006 enables RLS on.
@@ -482,6 +491,47 @@ RLS_CLOSURE_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
 #: Every table 019 enables RLS on.
 RLS_CLOSURE_TABLES: tuple[str, ...] = tuple(RLS_CLOSURE_TABLE_COLUMNS)
 
+#: Table -> dimension column mapping for the five tables
+#: `migrations/pg/023_fx_translation_and_period_reopen.sql` adds.
+#:
+#: 023 enables and forces RLS on all five and writes their policies, and its
+#: own REGISTRY NOTE says explicitly that it does not edit this file because
+#: another stream owns it. This is that entry, applied. It matters that it is
+#: applied in the same wave: a table protected by a migration and absent from
+#: this registry is precisely the shape of the `export_job` defect recorded in
+#: :data:`RLS_EXPORT_TABLE_COLUMNS` -- protected in SQL, invisible to every
+#: test that reasons about coverage.
+#:
+#: TWO SHAPES, and the split is the migration's, not a choice made here.
+#:
+#: `currency_denomination`, `fx_rate` and `fx_policy` are ORGANISATION-WIDE
+#: reference data. Their policies are `capex_principal_present()`, exactly as
+#: `item_master` / `vendor_master` / `lifecycle_state` are, so they are listed
+#: in :data:`REFERENCE_TABLES` and every dimension is `None`. An exchange rate
+#: is not owned by an entity: two entities translating the same currency on
+#: the same date must get the same number, and a per-entity rate table would
+#: mean the consolidated position depended on who was reading it.
+#:
+#: `fx_revaluation_attempt` and `period_reopen_request` carry `entity_id NOT
+#: NULL` with a foreign key to `entity`, and their policies filter it directly
+#: through `capex_scope_permits(entity_id, NULL, NULL, NULL)`. Both are
+#: records of a REFUSAL or a REVERSAL -- a movement that was declined, a close
+#: that was undone -- and an unscoped read of either is another entity's
+#: month-end position.
+RLS_FX_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
+    "currency_denomination": {"entity": None, "plant": None,
+                              "location": None, "project": None},
+    "fx_rate": {"entity": None, "plant": None, "location": None, "project": None},
+    "fx_policy": {"entity": None, "plant": None, "location": None, "project": None},
+    "fx_revaluation_attempt": {"entity": "entity_id", "plant": None,
+                               "location": None, "project": None},
+    "period_reopen_request": {"entity": "entity_id", "plant": None,
+                              "location": None, "project": None},
+}
+
+#: Every table 023 enables RLS on.
+RLS_FX_TABLES: tuple[str, ...] = tuple(RLS_FX_TABLE_COLUMNS)
+
 #: Every RLS-protected table, from any of the seven registries.
 #:
 #: Reporting (017) and closure (019) were written in parallel and each added
@@ -502,7 +552,7 @@ ALL_RLS_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
     **RLS_TABLE_COLUMNS, **RLS_COVERAGE_TABLE_COLUMNS,
     **RLS_PROCUREMENT_TABLE_COLUMNS, **RLS_CORRECTION_TABLE_COLUMNS,
     **RLS_REPORTING_TABLE_COLUMNS, **RLS_EXPORT_TABLE_COLUMNS,
-    **RLS_CLOSURE_TABLE_COLUMNS,
+    **RLS_CLOSURE_TABLE_COLUMNS, **RLS_FX_TABLE_COLUMNS,
 }
 
 #: Every RLS-protected table, from any migration, in registry order.
@@ -524,6 +574,8 @@ RLS_MIGRATION_BY_TABLE: dict[str, str] = {
     # nothing here named them at all -- see `RLS_EXPORT_TABLE_COLUMNS`.
     **{table: "018_export_jobs.sql" for table in RLS_EXPORT_TABLES},
     **{table: "019_closure.sql" for table in RLS_CLOSURE_TABLES},
+    **{table: "023_fx_translation_and_period_reopen.sql"
+       for table in RLS_FX_TABLES},
 }
 
 
@@ -751,3 +803,38 @@ def fetch_policy_names(connection: psycopg.Connection, table: str) -> list[str]:
         "WHERE schemaname = current_schema() AND tablename = %s ORDER BY policyname",
         (table,)).fetchall()
     return [row[0] for row in rows]
+
+
+def fetch_policy_predicates(connection: psycopg.Connection,
+                            table: str) -> list[dict[str, str | None]]:
+    """`[{name, cmd, qual, with_check}]` as PostgreSQL itself stores them.
+
+    `fetch_policy_names` answers "is there a policy", which is the question
+    that catches a `CREATE POLICY` that never ran. It does not catch the other
+    end: a policy that exists and PERMITS EVERYTHING. `USING (true)` is a real
+    policy, appears in `pg_policies`, satisfies every name-level assertion,
+    and protects nothing -- and it is the shape somebody reaches for when a
+    migration is failing and the deadline is today.
+
+    Read back from the catalogue rather than from the migration text, because
+    the question is what the database is enforcing now.
+    """
+    rows = connection.execute(
+        "SELECT policyname, cmd, qual, with_check FROM pg_policies "
+        "WHERE schemaname = current_schema() AND tablename = %s ORDER BY policyname",
+        (table,)).fetchall()
+    return [{"name": r[0], "cmd": r[1], "qual": r[2], "with_check": r[3]}
+            for r in rows]
+
+
+def is_unconditional(predicate: str | None) -> bool:
+    """Does this stored policy expression permit every row?
+
+    `None` is NOT unconditional: an INSERT-only policy has no `USING` clause at
+    all, and reading that absence as "permits everything" would report every
+    correctly written insert policy as a hole.
+    """
+    if predicate is None:
+        return False
+    normalised = predicate.strip().lower().replace("(", "").replace(")", "").strip()
+    return normalised in {"true", "1=1", "1 = 1"}

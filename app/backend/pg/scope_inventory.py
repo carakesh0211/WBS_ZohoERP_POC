@@ -700,6 +700,68 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
              "(wbs_id, project_id); without it an allocation could name "
              "another project's element and the project_id-based policy would "
              "still admit the row."),
+
+    # ------------------ 023_fx_translation_and_period_reopen.sql
+    # 023 enables and forces RLS on all five and writes their policies. Its own
+    # REGISTRY NOTE says it does not edit this file because another stream owns
+    # it; these are those entries, applied in the same wave. A table protected
+    # by a migration and absent from BOTH this inventory and `rls.py` is the
+    # `export_job` defect: `status="protected_pending_registry"` removes a
+    # table from both sides of the coverage equality, so the equality holds
+    # vacuously and nothing notices. `status="covered"` here is what makes the
+    # cross-check bite.
+    #
+    # Three reference tables and two entity-scoped ones, and the split is the
+    # migration's own.
+    ScopedTable(
+        table="currency_denomination", dimensions=(), reach="reference",
+        path="no dimension column and no join to one -- organisation-wide",
+        status="covered",
+        migration="023_fx_translation_and_period_reopen.sql",
+        note="ISO 4217 minor units. `capex_principal_present()`, as "
+             "item_master is. INR's exponent of 2 is the value the whole "
+             "product's paise arithmetic depends on, so the row is not "
+             "deletable (no DELETE granted) and not per-entity."),
+    ScopedTable(
+        table="fx_rate", dimensions=(), reach="reference",
+        path="no dimension column and no join to one -- organisation-wide",
+        status="covered",
+        migration="023_fx_translation_and_period_reopen.sql",
+        note="AN EXCHANGE RATE IS NOT OWNED BY AN ENTITY. Two entities "
+             "translating the same currency on the same date must read the "
+             "same number; a per-entity rate table would make the "
+             "consolidated position depend on who was reading it. Scoping "
+             "this would be a defect, not a hardening."),
+    ScopedTable(
+        table="fx_policy", dimensions=(), reach="reference",
+        path="no dimension column and no join to one -- organisation-wide",
+        status="covered",
+        migration="023_fx_translation_and_period_reopen.sql",
+        note="The deployment's three FX choices (period-end revaluation, "
+             "rounding, unknown currency), constrained to known key/value "
+             "pairs by ck_fx_policy_known. Estate-wide by construction."),
+    ScopedTable(
+        table="fx_revaluation_attempt", dimensions=("entity",), reach="direct",
+        path="fx_revaluation_attempt.entity_id",
+        status="covered",
+        migration="023_fx_translation_and_period_reopen.sql",
+        note="The record that a revaluation was REFUSED or recorded and not "
+             "applied, carrying booked/proposed/delta paise for a bill. An "
+             "unscoped read is another entity's month-end exposure. "
+             "`entity_id` is NOT NULL with an FK to entity, so the direct "
+             "predicate cannot be waived by a NULL row value the way a "
+             "project join's plant limb can."),
+    ScopedTable(
+        table="period_reopen_request", dimensions=("entity",), reach="direct",
+        path="period_reopen_request.entity_id",
+        status="covered",
+        migration="023_fx_translation_and_period_reopen.sql",
+        note="A closed period being reopened, and who approved it. An "
+             "unscoped read tells one entity that another reversed a close, "
+             "and why. `entity_id` is NOT NULL with an FK to entity; "
+             "`period_id` reaches accounting_period, which carries its own "
+             "entity-scoped policy from 006, so the two agree by "
+             "construction rather than by coincidence."),
 )
 
 #: Tables deliberately left WITHOUT a scope policy, each with the reason.

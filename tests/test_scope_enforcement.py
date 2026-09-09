@@ -167,6 +167,25 @@ SCOPABLE = {
     "project", "wbs_element", "budget_control_cell", "budget_ledger_cell",
     "budget_line", "budget_revision", "budget_transfer", "budget_version",
     "item_master", "vendor_master", "accounting_period",
+    # Migration 023's two entity-scoped tables. Both carry `entity_id text NOT
+    # NULL` with a `capex_scope_permits(entity_id, NULL, NULL, NULL)` policy,
+    # so `test_scopable_covers_every_rls_table_that_names_a_dimension_column`
+    # DERIVES the requirement to have them here -- they are added because that
+    # check demanded it, which is the completeness property that stopped
+    # `report_saved_view` being missed a second time.
+    #
+    # `fx_revaluation_attempt` records that a revaluation was refused, with the
+    # booked, proposed and delta paise for a bill; `period_reopen_request`
+    # records that a closed period was reopened and who approved it. An
+    # unscoped read of either is another entity's month-end position, which is
+    # exactly the class of disclosure this gate exists for.
+    "fx_revaluation_attempt", "period_reopen_request",
+    # The three FX REFERENCE tables are deliberately ABSENT. `fx_rate`,
+    # `fx_policy` and `currency_denomination` carry no dimension column and no
+    # join to one; their policy is `capex_principal_present()`, the same line
+    # `item_master` sits on. Adding them would demand a `{scope}` token on a
+    # query that has no dimension to filter, and the only way to satisfy that
+    # is a waiver -- which teaches the next reader that waivers are routine.
 }
 
 READ_METHODS = {"fetchall", "fetchone", "execute"}
