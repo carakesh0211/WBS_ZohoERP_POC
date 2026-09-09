@@ -213,11 +213,22 @@ U-PFC, U-CFO, U-AUD, U-ADM`; the password is the user id followed by `!demo`.
 Seeded development credentials, displayed by the app's own sign-in screen; no
 production credential exists.
 
-**What shows live data without PostgreSQL:** the 14 legacy shell views. Every
-PostgreSQL-backed API answers `503 DATABASE_NOT_CONFIGURED` with
-`state: unavailable`, so the other 32 screens render their honest unavailable
-state — verified by probing each endpoint, not assumed. Zoho shows
-`MOCK — NOT VERIFIED`.
+**What shows live data without PostgreSQL.** Measured on the running demo, and
+both numbers this file used to carry were wrong:
+
+* The shell has **17 NAV entries**, not 14, and `SCR_ROUTES` has **46**. The
+  two sets are **disjoint** — no id appears in both — so there is no "other
+  32". There are 63 routable view ids: 17 shell views and 46 SCR-nn screens.
+  The 14 in the plan is the count of POC views that map onto an SCR number,
+  which is a different quantity.
+* Of **55 parameterless GET endpoints**: **22 serve live data**, **32 answer
+  `503 DATABASE_NOT_CONFIGURED`**, one answers something else. The 503 is
+  uniform. **`state: unavailable` is not** — only **4 of those 32** carry a
+  `state` field; the rest answer RFC-7807 without one. A frontend keying
+  "unavailable" off that field alone would misread 28 endpoints, so screens
+  must treat the 503 itself as the signal.
+
+Zoho shows `MOCK — NOT VERIFIED`.
 
 ## Flake classification of record — SCR-39, 2026-09-08
 
