@@ -15,6 +15,11 @@ node_modules/
 # design and the thing every future change is diffed against.
 test-results/
 tests/vrt/report/
+# Per-batch VRT logs and the running summary from tools/run_vrt_batches.sh.
+# Generated evidence, regenerated on every run; the durable record is the
+# batch table in docs/FULL_APPLICATION_DELIVERY_STATUS.md.
+.vrt-batches/
+.vrt-batches-*/
 
 # sbom.cyclonedx.json and vulnerability-report.json are deliberately NOT
 # ignored: they are the AUD-M-006 evidence. A CI artifact with 90-day

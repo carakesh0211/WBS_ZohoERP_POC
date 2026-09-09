@@ -2162,8 +2162,41 @@ def _write_po(session: Session, *, project_id: str, vendor_name: str,
         # 249999.99999999997 paise.
         rate = line.get("rate_paise")
         if rate is None:
-            units = int(quantity) if float(quantity).is_integer() else 0
-            rate = amount // units if units > 0 else amount
+            # DERIVED ONLY WHEN IT IS EXACT. This was
+            # `amount // units if units > 0 else amount`, which had two ways of
+            # being wrong and no way of saying so:
+            #
+            #   * integer division TRUNCATED, so a 3-unit Rs 1,000.00 line got
+            #     rate 333.33 and the vendor computed Rs 999.99;
+            #   * a FRACTIONAL quantity set `units = 0`, and the fallback then
+            #     made the rate the whole line total -- so a 2.5-unit line was
+            #     invoiced at 2.5x, or 3x once the emission policy quantised
+            #     the quantity, the amount the budget check cleared.
+            #
+            # Both refuse now. Zoho multiplies rate by quantity, so a total not
+            # divisible by its quantity has no exact representation, and
+            # picking the nearest one is how the two numbers diverged.
+            as_float = float(quantity)
+            if as_float != int(as_float):
+                _err("PO_LINE_QUANTITY_NOT_WHOLE",
+                     f"line {line['line_no']} has quantity {quantity}. A "
+                     "purchase order line is emitted as rate x quantity, so a "
+                     "fractional quantity has no exact per-unit price. Supply "
+                     "`rate_paise` explicitly, or express the line in whole "
+                     "units.", 422)
+            units = int(as_float)
+            if units <= 0:
+                _err("PO_LINE_QUANTITY_NOT_POSITIVE",
+                     f"line {line['line_no']} has quantity {quantity}, which "
+                     "cannot price a line.", 422)
+            if amount % units != 0:
+                _err("PO_LINE_RATE_NOT_EXACT",
+                     f"line {line['line_no']}: {amount} paise over {units} "
+                     "units does not divide into a whole number of paise. The "
+                     "vendor multiplies rate by quantity, so this line would "
+                     "be invoiced for a different amount than was committed. "
+                     "Split the line or supply `rate_paise`.", 422)
+            rate = amount // units
         else:
             # Validated BEFORE any int() call. `int(2.5)` is 2, so coercing
             # first and guarding afterwards would let a float rate through as

@@ -402,6 +402,13 @@ POST_BASELINE_FILES = {
     # the docstrings say which, and which one does not.
     "test_security_approval_oracle.py",
 
+    # `test_security_audit_forgery.py` -- the append-only triggers block
+    # UPDATE and DELETE, so the attack is an INSERT. `verify_audit_chain`
+    # skipped every unhashed row, and a fabricated PR_APPROVED inserted by
+    # hand reported `intact: true`. These pin the watermark that separates
+    # pre-migration history from a row written outside `audit()`.
+    "test_security_audit_forgery.py",
+
     # --- Wave 8 stream B: the audit anchor's invocation path --------------
     # `write_anchor` was correct and called by nothing, so `audit_anchor` was
     # empty in every deployment and whole-stream truncation was undetectable.

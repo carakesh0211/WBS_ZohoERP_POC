@@ -13,7 +13,7 @@
   --n300:#C9CDD3; --n500:#6B7280; --n700:#3A4048; --n900:#1B1F24;
 
   --positive:#1E7A45; --positive-bg:#E8F5ED;
-  --warning:#A66A00;  --warning-bg:#FDF3E2;
+  --warning:#A66A00;  --warning-bg:#FDF3E2;  --warning-text:#6D4600;
   --negative:#B3261E; --negative-bg:#FBEAE9;
   --info:#2E5AAC;     --info-bg:#EAF0FB;
   --progress:#5B4BB5; --progress-bg:#EFEDFA;
@@ -161,7 +161,7 @@ body.cosy { --row-h:36px; --input-h:34px; }
   margin-left:auto; background:var(--n200); color:var(--n700);
   border-radius:8px; font-size:10px; padding:1px 6px; font-weight:600; flex:0 0 auto;
 }
-.nav-item .pill.warn { background:var(--warning-bg); color:#6d4600; }
+.nav-item .pill.warn { background:var(--warning-bg); color:var(--warning-text); }
 
 .nav-scrim {
   display:none; position:fixed; inset:0; z-index:39;
@@ -270,7 +270,7 @@ textarea { height:auto; padding:6px 8px; line-height:18px; }
 
 /* honest labelling of anything the mock connector produced */
 .mock-chip {
-  display:inline-block; background:var(--warning-bg); color:#6d4600;
+  display:inline-block; background:var(--warning-bg); color:var(--warning-text);
   border:1px solid #ecd6a8; border-radius:2px; padding:0 6px;
   font-size:10px; font-weight:700; letter-spacing:.4px; line-height:16px; white-space:nowrap;
 }
@@ -332,7 +332,7 @@ tr.lvl-1 th:first-child, tr.lvl-1 td:first-child { font-weight:600; }
 .st-warning::before  { background:var(--warning); }
 .st-negative::before { background:var(--negative); }
 .st-positive { color:var(--positive); }
-.st-warning  { color:#6d4600; }
+.st-warning  { color:var(--warning-text); }
 .st-negative { color:var(--negative); }
 .st-progress { color:var(--progress); }
 
@@ -345,7 +345,7 @@ tr.lvl-1 th:first-child, tr.lvl-1 td:first-child { font-weight:600; }
 .msg .body { flex:1; min-width:0; overflow-wrap:anywhere; }
 .msg .mid { font-size:11px; opacity:.75; margin-top:3px; font-family:ui-monospace,monospace; }
 .msg-error   { background:var(--negative-bg); border-color:#f0c4c1; color:#7d1a15; }
-.msg-warning { background:var(--warning-bg);  border-color:#ecd6a8; color:#6d4600; }
+.msg-warning { background:var(--warning-bg);  border-color:#ecd6a8; color:var(--warning-text); }
 .msg-success { background:var(--positive-bg); border-color:#bfe0cc; color:#145232; }
 .msg-info    { background:var(--info-bg);     border-color:#c5d4f0; color:#1f3f7a; }
 .msg .actions { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }

@@ -11438,6 +11438,36 @@
         "body_sha": "53f304f7b483848d"
       }
     },
+    "test_security_audit_forgery.py": {
+      "test_an_inserted_unhashed_row_is_reported_as_a_break": {
+        "assertions": 3,
+        "body_sha": "eec73df1571cff54"
+      },
+      "test_the_forged_row_is_named_not_merely_counted": {
+        "assertions": 1,
+        "body_sha": "bb93d20445a073ae"
+      },
+      "test_genuine_pre_migration_rows_are_still_exempt": {
+        "assertions": 1,
+        "body_sha": "1e103ba448e80c7e"
+      },
+      "test_a_wholly_legacy_log_is_not_reported_as_wholly_forged": {
+        "assertions": 1,
+        "body_sha": "03c0c41d62c51e11"
+      },
+      "test_the_watermark_moves_with_the_first_hashed_row": {
+        "assertions": 2,
+        "body_sha": "61e19c04425fd271"
+      },
+      "test_verify_reports_where_verifiable_history_begins": {
+        "assertions": 2,
+        "body_sha": "404ffd416bc3e8c6"
+      },
+      "test_the_connector_no_longer_writes_an_unhashed_row": {
+        "assertions": 4,
+        "body_sha": "9df03804044706e1"
+      }
+    },
     "test_security_frontend.py": {
       "test_no_frontend_module_does_float_arithmetic_on_money": {
         "assertions": 1,
@@ -11739,6 +11769,7 @@
     "test_scope_sentinel.py": 29,
     "test_security_approval_oracle.py": 8,
     "test_security_audit_anchor.py": 32,
+    "test_security_audit_forgery.py": 7,
     "test_security_frontend.py": 11,
     "test_security_identity.py": 10,
     "test_security_scope_tristate.py": 13,
@@ -11852,6 +11883,7 @@
     "test_scope_sentinel.py": 54,
     "test_security_approval_oracle.py": 11,
     "test_security_audit_anchor.py": 105,
+    "test_security_audit_forgery.py": 14,
     "test_security_frontend.py": 22,
     "test_security_identity.py": 18,
     "test_security_scope_tristate.py": 39,

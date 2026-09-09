@@ -395,7 +395,15 @@ def test_the_root_palette_is_exactly_the_frozen_token_palette():
 # NEW off-token colour still fails.
 KNOWN_OFF_TOKEN_HEXES = {
     "#7D1A15", "#F0C4C1",   # .msg-error   text, border
-    "#6D4600", "#ECD6A8",   # .msg-warning text, border (+ .mock-chip border)
+    # 6D4600 WAS HERE and is not any more, because it stopped being an
+    # off-token literal: it is now `--warning-text` in :root and a
+    # declared colour in C6_tokens.json. This gate's own failure message
+    # says "add a new colour to C6_tokens.json rather than to
+    # styles.css" -- that is what happened, so the entry leaves this
+    # list. It was five repeated literals across three stylesheets, and
+    # `closure.spec.js` refused the two in a feature stylesheet, which
+    # is how it was found.
+    "#ECD6A8",   # .msg-warning border (+ .mock-chip border)
     "#145232", "#BFE0CC",   # .msg-success text, border
     "#1F3F7A", "#C5D4F0",   # .msg-info    text, border
     "#7A1A15",              # .bar.breach > i.actual
@@ -463,9 +471,21 @@ def test_no_new_off_token_colour_is_introduced():
 # indicators needing 3:1, which A66A00 clears everywhere (3.96:1 worst case).
 # Keeping them preserves the amber as the semantic signal while the text that
 # has to be READ becomes legible.
+# SECOND MOVEMENT OF THIS PIN, same approved change, no pixel difference.
+# The approved correction shipped as a repeated literal `#6d4600` in
+# three stylesheets. `closure.spec.js` refused the two in feature
+# stylesheets -- a feature stylesheet must reference tokens, because a
+# colour repeated as a literal in five places is five places to miss
+# when it next moves. The colour is now `--warning-text` in :root and a
+# declared token in C6_tokens.json, and every use references it.
+#
+# THE RENDERED VALUE IS IDENTICAL at every call site -- 6D4600 before,
+# 6D4600 after -- so no baseline moves and this is the mechanical
+# completion of the approved change, not a new visual decision.
 # Previous pin: cae43990b8c3cb7ea047f80771eeb103d6022f1e55a03e07b4b68aa9060ff847
+# Then:         04c89fe5f19683b238e4928059ac6fcc85f2bf276cc3890ac76c31bf2475c2a4
 APPROVED_STYLES_CSS_SHA256 = (
-    "04c89fe5f19683b238e4928059ac6fcc85f2bf276cc3890ac76c31bf2475c2a4"
+    "f56656aa9b3265c35530a636ad2cb73635e48cd7c4c0e7bdbc317eba4fbebceb"
 )
 
 

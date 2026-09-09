@@ -585,3 +585,45 @@ class PurchaseOrderEmissionDTO:
                 f"PurchaseOrderEmissionDTO.total_paise is {self.total_paise} "
                 f"but subtotal {self.subtotal_paise} + tax {self.tax_paise} is "
                 f"{self.subtotal_paise + self.tax_paise}.")
+
+        # THE THIRD IDENTITY, and the one whose absence reached a vendor.
+        #
+        # Zoho's line carries a RATE and a QUANTITY and no line total, so
+        # whatever we send is multiplied at the far end. A line whose total is
+        # not divisible by its quantity has no exact per-unit price: a 3-unit
+        # Rs 1,000.00 line was sent as 333.33 and invoiced as Rs 999.99 --
+        # committing one number here and billing another there, silently,
+        # every time.
+        #
+        # Refusing is the only honest answer. Rounding the rate picks a number
+        # the budget check never cleared; rounding the quantity changes what
+        # was ordered. Both are decisions this boundary is not entitled to make
+        # for the caller, and one of them was being made.
+        #
+        # Integer arithmetic only -- see this module's header. The quantity is
+        # a decimal string, so it is scaled to integers rather than parsed into
+        # a Decimal: "2.5" -> (25, 1), and the identity becomes
+        # `unit_price * 25 == line_total * 10`.
+        for line in self.lines:
+            text = str(line.quantity).strip()
+            whole, _, frac = text.partition(".")
+            digits = f"{whole}{frac}"
+            try:
+                scaled_quantity = int(digits)
+            except ValueError:
+                raise DtoError(
+                    f"PurchaseOrderEmissionDTO line {line.line_number}: "
+                    f"quantity {line.quantity!r} is not a decimal number.")
+            scale = 10 ** len(frac)
+            if line.unit_price_paise * scaled_quantity != line.line_total_paise * scale:
+                implied = line.unit_price_paise * scaled_quantity
+                raise DtoError(
+                    f"PurchaseOrderEmissionDTO line {line.line_number}: rate "
+                    f"{line.unit_price_paise} x quantity {line.quantity} is "
+                    f"{implied}/{scale} paise, not the line total "
+                    f"{line.line_total_paise}. Zoho multiplies rate by "
+                    "quantity at the far end, so this document would invoice a "
+                    "different amount from the one the budget check cleared. A "
+                    "line total that is not divisible by its quantity has no "
+                    "exact per-unit price and must be split or re-quantified "
+                    "upstream, never rounded here.")

@@ -72,19 +72,71 @@ def audit(con, actor: str, action: str, obj_type: str, obj_id: str, detail: str,
                 (at, actor, action, obj_type, obj_id, detail, prev_hash, entry_hash, correlation_id))
 
 
+def _unhashed_watermark(con) -> int:
+    """The last `audit_id` that may legitimately carry no `entry_hash`.
+
+    Hashing began at a specific row. Everything before it is pre-migration
+    history that can never be verified; everything after it was written by
+    `audit()` and must carry a hash. That boundary is DERIVED FROM THE DATA --
+    the id immediately below the first hashed row -- rather than stored, so no
+    migration is needed and no existing database needs a backfill.
+
+    When NOTHING is hashed yet the whole log is legacy, so the watermark is the
+    LAST row, not -1. Getting that backwards makes every row on a freshly
+    migrated database a break -- which is what the first version of this did,
+    and what the audit tests caught immediately.
+    """
+    row = con.execute(
+        "SELECT MIN(audit_id) AS first_hashed, MAX(audit_id) AS last_id "
+        "FROM audit_log").fetchone()
+    if row is None or row["last_id"] is None:
+        return -1                          # empty log: nothing to exempt
+    first_hashed = con.execute(
+        "SELECT MIN(audit_id) AS first_hashed FROM audit_log "
+        "WHERE entry_hash IS NOT NULL").fetchone()["first_hashed"]
+    if first_hashed is None:
+        return int(row["last_id"])         # wholly legacy: all rows exempt
+    return int(first_hashed) - 1
+
+
 def verify_audit_chain(con) -> dict:
-    """Detect tampering even by an identity that could bypass the triggers."""
-    prev_hash, broken, n = "", [], 0
+    """Detect tampering even by an identity that could bypass the triggers.
+
+    AN UNHASHED ROW ABOVE THE WATERMARK IS A FORGERY, NOT HISTORY. This used
+    to `continue` past ANY row with a NULL `entry_hash`, on the reasoning that
+    pre-migration rows carry none. True, and unbounded: a row INSERTed today
+    with no hash was skipped on the same grounds, not chained over, and
+    reported intact.
+
+    That is the whole attack. The append-only triggers block UPDATE and DELETE
+    -- so a tamperer does not edit a row, they add one. A fabricated
+    `PR_APPROVED` inserted by hand left this function returning
+    `intact: True` with the forged row sitting in the trail.
+
+    So the skip now applies only BELOW the watermark, where it is a fact about
+    when hashing began rather than an assumption about why a hash is missing.
+    """
+    watermark = _unhashed_watermark(con)
+    prev_hash, broken, n, unhashed = "", [], 0, 0
     for r in con.execute("""SELECT audit_id,at,actor,action,object_type,object_id,detail,
                                    prev_hash,entry_hash FROM audit_log ORDER BY audit_id"""):
         n += 1
         if r["entry_hash"] is None:
-            continue                      # pre-migration rows carry no hash
+            if int(r["audit_id"]) <= watermark:
+                unhashed += 1
+                continue                  # genuine pre-migration history
+            # Above the watermark and unhashed: written outside `audit()`.
+            broken.append(r["audit_id"])
+            continue
         payload = f"{prev_hash}|{r['at']}|{r['actor']}|{r['action']}|{r['object_type']}|{r['object_id']}|{r['detail']}"
         if hashlib.sha256(payload.encode()).hexdigest() != r["entry_hash"]:
             broken.append(r["audit_id"])
         prev_hash = r["entry_hash"]
-    return {"entries": n, "broken": broken, "intact": not broken}
+    return {"entries": n, "broken": broken, "intact": not broken,
+            # Reported, not merely skipped: an auditor is entitled to know
+            # where verifiable history begins.
+            "unhashed_legacy_rows": unhashed,
+            "unhashed_watermark": watermark}
 
 
 # ---------------------------------------------------------------- idempotency

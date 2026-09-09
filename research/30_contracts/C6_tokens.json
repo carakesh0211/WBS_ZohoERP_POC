@@ -33,7 +33,8 @@
   },
   "semantic": {
    "positive-600": "#1E7A45", "positive-bg": "#E8F5ED",
-   "warning-600":  "#A66A00", "warning-bg":  "#FDF3E2",
+   "warning-600": "#A66A00",
+   "warning-text": "#6D4600", "warning-bg":  "#FDF3E2",
    "negative-600": "#B3261E", "negative-bg": "#FBEAE9",
    "info-600":     "#2E5AAC", "info-bg":     "#EAF0FB",
    "progress-600": "#5B4BB5", "progress-bg": "#EFEDFA",

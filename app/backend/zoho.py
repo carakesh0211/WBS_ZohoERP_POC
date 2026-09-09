@@ -260,11 +260,23 @@ def authorise(con, connection_id, grant_all=True, withhold=None, *, actor="U-ADM
                  now.isoformat(timespec="seconds"),
                  "60021234567", "Atha Steel & Power Ltd",
                  now.isoformat(timespec="seconds"), connection_id))
-    con.execute("""INSERT INTO audit_log (at,actor,action,object_type,object_id,detail)
-                   VALUES (?,?,?,?,?,?)""",
-                (now.isoformat(timespec="seconds"), "U-ADM", "OAUTH_AUTHORISED", "ZohoConnection",
-                 connection_id, f"{len(granted)} of {len(scopes)} required scopes granted. "
-                                f"Secrets stored as references only."))
+    # THROUGH `services.audit()`, NOT A RAW INSERT. This wrote its own row with
+    # no `prev_hash` and no `entry_hash`, which did two things at once:
+    #
+    #   * it produced an unhashed row that `verify_audit_chain` skipped, which
+    #     is the hole a forged row walked through; and
+    #   * it hard-coded "U-ADM" as the actor while `main.py` was passing the
+    #     real session identity, so with two administrators every OAuth
+    #     authorisation was attributed to the wrong person.
+    #
+    # `audit()` chains the row and records the actor it is given. The payload
+    # format is unchanged -- it is frozen, and changing it would invalidate
+    # every stored hash.
+    from . import services as _services
+    _services.audit(
+        con, actor, "OAUTH_AUTHORISED", "ZohoConnection", connection_id,
+        f"{len(granted)} of {len(scopes)} required scopes granted. "
+        f"Secrets stored as references only.")
     con.commit()
     missing = sorted(set(scopes) - set(granted))
     return {"oauth_status": "Connected", "granted": len(granted), "required": len(scopes),
