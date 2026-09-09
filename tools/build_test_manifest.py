@@ -393,6 +393,49 @@ POST_BASELINE_FILES = {
     # is not a pass, and its seventeenth test fails if the skip reason is ever
     # softened into something a reader could mistake for one.
     "test_pg_reporting.py",
+
+    # --- Wave 7 remediation: the saved-view write gate --------------------
+    # `test_api_auth_saved_views.py` holds the two tests that belong beside
+    # MUTATING_ROUTES and cannot live there: `test_api_auth.py` is measured by
+    # the 220 baseline, and adding to it moved that fixed reference to 222.
+    # They assert the coverage `test_api_auth.py`'s comment used to claim
+    # `test_pg_reporting.py` provided, and that publishing a SHARED view needs
+    # more than the router floor. Runs everywhere; no database.
+    "test_api_auth_saved_views.py",
+
+    # --- Wave 7 remediation: the period-close gate ------------------------
+    # `test_pg_periods_reconciliation_gate.py` holds the finding that an Open
+    # UNATTRIBUTED reconciliation exception blocked capitalisation but not
+    # period close: `periods.py` filtered `WHERE entity_id = %s`, and 011 makes
+    # that column NULLABLE, so `NULL = 'ENT-1'` is NULL and never TRUE. The
+    # gate's own docstring named the scenario as the reason it exists. Post-
+    # baseline like every wave file; `@pytest.mark.pg`, so it skips here and
+    # first executes in CI.
+    "test_pg_periods_reconciliation_gate.py",
+
+    # --- Wave 7 remediation: the RLS registry handoff, and Wave 7's own
+    #     policies proved against a role RLS can constrain -------------------
+    # `test_pg_rls_registry_handoff.py` is 011's missing half of the
+    # `scope_inventory` "protected_pending_registry" handoff. That status
+    # removes a table from BOTH sides of
+    # `set(covered_tables()) == set(rls.ALL_RLS_TABLES)`, so a table parked
+    # there is checked by nothing -- which is how `export_job` and
+    # `export_job_chunk` went a whole wave with no registry entry and no
+    # handoff test. 008 and 010 each wrote themselves one; 011 and 018 did
+    # not. Runs everywhere; no database.
+    "test_pg_rls_registry_handoff.py",
+    #
+    # `test_pg_rls_wave7_matrix.py` is the behavioural matrix for 017, 018 and
+    # 019's policies. Every prior check on them was a `pg_class` flag read or
+    # a `CREATE POLICY \w+ ON <table>` regex -- which `USING (true)` satisfies
+    # -- and every live assertion ran as CI's `POSTGRES_USER: capex`, a
+    # SUPERUSER that bypasses RLS unconditionally. So changing any 019 policy
+    # to `USING (true)` left the suite green. These run under
+    # `pg_app_database` / `ScopedRoleDatabase` with `SET LOCAL ROLE capex_app`
+    # and each one FAILS if its policy is weakened that way. Post-baseline,
+    # and `@pytest.mark.pg`: they skip on every workstation here and first
+    # execute in CI's pg_tests job. A skip is not a pass.
+    "test_pg_rls_wave7_matrix.py",
 }
 
 

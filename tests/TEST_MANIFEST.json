@@ -122,6 +122,16 @@
         "body_sha": "e89d3e589cfce31f"
       }
     },
+    "test_api_auth_saved_views.py": {
+      "test_a_caller_with_no_role_cannot_write_a_saved_view_either": {
+        "assertions": 2,
+        "body_sha": "c91fe48168e52dc8"
+      },
+      "test_sharing_a_saved_view_needs_more_than_the_router_floor": {
+        "assertions": 2,
+        "body_sha": "549669d689e65499"
+      }
+    },
     "test_approval_e2e.py": {
       "test_the_demo_object_type_is_routable_and_a_purchase_request_is_not": {
         "assertions": 6,
@@ -3915,6 +3925,18 @@
         "assertions": 1,
         "body_sha": "e33cf9a61daa0c35"
       },
+      "test_the_gate_catches_the_nested_paren_shapes_the_regex_could_not_see": {
+        "assertions": 2,
+        "body_sha": "25d99cb345195d73"
+      },
+      "test_the_gate_reads_a_module_level_assignment_and_not_only_a_call_argument": {
+        "assertions": 3,
+        "body_sha": "24e31832ea993a14"
+      },
+      "test_prose_that_quotes_money_sql_is_not_reported_but_the_code_beside_it_is": {
+        "assertions": 2,
+        "body_sha": "2646cad1694e9e41"
+      },
       "test_no_pg_module_multiplies_or_divides_by_a_float_literal_in_money_code": {
         "assertions": 1,
         "body_sha": "6c4b60c13b3b10e5"
@@ -7254,6 +7276,36 @@
         "body_sha": "a70d132ff2dd3841"
       }
     },
+    "test_pg_periods_reconciliation_gate.py": {
+      "test_the_gate_names_both_classes_of_open_exception": {
+        "assertions": 2,
+        "body_sha": "b430090865a9c6ff"
+      },
+      "test_an_open_unattributed_exception_blocks_the_period_close": {
+        "assertions": 4,
+        "body_sha": "f97ac029ebb4d880"
+      },
+      "test_the_close_succeeds_once_the_unattributed_exception_is_resolved": {
+        "assertions": 3,
+        "body_sha": "b1c0ef5d2fa1969a"
+      },
+      "test_an_open_exception_attributed_to_this_entity_still_blocks": {
+        "assertions": 3,
+        "body_sha": "8ce3b50fc806df58"
+      },
+      "test_another_entitys_open_exception_does_not_block_this_close": {
+        "assertions": 2,
+        "body_sha": "2334ef84c42a87e9"
+      },
+      "test_a_resolved_unattributed_exception_never_blocked_anything": {
+        "assertions": 1,
+        "body_sha": "21d632eb3e51986d"
+      },
+      "test_the_period_gate_and_the_capitalisation_gate_agree_on_one_row": {
+        "assertions": 3,
+        "body_sha": "7a93707095b806f7"
+      }
+    },
     "test_pg_principal_scope.py": {
       "test_the_three_states_survive_resolution_distinctly": {
         "assertions": 4,
@@ -7972,8 +8024,8 @@
         "body_sha": "46652498c255c8f0"
       },
       "test_every_revertible_migrations_ledger_row_is_deleted_at_or_above_its_own_number": {
-        "assertions": 2,
-        "body_sha": "5e8aec58b91cf450"
+        "assertions": 3,
+        "body_sha": "1a1afd9a8f3171bd"
       },
       "test_013_is_not_excluded_as_a_data_file": {
         "assertions": 1,
@@ -8530,8 +8582,8 @@
         "body_sha": "7755c8da6ce47d06"
       },
       "test_pagination_skips_no_row_and_repeats_none_across_every_page": {
-        "assertions": 7,
-        "body_sha": "f26d1e5901e622cf"
+        "assertions": 6,
+        "body_sha": "166aa2f5ade92846"
       },
       "test_the_total_is_the_populations_and_never_the_pages": {
         "assertions": 5,
@@ -8803,6 +8855,14 @@
         "assertions": 1,
         "body_sha": "4c8c4b60fcf073cf"
       },
+      "test_every_pending_registry_table_is_actually_protected_by_the_migration_it_names": {
+        "assertions": 2,
+        "body_sha": "e797df2299208b12"
+      },
+      "test_every_pending_registry_table_is_named_by_a_handoff_test": {
+        "assertions": 2,
+        "body_sha": "5b85a2c29b9024f5"
+      },
       "test_reported_gaps_are_still_gaps": {
         "assertions": 1,
         "body_sha": "b3045221f1c66a37"
@@ -8988,6 +9048,50 @@
       "test_live_an_event_with_no_connection_is_visible_to_any_scoped_principal": {
         "assertions": 1,
         "body_sha": "b2d340c2528ad2e1"
+      }
+    },
+    "test_pg_rls_registry_handoff.py": {
+      "test_the_pending_registry_handoff_for_011_is_enumerable": {
+        "assertions": 3,
+        "body_sha": "e5d934611b361f94"
+      },
+      "test_the_export_tables_are_no_longer_awaiting_the_registry": {
+        "assertions": 4,
+        "body_sha": "60c35c828cdd0c55"
+      }
+    },
+    "test_pg_rls_wave7_matrix.py": {
+      "test_live_a_private_saved_view_is_invisible_to_a_colleague": {
+        "assertions": 2,
+        "body_sha": "77dd6813554cc447"
+      },
+      "test_live_saved_views_are_confined_to_the_principals_entity": {
+        "assertions": 3,
+        "body_sha": "de0a095cd7532bb0"
+      },
+      "test_live_a_shared_view_cannot_be_deleted_by_someone_who_does_not_own_it": {
+        "assertions": 1,
+        "body_sha": "9e166893b2cf7388"
+      },
+      "test_live_a_saved_views_owner_cannot_be_reassigned": {
+        "assertions": 3,
+        "body_sha": "bf3d310e7b3ccd0c"
+      },
+      "test_live_an_export_job_is_invisible_to_anyone_but_its_requester": {
+        "assertions": 3,
+        "body_sha": "26cc9b87746ca3aa"
+      },
+      "test_live_the_export_worker_sees_every_job_and_only_as_the_service": {
+        "assertions": 2,
+        "body_sha": "3da21d41701530ce"
+      },
+      "test_live_a_capitalisation_request_is_confined_to_its_projects_entity": {
+        "assertions": 3,
+        "body_sha": "923ed33de5396666"
+      },
+      "test_live_project_restriction_narrows_within_the_entity": {
+        "assertions": 1,
+        "body_sha": "8ca62eb969c4f964"
       }
     },
     "test_pg_roles.py": {
@@ -10117,6 +10221,7 @@
   },
   "counts": {
     "test_api_auth.py": 27,
+    "test_api_auth_saved_views.py": 2,
     "test_approval_e2e.py": 26,
     "test_approval_maker_checker.py": 18,
     "test_approval_negative_matrix.py": 23,
@@ -10153,7 +10258,7 @@
     "test_middleware_observability.py": 11,
     "test_migrations.py": 20,
     "test_money.py": 23,
-    "test_money_sql_discipline.py": 4,
+    "test_money_sql_discipline.py": 7,
     "test_negative_access_matrix.py": 9,
     "test_no_undefined_names.py": 5,
     "test_no_version_sensitive_defaults.py": 1,
@@ -10183,6 +10288,7 @@
     "test_pg_migrations_runner.py": 11,
     "test_pg_period_concurrency.py": 9,
     "test_pg_periods.py": 18,
+    "test_pg_periods_reconciliation_gate.py": 7,
     "test_pg_principal_scope.py": 37,
     "test_pg_procurement.py": 50,
     "test_pg_procurement_ingest.py": 66,
@@ -10193,8 +10299,10 @@
     "test_pg_reporting.py": 17,
     "test_pg_reservations.py": 33,
     "test_pg_rls.py": 18,
-    "test_pg_rls_coverage.py": 34,
+    "test_pg_rls_coverage.py": 36,
     "test_pg_rls_integration_matrix.py": 16,
+    "test_pg_rls_registry_handoff.py": 2,
+    "test_pg_rls_wave7_matrix.py": 8,
     "test_pg_roles.py": 19,
     "test_pg_scope_leakage.py": 5,
     "test_pg_seed.py": 23,
@@ -10210,6 +10318,7 @@
   },
   "assertions": {
     "test_api_auth.py": 50,
+    "test_api_auth_saved_views.py": 4,
     "test_approval_e2e.py": 124,
     "test_approval_maker_checker.py": 46,
     "test_approval_negative_matrix.py": 65,
@@ -10246,7 +10355,7 @@
     "test_middleware_observability.py": 31,
     "test_migrations.py": 45,
     "test_money.py": 31,
-    "test_money_sql_discipline.py": 4,
+    "test_money_sql_discipline.py": 11,
     "test_negative_access_matrix.py": 29,
     "test_no_undefined_names.py": 7,
     "test_no_version_sensitive_defaults.py": 1,
@@ -10276,18 +10385,21 @@
     "test_pg_migrations_runner.py": 32,
     "test_pg_period_concurrency.py": 28,
     "test_pg_periods.py": 49,
+    "test_pg_periods_reconciliation_gate.py": 18,
     "test_pg_principal_scope.py": 83,
     "test_pg_procurement.py": 139,
     "test_pg_procurement_ingest.py": 281,
     "test_pg_procurement_reconciliation.py": 71,
-    "test_pg_procurement_schema.py": 149,
+    "test_pg_procurement_schema.py": 150,
     "test_pg_reconciliation.py": 117,
     "test_pg_repo.py": 37,
-    "test_pg_reporting.py": 55,
+    "test_pg_reporting.py": 54,
     "test_pg_reservations.py": 107,
     "test_pg_rls.py": 34,
-    "test_pg_rls_coverage.py": 72,
+    "test_pg_rls_coverage.py": 76,
     "test_pg_rls_integration_matrix.py": 34,
+    "test_pg_rls_registry_handoff.py": 7,
+    "test_pg_rls_wave7_matrix.py": 18,
     "test_pg_roles.py": 50,
     "test_pg_scope_leakage.py": 12,
     "test_pg_seed.py": 56,
