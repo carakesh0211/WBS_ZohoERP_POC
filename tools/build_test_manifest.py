@@ -413,6 +413,106 @@ POST_BASELINE_FILES = {
     # first executes in CI.
     "test_pg_periods_reconciliation_gate.py",
 
+    # --- Wave 8 stream A: foreign currency, and the approval-gated reopen ---
+    # `test_pg_fx.py` closes the AUD-H-007 residual: `purchase_order.currency`
+    # and `exchange_rate` were stored from migration 013 and NEVER APPLIED --
+    # nothing multiplied that rate into a money column -- and `bill` had no
+    # currency column at all, so a EUR bill stood at its face value in rupees.
+    # Review finding H-4 is the same defect from the other side: the API typed
+    # the rate `int`, so 92.50 was rejected outright and no non-integer rate
+    # could be sent.
+    #
+    # MOST OF IT RUNS EVERYWHERE, deliberately. The translation arithmetic is
+    # pure -- integer minor units, an exact Decimal rate, one half-up
+    # quantisation -- and a defect in any of it is a wrong money figure, so
+    # gating the proof behind a database no workstation here has would put it
+    # in the one environment the author cannot run. The live half (the
+    # immutability triggers, the recorded-and-refused revaluation) is
+    # `@pytest.mark.pg` and first executes in CI.
+    #
+    # `test_pg_periods_reopen.py` closes the AUD-C-008 residual: CLOSED was
+    # terminal, which is safe until a period is closed a day early and the
+    # shape that arrives is a hand-run UPDATE against the state column. Its
+    # source-level half proves the cheapest wrong implementation (widening
+    # `_ALLOWED_TRANSITIONS` with CLOSED -> OPEN) still fails, and that the
+    # separation refusal does not depend on `auth.require_separation` firing --
+    # "period.reopen" is not in `MAKER_CHECKER`, so that call is inert today
+    # and a control resting on it alone would never have run. The concurrency
+    # and idempotency evidence is the `@pytest.mark.pg` half and has NEVER
+    # EXECUTED outside CI.
+    #
+    # Post-baseline like every wave file: the 220 counts the POC's
+    # audit-remediation suite, and inflating it would make the removal guard
+    # stop meaning anything the moment the product grows.
+    "test_pg_fx.py",
+    "test_pg_periods_reopen.py",
+
+    # --- Wave 8 stream C: migration tooling and operational readiness ------
+    # `test_export_poc.py` is the POC->PostgreSQL export. It runs EVERYWHERE
+    # and builds its own disposable SQLite source, because the four properties
+    # it holds are the four that decide whether a migration is evidence or a
+    # story: the source is opened `mode=ro` and a write is REFUSED, two exports
+    # are BYTE-identical, a float in a paise column is refused rather than
+    # rounded, and `audit_log` is exported VERBATIM. That last one is the
+    # important one -- `audit_log.at` sits inside the frozen hash payload
+    # `prev|at|actor|action|type|id|detail`, so normalising a naive
+    # `2026-08-06T09:00:00` to `...+00:00` would change the bytes, change the
+    # hash, and turn an intact chain into a broken one. A false tamper alarm on
+    # the one guarantee this product exists to make.
+    "test_export_poc.py",
+    #
+    # `test_migration_audit_chain.py` is the LEGACY stream, and it exists
+    # because the obvious import strategy DOES NOT WORK -- measured, not
+    # argued. It drives the PRODUCT's `pg.audit.verify_chain` (never a copy)
+    # over rows shaped as each candidate strategy would leave them, and three
+    # of the four report a break, for three different reasons: the POC stores
+    # `prev_hash = ''` where PostgreSQL stores NULL; the PostgreSQL verifier
+    # does NOT skip `entry_hash IS NULL` rows, though the POC verifier's
+    # explicit `continue` does; and dropping those rows to satisfy the second
+    # point makes `seq` start at 2 and fail the contiguity check. Runs
+    # everywhere: every one of those is a property of two live functions and a
+    # database-gated test would have skipped past all of it. Its last test is
+    # the one that explains the rule -- it edits a committed entry, recomputes
+    # the chain the way a "helpful" migration would, and the result verifies
+    # perfectly.
+    "test_migration_audit_chain.py",
+    #
+    # `test_migration_import.py` EXECUTES the import against a disposable
+    # SQLite target with `PRAGMA foreign_keys = ON`, so the topological order,
+    # the rollback, the resumable checkpoint and the paisa reconciliation are
+    # exercised rather than reasoned about -- including the case a single
+    # `SELECT SUM` cannot see, where two errors cancel and only the
+    # per-dimension totals catch the money that moved between projects. Its
+    # constraint-escape guard parses this repository's own tool with `ast`
+    # rather than grepping it, because the module's prose names
+    # `session_replication_role` in order to say it is never emitted, and a
+    # grep would fail on the documentation and pass on nothing.
+    "test_migration_import.py",
+    #
+    # `test_pg_migration_import.py` is the half only a server can answer: that
+    # the depth-aware DDL scanner agrees with `information_schema`, that the
+    # generated `INSERT ... ON CONFLICT` is valid PostgreSQL rather than merely
+    # valid SQLite, that `SUM(bigint)` really does return a Decimal without the
+    # cast, and that a LEGACY import verifies through `verify_chain` over a
+    # real `timestamptz` round trip. `@pytest.mark.pg`, so it skips on every
+    # workstation here and FIRST EXECUTES in CI's pg_tests job. A skip is not a
+    # pass, and its eighth test -- which runs everywhere -- fails if that skip
+    # reason is ever softened into something a reader could mistake for one.
+    "test_pg_migration_import.py",
+    #
+    # `test_ops_readiness.py` binds the written operational controls to the
+    # code in BOTH directions. `observability.alert()` already refuses an
+    # unknown condition at runtime, so nothing can be raised without being
+    # declared; nothing stopped a condition being DECLARED with no runbook
+    # behind it, which is what `alert()`'s own docstring asks for and had no
+    # enforcement of. It also EXERCISES the restore drill against disposable
+    # databases it builds itself, in both directions -- a sound restore passes,
+    # and a restore whose audit chain is broken FAILS with a non-zero exit,
+    # because a restore that breaks the chain is a failed restore and not a
+    # restore with a caveat. Runs everywhere; no database, no network, no
+    # cloud.
+    "test_ops_readiness.py",
+
     # --- Wave 7 remediation: the RLS registry handoff, and Wave 7's own
     #     policies proved against a role RLS can constrain -------------------
     # `test_pg_rls_registry_handoff.py` is 011's missing half of the
