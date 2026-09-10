@@ -232,8 +232,13 @@ def _filters_from(
     entity_ids: list[str] | None, plant_ids: list[str] | None,
     location_ids: list[str] | None, project_ids: list[str] | None,
     wbs_paths: list[str] | None, budget_head_ids: list[str] | None,
-    category_ids: list[str] | None, vendor_ids: list[str] | None,
-    item_ids: list[str] | None, document_types: list[str] | None,
+    category_ids: list[str] | None, budget_category_ids: list[str] | None,
+    vendor_ids: list[str] | None,
+    item_ids: list[str] | None,
+    division_ids: list[str] | None, branch_ids: list[str] | None,
+    zone_ids: list[str] | None, fiscal_years: list[str] | None,
+    requestor_ids: list[str] | None, approver_ids: list[str] | None,
+    document_types: list[str] | None,
     lifecycle_statuses: list[str] | None, approval_statuses: list[str] | None,
     period_ids: list[str] | None, group_by: list[str] | None,
     date_from: str | None, date_to: str | None,
@@ -241,17 +246,23 @@ def _filters_from(
 ) -> reporting_svc.FilterSet:
     """One `FilterSet` from the query string. Refuses, never coerces.
 
-    `vendor_ids` and `item_ids` are ACCEPTED as parameters so they can be
-    REFUSED with a coded reason. Omitting them from the signature would make
-    FastAPI ignore them silently, which is the exact failure the refusal
-    exists to prevent: the caller asks for one vendor, the parameter is
-    dropped, and the report shows the whole estate under the vendor's name.
+    `vendor_ids`, `item_ids` and the Fable 5.1 additions (`division_ids`,
+    `branch_ids`, `zone_ids`, `fiscal_years`, `requestor_ids`, `approver_ids`)
+    are ACCEPTED as parameters so they can be REFUSED with a coded reason.
+    Omitting them from the signature would make FastAPI ignore them silently,
+    which is the exact failure the refusal exists to prevent: the caller asks
+    for one vendor, the parameter is dropped, and the report shows the whole
+    estate under the vendor's name.
     """
     return reporting_svc.FilterSet.build(
         entity_ids=entity_ids, plant_ids=plant_ids,
         location_ids=location_ids, project_ids=project_ids,
         wbs_paths=wbs_paths, budget_head_ids=budget_head_ids,
-        category_ids=category_ids, vendor_ids=vendor_ids, item_ids=item_ids,
+        category_ids=category_ids, budget_category_ids=budget_category_ids,
+        vendor_ids=vendor_ids, item_ids=item_ids,
+        division_ids=division_ids, branch_ids=branch_ids,
+        zone_ids=zone_ids, fiscal_years=fiscal_years,
+        requestor_ids=requestor_ids, approver_ids=approver_ids,
         document_types=document_types, lifecycle_statuses=lifecycle_statuses,
         approval_statuses=approval_statuses, period_ids=period_ids,
         group_by=group_by, date_from=date_from, date_to=date_to,
@@ -266,8 +277,14 @@ def _common_filters(
     entity_ids: list[str] | None = _Q, plant_ids: list[str] | None = _Q,
     location_ids: list[str] | None = _Q, project_ids: list[str] | None = _Q,
     wbs_paths: list[str] | None = _Q, budget_head_ids: list[str] | None = _Q,
-    category_ids: list[str] | None = _Q, vendor_ids: list[str] | None = _Q,
-    item_ids: list[str] | None = _Q, document_types: list[str] | None = _Q,
+    category_ids: list[str] | None = _Q,
+    budget_category_ids: list[str] | None = _Q,
+    vendor_ids: list[str] | None = _Q,
+    item_ids: list[str] | None = _Q,
+    division_ids: list[str] | None = _Q, branch_ids: list[str] | None = _Q,
+    zone_ids: list[str] | None = _Q, fiscal_years: list[str] | None = _Q,
+    requestor_ids: list[str] | None = _Q, approver_ids: list[str] | None = _Q,
+    document_types: list[str] | None = _Q,
     lifecycle_statuses: list[str] | None = _Q,
     approval_statuses: list[str] | None = _Q,
     period_ids: list[str] | None = _Q, group_by: list[str] | None = _Q,
@@ -289,8 +306,13 @@ def _common_filters(
             entity_ids=entity_ids, plant_ids=plant_ids,
             location_ids=location_ids, project_ids=project_ids,
             wbs_paths=wbs_paths, budget_head_ids=budget_head_ids,
-            category_ids=category_ids, vendor_ids=vendor_ids,
+            category_ids=category_ids,
+            budget_category_ids=budget_category_ids,
+            vendor_ids=vendor_ids,
             item_ids=item_ids, document_types=document_types,
+            division_ids=division_ids, branch_ids=branch_ids,
+            zone_ids=zone_ids, fiscal_years=fiscal_years,
+            requestor_ids=requestor_ids, approver_ids=approver_ids,
             lifecycle_statuses=lifecycle_statuses,
             approval_statuses=approval_statuses, period_ids=period_ids,
             group_by=group_by, date_from=date_from, date_to=date_to,
