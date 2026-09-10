@@ -167,10 +167,26 @@ def main(argv: list[str] | None = None) -> int:
     # seed data. Idempotent (app.backend.auth.provision_dev_identities), and
     # only reached once the schema is confirmed current -- never against a
     # database this process just refused to serve.
+    #
+    # Fable 5.1: under CAPEX_PROFILE=uat-preview the derivable `<id>!demo`
+    # scheme is NEVER installed. Credential hashes come from a file generated
+    # outside the repository (tools/appsail/uat_credentials.py); a missing or
+    # malformed file refuses the boot rather than falling back to demo
+    # passwords on a publicly reachable address.
     con = db.connect()
     try:
-        provisioned = auth.provision_dev_identities(con)
-        print(f"  -> demo identities ready: {provisioned}")
+        if auth.is_uat_profile():
+            try:
+                credentials = auth.load_uat_credentials(
+                    os.environ.get(auth.UAT_CREDENTIALS_ENV, ""))
+            except auth.UatCredentialsError as exc:
+                print(f"\n  REFUSING TO START: {exc}\n", file=sys.stderr)
+                return 1
+            provisioned = auth.provision_uat_identities(con, credentials)
+            print(f"  -> UAT identities ready: {provisioned} (demo passwords NOT installed)")
+        else:
+            provisioned = auth.provision_dev_identities(con)
+            print(f"  -> demo identities ready: {provisioned}")
     finally:
         con.close()
 
@@ -187,7 +203,11 @@ def main(argv: list[str] | None = None) -> int:
     # `app/backend/` consults either variable, so setting them changes no
     # behaviour at all. Telling an operator to set them was worse than
     # saying nothing -- it left them believing the address was gated.
-    if host != "127.0.0.1":
+    if host != "127.0.0.1" and auth.is_uat_profile():
+        print("\n  UAT preview profile: derivable demo passwords are NOT installed;")
+        print("  identities come from", auth.UAT_CREDENTIALS_ENV, "(hashes only).")
+        print("  Data is a synthetic seed on a local SQLite file and resets on restart.\n")
+    elif host != "127.0.0.1":
         print("\n  WARNING: binding to", host, "-- beyond this machine.")
         print("  Every screen requires a sign-in, but in the local-demo")
         print("  profile the only accounts that exist are SEEDED DEVELOPMENT")

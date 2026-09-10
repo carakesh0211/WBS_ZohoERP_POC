@@ -89,3 +89,16 @@ th .sort-btn .sort-ico { font-size: 9px; opacity: .7; }
 /* ---------------- pagination / footer row ---------------- */
 .audit-pagination { display: flex; align-items: center; gap: 10px; padding: 10px 0 2px; flex-wrap: wrap; }
 .audit-pagination .grow { flex: 1; }
+
+/* ---------------- UAT preview environment banner (Fable 5.1) ----------------
+   Injected at serve time by app/backend/main.py ONLY under
+   CAPEX_PROFILE=uat-preview; index.html on disk is unchanged, so the approved
+   VRT baselines never see this element. Tokens only: the warning tint and the
+   AA-conformant warning TEXT colour (--warning-text, 7.56:1 on --warning-bg). */
+.uat-banner {
+  position: sticky; top: 0; z-index: 50;
+  background: var(--warning-bg); color: var(--warning-text);
+  border-bottom: 1px solid var(--warning);
+  font-size: 12px; font-weight: 700; letter-spacing: .4px; text-align: center;
+  padding: 6px 12px; text-transform: uppercase;
+}

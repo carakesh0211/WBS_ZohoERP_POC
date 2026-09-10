@@ -11691,6 +11691,88 @@
         "assertions": 6,
         "body_sha": "4ce37dff94b91588"
       }
+    },
+    "test_uat_profile.py": {
+      "test_loader_refuses_a_plaintext_password_key": {
+        "assertions": 1,
+        "body_sha": "edd734a74a3c0bef"
+      },
+      "test_loader_refuses_malformed_entries": {
+        "assertions": 1,
+        "body_sha": "16d032582e16256f"
+      },
+      "test_loader_refuses_an_unknown_identity": {
+        "assertions": 1,
+        "body_sha": "cb452580aee56798"
+      },
+      "test_loader_refuses_a_missing_file": {
+        "assertions": 2,
+        "body_sha": "9fc65c0494ecbcd3"
+      },
+      "test_uat_provisioning_installs_hashes_and_disables_everyone_else": {
+        "assertions": 6,
+        "body_sha": "9042d2f13b6e5599"
+      },
+      "test_uat_provisioning_is_idempotent": {
+        "assertions": 3,
+        "body_sha": "138e1ec132faac67"
+      },
+      "test_run_py_refuses_to_boot_the_uat_profile_without_credentials": {
+        "assertions": 4,
+        "body_sha": "6c482941aed03e13"
+      },
+      "test_run_py_provisions_uat_hashes_and_never_the_demo_scheme": {
+        "assertions": 5,
+        "body_sha": "6ee56d379ec137e7"
+      },
+      "test_local_demo_serves_the_approved_index_html_byte_for_byte": {
+        "assertions": 1,
+        "body_sha": "1b18cd5cad3eccec"
+      },
+      "test_uat_profile_serves_no_password_hint_and_a_prominent_banner": {
+        "assertions": 7,
+        "body_sha": "ea64d34c496973e5"
+      },
+      "test_uat_banner_css_is_tokens_only_and_declared": {
+        "assertions": 2,
+        "body_sha": "e28e5bc2b6c9ec16"
+      },
+      "test_interactive_api_docs_are_absent_outside_local_demo": {
+        "assertions": 4,
+        "body_sha": "b830df0c6aa607c2"
+      },
+      "test_admin_reset_stays_refused_under_the_uat_profile": {
+        "assertions": 2,
+        "body_sha": "1ae6232e84b751d1"
+      },
+      "test_health_reports_the_uat_profile_and_mock_mode": {
+        "assertions": 2,
+        "body_sha": "136901565389932c"
+      },
+      "test_uat_launcher_prepares_an_ephemeral_copy_of_the_seed": {
+        "assertions": 7,
+        "body_sha": "e142db457aebbb05"
+      },
+      "test_uat_launcher_refuses_a_bundle_without_the_seed": {
+        "assertions": 1,
+        "body_sha": "facd0c40f2536b4c"
+      },
+      "test_bundle_verifier_refuses_windows_binaries_and_plaintext": {
+        "assertions": 8,
+        "body_sha": "4fef35db665f934a"
+      },
+      "test_bundle_builder_refuses_an_output_inside_the_repository": {
+        "assertions": 2,
+        "body_sha": "80588b1af2fae208"
+      },
+      "test_credential_generator_refuses_the_repository_and_never_prints_a_password": {
+        "assertions": 6,
+        "body_sha": "e7bbc99eee09b49c"
+      },
+      "test_the_hovered_row_muted_text_correction_measures_aa": {
+        "assertions": 4,
+        "body_sha": "13f5aa3e2aa1b770"
+      }
     }
   },
   "counts": {
@@ -11805,7 +11887,8 @@
     "test_security_frontend.py": 11,
     "test_security_identity.py": 10,
     "test_security_scope_tristate.py": 13,
-    "test_security_secrets.py": 12
+    "test_security_secrets.py": 12,
+    "test_uat_profile.py": 20
   },
   "assertions": {
     "test_api_auth.py": 50,
@@ -11919,6 +12002,7 @@
     "test_security_frontend.py": 22,
     "test_security_identity.py": 18,
     "test_security_scope_tristate.py": 39,
-    "test_security_secrets.py": 29
+    "test_security_secrets.py": 29,
+    "test_uat_profile.py": 69
   }
 }

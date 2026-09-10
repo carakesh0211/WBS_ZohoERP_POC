@@ -33,7 +33,16 @@ FRONTEND = os.path.join(APP_ROOT, "frontend")
 
 log = logging.getLogger("capex")
 
-app = FastAPI(title="CAPEX & WBS Control Hub", version="0.2.0-poc-hardened")
+# Fable 5.1: the interactive API explorers (/docs, /redoc) are served ONLY in
+# the local-demo profile. On a hosted preview they are an unauthenticated,
+# clickable map of every route. /openapi.json itself stays reachable in every
+# profile because the analytics, closure and integration screens probe it to
+# tell an unmounted route from an empty result (see integration-api.js) and
+# fetch it without a session header; it exposes route TEMPLATES, never data.
+_INTERACTIVE_DOCS = os.environ.get("CAPEX_PROFILE", "").lower() == "local-demo"
+app = FastAPI(title="CAPEX & WBS Control Hub", version="0.2.0-poc-hardened",
+              docs_url="/docs" if _INTERACTIVE_DOCS else None,
+              redoc_url="/redoc" if _INTERACTIVE_DOCS else None)
 
 # AUD-M-007. Without this the "capex" logger has no handler and an effective
 # level of WARNING, so every structured record - and every redaction rule that
@@ -1023,6 +1032,54 @@ def health():
 if os.path.isdir(FRONTEND):
     app.mount("/static", StaticFiles(directory=FRONTEND), name="static")
 
+    # Fable 5.1 -- the hosted UAT preview serves a TRANSFORMED index.html.
+    #
+    # index.html on disk is the client-approved sign-in screen and carries the
+    # seeded-credential hint ("password is the user id followed by !demo").
+    # Under CAPEX_PROFILE=uat-preview those passwords are not installed (see
+    # app/run.py), so the hint would be both false and a brute-force map. The
+    # file is not edited -- the VRT baselines and the local-demo profile keep
+    # the approved bytes -- it is rewritten at serve time, once, with both
+    # anchors asserted so a future edit to index.html cannot silently drop the
+    # substitution. Everything else on the page, and every other static file,
+    # is served unchanged.
+    UAT_BANNER_TEXT = "UAT — SYNTHETIC DATA — ERP MOCK"
+    UAT_LOGIN_HINT = (
+        "UAT preview. The data is a synthetic seed and resets when the service "
+        "restarts. Credentials are issued by the UAT coordinator; passwords are "
+        "not derivable from user ids. The ERP connector is MOCK and outbound "
+        "writes are disabled.")
+    _HINT_RE = None
+
+    def _uat_index_html() -> bytes:
+        import re
+        global _HINT_RE
+        if _HINT_RE is None:
+            _HINT_RE = re.compile(
+                r'<p class="muted small" id="loginHint">.*?</p>', re.S)
+        with open(os.path.join(FRONTEND, "index.html"), "r", encoding="utf-8") as fh:
+            html = fh.read()
+        rewritten, n = _HINT_RE.subn(
+            f'<p class="muted small" id="loginHint">{UAT_LOGIN_HINT}</p>', html)
+        if n != 1:
+            raise RuntimeError("index.html: the sign-in hint anchor was not found exactly once")
+        body_at = rewritten.find("<body")
+        body_end = rewritten.find(">", body_at)
+        if body_at < 0 or body_end < 0:
+            raise RuntimeError("index.html: no <body> tag to anchor the UAT banner on")
+        banner = (f'\n<div class="uat-banner" role="status" aria-label="Environment notice">'
+                  f'{UAT_BANNER_TEXT}</div>')
+        rewritten = rewritten[:body_end + 1] + banner + rewritten[body_end + 1:]
+        if "!demo" in rewritten:
+            raise RuntimeError("index.html still carries the demo-password hint after rewriting")
+        return rewritten.encode("utf-8")
+
+    _uat_index_cache: dict[str, bytes] = {}
+
     @app.get("/")
     def index():
+        if auth.is_uat_profile():
+            if "html" not in _uat_index_cache:
+                _uat_index_cache["html"] = _uat_index_html()
+            return Response(content=_uat_index_cache["html"], media_type="text/html")
         return FileResponse(os.path.join(FRONTEND, "index.html"))

@@ -597,6 +597,16 @@ POST_BASELINE_FILES = {
     # and `@pytest.mark.pg`: they skip on every workstation here and first
     # execute in CI's pg_tests job. A skip is not a pass.
     "test_pg_rls_wave7_matrix.py",
+    # --- Fable 5.1: the hosted UAT preview profile -----------------------
+    # `test_uat_profile.py` pins what a publicly reachable preview must hold:
+    # the derivable `<id>!demo` scheme is never installed under
+    # CAPEX_PROFILE=uat-preview, the credentials file carries hashes only,
+    # the served sign-in page has no password hint and a SYNTHETIC-DATA
+    # banner while local-demo serves index.html byte-for-byte, the
+    # interactive API explorers are absent, the bundle gate refuses Windows
+    # binaries and plaintext, and the approved --n500 hover correction
+    # measures AA. Post-baseline like every wave file.
+    "test_uat_profile.py",
 }
 
 

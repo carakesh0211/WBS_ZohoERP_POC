@@ -299,3 +299,105 @@ def provision_dev_identities(con: sqlite3.Connection, *, password_suffix: str = 
 def is_demo_profile() -> bool:
     """Destructive administration is only available in an explicit local profile."""
     return os.environ.get("CAPEX_PROFILE", "").lower() == "local-demo"
+
+
+# ---------------------------------------------------------------- UAT preview profile
+# Fable 5.1. A hosted UAT preview cannot run on the seeded `<user-id>!demo`
+# scheme above: the sign-in page lists the user ids, so every password is one
+# guess away. Under CAPEX_PROFILE=uat-preview the boot path (app/run.py)
+# refuses to call `provision_dev_identities` at all and instead loads
+# credential HASHES from a file that is generated OUTSIDE the repository by
+# tools/appsail/uat_credentials.py. No plaintext password ever enters this
+# process: the file carries PBKDF2 salt+hash pairs only, and the loader
+# refuses a file that carries anything password-shaped.
+UAT_PROFILE = "uat-preview"
+UAT_CREDENTIALS_ENV = "CAPEX_UAT_CREDENTIALS"
+_HEX_RE = None
+
+
+def is_uat_profile() -> bool:
+    """True under CAPEX_PROFILE=uat-preview. Distinct from `is_demo_profile`
+    on purpose: the UAT profile enables NOTHING destructive (`/api/admin/reset`
+    stays refused) and DISABLES the derivable demo credentials."""
+    return os.environ.get("CAPEX_PROFILE", "").lower() == UAT_PROFILE
+
+
+class UatCredentialsError(RuntimeError):
+    """The credential file is missing, malformed, or carries a plaintext
+    password. Boot refuses; nothing is provisioned."""
+
+
+def load_uat_credentials(path: str) -> dict[str, dict[str, str]]:
+    """Read `{ "users": { "<user_id>": {"salt": <hex>, "hash": <hex>} } }`.
+
+    Fails closed on: a missing file, a non-object, an unknown user id, a
+    malformed salt/hash, ANY key other than salt/hash on a user entry (a
+    `password` key means somebody wrote plaintext into the file), and fewer
+    than one user. The returned mapping is the only thing the caller sees.
+    """
+    import json
+    import re
+    global _HEX_RE
+    if _HEX_RE is None:
+        _HEX_RE = re.compile(r"^[0-9a-f]+$")
+    if not path or not os.path.isfile(path):
+        raise UatCredentialsError(
+            f"UAT credentials file not found ({UAT_CREDENTIALS_ENV}={path!r}). "
+            "Generate one OUTSIDE the repository with "
+            "`python tools/appsail/uat_credentials.py --generate <dir>`.")
+    with open(path, "r", encoding="utf-8") as fh:
+        try:
+            doc = json.load(fh)
+        except ValueError as exc:
+            raise UatCredentialsError(f"UAT credentials file is not valid JSON ({type(exc).__name__}).")
+    users = doc.get("users") if isinstance(doc, dict) else None
+    if not isinstance(users, dict) or not users:
+        raise UatCredentialsError("UAT credentials file must carry a non-empty 'users' object.")
+    known = {uid for uid, _ in DEV_USERS}
+    out: dict[str, dict[str, str]] = {}
+    for user_id, entry in users.items():
+        if user_id not in known:
+            raise UatCredentialsError(f"UAT credentials name an unknown identity {user_id!r}.")
+        if not isinstance(entry, dict) or set(entry) != {"salt", "hash"}:
+            raise UatCredentialsError(
+                f"UAT credential entry for {user_id} must carry exactly 'salt' and 'hash' "
+                f"(found {sorted(entry) if isinstance(entry, dict) else type(entry).__name__}). "
+                "A plaintext password never belongs in this file.")
+        salt, digest = entry["salt"], entry["hash"]
+        if not (isinstance(salt, str) and _HEX_RE.match(salt) and len(salt) == 32):
+            raise UatCredentialsError(f"UAT credential salt for {user_id} is malformed.")
+        if not (isinstance(digest, str) and _HEX_RE.match(digest) and len(digest) == 64):
+            raise UatCredentialsError(f"UAT credential hash for {user_id} is malformed.")
+        out[user_id] = {"salt": salt, "hash": digest}
+    return out
+
+
+def provision_uat_identities(con: sqlite3.Connection,
+                             credentials: dict[str, dict[str, str]]) -> int:
+    """Install the UAT credential hashes and role grants. Idempotent.
+
+    Only identities present in `credentials` get a credential row; every
+    other seeded identity is DISABLED so it cannot sign in with a stale hash
+    from an earlier provisioning. Roles come from `DEV_USERS`, exactly as the
+    demo provisioning grants them -- the UAT preview changes who can sign in,
+    never what a role may do.
+    """
+    now = _now().isoformat(timespec="seconds")
+    n = 0
+    for user_id, roles in DEV_USERS:
+        if not con.execute("SELECT 1 FROM app_user WHERE user_id=?", (user_id,)).fetchone():
+            continue
+        entry = credentials.get(user_id)
+        if entry is None:
+            con.execute("UPDATE app_credential SET disabled=1 WHERE user_id=?", (user_id,))
+            continue
+        con.execute("""INSERT INTO app_credential (user_id,password_salt,password_hash,disabled,created_at)
+                       VALUES (?,?,?,0,?)
+                       ON CONFLICT(user_id) DO UPDATE SET password_salt=excluded.password_salt,
+                       password_hash=excluded.password_hash, disabled=0""",
+                    (user_id, entry["salt"], entry["hash"], now))
+        for r in roles:
+            con.execute("INSERT OR IGNORE INTO user_role (user_id, role) VALUES (?,?)", (user_id, r))
+        n += 1
+    con.commit()
+    return n
