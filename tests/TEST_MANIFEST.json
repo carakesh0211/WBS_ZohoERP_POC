@@ -8168,6 +8168,68 @@
         "body_sha": "58f5f1093712b91f"
       }
     },
+    "test_pg_original_budget.py": {
+      "test_a_draft_is_numbered_validated_and_totalled_in_paise": {
+        "assertions": 7,
+        "body_sha": "e99aba5354c11393"
+      },
+      "test_line_validation_names_the_line_and_the_field": {
+        "assertions": 8,
+        "body_sha": "662aca1a2b46f5d7"
+      },
+      "test_money_is_refused_unless_it_is_an_integer": {
+        "assertions": 3,
+        "body_sha": "8d2cdd2534bb4413"
+      },
+      "test_a_required_budget_custom_field_is_enforced_on_entry": {
+        "assertions": 5,
+        "body_sha": "ef69ba7f04522d97"
+      },
+      "test_submit_approve_by_another_identity_releases_and_writes_original_lines": {
+        "assertions": 12,
+        "body_sha": "98dd3d6d9dad8aa9"
+      },
+      "test_the_maker_cannot_approve_their_own_budget": {
+        "assertions": 6,
+        "body_sha": "d24a17e82cda05b4"
+      },
+      "test_a_released_budget_is_immutable_at_the_database_level": {
+        "assertions": 3,
+        "body_sha": "bcf2607394823470"
+      },
+      "test_a_revision_changes_the_current_budget_and_not_the_original": {
+        "assertions": 5,
+        "body_sha": "021c6c8ccd4d0053"
+      },
+      "test_category_and_head_filters_select_different_sets": {
+        "assertions": 6,
+        "body_sha": "032f4d63ee29eeaf"
+      },
+      "test_a_second_original_on_a_funded_cell_is_refused_even_under_the_lock": {
+        "assertions": 6,
+        "body_sha": "3d81261f11b57209"
+      },
+      "test_an_out_of_scope_principal_gets_404_not_an_existence_oracle": {
+        "assertions": 7,
+        "body_sha": "335751cc9a694ef9"
+      },
+      "test_rejection_leaves_the_document_and_writes_nothing": {
+        "assertions": 4,
+        "body_sha": "c3b6837b1d907f8e"
+      },
+      "test_csv_import_refuses_with_row_and_column_and_creates_nothing": {
+        "assertions": 11,
+        "body_sha": "f891f4844c91f899"
+      },
+      "test_selectors_are_scoped_and_wbs_needs_a_project": {
+        "assertions": 6,
+        "body_sha": "ab5cce99793825e7"
+      },
+      "test_category_master_is_governed": {
+        "assertions": 10,
+        "body_sha": "e8de637f9ccd7c55"
+      }
+    },
     "test_pg_period_concurrency.py": {
       "test_zero_budget_cell_is_in_the_lock_set": {
         "assertions": 2,
@@ -11890,6 +11952,7 @@
     "test_pg_migration_014.py": 43,
     "test_pg_migration_import.py": 8,
     "test_pg_migrations_runner.py": 11,
+    "test_pg_original_budget.py": 15,
     "test_pg_period_concurrency.py": 9,
     "test_pg_periods.py": 18,
     "test_pg_periods_reconciliation_gate.py": 7,
@@ -12006,6 +12069,7 @@
     "test_pg_migration_014.py": 109,
     "test_pg_migration_import.py": 12,
     "test_pg_migrations_runner.py": 32,
+    "test_pg_original_budget.py": 99,
     "test_pg_period_concurrency.py": 28,
     "test_pg_periods.py": 49,
     "test_pg_periods_reconciliation_gate.py": 18,

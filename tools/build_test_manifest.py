@@ -619,6 +619,14 @@ POST_BASELINE_FILES = {
     # binaries and plaintext, and the approved --n500 hover correction
     # measures AA. Post-baseline like every wave file.
     "test_uat_profile.py",
+    # --- Fable 5.1: original budget creation (migration 026) ---------------
+    # `test_pg_original_budget.py` drives create -> submit -> approve by a
+    # different identity -> RELEASED against a live PostgreSQL, and pins
+    # database-level immutability after release, category-vs-head
+    # independence, the post-lock second-original refusal, the 404 (never
+    # 403) for an out-of-scope principal, the CSV import refusals and the
+    # governed category master. Post-baseline like every wave file.
+    "test_pg_original_budget.py",
 }
 
 

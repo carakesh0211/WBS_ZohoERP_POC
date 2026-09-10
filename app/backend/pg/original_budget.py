@@ -477,7 +477,8 @@ def validate_custom_fields(defs: Sequence[Mapping[str, Any]], values: Mapping[st
 # ============================================================================
 def _validate_lines(session: Session, *, project: Mapping[str, Any],
                     lines: Sequence[Mapping[str, Any]], defs: Sequence[Mapping[str, Any]],
-                    editing_budget_id: str | None = None) -> list[dict[str, Any]]:
+                    editing_budget_id: str | None = None,
+                    header_custom_fields: Mapping[str, Any] | None = None) -> list[dict[str, Any]]:
     if not lines:
         _err("LINES_REQUIRED", "An original budget needs at least one line.", status=422)
     entity_id = project["entity_id"]
@@ -557,7 +558,9 @@ def _validate_lines(session: Session, *, project: Mapping[str, Any],
         except OriginalBudgetError as exc:
             bad(idx, "amount", exc.code, exc.message)
         try:
-            line["custom_fields"] = validate_custom_fields(defs, raw.get("custom_fields"),
+            # Header values are the default for every line; a line may override.
+            merged = {**dict(header_custom_fields or {}), **dict(raw.get("custom_fields") or {})}
+            line["custom_fields"] = validate_custom_fields(defs, merged,
                                                            where=f"lines[{idx + 1}].custom_fields")
         except OriginalBudgetError as exc:
             for p in (exc.detail or [exc.message]):
@@ -715,7 +718,8 @@ def create_draft(session: Session, *, actor: str, project_id: str, fiscal_year: 
     _period_ok(session, period_id, project["entity_id"])
     defs = budget_custom_field_defs(session)
     header_cf = validate_custom_fields(defs, custom_fields)
-    clean = _validate_lines(session, project=project, lines=lines, defs=defs)
+    clean = _validate_lines(session, project=project, lines=lines, defs=defs,
+                            header_custom_fields=header_cf)
 
     budget_id = _new_id("OB")
     number = issue_number(session, NUMBERING_SERIES, actor=actor,
@@ -780,7 +784,8 @@ def update_draft(session: Session, *, actor: str, budget_id: str, expected_versi
     defs = budget_custom_field_defs(session)
     header_cf = validate_custom_fields(defs, custom_fields if custom_fields is not None else doc["custom_fields"])
     if lines is not None:
-        clean = _validate_lines(session, project=project, lines=lines, defs=defs, editing_budget_id=budget_id)
+        clean = _validate_lines(session, project=project, lines=lines, defs=defs, editing_budget_id=budget_id,
+                                header_custom_fields=header_cf)
         _write_lines(session, budget_id, clean, actor)
     session.execute(
         """
@@ -844,7 +849,8 @@ def submit(session: Session, *, actor: str, budget_id: str, expected_version: in
     project = _project_in_scope(session, doc["project_id"])
     defs = budget_custom_field_defs(session)
     validate_custom_fields(defs, doc["custom_fields"])
-    _validate_lines(session, project=project, lines=doc["lines"], defs=defs, editing_budget_id=budget_id)
+    _validate_lines(session, project=project, lines=doc["lines"], defs=defs, editing_budget_id=budget_id,
+                    header_custom_fields=doc["custom_fields"])
     _period_ok(session, doc["period_id"], doc["entity_id"])
 
     snap = snapshot(session, budget_id=budget_id)
@@ -921,7 +927,7 @@ def release(session: Session, *, budget_id: str, actor: str, approval_instance_i
     project = _project_in_scope(session, doc["project_id"])
     defs = budget_custom_field_defs(session)
     clean = _validate_lines(session, project=project, lines=doc["lines"], defs=defs,
-                            editing_budget_id=budget_id)
+                            editing_budget_id=budget_id, header_custom_fields=doc["custom_fields"])
     cells = [(l["wbs_id"], l["budget_head_id"]) for l in clean]
 
     # Cells first (a lock on a row that does not exist locks nothing), then the
@@ -938,6 +944,23 @@ def release(session: Session, *, budget_id: str, actor: str, approval_instance_i
             VALUES (%s, %s, %s) ON CONFLICT (wbs_id, budget_head_id) DO NOTHING
             """, (wbs_id, head_id, actor))
     lock_affected_cells(session, cells)
+
+    # RE-CHECK UNDER THE LOCK. `_validate_lines` above ran before the cells
+    # were locked, so two releases racing for the same cell could both pass
+    # it; the lock serialises them and this check is what makes the second
+    # one lose. Same shape as `amend_po`'s re-run of budget_check at write time.
+    if REFUSE_SECOND_ORIGINAL:
+        clash = session.fetchall(
+            "SELECT bl.wbs_id, bl.budget_head_id FROM budget_line bl "
+            "JOIN (SELECT unnest(%s::text[]) AS w, unnest(%s::text[]) AS h) c "
+            "  ON c.w = bl.wbs_id AND c.h = bl.budget_head_id "
+            "WHERE bl.kind = 'ORIGINAL'",
+            ([c[0] for c in cells], [c[1] for c in cells]))
+        if clash:
+            _err("CELL_ALREADY_HAS_ORIGINAL",
+                 f"Cell(s) {[f'{w}:{h}' for w, h in clash]} received an original budget while this "
+                 f"one was under approval; it cannot be released twice.", status=409,
+                 detail=[{"wbs_id": w, "budget_head_id": h} for w, h in clash])
 
     effective_from = date(int(doc["fiscal_year"][:4]), 4, 1)
     written: list[dict[str, Any]] = []
