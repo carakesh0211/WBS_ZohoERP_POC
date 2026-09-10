@@ -17,6 +17,53 @@ correctly, before the lead had done the integration only the lead could do, is
 not a defect in the agent's work — and deleting the number would hide that the
 five failures had a single cause.
 
+## Fable 5.1 — independent hardening, UAT preview and the budget-creation correction
+
+**Branch `fable-5.1/full-app-hardening-uat`** (from `full-application/build` @ 0b240fa),
+pushed to the private origin. Wave 8 stays **OPEN**: the five CI jobs have not
+executed since 06:10 on 2026-09-09 and the cause is now **confirmed as GitHub
+billing**, not code — the check-run annotation reads "The job was not started
+because recent account payments have failed or your spending limit needs to be
+increased". Only the account owner can clear it. Local gates are authoritative
+until then.
+
+**Live PostgreSQL exists locally now.** A user-local PostgreSQL 16.10 runs the
+whole `tests/test_pg_*.py` suite. At 0b240fa the inherited result was **4
+failed / 1681 passed / 1 skipped** (36 min) — not the green the file above
+claimed: a raw trigger error where a coded refusal was expected, a migration
+DDL scanner blind to every `ALTER TABLE … ADD COLUMN` since 014, and two tests
+with a stale signature. All four are fixed on this branch.
+
+**Stage A UAT visual preview is DEPLOYED**: Catalyst project
+`wbs-capex-uat-fable51` (id 4239000000144371, India DC, Development only),
+AppSail `wbs-capex-uat`, `https://wbs-capex-uat-50045784768.development.catalystappsail.in`.
+Synthetic seed, ephemeral SQLite, `UAT — SYNTHETIC DATA — ERP MOCK` banner,
+non-derivable per-user credentials (hashes only in the bundle), `/docs`
+unmounted, Zoho MOCK, outbound ERP writes disabled. Everything PostgreSQL-backed
+answers a uniform 503 there by design. Full record and limitations:
+`docs/fable51/STAGE_A_UAT_PREVIEW.md`.
+
+**The budget-creation correction (product-owner brief, 2026-09-11)** — the
+application could not create a budget through its own controls; AMB-04 is
+resolved by decision: **Budget Category and Budget Head are separate
+dimensions**. Delivered on this branch:
+
+| Slice | State |
+|---|---|
+| Migration 026: `budget_category` master, `original_budget` + lines, category on cell and line, DB-level immutability after release, numbering series, custom fields widened to BUDGET | **applied, RLS-registered (57 coverage tests), 15 live workflow tests** |
+| Service + API: draft/edit/submit/cancel/audit/list, category CRUD, governed selectors, CSV template/preview/all-or-nothing import, Idempotency-Key | **done; every mutating route in the auth matrix (209 passed)** |
+| Approval engine: `ORIGINAL_BUDGET` binding and write-back → RELEASE creates and classifies cells, writes ORIGINAL lines, captures the approving authority | **done; verified end-to-end over HTTP on local PostgreSQL** |
+| Seeded approval workflows | **every seeded predicate since Wave 4 was in a shape the compiler refuses** — rewritten, with a live test that compiles and routes the real seed |
+| Local PostgreSQL demo (`tools/demo_pg.py`) | **done** — no core screen answers DATABASE_NOT_CONFIGURED |
+| Frontend: Budget Setup screen, New Budget, governed selectors, category master, visible analytics/mapping navigation | in progress (frontend stream) |
+| Reporting: category/head/plant/entity/location/division/branch/zone/period/date/status/requestor/vendor filters, grouping, reconciliation across cards/tables/drill-down/exports | in progress (reporting stream) |
+
+Also integrated on this branch: login throttling, the ERP outbound-write gate,
+Zoho route 404/audit discipline, period-reopen maker-checker and permissions
+(M-3), the H-7 carried-commitment preservation with migration 027, the FX
+re-translation ordering fix, and the `--n500` hovered-row contrast correction
+(approved; pin moved by the documented procedure).
+
 ## Current milestone
 
 **M7 — Reconciliation, dashboards and reports.** Reporting backend, export
