@@ -316,6 +316,8 @@ export const REPORT_KEYS = Object.freeze({
  */
 export const GROUPABLE = Object.freeze([
   'entity', 'plant', 'location', 'project', 'wbs', 'budget_head', 'category',
+  // FABLE 5.1 / migration 026: the real, independent category master.
+  'budget_category',
 ]);
 
 /**
