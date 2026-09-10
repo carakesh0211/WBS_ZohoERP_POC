@@ -53,6 +53,7 @@ from conftest_pg import (  # noqa: E402,F401  (re-exported as fixtures)
     pg_template, pg_url,
 )
 
+from app.backend.pg.engine import Scope                              # noqa: E402
 from tools.migration import audit_chain, import_pg, reconcile        # noqa: E402
 from tools.migration.schema import (compare_scanned_to_live,          # noqa: E402
                                     live_pg_columns, scan_pg_schema)
@@ -144,7 +145,7 @@ def test_a_legacy_import_verifies_through_the_products_own_verifier(pg_database)
     entries, report = audit_chain.plan_legacy_import(rows)
     assert report["legacy_entries"] == 4
 
-    with pg_database.session() as session:
+    with pg_database.session(Scope.system()) as session:
         for entry in entries:
             session.execute(
                 "INSERT INTO audit_log (stream_key, seq, at, actor, action, "
@@ -174,7 +175,7 @@ def test_a_tampered_legacy_row_aborts_the_import(pg_database):
 
     entries, _ = audit_chain.plan_legacy_import(rows)
     with pytest.raises(audit_chain.AuditChainError, match="intact=False"):
-        with pg_database.session() as session:
+        with pg_database.session(Scope.system()) as session:
             for entry in entries:
                 session.execute(
                     "INSERT INTO audit_log (stream_key, seq, at, actor, action, "

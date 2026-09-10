@@ -4074,6 +4074,10 @@
       "test_the_audit_log_conflict_target_is_the_unique_key_not_the_identity_column": {
         "assertions": 3,
         "body_sha": "5fca6ad4dfc30496"
+      },
+      "test_the_ddl_scanner_sees_columns_added_by_alter_table": {
+        "assertions": 4,
+        "body_sha": "d46bc849f3019de0"
       }
     },
     "test_migrations.py": {
@@ -8077,11 +8081,11 @@
       },
       "test_a_legacy_import_verifies_through_the_products_own_verifier": {
         "assertions": 3,
-        "body_sha": "5a60c12161d84ace"
+        "body_sha": "78a282e89d57f4f9"
       },
       "test_a_tampered_legacy_row_aborts_the_import": {
         "assertions": 1,
-        "body_sha": "a30e72dac2ed657e"
+        "body_sha": "7e44ac0010202b7b"
       },
       "test_the_skip_reason_says_a_skip_is_not_a_pass": {
         "assertions": 2,
@@ -11759,7 +11763,7 @@
       },
       "test_bundle_verifier_refuses_windows_binaries_and_plaintext": {
         "assertions": 8,
-        "body_sha": "4fef35db665f934a"
+        "body_sha": "22fbb48c195c271d"
       },
       "test_bundle_builder_refuses_an_output_inside_the_repository": {
         "assertions": 2,
@@ -11772,6 +11776,10 @@
       "test_the_hovered_row_muted_text_correction_measures_aa": {
         "assertions": 4,
         "body_sha": "13f5aa3e2aa1b770"
+      },
+      "test_every_research_directory_the_backend_reads_ships_in_the_bundle_and_the_image": {
+        "assertions": 3,
+        "body_sha": "921857ae8c4f6ead"
       }
     }
   },
@@ -11815,7 +11823,7 @@
     "test_masters_settings_api_guard.py": 9,
     "test_middleware_observability.py": 11,
     "test_migration_audit_chain.py": 17,
-    "test_migration_import.py": 37,
+    "test_migration_import.py": 38,
     "test_migrations.py": 20,
     "test_money.py": 23,
     "test_money_sql_discipline.py": 7,
@@ -11888,7 +11896,7 @@
     "test_security_identity.py": 10,
     "test_security_scope_tristate.py": 13,
     "test_security_secrets.py": 12,
-    "test_uat_profile.py": 20
+    "test_uat_profile.py": 21
   },
   "assertions": {
     "test_api_auth.py": 50,
@@ -11930,7 +11938,7 @@
     "test_masters_settings_api_guard.py": 15,
     "test_middleware_observability.py": 31,
     "test_migration_audit_chain.py": 35,
-    "test_migration_import.py": 75,
+    "test_migration_import.py": 79,
     "test_migrations.py": 45,
     "test_money.py": 31,
     "test_money_sql_discipline.py": 11,
@@ -12003,6 +12011,6 @@
     "test_security_identity.py": 18,
     "test_security_scope_tristate.py": 39,
     "test_security_secrets.py": 29,
-    "test_uat_profile.py": 69
+    "test_uat_profile.py": 72
   }
 }

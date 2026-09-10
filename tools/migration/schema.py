@@ -221,24 +221,78 @@ def _parse_foreign_keys(clause: str, own_columns: list[str]
     return out
 
 
+_ALTER_TABLE = re.compile(
+    r"^\s*ALTER\s+TABLE(?:\s+IF\s+EXISTS)?(?:\s+ONLY)?\s+"
+    r"(?:([a-z_][a-z0-9_]*)\.)?([a-z_][a-z0-9_]*)\s+(.*)$",
+    re.IGNORECASE | re.DOTALL,
+)
+_ADD_COLUMN = re.compile(r"^ADD(?:\s+COLUMN)?(?:\s+IF\s+NOT\s+EXISTS)?\s+(.*)$", re.IGNORECASE | re.DOTALL)
+_DROP_COLUMN = re.compile(r"^DROP(?:\s+COLUMN)?(?:\s+IF\s+EXISTS)?\s+([a-z_][a-z0-9_]*)", re.IGNORECASE)
+_RENAME_COLUMN = re.compile(
+    r"^RENAME(?:\s+COLUMN)?\s+([a-z_][a-z0-9_]*)\s+TO\s+([a-z_][a-z0-9_]*)", re.IGNORECASE)
+
+
+def _apply_alter(tables: dict[str, Table], statement: str, source_file: str) -> None:
+    """``ALTER TABLE t ADD COLUMN ... , DROP COLUMN ..., RENAME COLUMN a TO b``.
+
+    Fable 5.1. The scanner read only ``CREATE TABLE`` bodies, so every column
+    that migrations 014 onwards added with ``ALTER TABLE ... ADD COLUMN`` --
+    ``accounting_period.reopen_count``, ``bill.bill_number_normalised``,
+    ``bill.connection_id`` and seven more -- was invisible to it, and
+    ``test_the_ddl_scanner_agrees_with_information_schema`` failed the first
+    time it ever ran against a server (it had only ever skipped). Constraint,
+    RLS and ownership forms are not column changes and are ignored on purpose.
+    """
+    m = _ALTER_TABLE.match(statement)
+    if not m:
+        return
+    name = m.group(2).lower()
+    table = tables.get(name)
+    if table is None:
+        return                      # a table this scan does not know: not ours to invent
+    for action in split_top_level(m.group(3)):
+        action = action.strip()
+        add = _ADD_COLUMN.match(action)
+        if add:
+            col = _parse_column(add.group(1))
+            if col is not None and col.name not in table.column_names:
+                table.columns.append(col)
+                table.foreign_keys.extend(_parse_foreign_keys(add.group(1), table.column_names))
+            continue
+        drop = _DROP_COLUMN.match(action)
+        if drop and not action.upper().startswith("DROP CONSTRAINT"):
+            table.columns = [c for c in table.columns if c.name.lower() != drop.group(1).lower()]
+            continue
+        rename = _RENAME_COLUMN.match(action)
+        if rename:
+            for c in table.columns:
+                if c.name.lower() == rename.group(1).lower():
+                    c.name = rename.group(2)
+
+
 def scan_pg_schema(migrations_dir: Path | None = None) -> dict[str, Table]:
-    """Every table the PostgreSQL migrations create, in application order."""
+    """Every table the PostgreSQL migrations create, in application order,
+    with every column they later ADD, DROP or RENAME through ``ALTER TABLE``."""
     directory = migrations_dir or PG_MIGRATIONS
     tables: dict[str, Table] = {}
     for path in sorted(directory.glob("[0-9][0-9][0-9]_*.sql")):
         sql = strip_sql_comments(path.read_text(encoding="utf-8"))
-        for m in _CREATE_TABLE.finditer(sql):
-            open_paren = m.end() - 1
-            close = matching_paren(sql, open_paren)
-            body = sql[open_paren + 1:close]
-            table = Table(name=m.group(2).lower(), source_file=path.name)
-            for clause in split_top_level(body):
-                col = _parse_column(clause)
-                if col is not None:
-                    table.columns.append(col)
-                table.foreign_keys.extend(
-                    _parse_foreign_keys(clause, table.column_names))
-            tables[table.name] = table
+        for statement in split_top_level(sql, ";"):
+            m = _CREATE_TABLE.search(statement)
+            if m and statement.lstrip().upper().startswith("CREATE"):
+                open_paren = m.end() - 1
+                close = matching_paren(statement, open_paren)
+                body = statement[open_paren + 1:close]
+                table = Table(name=m.group(2).lower(), source_file=path.name)
+                for clause in split_top_level(body):
+                    col = _parse_column(clause)
+                    if col is not None:
+                        table.columns.append(col)
+                    table.foreign_keys.extend(
+                        _parse_foreign_keys(clause, table.column_names))
+                tables[table.name] = table
+                continue
+            _apply_alter(tables, statement, path.name)
     return tables
 
 
@@ -253,6 +307,13 @@ def live_pg_columns(connection) -> dict[str, list[str]]:
     for table_name, column_name in cur.fetchall():
         out.setdefault(table_name, []).append(column_name)
     return out
+
+
+#: Tables the MIGRATION RUNNER creates itself (app/backend/pg/migrate_pg.py),
+#: not any numbered SQL file. They are on every migrated server and in no
+#: migration, so the comparison must know them or it reports its own ledger
+#: as drift -- which is what it did the first time it ran against a server.
+RUNNER_OWNED_TABLES = frozenset({"schema_migrations"})
 
 
 def compare_scanned_to_live(scanned: dict[str, Table],
@@ -272,7 +333,7 @@ def compare_scanned_to_live(scanned: dict[str, Table],
             problems.setdefault(name, []).append(f"server has column {missing!r}, scan missed it")
         for extra in sorted(scanned_cols - live_cols):
             problems.setdefault(name, []).append(f"scan invented column {extra!r}")
-    for name in sorted(set(live) - set(scanned)):
+    for name in sorted(set(live) - set(scanned) - RUNNER_OWNED_TABLES):
         problems.setdefault(name, []).append("on the server but not in the migrations")
     return problems
 

@@ -645,3 +645,17 @@ def test_the_audit_log_conflict_target_is_the_unique_key_not_the_identity_column
     sql = import_pg.insert_statement("audit_log", columns, ["stream_key", "seq"])
     assert "audit_id" not in sql
     assert 'ON CONFLICT ("stream_key", "seq") DO NOTHING' in sql
+
+
+# --------------------------------------------------------------- Fable 5.1
+def test_the_ddl_scanner_sees_columns_added_by_alter_table():
+    """Migrations 014 onwards add columns with ``ALTER TABLE ... ADD COLUMN``.
+    The scanner read only ``CREATE TABLE`` bodies, so ten such columns were
+    invisible to the preflight and the live comparison failed the first time
+    it executed against a server. Database-free: the scan reads the SQL."""
+    from tools.migration.schema import scan_pg_schema
+    tables = scan_pg_schema()
+    assert "reopen_count" in tables["accounting_period"].column_names
+    assert "reopened_by" in tables["accounting_period"].column_names
+    assert "connection_id" in tables["bill"].column_names
+    assert "bill_number_normalised" in tables["bill"].column_names
