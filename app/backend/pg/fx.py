@@ -436,9 +436,12 @@ def record_rate(session: Session, *, from_currency: str, rate_date: date,
              "a rate must name where it came from. A rate with no provenance "
              "is not evidence.")
 
+    # ACTIVE rows only (028): a superseded or retired quote for the same key
+    # is history, and `ux_fx_rate_natural` is partial over active rows, so
+    # this is the one row the natural key can name.
     existing = session.fetchone(  # scope-exempt: fx_rate is organisation-wide reference data with no dimension column, scoped by capex_principal_present() in migration 023
         "SELECT fx_rate_id, rate FROM fx_rate WHERE from_currency = %s "
-        "AND to_currency = %s AND rate_date = %s AND rate_source = %s",
+        "AND to_currency = %s AND rate_date = %s AND rate_source = %s AND active",
         (frm, to, rate_date, rate_source))
     if existing is not None:
         fx_rate_id, stored = existing
@@ -547,11 +550,17 @@ def translate_bill(session: Session, *, bill_id: str, source_currency: str,
              f"which is what ck_bill_fx_provenance requires.")
 
     rate_row = session.fetchone(  # scope-exempt: fx_rate is organisation-wide reference data with no dimension column, scoped by capex_principal_present() in migration 023
-        "SELECT from_currency, to_currency, rate_date, rate, rate_source "
+        "SELECT from_currency, to_currency, rate_date, rate, rate_source, active "
         "FROM fx_rate WHERE fx_rate_id = %s", (fx_rate_id,))
     if rate_row is None:
         _err("FX_RATE_NOT_FOUND", f"No fx_rate row {fx_rate_id}.", status=404)
-    frm, to, rate_date, rate, rate_source = rate_row
+    frm, to, rate_date, rate, rate_source, is_active = rate_row
+    if not is_active:
+        _err("FX_RATE_INACTIVE",
+             f"fx_rate {fx_rate_id} is not in force (pending activation, "
+             f"retired, or superseded). A bill is translated at an ACTIVE "
+             f"quote or refused; it is never translated at a stale one.",
+             status=409)
 
     if frm != currency or to != BASE_CURRENCY:
         _err("FX_RATE_WRONG_PAIR",
@@ -1035,12 +1044,18 @@ def resolve_basis(session: Session, *, source_currency: Any,
 
     if fx_rate_id:
         row = session.fetchone(  # scope-exempt: fx_rate is organisation-wide reference data with no dimension column, scoped by capex_principal_present() in migration 023
-            "SELECT from_currency, to_currency, rate_date, rate, rate_source "
+            "SELECT from_currency, to_currency, rate_date, rate, rate_source, active "
             "FROM fx_rate WHERE fx_rate_id = %s", (fx_rate_id,))
         if row is None:
             _err("FX_RATE_NOT_FOUND", f"No fx_rate row {fx_rate_id}.",
                  status=404)
-        frm, to, found_date, found_rate, found_source = row
+        frm, to, found_date, found_rate, found_source, is_active = row
+        if not is_active:
+            _err("FX_RATE_INACTIVE",
+                 f"fx_rate {fx_rate_id} is not in force (pending activation, "
+                 f"retired, or superseded). Name an ACTIVE quote, or none and "
+                 f"let the rate on file for {document_date} be resolved.",
+                 status=409)
         if frm != currency or to != BASE_CURRENCY:
             _err("FX_RATE_WRONG_PAIR",
                  f"fx_rate {fx_rate_id} is {frm}/{to}; this document is "
@@ -1076,13 +1091,16 @@ def resolve_basis(session: Session, *, source_currency: Any,
             rate_date=document_date, rate_source=str(rate_source),
             fx_rate_id=str(recorded["fx_rate_id"]))
 
+    # ACTIVE quotes only (028). A pending, retired or superseded row for this
+    # date is not "the rate on file"; it is history, and a document must not
+    # be translated at it. No fallback to another day, to a stale row, or to 1.
     candidates = session.fetchall(  # scope-exempt: fx_rate is organisation-wide reference data with no dimension column, scoped by capex_principal_present() in migration 023
         "SELECT fx_rate_id, rate, rate_source FROM fx_rate "
         "WHERE from_currency = %s AND to_currency = %s AND rate_date = %s "
-        "ORDER BY fx_rate_id", (currency, BASE_CURRENCY, document_date))
+        "AND active ORDER BY fx_rate_id", (currency, BASE_CURRENCY, document_date))
     if not candidates:
         _err("FX_RATE_UNAVAILABLE",
-             f"no {currency}/{BASE_CURRENCY} rate is on file for "
+             f"no ACTIVE {currency}/{BASE_CURRENCY} rate is on file for "
              f"{document_date}, and this document is in {currency}. It is "
              f"REFUSED rather than written at face value: writing it would put "
              f"a {currency} amount in a base-currency column as though it were "
