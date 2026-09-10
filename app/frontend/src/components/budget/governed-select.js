@@ -143,6 +143,12 @@ export class GovernedSelectElement extends HTMLElement {
       'aria-autocomplete': 'list',
       'aria-expanded': 'false',
       'aria-controls': listboxId,
+      // A caller's visible <label> lives outside this element's own markup
+      // (govField() in budget-setup.js, mirroring every other .field label
+      // in this codebase), so it points here by id rather than this
+      // component inventing its own duplicate label text.
+      'aria-labelledby': this.getAttribute('aria-labelledby') || null,
+      'aria-label': this.getAttribute('aria-labelledby') ? null : (this.getAttribute('aria-label') || null),
       autocomplete: 'off',
       spellcheck: 'false',
     });
