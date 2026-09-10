@@ -424,6 +424,18 @@ POST_BASELINE_FILES = {
     # and the revised-source refusal. Its live half first executes in CI.
     "test_pg_fx_ingest.py",
 
+    # --- Fable 5.1: the inbound ledger ------------------------------------
+    # Behavioural regressions for the receive/bill mirror against live
+    # PostgreSQL: the cell-creation rule (a bare UPDATE never succeeds having
+    # written nothing), the per-source commitment that H-7 required, the
+    # currency a receive derives from its anchoring purchase order, receive
+    # reversal by absence and by document, and replay/correction safety for
+    # a translated bill. The paisa reconciliation file drives PR -> PO ->
+    # receives -> foreign-currency bill -> void and asserts the four ledger
+    # identities after every step, in integers only.
+    "test_pg_fable51_inbound_ledger.py",
+    "test_pg_fable51_paisa_reconciliation.py",
+
     # --- Wave 8 security and audit closure --------------------------------
     # Six files from the Wave 8 security stream. Registered here by the LEAD
     # because that stream owns none of `tools/`, and its agent stopped at a

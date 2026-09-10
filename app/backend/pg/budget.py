@@ -190,7 +190,7 @@ def recompute_cell(session: Session, wbs_id: str, budget_head_id: str, *,
     as_of = as_of or date.today()
     params = {"wbs_id": wbs_id, "head": budget_head_id, "as_of": as_of, "actor": actor}
 
-    session.execute(  # scope-exempt: derives one already-locked cell from its own lines
+    control = session.execute(  # scope-exempt: derives one already-locked cell from its own lines
         """
         UPDATE budget_control_cell SET
             budget_paise = COALESCE((
@@ -203,7 +203,35 @@ def recompute_cell(session: Session, wbs_id: str, budget_head_id: str, *,
         """,
         params,
     )
-    session.execute(  # scope-exempt: derives one already-locked cell from its own lines
+    # NEVER SUCCEED HAVING WRITTEN NOTHING. This was a bare UPDATE: a cell
+    # with no `budget_control_cell` row matched nothing, the statement
+    # "succeeded", and the read-back below then failed to unpack `None` -- a
+    # TypeError standing in for a refusal. The rule, stated in
+    # `procurement_services._ensure_cell_pair`'s block comment: an absent
+    # CONTROL cell is refused here, not created, because
+    # `fk_budget_line_control_cell` guarantees no approved budget can exist
+    # without one, so a caller naming such a cell is naming a cell that has
+    # no budget to recompute. An absent LEDGER companion is the other case:
+    # the control row exists and its derived twin was never seeded (no
+    # application code inserted one before migration 027's writers), so it is
+    # CREATED under the same rule the procurement recompute applies, and the
+    # budget columns are then derived onto a row that exists.
+    if control.rowcount != 1:
+        _err("BUDGET_CELL_NOT_FOUND",
+             f"cell ({wbs_id}, {budget_head_id}) has no budget_control_cell "
+             f"row; nothing was recomputed. A control cell is created by the "
+             f"first budget grant or the first procurement document on it, "
+             f"never by a recompute, which would be a claim about a budget "
+             f"nobody set.", status=404)
+    session.execute(  # scope-exempt: the ledger companion of the control row just written, created if never seeded
+        """
+        INSERT INTO budget_ledger_cell (wbs_id, budget_head_id, updated_by)
+        VALUES (%(wbs_id)s, %(head)s, %(actor)s)
+        ON CONFLICT (wbs_id, budget_head_id) DO NOTHING
+        """,
+        params,
+    )
+    ledger = session.execute(  # scope-exempt: derives one already-locked cell from its own lines
         """
         UPDATE budget_ledger_cell SET
             original_paise = COALESCE((
@@ -226,6 +254,11 @@ def recompute_cell(session: Session, wbs_id: str, budget_head_id: str, *,
         """,
         params,
     )
+    if ledger.rowcount != 1:
+        _err("BUDGET_CELL_NOT_FOUND",
+             f"the ledger row for cell ({wbs_id}, {budget_head_id}) was "
+             f"ensured a statement ago and is now absent; nothing about this "
+             f"cell can be trusted.", status=500)
     row = session.fetchone(  # scope-exempt: reads back the cell this call just recomputed
         "SELECT bc.budget_paise, bl.original_paise, bl.revisions_paise, bl.future_budget_paise "
         "FROM budget_control_cell bc "

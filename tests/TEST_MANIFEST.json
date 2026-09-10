@@ -6836,6 +6836,36 @@
         "body_sha": "70788ecd553874e4"
       }
     },
+    "test_pg_fable51_inbound_ledger.py": {
+      "test_a_derived_recompute_on_a_cell_with_no_row_creates_it_and_lands": {
+        "assertions": 5,
+        "body_sha": "2d485c20ba381b03"
+      },
+      "test_recompute_cell_refuses_an_absent_control_cell_with_a_code": {
+        "assertions": 4,
+        "body_sha": "f711d5ee2b19c66f"
+      },
+      "test_recompute_cell_creates_the_ledger_companion_of_a_control_row": {
+        "assertions": 3,
+        "body_sha": "2df8be7b5b514563"
+      },
+      "test_a_carried_commitment_survives_the_recompute": {
+        "assertions": 4,
+        "body_sha": "921812a6992935b1"
+      },
+      "test_commitment_is_the_sum_of_its_sources_and_each_moves_alone": {
+        "assertions": 4,
+        "body_sha": "75fedd5f7a98a7c2"
+      },
+      "test_a_carried_commitment_leaves_only_through_an_explicit_release": {
+        "assertions": 7,
+        "body_sha": "5e7609da9a79ccc5"
+      },
+      "test_the_migration_backfill_carries_only_what_no_po_line_explains": {
+        "assertions": 3,
+        "body_sha": "9d946d822e525b20"
+      }
+    },
     "test_pg_fixture_guard.py": {
       "test_disposable_names_are_accepted": {
         "assertions": 1,
@@ -11848,6 +11878,7 @@
     "test_pg_closure.py": 37,
     "test_pg_constraints.py": 8,
     "test_pg_exports.py": 49,
+    "test_pg_fable51_inbound_ledger.py": 7,
     "test_pg_fixture_guard.py": 3,
     "test_pg_fx.py": 34,
     "test_pg_fx_ingest.py": 51,
@@ -11963,6 +11994,7 @@
     "test_pg_closure.py": 80,
     "test_pg_constraints.py": 13,
     "test_pg_exports.py": 138,
+    "test_pg_fable51_inbound_ledger.py": 30,
     "test_pg_fixture_guard.py": 3,
     "test_pg_fx.py": 89,
     "test_pg_fx_ingest.py": 136,

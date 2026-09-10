@@ -625,11 +625,21 @@ _RECOMPUTE_DERIVED_SQL = """
 
         -- Anti-double-count: a line commits only its UNBILLED balance, and a
         -- released purchase order commits nothing.
+        --
+        -- PER SOURCE (H-7). The first term is the PO_LINE source, derived in
+        -- full from the purchase-order lines on this cell on every pass. The
+        -- second is the CARRIED source -- a commitment with no PostgreSQL
+        -- po_line behind it (opening balance, SAP cutover, SQLite estate) --
+        -- which this statement READS and never writes: it cannot recompute
+        -- what no document explains, so it preserves it. Before migration 027
+        -- there was one term and the carried figure was zeroed on the first
+        -- pass, which raised availability by exactly the obligation it erased.
         commitment_paise = COALESCE((
             SELECT SUM(CASE WHEN po_status = ANY(%(releasing)s) THEN 0
                             ELSE GREATEST(0, ordered_paise - billed_paise)
                        END)
-            FROM po_line_position), 0)::bigint,
+            FROM po_line_position), 0)::bigint
+            + budget_ledger_cell.commitment_carried_paise,
 
         -- SIGNED, and not clamped. See the header: reversal by flag.
         received_paise = COALESCE(
@@ -708,12 +718,225 @@ def recompute_derived_position(session: Session, wbs_id: str,
     ``bill_line`` and ``pr_reservation`` on a cell sits in the project the
     caller already had to reach to get here.
     """
-    session.execute(  # scope-exempt: derives one already-locked cell from its own source rows
+    _ensure_cell_pair(session, wbs_id, budget_head_id, actor=actor)
+    cursor = session.execute(  # scope-exempt: derives one already-locked cell from its own source rows
         _RECOMPUTE_DERIVED_SQL,
         {"wbs_id": wbs_id, "head": budget_head_id, "actor": actor,
          "releasing": list(COMMITMENT_RELEASING_STATES),
          "effective": list(ACCOUNTING_EFFECTIVE_BILL_STATES)},
     )
+    # NEVER SUCCEED HAVING WRITTEN NOTHING. The pair was just ensured, so a
+    # zero here means the row vanished between two statements of one
+    # transaction -- which `capex_app` cannot do (DELETE is revoked) and which
+    # is therefore a defect worth a loud, coded refusal rather than a derived
+    # position that silently never landed.
+    if cursor.rowcount != 1:
+        _err("LEDGER_CELL_NOT_WRITTEN",
+             f"the derived position for cell ({wbs_id}, {budget_head_id}) "
+             f"updated {cursor.rowcount} rows, not one. Nothing about this "
+             f"cell's exposure can be trusted until that is explained.",
+             status=500, wbs_id=wbs_id, budget_head_id=budget_head_id)
+
+
+# =========================================== THE CELL-CREATION RULE, STATED
+#
+# `budget_control_cell` and `budget_ledger_cell` were seeded, never created:
+# no application code inserted either (`closure.py` says so, and was right),
+# so a project created THROUGH THE PRODUCT had no cells at all and every
+# recompute against it was `UPDATE ... WHERE` matching no row -- a bare UPDATE
+# that succeeded having written nothing. `refresh_cells_after_ingest`
+# documented the gap ("nothing will write one") instead of closing it, and the
+# consequence was the permissive one: a purchase order on such a cell was
+# ORDERED in `po_line` and committed NOTHING in the ledger, so `available`
+# never fell for it.
+#
+# THE RULE. A control cell exists for every `(wbs_id, budget_head_id)` that
+# carries a procurement document row -- `po_line`, `grn_line`, `bill_line`,
+# `pr_reservation` -- and its ledger row exists alongside it. The first derived
+# recompute that finds the pair absent CREATES it, with `budget_paise = 0`:
+# zero budget is not a claim about a grant, it is the honest value of a cell
+# nobody has funded, and it is what makes the cell's exposure VISIBLE to the
+# nearest budget-owning ancestor's availability check. `budget.recompute_cell`
+# holds the other half of the rule: it refuses an absent CONTROL cell, because
+# `fk_budget_line_control_cell` guarantees no budget can exist without one, and
+# creates only the ledger companion.
+#
+# LOCKING. `lock_affected_cells` locked every EXISTING ancestor-or-self cell
+# before this ran; a row that did not exist could not be in that set. The
+# INSERT below takes the new row's lock itself, and a concurrent creator of
+# the same pair blocks on the primary key until this transaction ends, then
+# finds it present -- so two creators cannot both write, and neither can
+# write beneath a lock the other holds.
+def _ensure_cell_pair(session: Session, wbs_id: str, budget_head_id: str, *,
+                      actor: str) -> bool:
+    """Create the control/ledger pair for a cell if absent. True if created."""
+    created = session.execute(  # scope-exempt: creates the already-locked chain's own cell under the rule stated above
+        """
+        INSERT INTO budget_control_cell (wbs_id, budget_head_id, budget_paise,
+                                         updated_by)
+        VALUES (%(wbs_id)s, %(head)s, 0, %(actor)s)
+        ON CONFLICT (wbs_id, budget_head_id) DO NOTHING
+        """,
+        {"wbs_id": wbs_id, "head": budget_head_id, "actor": actor},
+    ).rowcount
+    session.execute(  # scope-exempt: the ledger companion of the control row just ensured
+        """
+        INSERT INTO budget_ledger_cell (wbs_id, budget_head_id, updated_by)
+        VALUES (%(wbs_id)s, %(head)s, %(actor)s)
+        ON CONFLICT (wbs_id, budget_head_id) DO NOTHING
+        """,
+        {"wbs_id": wbs_id, "head": budget_head_id, "actor": actor},
+    )
+    return created == 1
+
+
+def release_carried_commitment(session: Session, wbs_id: str,
+                               budget_head_id: str, *, paise: int,
+                               reason: str, actor: str) -> dict[str, Any]:
+    """Release part or all of a cell's CARRIED commitment, explicitly.
+
+    THE ONLY WRITER OF `commitment_carried_paise` AFTER MIGRATION 027's
+    backfill. The recompute reads it and preserves it (H-7); a figure no
+    document explains leaves the ledger only when somebody says why, under
+    the cell locks, with an audit entry, and the derived position is
+    re-derived in the same transaction so `commitment_paise` moves with it.
+    """
+    amount = _as_paise(paise, field="paise")
+    if amount <= 0:
+        _err("INVALID_RELEASE_AMOUNT",
+             "a carried-commitment release must be a positive number of paise")
+    if not str(reason or "").strip():
+        _err("BLANK_RELEASE_REASON",
+             "a carried commitment leaves the ledger only with a reason; "
+             "a figure released for no stated reason is a figure erased")
+    lock_affected_cells(session, [(wbs_id, budget_head_id)])
+    row = session.fetchone(  # scope-exempt: adjusts one already-locked cell's own carried figure
+        """
+        UPDATE budget_ledger_cell
+           SET commitment_carried_paise = commitment_carried_paise - %(paise)s,
+               commitment_carried_note = %(note)s,
+               updated_at = now(), updated_by = %(actor)s,
+               version_no = version_no + 1
+         WHERE wbs_id = %(wbs_id)s AND budget_head_id = %(head)s
+           AND commitment_carried_paise >= %(paise)s
+        RETURNING commitment_carried_paise
+        """,
+        {"wbs_id": wbs_id, "head": budget_head_id, "paise": amount,
+         "note": f"{reason.strip()} (released {amount} paise by {actor})",
+         "actor": actor},
+    )
+    if row is None:
+        _err("CARRIED_COMMITMENT_INSUFFICIENT",
+             f"cell ({wbs_id}, {budget_head_id}) does not exist or carries "
+             f"less than {amount} paise of non-po_line commitment; nothing "
+             f"was released.", status=409)
+    recompute_derived_position(session, wbs_id, budget_head_id, actor=actor)
+    audit_mod.append(
+        session, actor, "CARRIED_COMMITMENT_RELEASED", "BUDGET_CELL",
+        f"{wbs_id}:{budget_head_id}",
+        f"{amount} paise of carried (non-po_line) commitment released; "
+        f"{int(row[0])} paise remains carried. {reason.strip()}")
+    return {"wbs_id": wbs_id, "budget_head_id": budget_head_id,
+            "released_paise": amount, "carried_paise": int(row[0])}
+
+
+def cell_position_invariants(session: Session, wbs_id: str,
+                             budget_head_id: str) -> dict[str, Any]:
+    """The four ledger identities for one cell, read back as integers.
+
+    For tests and for the reconciliation screen: every figure is read from the
+    cell and from its own purchase-order lines, in integer paise, and the
+    identities are evaluated here rather than in each caller so nobody's test
+    can quietly assert a weaker one.
+
+    ``po_line_identity`` holds when, for every purchase-order line on the
+    cell that is neither Cancelled nor Closed nor over-billed,
+    ``billed + open_commitment == ordered``; an over-billed line is reported
+    in ``over_billed_po_lines`` rather than folded into the identity, because
+    ``open_commitment`` is clamped at zero and the identity is not defined
+    past that point -- the overage is what `reconcile_po_lines` makes visible.
+    """
+    cell = session.fetchone(  # scope-exempt: reads back one cell for an invariant check
+        """
+        SELECT bc.budget_paise, bl.commitment_paise, bl.actual_paise,
+               bl.pr_reserved_paise, bl.ordered_paise, bl.received_paise,
+               bl.received_not_billed_paise, bl.commitment_carried_paise
+        FROM budget_control_cell bc
+        JOIN budget_ledger_cell bl
+          ON bl.wbs_id = bc.wbs_id AND bl.budget_head_id = bc.budget_head_id
+        WHERE bc.wbs_id = %(wbs_id)s AND bc.budget_head_id = %(head)s
+        """,
+        {"wbs_id": wbs_id, "head": budget_head_id})
+    if cell is None:
+        _err("BUDGET_CELL_NOT_FOUND",
+             f"cell ({wbs_id}, {budget_head_id}) has no control/ledger pair",
+             status=404)
+    (budget, commitment, actual, reserved, ordered, received,
+     received_not_billed, carried) = (int(v) for v in cell)
+    lines = session.fetchall(  # scope-exempt: the cell's own purchase-order lines, for the per-line identity
+        """
+        WITH position AS (
+            SELECT pl.po_line_id, po.status AS po_status,
+                   (pl.amount_paise + pl.non_creditable_tax_paise
+                    + pl.freight_paise)::bigint AS ordered_paise,
+                   COALESCE((
+                       SELECT SUM(CASE WHEN b.accounting_status = 'Reversal'
+                                       THEN -ABS(bl.amount_paise
+                                                 + bl.non_creditable_tax_paise
+                                                 + bl.freight_paise)
+                                       ELSE bl.amount_paise
+                                            + bl.non_creditable_tax_paise
+                                            + bl.freight_paise END)
+                       FROM bill_line bl
+                       JOIN bill b ON b.bill_id = bl.bill_id
+                       WHERE bl.po_line_id = pl.po_line_id
+                         AND b.accounting_status = ANY(%(effective)s)
+                   ), 0)::bigint AS billed_paise
+            FROM po_line pl
+            JOIN purchase_order po ON po.po_id = pl.po_id
+            WHERE pl.wbs_id = %(wbs_id)s AND pl.budget_head_id = %(head)s
+        )
+        SELECT po_line_id, po_status, ordered_paise, billed_paise
+        FROM position ORDER BY po_line_id
+        """,
+        {"wbs_id": wbs_id, "head": budget_head_id,
+         "effective": list(ACCOUNTING_EFFECTIVE_BILL_STATES)})
+    po_line_identity = True
+    over_billed: list[str] = []
+    derived_commitment = 0
+    for po_line_id, po_status, ordered_line, billed_line in lines:
+        ordered_line, billed_line = int(ordered_line), int(billed_line)
+        open_commitment = (0 if po_status in COMMITMENT_RELEASING_STATES
+                           else max(0, ordered_line - billed_line))
+        derived_commitment += open_commitment
+        if po_status in COMMITMENT_RELEASING_STATES:
+            continue
+        if billed_line > ordered_line:
+            over_billed.append(po_line_id)
+            continue
+        if billed_line + open_commitment != ordered_line:
+            po_line_identity = False
+    exposure = commitment + actual + reserved
+    return {
+        "budget_paise": budget, "commitment_paise": commitment,
+        "actual_paise": actual, "pr_reserved_paise": reserved,
+        "ordered_paise": ordered, "received_paise": received,
+        "received_not_billed_paise": received_not_billed,
+        "commitment_carried_paise": carried,
+        "exposure_paise": exposure,
+        "available_paise": budget - exposure,
+        # The four identities, each a bool a test asserts on directly.
+        "available_identity": (budget - exposure)
+                              == budget - actual - commitment - reserved,
+        "exposure_identity": exposure == commitment + actual + reserved,
+        "po_line_identity": po_line_identity,
+        "commitment_by_source_identity":
+            commitment == derived_commitment + carried,
+        "over_billed_po_lines": over_billed,
+        "money_is_int": all(isinstance(v, int) for v in (
+            budget, commitment, actual, reserved, ordered, received,
+            received_not_billed, carried)),
+    }
 
 
 def refresh_cells_after_ingest(session: Session,
@@ -737,8 +960,11 @@ def refresh_cells_after_ingest(session: Session,
     as nobody edited it.
 
     Returns the lock set actually taken, which can be SMALLER than ``cells``:
-    an affected pair with no ``budget_control_cell`` row has nothing to lock
-    and nothing will write one. The caller is told rather than left to assume.
+    an affected pair with no ``budget_control_cell`` row had nothing to lock
+    when the set was taken. It is NOT left absent: :func:`_ensure_cell_pair`
+    creates the pair inside :func:`recompute_derived_position` under the rule
+    stated above it, so the derived position lands on a row that exists. The
+    caller is told what was locked rather than left to assume.
     """
     if not cells:
         return []
