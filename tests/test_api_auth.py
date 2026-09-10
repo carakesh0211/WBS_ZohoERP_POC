@@ -76,27 +76,29 @@ MUTATING_ROUTES = [
     ("/api/budget/periods/{period_id}/transition", "POST",
      "/api/budget/periods/AP-2026-07/transition", {"to_state": "OPEN"},
      "period.transition", "Requestor"),
-    # Wave 8: the approval-gated reopen (AUD-C-008 residual). All three sit
-    # behind `period.transition` and NOT behind a `period.reopen` of their own,
-    # because `auth.PERMISSIONS` has no such key and `auth.require` answers
-    # 500 UNKNOWN_PERMISSION for one it does not know. Registering
-    # `period.reopen` (in PERMISSIONS and in MAKER_CHECKER) is a one-line
-    # change in `app/backend/auth.py`, which Wave 8 stream A does not own; the
-    # permission named here moves with it. What actually decides a reopen is an
-    # APPROVED approval_instance bound to the period plus the refusal of its
-    # closer as approver and as applier -- none of which is a permission.
+    # Wave 8: the approval-gated reopen (AUD-C-008 residual). Fable 5.1 / M-3
+    # registered the permissions these routes were waiting for: requesting
+    # sits behind `period.reopen` (the maker's right) and applying/refusing
+    # behind `period.reopen.apply` (the checker's right, in MAKER_CHECKER).
+    # The denied role for the checker routes is BudgetController: it holds
+    # the router's `budget.read` floor AND `period.reopen`, so it authenticates,
+    # clears the floor, could have RAISED the request, and is still refused
+    # from settling one -- which is the separation the two keys exist for.
+    # What actually decides a reopen is an APPROVED approval_instance bound to
+    # the period plus the refusal of its closer as approver and as applier --
+    # none of which is a permission.
     ("/api/budget/periods/{period_id}/reopen-requests", "POST",
      "/api/budget/periods/AP-2026-07/reopen-requests",
      {"approval_instance_id": "AI-1", "reason": "closed a day early",
       "idempotency_key": "k1"},
-     "period.transition", "Requestor"),
+     "period.reopen", "Requestor"),
     ("/api/budget/period-reopen-requests/{reopen_id}/apply", "POST",
      "/api/budget/period-reopen-requests/RO-1/apply", {},
-     "period.transition", "Requestor"),
+     "period.reopen.apply", "BudgetController"),
     ("/api/budget/period-reopen-requests/{reopen_id}/refuse", "POST",
      "/api/budget/period-reopen-requests/RO-1/refuse",
      {"refusal_code": "NOT_MATERIAL"},
-     "period.transition", "Requestor"),
+     "period.reopen.apply", "BudgetController"),
     ("/api/budget/revisions", "POST", "/api/budget/revisions",
      {"wbs_id": "WBS-A-CIVIL", "budget_head_id": "BH-DM1-CIVIL",
       "delta_paise": 100000, "effective_from": "2026-09-01",

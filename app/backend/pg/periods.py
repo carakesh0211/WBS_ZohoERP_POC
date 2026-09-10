@@ -76,8 +76,13 @@ REOPEN_OBJECT_TYPE = "ACCOUNTING_PERIOD"
 
 #: The permission name the reopen path passes to `auth.require_separation`.
 #:
-#: READ THE NOTE ON :func:`_refuse_self_approval` BEFORE ASSUMING THIS FIRES.
-REOPEN_PERMISSION = "period.reopen"
+#: Fable 5.1 / M-3: this is the CHECKER's permission, `period.reopen.apply`,
+#: and it is registered in `auth.MAKER_CHECKER`, so the call in
+#: :func:`_refuse_self_approval` now compares rather than returning early.
+#: The requester's own permission (`period.reopen`) is not a maker-checker
+#: key -- raising a request is the maker's act, and the maker is not checked
+#: against themselves.
+REOPEN_PERMISSION = "period.reopen.apply"
 
 #: Expected shape once it lands: `entity_id` (scoping) and `status` (with an
 #: 'Open' value). Checked against `information_schema` rather than caught via
@@ -486,41 +491,39 @@ def _refuse_self_approval(actor: str, closed_by: str, *, what: str,
                           period_id: str) -> None:
     """Segregation of duties on the reopen path: the closer is not the checker.
 
-    TWO LAYERS, AND THE FIRST ONE DOES NOT FIRE YET. SAY SO PLAINLY.
+    TWO LAYERS, AND BOTH FIRE.
 
     `auth.require_separation` is the product's own maker-checker and is REUSED
     here rather than reimplemented -- it is called below with
-    :data:`REOPEN_PERMISSION` and ``require_maker=True``. But its first line is
+    :data:`REOPEN_PERMISSION` (``period.reopen.apply``, registered in
+    ``auth.MAKER_CHECKER`` under Fable 5.1 / M-3) and ``require_maker=True``.
+    Until that registration, its first line
 
         if permission not in MAKER_CHECKER:
             return
 
-    and ``MAKER_CHECKER`` today is exactly ``{"pr.approve",
-    "pr.approve_exception", "revision.approve", "capitalisation.approve",
-    "bill.void"}``. ``"period.reopen"`` is not in it, and neither is it in
-    ``auth.PERMISSIONS``. `app/backend/auth.py` is owned by another stream this
-    wave and is not edited from here, so ON THE CODE AS IT STANDS THAT CALL
-    RETURNS HAVING COMPARED NOBODY. The one-line registration it needs is in
-    this stream's report.
-
-    That is the exact shape of the ``bill.void`` defect `require_separation`'s
-    own docstring recounts: the maker was always None, the ``and``
-    short-circuited, and the function returned having compared nobody. A
+    made the call return having compared nobody -- the exact shape of the
+    ``bill.void`` defect `require_separation`'s own docstring recounts. A
     control whose only limb is a lookup in a set that does not contain its key
     is a control that has never run, and a test asserting "it did not raise"
     would pass for the wrong reason.
 
-    So the refusal below is UNCONDITIONAL and lives here. It is not a second
-    maker-checker implementation -- it takes no permission, consults no role
-    table and knows nothing about approval routing. It is one comparison, the
-    same one ``ck_period_reopen_separation`` and
-    ``ck_period_reopen_applier_separation`` make as CHECK constraints in
-    migration 023, so the rule holds in three places: this function, the
-    database, and `auth.require_separation` the moment the permission is
-    registered.
+    So the refusal below is UNCONDITIONAL and lives here, and it STAYS even
+    now that the first layer is live. It is not a second maker-checker
+    implementation -- it takes no permission, consults no role table and
+    knows nothing about approval routing. It is one comparison, the same one
+    ``ck_period_reopen_separation`` and ``ck_period_reopen_applier_separation``
+    make as CHECK constraints in migration 023, so the rule holds in three
+    places: `auth.require_separation`, this function, and the database.
+    `tests/test_pg_periods_reopen.py` neutralises the first and requires the
+    second to refuse anyway.
+
+    This function compares the applier against the CLOSER. The route layer
+    (`api/budget.py`) separately compares the applier against the REQUESTER,
+    through the same `require_separation`, before this engine is reached.
     """
     principal = {"user_id": actor}
-    # Reused, not reimplemented. Inert until "period.reopen" joins
+    # Reused, not reimplemented. Live: REOPEN_PERMISSION is in
     # auth.MAKER_CHECKER -- see this function's docstring.
     auth_mod.require_separation(
         principal, REOPEN_PERMISSION, closed_by,
@@ -575,6 +578,22 @@ def _load_reopen_request(session: Session, reopen_id: str) -> tuple:
         _err("REOPEN_REQUEST_NOT_FOUND",
              f"No reopen request {reopen_id}.", status=404)
     return row
+
+
+def reopen_request_requester(session: Session, reopen_id: str) -> str:
+    """Who raised this reopen request -- the MAKER the route layer checks the
+    applier against.
+
+    Fable 5.1 / M-3. Read through the same scoped query as the engine, so a
+    request the caller cannot see is 404 here exactly as it is at apply time;
+    the route never learns that an out-of-scope request exists by asking who
+    made it. Returned as recorded: `requested_by` is `NOT NULL` in 023, and a
+    row that somehow carried a blank one is handed to
+    `auth.require_separation(require_maker=True)`, which refuses an unknown
+    maker rather than waving it through.
+    """
+    row = _load_reopen_request(session, reopen_id)
+    return str(row[6] or "")
 
 
 def _approval_instance_for(session: Session, instance_id: str,

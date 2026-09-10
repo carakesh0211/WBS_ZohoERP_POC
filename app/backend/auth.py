@@ -46,6 +46,19 @@ PERMISSIONS: dict[str, tuple[str, ...]] = {
     # so it is a finance control, not an administrative convenience. Auditor
     # is deliberately absent: the role is read-only.
     "period.transition":      ("BudgetController", "FinanceApprover"),
+    # --- Fable 5.1 / M-3: reopening a CLOSED period ------------------------
+    # Two permissions, because the reopen is a two-step path and the two steps
+    # are held by different hands. `period.reopen` is the MAKER's right: to
+    # raise a reopen request against an approval instance. The roles that may
+    # close a period may also ask for it to be reopened.
+    "period.reopen":          ("BudgetController", "FinanceApprover"),
+    # `period.reopen.apply` is the CHECKER's right: to apply or refuse an
+    # outstanding request. It is in MAKER_CHECKER, so the requester can never
+    # also be the applier -- `api/budget.py` compares the two through
+    # `require_separation(require_maker=True)` before the engine is called,
+    # and `pg/periods.py` compares the CLOSER against the applier a second
+    # time, unconditionally. Auditor holds neither: a reopen is not a read.
+    "period.reopen.apply":    ("FinanceApprover", "CapitalisationApprover"),
     # --- M4b, the approval engine ------------------------------------
     # `approval.read` is the router floor: an approver must be able to see
     # their own inbox. Contract 4 says "every role"; Auditor is deliberately
@@ -153,7 +166,7 @@ PERMISSIONS: dict[str, tuple[str, ...]] = {
 # Approval permissions are subject to maker-checker: the approver may not be the
 # person who raised the object.
 MAKER_CHECKER = {"pr.approve", "pr.approve_exception", "revision.approve",
-                 "capitalisation.approve", "bill.void"}
+                 "capitalisation.approve", "bill.void", "period.reopen.apply"}
 
 
 class AuthError(Exception):

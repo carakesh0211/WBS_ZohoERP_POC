@@ -627,6 +627,15 @@ POST_BASELINE_FILES = {
     # 403) for an out-of-scope principal, the CSV import refusals and the
     # governed category master. Post-baseline like every wave file.
     "test_pg_original_budget.py",
+
+    # --- Fable 5.1: period reopen (M-3). Post-baseline like every wave file: the 220 counts the
+    # POC's audit-remediation suite, and inflating it would make the removal
+    # guard stop meaning anything. Each file is the behavioural proof of one
+    # control: the per-role reopen matrix and its maker-checker seam; the
+    # legacy `/api/zoho/*` 404/4xx/audit/scope discipline and the
+    # CAPEX_ERP_OUTBOUND_WRITES gate; the live `capex_app` matrix over
+    # migration 023's five tables; the bounded per-user/per-address throttle.
+    "test_period_reopen_permissions.py",
 }
 
 

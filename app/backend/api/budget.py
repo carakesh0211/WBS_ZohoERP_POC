@@ -263,20 +263,41 @@ def post_period_transition(
 # the row that records the request is what freezes the closer's identity for
 # the separation-of-duties check.
 #
-# PERMISSION NOTE, STATED RATHER THAN HIDDEN. These sit behind
-# `period.transition`, not behind a `period.reopen` of their own.
-# `auth.PERMISSIONS` has no `period.reopen` key, and `auth.require` raises
-# `500 UNKNOWN_PERMISSION` for a key it does not know -- so declaring one here
-# would make every call a server error rather than a considered refusal.
-# `app/backend/auth.py` is owned by another stream this wave and is not edited
-# from here; registering `period.reopen` (in `PERMISSIONS` and in
-# `MAKER_CHECKER`) is a one-line change carried in this stream's report, and
-# these routes move to it in the same commit.
+# PERMISSIONS (Fable 5.1 / M-3). Requesting sits behind `period.reopen`, the
+# maker's right; applying and refusing sit behind `period.reopen.apply`, the
+# checker's right, which is in `auth.MAKER_CHECKER`. Before either checker
+# route reaches the engine it resolves the REQUESTER of the request and calls
+# `auth.require_separation(..., maker_user_id=<requester>, require_maker=True)`
+# -- the same call every other maker-checker permission in the product goes
+# through, and the one `tests/test_approval_maker_checker.py` proves for
+# every key in `MAKER_CHECKER`. `pg/periods.py` then compares the applier
+# against the CLOSER, unconditionally, as the second enforcement point.
 #
-# The floor is not the control. What decides a reopen is an APPROVED
+# A permission is still not the control. What decides a reopen is an APPROVED
 # `approval_instance` bound to this very period, plus the refusal of the
 # closer as approver and as applier -- all of it in `pg/periods.py` and in
-# migration 023's CHECK constraints, none of it in a permission.
+# migration 023's CHECK constraints.
+def _refuse_requester_as_checker(request: Request, session, reopen_id: str,
+                                 *, what: str) -> None:
+    """The person who raised the reopen request may not also settle it.
+
+    Runs BEFORE the engine call, on the principal the session derived, with
+    `require_maker=True` so a request that records no requester is refused
+    rather than compared against nobody. The requester lookup is the engine's
+    own scoped read, so an invisible request is 404 here as it is there.
+    """
+    from .. import auth as auth_mod
+
+    requester = periods_svc.reopen_request_requester(session, reopen_id)
+    try:
+        auth_mod.require_separation(
+            _principal_of(request), "period.reopen.apply", requester,
+            object_label=f"reopen request {reopen_id}", require_maker=True)
+    except auth_mod.AuthError as exc:
+        raise _problem(exc.status, exc.code, "Segregation Of Duties",
+                       f"{exc.message} ({what})")
+
+
 class _PeriodReopenRequestIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     #: The approval this reopening will be authorised by. NOT optional and not
@@ -290,7 +311,7 @@ class _PeriodReopenRequestIn(BaseModel):
 
 @router.post("/api/budget/periods/{period_id}/reopen-requests",
              status_code=201,
-             dependencies=[Depends(_requires("period.transition"))])
+             dependencies=[Depends(_requires("period.reopen"))])
 def post_period_reopen_request(
     period_id: str, body: _PeriodReopenRequestIn,
     response: Response, request: Request,
@@ -310,7 +331,7 @@ def post_period_reopen_request(
 
 
 @router.post("/api/budget/period-reopen-requests/{reopen_id}/apply",
-             dependencies=[Depends(_requires("period.transition"))])
+             dependencies=[Depends(_requires("period.reopen.apply"))])
 def post_period_reopen_apply(
     reopen_id: str, response: Response, request: Request,
     database: Database = Depends(_get_database),
@@ -318,13 +339,16 @@ def post_period_reopen_apply(
     """Reopen the period. Refuses unless the named approval is APPROVED.
 
     The actor is SERVER-DERIVED (`_actor`), which is load-bearing here rather
-    than incidental: it is the identity the separation-of-duties check compares
-    against the person who closed the period, and a caller-supplied one would
-    make that check trivially defeatable -- the AUD-C-006 shape.
+    than incidental: it is the identity the separation-of-duties checks compare
+    against the person who raised the request (here, before the engine) and
+    the person who closed the period (in the engine), and a caller-supplied one
+    would make both trivially defeatable -- the AUD-C-006 shape.
     """
     _set_correlation_header(response, request)
     try:
         with database.session(_scope_for(request, database)) as session:
+            _refuse_requester_as_checker(request, session, reopen_id,
+                                         what="apply")
             result = periods_svc.apply_period_reopen(
                 session, reopen_id=reopen_id, actor=_actor(request))
     except periods_svc.PeriodServiceError as exc:
@@ -339,7 +363,7 @@ class _PeriodReopenRefuseIn(BaseModel):
 
 
 @router.post("/api/budget/period-reopen-requests/{reopen_id}/refuse",
-             dependencies=[Depends(_requires("period.transition"))])
+             dependencies=[Depends(_requires("period.reopen.apply"))])
 def post_period_reopen_refuse(
     reopen_id: str, body: _PeriodReopenRefuseIn,
     response: Response, request: Request,
@@ -350,10 +374,16 @@ def post_period_reopen_refuse(
     There is no DELETE route, and there will not be one:
     `trg_period_reopen_request_no_delete` refuses the statement outright. A
     reopening that was asked for and did not happen is part of the trail.
+
+    Refusing is a checker's act too, so the requester may not do it: a maker
+    who could withdraw their own request by "refusing" it would erase the
+    record that it was ever asked for.
     """
     _set_correlation_header(response, request)
     try:
         with database.session(_scope_for(request, database)) as session:
+            _refuse_requester_as_checker(request, session, reopen_id,
+                                         what="refuse")
             result = periods_svc.refuse_period_reopen(
                 session, reopen_id=reopen_id, actor=_actor(request),
                 refusal_code=body.refusal_code, detail=body.detail)

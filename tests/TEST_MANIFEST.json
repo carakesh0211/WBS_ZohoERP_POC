@@ -5052,6 +5052,76 @@
         "body_sha": "d7fb9de1820d7859"
       }
     },
+    "test_period_reopen_permissions.py": {
+      "test_period_reopen_permissions_are_registered_with_the_intended_roles": {
+        "assertions": 2,
+        "body_sha": "eb2013533e43f36b"
+      },
+      "test_period_reopen_apply_is_a_maker_checker_permission_and_the_engine_uses_it": {
+        "assertions": 3,
+        "body_sha": "49a694a87c6551ef"
+      },
+      "test_auditor_holds_neither_reopen_permission": {
+        "assertions": 2,
+        "body_sha": "3db2174e4fe360f3"
+      },
+      "test_administrator_holds_neither_reopen_permission": {
+        "assertions": 2,
+        "body_sha": "d6bf5f77e5733c32"
+      },
+      "test_negative_matrix_period_reopen_per_role": {
+        "assertions": 3,
+        "body_sha": "d9fca2e8ea0f358d"
+      },
+      "test_negative_matrix_period_reopen_apply_per_role": {
+        "assertions": 3,
+        "body_sha": "7ec15c36788e2a9f"
+      },
+      "test_negative_matrix_http_per_role": {
+        "assertions": 4,
+        "body_sha": "83ff8ecf4a8aac15"
+      },
+      "test_the_requester_cannot_settle_their_own_request": {
+        "assertions": 3,
+        "body_sha": "1e0cc6bc75ab8d52"
+      },
+      "test_an_unknown_requester_is_refused_rather_than_waved_through": {
+        "assertions": 2,
+        "body_sha": "c53647d7f0232964"
+      },
+      "test_an_independent_checker_passes_the_requester_check": {
+        "assertions": 0,
+        "body_sha": "cdb5c2a059c2a928"
+      },
+      "test_apply_route_refuses_the_requester_before_the_engine_is_called": {
+        "assertions": 3,
+        "body_sha": "61dc23cee9cb69cf"
+      },
+      "test_refuse_route_refuses_the_requester_before_the_engine_is_called": {
+        "assertions": 3,
+        "body_sha": "4810edda72d8c47c"
+      },
+      "test_an_independent_checker_reaches_the_engine": {
+        "assertions": 3,
+        "body_sha": "2a16071e99efd804"
+      },
+      "test_the_route_refusal_comes_from_require_separation_and_nothing_else": {
+        "assertions": 2,
+        "body_sha": "a93d40d02d145060"
+      },
+      "test_a_request_with_no_recorded_requester_is_refused_as_maker_unknown": {
+        "assertions": 3,
+        "body_sha": "f2972bfa46b3b616"
+      },
+      "test_an_invisible_request_is_404_from_the_requester_lookup": {
+        "assertions": 3,
+        "body_sha": "fce0af5051bb6b64"
+      },
+      "test_live_the_requester_is_refused_and_an_independent_applier_reopens": {
+        "assertions": 10,
+        "body_sha": "f04974b7c45bf02c"
+      }
+    },
     "test_pg_adoption.py": {
       "test_parser_finds_001_function": {
         "assertions": 1,
@@ -11928,6 +11998,7 @@
     "test_outbound_chaos.py": 26,
     "test_outbound_emission.py": 52,
     "test_outbound_unsanctioned.py": 20,
+    "test_period_reopen_permissions.py": 17,
     "test_pg_adoption.py": 16,
     "test_pg_anchor_job.py": 32,
     "test_pg_approval_concurrency.py": 12,
@@ -12045,6 +12116,7 @@
     "test_outbound_chaos.py": 123,
     "test_outbound_emission.py": 154,
     "test_outbound_unsanctioned.py": 55,
+    "test_period_reopen_permissions.py": 51,
     "test_pg_adoption.py": 39,
     "test_pg_anchor_job.py": 116,
     "test_pg_approval_concurrency.py": 53,

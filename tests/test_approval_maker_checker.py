@@ -257,6 +257,63 @@ def _scenario_bill_void(make_user, raw_con):
                       json={"reason": "voiding a bill I raised myself"})
 
 
+def _scenario_period_reopen_apply(make_user, raw_con):
+    """Period reopen apply (Fable 5.1 / M-3): the requester also holds the
+    applying role.
+
+    THE PERSISTENCE UNDER THIS ROUTE IS STUBBED, AND ONLY THAT. The apply
+    route is PostgreSQL-backed (`api/budget.py` -> `pg/periods.py`) and this
+    layer is the SQLite application, so the engine is replaced by a sentinel
+    and the requester lookup by the maker's own id. Everything the scenario
+    is asserting runs for real: the route's permission dependency, the
+    server-derived actor, and the `auth.require_separation(...,
+    maker_user_id=<requester>, require_maker=True)` call that
+    `api/budget.py::_refuse_requester_as_checker` makes BEFORE the engine.
+    Neutralise that call and the sentinel answers instead of a refusal, which
+    is what the companion mutation test requires.
+
+    What this does NOT prove -- the closer-is-not-applier limb, and the whole
+    chain against real rows -- is proven live in
+    `tests/test_pg_periods_reopen.py` and
+    `tests/test_period_reopen_permissions.py`.
+    """
+    import contextlib
+
+    from app.backend.api import budget as budget_api
+    from app.backend.pg import engine
+    from app.backend.pg import periods as periods_svc
+    from app.backend.pg.engine import Scope
+
+    roles = ["FinanceApprover"]
+    maker = make_user(roles)
+    _assert_holds(maker.user_id, "period.reopen.apply", roles)
+
+    class _StubDatabase:
+        @contextlib.contextmanager
+        def session(self, scope):
+            yield None
+
+    try:
+        previous = engine.get_database()
+    except RuntimeError:
+        previous = None
+
+    with pytest.MonkeyPatch.context() as mp:
+        engine.set_database(_StubDatabase())
+        mp.setattr(budget_api, "_scope_for",
+                   lambda request, database: Scope(user_id=maker.user_id))
+        mp.setattr(periods_svc, "reopen_request_requester",
+                   lambda session, reopen_id: maker.user_id)
+        mp.setattr(periods_svc, "apply_period_reopen",
+                   lambda session, **kw: {"reopen_id": kw["reopen_id"],
+                                          "status": "APPLIED", "stubbed": True})
+        try:
+            return maker.post(
+                "/api/budget/period-reopen-requests/RO-MC-SELF/apply", json={})
+        finally:
+            engine.set_database(previous)
+
+
 #: permission -> the scenario that puts a maker, holding the approving role,
 #: in front of their own object. Pinned to ``auth.MAKER_CHECKER`` by the
 #: exhaustiveness test below.
@@ -266,6 +323,7 @@ SCENARIOS = {
     "revision.approve": _scenario_revision_approve,
     "capitalisation.approve": _scenario_capitalisation_approve,
     "bill.void": _scenario_bill_void,
+    "period.reopen.apply": _scenario_period_reopen_apply,
 }
 
 #: Permissions whose enforcement is currently impossible, with the reason.
