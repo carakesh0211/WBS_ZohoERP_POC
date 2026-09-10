@@ -28,7 +28,7 @@
 import {
   listOriginals, getOriginal, createOriginal, updateOriginal, submitOriginal, cancelOriginal,
   getOriginalAudit, listCustomFields, getImportTemplate, previewImport, commitImport,
-  BudgetApiError,
+  getPrincipal, BudgetApiError,
 } from './budget-api.js';
 import { h, text, clear } from '../../core/dom.js';
 import { formatINR, formatAuditTimestamp } from '../../core/format.js';
@@ -90,38 +90,6 @@ function problemDetail(err) {
     : ((err && err.message) || 'This request could not be completed.');
   const problems = (nested && Array.isArray(nested.problems)) ? nested.problems : [];
   return { message, problems };
-}
-
-/** The session's held permissions, for PRESENTATIONAL gating only — the
- * server is the enforcement point for every write this screen offers.
- * app.js is a classic script; its top-level `const S` lives in the global
- * lexical environment, on the scope chain of a module evaluated in the same
- * realm, so the shell's own answer is read directly rather than issuing a
- * second /api/bootstrap (which returns every project, entity and user in
- * the installation to answer a permission question). Guarded so this module
- * never REQUIRES the shell to exist. */
-async function getPrincipal() {
-  try {
-    // eslint-disable-next-line no-undef
-    const shell = typeof S !== 'undefined' ? S : null;
-    if (shell && shell.perms && typeof shell.perms.has === 'function' && shell.perms.size) {
-      return { permissions: new Set([...shell.perms].map(String)) };
-    }
-  } catch { /* fall through */ }
-  try {
-    const res = await fetch('/api/bootstrap', {
-      headers: (() => {
-        try {
-          const sid = sessionStorage.getItem('capex.session_id');
-          return sid ? { 'X-Session': sid } : {};
-        } catch { return {}; }
-      })(),
-    });
-    const body = await res.json();
-    return { permissions: new Set(((body && body.permissions) || []).map(String)) };
-  } catch {
-    return { permissions: new Set() };
-  }
 }
 
 function uid() { return newCorrelationId(); }

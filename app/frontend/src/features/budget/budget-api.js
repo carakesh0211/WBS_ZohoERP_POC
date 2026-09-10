@@ -322,3 +322,41 @@ export function commitImport({
     headers: { 'Idempotency-Key': idempotencyKey || '' },
   });
 }
+
+/**
+ * The session's held permissions, for PRESENTATIONAL gating only (a "New
+ * Budget" button hidden without budget.create, a category form's controls
+ * hidden without budget.category.manage) — the server is the enforcement
+ * point for every write budget-setup.js and settings/budget-categories.js
+ * offer.
+ *
+ * app.js is a classic script; its top-level `const S` lives in the global
+ * lexical environment, on the scope chain of a module evaluated in the same
+ * realm, so the shell's own answer is read directly rather than issuing a
+ * second /api/bootstrap (which returns every project, entity and user in
+ * the installation to answer a permission question) — the same reasoning
+ * features/mapping/mapping-api.js::getPrincipal already uses. Guarded so
+ * this module never REQUIRES the shell to exist.
+ * @returns {Promise<{permissions: Set<string>}>}
+ */
+export async function getPrincipal() {
+  try {
+    // eslint-disable-next-line no-undef
+    const shell = typeof S !== 'undefined' ? S : null;
+    if (shell && shell.perms && typeof shell.perms.has === 'function' && shell.perms.size) {
+      return { permissions: new Set([...shell.perms].map(String)) };
+    }
+  } catch { /* fall through to the request below */ }
+  try {
+    const headers = {};
+    try {
+      const sid = sessionStorage.getItem('capex.session_id');
+      if (sid) headers['X-Session'] = sid;
+    } catch { /* sessionStorage unavailable; request unauthenticated and fail safe below */ }
+    const res = await fetch('/api/bootstrap', { headers });
+    const body = await res.json();
+    return { permissions: new Set(((body && body.permissions) || []).map(String)) };
+  } catch {
+    return { permissions: new Set() };
+  }
+}
