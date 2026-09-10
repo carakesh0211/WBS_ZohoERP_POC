@@ -50,8 +50,7 @@ and none of it needs a credential typed into chat, a file or a commit.
    values themselves are set once in the Console after the first deploy and
    the deploy command for Stage B is `catalyst deploy appsail --name
    wbs-capex-uat --build-path <abs>` with `--except` on env, as documented in
-   the CLI reference for standalone deploys — the exact invocation is in
-   `tools/appsail/README.md` once the provider is known.
+   the CLI reference for standalone deploys — the exact invocation will be recorded here once the provider is known. Use the STANDALONE deploy form for Stage B (`catalyst deploy appsail --name wbs-capex-uat --build-path <absolute path> --stack python_3_13 --command "python3 -u main.py"`), which does not apply `app-config.json` env_variables and so cannot wipe Console-set secrets.
 
 ## What runs, in order, once the instance exists
 
@@ -62,10 +61,7 @@ and none of it needs a credential typed into chat, a file or a commit.
    app.backend.pg.seed` is refused unless the database name matches
    `^capex_tmpl_` — name the UAT database `capex_tmpl_uat` so the guard admits
    it and nothing else ever will.
-3. **Build the Stage B bundle** with `tools/appsail/build_uat_bundle.py
-   --stage b --ca-bundle <provider CA>` (the `--stage b` flag switches the
-   launcher to `CAPEX_PROFILE=uat` with no SQLite copy and no ERP writes; it is
-   the next change on this branch and is gated by the same tests).
+3. **Build the Stage B bundle.** `tools/appsail/build_uat_bundle.py` today builds the Stage A (SQLite-copy) launcher only. A Stage B launcher variant (`CAPEX_PROFILE=uat`, no SQLite seed copy, ERP writes disabled, provider CA at the bundle root) is NOT yet written and is listed under remaining work.
 4. **Deploy**, then prove each of the following on the live URL and record
    the evidence in this file:
 
