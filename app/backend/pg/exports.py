@@ -616,6 +616,26 @@ _NO_CATEGORY = ("AMB-04 makes budget head the primary reading and no table in "
 _NO_ITEM = "no dataset here joins item_master."
 _NO_APPROVAL = ("approval status lives on approval_instance, which none of "
                 "these shapes joins.")
+#: FABLE 5.1: the same "declared, not commented" reasons `reporting.py`'s
+#: UNSUPPORTED_FILTERS carries for these six fields -- migration 026 resolves
+#: division/branch/zone only onto original_budget_line (the ORIGINAL BUDGET
+#: DOCUMENT's own entry line) and fiscal_year only onto original_budget
+#: itself; requestor/approver each sit on one document type's own column, not
+#: on anything these export datasets read.
+_NO_DIVISION = ("division_id (001) is reachable only from original_budget_line "
+                "(026), the ORIGINAL BUDGET DOCUMENT's own entry line, not from "
+                "any table this dataset reads.")
+_NO_BRANCH = ("branch_id (001) is reachable only from original_budget_line "
+              "(026), for the same reason as division_id.")
+_NO_ZONE = ("zone_id (001) is reachable only from original_budget_line (026), "
+            "for the same reason as division_id and branch_id.")
+_NO_FISCAL_YEAR = ("fiscal_year is a column of original_budget (026), the "
+                   "DOCUMENT, not of any table this dataset reads. Use "
+                   "period_ids where the dataset supports it.")
+_NO_REQUESTOR = ("no table this dataset reads carries a requestor id shared "
+                 "across every row.")
+_NO_APPROVER = ("the approving identity sits on documents this dataset does "
+                "not join.")
 
 
 BUDGET_LEDGER_CELLS = Dataset(
@@ -699,16 +719,24 @@ BUDGET_LEDGER_CELLS = Dataset(
         "project_ids": _in_list("p.project_id"),
         "wbs_paths": _ltree_subtree("w.wbs_path"),
         "budget_head_ids": _in_list("bc.budget_head_id"),
-        # FABLE 5.1 / migration 026: real, independent of budget_head_ids --
-        # both may be supplied together, and the predicates AND (INTERSECT),
-        # never coalesce, exactly as `reporting.py`'s outer predicate does.
-        "category_ids": _in_list("bc.budget_category_id"),
+        # FABLE 5.1 / migration 026: `budget_category_ids` is the REAL,
+        # independent field -- never `category_ids`, which stays the AMB-04
+        # pre-026 alias `reporting.py`'s FilterSet also refuses here (see
+        # `_NO_CATEGORY` below): the SAME field name meaning two different
+        # columns in the two modules is exactly the "second filter shape"
+        # disagreement this whole wave exists to prevent. Both may be
+        # supplied alongside budget_head_ids, and the predicates AND
+        # (INTERSECT), never coalesce, exactly as `reporting.py`'s does.
+        "budget_category_ids": _in_list("bc.budget_category_id"),
         "date_from": _date_at_or_after("bc.updated_at"),
         "date_to": _date_at_or_before("bc.updated_at"),
     },
     unsupported={
-        "period_ids": _NO_PERIOD,
+        "period_ids": _NO_PERIOD, "category_ids": _NO_CATEGORY,
         "item_ids": _NO_ITEM, "approval_statuses": _NO_APPROVAL,
+        "division_ids": _NO_DIVISION, "branch_ids": _NO_BRANCH,
+        "zone_ids": _NO_ZONE, "fiscal_years": _NO_FISCAL_YEAR,
+        "requestor_ids": _NO_REQUESTOR, "approver_ids": _NO_APPROVER,
         "vendor_ids": "a budget cell has no vendor.",
         "document_types": "a budget cell is not a document.",
         "lifecycle_statuses": ("lifecycle status is a property of a project or "
@@ -760,7 +788,14 @@ WBS_ELEMENTS = Dataset(
     },
     unsupported={
         "period_ids": _NO_PERIOD, "category_ids": _NO_CATEGORY,
+        # A WBS element can host several (wbs, head) cells, each with its own
+        # category -- the same reason BUDGET_LEDGER_CELLS's own _NO_CATEGORY
+        # comment gives for why this dataset never puts one on a row.
+        "budget_category_ids": _NO_CATEGORY,
         "item_ids": _NO_ITEM, "approval_statuses": _NO_APPROVAL,
+        "division_ids": _NO_DIVISION, "branch_ids": _NO_BRANCH,
+        "zone_ids": _NO_ZONE, "fiscal_years": _NO_FISCAL_YEAR,
+        "requestor_ids": _NO_REQUESTOR, "approver_ids": _NO_APPROVER,
         "vendor_ids": "a WBS element has no vendor.",
         "document_types": "a WBS element is not a document.",
     },
@@ -831,17 +866,22 @@ PURCHASE_ORDER_LINES = Dataset(
         "location_ids": _in_list("p.location_id"),
         "project_ids": _in_list("p.project_id"),
         "budget_head_ids": _in_list("pl.budget_head_id"),
-        # FABLE 5.1 / migration 026: real, via the line's own cell (see the
-        # LEFT JOIN above) -- independent of budget_head_ids and composable
-        # with it, same as reporting.py's FilterSet.
-        "category_ids": _in_list("bc.budget_category_id"),
+        # FABLE 5.1 / migration 026: `budget_category_ids` -- never
+        # `category_ids`, the AMB-04 alias (see the dataset's `unsupported`
+        # map below) -- real via the line's own cell (the LEFT JOIN above),
+        # independent of budget_head_ids and composable with it, same as
+        # reporting.py's FilterSet.
+        "budget_category_ids": _in_list("bc.budget_category_id"),
         "lifecycle_statuses": _in_list("po.status"),
         "date_from": _date_at_or_after("po.ordered_at"),
         "date_to": _date_at_or_before("po.ordered_at"),
     },
     unsupported={
-        "period_ids": _NO_PERIOD,
+        "period_ids": _NO_PERIOD, "category_ids": _NO_CATEGORY,
         "item_ids": _NO_ITEM, "approval_statuses": _NO_APPROVAL,
+        "division_ids": _NO_DIVISION, "branch_ids": _NO_BRANCH,
+        "zone_ids": _NO_ZONE, "fiscal_years": _NO_FISCAL_YEAR,
+        "requestor_ids": _NO_REQUESTOR, "approver_ids": _NO_APPROVER,
         "wbs_paths": ("po_line carries wbs_id, not wbs_path; a subtree filter "
                       "needs a join this shape does not make."),
         "vendor_ids": ("purchase_order carries vendor_name, not a vendor_master "
