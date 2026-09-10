@@ -1514,6 +1514,68 @@
         "body_sha": "693e89c59be310fa"
       }
     },
+    "test_erp_write_gate.py": {
+      "test_outbound_writes_default_off": {
+        "assertions": 1,
+        "body_sha": "e7df9d22769842b7"
+      },
+      "test_only_the_literal_one_enables_writes": {
+        "assertions": 1,
+        "body_sha": "e280eb09b3eb62e4"
+      },
+      "test_one_enables_writes": {
+        "assertions": 2,
+        "body_sha": "04bfef2e034be3db"
+      },
+      "test_outbound_modules_are_the_four_the_hub_writes": {
+        "assertions": 1,
+        "body_sha": "e935bc91472f6621"
+      },
+      "test_outbound_sync_is_refused_while_writes_are_off": {
+        "assertions": 3,
+        "body_sha": "04a21c19c4800fac"
+      },
+      "test_outbound_sync_runs_when_writes_are_on": {
+        "assertions": 3,
+        "body_sha": "7fb597736a0d17c1"
+      },
+      "test_inbound_sync_is_unaffected_by_the_gate": {
+        "assertions": 3,
+        "body_sha": "6cb56d68ffbcb7e6"
+      },
+      "test_a_read_only_module_cannot_be_synced_outbound": {
+        "assertions": 2,
+        "body_sha": "3bc569c59769de7b"
+      },
+      "test_an_invented_direction_is_a_coded_422": {
+        "assertions": 2,
+        "body_sha": "8f2756ade03f451d"
+      },
+      "test_the_gate_is_checked_before_connection_state": {
+        "assertions": 2,
+        "body_sha": "76da051678c6cd3e"
+      },
+      "test_the_gate_is_a_function_not_an_import_time_constant": {
+        "assertions": 2,
+        "body_sha": "44e3d25a70a4baaf"
+      },
+      "test_emit_is_refused_while_writes_are_off": {
+        "assertions": 2,
+        "body_sha": "05e55e93ac68e77b"
+      },
+      "test_emit_refusal_is_the_same_for_an_unknown_purchase_order": {
+        "assertions": 2,
+        "body_sha": "37be49b6108bc1e5"
+      },
+      "test_emit_gate_runs_after_the_permission_check": {
+        "assertions": 1,
+        "body_sha": "aa62170dc5285715"
+      },
+      "test_emit_proceeds_past_the_gate_when_writes_are_on": {
+        "assertions": 2,
+        "body_sha": "8a3216c9f20cfb82"
+      }
+    },
     "test_export_poc.py": {
       "test_source_is_opened_read_only_and_a_write_is_refused": {
         "assertions": 1,
@@ -12027,6 +12089,7 @@
     "test_contracts_integration_statuses.py": 23,
     "test_data_classification.py": 11,
     "test_domain_invariants.py": 34,
+    "test_erp_write_gate.py": 15,
     "test_export_poc.py": 17,
     "test_export_scope.py": 26,
     "test_financial_controls.py": 61,
@@ -12147,6 +12210,7 @@
     "test_contracts_integration_statuses.py": 48,
     "test_data_classification.py": 23,
     "test_domain_invariants.py": 94,
+    "test_erp_write_gate.py": 29,
     "test_export_poc.py": 32,
     "test_export_scope.py": 69,
     "test_financial_controls.py": 159,

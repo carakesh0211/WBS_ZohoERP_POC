@@ -990,11 +990,11 @@ def zoho_test(connection_id: str, p: dict = Depends(perm("connector.manage"))):
 
 @app.post("/api/zoho/{connection_id}/sync/{module}")
 def zoho_sync(connection_id: str, module: str, p: dict = Depends(perm("connector.manage")),
-              idempotency_key: str = Header(default="")):
+              idempotency_key: str = Header(default=""), direction: str = "INBOUND"):
     c = con()
     try:
-        return zoho.sync(c, connection_id, module, idem_key=idempotency_key or None,
-                         actor=p["user_id"])
+        return zoho.sync(c, connection_id, module, direction.upper(),
+                         idem_key=idempotency_key or None, actor=p["user_id"])
     finally:
         c.close()
 

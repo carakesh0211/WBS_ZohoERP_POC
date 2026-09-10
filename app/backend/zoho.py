@@ -65,6 +65,32 @@ REQUIRED_MODULES = [
     ("custom-modules", "Fallback carrier for Purchase Request, which has no native API"),
 ]
 
+# Modules the hub WRITES to Zoho (see `_impact`): purchase orders are emitted,
+# journals are posted, fixed assets are created, and purchase requests ride the
+# custom-module carrier. Every other module is read-only from this side.
+OUTBOUND_MODULES = frozenset({"purchase-order", "journals", "fixed-assets", "custom-modules"})
+DIRECTIONS = ("INBOUND", "OUTBOUND")
+
+
+def outbound_writes_enabled() -> bool:
+    """CAPEX_ERP_OUTBOUND_WRITES=1 opens the write path; anything else keeps it shut.
+
+    Read on every call, not at import, so a test or an operator can flip it
+    without restarting the process. Default off: the UAT preview and every
+    MOCK deployment must never plan, enqueue or simulate a write to a tenant.
+    """
+    return os.environ.get("CAPEX_ERP_OUTBOUND_WRITES", "0").strip() == "1"
+
+
+def require_outbound_writes():
+    """Raise the coded 409 every ERP-mutating path uses when writes are off."""
+    if not outbound_writes_enabled():
+        from .services import BusinessError
+        raise BusinessError(409, "ERP_WRITES_DISABLED",
+                            "Outbound ERP writes are disabled in this deployment "
+                            "(CAPEX_ERP_OUTBOUND_WRITES is not 1). Nothing was sent or queued.")
+
+
 _cache = {}
 
 
@@ -313,6 +339,15 @@ def sync(con, connection_id, module, direction="INBOUND", *, idem_key=None, acto
     if not eps:
         raise BusinessError(404, "MODULE_UNKNOWN",
                             f"No endpoint for '{module}' in the official Zoho specification.")
+    if direction not in DIRECTIONS:
+        raise BusinessError(422, "DIRECTION_INVALID",
+                            f"direction must be one of {', '.join(DIRECTIONS)}.")
+    if direction == "OUTBOUND":
+        if module not in OUTBOUND_MODULES:
+            raise BusinessError(422, "MODULE_NOT_OUTBOUND",
+                                f"{module} is read-only from this side; the hub writes only "
+                                f"{', '.join(sorted(OUTBOUND_MODULES))}.")
+        require_outbound_writes()
 
     row = con.execute("SELECT * FROM zoho_connection WHERE connection_id=?",
                       (connection_id,)).fetchone()

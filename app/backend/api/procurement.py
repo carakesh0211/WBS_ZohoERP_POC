@@ -58,6 +58,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from .. import zoho
 from ..integration.adapter import IntegrationError
 from ..integration.books_inventory import BooksInventoryAdapter
 from ..integration.erp import ErpAdapter
@@ -454,8 +455,20 @@ def _metadata_only_adapter(connection: dict[str, Any]) -> Any:
         f"not planned.")
 
 
+def _outbound_writes_open() -> None:
+    """409 ERP_WRITES_DISABLED before any lookup: the gate is a route dependency
+    so it runs after the permission check and BEFORE the database is resolved,
+    and the reply is the same whether or not the purchase order exists."""
+    if not zoho.outbound_writes_enabled():
+        raise _problem(
+            409, "ERP_WRITES_DISABLED", "ERP Writes Disabled",
+            "Outbound ERP writes are disabled in this deployment "
+            "(CAPEX_ERP_OUTBOUND_WRITES is not 1). Nothing was planned or queued.")
+
+
 @router.post("/api/procurement/purchase-orders/{po_id}/emit", status_code=202,
-             dependencies=[Depends(_requires("connector.manage"))])
+             dependencies=[Depends(_requires("connector.manage")),
+                           Depends(_outbound_writes_open)])
 def post_purchase_order_emit(
     po_id: str, body: _EmitIn, response: Response, request: Request,
     database: Database = Depends(_get_database),
