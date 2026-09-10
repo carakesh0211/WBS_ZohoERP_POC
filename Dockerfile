@@ -24,6 +24,14 @@ COPY migrations ./migrations
 # so this is application data, not documentation.
 COPY research/20_verified/zoho_endpoint_inventory.json research/20_verified/
 COPY research/20_verified/openapi_findings.json research/20_verified/
+# THE CONTRACT REGISTRY IS READ AT IMPORT TIME, and it was not copied. Fable
+# 5.1's first smoke run of the AppSail bundle refused to start on
+# `research/30_contracts/C3_statuses.json` (pg/reporting.py opens it while
+# main.py is importing its routers); api/closure.py, api/integrations.py and
+# integration/statuses.py open C10, C16 and C17 the same way. This image had
+# the identical omission, so it could not start either. tests/test_uat_profile.py
+# asserts every research/ directory the backend names is copied here.
+COPY research/30_contracts research/30_contracts
 
 RUN mkdir -p /data
 VOLUME ["/data"]

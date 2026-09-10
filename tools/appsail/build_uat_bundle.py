@@ -70,8 +70,18 @@ STACK = "python_3_13"
 COMMAND = "python3 -u main.py"
 MEMORY_MB = 512
 LINUX_EXT_SUFFIX = "cpython-313-x86_64-linux-gnu.so"
+# Files under research/ that the BACKEND READS AT RUNTIME. zoho.py opens the
+# two 20_verified inventories; pg/reporting.py, integration/statuses.py,
+# api/closure.py and api/integrations.py open contract JSON under
+# 30_contracts at import time. The first smoke run of this bundle refused to
+# start on `research/30_contracts/C3_statuses.json` -- the Dockerfile had the
+# same omission, so the container image could not start either. The whole
+# 30_contracts directory ships (it is small, frozen JSON/markdown), and
+# tests/test_uat_profile.py asserts every research/ directory the backend
+# names in code is in RUNTIME_DIRS.
 RUNTIME_JSON = ("research/20_verified/zoho_endpoint_inventory.json",
                 "research/20_verified/openapi_findings.json")
+RUNTIME_DIRS = ("research/30_contracts",)
 REQUIRED_MODULES = ("fastapi", "starlette", "pydantic", "pydantic_core", "uvicorn",
                     "anyio", "h11", "click", "psycopg", "psycopg_pool", "psycopg_binary",
                     "typing_extensions", "annotated_types", "typing_inspection",
@@ -214,7 +224,13 @@ def verify_archive(out: Path) -> dict:
         names = z.namelist()
         required = {"main.py", "app-config.json", "uat_seed.db", "uat-credentials.json",
                     "app/run.py", "app/backend/main.py", "app/frontend/index.html",
-                    "app/frontend/styles.css", "migrations/pg/001_foundation.sql"}
+                    "app/frontend/styles.css", "migrations/pg/001_foundation.sql",
+                    "research/30_contracts/C3_statuses.json",
+                    "research/30_contracts/C10_messages.json",
+                    "research/30_contracts/C16_integration_statuses.json",
+                    "research/30_contracts/C17_zoho_status_map.json",
+                    "research/20_verified/zoho_endpoint_inventory.json",
+                    "research/20_verified/openapi_findings.json"}
         missing = sorted(r for r in required if r not in names)
         if missing:
             raise BuildFailed(f"archive is missing: {missing}")
@@ -269,6 +285,8 @@ def build(wheels: Path, credentials: Path, out: Path) -> dict:
             dst = root / rel
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(REPO / rel, dst)
+        for rel in RUNTIME_DIRS:
+            copy_tree(REPO / rel, root / rel)
         shutil.copyfile(HERE / "uat_main.py", root / "main.py")
         shutil.copyfile(credentials, root / "uat-credentials.json")
         build_seed(root / "uat_seed.db")

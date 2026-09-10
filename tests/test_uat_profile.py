@@ -293,6 +293,12 @@ def test_bundle_verifier_refuses_windows_binaries_and_plaintext(tmp_path):
             "app/frontend/styles.css": b"", "migrations/pg/001_foundation.sql": b"",
             "app-config.json": json.dumps({"stack": b.STACK, "command": b.COMMAND}).encode(),
             "vendor/pydantic_core/_pydantic_core.cpython-313-x86_64-linux-gnu.so": b"",
+            "research/30_contracts/C3_statuses.json": b"{}",
+            "research/30_contracts/C10_messages.json": b"{}",
+            "research/30_contracts/C16_integration_statuses.json": b"{}",
+            "research/30_contracts/C17_zoho_status_map.json": b"{}",
+            "research/20_verified/zoho_endpoint_inventory.json": b"{}",
+            "research/20_verified/openapi_findings.json": b"{}",
         }
         for m in b.REQUIRED_MODULES:
             base[f"vendor/{m}/__init__.py"] = b""
@@ -378,3 +384,29 @@ def test_the_hovered_row_muted_text_correction_measures_aa():
     assert re.search(r"tbody tr:hover \.muted, tbody tr:hover button\.tree-toggle \{ color:var\(--n700\); \}", css), \
         "the approved hover correction is missing from styles.css"
     assert "tbody tr:hover { background:var(--primary-50); }" in css, "the hover tint itself must not change"
+
+
+# --------------------------------------------- runtime files in every package
+def _research_dirs_named_in_backend() -> set[str]:
+    """Every `research/<dir>` the backend names in CODE (not comments)."""
+    found = set()
+    for py in (ROOT / "app" / "backend").rglob("*.py"):
+        for line in py.read_text(encoding="utf-8").splitlines():
+            code = line.split("#", 1)[0]
+            if '"research"' in code or "'research'" in code:
+                m = re.search(r"""research["'\s,/\\]+(\d{2}_[a-z_]+)""", code)
+                if m:
+                    found.add(m.group(1))
+    return found
+
+
+def test_every_research_directory_the_backend_reads_ships_in_the_bundle_and_the_image():
+    sys.path.insert(0, str(ROOT / "tools" / "appsail"))
+    import build_uat_bundle as b
+    named = _research_dirs_named_in_backend()
+    assert {"20_verified", "30_contracts"} <= named, named
+    shipped = {Path(p).parts[1] for p in b.RUNTIME_JSON} | {Path(p).parts[1] for p in b.RUNTIME_DIRS}
+    assert named <= shipped, f"backend reads research/{sorted(named - shipped)} but the bundle does not ship it"
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    for d in named:
+        assert re.search(rf"^COPY research/{d}", dockerfile, re.M), f"Dockerfile does not COPY research/{d}"
