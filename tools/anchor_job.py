@@ -111,27 +111,12 @@ def _load_checkpoint(path: str) -> dict[str, Any] | None:
 
 
 def _run(args: argparse.Namespace) -> AnchorJobRun:
-    # Imported inside the function so `--help` and the parser tests work on a
-    # machine with no database configured at all.
-    from app.backend.pg import config as pg_config
-    from app.backend.pg.engine import Database
+    """The same entry point the Catalyst Cron Function uses -- one function,
+    so the CLI and the schedule cannot diverge (Fable 5.1)."""
+    from app.backend.jobs.anchor_entry import run_from_environment
 
-    secrets = pg_config.EnvSecretProvider()
-    database_config = pg_config.from_env()
-    database = Database(database_config, secret_provider=secrets)
-    try:
-        # ONE call, one set of arguments. The Catalyst Cron Function invokes
-        # exactly this handler with exactly these arguments; a second way to
-        # reach the writer is how one of them ends up unguarded.
-        return run_anchor_job(
-            database,
-            credential=secrets.get(ANCHOR_JOB_TOKEN_SECRET),
-            secrets=secrets,
-            checkpoint=(_load_checkpoint(args.resume_from)
-                        if args.resume_from else None),
-        )
-    finally:
-        database.close()
+    return run_from_environment(
+        checkpoint=(_load_checkpoint(args.resume_from) if args.resume_from else None))
 
 
 def main(argv: list[str] | None = None) -> int:

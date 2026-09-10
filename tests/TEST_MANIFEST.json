@@ -12,6 +12,40 @@
     "database": "SQLite"
   },
   "files": {
+    "test_anchor_function_shim.py": {
+      "test_success_closes_with_success_and_returns_the_redacted_result": {
+        "assertions": 3,
+        "body_sha": "28bc9a14c913cc5e"
+      },
+      "test_every_non_success_outcome_closes_with_failure": {
+        "assertions": 3,
+        "body_sha": "6fd3a05e0b882eb5"
+      },
+      "test_the_schedules_checkpoint_is_passed_through_as_a_dict_or_json": {
+        "assertions": 1,
+        "body_sha": "7d43ba26e2292b3c"
+      },
+      "test_an_exception_is_reported_by_class_only_and_closes_with_failure": {
+        "assertions": 3,
+        "body_sha": "8990cfaa383c4e90"
+      },
+      "test_the_token_is_read_by_name_from_the_environment_and_never_logged": {
+        "assertions": 5,
+        "body_sha": "739df45821631f46"
+      },
+      "test_the_cli_delegates_to_the_same_entry_point": {
+        "assertions": 2,
+        "body_sha": "7a464b303d895f6f"
+      },
+      "test_the_function_configuration_is_a_python_cron_over_main_py": {
+        "assertions": 5,
+        "body_sha": "ee208aefbf4a8e9d"
+      },
+      "test_the_builder_refuses_an_output_inside_the_repository": {
+        "assertions": 2,
+        "body_sha": "a51675e4d10620c4"
+      }
+    },
     "test_api_auth.py": {
       "test_aud_c_006_every_mutating_route_is_covered_by_the_authorisation_matrix": {
         "assertions": 1,
@@ -433,7 +467,7 @@
       },
       "test_the_registry_covers_exactly_the_engine_s_routable_object_types": {
         "assertions": 2,
-        "body_sha": "c8cd0297324d2518"
+        "body_sha": "753c0a27072de411"
       },
       "test_open_and_exception_pending_are_not_closed_statuses": {
         "assertions": 2,
@@ -10018,6 +10052,40 @@
         "body_sha": "3de458110936f614"
       }
     },
+    "test_pg_reporting_fable51.py": {
+      "test_this_file_is_gated_and_says_a_skip_is_not_a_pass": {
+        "assertions": 2,
+        "body_sha": "7608da1f9d4ed922"
+      },
+      "test_category_and_head_are_independent_and_the_two_row_sets_differ": {
+        "assertions": 8,
+        "body_sha": "7bba52317297232d"
+      },
+      "test_budget_category_and_budget_head_compose_in_one_group_by": {
+        "assertions": 3,
+        "body_sha": "a27ddf465fbf5ff6"
+      },
+      "test_category_and_budget_head_still_refuse_to_be_grouped_together": {
+        "assertions": 2,
+        "body_sha": "4a23f94ba49a7610"
+      },
+      "test_a_cell_with_no_category_renders_unclassified": {
+        "assertions": 4,
+        "body_sha": "9cbb03c1e10b6bac"
+      },
+      "test_grouped_rows_reconcile_to_the_card_across_every_component": {
+        "assertions": 4,
+        "body_sha": "3b202c57362e75b1"
+      },
+      "test_drill_down_into_budget_category_sums_back_and_cannot_widen": {
+        "assertions": 6,
+        "body_sha": "988f2ea9b1b7142b"
+      },
+      "test_an_export_under_a_category_filter_contains_only_that_categorys_rows": {
+        "assertions": 8,
+        "body_sha": "8ec1354de16e3627"
+      }
+    },
     "test_pg_reservations.py": {
       "test_015_is_discovered_named_and_numbered": {
         "assertions": 4,
@@ -11332,6 +11400,96 @@
         "body_sha": "28e11d1a6537ab2c"
       }
     },
+    "test_reports_filters_fable51.py": {
+      "test_budget_category_is_not_the_same_column_as_budget_head_or_category": {
+        "assertions": 4,
+        "body_sha": "86f4e98700a25176"
+      },
+      "test_budget_category_is_absent_from_the_aliased_dimensions_table": {
+        "assertions": 1,
+        "body_sha": "7570cf658b2775e3"
+      },
+      "test_budget_category_and_budget_head_may_be_grouped_together": {
+        "assertions": 1,
+        "body_sha": "ab21bfd67afd3c2c"
+      },
+      "test_budget_category_ids_and_category_ids_are_two_different_fields": {
+        "assertions": 5,
+        "body_sha": "5f987408505eb91a"
+      },
+      "test_budget_category_drills_into_its_own_field_never_budget_head_ids": {
+        "assertions": 2,
+        "body_sha": "cd05b0cff442271c"
+      },
+      "test_budget_category_reads_the_cells_own_column_via_a_left_join": {
+        "assertions": 2,
+        "body_sha": "c6e83b90eab61089"
+      },
+      "test_a_null_budget_category_key_renders_unclassified_not_a_blank": {
+        "assertions": 2,
+        "body_sha": "6c7d4ad4957d5008"
+      },
+      "test_vendor_ids_no_longer_lives_in_unsupported_filters": {
+        "assertions": 2,
+        "body_sha": "838078ba7bb11054"
+      },
+      "test_vendor_ids_alone_is_refused_because_the_default_buckets_include_more_than_bill": {
+        "assertions": 6,
+        "body_sha": "43835cabbbf32e83"
+      },
+      "test_vendor_ids_is_honoured_once_document_types_narrows_to_bill": {
+        "assertions": 2,
+        "body_sha": "52ed6ecb6e1d6528"
+      },
+      "test_grouping_by_vendor_is_refused_the_same_way_filtering_is": {
+        "assertions": 2,
+        "body_sha": "26e5b840ec03e4b2"
+      },
+      "test_grouping_by_vendor_is_honoured_under_document_types_bill": {
+        "assertions": 1,
+        "body_sha": "89811dd28580a606"
+      },
+      "test_only_the_bill_branch_carries_a_real_vendor_id": {
+        "assertions": 3,
+        "body_sha": "f4df1660f29c3f01"
+      },
+      "test_the_schema_absent_dimensions_are_refused_with_their_own_code": {
+        "assertions": 3,
+        "body_sha": "a28f12c30e663498"
+      },
+      "test_an_unset_new_field_is_not_reported_as_unavailable": {
+        "assertions": 1,
+        "body_sha": "db41db76ae0013aa"
+      },
+      "test_the_new_refused_fields_are_accepted_as_api_parameters_so_they_can_refuse": {
+        "assertions": 1,
+        "body_sha": "9bb18a36717a6ffa"
+      },
+      "test_the_dimensions_route_still_publishes_every_unconditional_refusal": {
+        "assertions": 5,
+        "body_sha": "ae52441e0aea7554"
+      },
+      "test_budget_category_ids_round_trips_through_a_saved_view": {
+        "assertions": 3,
+        "body_sha": "4a31d7628c3c05c1"
+      },
+      "test_a_saved_view_naming_an_unknown_field_is_refused_not_silently_applied": {
+        "assertions": 2,
+        "body_sha": "45c9e43294636463"
+      },
+      "test_a_default_filterset_normalises_cleanly_for_an_export": {
+        "assertions": 5,
+        "body_sha": "76416a442b69656a"
+      },
+      "test_a_filterset_with_budget_category_reaches_the_budget_ledger_cells_dataset": {
+        "assertions": 1,
+        "body_sha": "9ab36140a770f885"
+      },
+      "test_a_mapping_that_explicitly_asks_for_limit_is_still_refused": {
+        "assertions": 2,
+        "body_sha": "d7e966fd1ccc1eb6"
+      }
+    },
     "test_runtime_startup.py": {
       "test_healthz_returns_200_with_database_unavailable": {
         "assertions": 2,
@@ -11693,7 +11851,7 @@
       },
       "test_write_anchor_records_every_streams_head": {
         "assertions": 5,
-        "body_sha": "0a43f883a76c36a3"
+        "body_sha": "ba208d8da87d2507"
       },
       "test_write_anchor_serialises_on_an_advisory_lock": {
         "assertions": 1,
@@ -11729,7 +11887,7 @@
       },
       "test_a_rewritten_entry_below_the_anchor_point_is_reported_diverged": {
         "assertions": 3,
-        "body_sha": "51b556b74967c7d0"
+        "body_sha": "0f67ce650fdb9805"
       },
       "test_a_stream_deleted_after_its_anchor_and_re_anchored_is_still_missing": {
         "assertions": 6,
@@ -11804,8 +11962,16 @@
         "body_sha": "53f304f7b483848d"
       },
       "test_a_stream_deleted_and_regrown_past_its_old_head_is_not_intact": {
+        "assertions": 4,
+        "body_sha": "099cc16a43960dfc"
+      },
+      "test_a_rewritten_head_with_an_intact_genesis_is_diverged_not_recreated": {
         "assertions": 3,
-        "body_sha": "702d590fc08ea250"
+        "body_sha": "48efa327f647c0cd"
+      },
+      "test_a_legacy_anchor_without_a_genesis_cannot_call_a_rebuild_and_says_so": {
+        "assertions": 3,
+        "body_sha": "dce3ab602ebb3642"
       },
       "test_every_anchored_point_is_verified_not_only_the_highest": {
         "assertions": 2,
@@ -12208,6 +12374,7 @@
     }
   },
   "counts": {
+    "test_anchor_function_shim.py": 8,
     "test_api_auth.py": 27,
     "test_api_auth_saved_views.py": 2,
     "test_approval_e2e.py": 26,
@@ -12301,6 +12468,7 @@
     "test_pg_reconciliation.py": 36,
     "test_pg_repo.py": 23,
     "test_pg_reporting.py": 17,
+    "test_pg_reporting_fable51.py": 8,
     "test_pg_reservations.py": 33,
     "test_pg_rls.py": 18,
     "test_pg_rls_coverage.py": 39,
@@ -12316,12 +12484,13 @@
     "test_pg_unattributed_triage.py": 14,
     "test_procurement_emission.py": 27,
     "test_reporting_filterset.py": 92,
+    "test_reports_filters_fable51.py": 22,
     "test_runtime_startup.py": 11,
     "test_scope_enforcement.py": 10,
     "test_scope_negative_matrix.py": 25,
     "test_scope_sentinel.py": 29,
     "test_security_approval_oracle.py": 8,
-    "test_security_audit_anchor.py": 34,
+    "test_security_audit_anchor.py": 36,
     "test_security_audit_forgery.py": 7,
     "test_security_frontend.py": 11,
     "test_security_identity.py": 10,
@@ -12331,6 +12500,7 @@
     "test_zoho_routes_fable51.py": 21
   },
   "assertions": {
+    "test_anchor_function_shim.py": 24,
     "test_api_auth.py": 50,
     "test_api_auth_saved_views.py": 4,
     "test_approval_e2e.py": 124,
@@ -12424,6 +12594,7 @@
     "test_pg_reconciliation.py": 117,
     "test_pg_repo.py": 37,
     "test_pg_reporting.py": 54,
+    "test_pg_reporting_fable51.py": 37,
     "test_pg_reservations.py": 107,
     "test_pg_rls.py": 34,
     "test_pg_rls_coverage.py": 84,
@@ -12439,12 +12610,13 @@
     "test_pg_unattributed_triage.py": 23,
     "test_procurement_emission.py": 98,
     "test_reporting_filterset.py": 182,
+    "test_reports_filters_fable51.py": 56,
     "test_runtime_startup.py": 31,
     "test_scope_enforcement.py": 12,
     "test_scope_negative_matrix.py": 82,
     "test_scope_sentinel.py": 54,
     "test_security_approval_oracle.py": 11,
-    "test_security_audit_anchor.py": 110,
+    "test_security_audit_anchor.py": 117,
     "test_security_audit_forgery.py": 14,
     "test_security_frontend.py": 22,
     "test_security_identity.py": 18,

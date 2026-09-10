@@ -101,8 +101,9 @@ class FakeSession:
 
     # -- helpers ------------------------------------------------------
     def _heads(self):
+        # (stream_key, head_seq, entries, head_hash, genesis_seq, genesis_hash)
         return [
-            (stream_key, rows[-1][0], len(rows), rows[-1][1])
+            (stream_key, rows[-1][0], len(rows), rows[-1][1], rows[0][0], rows[0][1])
             for stream_key, rows in sorted(self.entries.items()) if rows
         ]
 
@@ -235,8 +236,10 @@ def test_write_anchor_records_every_streams_head():
     assert result["written"] is True
     assert result["streams_anchored"] == 2
     assert result["stream_heads"] == {
-        "PROJECT:PRJ-1": {"seq": 3, "entries": 3, "entry_hash": "h1c"},
-        "PROJECT:PRJ-2": {"seq": 2, "entries": 2, "entry_hash": "h2b"},
+        "PROJECT:PRJ-1": {"seq": 3, "entries": 3, "entry_hash": "h1c",
+                          "genesis_seq": 1, "genesis_hash": "h1a"},
+        "PROJECT:PRJ-2": {"seq": 2, "entries": 2, "entry_hash": "h2b",
+                          "genesis_seq": 1, "genesis_hash": "h2a"},
     }
     assert result["prev_anchor_hash"] is None, "the first anchor chains from nothing"
     assert result["anchor_hash"] == audit_mod.compute_anchor_hash(
@@ -391,7 +394,8 @@ def test_a_rewritten_entry_below_the_anchor_point_is_reported_diverged():
     assert result["state"] == audit_mod.ANCHOR_STATE_DIVERGED
     assert result["diverged_streams"] == [{
         "stream_key": "PROJECT:PRJ-1", "seq": 3, "anchored_on": "2026-09-09",
-        "anchored_entry_hash": "h1c", "current_entry_hash": "REWRITTEN"}]
+        "anchored_entry_hash": "h1c", "current_entry_hash": "REWRITTEN",
+        "genesis_recorded": True}]
 
 
 # ======================================================================
@@ -895,9 +899,44 @@ def test_a_stream_deleted_and_regrown_past_its_old_head_is_not_intact():
         assert result["intact"] is False, (
             f"a stream deleted and regrown to seq {regrown} reported intact; "
             f"state={result['state']}")
-        assert result["state"] == audit_mod.ANCHOR_STATE_DIVERGED, result["state"]
-        assert any(d["stream_key"] == "PROJECT:PRJ-1"
-                   for d in result["diverged_streams"]), result["diverged_streams"]
+        # Fable 5.1: the anchor now records each stream's GENESIS hash, so a
+        # rebuilt stream is named as such rather than folded into DIVERGED.
+        assert result["state"] == audit_mod.ANCHOR_STATE_RECREATED, result["state"]
+        assert [r["stream_key"] for r in result["recreated_streams"]] == ["PROJECT:PRJ-1"]
+        assert result["recreated_streams"][0]["anchored_genesis_hash"] != \
+            result["recreated_streams"][0]["current_genesis_hash"]
+
+
+def test_a_rewritten_head_with_an_intact_genesis_is_diverged_not_recreated():
+    """The distinction the genesis makes. One rewritten row, seq 1 untouched:
+    DIVERGED_BELOW_ANCHOR, with `genesis_recorded: True` so the reader knows
+    the verifier COULD have called it a rebuild and did not."""
+    session = _session_with_two_streams()
+    audit_mod.write_anchor(session, anchor_date=date(2026, 9, 9))
+    rows = session.entries["PROJECT:PRJ-1"]
+    rows[-1] = (rows[-1][0], "REWRITTEN-HEAD")
+    result = audit_mod.verify_anchors(session, as_of=date(2026, 9, 9))
+    assert result["state"] == audit_mod.ANCHOR_STATE_DIVERGED, result["state"]
+    assert result["recreated_streams"] == []
+    assert result["diverged_streams"][0]["genesis_recorded"] is True
+
+
+def test_a_legacy_anchor_without_a_genesis_cannot_call_a_rebuild_and_says_so():
+    """An anchor written before the genesis field exists (its heads carry only
+    seq/entries/entry_hash) cannot separate a rebuild from a rewrite. The
+    verifier reports DIVERGED with `genesis_recorded: False` -- never a guess."""
+    session = _session_with_two_streams()
+    audit_mod.write_anchor(session, anchor_date=date(2026, 9, 9))
+    d, heads, prev, _ = session.anchors[0]
+    legacy_heads = {k: {kk: vv for kk, vv in v.items() if not kk.startswith("genesis")}
+                    for k, v in heads.items()}
+    session.anchors[0] = (d, legacy_heads, prev,
+                          audit_mod.compute_anchor_hash(prev, d.isoformat(), legacy_heads))
+    session.entries["PROJECT:PRJ-1"] = [(i, f"rebuilt{i}") for i in range(1, 5)]
+    result = audit_mod.verify_anchors(session, as_of=date(2026, 9, 9))
+    assert result["state"] == audit_mod.ANCHOR_STATE_DIVERGED, result["state"]
+    assert result["recreated_streams"] == []
+    assert result["diverged_streams"][0]["genesis_recorded"] is False
 
 
 def test_every_anchored_point_is_verified_not_only_the_highest():

@@ -22,6 +22,8 @@ both read the same ``prev_hash`` and each mint a next entry chaining from it.
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 import hashlib
 import json
 from datetime import date, datetime, timezone
@@ -251,26 +253,38 @@ def compute_anchor_hash(prev_anchor_hash: str | None, anchor_date_iso: str,
 
 
 def stream_heads(session: Session) -> dict[str, dict[str, Any]]:
-    """Every stream's head seq, head entry hash and row count, right now.
+    """Every stream's head seq, head entry hash, row count -- and its GENESIS
+    (lowest seq) entry hash -- right now.
 
     One statement, not one per stream: the anchor must be a snapshot of a
     single instant, and n+1 queries across a stream list read at a different
     instant is not one.
+
+    THE GENESIS IS WHAT TELLS A REBUILT STREAM FROM A REWRITTEN ONE (Fable
+    5.1). `append` restarts seq at 1 once a stream's rows are gone, so a
+    stream deleted and regrown carries a different hash at seq 1 -- the
+    payload includes `prev` (empty at genesis) and the timestamp, and a rebuilt
+    genesis is a new row. A single rewritten entry below the head leaves seq
+    1 alone. Anchors written before this change carry no genesis; the
+    verifier reports those streams as DIVERGED with `genesis_recorded: false`
+    rather than guessing.
     """
     rows = session.fetchall(
         """
-        SELECT h.stream_key, h.head_seq, h.entries, l.entry_hash
+        SELECT h.stream_key, h.head_seq, h.entries, l.entry_hash, h.genesis_seq, g.entry_hash
         FROM (
-            SELECT stream_key, max(seq) AS head_seq, count(*) AS entries
+            SELECT stream_key, max(seq) AS head_seq, min(seq) AS genesis_seq, count(*) AS entries
             FROM audit_log GROUP BY stream_key
         ) h
         JOIN audit_log l ON l.stream_key = h.stream_key AND l.seq = h.head_seq
+        JOIN audit_log g ON g.stream_key = h.stream_key AND g.seq = h.genesis_seq
         ORDER BY h.stream_key
         """)
     return {
         stream_key: {"seq": int(head_seq), "entries": int(entries),
-                     "entry_hash": entry_hash}
-        for stream_key, head_seq, entries, entry_hash in rows
+                     "entry_hash": entry_hash,
+                     "genesis_seq": int(genesis_seq), "genesis_hash": genesis_hash}
+        for stream_key, head_seq, entries, entry_hash, genesis_seq, genesis_hash in rows
     }
 
 
@@ -346,6 +360,11 @@ ANCHOR_STATE_TRUNCATED = "TRUNCATED_AFTER_LAST_ANCHOR"
 #: differently-remediated finding into a neighbouring bucket to hit a count of
 #: five would lose information the verifier had.
 ANCHOR_STATE_DIVERGED = "DIVERGED_BELOW_ANCHOR"
+#: A stream whose GENESIS hash no longer matches what an anchor recorded: the
+#: rows under the anchored seqs are new rows wearing old numbers. Reported
+#: only when an anchor actually recorded the genesis (anchors written since
+#: Fable 5.1); a legacy anchor cannot separate this from DIVERGED and says so.
+ANCHOR_STATE_RECREATED = "RECREATED_AFTER_ANCHOR"
 ANCHOR_STATE_INTACT = "INTACT_ANCHORED"
 
 #: The order findings are reported in. First match wins.
@@ -354,6 +373,7 @@ ANCHOR_STATE_PRECEDENCE: tuple[str, ...] = (
     ANCHOR_STATE_ANCHOR_INVALID_OR_STALE,
     ANCHOR_STATE_MISSING_STREAM,
     ANCHOR_STATE_TRUNCATED,
+    ANCHOR_STATE_RECREATED,
     ANCHOR_STATE_DIVERGED,
     ANCHOR_STATE_INTACT,
 )
@@ -444,6 +464,7 @@ def verify_anchors(session: Session, *, as_of: date | None = None,
             "anchor_stale": False, "streams_anchored": 0,
             "streams_anchored_ever": 0, "malformed_anchor_dates": [],
             "missing_streams": [], "truncated_streams": [], "diverged_streams": [],
+            "recreated_streams": [],
             "dropped_from_newest_anchor": [],
             "note": ("No audit anchor has ever been written, so deletion of an "
                      "entire audit stream is not detectable. Run write_anchor()."),
@@ -479,10 +500,19 @@ def verify_anchors(session: Session, *, as_of: date | None = None,
     # again. A re-created stream diverges at the LOWEST anchored seq, which is
     # exactly the pair that was being thrown away.
     points: dict[str, dict[int, dict[str, Any]]] = {}
+    #: stream_key -> (genesis_hash, anchor_date) from the EARLIEST anchor that
+    #: recorded one. Anchors that pre-date the genesis field contribute nothing.
+    genesis: dict[str, tuple[str, str]] = {}
     for anchor_date_value, heads, _prev, _hash in anchors:
         iso_date = anchor_date_value.isoformat()
         for stream_key, anchored in (heads or {}).items():
             first_seen.setdefault(stream_key, iso_date)
+            # The EARLIEST anchored genesis wins. A later anchor written after a
+            # rebuild honestly records the rebuilt genesis, and comparing
+            # against it would let the rebuild pass; the first anchor that saw
+            # the stream is the one that remembers what it was.
+            if isinstance(anchored, Mapping) and isinstance(anchored.get("genesis_hash"), str):
+                genesis.setdefault(stream_key, (anchored["genesis_hash"], iso_date))
             seq = _anchored_seq(anchored)
             if seq is None:
                 continue
@@ -595,15 +625,47 @@ def verify_anchors(session: Session, *, as_of: date | None = None,
                              "anchored_entry_hash": first["anchored_entry_hash"],
                              "current_entry_hash": first["current_entry_hash"]})
 
+    # ---- 2c. rebuilt or rewritten? Only the anchored GENESIS can say ----
+    #
+    # Every diverged finding is re-read against the genesis the newest anchor
+    # recorded for that stream. A changed genesis means the rows under the
+    # anchored seqs are new rows wearing old numbers: the stream was deleted
+    # and regrown (RECREATED_AFTER_ANCHOR). An intact genesis with a mismatch
+    # higher up is a rewrite (DIVERGED_BELOW_ANCHOR). An anchor that never
+    # recorded the genesis cannot tell the two apart and says so.
+    recreated: list[dict[str, Any]] = []
+    still_diverged: list[dict[str, Any]] = []
+    seen_recreated: set[str] = set()
+    for finding in diverged:
+        stream_key = finding["stream_key"]
+        anchored_genesis = genesis.get(stream_key)
+        now = current.get(stream_key) or {}
+        if anchored_genesis is None:
+            still_diverged.append({**finding, "genesis_recorded": False})
+            continue
+        anchored_hash, anchored_on = anchored_genesis
+        if now.get("genesis_hash") != anchored_hash:
+            if stream_key not in seen_recreated:
+                seen_recreated.add(stream_key)
+                recreated.append({"stream_key": stream_key,
+                                  "anchored_genesis_hash": anchored_hash,
+                                  "current_genesis_hash": now.get("genesis_hash"),
+                                  "genesis_anchored_on": anchored_on,
+                                  "first_mismatch_seq": finding["seq"],
+                                  "current_seq": now.get("seq")})
+            continue
+        still_diverged.append({**finding, "genesis_recorded": True})
+    diverged = still_diverged
     anchor_age_days = (as_of - newest_date).days
     stale = anchor_age_days > max_anchor_age_days
-
     if first_broken is not None or malformed or dropped or stale:
         state = ANCHOR_STATE_ANCHOR_INVALID_OR_STALE
     elif missing:
         state = ANCHOR_STATE_MISSING_STREAM
     elif truncated:
         state = ANCHOR_STATE_TRUNCATED
+    elif recreated:
+        state = ANCHOR_STATE_RECREATED
     elif diverged:
         state = ANCHOR_STATE_DIVERGED
     else:
@@ -624,6 +686,7 @@ def verify_anchors(session: Session, *, as_of: date | None = None,
         "missing_streams": missing,
         "truncated_streams": truncated,
         "diverged_streams": diverged,
+        "recreated_streams": recreated,
         "dropped_from_newest_anchor": dropped,
         "intact": state == ANCHOR_STATE_INTACT,
         "note": ("Whole-stream deletion and tail truncation are detectable only "

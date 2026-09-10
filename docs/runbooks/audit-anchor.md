@@ -67,10 +67,10 @@ ceiling — never an AppSail HTTP route, whose ceiling is 30 s).
 | Type | Cron Function |
 | Repetition | Daily |
 | Time (UTC) | `02:15` — after midnight so the day is complete, early enough that a `PARTIAL` run has hours of retries left |
-| Target function | `capexAuditAnchor` (Cron Function) |
+| Target function | `capex_audit_anchor` — the Python Cron Function at `catalyst/functions/capex_audit_anchor/main.py` (Fable 5.1), assembled by `tools/appsail/build_anchor_function.py` and deployed with `catalyst deploy --only functions:capex_audit_anchor`; its handler and `tools/anchor_job.py` call the same `app.backend.jobs.anchor_entry.run_from_environment` |
 | Timeout | 900 s |
 
-The function body is a thin shim; the whole handler is already written:
+The function body IS the shim in `catalyst/functions/capex_audit_anchor/main.py` (tests/test_anchor_function_shim.py); the operator form remains:
 
 ```bash
 python tools/anchor_job.py --quiet

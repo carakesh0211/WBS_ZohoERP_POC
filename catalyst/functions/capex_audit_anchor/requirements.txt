@@ -1,0 +1,3 @@
+# Informational only. Catalyst installs nothing for a Python function bundle;
+# the dependency closure is vendored beside main.py by
+# tools/appsail/build_anchor_function.py (Linux x86-64, CPython 3.13 wheels).

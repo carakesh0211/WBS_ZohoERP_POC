@@ -1,0 +1,12 @@
+{
+  "deployment": {
+    "name": "capex_audit_anchor",
+    "stack": "python_3_13",
+    "type": "cron"
+  },
+  "execution": {
+    "main": "main.py",
+    "memory": 512,
+    "timeout": 900
+  }
+}

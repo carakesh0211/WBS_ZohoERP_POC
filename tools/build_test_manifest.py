@@ -633,6 +633,15 @@ POST_BASELINE_FILES = {
     # definition. The seed had carried a predicate shape the compiler refuses
     # since Wave 4 and nothing had ever compiled it.
     "test_pg_seed_approvals_fable51.py",
+    # Fable 5.1 reporting stream: `budget_category` as an independent
+    # FilterSet dimension, the six declared-and-refused dimensions, grouping,
+    # and the export job accepting a REAL FilterSet (it never had -- every
+    # export test passed a plain dict).
+    "test_pg_reporting_fable51.py",
+    "test_reports_filters_fable51.py",
+    # The Catalyst Cron Function shim for the daily audit anchor and the
+    # shared entry point the CLI and the schedule both call (Fable 5.1).
+    "test_anchor_function_shim.py",
 
     # --- Fable 5.1: period reopen (M-3). Post-baseline like every wave file: the 220 counts the
     # POC's audit-remediation suite, and inflating it would make the removal
