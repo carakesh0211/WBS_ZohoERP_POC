@@ -141,6 +141,42 @@
   font-weight: 700;
 }
 
+/* The chip's own remove button -- REQ-RPT-009/010's "active-filter chip row
+   with remove buttons". A real <button>, so it inherits the global
+   :focus-visible ring (styles.css) and is reachable by keyboard like every
+   other control in this bar. */
+.analytics-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--n500);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.analytics-chip-remove:hover,
+.analytics-chip-remove:focus-visible {
+  background: var(--n200);
+  color: var(--n900);
+}
+
+.analytics-chip-dropped .analytics-chip-remove {
+  color: var(--warning-text);
+}
+
+.analytics-chip-dropped .analytics-chip-remove:hover,
+.analytics-chip-dropped .analytics-chip-remove:focus-visible {
+  background: var(--warning);
+}
+
 /* ---------------- provenance lines ---------------- */
 
 .analytics-notes {

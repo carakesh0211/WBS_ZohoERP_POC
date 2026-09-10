@@ -66,6 +66,11 @@ export const FILTER_FIELDS = Object.freeze([
      Both are offered; the label says which is which so a reader does not
      assume they are interchangeable. */
   { key: 'category_ids', param: 'category', type: 'list', label: 'Category (secondary to budget head)' },
+  /* FABLE 5.1 / migration 026: the REAL category master, independent of
+     budget_head_ids -- never the AMB-04 alias above. Composable with BOTH
+     budget_head_ids and category_ids: all three narrow, and narrowing never
+     conflicts with narrowing. */
+  { key: 'budget_category_ids', param: 'bcategory', type: 'list', label: 'Budget category' },
   { key: 'vendor_ids', param: 'vendor', type: 'list', label: 'Vendor' },
   { key: 'item_ids', param: 'item', type: 'list', label: 'Item' },
   { key: 'document_types', param: 'doctype', type: 'list', label: 'Document type' },
@@ -118,6 +123,11 @@ export const GROUP_DIMENSIONS = Object.freeze([
   { key: 'wbs', label: 'WBS element' },
   { key: 'budget_head', label: 'Budget head' },
   { key: 'category', label: 'Category (AMB-04: the budget head)' },
+  /* FABLE 5.1 / migration 026: the REAL category master. Not the same column
+     as `category` above -- composable with `budget_head` (and with
+     `category`) in the same `group_by`, unlike `category`+`budget_head`
+     themselves, which the server refuses together (ALIASED_DIMENSION). */
+  { key: 'budget_category', label: 'Budget category (migration 026)' },
 ]);
 
 /** An empty FilterSet with every key present, so no consumer sees `undefined`. */
@@ -217,6 +227,23 @@ export function activeFilters(filters) {
 export function labelFor(key) {
   const field = BY_KEY.get(key);
   return field ? field.label : key;
+}
+
+/**
+ * This FilterSet with one key cleared back to "unfiltered" — the operation
+ * behind a chip's remove button.
+ *
+ * `list` fields clear to `[]` and `scalar` fields to `null`, matching
+ * `emptyFilterSet()`'s own shape, so a cleared key round-trips through the
+ * URL exactly like one that was never set. The cursor is reset for the same
+ * reason `createFilterBar`'s own `collect()` resets it: removing a filter
+ * starts a new result, and carrying the old cursor forward would page into a
+ * result set that no longer exists. Unknown keys are returned unchanged.
+ */
+export function withFilterRemoved(filters, key) {
+  const field = BY_KEY.get(key);
+  if (!field) return filters;
+  return { ...filters, [key]: field.type === 'list' ? [] : null, cursor: null };
 }
 
 /**
@@ -424,8 +451,12 @@ export function createFilterBar({
  *
  * @param {Object} filters
  * @param {string[]} [unapplied] - FilterSet keys the answering source ignored.
+ * @param {(key:string)=>void} [onRemove] - called with a FilterSet key when
+ *   its chip's remove button is pressed. Omit to render a read-only row (a
+ *   screen that has nowhere to send the result, e.g. inside a saved-view
+ *   preview, still gets a correct chip list with no dead button).
  */
-export function filterChips(filters, unapplied = []) {
+export function filterChips(filters, unapplied = [], onRemove = null) {
   const active = activeFilters(filters);
   const dropped = new Set(unapplied || []);
   const wrap = h('div', { class: 'analytics-chips', 'data-active': String(active.length) });
@@ -448,6 +479,13 @@ export function filterChips(filters, unapplied = []) {
       h('span', { class: 'sym', 'aria-hidden': 'true' }, isDropped ? '!' : '·'),
       text(` ${item.label}: ${item.value}`),
       isDropped ? h('span', { class: 'sr-only' }, ' — not applied by the answering source') : null,
+      onRemove ? h('button', {
+        type: 'button',
+        class: 'analytics-chip-remove',
+        'aria-label': `Remove ${item.label} filter`,
+        title: `Remove the ${item.label.toLowerCase()} filter`,
+        onClick: () => onRemove(item.key),
+      }, [h('span', { 'aria-hidden': 'true' }, '×')]) : null,
     ].filter(Boolean)));
   }
   return wrap;
