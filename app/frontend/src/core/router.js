@@ -91,6 +91,15 @@ function ensureStyles(hrefs) {
 const AUDIT_STYLES = ['/static/extensions.css'];
 const BUDGET_STYLES = ['/static/extensions.css', '/static/budget.css'];
 const SETTINGS_STYLES = ['/static/extensions.css', '/static/settings.css'];
+/* Budget Setup reuses settings.css's toolbar/dialog/table layout helpers
+   (.field-err, .field.grow-action, .settings-pagination, .row-actions — the
+   same ones features/settings/masters.js relies on) on top of its own
+   budget-setup.css, which carries <governed-select>'s own rules and this
+   screen's document-editor layout. budget-categories.js (a masters-CRUD
+   screen that happens to live under Governance) needs the identical set for
+   the same reason, plus governed-select for its parent-category picker. */
+const BUDGET_SETUP_STYLES = ['/static/extensions.css', '/static/budget.css', '/static/settings.css', '/static/src/features/budget/budget-setup.css'];
+const BUDGET_CATEGORIES_STYLES = ['/static/extensions.css', '/static/settings.css', '/static/src/features/budget/budget-setup.css'];
 /* extensions.css carries .audit-skel-bar and th .sort-btn, which the shared
    capex-datatable component needs; approvals.css carries only this feature's
    own layout. Unlike settings.css, every selector in approvals.css is scoped
@@ -427,6 +436,66 @@ export const SCREENS = [
   // were therefore the only implementation of SCR-11/12/14/20/21/22
   // sitting entirely outside the application.
   ...CLOSURE_SCREENS,
+
+  /* ------------------------------------------------------------------
+     Fable 5.1: "Budget Setup" and "Budget Categories" -- the frontend for
+     app/backend/api/budgets_original.py (migration 026), which shipped with
+     no screen naming it at all. Neither carries an SCR number: C8_screens.
+     json is frozen at forty and names nothing for original-budget creation
+     or its category master, the same honesty the eight approval-engine
+     screens above already use rather than inventing a plausible-looking
+     number this frozen registry never allocated.
+     ------------------------------------------------------------------ */
+  {
+    id: 'budget-setup',
+    scr: null,
+    group: 'Project Control',
+    ico: '✚',
+    label: 'Budget Setup',
+    title: 'Budget Setup',
+    crumbs: ['Home', 'Budgets', 'Budget Setup'],
+    need: ['budget.read'],
+    build() {
+      const root = h('div');
+      const node = h('div', { class: 'scr-host' }, [
+        panel('scrBudgetSetupTitle', 'Budget Setup', root),
+        liveRegion('budgetLiveRegion'),
+      ]);
+      return {
+        node,
+        async mount() {
+          await ensureStyles(BUDGET_SETUP_STYLES);
+          const { mountBudgetSetup } = await import('../features/budget/budget-setup.js');
+          mountBudgetSetup(root);
+        },
+      };
+    },
+  },
+  {
+    id: 'budget-categories',
+    scr: null,
+    group: 'Governance',
+    ico: '⌸',
+    label: 'Budget Categories',
+    title: 'Budget Categories',
+    crumbs: ['Home', 'Governance', 'Budget Categories'],
+    need: ['settings.read'],
+    build() {
+      const root = h('div');
+      const node = h('div', { class: 'scr-host' }, [
+        panel('scrBudgetCategoriesTitle', 'Budget Categories', root),
+        liveRegion('budgetCategoriesLiveRegion'),
+      ]);
+      return {
+        node,
+        async mount() {
+          await ensureStyles(BUDGET_CATEGORIES_STYLES);
+          const { mountBudgetCategories } = await import('../features/settings/budget-categories.js');
+          mountBudgetCategories(root);
+        },
+      };
+    },
+  },
 ];
 
 /** @returns {Object|undefined} the screen declared at this hash. */
