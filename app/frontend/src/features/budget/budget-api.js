@@ -37,6 +37,62 @@
      GET /api/budget/compare?project_id=&left=&right=
        -> {"rows":[{"wbs_id","budget_head_id","left_paise","right_paise","delta_paise"}]}
 
+   Original-budget creation (SCR "Budget Setup") and the budget-category
+   master, per app/backend/api/budgets_original.py's own docstring:
+
+     GET  /api/budget/categories?include_inactive=&entity_id=
+       -> {"items":[{"category_id","code","name","description",
+                     "parent_category_id","display_order","active",
+                     "entity_id","effective_from","effective_to","version_no"}]}
+     POST /api/budget/categories                                budget.category.manage
+     PUT  /api/budget/categories/{id}                            budget.category.manage
+       body carries expected_version; a mismatch answers 409 VERSION_CONFLICT.
+     POST /api/budget/categories/{id}/deactivate                 budget.category.manage
+
+     GET /api/budget/selectors?kind=&q=&project_id=&entity_id=&limit=
+       -> {"kind","items":[{"id","label",...}]}
+       kind is one of entity|project|wbs|budget_head|budget_category|division|
+       branch|zone|plant|location|period|fiscal_year. `wbs` REQUIRES project_id.
+
+     GET /api/budget/custom-fields
+       -> {"applies_to","items":[{"code","label",
+                                  "data_type":"TEXT|NUMBER|DATE|BOOLEAN|SELECT",
+                                  "select_options","is_required"}]}
+
+     GET  /api/budget/originals?project_id=&status=&cursor=&limit=
+       -> {"items":[{"budget_id","budget_number","capex_code","project_name",
+                     "fiscal_year","title","status","total_paise","line_count",
+                     "created_by","version_no"}],"next_cursor"}
+     POST /api/budget/originals                                  budget.create
+       header Idempotency-Key; body {project_id,fiscal_year,title,period_id?,
+       justification?,custom_fields{},lines:[{wbs_id,budget_head_id,
+       budget_category_id,amount_paise,justification?,division_id?,branch_id?,
+       zone_id?,plant_id?,location_id?,custom_fields{}}]}
+       -> 201 {budget_id,budget_number,status,version_no,lines:[...],total_paise}
+     GET  /api/budget/originals/{id}
+     PUT  /api/budget/originals/{id}                              budget.create
+       body carries expected_version.
+     POST /api/budget/originals/{id}/submit                       budget.create
+       body {expected_version?} -> {status:"SUBMITTED",approval_instance_id}
+       or a 409 problem.
+     POST /api/budget/originals/{id}/cancel                       budget.create
+       body {reason}.
+     GET  /api/budget/originals/{id}/audit -> {entries:[{seq,at,actor,action,detail}]}
+
+     GET  /api/budget/originals/import/template  -> text/csv
+     POST /api/budget/originals/import/preview
+       body {project_id,csv_text} -> {rows,problems:[{row,column,code,message}],
+       valid,total_paise,lines}
+     POST /api/budget/originals/import                            budget.create
+       header Idempotency-Key; body {project_id,fiscal_year,title,csv_text,
+       period_id?,justification?,custom_fields{}} -> 201 document
+
+   Errors: RFC-7807 {detail:{code,title,status,detail,problems?}}. A 422
+   BUDGET_LINES_INVALID carries `problems:[{line,field,code,message}]`, read
+   by budget-setup.js to map each problem back onto the offending line editor.
+   A 503 DATABASE_NOT_CONFIGURED means no PostgreSQL is wired up; the caller
+   renders the same "unavailable" state every other screen here uses for it.
+
    Session: see core/api-client.js. sessionStorage only, never localStorage.
 */
 
@@ -131,4 +187,138 @@ export function listVersions(projectId) {
  */
 export function compareVersions({ projectId, left, right }) {
   return client.get('/compare', { project_id: projectId, left, right });
+}
+
+/* ==================================================================
+   Budget Setup: budget categories, governed selectors, custom fields
+   and original-budget documents. Same client, same error class -- these
+   are still /api/budget/*.
+   ================================================================== */
+
+/** GET /api/budget/categories?include_inactive=&entity_id= */
+export function listCategories({ includeInactive, entityId } = {}) {
+  return client.get('/categories', { include_inactive: includeInactive || undefined, entity_id: entityId });
+}
+
+/** POST /api/budget/categories (budget.category.manage) */
+export function createCategory(values) {
+  return client.post('/categories', values);
+}
+
+/** PUT /api/budget/categories/{id} (budget.category.manage) — values must carry expected_version. */
+export function updateCategory(categoryId, values) {
+  return client.put(`/categories/${encodeURIComponent(categoryId)}`, values);
+}
+
+/** POST /api/budget/categories/{id}/deactivate (budget.category.manage) */
+export function deactivateCategory(categoryId) {
+  return client.post(`/categories/${encodeURIComponent(categoryId)}/deactivate`, {});
+}
+
+/**
+ * GET /api/budget/selectors — the governed pickers behind every
+ * components/budget/governed-select.js instance.
+ * @param {Object} args
+ * @param {'entity'|'project'|'wbs'|'budget_head'|'budget_category'|'division'|
+ *   'branch'|'zone'|'plant'|'location'|'period'|'fiscal_year'} args.kind
+ * @param {string} [args.q]
+ * @param {string} [args.projectId] - REQUIRED when kind === 'wbs'.
+ * @param {string} [args.entityId]
+ * @param {number} [args.limit]
+ */
+export function listSelectors({
+  kind, q, projectId, entityId, limit,
+}) {
+  return client.get('/selectors', {
+    kind, q, project_id: projectId, entity_id: entityId, limit,
+  });
+}
+
+/** GET /api/budget/custom-fields */
+export function listCustomFields() {
+  return client.get('/custom-fields');
+}
+
+/** GET /api/budget/originals?project_id=&status=&cursor=&limit= */
+export function listOriginals({
+  projectId, status, cursor, limit,
+} = {}) {
+  return client.get('/originals', {
+    project_id: projectId, status, cursor, limit,
+  });
+}
+
+/** GET /api/budget/originals/{id} */
+export function getOriginal(budgetId) {
+  return client.get(`/originals/${encodeURIComponent(budgetId)}`);
+}
+
+/**
+ * POST /api/budget/originals (budget.create).
+ * @param {Object} payload - {project_id, fiscal_year, title, period_id?,
+ *   justification?, custom_fields, lines}
+ * @param {string} idempotencyKey - regenerated by the caller after success.
+ */
+export function createOriginal(payload, idempotencyKey) {
+  return client.request('POST', '/originals', { body: payload, headers: { 'Idempotency-Key': idempotencyKey || '' } });
+}
+
+/** PUT /api/budget/originals/{id} (budget.create) — payload must carry expected_version. */
+export function updateOriginal(budgetId, payload) {
+  return client.put(`/originals/${encodeURIComponent(budgetId)}`, payload);
+}
+
+/** POST /api/budget/originals/{id}/submit (budget.create) */
+export function submitOriginal(budgetId, expectedVersion) {
+  return client.post(`/originals/${encodeURIComponent(budgetId)}/submit`,
+    expectedVersion === undefined ? {} : { expected_version: expectedVersion });
+}
+
+/** POST /api/budget/originals/{id}/cancel (budget.create) */
+export function cancelOriginal(budgetId, reason) {
+  return client.post(`/originals/${encodeURIComponent(budgetId)}/cancel`, { reason });
+}
+
+/** GET /api/budget/originals/{id}/audit */
+export function getOriginalAudit(budgetId) {
+  return client.get(`/originals/${encodeURIComponent(budgetId)}/audit`);
+}
+
+/** GET /api/budget/originals/import/template (text/csv, budget.create) */
+export async function getImportTemplate() {
+  const sid = (() => { try { return sessionStorage.getItem('capex.session_id') || ''; } catch { return ''; } })();
+  const headers = { Accept: 'text/csv' };
+  if (sid) headers['X-Session'] = sid;
+  const res = await fetch('/api/budget/originals/import/template', { headers });
+  if (!res.ok) {
+    throw new BudgetApiError('The import template could not be downloaded.', { status: res.status, kind: 'error' });
+  }
+  return res.text();
+}
+
+/** POST /api/budget/originals/import/preview (budget.create) */
+export function previewImport({ projectId, csvText }) {
+  return client.post('/originals/import/preview', { project_id: projectId, csv_text: csvText });
+}
+
+/**
+ * POST /api/budget/originals/import (budget.create, all-or-nothing draft).
+ * @param {Object} args - {projectId, fiscalYear, title, csvText, periodId?, justification?, customFields?}
+ * @param {string} idempotencyKey
+ */
+export function commitImport({
+  projectId, fiscalYear, title, csvText, periodId, justification, customFields,
+}, idempotencyKey) {
+  return client.request('POST', '/originals/import', {
+    body: {
+      project_id: projectId,
+      fiscal_year: fiscalYear,
+      title,
+      csv_text: csvText,
+      period_id: periodId || undefined,
+      justification: justification || undefined,
+      custom_fields: customFields || {},
+    },
+    headers: { 'Idempotency-Key': idempotencyKey || '' },
+  });
 }
