@@ -647,6 +647,9 @@ POST_BASELINE_FILES = {
     # identically by every established principal, catalog says FORCE RLS and
     # no trivial policy.
     "test_pg_rls_fable51_023_matrix.py",
+    # A foreign-currency purchase order is refused at emission with a code
+    # rather than emitted labelled INR (Fable 5.1). Database-free.
+    "test_po_emission_currency_fable51.py",
 
     # --- Fable 5.1: period reopen (M-3). Post-baseline like every wave file: the 220 counts the
     # POC's audit-remediation suite, and inflating it would make the removal

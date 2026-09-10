@@ -149,6 +149,7 @@ from ..integration import throttle
 from ..integration.dto import DtoError
 from ..money import MoneyError
 from . import audit as audit_mod
+from .fx import BASE_CURRENCY
 from . import budget as budget_svc
 from . import integration_store as store
 from . import repo
@@ -2786,6 +2787,23 @@ def plan_po_emission(session: Session, *, po_id: str, connection_id: str,
     is what talks to an adapter.
     """
     header = _po_header(session, po_id)
+    # CURRENCY-AWARE, BY REFUSAL (Fable 5.1). The emission DTO defaulted to
+    # "INR" whatever the purchase order said, so a USD or EUR purchase order
+    # reached the vendor labelled INR and priced in INR paise -- a number the
+    # vendor never quoted. `po_line` stores BASE (INR) paise; the source-
+    # currency line amounts a foreign purchase order needs at the boundary
+    # are not stored yet, and dividing base paise by the header's rate would
+    # invent them. Until source-minor amounts exist on po_line, a non-base
+    # purchase order is refused here -- before planning, before an outbox
+    # row -- with a code that says so, rather than emitted as something it
+    # is not.
+    po_currency = str(header.get("currency") or BASE_CURRENCY).upper()
+    if po_currency != BASE_CURRENCY:
+        _err("PO_CURRENCY_NOT_EMITTABLE",
+             f"{header['po_number']} is denominated in {po_currency}; the outbound "
+             f"connector can emit only {BASE_CURRENCY} purchase orders exactly. "
+             f"Emitting it would price the vendor in a currency they did not "
+             f"quote. Nothing was planned or queued.", 409)
     rows = po_lines(session, po_id)
     if not rows:
         _err("NO_LINES",

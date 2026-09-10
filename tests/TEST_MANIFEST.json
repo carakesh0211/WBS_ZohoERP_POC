@@ -10938,6 +10938,20 @@
         "body_sha": "3f6cd6c6538e85ff"
       }
     },
+    "test_po_emission_currency_fable51.py": {
+      "test_a_non_base_purchase_order_is_refused_before_planning": {
+        "assertions": 4,
+        "body_sha": "a3ddd7ad427ce27c"
+      },
+      "test_a_base_currency_purchase_order_proceeds_to_the_line_read": {
+        "assertions": 2,
+        "body_sha": "06b210c3f5519b0f"
+      },
+      "test_a_missing_currency_is_treated_as_base_not_refused": {
+        "assertions": 2,
+        "body_sha": "ce46749a68962cf0"
+      }
+    },
     "test_procurement_emission.py": {
       "test_a_purchase_order_spanning_two_control_cells_becomes_two_emissions": {
         "assertions": 4,
@@ -12501,6 +12515,7 @@
     "test_pg_settings.py": 17,
     "test_pg_transactions.py": 4,
     "test_pg_unattributed_triage.py": 14,
+    "test_po_emission_currency_fable51.py": 3,
     "test_procurement_emission.py": 27,
     "test_reporting_filterset.py": 92,
     "test_reports_filters_fable51.py": 22,
@@ -12628,6 +12643,7 @@
     "test_pg_settings.py": 46,
     "test_pg_transactions.py": 10,
     "test_pg_unattributed_triage.py": 23,
+    "test_po_emission_currency_fable51.py": 8,
     "test_procurement_emission.py": 98,
     "test_reporting_filterset.py": 182,
     "test_reports_filters_fable51.py": 56,
