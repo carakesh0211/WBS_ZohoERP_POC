@@ -125,7 +125,16 @@ FILTER_FIELDS: tuple[str, ...] = (
     "wbs_paths",
     "budget_head_ids",
     "category_ids",
+    # FABLE 5.1 / migration 026: the real category master, independent of
+    # category_ids (AMB-04's pre-026 alias to budget_head).
+    "budget_category_ids",
     "vendor_ids", "item_ids",
+    # FABLE 5.1: declared and refused (`Dataset.unsupported`, same pattern as
+    # `_NO_CATEGORY` before 026), not omitted -- an omitted name is a name
+    # `normalise_filters` cannot even SEE, which is the silent-widening this
+    # whole module exists to prevent.
+    "division_ids", "branch_ids", "zone_ids", "fiscal_years",
+    "requestor_ids", "approver_ids",
     "document_types",
     "lifecycle_statuses",
     "approval_statuses",
@@ -133,15 +142,28 @@ FILTER_FIELDS: tuple[str, ...] = (
     "period_ids",
     "group_by",
     "cursor", "limit", "sort",
+    # FABLE 5.1 FIX: `FilterSet.sort_desc` is a real dataclass field (present,
+    # with a value, on EVERY `FilterSet` -- it defaults to `False`, never
+    # absent) and was missing here. Before this fix, `normalise_filters`
+    # refused with `UNKNOWN_FILTER` for ANY `reporting.FilterSet` instance
+    # passed to an export, defaulted or not -- a latent break in "the export
+    # carries the SAME FilterSet" that nothing caught because every export
+    # test that populates real filters passes a plain mapping, not a live
+    # `FilterSet`. `sort_desc` has no meaning for an export (see
+    # FILTER_FIELDS_NOT_APPLICABLE_TO_AN_EXPORT below, which is where it is
+    # actually dropped) -- but it must be NAMED here to be dropped
+    # deliberately rather than crash the whole request.
+    "sort_desc",
 )
 
 #: Fields an export ignores by construction rather than by omission, because an
 #: export has no paging of its own: it delivers the WHOLE result set, and a
 #: caller-supplied cursor/limit/sort would silently truncate or reorder the
-#: file. `sort` is refused too -- column order and row order are captured at
-#: creation so a resumed chunk lands where the previous one stopped.
+#: file. `sort`/`sort_desc` are refused too -- column order and row order are
+#: captured at creation so a resumed chunk lands where the previous one
+#: stopped.
 FILTER_FIELDS_NOT_APPLICABLE_TO_AN_EXPORT: frozenset[str] = frozenset(
-    {"cursor", "limit", "sort", "group_by"})
+    {"cursor", "limit", "sort", "sort_desc", "group_by"})
 
 
 @dataclass(frozen=True)
@@ -864,8 +886,23 @@ def normalise_filters(filters: Any) -> dict[str, Any]:
     if isinstance(filters, Mapping):
         raw = dict(filters)
     else:
+        # FABLE 5.1 FIX: a real `FilterSet` object ALWAYS carries `cursor`,
+        # `limit`, `sort`, `sort_desc` and `group_by` -- they are ordinary
+        # dataclass fields with baseline defaults (`limit=100`, `sort_desc=
+        # False`, ...), never absent the way an unset dict key is absent. Before
+        # this fix they were read into `raw` unconditionally and then refused
+        # by `plan_filters` (`FILTER_FIELDS_NOT_APPLICABLE_TO_AN_EXPORT`) even
+        # when the caller never touched them -- so passing ANY live
+        # `reporting.FilterSet` into an export raised, defaulted or not, which
+        # is exactly the "cascade the SAME FilterSet to exports" contract
+        # broken at its one required call site. Skipped here, at the SOURCE,
+        # because their presence on an object is structural and not a caller's
+        # deliberate ask -- a raw mapping that names one of them explicitly
+        # (`{"limit": 50}`) is a deliberate ask and still reaches the refusal
+        # below via the `Mapping` branch above, unchanged.
         raw = {name: getattr(filters, name)
-               for name in FILTER_FIELDS if hasattr(filters, name)}
+               for name in FILTER_FIELDS if hasattr(filters, name)
+               and name not in FILTER_FIELDS_NOT_APPLICABLE_TO_AN_EXPORT}
         # A FilterSet carrying a field this build has never heard of is A1's
         # contract having moved. Surface it rather than exporting under a
         # filter that was never applied.
