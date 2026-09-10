@@ -457,6 +457,15 @@ function renderNav() {
       const end = rest.findIndex(x => x.g);
       const items = (end === -1 ? rest : rest.slice(0, end));
       if (!items.some(navAllowed)) return;
+      // Only a group that DECLARES `defaultExpanded` is collapsible (the two
+      // Fable 5.1 groups that expose the analytics and mapping screens). The
+      // six approved groups keep the exact <h2> markup the client signed off
+      // on, so their pixels do not move; the rail grows only by the new rows.
+      if (n.defaultExpanded === undefined) {
+        groupOpen = true;
+        out.push(`<h2 class="nav-group">${esc(n.g)}</h2>`);
+        return;
+      }
       const expanded = navGroupExpanded(n);
       groupOpen = expanded;
       out.push(`<button type="button" class="nav-group" data-nav-group="${esc(n.g)}" aria-expanded="${expanded}">
