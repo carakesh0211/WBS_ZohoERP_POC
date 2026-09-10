@@ -484,8 +484,28 @@ def test_no_new_off_token_colour_is_introduced():
 # completion of the approved change, not a new visual decision.
 # Previous pin: cae43990b8c3cb7ea047f80771eeb103d6022f1e55a03e07b4b68aa9060ff847
 # Then:         04c89fe5f19683b238e4928059ac6fcc85f2bf276cc3890ac76c31bf2475c2a4
+# Then:         f56656aa9b3265c35530a636ad2cb73635e48cd7c4c0e7bdbc317eba4fbebceb
+#
+# THIRD MOVEMENT OF THIS PIN -- the `--n500` HOVERED-ROW CORRECTION, approved
+# by the product owner on 2026-09-10 for the Fable 5.1 hardening pass, with
+# the explicit instruction "using an existing darker neutral design token".
+#
+# The defect (RELEASE_PACKAGE L-06, second half, previously OPEN): `.muted`
+# text is `--n500` (#6B7280), which measures 4.8345:1 on white but only
+# 4.3210:1 against the `--primary-50` (#EAF4F6) tint that `tbody tr:hover`
+# paints, so muted text in any hovered table row failed AA application-wide.
+#
+# The correction is ONE additional rule, placed directly after the hover
+# rule: `tbody tr:hover .muted, tbody tr:hover button.tree-toggle` take
+# `--n700` (#3A4048), which measures 9.3528:1 on the hover tint (and
+# 10.4642:1 on white, 9.8412:1 on --n50, 9.2416:1 on --n100). No token value
+# changed, no new colour entered the palette, and no rule other than the one
+# added was touched; a resting (un-hovered) row renders byte-identically, so
+# the approved static baselines do not move. `tests/test_uat_profile.py::
+# test_the_hovered_row_muted_text_correction_measures_aa` recomputes both
+# ratios from the stylesheet's own hex values.
 APPROVED_STYLES_CSS_SHA256 = (
-    "f56656aa9b3265c35530a636ad2cb73635e48cd7c4c0e7bdbc317eba4fbebceb"
+    "410cfb8d3b0f3f4465045f30856cd74b97445d5b8145fd92d9b7a26a93adc1ee"
 )
 
 

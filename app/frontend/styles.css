@@ -287,6 +287,11 @@ thead th.num { text-align:right; }
 tbody td, tbody th { border-bottom:1px solid var(--n200); padding:0 8px; height:var(--row-h); }
 tbody th { text-align:left; font-weight:400; }
 tbody tr:hover { background:var(--primary-50); }
+/* Fable 5.1, approved by the product owner 2026-09-10: muted text inside a
+   HOVERED row takes the existing darker neutral --n700. --n500 (#6B7280) on
+   the --primary-50 hover tint measures 4.3210:1, below the 4.5:1 body-text
+   minimum; --n700 (#3A4048) measures 9.3528:1. No new colour, no other change. */
+tbody tr:hover .muted, tbody tr:hover button.tree-toggle { color:var(--n700); }
 tbody tr.sel { background:var(--primary-100); }
 tfoot td {
   border-top:2px solid var(--n300); font-weight:600; padding:0 8px; height:30px;
