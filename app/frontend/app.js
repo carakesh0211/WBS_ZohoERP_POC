@@ -24,6 +24,31 @@ const S = {
 
 const SESSION_KEY = 'capex.session_id';
 
+/* Fable 5.1: renderNav() below now renders collapsible `.nav-group` buttons,
+   which need extensions.css's `button.nav-group` reset rule (border/
+   background/cursor/layout a <button> carries that an <h2> never did) to
+   read as the plain group headings they replace rather than bordered
+   buttons. Every other consumer of extensions.css is an SCR-nn ROUTE, loaded
+   on demand by src/core/router.js's ensureStyles() the first time that route
+   opens — but the nav rail is shell chrome, rendered on EVERY screen
+   including the ones that never touch router.js at all, so it cannot wait
+   for a route to load it. Injected once, unconditionally, the same way
+   ensureStyles() loads a route stylesheet. index.html's own comment about
+   styles.css being "the ONLY stylesheet the shell loads" is about NOT
+   linking settings.css and budget.css globally — both carry rules that would
+   leak onto the approved screens; extensions.css carries no unscoped
+   selector (checked: every rule in it is scoped to a class its own screens
+   use, e.g. `.breadcrumb a.crumb` never matches app.js's own `<button
+   class="crumb">`) and is the one shared, lead-owned sheet already written
+   to be safe loaded everywhere. */
+(function ensureNavExtensionsCss() {
+  if (document.querySelector('link[href="/static/extensions.css"]')) return;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = '/static/extensions.css';
+  document.head.appendChild(link);
+}());
+
 /* ---------------- session (sessionStorage only — never localStorage) ------- */
 function getSession() { try { return sessionStorage.getItem(SESSION_KEY) || ''; } catch { return ''; } }
 function setSession(id) {
@@ -278,6 +303,13 @@ const SCR_ROUTES = [
   { id: 'closure-completion-review',  ico: '◈', label: 'Project Completion Review',     need: ['budget.read'] },
   { id: 'closure-capitalisation',     ico: '▦', label: 'Capitalisation Workbench',      need: ['budget.read'] },
   { id: 'closure-asset-allocation',   ico: '▩', label: 'Asset Allocation',              need: ['budget.read'] },
+  // Fable 5.1: the frontend for app/backend/api/budgets_original.py, which
+  // shipped with no screen naming it. `need` here is restated from
+  // src/core/router.js's own SCREENS rows for the same two ids, held in
+  // step by tests/test_frontend_budget_setup_registry.py the way every
+  // other SCR_ROUTES/router.js pair here already is.
+  { id: 'budget-setup', ico: '✚', label: 'Budget Setup', need: ['budget.read'] },
+  { id: 'budget-categories', ico: '⌸', label: 'Budget Categories', need: ['settings.read'] },
 ];
 
 /** The SCR_ROUTES row for an id, spliced into NAV by reference. */
@@ -300,6 +332,7 @@ const NAV = [
   { id: 'projects', ico: '▤', label: 'CAPEX Projects' },
   { id: 'wbs', ico: '⌗', label: 'WBS Explorer' },
   { id: 'budget', ico: '▦', label: 'Budget Planning Grid' },
+  scr('budget-setup'),
   { id: 'check', ico: '◎', label: 'Budget Availability Check', need: ['budget.check'] },
   { id: 'revisions', ico: '↻', label: 'Budget Revisions' },
   scr('budget-grid'),
@@ -346,6 +379,36 @@ const NAV = [
      bookmarkable exactly as they did before. Adding a rail entry later is one
      `scr('…')` splice per row, and needs only the approval, not a redesign. */
   scr('settings'),
+  scr('budget-categories'),
+
+  /* Fable 5.1: Wave 7's analytics and mapping screens were deep-link-only —
+     SCR_ROUTES carries all fifteen (eleven analytics, four mapping/connector-
+     audit) so every hash stays permission-gated and bookmarkable, but no NAV
+     row ever listed them, exactly the way the twelve Wave 5 integration
+     screens and the eight approval-engine screens above still are not. The
+     two groups below make them reachable from the rail without repeating the
+     A3 measurement's mistake (see the long comment above `scr('settings')`):
+     both start COLLAPSED, so their fifteen rows add only two one-line group
+     headers to the rail's resting height, not fifteen rows of content.
+     renderNav()'s collapsible-group mechanism (aria-expanded, sessionStorage,
+     `defaultExpanded`) is what makes that safe — see the group there. */
+  { g: 'ANALYTICS', defaultExpanded: false },
+  scr('analytics-executive'),
+  scr('analytics-controller'),
+  scr('analytics-project-list'),
+  scr('analytics-project-object'),
+  scr('analytics-wbs-explorer'),
+  scr('analytics-wbs-tree'),
+  scr('analytics-wbs-element'),
+  scr('analytics-cwip-ledger'),
+  scr('analytics-commitment-ageing'),
+  scr('analytics-cwip-ageing'),
+  scr('analytics-exceptions'),
+  { g: 'INTEGRATION MAPPING', defaultExpanded: false },
+  scr('mapping-master'),
+  scr('mapping-fields'),
+  scr('mapping-sync'),
+  scr('connector-audit'),
 ];
 
 function navAllowed(n) { return !n.need || can(...n.need); }
@@ -358,9 +421,35 @@ function viewAllowed(id) {
   return row ? navAllowed(row) : false;
 }
 
+/* ---------------- collapsible nav groups ----------------------------------
+   Fable 5.1: every `{ g: '…' }` marker in NAV is now a toggle, not just a
+   heading — the mechanism that lets the ANALYTICS and INTEGRATION MAPPING
+   groups added above hold their fifteen rows off the rail's resting height
+   without a second measurement pass like A3's. A group's `defaultExpanded`
+   (absent = true, so every group already in NAV before this change keeps
+   rendering exactly as open as it always was) is the fallback; once a user
+   has ever clicked a group's header, sessionStorage remembers their choice
+   for the rest of the tab's life — sessionStorage, never localStorage, the
+   same rule every session value in this file already follows. */
+const NAV_GROUP_STATE_PREFIX = 'capex.nav.group.';
+function navGroupDefaultExpanded(n) { return n.defaultExpanded === undefined ? true : !!n.defaultExpanded; }
+function navGroupExpanded(n) {
+  try {
+    const v = sessionStorage.getItem(NAV_GROUP_STATE_PREFIX + n.g);
+    if (v === '1') return true;
+    if (v === '0') return false;
+  } catch { /* sessionStorage unavailable: fall through to the default */ }
+  return navGroupDefaultExpanded(n);
+}
+function setNavGroupExpanded(name, expanded) {
+  try { sessionStorage.setItem(NAV_GROUP_STATE_PREFIX + name, expanded ? '1' : '0'); }
+  catch { /* the toggle still re-renders open/closed for this render; it just will not survive a reload */ }
+}
+
 function renderNav() {
   const el = document.getElementById('nav');
   const out = [];
+  let groupOpen = true; // items before the first `{ g }` marker (none today) render unconditionally
   NAV.forEach((n, i) => {
     if (n.g) {
       // Suppress a group heading whose every item is out of reach for this role.
@@ -368,10 +457,14 @@ function renderNav() {
       const end = rest.findIndex(x => x.g);
       const items = (end === -1 ? rest : rest.slice(0, end));
       if (!items.some(navAllowed)) return;
-      out.push(`<h2 class="nav-group">${esc(n.g)}</h2>`);
+      const expanded = navGroupExpanded(n);
+      groupOpen = expanded;
+      out.push(`<button type="button" class="nav-group" data-nav-group="${esc(n.g)}" aria-expanded="${expanded}">
+        <span class="nav-group-label">${esc(n.g)}</span><span class="nav-group-caret" aria-hidden="true">${expanded ? '▾' : '▸'}</span></button>`);
       return;
     }
     if (!navAllowed(n)) return;
+    if (!groupOpen) return;
     const badge = n.badge === 'approvals' ? S.counts?.approvals : n.badge === 'alerts' ? S.counts?.alerts : null;
     const pill = badge ? `<span class="pill ${n.badge === 'alerts' ? 'warn' : ''}">${badge}</span>` : '';
     const active = S.view === n.id;
@@ -1355,10 +1448,20 @@ document.getElementById('dlg').addEventListener('close', () => {
 document.getElementById('dlgClose').addEventListener('click', () => document.getElementById('dlg').close());
 
 document.addEventListener('click', async (ev) => {
-  const t = ev.target.closest('[data-nav],[data-toggle],[data-open],[data-approve-pr],[data-approve-rev],[data-approve-cap],[data-alloc],[data-amend],[data-cancel],[data-close]');
+  const t = ev.target.closest('[data-nav],[data-nav-group],[data-toggle],[data-open],[data-approve-pr],[data-approve-rev],[data-approve-cap],[data-alloc],[data-amend],[data-cancel],[data-close]');
   if (!t) return;
 
   if (t.dataset.nav) { S.view = t.dataset.nav; await render(); return; }
+
+  if (t.dataset.navGroup) {
+    const name = t.dataset.navGroup;
+    const wasExpanded = t.getAttribute('aria-expanded') === 'true';
+    setNavGroupExpanded(name, !wasExpanded);
+    renderNav();
+    // Keep the keyboard where it was: refocus the same group header after the re-render.
+    document.querySelector(`[data-nav-group="${CSS.escape(name)}"]`)?.focus();
+    return;
+  }
 
   if (t.dataset.toggle) {
     const id = t.dataset.toggle;

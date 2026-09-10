@@ -102,3 +102,24 @@ th .sort-btn .sort-ico { font-size: 9px; opacity: .7; }
   font-size: 12px; font-weight: 700; letter-spacing: .4px; text-align: center;
   padding: 6px 12px; text-transform: uppercase;
 }
+
+/* ---------------- collapsible nav groups (Fable 5.1) ----------------
+   app.js's renderNav() now renders every `{ g: '…' }` marker as a
+   <button class="nav-group" aria-expanded="…">, not an <h2>, so its group
+   can be collapsed. styles.css's own `.nav-group` rule (byte-frozen) already
+   sets the font-size/weight/letter-spacing/colour/padding/margin this needs
+   and still applies here — a <button> matching both `.nav-group` and this
+   selector takes styles.css's properties for anything this rule does not
+   redeclare. This rule adds only what a <button> needs that an <h2> never
+   did: the default UA border/background/cursor removed, block layout
+   restored, and room for the expand/collapse caret. `font-family: inherit`
+   (never the `font` shorthand, which would reset the size/weight
+   styles.css's rule sets) fixes the one visual property a <button> and an
+   <h2> genuinely disagree on by default. */
+button.nav-group {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  border: 0; background: transparent; cursor: pointer; font-family: inherit;
+}
+button.nav-group:hover { background: var(--n100); }
+button.nav-group:focus-visible { outline: 2px solid var(--primary-600); outline-offset: -2px; }
+.nav-group-caret { font-size: 9px; opacity: .7; flex: 0 0 auto; }
