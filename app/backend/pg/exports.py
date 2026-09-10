@@ -584,6 +584,13 @@ _NO_PERIOD = ("this dataset carries no accounting_period reference. Filtering "
               "module's to guess.")
 _NO_CATEGORY = ("AMB-04 makes budget head the primary reading and no table in "
                 "this schema carries a category id; use budget_head_ids.")
+#: FABLE 5.1 / migration 026: `budget_category` is now a real, independent
+#: master and `budget_control_cell.budget_category_id` is a real column --
+#: datasets that reach a control cell join it and honour `category_ids`
+#: against it (see BUDGET_LEDGER_CELLS, PURCHASE_ORDER_LINES). `_NO_CATEGORY`
+#: stays for shapes that do not reach a cell at all (WBS_ELEMENTS: a WBS
+#: element can carry several cells, one per budget head, each with its own
+#: category, so there is no single category id to put on that row).
 _NO_ITEM = "no dataset here joins item_master."
 _NO_APPROVAL = ("approval status lives on approval_instance, which none of "
                 "these shapes joins.")
@@ -597,6 +604,13 @@ BUDGET_LEDGER_CELLS = Dataset(
         JOIN wbs_element w ON w.wbs_id = bc.wbs_id
         JOIN project p ON p.project_id = w.project_id
         JOIN budget_head bh ON bh.budget_head_id = bc.budget_head_id
+        -- FABLE 5.1 / migration 026: the CELL's own category, LEFT joined so a
+        -- pre-026 cell (budget_category_id NULL) still exports its row --
+        -- `budget_category_name` renders empty, which `render_value` already
+        -- turns `None` into the empty string for, and never "Unclassified" in
+        -- a CSV cell: that label is a REPORTING-SCREEN rendering choice
+        -- (`reporting._shape`), not an export one.
+        LEFT JOIN budget_category bcat ON bcat.category_id = bc.budget_category_id
         LEFT JOIN budget_ledger_cell bl
                ON bl.wbs_id = bc.wbs_id
               AND bl.budget_head_id = bc.budget_head_id
@@ -616,6 +630,9 @@ BUDGET_LEDGER_CELLS = Dataset(
         Column("budget_head_id", "bc.budget_head_id"),
         Column("budget_head_code", "bh.code"),
         Column("budget_head_name", "bh.name"),
+        Column("budget_category_id", "bc.budget_category_id"),
+        Column("budget_category_code", "bcat.code"),
+        Column("budget_category_name", "bcat.name"),
         # The ten metrics, read from where they are STORED. Not re-derived in
         # SQL: `docs/WAVE7_CONTRACT.md` -- "Do not re-derive them in SQL from
         # memory". `budget_ledger_cell` is what the ledger writers maintain and
@@ -660,11 +677,15 @@ BUDGET_LEDGER_CELLS = Dataset(
         "project_ids": _in_list("p.project_id"),
         "wbs_paths": _ltree_subtree("w.wbs_path"),
         "budget_head_ids": _in_list("bc.budget_head_id"),
+        # FABLE 5.1 / migration 026: real, independent of budget_head_ids --
+        # both may be supplied together, and the predicates AND (INTERSECT),
+        # never coalesce, exactly as `reporting.py`'s outer predicate does.
+        "category_ids": _in_list("bc.budget_category_id"),
         "date_from": _date_at_or_after("bc.updated_at"),
         "date_to": _date_at_or_before("bc.updated_at"),
     },
     unsupported={
-        "period_ids": _NO_PERIOD, "category_ids": _NO_CATEGORY,
+        "period_ids": _NO_PERIOD,
         "item_ids": _NO_ITEM, "approval_statuses": _NO_APPROVAL,
         "vendor_ids": "a budget cell has no vendor.",
         "document_types": "a budget cell is not a document.",
@@ -731,6 +752,13 @@ PURCHASE_ORDER_LINES = Dataset(
         FROM po_line pl
         JOIN purchase_order po ON po.po_id = pl.po_id
         JOIN project p ON p.project_id = pl.project_id
+        -- FABLE 5.1 / migration 026: the line's own CELL's category, read the
+        -- same way `reporting.py`'s PO branch reads it -- LEFT joined on
+        -- (wbs_id, budget_head_id), so a line whose cell pre-dates 026 still
+        -- exports.
+        LEFT JOIN budget_control_cell bc
+               ON bc.wbs_id = pl.wbs_id AND bc.budget_head_id = pl.budget_head_id
+        LEFT JOIN budget_category bcat ON bcat.category_id = bc.budget_category_id
     """,
     columns=(
         Column("po_id", "po.po_id"),
@@ -748,6 +776,9 @@ PURCHASE_ORDER_LINES = Dataset(
         Column("po_line_id", "pl.po_line_id"),
         Column("wbs_id", "pl.wbs_id"),
         Column("budget_head_id", "pl.budget_head_id"),
+        Column("budget_category_id", "bc.budget_category_id"),
+        Column("budget_category_code", "bcat.code"),
+        Column("budget_category_name", "bcat.name"),
         Column("description", "pl.description"),
         Column("quantity", "pl.quantity", "numeric"),
         Column("rate", "pl.rate_paise", "paise"),
@@ -778,12 +809,16 @@ PURCHASE_ORDER_LINES = Dataset(
         "location_ids": _in_list("p.location_id"),
         "project_ids": _in_list("p.project_id"),
         "budget_head_ids": _in_list("pl.budget_head_id"),
+        # FABLE 5.1 / migration 026: real, via the line's own cell (see the
+        # LEFT JOIN above) -- independent of budget_head_ids and composable
+        # with it, same as reporting.py's FilterSet.
+        "category_ids": _in_list("bc.budget_category_id"),
         "lifecycle_statuses": _in_list("po.status"),
         "date_from": _date_at_or_after("po.ordered_at"),
         "date_to": _date_at_or_before("po.ordered_at"),
     },
     unsupported={
-        "period_ids": _NO_PERIOD, "category_ids": _NO_CATEGORY,
+        "period_ids": _NO_PERIOD,
         "item_ids": _NO_ITEM, "approval_statuses": _NO_APPROVAL,
         "wbs_paths": ("po_line carries wbs_id, not wbs_path; a subtree filter "
                       "needs a join this shape does not make."),
