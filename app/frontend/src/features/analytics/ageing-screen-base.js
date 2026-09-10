@@ -42,7 +42,8 @@ import {
   card, createAnnouncer, exportButton, metricCard, reconciliationBlock,
 } from './analytics-kit.js';
 import {
-  createFilterBar, drilldownHref, filterChips, readFilters, screenHref, writeFilters,
+  createFilterBar, drilldownHref, filterChips, readFilters, screenHref,
+  withFilterRemoved, writeFilters,
 } from './analytics-filters.js';
 import { assertSumsBack, inr } from './analytics-metrics.js';
 import { METRIC_DEFINITION, METRIC_LABEL, readRows } from './analytics-shapes.js';
@@ -51,7 +52,8 @@ import { exportAvailable, getAgeing, queueExport } from './analytics-api.js';
 
 const FILTER_FIELDS = [
   'entity_ids', 'plant_ids', 'project_ids', 'wbs_paths', 'budget_head_ids',
-  'category_ids', 'vendor_ids', 'date_from', 'date_to', 'period_ids',
+  'category_ids', 'budget_category_ids',
+  'vendor_ids', 'date_from', 'date_to', 'period_ids',
 ];
 
 /**
@@ -171,7 +173,8 @@ export function createAgeingScreen(spec) {
 
     function renderChips(unapplied) {
       while (chips.firstChild) chips.removeChild(chips.firstChild);
-      chips.appendChild(filterChips(filters, unapplied));
+      chips.appendChild(filterChips(filters, unapplied,
+        (key) => apply(withFilterRemoved(filters, key))));
     }
 
     function renderCards(summary, rows) {

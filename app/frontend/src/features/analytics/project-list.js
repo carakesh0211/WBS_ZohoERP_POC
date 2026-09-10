@@ -38,7 +38,7 @@ import {
 } from './analytics-kit.js';
 import {
   createFilterBar, drilldownHref, filterChips, GROUP_DIMENSIONS, readDrilldownContext,
-  readFilters, writeFilters,
+  readFilters, withFilterRemoved, writeFilters,
 } from './analytics-filters.js';
 import { assertSumsBack } from './analytics-metrics.js';
 import {
@@ -60,7 +60,8 @@ const CARDS = [
 
 const FILTER_FIELDS = [
   'entity_ids', 'plant_ids', 'location_ids', 'project_ids', 'budget_head_ids',
-  'category_ids', 'lifecycle_statuses', 'approval_statuses', 'date_from', 'date_to',
+  'category_ids', 'budget_category_ids',
+  'lifecycle_statuses', 'approval_statuses', 'date_from', 'date_to',
   'period_ids', 'group_by', 'limit', 'sort',
 ];
 
@@ -141,7 +142,8 @@ export function mountProjectList(root) {
 
   function renderChips(unapplied) {
     while (chips.firstChild) chips.removeChild(chips.firstChild);
-    chips.appendChild(filterChips(filters, unapplied));
+    chips.appendChild(filterChips(filters, unapplied,
+      (key) => apply(withFilterRemoved(filters, key))));
   }
 
   function renderCards(totals, rows, paged) {

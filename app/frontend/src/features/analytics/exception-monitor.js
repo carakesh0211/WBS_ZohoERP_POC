@@ -55,7 +55,8 @@ import {
   bandBar, bandChip, card, countCard, createAnnouncer, exportButton, metricCard,
 } from './analytics-kit.js';
 import {
-  createFilterBar, drilldownHref, filterChips, readFilters, writeFilters,
+  createFilterBar, drilldownHref, filterChips, readFilters, withFilterRemoved,
+  writeFilters,
 } from './analytics-filters.js';
 import { inr } from './analytics-metrics.js';
 import { METRIC_LABEL, projectRow, readAlerts, readRows, readTotals } from './analytics-shapes.js';
@@ -67,7 +68,8 @@ import {
 
 const FILTER_FIELDS = [
   'entity_ids', 'plant_ids', 'location_ids', 'project_ids', 'budget_head_ids',
-  'category_ids', 'vendor_ids', 'document_types', 'lifecycle_statuses',
+  'category_ids', 'budget_category_ids',
+  'vendor_ids', 'document_types', 'lifecycle_statuses',
   'approval_statuses', 'date_from', 'date_to', 'period_ids',
 ];
 
@@ -252,7 +254,8 @@ export function mountExceptionMonitor(root) {
 
   function renderChips(unapplied) {
     while (chips.firstChild) chips.removeChild(chips.firstChild);
-    chips.appendChild(filterChips(filters, unapplied));
+    chips.appendChild(filterChips(filters, unapplied,
+      (key) => apply(withFilterRemoved(filters, key))));
   }
 
   function renderCards(alerts, totals, breached, rowCount) {

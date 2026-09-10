@@ -41,7 +41,8 @@ import {
   card, countCard, createAnnouncer, exportButton, metricCard, reconciliationBlock,
 } from './analytics-kit.js';
 import {
-  createFilterBar, drilldownHref, filterChips, readFilters, screenHref, writeFilters,
+  createFilterBar, drilldownHref, filterChips, readFilters, screenHref,
+  withFilterRemoved, writeFilters,
 } from './analytics-filters.js';
 import { assertSumsBack } from './analytics-metrics.js';
 import {
@@ -72,7 +73,8 @@ const COLUMNS = ['budget', 'commitment', 'actual', 'received_not_billed', 'avail
 
 const FILTER_FIELDS = [
   'entity_ids', 'plant_ids', 'location_ids', 'project_ids',
-  'budget_head_ids', 'category_ids', 'date_from', 'date_to', 'period_ids',
+  'budget_head_ids', 'category_ids', 'budget_category_ids',
+  'date_from', 'date_to', 'period_ids',
 ];
 
 export function mountExecutiveDashboard(root) {
@@ -150,7 +152,8 @@ export function mountExecutiveDashboard(root) {
 
   function renderChips(unapplied) {
     while (chips.firstChild) chips.removeChild(chips.firstChild);
-    chips.appendChild(filterChips(filters, unapplied));
+    chips.appendChild(filterChips(filters, unapplied,
+      (key) => apply(withFilterRemoved(filters, key))));
   }
 
   /* ---------------- cards ---------------- */

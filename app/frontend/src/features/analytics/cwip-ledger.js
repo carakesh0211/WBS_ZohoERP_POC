@@ -36,7 +36,7 @@ import {
 } from './analytics-kit.js';
 import {
   createFilterBar, drilldownHref, filterChips, readDrilldownContext, readFilters, screenHref,
-  writeFilters,
+  withFilterRemoved, writeFilters,
 } from './analytics-filters.js';
 import { assertSumsBack, inr, sumColumn } from './analytics-metrics.js';
 import { METRIC_DEFINITION, METRIC_LABEL, readRows, readTotals } from './analytics-shapes.js';
@@ -49,7 +49,8 @@ import {
 
 const FILTER_FIELDS = [
   'entity_ids', 'plant_ids', 'project_ids', 'wbs_paths', 'budget_head_ids',
-  'category_ids', 'vendor_ids', 'date_from', 'date_to', 'period_ids',
+  'category_ids', 'budget_category_ids',
+  'vendor_ids', 'date_from', 'date_to', 'period_ids',
 ];
 
 /** Is this row counted in actual CWIP? The SERVER says so; nothing is inferred. */
@@ -262,7 +263,8 @@ export function mountCwipLedger(root) {
 
   function renderChips(unapplied) {
     while (chips.firstChild) chips.removeChild(chips.firstChild);
-    chips.appendChild(filterChips(filters, unapplied));
+    chips.appendChild(filterChips(filters, unapplied,
+      (key) => apply(withFilterRemoved(filters, key))));
   }
 
   function renderCards(totals, rows, effective, excluded) {

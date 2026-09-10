@@ -42,7 +42,8 @@ import {
   card, createAnnouncer, exportButton, keyValues, metricCard, reconciliationBlock,
 } from './analytics-kit.js';
 import {
-  createFilterBar, drilldownHref, filterChips, readFilters, screenHref, writeFilters,
+  createFilterBar, drilldownHref, filterChips, readFilters, screenHref,
+  withFilterRemoved, writeFilters,
 } from './analytics-filters.js';
 import { assertSumsBack, inr } from './analytics-metrics.js';
 import {
@@ -187,7 +188,8 @@ export function mountWbsElementDetail(root) {
 
   function renderChips(unapplied) {
     while (chips.firstChild) chips.removeChild(chips.firstChild);
-    chips.appendChild(filterChips(filters, unapplied));
+    chips.appendChild(filterChips(filters, unapplied,
+      (key) => apply(withFilterRemoved(filters, key))));
   }
 
   function crossLinks() {

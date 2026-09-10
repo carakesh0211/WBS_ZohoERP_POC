@@ -38,7 +38,8 @@ import {
   card, countCard, createAnnouncer, exportButton, metricCard, reconciliationBlock,
 } from './analytics-kit.js';
 import {
-  createFilterBar, drilldownHref, filterChips, readFilters, screenHref, writeFilters,
+  createFilterBar, drilldownHref, filterChips, readFilters, screenHref,
+  withFilterRemoved, writeFilters,
 } from './analytics-filters.js';
 import { assertSumsBack } from './analytics-metrics.js';
 import {
@@ -97,7 +98,8 @@ export function createWbsScreen(spec) {
     const filterBar = createFilterBar({
       idPrefix: spec.idPrefix,
       fields: ['project_ids', 'wbs_paths', 'budget_head_ids', 'category_ids',
-        'lifecycle_statuses', 'date_from', 'date_to', 'period_ids'],
+        'budget_category_ids', 'lifecycle_statuses', 'date_from', 'date_to',
+        'period_ids'],
       value: filters,
       onApply: (next) => apply(next),
     });
@@ -146,7 +148,8 @@ export function createWbsScreen(spec) {
 
     function renderChips(unapplied) {
       while (chips.firstChild) chips.removeChild(chips.firstChild);
-      chips.appendChild(filterChips(filters, unapplied));
+      chips.appendChild(filterChips(filters, unapplied,
+        (key) => apply(withFilterRemoved(filters, key))));
     }
 
     function renderCards(totals, rows) {
