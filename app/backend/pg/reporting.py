@@ -75,23 +75,41 @@ see :data:`UNSUPPORTED_FILTERS`. No total is ever synthesised to fill a gap.
 WHAT THIS SCHEMA CANNOT FILTER ON TODAY, NAMED RATHER THAN IGNORED
 ==================================================================
 
-Two of the contract's filters have no column to bind to, and a filter that is
-silently dropped is worse than one that is refused: the reader gets a total
-that looks right, for a population they did not ask for.
+Several of the contract's filters have no column to bind to across every
+bucket, and a filter that is silently dropped is worse than one that is
+refused: the reader gets a total that looks right, for a population they did
+not ask for.
 
   * ``item_ids`` -- there is no ``item_id`` on ``pr_line``, ``po_line``,
-    ``grn_line`` or ``bill_line``. ``item_master`` exists (005) and nothing
-    references it from the document chain.
-  * ``vendor_ids`` -- 014 gave ``bill`` a ``vendor_id`` FK; ``purchase_order``
-    still carries only ``vendor_name`` text. Serving this filter would apply it
-    to ``actual`` and not to ``ordered`` or ``commitment``, so one report would
-    show a vendor's invoices against the whole estate's commitments. That is
-    the disagreement class this module exists to prevent, so it refuses instead
-    of half-answering.
+    ``grn_line`` or ``bill_line``, even after migration 027. ``item_master``
+    exists (005) and nothing references it from the document chain. Refused
+    outright, always.
+  * ``division_ids`` / ``branch_ids`` / ``zone_ids`` -- migration 026 resolves
+    these onto ``original_budget_line``, the ORIGINAL BUDGET DOCUMENT's own
+    entry line, and onto nothing this module reads. Refused outright, always.
+  * ``fiscal_years`` -- a column of ``original_budget`` (026), the document,
+    not of ``budget_line``. Use ``period_ids``.
+  * ``requestor_ids`` / ``approver_ids`` -- the identities this schema records
+    (``purchase_request.requested_by``, ``original_budget.
+    approving_authority``, ``approval_instance``) sit on one document type
+    each, not on a column shared across all five branches.
+  * ``vendor_ids`` -- CONDITIONALLY refused, and this one is Fable 5.1's
+    change from a blanket refusal. Migration 014 gave ``bill`` a real
+    ``vendor_id`` FK; ``purchase_order`` still carries only ``vendor_name``
+    text, so no other bucket has a vendor to filter on. Naming ``vendor_ids``
+    (or grouping by ``vendor``) is honoured only when ``document_types``
+    narrows the report to buckets :data:`VENDOR_SUPPORTED_BUCKETS` covers --
+    in practice, ``document_types=["BILL"]`` -- and refused with
+    ``FILTER_UNSUPPORTED_FOR_METRIC``, naming exactly which bucket could not
+    honour it, otherwise. Never half-answered: a vendor filter is never
+    applied to ``actual`` alone while ``ordered``/``commitment`` stay
+    unfiltered across every vendor.
 
-Both are declared, not commented: :data:`UNSUPPORTED_FILTERS` carries the code
-and the sentence, ``api/reports.py`` renders them as an ``unavailable`` state,
-and a test asserts the refusal rather than the workaround.
+All are declared, not commented: :data:`UNSUPPORTED_FILTERS` carries the
+always-refused ones (their own code and sentence); ``FilterSet.validate``
+carries the conditional ``vendor`` refusal. ``api/reports.py`` renders both as
+an ``unavailable`` state, and a test asserts the refusal rather than the
+workaround.
 
 DETERMINISTIC ORDER, SO PAGINATION CANNOT SKIP OR REPEAT
 =========================================================
@@ -252,15 +270,51 @@ DIMENSIONS: dict[str, Dimension] = {
     "category": Dimension(
         "category", "f.budget_head_id", "bh.name",
         "Category (AMB-04: read as the budget head)"),
+    #: FABLE 5.1 / migration 026, resolving AMB-04 for real: a GENUINE
+    #: classification master, `budget_category`, independent of `budget_head`
+    #: and never aliased to it -- product-owner decision, recorded in 026's own
+    #: header. A cell carries exactly one category, assigned on release of the
+    #: original budget that grants it, and reporting reads THAT -- the CELL's
+    #: `budget_control_cell.budget_category_id` -- not the document line's, so a
+    #: cell migrated before 026 (category NULL) renders "Unclassified" rather
+    #: than vanishing from a grouped report. `category` (above) stays the
+    #: pre-026 alias to `budget_head` for anything that still reads it; this is
+    #: the new, real axis, composable WITH `budget_head` in the same `group_by`
+    #: because the two are genuinely different columns.
+    "budget_category": Dimension(
+        "budget_category", "f.budget_category_id", "bcat.name",
+        "Budget category (migration 026: a classification dimension separate "
+        "from budget head, never an alias of it -- AMB-04 resolved)"),
+    #: `bill.vendor_id` (014) is the only vendor identity this schema carries;
+    #: `purchase_order` still has only `vendor_name` text. So `vendor` is real
+    #: on the `actual` bucket alone -- see `VENDOR_SUPPORTED_BUCKETS` and
+    #: `validate()`, which refuses combining it with any bucket that has no
+    #: vendor rather than silently leaving those buckets unfiltered.
+    "vendor": Dimension(
+        "vendor", "f.vendor_id", "vm.name",
+        "Vendor (bill.vendor_id only; usable with document_types=['BILL'] -- "
+        "see FILTER_UNSUPPORTED_FOR_METRIC)"),
 }
 
 #: `category` and `budget_head` select the SAME column, so naming both in one
 #: `group_by` would produce two identical columns and a card that appears to
 #: break a total down twice. Refused rather than de-duplicated silently: the
 #: caller asked for something that cannot mean what they think it means.
+#:
+#: `budget_category` is DELIBERATELY ABSENT from this table. It is a real,
+#: independent column (migration 026) and not a second name for `budget_head`
+#: or `category` -- grouping by `budget_head` AND `budget_category` together is
+#: exactly what AMB-04's resolution asks reporting to be able to do.
 _ALIASED_DIMENSIONS: tuple[frozenset[str], ...] = (
     frozenset({"category", "budget_head"}),
 )
+
+#: The only buckets `vendor` can filter or group by, because `bill.vendor_id`
+#: is the only vendor identity in this schema (014). `budget`/`original`/
+#: `revisions` are included because they are the unconditional denominator
+#: (see `buckets()`) and carry no vendor of their own to contradict.
+VENDOR_SUPPORTED_BUCKETS: frozenset[str] = frozenset(
+    {"budget", "original", "revisions", "actual"})
 
 
 # ===========================================================================
@@ -286,19 +340,62 @@ UNSUPPORTED_FILTERS: dict[str, UnsupportedFilter] = {
     "item_ids": UnsupportedFilter(
         "item_ids", "ITEM_DIMENSION_ABSENT",
         "Filtering by item is not available: no item_id column exists on "
-        "pr_line, po_line, grn_line or bill_line. item_master (migration 005) "
-        "is not referenced from the procurement document chain, so there is "
-        "nothing to join. This filter is refused rather than ignored -- a "
-        "report that silently drops it returns a correct-looking total for a "
-        "population nobody asked for."),
-    "vendor_ids": UnsupportedFilter(
-        "vendor_ids", "VENDOR_DIMENSION_INCOMPLETE",
-        "Filtering by vendor is not available: migration 014 gave bill a "
-        "vendor_id foreign key, but purchase_order still carries only "
-        "vendor_name as text. Applying this filter would narrow actual and "
-        "received while leaving ordered and commitment across every vendor, "
-        "so one report would show a single vendor's invoices against the "
-        "whole estate's commitments. Refused rather than half-answered."),
+        "pr_line, po_line, grn_line or bill_line, even after migration 027. "
+        "item_master (migration 005) is not referenced from the procurement "
+        "document chain, so there is nothing to join. This filter is refused "
+        "rather than ignored -- a report that silently drops it returns a "
+        "correct-looking total for a population nobody asked for."),
+    # `vendor_ids` is NOT here. `bill.vendor_id` (014) makes it real for the
+    # `actual` bucket, so it is now a CONDITIONAL refusal -- see
+    # `FilterSet.validate` and `VENDOR_SUPPORTED_BUCKETS` -- rather than a
+    # blanket one: naming `vendor_ids` together with `document_types=['BILL']`
+    # (or leaving `document_types` unset while grouping is restricted the same
+    # way) is honoured; naming it alongside any bucket with no vendor of its
+    # own is refused by the SAME "never half-answer" rule, with a 422 naming
+    # exactly which buckets could not honour it.
+    "division_ids": UnsupportedFilter(
+        "division_ids", "DIVISION_DIMENSION_ABSENT",
+        "Filtering by division is not available: `division` (migration 001) "
+        "is reachable only from `original_budget_line` (migration 026), the "
+        "ORIGINAL BUDGET DOCUMENT's own entry line. Nothing in the reporting "
+        "fact -- budget_line, po_line, grn_line, bill_line, pr_reservation -- "
+        "carries a division_id, so there is no column to join across every "
+        "bucket. Refused rather than applied to one bucket and silently "
+        "dropped from the rest."),
+    "branch_ids": UnsupportedFilter(
+        "branch_ids", "BRANCH_DIMENSION_ABSENT",
+        "Filtering by branch is not available for the same reason as "
+        "division: `branch` (migration 001) is reachable only from "
+        "`original_budget_line` (migration 026) and no table in the reporting "
+        "fact carries a branch_id."),
+    "zone_ids": UnsupportedFilter(
+        "zone_ids", "ZONE_DIMENSION_ABSENT",
+        "Filtering by zone is not available for the same reason as division "
+        "and branch: `zone` (migration 001) is reachable only from "
+        "`original_budget_line` (migration 026) and no table in the reporting "
+        "fact carries a zone_id."),
+    "fiscal_years": UnsupportedFilter(
+        "fiscal_years", "FISCAL_YEAR_DIMENSION_ABSENT",
+        "Filtering by fiscal year is not available: `fiscal_year` (migration "
+        "026) is a column of `original_budget`, the DOCUMENT, not of "
+        "`budget_line` or any other table the reporting fact reads. Use "
+        "`period_ids` instead -- `accounting_period` is what this schema "
+        "actually resolves a date against, per entity."),
+    "requestor_ids": UnsupportedFilter(
+        "requestor_ids", "REQUESTOR_DIMENSION_ABSENT",
+        "Filtering by requestor is not available across the whole report: "
+        "purchase_request.requested_by exists (013) but nothing on "
+        "budget_line, po_line, grn_line or bill_line names a requestor, so "
+        "this filter would narrow pr_reserved alone and leave the other eight "
+        "components unfiltered. Refused rather than half-answered."),
+    "approver_ids": UnsupportedFilter(
+        "approver_ids", "APPROVER_DIMENSION_ABSENT",
+        "Filtering by approver is not available: the approving identity this "
+        "schema records -- original_budget.approving_authority (026), "
+        "approval_instance's own actors -- sits on documents the reporting "
+        "fact does not read line-by-line. There is no single column shared "
+        "across budget_line, po_line, grn_line, bill_line and pr_reservation "
+        "to filter on."),
 }
 
 
@@ -367,10 +464,39 @@ class FilterSet:
     #: reading. Given ALONGSIDE `budget_head_ids` the two INTERSECT, because
     #: both narrow and a filter never widens.
     category_ids: tuple[str, ...] | None = None
+    #: FABLE 5.1: the REAL category master (migration 026), resolved against
+    #: the CELL's `budget_control_cell.budget_category_id` -- never the same
+    #: column as `budget_head_ids` or `category_ids`, and freely composable
+    #: with both because AMB-04 makes them independent dimensions.
+    budget_category_ids: tuple[str, ...] | None = None
+
+    # ---- conditionally refused: see VENDOR_SUPPORTED_BUCKETS / validate() -
+    #: Real only on `bill.vendor_id` (014). Naming it together with a bucket
+    #: that has no vendor of its own (`ordered`, `commitment`, `received`,
+    #: `received_not_billed`, `pr_reserved`) is refused in `validate()` with
+    #: `FILTER_UNSUPPORTED_FOR_METRIC` -- never silently left unfiltered on
+    #: those buckets.
+    vendor_ids: tuple[str, ...] | None = None
 
     # ---- refused, and refused loudly: see UNSUPPORTED_FILTERS -------------
-    vendor_ids: tuple[str, ...] | None = None
     item_ids: tuple[str, ...] | None = None
+    #: `division` / `branch` / `zone` (migration 001) are reachable only from
+    #: `original_budget_line` (026), the document's own entry, and not from
+    #: any table the reporting fact reads. Declared as fields so a caller who
+    #: names them is REFUSED with a coded reason -- see UNSUPPORTED_FILTERS --
+    #: rather than having FastAPI silently ignore an unrecognised parameter.
+    division_ids: tuple[str, ...] | None = None
+    branch_ids: tuple[str, ...] | None = None
+    zone_ids: tuple[str, ...] | None = None
+    #: `original_budget.fiscal_year` (026) is a document column; the fact has
+    #: no fiscal_year anywhere. Use `period_ids`.
+    fiscal_years: tuple[str, ...] | None = None
+    #: `purchase_request.requested_by` (013) exists but is PR-only; there is no
+    #: shared "requestor" column across the other four buckets.
+    requestor_ids: tuple[str, ...] | None = None
+    #: The approving identity sits on documents (`original_budget.
+    #: approving_authority`, `approval_instance`), not on the fact's own rows.
+    approver_ids: tuple[str, ...] | None = None
 
     # ---- document selection ------------------------------------------------
     document_types: tuple[str, ...] | None = None
@@ -414,7 +540,10 @@ class FilterSet:
             name: _tuple(kwargs.pop(name, None))
             for name in ("entity_ids", "plant_ids", "location_ids",
                          "project_ids", "wbs_paths", "budget_head_ids",
-                         "category_ids", "vendor_ids", "item_ids",
+                         "category_ids", "budget_category_ids",
+                         "vendor_ids", "item_ids",
+                         "division_ids", "branch_ids", "zone_ids",
+                         "fiscal_years", "requestor_ids", "approver_ids",
                          "document_types", "lifecycle_statuses",
                          "approval_statuses", "period_ids")
         }
@@ -487,6 +616,34 @@ class FilterSet:
                     f"(AMB-04 reads 'category' as the budget head), so "
                     f"grouping by both would break one total down twice into "
                     f"identical columns. Name one.")
+
+        # VENDOR IS REAL ON ONE BUCKET ONLY: `bill.vendor_id` (014).
+        # `purchase_order` still carries `vendor_name` text and nothing else in
+        # the fact names a vendor at all, so filtering or grouping by vendor
+        # while any OTHER bucket is also selected would either apply the
+        # filter to `actual` alone and leave `ordered`/`commitment` across
+        # every vendor (silently wider), or -- worse -- match no row on a
+        # bucket that has no `vendor_id` to compare against (silently empty).
+        # Both are refused by NAME: the caller must restrict `document_types`
+        # to `['BILL']` (or a subset whose `buckets()` stays inside
+        # `VENDOR_SUPPORTED_BUCKETS`) before vendor can be honoured at all.
+        if self.vendor_ids is not None or "vendor" in self.group_by:
+            unsupported_buckets = tuple(sorted(
+                set(self.buckets()) - VENDOR_SUPPORTED_BUCKETS))
+            if unsupported_buckets:
+                raise FilterError(
+                    "FILTER_UNSUPPORTED_FOR_METRIC",
+                    f"vendor cannot be applied together with "
+                    f"{', '.join(unsupported_buckets)}: only bill.vendor_id "
+                    f"(migration 014) carries a vendor, so a vendor filter or "
+                    f"grouping is honoured only when document_types narrows to "
+                    f"a selection whose buckets are all one of "
+                    f"{', '.join(sorted(VENDOR_SUPPORTED_BUCKETS))}. Narrow "
+                    f"document_types (e.g. to ['BILL']), or drop the vendor "
+                    f"filter/grouping -- never answered with vendor silently "
+                    f"unfiltered on the rest.",
+                    detail={"dimension": "vendor",
+                            "unsupported_buckets": list(unsupported_buckets)})
 
         if self.date_from and self.date_to and self.date_from > self.date_to:
             raise FilterError(
@@ -622,7 +779,10 @@ class FilterSet:
 #: Fields that round-trip through a saved view. `cursor` is absent by design.
 _SERIALISED_FIELDS: tuple[str, ...] = (
     "entity_ids", "plant_ids", "location_ids", "project_ids", "wbs_paths",
-    "budget_head_ids", "category_ids", "vendor_ids", "item_ids",
+    "budget_head_ids", "category_ids", "budget_category_ids",
+    "vendor_ids", "item_ids",
+    "division_ids", "branch_ids", "zone_ids", "fiscal_years",
+    "requestor_ids", "approver_ids",
     "document_types", "lifecycle_statuses", "approval_statuses",
     "date_from", "date_to", "period_ids", "group_by", "sort", "sort_desc",
     "limit",
@@ -641,6 +801,11 @@ _DRILL_FIELD: dict[str, str] = {
     "entity": "entity_ids", "plant": "plant_ids", "location": "location_ids",
     "project": "project_ids", "budget_head": "budget_head_ids",
     "category": "budget_head_ids",
+    #: FABLE 5.1: `budget_category` narrows its OWN field, `budget_category_ids`
+    #: -- never `budget_head_ids`. It is a genuinely separate dimension, not the
+    #: `category`/`budget_head` alias above.
+    "budget_category": "budget_category_ids",
+    "vendor": "vendor_ids",
 }
 
 DEFAULT_LIMIT = 100
@@ -715,6 +880,11 @@ def _narrow_wbs(filters: "FilterSet", wbs_path: str | None) -> "FilterSet":
 _FACT_COLUMNS: tuple[str, ...] = (
     "entity_id", "plant_id", "location_id", "project_id",
     "wbs_id", "wbs_path", "budget_head_id",
+    #: FABLE 5.1: the cell's category (026), never the document line's -- and
+    #: `vendor_id` / `branch_kind`, which exist so a vendor filter can be
+    #: refused OR honoured per branch (`VENDOR_SUPPORTED_BUCKETS`) instead of
+    #: refused outright.
+    "budget_category_id", "vendor_id", "branch_kind",
     *(f"{component}_paise" for component in COMPONENTS),
 )
 
@@ -772,7 +942,8 @@ def _period_on(date_column: str) -> str:
 #: live tests that all skipped locally and would all have errored in CI.
 _BUDGET_BRANCH = f"""
     SELECT p.entity_id, p.plant_id, p.location_id, p.project_id,
-           bl.wbs_id, w.wbs_path, bl.budget_head_id,
+           bl.wbs_id, w.wbs_path, bl.budget_head_id, bc.budget_category_id,
+           NULL::text AS vendor_id, 'BUDGET'::text AS branch_kind,
            {_zeros_except(
                budget="SUM(bl.amount_paise)::bigint",
                original=("SUM(CASE WHEN bl.kind = 'ORIGINAL' "
@@ -782,6 +953,12 @@ _BUDGET_BRANCH = f"""
     FROM budget_line bl
     JOIN wbs_element w ON w.wbs_id = bl.wbs_id
     JOIN project p ON p.project_id = w.project_id
+    -- FABLE 5.1 / migration 026: the CELL's category, read through a LEFT
+    -- JOIN so a cell that pre-dates 026 (budget_category_id NULL) still
+    -- contributes its budget rather than vanishing from a grouped report --
+    -- it renders "Unclassified" (see `_shape`), never absent.
+    LEFT JOIN budget_control_cell bc
+           ON bc.wbs_id = bl.wbs_id AND bc.budget_head_id = bl.budget_head_id
     WHERE bl.status = 'Approved'
       AND bl.effective_from <= %(as_of)s
       AND (bl.effective_to IS NULL OR bl.effective_to >= %(as_of)s)
@@ -789,7 +966,7 @@ _BUDGET_BRANCH = f"""
       AND (%(date_to)s::date IS NULL OR bl.effective_from <= %(date_to)s)
       {_period_on("bl.effective_from")}
     GROUP BY p.entity_id, p.plant_id, p.location_id, p.project_id,
-             bl.wbs_id, w.wbs_path, bl.budget_head_id
+             bl.wbs_id, w.wbs_path, bl.budget_head_id, bc.budget_category_id
 """
 
 #: `ordered`, `commitment` and `received_not_billed`, at PO LINE grain.
@@ -808,7 +985,13 @@ _BUDGET_BRANCH = f"""
 #: `Cancelled` or `Closed` holds none at all.
 _PO_BRANCH = f"""
     SELECT p.entity_id, p.plant_id, p.location_id, p.project_id,
-           line.wbs_id, w.wbs_path, line.budget_head_id,
+           line.wbs_id, w.wbs_path, line.budget_head_id, bc.budget_category_id,
+           -- `purchase_order` carries `vendor_name` TEXT, not a vendor_master
+           -- id (014 only gave `bill` that FK). `vendor` is NULL here by
+           -- construction, and `validate()` refuses combining a vendor filter
+           -- with the `ordered`/`commitment` buckets this branch supplies
+           -- rather than let it silently match nothing.
+           NULL::text AS vendor_id, 'PO'::text AS branch_kind,
            {_zeros_except(
                ordered="SUM(line.ordered_paise)::bigint",
                commitment=("SUM(CASE WHEN line.po_status = ANY(%(releasing)s) "
@@ -857,10 +1040,12 @@ _PO_BRANCH = f"""
     ) AS line
     JOIN wbs_element w ON w.wbs_id = line.wbs_id
     JOIN project p ON p.project_id = line.project_id
+    LEFT JOIN budget_control_cell bc
+           ON bc.wbs_id = line.wbs_id AND bc.budget_head_id = line.budget_head_id
     WHERE TRUE
       {_period_on("line.ordered_at")}
     GROUP BY p.entity_id, p.plant_id, p.location_id, p.project_id,
-             line.wbs_id, w.wbs_path, line.budget_head_id
+             line.wbs_id, w.wbs_path, line.budget_head_id, bc.budget_category_id
 """
 
 #: `received`, as a plain total on its own cell grain.
@@ -874,7 +1059,8 @@ _PO_BRANCH = f"""
 #: undocumented.
 _GRN_BRANCH = f"""
     SELECT p.entity_id, p.plant_id, p.location_id, p.project_id,
-           pl.wbs_id, w.wbs_path, pl.budget_head_id,
+           pl.wbs_id, w.wbs_path, pl.budget_head_id, bc.budget_category_id,
+           NULL::text AS vendor_id, 'GRN'::text AS branch_kind,
            {_zeros_except(
                received=("SUM(CASE WHEN g.is_reversal "
                          "THEN -ABS(gl.amount_paise) "
@@ -884,12 +1070,14 @@ _GRN_BRANCH = f"""
     JOIN po_line pl ON pl.po_line_id = gl.po_line_id
     JOIN wbs_element w ON w.wbs_id = pl.wbs_id
     JOIN project p ON p.project_id = pl.project_id
+    LEFT JOIN budget_control_cell bc
+           ON bc.wbs_id = pl.wbs_id AND bc.budget_head_id = pl.budget_head_id
     WHERE g.status <> 'Void'
       AND (%(date_from)s::date IS NULL OR g.received_at::date >= %(date_from)s)
       AND (%(date_to)s::date IS NULL OR g.received_at::date <= %(date_to)s)
       {_period_on("g.received_at::date")}
     GROUP BY p.entity_id, p.plant_id, p.location_id, p.project_id,
-             pl.wbs_id, w.wbs_path, pl.budget_head_id
+             pl.wbs_id, w.wbs_path, pl.budget_head_id, bc.budget_category_id
 """
 
 #: `actual` -- CWIP. AUD-C-004: accounting-effective bills only.
@@ -901,7 +1089,10 @@ _GRN_BRANCH = f"""
 #: entities that raise them.
 _BILL_BRANCH = f"""
     SELECT p.entity_id, p.plant_id, p.location_id, p.project_id,
-           bl.wbs_id, w.wbs_path, bl.budget_head_id,
+           bl.wbs_id, w.wbs_path, bl.budget_head_id, bc.budget_category_id,
+           -- The ONE real vendor identity in this schema: `bill.vendor_id`
+           -- (014). Every other branch's `vendor_id` is NULL by construction.
+           b.vendor_id, 'BILL'::text AS branch_kind,
            {_zeros_except(
                actual=("SUM(CASE WHEN b.accounting_status = 'Reversal' "
                        "THEN -ABS(bl.amount_paise "
@@ -912,12 +1103,15 @@ _BILL_BRANCH = f"""
     JOIN bill b ON b.bill_id = bl.bill_id
     JOIN wbs_element w ON w.wbs_id = bl.wbs_id
     JOIN project p ON p.project_id = w.project_id
+    LEFT JOIN budget_control_cell bc
+           ON bc.wbs_id = bl.wbs_id AND bc.budget_head_id = bl.budget_head_id
     WHERE b.accounting_status = ANY(%(effective)s)
       AND (%(date_from)s::date IS NULL OR b.bill_date >= %(date_from)s)
       AND (%(date_to)s::date IS NULL OR b.bill_date <= %(date_to)s)
       {_period_on("b.bill_date")}
     GROUP BY p.entity_id, p.plant_id, p.location_id, p.project_id,
-             bl.wbs_id, w.wbs_path, bl.budget_head_id
+             bl.wbs_id, w.wbs_path, bl.budget_head_id, bc.budget_category_id,
+             b.vendor_id
 """
 
 #: `pr_reserved` -- live PR reservations. AUD-H-001.
@@ -936,12 +1130,15 @@ _BILL_BRANCH = f"""
 #: buckets.
 _PR_BRANCH = f"""
     SELECT p.entity_id, p.plant_id, p.location_id, p.project_id,
-           r.wbs_id, w.wbs_path, r.budget_head_id,
+           r.wbs_id, w.wbs_path, r.budget_head_id, bc.budget_category_id,
+           NULL::text AS vendor_id, 'PR'::text AS branch_kind,
            {_zeros_except(pr_reserved="SUM(r.amount_paise)::bigint")}
     FROM pr_reservation r
     JOIN purchase_request req ON req.pr_id = r.pr_id
     JOIN wbs_element w ON w.wbs_id = r.wbs_id
     JOIN project p ON p.project_id = r.project_id
+    LEFT JOIN budget_control_cell bc
+           ON bc.wbs_id = r.wbs_id AND bc.budget_head_id = r.budget_head_id
     WHERE r.state = 'Reserved'
       AND (%(date_from)s::date IS NULL
            OR req.requested_at::date >= %(date_from)s)
@@ -949,7 +1146,7 @@ _PR_BRANCH = f"""
       AND (%(lifecycle)s::text[] IS NULL OR req.status = ANY(%(lifecycle)s))
       {_period_on("req.requested_at::date")}
     GROUP BY p.entity_id, p.plant_id, p.location_id, p.project_id,
-             r.wbs_id, w.wbs_path, r.budget_head_id
+             r.wbs_id, w.wbs_path, r.budget_head_id, bc.budget_category_id
 """
 
 #: document type -> the branch supplying its buckets. `budget` has no document
@@ -982,6 +1179,11 @@ _OUTER_PREDICATES = """
            OR f.budget_head_id = ANY(%(budget_head_ids)s))
       AND (%(category_ids)s::text[] IS NULL
            OR f.budget_head_id = ANY(%(category_ids)s))
+      AND (%(budget_category_ids)s::text[] IS NULL
+           OR f.budget_category_id = ANY(%(budget_category_ids)s))
+      AND (%(vendor_ids)s::text[] IS NULL
+           OR f.branch_kind = 'BUDGET'
+           OR f.vendor_id = ANY(%(vendor_ids)s))
       AND (%(wbs_paths)s::text[] IS NULL
            OR EXISTS (SELECT 1 FROM unnest(%(wbs_paths)s::text[]) AS q(path)
                       WHERE f.wbs_path <@ q.path::ltree))
@@ -1219,6 +1421,8 @@ def _params(filters: "FilterSet", *, as_of: date | None = None) -> dict[str, Any
         "project_ids": array(filters.project_ids),
         "budget_head_ids": array(filters.budget_head_ids),
         "category_ids": array(filters.category_ids),
+        "budget_category_ids": array(filters.budget_category_ids),
+        "vendor_ids": array(filters.vendor_ids),
         "wbs_paths": array(filters.wbs_paths),
         "approval_statuses": array(filters.approval_statuses),
     }
@@ -1237,6 +1441,12 @@ _LABEL_JOINS: dict[str, str] = {
     "wbs": "LEFT JOIN wbs_element w ON w.wbs_id = g.wbs_id",
     "budget_head": "LEFT JOIN budget_head bh ON bh.budget_head_id = g.budget_head_id",
     "category": "LEFT JOIN budget_head bh ON bh.budget_head_id = g.budget_head_id",
+    #: FABLE 5.1: `budget_category`'s OWN join, against its OWN master table --
+    #: `bcat`, never `bh`. A NULL key (a pre-026 cell) renders no row here, so
+    #: `_shape` substitutes "Unclassified" rather than showing a blank label.
+    "budget_category": "LEFT JOIN budget_category bcat "
+                       "ON bcat.category_id = g.budget_category_id",
+    "vendor": "LEFT JOIN vendor_master vm ON vm.vendor_id = g.vendor_id",
 }
 
 #: dimension -> the fact column carrying its key, INSIDE the grouped CTE.
@@ -1244,6 +1454,7 @@ _GROUP_KEY_COLUMN: dict[str, str] = {
     "entity": "entity_id", "plant": "plant_id", "location": "location_id",
     "project": "project_id", "wbs": "wbs_id",
     "budget_head": "budget_head_id", "category": "budget_head_id",
+    "budget_category": "budget_category_id", "vendor": "vendor_id",
 }
 
 
@@ -1582,9 +1793,17 @@ def _shape(rows: Sequence[tuple], filters: "FilterSet",
             dimension: keys[grouped.index(_GROUP_KEY_COLUMN[dimension])]
             for dimension in group_by
         }
+        # FABLE 5.1: a NULL `budget_category` key is a cell that migration 026
+        # never classified (or that pre-dates it). "Unclassified" is rendered
+        # rather than a blank string -- REQ-RPT-009/010's own rule that NULL
+        # renders as a real label, not an absence a reader has to interpret.
+        label_values = list(labels)
+        for index, name in enumerate(label_names):
+            if name == "budget_category" and label_values[index] is None:
+                label_values[index] = "Unclassified"
         out_rows.append({
             "key": key_by_dimension,
-            "labels": dict(zip(label_names, labels)),
+            "labels": dict(zip(label_names, label_values)),
             **measures,
         })
 
