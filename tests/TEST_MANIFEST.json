@@ -12069,6 +12069,92 @@
         "assertions": 3,
         "body_sha": "921857ae8c4f6ead"
       }
+    },
+    "test_zoho_routes_fable51.py": {
+      "test_manage_routes_refuse_the_auditor_before_looking_the_connection_up": {
+        "assertions": 1,
+        "body_sha": "acd9d7f45d312b54"
+      },
+      "test_every_connection_route_refuses_a_role_without_connector_read": {
+        "assertions": 2,
+        "body_sha": "e7a3e441f12f57f7"
+      },
+      "test_every_connection_route_refuses_an_unauthenticated_caller": {
+        "assertions": 1,
+        "body_sha": "1d8b14d9ff8fdeb1"
+      },
+      "test_an_unknown_connection_is_404_on_every_route": {
+        "assertions": 2,
+        "body_sha": "3eba0f794a8eee48"
+      },
+      "test_health_no_longer_fabricates_an_empty_connection": {
+        "assertions": 2,
+        "body_sha": "54a23ad046d3a99c"
+      },
+      "test_test_route_no_longer_answers_200_with_an_error_body": {
+        "assertions": 2,
+        "body_sha": "d6c168573c1f06f4"
+      },
+      "test_refresh_before_oauth_is_409_not_connected": {
+        "assertions": 2,
+        "body_sha": "48e97bfa869f54ee"
+      },
+      "test_refresh_of_a_disabled_connector_is_409": {
+        "assertions": 3,
+        "body_sha": "60008a64cca4e9ca"
+      },
+      "test_refresh_of_a_connected_active_profile_succeeds": {
+        "assertions": 2,
+        "body_sha": "b58b8eefc3f11de9"
+      },
+      "test_withholding_a_scope_that_is_not_required_is_422": {
+        "assertions": 3,
+        "body_sha": "12a69e56471d18c6"
+      },
+      "test_the_console_still_runs_for_a_disconnected_profile": {
+        "assertions": 2,
+        "body_sha": "9aeee28df4b43dca"
+      },
+      "test_no_zoho_route_answers_500_in_any_state": {
+        "assertions": 2,
+        "body_sha": "5e8d89ff85d5de45"
+      },
+      "test_sync_dedupes_on_idempotency_key": {
+        "assertions": 5,
+        "body_sha": "62df8f145f5e41d5"
+      },
+      "test_the_same_key_on_another_module_is_not_a_replay": {
+        "assertions": 2,
+        "body_sha": "e01f577e19c1ec94"
+      },
+      "test_a_replay_leaves_no_second_audit_row": {
+        "assertions": 1,
+        "body_sha": "887c48115cee6d2e"
+      },
+      "test_refresh_is_audited_with_the_session_identity": {
+        "assertions": 4,
+        "body_sha": "9555cd82a9f50611"
+      },
+      "test_connectivity_test_is_audited_and_names_who_ran_it": {
+        "assertions": 3,
+        "body_sha": "e09a18cc5e90a76a"
+      },
+      "test_sync_is_audited_with_direction_module_and_correlation": {
+        "assertions": 3,
+        "body_sha": "a3007f26d5659492"
+      },
+      "test_a_refused_route_leaves_no_audit_row": {
+        "assertions": 1,
+        "body_sha": "bc70224fb202e163"
+      },
+      "test_the_audit_chain_still_verifies_after_the_new_rows": {
+        "assertions": 2,
+        "body_sha": "f982ade61e5ac6e1"
+      },
+      "test_every_mutating_zoho_route_is_in_the_authorisation_matrix": {
+        "assertions": 2,
+        "body_sha": "6223a27985166193"
+      }
     }
   },
   "counts": {
@@ -12190,7 +12276,8 @@
     "test_security_identity.py": 10,
     "test_security_scope_tristate.py": 13,
     "test_security_secrets.py": 12,
-    "test_uat_profile.py": 21
+    "test_uat_profile.py": 21,
+    "test_zoho_routes_fable51.py": 21
   },
   "assertions": {
     "test_api_auth.py": 50,
@@ -12311,6 +12398,7 @@
     "test_security_identity.py": 18,
     "test_security_scope_tristate.py": 39,
     "test_security_secrets.py": 29,
-    "test_uat_profile.py": 72
+    "test_uat_profile.py": 72,
+    "test_zoho_routes_fable51.py": 47
   }
 }

@@ -974,7 +974,7 @@ def zoho_auth(connection_id: str, body: AuthIn = Body(default=AuthIn()),
 def zoho_refresh(connection_id: str, p: dict = Depends(perm("connector.manage"))):
     c = con()
     try:
-        return zoho.refresh_token(c, connection_id)
+        return zoho.refresh_token(c, connection_id, actor=p["user_id"])
     finally:
         c.close()
 
@@ -983,7 +983,7 @@ def zoho_refresh(connection_id: str, p: dict = Depends(perm("connector.manage"))
 def zoho_test(connection_id: str, p: dict = Depends(perm("connector.manage"))):
     c = con()
     try:
-        return zoho.run_connectivity_tests(c, connection_id)
+        return zoho.run_connectivity_tests(c, connection_id, actor=p["user_id"])
     finally:
         c.close()
 

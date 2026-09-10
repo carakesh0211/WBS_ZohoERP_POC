@@ -193,17 +193,46 @@ def hard_negatives():
     ]
 
 
-def run_connectivity_tests(con, connection_id):
+def _load_connection(con, connection_id):
+    """The connection row, or 404 CONNECTION_NOT_FOUND.
+
+    One answer for "no such row" -- and, once these rows carry a scope, for
+    "not yours": a 403 or 409 here would confirm that an id exists, which is an
+    existence oracle (the posture `api/integrations.py` takes). Every route
+    resolves the caller's permission BEFORE reaching this lookup.
+    """
+    row = con.execute("SELECT * FROM zoho_connection WHERE connection_id=?",
+                      (connection_id,)).fetchone()
+    if not row:
+        from .services import BusinessError
+        raise BusinessError(404, "CONNECTION_NOT_FOUND",
+                            f"Connection profile {connection_id} does not exist.")
+    return dict(row)
+
+
+def _require_usable(conn):
+    """409 NOT_CONNECTED / CONNECTOR_DISABLED for a profile that cannot act."""
+    from .services import BusinessError
+    if conn["oauth_status"] != "Connected":
+        raise BusinessError(409, "NOT_CONNECTED",
+                            f"{conn['name']} is {conn['oauth_status']}. Complete OAuth "
+                            f"authorisation before using this connection.")
+    if conn["status"] != "Active":
+        raise BusinessError(409, "CONNECTOR_DISABLED",
+                            f"{conn['name']} is {conn['status']}. Enable the connector first.")
+
+
+def run_connectivity_tests(con, connection_id, *, actor="U-ADM"):
     """Module-by-module connectivity console.
 
     Each test names the real endpoint it would call and the real scope it needs.
     In MOCK mode no network call is made; the outcome reflects whether the module
-    is actually reachable given what the specification documents.
+    is actually reachable given what the specification documents. It runs in
+    every connection state on purpose -- a disconnected profile reports NOT RUN
+    rather than being refused, because the console is how an operator learns
+    what is wrong.
     """
-    row = con.execute("SELECT * FROM zoho_connection WHERE connection_id = ?", (connection_id,)).fetchone()
-    if not row:
-        return {"error": "connection not found"}
-    conn = dict(row)
+    conn = _load_connection(con, connection_id)
     granted = set(json.loads(conn["granted_scopes"] or "[]"))
 
     results = []
@@ -244,7 +273,7 @@ def run_connectivity_tests(con, connection_id):
             "error_code": err, "error_message": msg,
             "correlation_id": str(uuid.uuid4())[:8],
             "tested_at": datetime.utcnow().isoformat(timespec="seconds"),
-            "tested_by": "U-ADM",
+            "tested_by": actor,
         })
         con.execute("""INSERT INTO integration_event
                        (at, connection_id, direction, module, endpoint, http_method, status,
@@ -253,8 +282,11 @@ def run_connectivity_tests(con, connection_id):
                     (datetime.utcnow().isoformat(timespec="seconds"), connection_id, "TEST", module,
                      read["endpoint"], read["http_method"], result, 1,
                      results[-1]["correlation_id"], msg or "connectivity test"))
-    con.commit()
     passed = sum(1 for r in results if r["result"] == "PASS")
+    from . import services as _services
+    _services.audit(con, actor, "CONNECTIVITY_TESTED", "ZohoConnection", connection_id,
+                    f"{passed} of {len(results)} modules passed ({MODE} mode).")
+    con.commit()
     return {"mode": MODE, "connection_id": connection_id, "tested": len(results),
             "passed": passed, "failed": len(results) - passed, "results": results}
 
@@ -267,15 +299,15 @@ def authorise(con, connection_id, grant_all=True, withhold=None, *, actor="U-ADM
     The POC performs the state handling and storage shape for real; only the
     network exchange is mocked.
     """
-    row = con.execute("SELECT * FROM zoho_connection WHERE connection_id=?",
-                      (connection_id,)).fetchone()
-    if not row:
-        # INT-004: previously this returned synthetic success for any id at all.
-        from .services import BusinessError
-        raise BusinessError(404, "CONNECTION_NOT_FOUND",
-                            f"Connection profile {connection_id} does not exist.")
+    # INT-004: previously this returned synthetic success for any id at all.
+    _load_connection(con, connection_id)
     withhold = set(withhold or [])
     scopes = [s["scope"] for s in required_scopes()]
+    unknown = sorted(withhold - set(scopes))
+    if unknown:
+        from .services import BusinessError
+        raise BusinessError(422, "SCOPE_UNKNOWN",
+                            f"Not a required scope, so it cannot be withheld: {', '.join(unknown)}.")
     granted = [s for s in scopes if s not in withhold] if grant_all else []
     now = datetime.utcnow()
     con.execute("""UPDATE zoho_connection SET oauth_status=?, granted_scopes=?, status=?,
@@ -311,7 +343,14 @@ def authorise(con, connection_id, grant_all=True, withhold=None, *, actor="U-ADM
                     "(maximum 20 per user). Source: Zoho ERP OAuth documentation, verified 2026-08-05."}
 
 
-def refresh_token(con, connection_id):
+def refresh_token(con, connection_id, *, actor="U-ADM"):
+    """Refresh the access token from the stored refresh-token reference.
+
+    There is nothing to refresh for a profile that has never completed OAuth,
+    and a disabled connector must not quietly keep its token warm: both are
+    coded 409s, never a 500 and never a synthetic success.
+    """
+    _require_usable(_load_connection(con, connection_id))
     now = datetime.utcnow()
     con.execute("""UPDATE zoho_connection SET access_token_expiry=?, token_last_refreshed=?,
                    last_success_at=? WHERE connection_id=?""",
@@ -323,6 +362,10 @@ def refresh_token(con, connection_id):
                 (now.isoformat(timespec="seconds"), connection_id, "OUTBOUND", "oauth",
                  "/oauth/v2/token", "POST", "PASS", 1, str(uuid.uuid4())[:8],
                  "Access token refreshed using stored refresh-token reference."))
+    from . import services as _services
+    _services.audit(con, actor, "OAUTH_REFRESHED", "ZohoConnection", connection_id,
+                    "Access token refreshed from the stored refresh-token reference; "
+                    "expires in 60 minutes.")
     con.commit()
     return {"refreshed_at": now.isoformat(timespec="seconds"), "expires_in_minutes": 60}
 
@@ -349,19 +392,8 @@ def sync(con, connection_id, module, direction="INBOUND", *, idem_key=None, acto
                                 f"{', '.join(sorted(OUTBOUND_MODULES))}.")
         require_outbound_writes()
 
-    row = con.execute("SELECT * FROM zoho_connection WHERE connection_id=?",
-                      (connection_id,)).fetchone()
-    if not row:
-        raise BusinessError(404, "CONNECTION_NOT_FOUND",
-                            f"Connection profile {connection_id} does not exist.")
-    conn = dict(row)
-    if conn["oauth_status"] != "Connected":
-        raise BusinessError(409, "NOT_CONNECTED",
-                            f"{conn['name']} is {conn['oauth_status']}. Complete OAuth "
-                            f"authorisation before synchronising.")
-    if conn["status"] != "Active":
-        raise BusinessError(409, "CONNECTOR_DISABLED",
-                            f"{conn['name']} is {conn['status']}. Enable the connector first.")
+    conn = _load_connection(con, connection_id)
+    _require_usable(conn)
 
     read_ep = next((e for e in eps if e["http_method"] == "GET"), eps[0])
     need = (read_ep["required_oauth_scope"] or [None])[0]
@@ -372,9 +404,11 @@ def sync(con, connection_id, module, direction="INBOUND", *, idem_key=None, acto
                             f"Re-authorise the connection and grant it.")
 
     if idem_key:
+        # Keyed on the connection too: the same key against another profile is
+        # a different request, not a replay of this one.
         prior = con.execute("""SELECT message FROM integration_event
-                               WHERE correlation_id=? AND module=?""",
-                            (idem_key, module)).fetchone()
+                               WHERE correlation_id=? AND module=? AND connection_id=?""",
+                            (idem_key, module, connection_id)).fetchone()
         if prior:
             return {"module": module, "idempotent_replay": True, "mode": MODE,
                     "message": prior[0],
@@ -399,6 +433,10 @@ def sync(con, connection_id, module, direction="INBOUND", *, idem_key=None, acto
                 (now, connection_id, direction, module, read["endpoint"], read["http_method"],
                  "PASS" if not note else "PARTIAL", 1, None, cid,
                  note or f"{received} records received."))
+    from . import services as _services
+    _services.audit(con, actor, "MODULE_SYNCED", "ZohoConnection", connection_id,
+                    f"{direction} {module}: {note or f'{received} records received'} "
+                    f"({MODE} mode, correlation {cid}).", correlation_id=cid)
     con.commit()
     return {"module": module, "endpoint": read["endpoint"], "method": read["http_method"],
             "api_version": read["api_version"], "scope": need,
@@ -407,8 +445,7 @@ def sync(con, connection_id, module, direction="INBOUND", *, idem_key=None, acto
 
 
 def health(con, connection_id):
-    row = con.execute("SELECT * FROM zoho_connection WHERE connection_id=?", (connection_id,)).fetchone()
-    conn = dict(row) if row else {}
+    conn = _load_connection(con, connection_id)
     ev = [dict(r) for r in con.execute(
         "SELECT * FROM integration_event WHERE connection_id=? ORDER BY event_id DESC LIMIT 100",
         (connection_id,)).fetchall()]
