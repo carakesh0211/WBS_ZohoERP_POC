@@ -220,7 +220,7 @@ class TestRegistrySeparation:
         they have no PostgreSQL table. The write-back must not invent a
         handler for a type the engine cannot route."""
         assert set(wb._REGISTRY) == set(engine.OBJECT_BINDINGS)
-        assert set(wb._REGISTRY) == {"BUDGET_REVISION", "BUDGET_TRANSFER"}
+        assert set(wb._REGISTRY) == {"BUDGET_REVISION", "BUDGET_TRANSFER", "ORIGINAL_BUDGET"}  # ORIGINAL_BUDGET: Fable 5.1, migration 026
 
     def test_open_and_exception_pending_are_not_closed_statuses(self):
         assert "OPEN" not in wb.CLOSED_STATUSES

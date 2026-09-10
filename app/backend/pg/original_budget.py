@@ -202,16 +202,16 @@ def create_category(session: Session, *, actor: str, code: str, name: str,
              status=422)
     if not (name or "").strip():
         _err("CATEGORY_NAME_REQUIRED", "name is required.", status=422)
-    if session.fetchone("SELECT 1 FROM budget_category WHERE code = %s", (code,)):
+    if session.fetchone("SELECT 1 FROM budget_category WHERE code = %s", (code,)):  # scope-exempt: uniqueness check on a reference master; existence only
         _err("CATEGORY_CODE_EXISTS", f"A budget category with code {code} already exists.", status=409)
     if parent_category_id:
-        parent = session.fetchone("SELECT active FROM budget_category WHERE category_id = %s",
+        parent = session.fetchone("SELECT active FROM budget_category WHERE category_id = %s",  # scope-exempt: reference master; existence and active flag only
                                   (parent_category_id,))
         if parent is None:
             _err("CATEGORY_NOT_FOUND", f"Parent category {parent_category_id} does not exist.", status=404)
         if not parent[0]:
             _err("CATEGORY_PARENT_INACTIVE", "An inactive category cannot be a parent.", status=409)
-    if entity_id and not session.fetchone("SELECT 1 FROM entity WHERE entity_id = %s", (entity_id,)):
+    if entity_id and not session.fetchone("SELECT 1 FROM entity WHERE entity_id = %s", (entity_id,)):  # scope-exempt: existence of an entity id being ASSIGNED; the insert's RLS WITH CHECK refuses an out-of-scope value
         _err("ENTITY_NOT_FOUND", f"Entity {entity_id} does not exist.", status=404)
     if effective_from and effective_to and effective_to < effective_from:
         _err("INVALID_EFFECTIVE_RANGE", "effective_to must not precede effective_from.", status=422)
@@ -249,7 +249,7 @@ def update_category(session: Session, *, actor: str, category_id: str,
         # No cycles: walk up from the proposed parent and refuse if we meet ourselves.
         cursor = parent_category_id
         for _ in range(64):
-            row = session.fetchone("SELECT parent_category_id FROM budget_category WHERE category_id = %s",
+            row = session.fetchone("SELECT parent_category_id FROM budget_category WHERE category_id = %s",  # scope-exempt: cycle walk over a reference master; ids only
                                    (cursor,))
             if row is None:
                 _err("CATEGORY_NOT_FOUND", f"Parent category {parent_category_id} does not exist.", status=404)
@@ -286,13 +286,13 @@ def deactivate_category(session: Session, *, actor: str, category_id: str,
     current = get_category(session, category_id)
     if not current["active"]:
         return current
-    child = session.fetchone(
+    child = session.fetchone(  # scope-exempt: reference master; one code, used only to refuse a deactivation
         "SELECT code FROM budget_category WHERE parent_category_id = %s AND active LIMIT 1",
         (category_id,))
     if child:
         _err("CATEGORY_HAS_ACTIVE_CHILDREN",
              f"Deactivate child category {child[0]} first.", status=409)
-    live = session.fetchone(
+    live = session.fetchone(  # scope-exempt: refuses a deactivation while an open document names the category; one document number, no amounts
         """
         SELECT ob.budget_number FROM original_budget_line l
         JOIN original_budget ob ON ob.budget_id = l.budget_id
@@ -490,22 +490,22 @@ def _validate_lines(session: Session, *, project: Mapping[str, Any],
     def bad(idx: int, field: str, code: str, msg: str) -> None:
         problems.append({"line": idx + 1, "field": field, "code": code, "message": msg})
 
-    wbs_rows = {r[0]: r for r in session.fetchall(
+    wbs_rows = {r[0]: r for r in session.fetchall(  # scope-exempt: keyed on a project _project_in_scope already scope-checked; structure only
         "SELECT wbs_id, wbs_code, is_abandoned, budget_head_id FROM wbs_element WHERE project_id = %s",
         (project_id,))}
-    heads = {r[0]: r for r in session.fetchall(
+    heads = {r[0]: r for r in session.fetchall(  # scope-exempt: reference master, ids and flags only
         "SELECT budget_head_id, entity_id, active FROM budget_head", ())}
-    categories = {r[0]: r for r in session.fetchall(
+    categories = {r[0]: r for r in session.fetchall(  # scope-exempt: reference master, ids and flags only
         "SELECT category_id, active, entity_id, effective_from, effective_to FROM budget_category", ())}
     masters = {}
     for kind, table, pk in (("division", "division", "division_id"), ("branch", "branch", "branch_id"),
                             ("zone", "zone", "zone_id"), ("plant", "plant", "plant_id"),
                             ("location", "location", "location_id")):
-        masters[kind] = {r[0]: r[1] for r in session.fetchall(
+        masters[kind] = {r[0]: r[1] for r in session.fetchall(  # scope-exempt: five organisation masters from a closed literal list; id -> entity only, used to refuse a cross-entity reference
             f"SELECT {pk}, entity_id FROM {table}", ())}
-    existing_original = {(r[0], r[1]) for r in session.fetchall(
+    existing_original = {(r[0], r[1]) for r in session.fetchall(  # scope-exempt: cell KEYS only, to refuse a second original; no amount leaves this read
         "SELECT wbs_id, budget_head_id FROM budget_line WHERE kind = 'ORIGINAL'", ())}
-    other_open = {(r[0], r[1]): r[2] for r in session.fetchall(
+    other_open = {(r[0], r[1]): r[2] for r in session.fetchall(  # scope-exempt: cell keys and a document number, to refuse a cell already on another open draft; no amounts
         """
         SELECT l.wbs_id, l.budget_head_id, ob.budget_number FROM original_budget_line l
         JOIN original_budget ob ON ob.budget_id = l.budget_id
@@ -600,7 +600,7 @@ def _project_in_scope(session: Session, project_id: str) -> dict[str, Any]:
 def _period_ok(session: Session, period_id: str | None, entity_id: str) -> None:
     if not period_id:
         return
-    row = session.fetchone("SELECT entity_id, state FROM accounting_period WHERE period_id = %s", (period_id,))
+    row = session.fetchone("SELECT entity_id, state FROM accounting_period WHERE period_id = %s", (period_id,))  # scope-exempt: validates a period id being assigned; an entity mismatch is refused, and the parent document is scope-checked
     if row is None or row[0] != entity_id:
         _err("PERIOD_NOT_FOUND", f"Accounting period {period_id} does not exist for this entity.", status=404)
     if row[1] == "CLOSED":
@@ -950,7 +950,7 @@ def release(session: Session, *, budget_id: str, actor: str, approval_instance_i
     # it; the lock serialises them and this check is what makes the second
     # one lose. Same shape as `amend_po`'s re-run of budget_check at write time.
     if REFUSE_SECOND_ORIGINAL:
-        clash = session.fetchall(
+        clash = session.fetchall(  # scope-exempt: post-lock re-check of cell KEYS this scope-checked document is about to fund; no amounts
             "SELECT bl.wbs_id, bl.budget_head_id FROM budget_line bl "
             "JOIN (SELECT unnest(%s::text[]) AS w, unnest(%s::text[]) AS h) c "
             "  ON c.w = bl.wbs_id AND c.h = bl.budget_head_id "
@@ -1013,7 +1013,7 @@ def release(session: Session, *, budget_id: str, actor: str, approval_instance_i
 
 
 def _store_custom_value(session: Session, actor: str, code: str, object_id: str, value: Any) -> None:
-    field = session.fetchone("SELECT field_def_id FROM custom_field_def WHERE code = %s AND is_active", (code,))
+    field = session.fetchone("SELECT field_def_id FROM custom_field_def WHERE code = %s AND is_active", (code,))  # scope-exempt: configuration row, not business data
     if field is None:
         return
     session.execute(
@@ -1093,12 +1093,12 @@ def _resolve_import_rows(session: Session, *, project: Mapping[str, Any], text: 
     if missing:
         _err("IMPORT_HEADER_INVALID", f"Missing column(s): {', '.join(missing)}.", status=422,
              detail={"missing_columns": missing})
-    wbs_by_code = {r[1]: r[0] for r in session.fetchall(
+    wbs_by_code = {r[1]: r[0] for r in session.fetchall(  # scope-exempt: code -> id for a project _project_in_scope already scope-checked
         "SELECT wbs_id, wbs_code FROM wbs_element WHERE project_id = %s", (project["project_id"],))}
-    head_by_code = {r[1]: r[0] for r in session.fetchall(
+    head_by_code = {r[1]: r[0] for r in session.fetchall(  # scope-exempt: reference master code -> id, narrowed to the document's entity
         "SELECT budget_head_id, code FROM budget_head WHERE active AND (entity_id IS NULL OR entity_id = %s)",
         (project["entity_id"],))}
-    cat_by_code = {r[1]: r[0] for r in session.fetchall(
+    cat_by_code = {r[1]: r[0] for r in session.fetchall(  # scope-exempt: reference master code -> id, narrowed to the document's entity
         "SELECT category_id, code FROM budget_category WHERE active AND (entity_id IS NULL OR entity_id = %s)",
         (project["entity_id"],))}
     lines, problems = [], []
@@ -1204,7 +1204,7 @@ def import_commit(session: Session, *, actor: str, project_id: str, fiscal_year:
 # Reporting helpers the reporting stream can call
 # ============================================================================
 def category_of_cell(session: Session, wbs_id: str, budget_head_id: str) -> str | None:
-    row = session.fetchone(
+    row = session.fetchone(  # scope-exempt: one classification id for a cell the caller names; the reporting caller scope-checks the cell
         "SELECT budget_category_id FROM budget_control_cell WHERE wbs_id = %s AND budget_head_id = %s",
         (wbs_id, budget_head_id))
     return None if row is None else row[0]

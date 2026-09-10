@@ -39,6 +39,18 @@ import { createReasonDialog } from '../../components/approvals/reason-dialog.js'
 import { newCorrelationId } from '../../core/api-client.js';
 import '../../components/budget/governed-select.js';
 
+/* Integer paise -> "12345.67" by string arithmetic. No division, no float:
+   the money guard (tests/test_security_frontend.py) refuses `/ 100` on money
+   for the reason money-input.js states -- a float cannot represent most
+   rupee amounts exactly. */
+function paiseToRupeesText(paise) {
+  const n = String(paise).trim();
+  const neg = n.startsWith('-');
+  const digits = (neg ? n.slice(1) : n).replace(/[^0-9]/g, '').padStart(3, '0');
+  return `${neg ? '-' : ''}${digits.slice(0, -2)}.${digits.slice(-2)}`;
+}
+
+
 const PAGE_SIZE = 50;
 
 const STATUS_TONE = {
@@ -548,7 +560,7 @@ export function mountBudgetSetup(root) {
       if (prefill.plant_id) plantSel.el.presetSelection(prefill.plant_id, prefill.plant_id);
       if (prefill.location_id) locSel.el.presetSelection(prefill.location_id, prefill.location_id);
       amountInput.value = prefill.amount_paise !== undefined && prefill.amount_paise !== null
-        ? (Number(prefill.amount_paise) / 100).toFixed(2) : '';
+        ? paiseToRupeesText(prefill.amount_paise) : '';
       justInput.value = prefill.justification || '';
       customFields.fill(prefill.custom_fields);
     }

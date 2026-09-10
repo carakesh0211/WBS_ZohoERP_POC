@@ -92,6 +92,7 @@
 --   ALTER TABLE custom_field_value DROP CONSTRAINT IF EXISTS custom_field_value_object_type_check;
 --   ALTER TABLE custom_field_value ADD CONSTRAINT custom_field_value_object_type_check CHECK (object_type IN ('ITEM', 'VENDOR'));
 --   DELETE FROM numbering_series WHERE code = 'ORIGINAL_BUDGET';
+--   DELETE FROM schema_migrations WHERE version = '026';
 
 -- ============================================================ budget_category
 -- A genuine master, separate from budget_head. `entity_id` NULL means the

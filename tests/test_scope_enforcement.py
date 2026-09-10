@@ -191,6 +191,11 @@ SCOPABLE = {
     # `item_master` sits on. Adding them would demand a `{scope}` token on a
     # query that has no dimension to filter, and the only way to satisfy that
     # is a waiver -- which teaches the next reader that waivers are routine.
+    # Migration 026 (Fable 5.1). `original_budget` carries entity_id and
+    # project_id NOT NULL; `budget_category` carries an OPTIONAL entity_id
+    # (NULL = estate-wide reference data). `original_budget_line` reaches its
+    # parent through an EXISTS and has no dimension column, so it is not here.
+    "budget_category", "original_budget",
 }
 
 READ_METHODS = {"fetchall", "fetchone", "execute"}
