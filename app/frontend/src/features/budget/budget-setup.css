@@ -1,0 +1,92 @@
+/* app/frontend/src/features/budget/budget-setup.css
+   Additive stylesheet for the "Budget Setup" screen
+   (src/features/budget/budget-setup.js) and its governed-select control
+   (src/components/budget/governed-select.js).
+
+   Loaded AFTER the byte-frozen app/frontend/styles.css and AFTER
+   extensions.css and budget.css (src/core/router.js's ensureStyles list for
+   this route). Every colour reference below is var(--…) against a custom
+   property already declared in styles.css's :root -- no new custom property
+   is declared here and no raw hex value appears anywhere in this file.
+   Tables, cards, messages, dialogs, empty/loading states, the tab strip
+   (.budget-tabs, from budget.css) and section headings (.section-title, also
+   budget.css) all reuse the classes those two files already define.
+*/
+
+/* ---------------- governed-select ---------------- */
+.gov-select { position: relative; min-width: 0; }
+.gov-select-input { width: 100%; }
+.gov-select-input[aria-invalid="true"] { border-color: var(--negative); }
+.gov-select-input:disabled { background: var(--n100); color: var(--n500); cursor: not-allowed; }
+
+.gov-select-listbox {
+  position: absolute; z-index: 30; top: calc(var(--input-h) + 2px); left: 0; right: 0;
+  margin: 0; padding: 4px 0; list-style: none;
+  background: var(--n0); border: 1px solid var(--n300); border-radius: var(--radius);
+  box-shadow: var(--shadow-overlay);
+  max-height: 220px; overflow-y: auto;
+}
+.gov-select-option {
+  padding: 5px 10px; font-size: 13px; color: var(--n900); cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.gov-select-option[aria-selected="true"] { background: var(--primary-50); color: var(--primary-800); }
+.gov-select-note { padding: 5px 10px; font-size: 12px; color: var(--n500); }
+.gov-select-note-error { color: var(--negative); }
+
+/* ---------------- filters / toolbar row wrapping ---------------- */
+.budget-setup-toolbar .field { min-width: 140px; }
+
+/* ---------------- budget document editor ---------------- */
+.budget-doc-header {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px 14px; background: var(--n0); border: 1px solid var(--n200);
+  border-radius: var(--radius); padding: 12px; margin-bottom: 12px;
+}
+.budget-doc-header .field.span-2 { grid-column: span 2; }
+
+.budget-lines-wrap { margin-bottom: 12px; }
+.budget-line-card {
+  background: var(--n0); border: 1px solid var(--n200); border-radius: var(--radius);
+  padding: 10px 12px; margin-bottom: 8px;
+}
+.budget-line-card .line-head {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+}
+.budget-line-card .line-head .line-no { font-weight: 600; font-size: 12px; color: var(--n700); }
+.budget-line-card .line-head .spacer { flex: 1; }
+.budget-line-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px 10px;
+}
+.budget-line-grid .field.span-2 { grid-column: span 2; }
+.budget-line-card .field-err { margin-top: 2px; }
+
+.budget-total-bar {
+  display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+  padding: 10px 12px; background: var(--n50); border: 1px solid var(--n200);
+  border-radius: var(--radius); margin-bottom: 12px;
+}
+.budget-total-bar .k { font-size: 12px; color: var(--n500); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
+.budget-total-bar .v { font-size: 17px; font-weight: 700; color: var(--n900); font-variant-numeric: tabular-nums; }
+
+.budget-doc-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+
+/* ---------------- custom fields block ---------------- */
+.budget-custom-fields {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px 10px; margin-top: 8px;
+}
+
+/* ---------------- upload / import tab ---------------- */
+.budget-import-panel textarea { width: 100%; min-height: 140px; font-family: monospace; font-size: 12px; }
+.budget-import-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+.budget-import-problems { margin-top: 10px; }
+
+/* ---------------- audit history panel ---------------- */
+.budget-audit-list { list-style: none; margin: 0; padding: 0; }
+.budget-audit-list li {
+  padding: 6px 0; border-bottom: 1px solid var(--n100); font-size: 12px; color: var(--n700);
+}
+.budget-audit-list li:last-child { border-bottom: 0; }
+.budget-audit-list .seq { font-weight: 600; color: var(--n900); margin-right: 6px; }
