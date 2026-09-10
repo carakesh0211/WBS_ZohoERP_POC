@@ -22,7 +22,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import auth, db, domain, observability, services, zoho
+from . import auth, db, domain, login_throttle, observability, services, zoho
 from .api import health as health_api
 from .pg import principal_scope as pg_principal_scope
 from .pg import repo as pg_repo
@@ -374,12 +374,19 @@ class LoginIn(BaseModel):
 
 
 @app.post("/api/auth/login")
-def login(body: LoginIn):
+def login(body: LoginIn, request: Request):
+    keys = login_throttle.keys_for(request, body.user_id)
+    login_throttle.refuse_if_throttled(*keys)
     c = db.connect()
     try:
-        return auth.login(c, body.user_id, body.password)
+        result = auth.login(c, body.user_id, body.password)
+    except auth.AuthError:
+        login_throttle.THROTTLE.record_failure(*keys)
+        raise
     finally:
         c.close()
+    login_throttle.THROTTLE.clear(*keys)
+    return result
 
 
 @app.post("/api/auth/logout")

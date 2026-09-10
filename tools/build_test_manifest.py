@@ -642,6 +642,7 @@ POST_BASELINE_FILES = {
     # CAPEX_ERP_OUTBOUND_WRITES gate; the live `capex_app` matrix over
     # migration 023's five tables; the bounded per-user/per-address throttle.
     "test_period_reopen_permissions.py",
+    "test_login_throttle.py",
 }
 
 

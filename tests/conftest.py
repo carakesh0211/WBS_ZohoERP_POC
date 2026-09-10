@@ -220,6 +220,10 @@ def client(capex_db):
 
     # raise_server_exceptions=False so an unhandled product exception is observed
     # as the 500 a real caller would receive, instead of aborting the test.
+    # The failed-login throttle is process-global; a fresh client starts clean so
+    # one test's deliberate bad passwords cannot throttle the next test's login.
+    from app.backend import login_throttle
+    login_throttle.THROTTLE.reset()
     return TestClient(main.app, raise_server_exceptions=False)
 
 

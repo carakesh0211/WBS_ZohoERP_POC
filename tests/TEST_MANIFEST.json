@@ -3730,6 +3730,52 @@
         "body_sha": "de8cca51b1daefc1"
       }
     },
+    "test_login_throttle.py": {
+      "test_ten_failures_refuse_the_eleventh_with_429_and_retry_after": {
+        "assertions": 4,
+        "body_sha": "aafca85e19acfd5e"
+      },
+      "test_a_throttled_correct_password_is_still_refused": {
+        "assertions": 1,
+        "body_sha": "957865923fd1ffee"
+      },
+      "test_throttled_reply_is_identical_for_existing_and_unknown_user_ids": {
+        "assertions": 3,
+        "body_sha": "9f90975c9d7e50d1"
+      },
+      "test_user_id_key_throttles_across_addresses": {
+        "assertions": 2,
+        "body_sha": "7505317840951d59"
+      },
+      "test_address_key_throttles_across_user_ids": {
+        "assertions": 3,
+        "body_sha": "618d80bf5a666710"
+      },
+      "test_x_forwarded_for_is_ignored_unless_the_proxy_is_trusted": {
+        "assertions": 1,
+        "body_sha": "53f9673aaa903118"
+      },
+      "test_a_successful_login_clears_the_key": {
+        "assertions": 3,
+        "body_sha": "d3064aba126e266a"
+      },
+      "test_login_remains_a_public_path": {
+        "assertions": 1,
+        "body_sha": "b60bcab92492bb24"
+      },
+      "test_table_stays_bounded_after_twenty_thousand_keys": {
+        "assertions": 3,
+        "body_sha": "8413a33ab55d60ba"
+      },
+      "test_window_expiry_releases_the_key": {
+        "assertions": 4,
+        "body_sha": "64f710df20e24656"
+      },
+      "test_retry_after_reports_the_longest_wait_across_keys": {
+        "assertions": 1,
+        "body_sha": "7ff4d40795df2f51"
+      }
+    },
     "test_manifest.py": {
       "test_no_test_has_vanished_without_a_recorded_adaptation": {
         "assertions": 1,
@@ -11999,6 +12045,7 @@
     "test_integrations_api_guard.py": 51,
     "test_known_defects.py": 5,
     "test_ledger_cell_writers.py": 16,
+    "test_login_throttle.py": 11,
     "test_manifest.py": 10,
     "test_masters_settings_api_guard.py": 9,
     "test_middleware_observability.py": 11,
@@ -12118,6 +12165,7 @@
     "test_integrations_api_guard.py": 114,
     "test_known_defects.py": 13,
     "test_ledger_cell_writers.py": 32,
+    "test_login_throttle.py": 26,
     "test_manifest.py": 15,
     "test_masters_settings_api_guard.py": 15,
     "test_middleware_observability.py": 31,
