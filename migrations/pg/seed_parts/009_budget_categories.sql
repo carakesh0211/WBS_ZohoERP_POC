@@ -93,7 +93,8 @@ ON CONFLICT (field_def_id, applies_to) DO NOTHING;
 -- the approver whatever role they hold -- that is the engine's
 -- contributor_set, not this definition. A large budget (over Rs 5 crore)
 -- additionally needs the CFO: stage 2 applies_when the document total
--- exceeds 500,00,00,000 paise. MONEY IS INTEGER PAISE inside the predicate.
+-- exceeds 5,00,00,00,000 paise = Rs 5,00,00,000 exactly. MONEY IS INTEGER
+-- PAISE inside the predicate.
 INSERT INTO approval_definition
     (definition_id, object_type, code, version, status, entity_id,
      effective_from, effective_to, created_by, activated_at, activated_by)
@@ -105,9 +106,7 @@ INSERT INTO approval_rule
     (rule_id, definition_id, priority, predicate, description, created_by)
 VALUES
     ('APR-OB-ORG-V1-STD', 'APD-OB-ORG-V1', 100,
-     '{"all": [
-         {"field": "object_type", "op": "eq", "value": "ORIGINAL_BUDGET"}
-     ], "route": "STANDARD"}'::jsonb,
+     '{"op": "==", "left": {"path": "object_type"}, "right": {"value": "ORIGINAL_BUDGET"}}'::jsonb,
      'Every original budget, in every entity.', 'U-ADM');
 
 INSERT INTO approval_stage
@@ -120,7 +119,7 @@ VALUES
      'ANY', NULL, NULL, 72, NULL, NULL, true, false, NULL, 'U-ADM'),
     ('APS-OB-ORG-V1-2', 'APD-OB-ORG-V1', 2, 'CFO approval (over Rs 5 crore)', NULL,
      'ANY', NULL,
-     '{"field": "amount_paise", "op": "gt", "value": 5000000000}'::jsonb,
+     '{"op": ">", "left": {"path": "amount_paise"}, "right": {"value": 5000000000}}'::jsonb,
      72, NULL, NULL, true, false, NULL, 'U-ADM');
 
 INSERT INTO approval_stage_approver

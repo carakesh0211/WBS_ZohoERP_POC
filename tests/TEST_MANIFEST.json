@@ -10530,6 +10530,24 @@
         "body_sha": "0a409e4b616a643a"
       }
     },
+    "test_pg_seed_approvals_fable51.py": {
+      "test_every_seeded_rule_and_stage_predicate_compiles": {
+        "assertions": 2,
+        "body_sha": "6b65bf532efbccb2"
+      },
+      "test_every_active_seeded_definition_routes_a_plain_document": {
+        "assertions": 3,
+        "body_sha": "649ae91f563947d9"
+      },
+      "test_the_over_budget_requisition_takes_the_exception_rule": {
+        "assertions": 2,
+        "body_sha": "d241fb13bd580953"
+      },
+      "test_the_large_original_budget_opens_the_cfo_stage": {
+        "assertions": 4,
+        "body_sha": "9f4d587803edb16e"
+      }
+    },
     "test_pg_settings.py": {
       "test_every_contract_collection_is_registered": {
         "assertions": 1,
@@ -12045,6 +12063,7 @@
     "test_pg_roles.py": 19,
     "test_pg_scope_leakage.py": 5,
     "test_pg_seed.py": 23,
+    "test_pg_seed_approvals_fable51.py": 4,
     "test_pg_settings.py": 17,
     "test_pg_transactions.py": 4,
     "test_pg_unattributed_triage.py": 14,
@@ -12163,6 +12182,7 @@
     "test_pg_roles.py": 50,
     "test_pg_scope_leakage.py": 12,
     "test_pg_seed.py": 56,
+    "test_pg_seed_approvals_fable51.py": 11,
     "test_pg_settings.py": 46,
     "test_pg_transactions.py": 10,
     "test_pg_unattributed_triage.py": 23,

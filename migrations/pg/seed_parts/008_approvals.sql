@@ -54,6 +54,17 @@
 -- reason that has nothing to do with tampering. Instances are created by the
 -- engine, in a transaction, with the chain written alongside the state change.
 -- This fragment seeds the CONFIGURATION the engine routes against.
+--
+-- PREDICATE GRAMMAR (Fable 5.1 correction). These rows originally used an
+-- `{"all": [{"field", "op": "eq", "value"}], "route": ...}` shape that
+-- app/backend/pg/approval_rules.py::compile_predicate REFUSES (it wants
+-- `op` in and/or/not/==/!=/</<=/>/>=/in/not_in/true/false with `path`/`value`
+-- operands), so every seeded definition -- including the ACTIVE ones -- raised
+-- APPROVAL_PREDICATE_INVALID the first time anything routed against it, and
+-- a submission on the demo estate answered 500. Never caught because no test
+-- compiled the SEED; tests/test_pg_seed_approvals_fable51.py now does. The
+-- `route` label carried no engine meaning: which stages open is decided by
+-- each stage's `applies_when`, which is rewritten to the same grammar.
 
 -- ============================================================= reason codes
 -- The controlled vocabulary a decision may cite. `applies_to_object_type` is
@@ -148,19 +159,11 @@ INSERT INTO approval_rule
     (rule_id, definition_id, priority, predicate, description, created_by)
 VALUES
     ('APR-PR-STD-V1-EXC', 'APD-PR-STD-V1', 10,
-     '{"all": [
-         {"field": "object_type",   "op": "eq", "value": "PURCHASE_REQUEST"},
-         {"any": [
-             {"field": "amount_paise",     "op": "gt", "value": 500000000},
-             {"field": "exceeds_available", "op": "eq", "value": true}
-         ]}
-     ], "route": "EXCEPTION"}'::jsonb,
+     '{"op": "and", "args": [{"op": "==", "left": {"path": "object_type"}, "right": {"value": "PURCHASE_REQUEST"}}, {"op": "or", "args": [{"op": ">", "left": {"path": "amount_paise"}, "right": {"value": 500000000}}, {"op": "==", "left": {"path": "exceeds_available"}, "right": {"value": true}}]}]}'::jsonb,
      'High-value or over-budget requisition: adds the Finance exception gate.',
      'U-ADM'),
     ('APR-PR-STD-V1-STD', 'APD-PR-STD-V1', 100,
-     '{"all": [
-         {"field": "object_type", "op": "eq", "value": "PURCHASE_REQUEST"}
-     ], "route": "STANDARD"}'::jsonb,
+     '{"op": "==", "left": {"path": "object_type"}, "right": {"value": "PURCHASE_REQUEST"}}'::jsonb,
      'Catch-all for every other purchase requisition in this entity.',
      'U-ADM');
 
@@ -199,10 +202,7 @@ VALUES
      true, false, NULL, 'U-ADM'),
     ('APS-PR-STD-V1-5', 'APD-PR-STD-V1', 5, 'Finance exception approval', NULL,
      'ALL', NULL,
-     '{"any": [
-         {"field": "amount_paise",      "op": "gt", "value": 500000000},
-         {"field": "exceeds_available", "op": "eq", "value": true}
-     ]}'::jsonb,
+     '{"op": "or", "args": [{"op": ">", "left": {"path": "amount_paise"}, "right": {"value": 500000000}}, {"op": "==", "left": {"path": "exceeds_available"}, "right": {"value": true}}]}'::jsonb,
      24, 48,
      '{"kind": "ROLE", "ref": "CFO"}'::jsonb,
      -- Delegation is switched OFF for the exception gate: an over-budget
@@ -271,9 +271,7 @@ INSERT INTO approval_rule
     (rule_id, definition_id, priority, predicate, description, created_by)
 VALUES
     ('APR-PR-STD-V2-STD', 'APD-PR-STD-V2', 100,
-     '{"all": [
-         {"field": "object_type", "op": "eq", "value": "PURCHASE_REQUEST"}
-     ], "route": "STANDARD"}'::jsonb,
+     '{"op": "==", "left": {"path": "object_type"}, "right": {"value": "PURCHASE_REQUEST"}}'::jsonb,
      'Catch-all, unchanged from v1.', 'U-ADM');
 
 INSERT INTO approval_stage
@@ -315,9 +313,7 @@ INSERT INTO approval_rule
     (rule_id, definition_id, priority, predicate, description, created_by)
 VALUES
     ('APR-PR-DM2-V1-STD', 'APD-PR-DM2-V1', 100,
-     '{"all": [
-         {"field": "object_type", "op": "eq", "value": "PURCHASE_REQUEST"}
-     ], "route": "STANDARD"}'::jsonb,
+     '{"op": "==", "left": {"path": "object_type"}, "right": {"value": "PURCHASE_REQUEST"}}'::jsonb,
      'Every solar-park requisition takes the single Finance gate.', 'U-ADM');
 
 INSERT INTO approval_stage
@@ -358,9 +354,7 @@ INSERT INTO approval_rule
     (rule_id, definition_id, priority, predicate, description, created_by)
 VALUES
     ('APR-BREV-ORG-V1-STD', 'APD-BREV-ORG-V1', 100,
-     '{"all": [
-         {"field": "object_type", "op": "eq", "value": "BUDGET_REVISION"}
-     ], "route": "STANDARD"}'::jsonb,
+     '{"op": "==", "left": {"path": "object_type"}, "right": {"value": "BUDGET_REVISION"}}'::jsonb,
      'Every budget revision, in every entity.', 'U-ADM');
 
 INSERT INTO approval_stage
