@@ -643,6 +643,12 @@ POST_BASELINE_FILES = {
     # migration 023's five tables; the bounded per-user/per-address throttle.
     "test_period_reopen_permissions.py",
     "test_login_throttle.py",
+    # The ERP outbound-write gate (`CAPEX_ERP_OUTBOUND_WRITES`, default off)
+    # and the legacy `/api/zoho/*` route discipline (404 for an unknown or
+    # out-of-scope connection, coded 4xx never 500, an audit entry per
+    # mutating call). Both Fable 5.1, both post-baseline.
+    "test_erp_write_gate.py",
+    "test_zoho_routes_fable51.py",
     "test_frontend_budget_setup_registry.py",
 }
 
