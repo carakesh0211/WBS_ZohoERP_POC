@@ -5,7 +5,7 @@
   "baseline": {
     "recorded_at": "2026-08-28",
     "commit_note": "POC baseline, branch phase-0a/foundations, before any port work",
-    "test_functions": 220,
+    "test_functions": 256,
     "collected_cases": 348,
     "collected_cases_note": "348 is the pytest-collected count after parametrisation expands 6 files; 220 is the count of `def test_` functions. Both are real and the Definition of Done refers to the function count.",
     "runtime_seconds_approx": 189,
@@ -1996,6 +1996,56 @@
       "test_aud_c_008_goods_received_but_unbilled_is_its_own_exposure_bucket": {
         "assertions": 3,
         "body_sha": "61fee1e08beccf7c"
+      }
+    },
+    "test_frontend_budget_setup_registry.py": {
+      "test_new_screen_id_in_app_js_scr_routes": {
+        "assertions": 1,
+        "body_sha": "1116cfcd2a20cd7d"
+      },
+      "test_new_screen_id_in_router_js_screens": {
+        "assertions": 1,
+        "body_sha": "2c00c3da7e774ee6"
+      },
+      "test_new_screen_need_matches_in_app_js": {
+        "assertions": 1,
+        "body_sha": "d6a0fb58de0a1553"
+      },
+      "test_new_screen_need_matches_in_router_js": {
+        "assertions": 1,
+        "body_sha": "a157808cabb54123"
+      },
+      "test_new_screens_have_a_nav_row": {
+        "assertions": 1,
+        "body_sha": "bb0695bbf04708f3"
+      },
+      "test_no_style_attribute_in_new_js": {
+        "assertions": 2,
+        "body_sha": "3b5cb39aa4c563d6"
+      },
+      "test_new_css_vars_are_declared": {
+        "assertions": 3,
+        "body_sha": "557d434496741521"
+      },
+      "test_new_css_files_are_nonempty": {
+        "assertions": 2,
+        "body_sha": "af0899ce311afda3"
+      },
+      "test_analytics_and_mapping_ids_referenced_from_nav": {
+        "assertions": 1,
+        "body_sha": "6f428e665545c3fc"
+      },
+      "test_analytics_and_mapping_groups_declared": {
+        "assertions": 2,
+        "body_sha": "5b1b8cfb5b0dc4f5"
+      },
+      "test_new_nav_groups_default_collapsed": {
+        "assertions": 2,
+        "body_sha": "9aa5397d3f9830c6"
+      },
+      "test_nav_groups_are_collapsible_buttons": {
+        "assertions": 4,
+        "body_sha": "0eae59d039838815"
       }
     },
     "test_integration_adapter_contract.py": {
@@ -12179,6 +12229,7 @@
     "test_export_poc.py": 17,
     "test_export_scope.py": 26,
     "test_financial_controls.py": 61,
+    "test_frontend_budget_setup_registry.py": 12,
     "test_integration_adapter_contract.py": 72,
     "test_integration_capabilities.py": 19,
     "test_integration_dto_reader_contract.py": 4,
@@ -12301,6 +12352,7 @@
     "test_export_poc.py": 32,
     "test_export_scope.py": 69,
     "test_financial_controls.py": 159,
+    "test_frontend_budget_setup_registry.py": 21,
     "test_integration_adapter_contract.py": 169,
     "test_integration_capabilities.py": 56,
     "test_integration_dto_reader_contract.py": 5,

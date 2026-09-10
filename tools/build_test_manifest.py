@@ -643,6 +643,7 @@ POST_BASELINE_FILES = {
     # migration 023's five tables; the bounded per-user/per-address throttle.
     "test_period_reopen_permissions.py",
     "test_login_throttle.py",
+    "test_frontend_budget_setup_registry.py",
 }
 
 
