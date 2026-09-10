@@ -71,6 +71,13 @@ def prepare_environment() -> str:
     os.environ["CAPEX_DB_PATH"] = db_path
     os.environ["CAPEX_UAT_CREDENTIALS"] = CREDENTIALS
     os.environ.setdefault("HOST", "0.0.0.0")
+    # On Catalyst every request arrives from the platform gateway, so the
+    # per-address login throttle would key every reviewer on one address and
+    # ten bad guesses by anyone would lock everyone out for fifteen minutes.
+    # Trust the gateway's first X-Forwarded-For hop THERE ONLY; locally the
+    # peer address is the truth and a forged header must not be believed.
+    if os.environ.get("X_ZOHO_CATALYST_LISTEN_PORT"):
+        os.environ.setdefault("CAPEX_TRUST_PROXY", "1")
     # A visual preview never talks to PostgreSQL or an ERP. Unset rather than
     # trust that nothing in the container environment set them.
     for name in ("CAPEX_DB_URL", "CAPEX_DB_HOST", "CAPEX_ERP_OUTBOUND_WRITES"):

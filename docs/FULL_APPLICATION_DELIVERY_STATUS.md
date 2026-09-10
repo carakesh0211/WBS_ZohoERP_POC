@@ -55,8 +55,12 @@ dimensions**. Delivered on this branch:
 | Approval engine: `ORIGINAL_BUDGET` binding and write-back → RELEASE creates and classifies cells, writes ORIGINAL lines, captures the approving authority | **done; verified end-to-end over HTTP on local PostgreSQL** |
 | Seeded approval workflows | **every seeded predicate since Wave 4 was in a shape the compiler refuses** — rewritten, with a live test that compiles and routes the real seed |
 | Local PostgreSQL demo (`tools/demo_pg.py`) | **done** — no core screen answers DATABASE_NOT_CONFIGURED |
-| Frontend: Budget Setup screen, New Budget, governed selectors, category master, visible analytics/mapping navigation | in progress (frontend stream) |
-| Reporting: category/head/plant/entity/location/division/branch/zone/period/date/status/requestor/vendor filters, grouping, reconciliation across cards/tables/drill-down/exports | in progress (reporting stream) |
+| Frontend: Budget Setup screen, New Budget, governed selectors, category master, visible analytics/mapping navigation (only the two new groups collapse; approved groups' markup unchanged) | **integrated**; Budget Setup verified in the browser on the PostgreSQL demo; rail does not overflow at 1440×900 |
+| Reporting: `budget_category` as an independent FilterSet dimension, six declared-and-refused dimensions, grouping, exports accepting a REAL FilterSet (they never had) | **integrated** (9 commits); live reporting/export suites 625 passed |
+| Guards: write-back registry, 026 rollback ledger line, scope chokepoint (19 exempt reasons), SCOPABLE, money-float guard on the editor | **all six inherited guards green again** |
+
+**Wave 8 items closed on this branch after the correction:** M-1 (audit-anchor Cron Function shim `catalyst/functions/capex_audit_anchor/` sharing one entry point with the CLI; folder built, not deployed), M-2's remaining half (anchors record each stream's genesis; `RECREATED_AFTER_ANCHOR` reported only when an anchor can prove it), M-4 (023 RLS matrix live as `capex_app`, 6 passed), and a foreign-currency purchase order is now REFUSED at emission (`PO_CURRENCY_NOT_EMITTABLE`) instead of relabelled INR — emitting in the PO's own currency needs source-minor amounts on `po_line`, which is remaining work.
+
 
 Also integrated on this branch: login throttling, the ERP outbound-write gate,
 Zoho route 404/audit discipline, period-reopen maker-checker and permissions
