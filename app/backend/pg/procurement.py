@@ -1130,6 +1130,24 @@ def _translate_bill_payload(session: Session, *, bill_id: str,
     return header_base, out
 
 
+def _translation_event_exists(session: Session, bill_id: str) -> bool:
+    """Has this bill's translation already been registered? A PK read.
+
+    Read by primary key and NOT scoped, for the reason `fx.register_translation`
+    gives for its own read: a scoped re-read answers "no event" for a row that
+    DOES exist whenever the caller's scope is narrower than the writer's, and
+    "no event" is the one wrong answer that lets a rate be applied twice. The
+    row itself is protected by `fx_translation_event`'s RLS policy (025) and
+    by its no-UPDATE / no-DELETE triggers; this read decides only which ORDER
+    `mirror_bill` does its comparison in.
+    """
+    row = session.fetchone(  # scope-exempt: primary-key existence read of the translation event `mirror_bill` is about to compare against; see the docstring for why a scoped read would answer wrongly in the permissive direction
+        "SELECT 1 FROM fx_translation_event "
+        "WHERE document_type = 'BILL' AND document_id = %s",
+        (bill_id,))
+    return row is not None
+
+
 def mirror_bill(session: Session, *, external_source: str, external_id: str,
                 bill_number: str, vendor_name: str, bill_date: date,
                 lines: Sequence[Any],
@@ -1366,6 +1384,45 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
     header_base_paise, line_base_money = _translate_bill_payload(
         session, bill_id=bill_id, identities=identities,
         source_money=source_money, basis=basis)
+    source_total_minor = sum(sum(cells) for cells in source_money)
+
+    # ============================ THE REVISION CHECK, BEFORE ANY ROW MOVES
+    #
+    # THE DEFECT THIS CLOSES. `register_translation` is where a REVISED
+    # foreign-currency document is refused with a coded `FxError` naming both
+    # totals -- and it ran AFTER the line upsert. So on a revised bill the
+    # first thing to see the new source amount was `_mirror_bill_line`'s
+    # `ON CONFLICT DO UPDATE`, and the first thing to refuse it was
+    # `trg_bill_line_source_amount_immutable`: a raw
+    # `psycopg.errors.InsufficientPrivilege` out of a trigger, with the lines
+    # written up to that point sitting in an aborted transaction. The refusal
+    # was right; the layer it came from was wrong, and the transaction had
+    # already moved money it was about to be told it could not.
+    #
+    # A bill that already carries a translation event is therefore compared
+    # HERE, before the header and before any line. On that path
+    # `register_translation` reads its own row, compares and either returns
+    # `replayed` or raises -- it INSERTS nothing and appends nothing, so
+    # calling it ahead of the cell locks does not invert Rule 3 of
+    # `locking.py`'s global order. Only a FIRST registration writes, and that
+    # one still happens below, after the refresh, exactly where it was.
+    #
+    # The trigger is unchanged and remains the backstop for a caller that
+    # reaches the table another way (`test_the_database_refuses_the_revision_
+    # even_with_the_service_bypassed` proves it still fires). What changed is
+    # that no statement of ours reaches it any more: nothing here is partially
+    # applied, and the operator gets `FX_SOURCE_DOCUMENT_CHANGED` with the
+    # posted total, the presented total and therefore the delta, rather than
+    # a PL/pgSQL context line.
+    translation_registered = False
+    if not basis.is_identity and _translation_event_exists(session, bill_id):
+        fx_svc.register_translation(
+            session, document_type="BILL", document_id=bill_id,
+            entity_id=entity_id, basis=basis,
+            source_total_minor=source_total_minor,
+            base_total_paise=header_base_paise, line_count=len(identities),
+            actor=actor, correlation_id=correlation_id)
+        translation_registered = True
 
     params = {
         "bill_id": bill_id, "bill_number": bill_number, "po_id": po_id,
@@ -1670,11 +1727,17 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
     # foreign-exchange rule applied to documents that have no foreign exchange
     # in them, and it would break the ordinary revise-and-re-mirror path for
     # the entire existing estate.
-    if not basis.is_identity:
+    #
+    # ALREADY DONE FOR A BILL THAT HAD AN EVENT. The revision check above
+    # called this before the first row moved and got `replayed` (or raised);
+    # calling it again here would read the same row and return the same
+    # answer, so the guard is only saving a round trip -- the FIRST
+    # registration, the one that writes, is the one this call still makes.
+    if not basis.is_identity and not translation_registered:
         fx_svc.register_translation(
             session, document_type="BILL", document_id=bill_id,
             entity_id=entity_id, basis=basis,
-            source_total_minor=sum(sum(cells) for cells in source_money),
+            source_total_minor=source_total_minor,
             base_total_paise=header_base_paise, line_count=len(identities),
             actor=actor, correlation_id=correlation_id)
 
@@ -1723,7 +1786,7 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
         "fx_rate_date": (basis.rate_date.isoformat()
                          if basis.rate_date is not None else None),
         "translated": not basis.is_identity,
-        "source_total_minor": sum(sum(cells) for cells in source_money),
+        "source_total_minor": source_total_minor,
         "base_total_paise": header_base_paise,
     }
 
