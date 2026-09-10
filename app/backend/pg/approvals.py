@@ -131,6 +131,13 @@ OBJECT_BINDINGS: dict[str, ObjectBinding] = {
         object_type="BUDGET_TRANSFER", table="budget_transfer",
         pk_column="transfer_id", version_column="version_no",
         maker_column="created_by"),
+    # Fable 5.1, migration 026: the original-budget document. Maker is the
+    # drafter; the engine's contributor filter reads the ORIGINAL_BUDGET audit
+    # stream written by pg/original_budget.py at CREATE/UPDATE/SUBMIT.
+    "ORIGINAL_BUDGET": ObjectBinding(
+        object_type="ORIGINAL_BUDGET", table="original_budget",
+        pk_column="budget_id", version_column="version_no",
+        maker_column="created_by"),
 }
 
 

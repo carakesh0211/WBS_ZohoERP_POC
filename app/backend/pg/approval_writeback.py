@@ -551,6 +551,76 @@ def _apply_budget_transfer(session: Session, instance: Mapping[str, Any],
 # ==========================================================================
 # The registry
 # ==========================================================================
+# ==========================================================================
+# ORIGINAL_BUDGET  (Fable 5.1, migration 026)
+# ==========================================================================
+_ORIGINAL_BUDGET_SCOPE_COLUMNS = {
+    "project": "ob.project_id",
+    "entity": "ob.entity_id",
+    "plant": "p.plant_id",
+    "location": "p.location_id",
+}
+
+
+def _apply_original_budget(session: Session, instance: Mapping[str, Any],
+                           target: str, *,
+                           closing_actor: str | None = None) -> None:
+    """APPROVED releases the document (writes the ORIGINAL budget_line rows,
+    creates and classifies the cells); REJECTED / RETURNED / RECALLED /
+    CANCELLED move the document without touching a cell. Same shape as the
+    revision handler above: unreachable is 409, a conflicting decision is
+    409, an already-applied outcome is a silent idempotent return."""
+    from . import original_budget as ob_mod   # deferred: avoids an import cycle through budget
+
+    budget_id = str(instance.get("object_id"))
+    row = repo.query_one(
+        session,
+        """
+        SELECT ob.status, ob.version_no, ob.decision_note
+        FROM original_budget ob
+        JOIN project p ON p.project_id = ob.project_id
+        WHERE ob.budget_id = %(id)s AND {scope}
+        """,
+        {"id": budget_id},
+        columns=_ORIGINAL_BUDGET_SCOPE_COLUMNS,
+    )
+    if row is None:
+        raise WritebackError(
+            ERR_DOCUMENT_UNREACHABLE,
+            f"Original budget {budget_id} is not readable in this transaction's "
+            f"scope, but approval instance {instance.get('instance_id')} decided "
+            f"it. The outcome cannot be applied to a document this session "
+            f"cannot see.",
+            status=409, detail={"object_id": budget_id})
+    status, version_no, _current_note = row
+    released_target = "RELEASED" if target == BIZ_APPROVED else target
+    if status == released_target and target != BIZ_DRAFT:
+        return                              # already applied; idempotent
+    if status not in _UNDECIDED_STATUSES:
+        raise WritebackError(
+            ERR_CONFLICT,
+            f"Original budget {budget_id} is already {status}, and approval "
+            f"instance {instance.get('instance_id')} closed {instance.get('status')} "
+            f"which would make it {released_target}. The write-back refuses "
+            f"rather than choosing between two decisions.",
+            status=409,
+            detail={"object_id": budget_id, "document_status": status,
+                    "would_write": released_target})
+    _assert_version_matches(instance, version_no, label="Original budget",
+                             object_id=budget_id)
+    actor = _closing_actor(session, instance, closing_actor)
+    instance_id = str(instance.get("instance_id"))
+    if target == BIZ_APPROVED:
+        ob_mod.release(session, budget_id=budget_id, actor=actor,
+                       approval_instance_id=instance_id)
+        return
+    ob_mod.decide_not_released(session, budget_id=budget_id, actor=actor,
+                               target=("REJECTED" if target == BIZ_REJECTED else
+                                       "RETURNED" if target in (BIZ_RETURNED, BIZ_DRAFT) else
+                                       "CANCELLED"),
+                               note=_note(instance), approval_instance_id=instance_id)
+
+
 #: ``object_type`` -> the function that moves that document's business status.
 #:
 #: A CLOSED allow-list, deliberately the same two types
@@ -562,4 +632,5 @@ def _apply_budget_transfer(session: Session, instance: Mapping[str, Any],
 _REGISTRY: dict[str, Callable[[Session, Mapping[str, Any], str], None]] = {
     budget_mod.OBJECT_TYPE_REVISION: _apply_budget_revision,
     budget_mod.OBJECT_TYPE_TRANSFER: _apply_budget_transfer,
+    "ORIGINAL_BUDGET": _apply_original_budget,
 }

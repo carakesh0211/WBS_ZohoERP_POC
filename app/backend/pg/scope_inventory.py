@@ -775,6 +775,32 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
              "all: a RATE belongs to nobody and is reference data, while an "
              "APPLICATION of a rate belongs to the document it was applied "
              "to."),
+    ScopedTable(
+        table="budget_category", dimensions=("entity",), reach="direct",
+        path="budget_category.entity_id", status="covered",
+        migration="026_budget_category_and_original_budget.sql",
+        note="Fable 5.1. The budget CATEGORY master, a classification "
+             "dimension separate from budget_head (AMB-04). `entity_id` NULL "
+             "is estate-wide reference data and the policy waives the "
+             "predicate for it; a non-NULL value restricts the category to "
+             "one entity and is filtered directly."),
+    ScopedTable(
+        table="original_budget", dimensions=("entity", "project"), reach="direct",
+        path="original_budget.entity_id / original_budget.project_id", status="covered",
+        migration="026_budget_category_and_original_budget.sql",
+        note="Fable 5.1. The original-budget document. Both dimension columns "
+             "are NOT NULL with foreign keys; plant and location limbs are "
+             "supplied through the `project` join inside the policy, the "
+             "same join the project table's own policy uses."),
+    ScopedTable(
+        table="original_budget_line", dimensions=(), reach="joined",
+        path="original_budget_line.budget_id -> original_budget", status="covered",
+        migration="026_budget_category_and_original_budget.sql",
+        note="Fable 5.1. One grant line per (wbs, head) of a document; no "
+             "dimension column of its own. Reached through the parent "
+             "document's policy inside an EXISTS: a line whose parent is "
+             "invisible is invisible. Fail closed -- an orphan line (no "
+             "parent row) is denied."),
 )
 
 #: Tables deliberately left WITHOUT a scope policy, each with the reason.

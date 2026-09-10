@@ -139,6 +139,15 @@ PERMISSIONS: dict[str, tuple[str, ...]] = {
     # role. Triage is an operational act, not an audit read.
     "reconciliation.triage": ("Administrator",),
     "admin.reset":            ("Administrator",),
+    # --- Fable 5.1: original budget creation (U1 "Create budget") ------
+    # Drafting, editing, submitting, cancelling and importing an ORIGINAL
+    # budget document. Approval is NOT a permission here: it is the approval
+    # engine's assignment plus maker-checker, decided per instance, and the
+    # engine's `approval.act` floor. Auditor is read-only (budget.read).
+    "budget.create":          ("Requestor", "BudgetController", "FinanceApprover",
+                               "Administrator"),
+    # The budget CATEGORY master (separate from budget_head, AMB-04).
+    "budget.category.manage": ("Administrator", "BudgetController"),
 }
 
 # Approval permissions are subject to maker-checker: the approver may not be the

@@ -559,6 +559,32 @@ RLS_FX_INGEST_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
 #: Every table 025 enables RLS on.
 RLS_FX_INGEST_TABLES: tuple[str, ...] = tuple(RLS_FX_INGEST_TABLE_COLUMNS)
 
+#: Table -> dimension column mapping for the three tables
+#: `migrations/pg/026_budget_category_and_original_budget.sql` adds (Fable 5.1).
+#:
+#: `budget_category` is reference data with an OPTIONAL entity restriction:
+#: `entity_id` NULL is estate-wide (the policy waives the predicate, exactly
+#: the NULL waiver `capex_dimension_permits` documents) and a non-NULL value
+#: is filtered directly. `original_budget` carries `entity_id` and
+#: `project_id` NOT NULL and reaches plant/location through `project`, the
+#: same join `project`'s own policy uses. `original_budget_line` has no
+#: dimension column and is reached through its parent document, whose policy
+#: applies inside the EXISTS -- listed in `JOINED_VIA_PARENT_DOCUMENT` below.
+RLS_ORIGINAL_BUDGET_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
+    "budget_category": {"entity": "entity_id", "plant": None, "location": None, "project": None},
+    "original_budget": {"entity": "entity_id", "plant": None, "location": None,
+                        "project": "project_id"},
+    "original_budget_line": {"entity": None, "plant": None, "location": None, "project": None},
+}
+
+#: Every table 026 enables RLS on.
+RLS_ORIGINAL_BUDGET_TABLES: tuple[str, ...] = tuple(RLS_ORIGINAL_BUDGET_TABLE_COLUMNS)
+
+#: Tables whose policy is an EXISTS against their parent DOCUMENT's row (which
+#: carries the real predicate), the way `JOINED_VIA_WBS_ELEMENT` tables reach
+#: `project_id` through `wbs_element`.
+JOINED_VIA_PARENT_DOCUMENT = frozenset({"original_budget_line"})
+
 #: Every RLS-protected table, from any of the seven registries.
 #:
 #: Reporting (017) and closure (019) were written in parallel and each added
@@ -580,7 +606,7 @@ ALL_RLS_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
     **RLS_PROCUREMENT_TABLE_COLUMNS, **RLS_CORRECTION_TABLE_COLUMNS,
     **RLS_REPORTING_TABLE_COLUMNS, **RLS_EXPORT_TABLE_COLUMNS,
     **RLS_CLOSURE_TABLE_COLUMNS, **RLS_FX_TABLE_COLUMNS,
-    **RLS_FX_INGEST_TABLE_COLUMNS,
+    **RLS_FX_INGEST_TABLE_COLUMNS, **RLS_ORIGINAL_BUDGET_TABLE_COLUMNS,
 }
 
 #: Every RLS-protected table, from any migration, in registry order.
@@ -606,6 +632,8 @@ RLS_MIGRATION_BY_TABLE: dict[str, str] = {
        for table in RLS_FX_TABLES},
     **{table: "025_fx_applied_at_ingestion.sql"
        for table in RLS_FX_INGEST_TABLES},
+    **{table: "026_budget_category_and_original_budget.sql"
+       for table in RLS_ORIGINAL_BUDGET_TABLES},
 }
 
 

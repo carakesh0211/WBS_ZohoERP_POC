@@ -104,6 +104,7 @@ else:
 from .api import admin_access as admin_access_api
 from .api import approvals as approvals_api
 from .api import budget as budget_api
+from .api import budgets_original as budgets_original_api
 from .api import exports as exports_api
 
 from .api import closure as closure_api
@@ -114,6 +115,11 @@ from .api import reports as reports_api
 from .api import settings as settings_api
 
 app.include_router(budget_api.router)
+# Fable 5.1. Original-budget creation and the budget CATEGORY master over
+# migration 026. Same rule, same commit: its mutating paths are in
+# `tests/test_api_auth.py::MUTATING_ROUTES`. Mounted right after the budget
+# router because it shares that router's `budget.read` floor and helpers.
+app.include_router(budgets_original_api.router)
 app.include_router(masters_api.router)
 app.include_router(settings_api.router)
 app.include_router(admin_access_api.router)
