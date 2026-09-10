@@ -10452,6 +10452,24 @@
         "body_sha": "0932341a0e64761b"
       }
     },
+    "test_pg_rls_fable51_023_matrix.py": {
+      "test_live_entity_scoped_023_tables_confine_reads_to_the_grant": {
+        "assertions": 4,
+        "body_sha": "8265046facc5c6ed"
+      },
+      "test_live_entity_scoped_023_tables_refuse_cross_entity_writes": {
+        "assertions": 2,
+        "body_sha": "e889ee4732a84467"
+      },
+      "test_live_reference_023_tables_are_estate_wide_for_every_established_principal": {
+        "assertions": 2,
+        "body_sha": "afd0a53aeab63d3f"
+      },
+      "test_live_every_023_table_forces_rls_with_a_non_trivial_policy": {
+        "assertions": 4,
+        "body_sha": "7d3ac832cdf97408"
+      }
+    },
     "test_pg_rls_integration_matrix.py": {
       "test_the_call_site_scan_finds_the_policies_it_is_meant_to_audit": {
         "assertions": 2,
@@ -12472,6 +12490,7 @@
     "test_pg_reservations.py": 33,
     "test_pg_rls.py": 18,
     "test_pg_rls_coverage.py": 39,
+    "test_pg_rls_fable51_023_matrix.py": 4,
     "test_pg_rls_integration_matrix.py": 16,
     "test_pg_rls_registry_handoff.py": 2,
     "test_pg_rls_wave7_matrix.py": 8,
@@ -12598,6 +12617,7 @@
     "test_pg_reservations.py": 107,
     "test_pg_rls.py": 34,
     "test_pg_rls_coverage.py": 84,
+    "test_pg_rls_fable51_023_matrix.py": 12,
     "test_pg_rls_integration_matrix.py": 34,
     "test_pg_rls_registry_handoff.py": 7,
     "test_pg_rls_wave7_matrix.py": 19,

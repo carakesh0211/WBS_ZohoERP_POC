@@ -642,6 +642,11 @@ POST_BASELINE_FILES = {
     # The Catalyst Cron Function shim for the daily audit anchor and the
     # shared entry point the CLI and the schedule both call (Fable 5.1).
     "test_anchor_function_shim.py",
+    # M-4 closed: migration 023's five tables proven LIVE as capex_app --
+    # three points per entity-scoped table, estate-wide reference tables read
+    # identically by every established principal, catalog says FORCE RLS and
+    # no trivial policy.
+    "test_pg_rls_fable51_023_matrix.py",
 
     # --- Fable 5.1: period reopen (M-3). Post-baseline like every wave file: the 220 counts the
     # POC's audit-remediation suite, and inflating it would make the removal
