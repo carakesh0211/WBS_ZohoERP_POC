@@ -52,6 +52,7 @@ is claimed on the strength of a document.
 | Currency-aware PO emission; exact DTO totals per exponent | done (029; source figures on `po_line`; both adapters render at the currency's exponent; DTO identities hold in minor units) | 58 database-free + 9 live + HTTP smoke on the demo (§11) |
 | GRN reversal; commitment recomputation preserving non-PO sources | done (027, integrated earlier this branch) | inbound/FX/budget/writeback/reconciliation 142 live |
 | Zoho route auth/scope/refusal | done (`61651ea`, `f725c5f`) | `test_zoho_routes_fable51.py`, `test_erp_write_gate.py` |
+| ERP demo tenant, read-only | **connected 2026-09-11** to organisation 60074128927 (DEMO WBS) via a Self Client and a live transport that is never a default, GET-only while writes are gated, India/ERP/scope-checked, 100/min; the organisation is empty and carries no `cf_capex_ref` (client decision) | `test_live_transport_fable51.py` 16, probe evidence under `docs/fable51/evidence/erp-demo/` |
 | Audit anchor scheduled invocation; deleted-and-recreated stream | done (Cron Function shim `catalyst/functions/capex_audit_anchor`, genesis-hash `RECREATED_AFTER_ANCHOR`) | 11 shim + 98 live anchor tests |
 | Period reopen permissions / maker-checker | done (`e237158`) | live reopen tests |
 | 023 live RLS matrix | done | 6 live tests as `capex_app` |
@@ -119,3 +120,8 @@ Migration 029 and `procurement_services`: `create_po` / `convert_pr_to_po` resol
 ## 15. How to resume
 
 Read `docs/fable51/CONTINUATION.md` first. Local PostgreSQL 16.10 and the disposable demo (`tools/demo_pg.py --create --fresh --serve`) are the fastest proof surface; the UAT bundle rebuild and redeploy are three commands recorded in `STAGE_A_UAT_PREVIEW.md`; the VRT re-baseline procedure is in §10. Next free migration number: 030.
+
+
+## 16. Addendum (2026-09-11, later): the ERP demo tenant is connected, read-only
+
+See `docs/fable51/ERP_DEMO_CONNECTION_PREP.md` for the result table. In one line: the credential was obtained by the product owner on their own machine and never entered the repository or this record; the live transport is the only network-capable component and refuses writes, other hosts, other products and ungranted scopes before any byte leaves; the pinned organisation is empty today and lacks `cf_capex_ref`, so the next steps are the product owner's (load demo records, create the unique field) before any sweep can verify against data.

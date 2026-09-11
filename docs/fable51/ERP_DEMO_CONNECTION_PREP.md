@@ -1,9 +1,51 @@
 # Zoho ERP demo organisation — connection preparation (Fable 5.1)
 
-**Status: PREPARED. STOPPED at the manual OAuth authorisation, as the brief
-requires. No call has been made to any Zoho tenant. `zoho.MODE` is `MOCK`,
-`CAPEX_ERP_OUTBOUND_WRITES` is unset (= disabled) everywhere, and nothing on
-any branch is labelled LIVE or VERIFIED.**
+**Status (2026-09-11): CONNECTED, READ-ONLY, against organisation
+`60074128927` "DEMO WBS" only.** The product owner authorised a Self Client on
+the India API console and exchanged its grant code on their own machine with
+`tools/erp_demo/connect.py` (hidden prompts; the credential file lives outside
+the repository; no value has been printed, logged or committed). The live
+transport (`app/backend/integration/live_transport.py`) is the only component
+that can reach a tenant; it is never a default, refuses every method but GET
+while `CAPEX_ERP_OUTBOUND_WRITES` is unset, refuses any host but
+`.zohoapis.in`, any product but ERP, and any scope the grant lacks, and holds
+the 100/minute ceiling. **No write has been made and none is enabled.**
+
+## What the read-only probe found (`tools/erp_demo/probe.py --org 60074128927`)
+
+Evidence: `docs/fable51/evidence/erp-demo/probe-60074128927-20260911T111207Z.json` (counts, ids, statuses and scope names only; the
+21 other organisations the grant can see are counted, never named).
+
+| Check | Result |
+|---|---|
+| Data centre / product | `https://www.zohoapis.in` + `/erp/v3` — India, ERP v3, confirmed by the organisations call |
+| Pinned organisation | `60074128927` DEMO WBS, INR, India, TRIAL plan, live org type, not multi-entity |
+| Granted scopes vs the required READ set (12) | all 12 present, none missing |
+| Token | refreshed from the stored refresh token; 3,600 s lifetime; one mint per hour |
+| Vendors, items, purchase orders, receives, bills | **the organisation is empty**: 0 of each on page 1, `has_more` false — every path answered 200 through the real adapter, so mapping, pagination and the windowed filters are exercised but cannot yet be verified against records |
+| Call budget | 5 calls for the whole probe |
+| `cf_capex_ref` on purchase orders (step 12) | **absent**. The purchase-order entity carries `cf_mpn`, `cf_drawing_reference`, `cf_technical_spec`; bills carry no custom field; there are no line-level purchase-order custom fields; the custom-field listing exposes no uniqueness flag. This is the client conversation the plan anticipated, not an engineering workaround |
+| Reporting tags | `GET /settings/reportingtags` answers 404 on this tenant; line-level WBS/budget dimensions therefore have no confirmed home yet |
+
+Two facts learned on the first live run and now pinned by tests: the transport
+must add the `?` before the query (the first run asked for
+`/contactsorganization_id=…` and got 404 "Invalid URL Passed"), and a READ
+grant must satisfy a GET the adapter names as `ERP.purchaseorders.ALL`. The
+settings endpoints additionally need the `X-com-zoho-erp-organizationid`
+header when the user belongs to several organisations (Zoho code 6024).
+
+## What is next, in order
+
+1. The product owner loads demo records into DEMO WBS (vendors, items, a few
+   purchase orders, receives and bills) so steps 6–11 verify against data.
+2. Create `cf_capex_ref` (Unique = ON) on purchase orders in the demo org and
+   decide where line-level WBS/budget dimensions live (D-7) — both are client
+   decisions recorded in the ADRs, not made here.
+3. Re-run the probe; then the sweeps against the inbox.
+4. Only then, and on separate authorisation, one controlled test purchase
+   order with `CAPEX_ERP_OUTBOUND_WRITES=1` on that single connection.
+
+---
 
 The product owner has a Zoho ERP demo organisation and authorises preparing
 its connection **after** the secure UAT application is hosted (Stage A is

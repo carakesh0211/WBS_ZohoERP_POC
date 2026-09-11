@@ -1,0 +1,123 @@
+{
+  "organization_id": "60074128927",
+  "started_at": "2026-09-11T11:10:25.917866+00:00",
+  "mode": "LIVE_READ (probe; CAPEX_ERP_OUTBOUND_WRITES unset)",
+  "checks": [
+    {
+      "check": "data centre and product",
+      "ok": true,
+      "detail": {
+        "api_domain": "https://www.zohoapis.in",
+        "service_path": "/erp/v3"
+      }
+    },
+    {
+      "check": "pinned organisation is visible to the grant",
+      "ok": true,
+      "detail": {
+        "pinned": {
+          "organization_id": "60074128927",
+          "name": "DEMO WBS",
+          "currency_code": "INR",
+          "country": "India",
+          "time_zone": "Asia/Calcutta",
+          "plan_name": "TRIAL",
+          "org_type": "live",
+          "is_multientity_enabled": false,
+          "is_gst_india_version": false
+        },
+        "other_organisations_visible": 21
+      }
+    },
+    {
+      "check": "organisation currency is the base currency",
+      "ok": true,
+      "detail": {
+        "currency_code": "INR"
+      }
+    },
+    {
+      "check": "granted scopes cover every required READ scope",
+      "ok": true,
+      "detail": {
+        "required_read": [
+          "ERP.accountants.READ",
+          "ERP.bills.READ",
+          "ERP.contacts.READ",
+          "ERP.custommodules.ALL",
+          "ERP.debitnotes.READ",
+          "ERP.department.READ",
+          "ERP.fixedasset.READ",
+          "ERP.projects.READ",
+          "ERP.purchaseorders.READ",
+          "ERP.purchasereceives.READ",
+          "ERP.settings.READ",
+          "ERP.vendorpayments.READ"
+        ],
+        "granted": [
+          "ERP.accountants.READ",
+          "ERP.bills.READ",
+          "ERP.contacts.READ",
+          "ERP.custommodules.ALL",
+          "ERP.debitnotes.READ",
+          "ERP.department.READ",
+          "ERP.fixedasset.READ",
+          "ERP.projects.READ",
+          "ERP.purchaseorders.READ",
+          "ERP.purchasereceives.READ",
+          "ERP.settings.READ",
+          "ERP.vendorpayments.READ"
+        ],
+        "missing": []
+      }
+    },
+    {
+      "check": "token refresh",
+      "ok": true,
+      "detail": {
+        "token_seconds_left": 3478,
+        "token_mints": 1
+      }
+    },
+    {
+      "check": "vendors (contacts)",
+      "ok": false,
+      "detail": "Zoho ERP answered HTTP 404 for /contacts: code=5 message='Invalid URL Passed'"
+    },
+    {
+      "check": "items",
+      "ok": false,
+      "detail": "Zoho ERP answered HTTP 404 for /items: code=5 message='Invalid URL Passed'"
+    },
+    {
+      "check": "purchase orders (windowed)",
+      "ok": false,
+      "detail": "Refusing GET /purchaseorders: it needs scope ERP.purchaseorders.ALL, which the grant does not carry. Granted: ERP.accountants.READ, ERP.bills.READ, ERP.contacts.READ, ERP.custommodules.ALL, ERP.debitnotes.READ, ERP.department.READ, ERP.fixedasset.READ, ERP.projects.READ, ERP.purchaseorders.READ, ERP"
+    },
+    {
+      "check": "purchase receives via PO-anchored discovery",
+      "ok": true,
+      "detail": {
+        "by_po": {}
+      }
+    },
+    {
+      "check": "vendor bills (windowed)",
+      "ok": false,
+      "detail": "Zoho ERP answered HTTP 404 for /bills: code=5 message='Invalid URL Passed'"
+    },
+    {
+      "check": "call budget spent",
+      "ok": true,
+      "detail": {
+        "calls_made": 4,
+        "minute_ceiling": 100,
+        "daily_ceiling_standard": 2000
+      }
+    }
+  ],
+  "stops": [],
+  "finished_at": "2026-09-11T11:10:28.262732+00:00",
+  "elapsed_seconds": 2.3,
+  "verdict": "PASS"
+}

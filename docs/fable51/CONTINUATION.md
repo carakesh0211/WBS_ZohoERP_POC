@@ -76,8 +76,11 @@ now carries a base-commit guard).
    matrix~~ — done (6 live tests).
 5. Stage B launcher variant and provider decision (billing stop);
    `docs/fable51/STAGE_B_PERSISTENT_UAT.md`.
-6. ERP demo OAuth: stopped at the manual authorisation;
-   `docs/fable51/ERP_DEMO_CONNECTION_PREP.md`.
+6. ~~ERP demo OAuth~~ — CONNECTED read-only 2026-09-11 (org 60074128927 DEMO WBS);
+   credential at `%USERPROFILE%\.capex-tools\erp-demo\` (never in the repo);
+   `python tools/erp_demo/connect.py --check` proves the refresh, `python
+   tools/erp_demo/probe.py --org 60074128927` re-runs the read-only probe.
+   The org is empty and has no `cf_capex_ref`: waiting on the product owner.
 7. GitHub Actions: blocked by account billing (confirmed from the check-run
    annotation); do not consume runs until the owner clears it.
 8. Independent adversarial review of the whole branch (D1/D2 reviewers never

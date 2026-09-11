@@ -650,6 +650,7 @@ POST_BASELINE_FILES = {
     # A foreign-currency purchase order is refused at emission with a code
     # rather than emitted labelled INR (Fable 5.1). Database-free.
     "test_po_emission_currency_fable51.py",
+    "test_live_transport_fable51.py",
     "test_pg_po_currency_fable51.py",
 
     # --- Fable 5.1: period reopen (M-3). Post-baseline like every wave file: the 220 counts the

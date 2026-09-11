@@ -3926,6 +3926,64 @@
         "body_sha": "de8cca51b1daefc1"
       }
     },
+    "test_live_transport_fable51.py": {
+      "test_a_credential_on_another_data_centre_is_refused_at_construction": {
+        "assertions": 1,
+        "body_sha": "3423a7395a50d469"
+      },
+      "test_a_missing_credential_file_names_the_tool_not_a_traceback": {
+        "assertions": 2,
+        "body_sha": "91fb18620883c35f"
+      },
+      "test_a_get_carries_the_bearer_and_the_organisation_and_returns_the_body": {
+        "assertions": 6,
+        "body_sha": "0a926a8e8b6c0f52"
+      },
+      "test_a_scope_the_grant_lacks_is_refused_before_anything_is_sent": {
+        "assertions": 3,
+        "body_sha": "3c26dad384446723"
+      },
+      "test_a_read_grant_satisfies_a_get_the_adapter_names_as_all_but_no_write": {
+        "assertions": 2,
+        "body_sha": "be9adf91cef19a4f"
+      },
+      "test_a_write_is_refused_while_the_outbound_gate_is_closed": {
+        "assertions": 3,
+        "body_sha": "625b6212db259945"
+      },
+      "test_a_write_leaves_only_when_the_gate_is_explicitly_open": {
+        "assertions": 2,
+        "body_sha": "69ab4e431dbecd71"
+      },
+      "test_another_host_or_product_is_refused_per_call": {
+        "assertions": 2,
+        "body_sha": "4ab89125b18b58a9"
+      },
+      "test_the_token_is_minted_once_and_reused_until_its_margin": {
+        "assertions": 2,
+        "body_sha": "590e223c961f8473"
+      },
+      "test_one_401_mints_once_and_retries_once_never_loops": {
+        "assertions": 3,
+        "body_sha": "8ff31a35be3dce84"
+      },
+      "test_the_hundred_and_first_call_in_a_minute_is_refused_not_queued": {
+        "assertions": 1,
+        "body_sha": "06f102ecd3043d62"
+      },
+      "test_a_zoho_error_body_is_surfaced_with_its_code_and_message": {
+        "assertions": 2,
+        "body_sha": "a812e0a477b44239"
+      },
+      "test_no_failure_transcript_ever_contains_a_secret": {
+        "assertions": 3,
+        "body_sha": "9e044c8d6ea84699"
+      },
+      "test_the_adapter_accepts_this_transport_and_refuses_it_for_another_product": {
+        "assertions": 2,
+        "body_sha": "de73c0df62a839ea"
+      }
+    },
     "test_login_throttle.py": {
       "test_ten_failures_refuse_the_eleventh_with_429_and_retry_after": {
         "assertions": 4,
@@ -12655,6 +12713,7 @@
     "test_integrations_api_guard.py": 51,
     "test_known_defects.py": 5,
     "test_ledger_cell_writers.py": 16,
+    "test_live_transport_fable51.py": 14,
     "test_login_throttle.py": 11,
     "test_manifest.py": 10,
     "test_masters_settings_api_guard.py": 9,
@@ -12786,6 +12845,7 @@
     "test_integrations_api_guard.py": 114,
     "test_known_defects.py": 13,
     "test_ledger_cell_writers.py": 32,
+    "test_live_transport_fable51.py": 34,
     "test_login_throttle.py": 26,
     "test_manifest.py": 15,
     "test_masters_settings_api_guard.py": 15,
