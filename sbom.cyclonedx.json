@@ -22,6 +22,14 @@
   "components": [
     {
       "type": "library",
+      "name": "annotated-doc",
+      "version": "0.0.5",
+      "purl": "pkg:pypi/annotated-doc@0.0.5",
+      "licenses": [],
+      "description": "Document parameters, class attributes, return types, and variables inline, with Annotated."
+    },
+    {
+      "type": "library",
       "name": "annotated-types",
       "version": "0.8.0",
       "purl": "pkg:pypi/annotated-types@0.8.0",
@@ -35,6 +43,20 @@
       "purl": "pkg:pypi/anyio@4.15.1",
       "licenses": [],
       "description": "High-level concurrency and networking framework on top of asyncio or Trio"
+    },
+    {
+      "type": "library",
+      "name": "certifi",
+      "version": "2026.7.22",
+      "purl": "pkg:pypi/certifi@2026.7.22",
+      "licenses": [
+        {
+          "license": {
+            "name": "MPL-2.0"
+          }
+        }
+      ],
+      "description": "Python package for providing Mozilla's CA Bundle."
     },
     {
       "type": "library",
@@ -103,6 +125,14 @@
         }
       ],
       "description": "The next generation HTTP client."
+    },
+    {
+      "type": "library",
+      "name": "idna",
+      "version": "3.19",
+      "purl": "pkg:pypi/idna@3.19",
+      "licenses": [],
+      "description": "Internationalized Domain Names in Applications (IDNA)"
     },
     {
       "type": "library",
@@ -176,11 +206,11 @@
     },
     {
       "type": "library",
-      "name": "pyparsing",
-      "version": "3.3.2",
-      "purl": "pkg:pypi/pyparsing@3.3.2",
+      "name": "Pygments",
+      "version": "2.21.0",
+      "purl": "pkg:pypi/pygments@2.21.0",
       "licenses": [],
-      "description": "pyparsing - Classes and methods to define and execute parsing grammars"
+      "description": "Pygments is a syntax highlighting package written in Python."
     },
     {
       "type": "library",
