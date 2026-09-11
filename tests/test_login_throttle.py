@@ -43,7 +43,11 @@ def test_a_throttled_correct_password_is_still_refused(client):
     assert resp.status_code == 429, "the throttle must not be a password oracle"
 
 
-def test_throttled_reply_is_identical_for_existing_and_unknown_user_ids(client):
+def test_throttled_reply_is_identical_for_existing_and_unknown_user_ids(client, monkeypatch):
+    # Retry-After is derived from the clock; freeze it so the two replies are
+    # compared on their content, not on whether a second boundary fell
+    # between the two requests (it did, once, in a full-suite run).
+    monkeypatch.setattr(login_throttle.THROTTLE, "_clock", lambda: 1_000_000.0)
     _fail(client, GOOD_USER, login_throttle.MAX_FAILURES)
     existing = _fail(client, GOOD_USER, 1)
     # Address key is shared, so the unknown id is throttled by address alone.

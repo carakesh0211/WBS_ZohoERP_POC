@@ -110,10 +110,22 @@ def test_a_filter_with_no_column_is_refused_with_a_code(field_name):
 
 def test_the_refusal_names_the_missing_column_not_just_a_code():
     """"Never fabricate a total -- return an explicit coded unavailable state
-    naming what is missing." A code alone does not name anything."""
-    assert "vendor_id" in rp.UNSUPPORTED_FILTERS["vendor_ids"].detail
-    assert "purchase_order" in rp.UNSUPPORTED_FILTERS["vendor_ids"].detail
+    naming what is missing." A code alone does not name anything.
+
+    `vendor_ids` left UNSUPPORTED_FILTERS when `bill.vendor_id` (014) made it
+    real for the `actual` bucket; its refusal is now CONDITIONAL and lives in
+    `FilterSet.validate`, so the wording is asserted on the raised error."""
     assert "item_id" in rp.UNSUPPORTED_FILTERS["item_ids"].detail
+    assert "vendor_ids" not in rp.UNSUPPORTED_FILTERS
+    with pytest.raises(rp.FilterError) as caught:
+        rp.FilterSet.build(vendor_ids=["V-1"])
+    assert caught.value.code == "FILTER_UNSUPPORTED_FOR_METRIC"
+    assert "bill.vendor_id" in caught.value.message
+    assert "BILL" in caught.value.message
+    assert caught.value.detail["dimension"] == "vendor"
+    # Narrowed to the one bucket that carries a vendor, the filter is honoured.
+    honoured = rp.FilterSet.build(vendor_ids=["V-1"], document_types=["BILL"])
+    assert honoured.vendor_ids == ("V-1",)
 
 
 def test_an_unset_unsupported_filter_is_not_reported_as_unavailable():
