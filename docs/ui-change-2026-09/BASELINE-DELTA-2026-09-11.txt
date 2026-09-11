@@ -1,0 +1,75 @@
+
+FAIL: changed pixels outside the approved regions:
+  tests/vrt/approved-ui.spec.js-snapshots/pos-laptop-1024-win32.png: 93 of 25580 differing px fall OUTSIDE the approved regions by more than 1/255, at (1004, 418, 1007, 479). Allowed: [(10, 27, 40, 57), (0, 55, 225, 1000000)]
+  tests/vrt/approved-ui.spec.js-snapshots/wbs-desktop-1440-win32.png: 30 of 17119 differing px fall OUTSIDE the approved regions by more than 1/255, at (253, 545, 261, 551). Allowed: [(1206, 7, 1236, 37), (0, 44, 225, 1000000)]
+  tests/vrt/approved-ui.spec.js-snapshots/wbs-laptop-1024-win32.png: 52 of 13833 differing px fall OUTSIDE the approved regions by more than 1/255, at (269, 466, 1007, 481). Allowed: [(10, 27, 40, 57), (0, 55, 225, 1000000)]
+  tests/vrt/approved-ui.spec.js-snapshots/wbs-tablet-800-win32.png: 109 of 99 differing px fall OUTSIDE the approved regions by more than 1/255, at (772, 571, 789, 596). Allowed: [(104, 31, 134, 61), (8, 31, 38, 61)]
+baseline delta against HEAD
+  unchanged : 39
+  changed   : 63
+  added     : 0
+  removed   : 0
+
+  CHANGED tests/vrt/approvals.spec.js-snapshots/approvals-approval-delegations-desktop-1440-win32.png: 15947 px at (11, 297, 210, 869) [below y=337: an exact translation of +0 px, max difference 0/255] (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approvals.spec.js-snapshots/approvals-approval-delegations-laptop-1024-win32.png: 13833 px at (12, 142, 243, 765) [below y=348: an exact translation of +0 px, max difference 0/255] (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approvals.spec.js-snapshots/approvals-approval-inbox-desktop-1440-win32.png: 17095 px at (12, 131, 1424, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approvals.spec.js-snapshots/approvals-approval-inbox-laptop-1024-win32.png: 13783 px at (12, 308, 208, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approvals.spec.js-snapshots/approvals-approval-matrix-desktop-1440-win32.png: 17092 px at (12, 131, 243, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approvals.spec.js-snapshots/approvals-approval-matrix-laptop-1024-win32.png: 13783 px at (12, 308, 208, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approvals.spec.js-snapshots/approvals-approval-request-desktop-1440-win32.png: 17088 px at (12, 297, 208, 900) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approvals.spec.js-snapshots/approvals-approval-request-laptop-1024-win32.png: 13783 px at (12, 308, 208, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approvals.spec.js-snapshots/approvals-approval-simulator-desktop-1440-win32.png: 17090 px at (12, 297, 242, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approvals.spec.js-snapshots/approvals-approval-simulator-laptop-1024-win32.png: 13783 px at (12, 308, 208, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approvals.spec.js-snapshots/approvals-approval-sla-desktop-1440-win32.png: 17092 px at (12, 131, 243, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approvals.spec.js-snapshots/approvals-approval-sla-laptop-1024-win32.png: 13783 px at (12, 308, 208, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approvals.spec.js-snapshots/approvals-approval-timeline-desktop-1440-win32.png: 17092 px at (12, 131, 243, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approvals.spec.js-snapshots/approvals-approval-timeline-laptop-1024-win32.png: 13783 px at (12, 308, 208, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approvals.spec.js-snapshots/approvals-approval-versions-desktop-1440-win32.png: 17112 px at (12, 15, 1424, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approvals.spec.js-snapshots/approvals-approval-versions-laptop-1024-win32.png: 13785 px at (12, 308, 243, 765) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/alerts-desktop-1440-win32.png: 17088 px at (12, 271, 241, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/alerts-laptop-1024-win32.png: 13783 px at (12, 308, 208, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/approvals-desktop-1440-win32.png: 17090 px at (12, 280, 242, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/approvals-laptop-1024-win32.png: 13783 px at (12, 308, 208, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/audit-desktop-1440-win32.png: 29546 px at (0, 297, 242, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/audit-laptop-1024-win32.png: 13783 px at (12, 308, 208, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/bills-desktop-1440-win32.png: 28475 px at (0, 297, 242, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/bills-laptop-1024-win32.png: 25166 px at (0, 308, 223, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/budget-desktop-1440-win32.png: 17096 px at (12, 168, 242, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/budget-laptop-1024-win32.png: 13783 px at (12, 308, 208, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/cap-desktop-1440-win32.png: 29192 px at (0, 297, 242, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/cap-laptop-1024-win32.png: 25885 px at (0, 308, 223, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/check-desktop-1440-win32.png: 29109 px at (0, 286, 242, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/check-laptop-1024-win32.png: 25802 px at (0, 297, 223, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/grns-desktop-1440-win32.png: 28780 px at (0, 297, 242, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/grns-laptop-1024-win32.png: 25473 px at (0, 308, 223, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/home-desktop-1440-win32.png: 17088 px at (12, 297, 208, 900) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/home-laptop-1024-win32.png: 13783 px at (12, 308, 208, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/inventory-desktop-1440-win32.png: 28986 px at (0, 168, 242, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/inventory-laptop-1024-win32.png: 18971 px at (0, 308, 223, 768) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/pos-desktop-1440-win32.png: 28792 px at (0, 297, 223, 900) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/pos-laptop-1024-win32.png: 25580 px at (0, 308, 1007, 765) (max delta outside the approved regions: 56/255)  <-- 93 px OUTSIDE the approved regions
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/projects-desktop-1440-win32.png: 17090 px at (12, 280, 242, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/projects-laptop-1024-win32.png: 13783 px at (12, 308, 208, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/prs-desktop-1440-win32.png: 28580 px at (0, 297, 223, 900) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/prs-laptop-1024-win32.png: 25275 px at (0, 308, 223, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/recon-desktop-1440-win32.png: 28326 px at (0, 168, 242, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/recon-laptop-1024-win32.png: 25017 px at (0, 308, 223, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/revisions-desktop-1440-win32.png: 29023 px at (0, 297, 242, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/revisions-laptop-1024-win32.png: 25716 px at (0, 308, 223, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/wbs-cosy-desktop-1440-win32.png: 17089 px at (12, 262, 241, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/wbs-cosy-laptop-1024-win32.png: 13783 px at (12, 308, 208, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/wbs-desktop-1440-win32.png: 17119 px at (12, 297, 261, 900) (max delta outside the approved regions: 56/255)  <-- 30 px OUTSIDE the approved regions
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/wbs-laptop-1024-win32.png: 13833 px at (12, 308, 1007, 765) (max delta outside the approved regions: 56/255)  <-- 52 px OUTSIDE the approved regions
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/wbs-tablet-800-win32.png: 99 px at (772, 571, 789, 596) (max delta outside the approved regions: 56/255)  <-- 109 px OUTSIDE the approved regions
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/zoho-desktop-1440-win32.png: 28763 px at (0, 297, 223, 900) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/approved-ui.spec.js-snapshots/zoho-laptop-1024-win32.png: 24789 px at (0, 308, 223, 768) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/spa-routing.spec.js-snapshots/spa-audit-trail-desktop-1440-win32.png: 29182 px at (0, 131, 243, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/spa-routing.spec.js-snapshots/spa-audit-trail-laptop-1024-win32.png: 13783 px at (12, 308, 208, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/spa-routing.spec.js-snapshots/spa-budget-availability-desktop-1440-win32.png: 28379 px at (0, 166, 243, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/spa-routing.spec.js-snapshots/spa-budget-availability-laptop-1024-win32.png: 25068 px at (0, 308, 223, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/spa-routing.spec.js-snapshots/spa-budget-compare-desktop-1440-win32.png: 28742 px at (0, 166, 242, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/spa-routing.spec.js-snapshots/spa-budget-compare-laptop-1024-win32.png: 25429 px at (0, 308, 223, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/spa-routing.spec.js-snapshots/spa-budget-grid-desktop-1440-win32.png: 28848 px at (0, 297, 223, 900) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/spa-routing.spec.js-snapshots/spa-budget-grid-laptop-1024-win32.png: 25543 px at (0, 308, 223, 765) (max delta outside the approved regions: 0/255)
+  CHANGED tests/vrt/spa-routing.spec.js-snapshots/spa-settings-desktop-1440-win32.png: 26959 px at (0, 174, 242, 900) (max delta outside the approved regions: 1/255)
+  CHANGED tests/vrt/spa-routing.spec.js-snapshots/spa-settings-laptop-1024-win32.png: 13788 px at (12, 185, 1008, 765) (max delta outside the approved regions: 1/255)
