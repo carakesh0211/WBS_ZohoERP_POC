@@ -59,11 +59,23 @@ now carries a base-commit guard).
 ## Not done — in order of value
 
 1. Integrate the reporting stream (filters/grouping/reconciliation/exports).
-2. Integrate the Playwright spec; then run the bounded VRT
-   (`tools/run_vrt_batches.sh`, sequential, one Playwright process) — the rail
-   gained rows, so every screen's baseline moves by the rail region only;
-   inspect each diff image, then re-capture deliberately with a
-   before/after record under `docs/ui-change-2026-09/`-style evidence.
+2. ~~Integrate the Playwright spec~~ (done, plus five defect fixes in `8adfa12`).
+   The bounded VRT (`VRT_PER_TEST_MS=120000 bash tools/run_vrt_batches.sh`)
+   was started 2026-09-11 12:15 and writes `.vrt-batches/summary.txt` (one
+   line per spec × viewport). Expected pattern, confirmed on the first
+   batches: analytics green; every full-page spec that includes the rail
+   fails by ~10,010 px (0.01 ratio) at desktop and laptop — the rail region
+   (docs/ui-change-2026-09/A4-fable51-navigation.md). RE-BASELINE
+   PROCEDURE, deliberate and accounted for: (a) read the summary and list
+   the FAIL specs; (b) `set CAPEX_VRT_PORT=8897` and
+   `npx playwright test tests/vrt/<spec> --update-snapshots` for those
+   specs only; (c) `python tests/vrt/evidence/prove-baseline-delta.py
+   --ref HEAD --regions docs/ui-change-2026-09/after-regions.json >
+   docs/ui-change-2026-09/BASELINE-DELTA-2026-09-11.txt` — it exits
+   non-zero and names any snapshot whose difference lies outside the rail
+   box; such a snapshot is a regression, is NOT committed, and is
+   investigated; (d) commit the confined snapshots with the delta file;
+   (e) re-run the failing specs once more without `--update-snapshots`.
 3. ~~Rebuild and redeploy the Stage A bundle~~ — done 2026-09-11 from `c51c2fe`.
 4. ~~FX-rate maintenance API + admin UI~~ — integrated (migration 028,
    `pg/fx_admin.py`, `api/fx_admin.py`, Exchange Rates screen; 16 live + 43
