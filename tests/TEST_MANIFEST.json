@@ -117,7 +117,7 @@
       },
       "test_aud_c_006_auditor_is_read_only": {
         "assertions": 1,
-        "body_sha": "8b7c7755cd9b5802"
+        "body_sha": "56b8879de8c1f709"
       },
       "test_aud_c_006_bootstrap_reports_only_the_callers_own_permissions": {
         "assertions": 2,
@@ -189,7 +189,7 @@
       },
       "test_read_is_estate_wide_by_decision_and_manage_is_not": {
         "assertions": 2,
-        "body_sha": "7479296aecf5efb6"
+        "body_sha": "f47a9d2ebf4cc338"
       },
       "test_manage_is_strictly_narrower_than_read": {
         "assertions": 4,
@@ -4020,6 +4020,14 @@
       "test_a_decimal_in_the_wire_body_arrives_as_a_string_never_a_float": {
         "assertions": 2,
         "body_sha": "6b099541f8fc6308"
+      },
+      "test_credentials_come_from_the_environment_when_no_file_exists": {
+        "assertions": 2,
+        "body_sha": "b9da8fd14f2ba8d3"
+      },
+      "test_an_environment_without_a_refresh_token_still_needs_the_file": {
+        "assertions": 2,
+        "body_sha": "31e92878ef8af005"
       }
     },
     "test_login_throttle.py": {
@@ -12752,7 +12760,7 @@
     "test_integrations_api_guard.py": 51,
     "test_known_defects.py": 5,
     "test_ledger_cell_writers.py": 16,
-    "test_live_transport_fable51.py": 15,
+    "test_live_transport_fable51.py": 17,
     "test_login_throttle.py": 11,
     "test_manifest.py": 10,
     "test_masters_settings_api_guard.py": 9,
@@ -12885,7 +12893,7 @@
     "test_integrations_api_guard.py": 114,
     "test_known_defects.py": 13,
     "test_ledger_cell_writers.py": 32,
-    "test_live_transport_fable51.py": 36,
+    "test_live_transport_fable51.py": 40,
     "test_login_throttle.py": 26,
     "test_manifest.py": 15,
     "test_masters_settings_api_guard.py": 15,

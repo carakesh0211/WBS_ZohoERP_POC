@@ -260,3 +260,25 @@ def test_a_decimal_in_the_wire_body_arrives_as_a_string_never_a_float(tmp_path):
     row = out["items"][0]
     assert row["rate"] == "0.0" and row["purchase_rate"] == "68000.5"
     assert not any(isinstance(v, float) for v in row.values())
+
+
+def test_credentials_come_from_the_environment_when_no_file_exists(tmp_path, monkeypatch):
+    """Stage B on Catalyst: the four facts are AppSail configuration values,
+    never a file in the archive. Read only when the file is absent."""
+    monkeypatch.setenv(lt.ENV_CLIENT_ID, "1000.CLIENT")
+    monkeypatch.setenv(lt.ENV_CLIENT_SECRET, SECRET)
+    monkeypatch.setenv(lt.ENV_REFRESH_TOKEN, REFRESH)
+    monkeypatch.setenv(lt.ENV_API_DOMAIN, erp.API_HOST_BY_DC["IN"])
+    monkeypatch.setenv(lt.ENV_SCOPES, "ERP.bills.READ ERP.settings.READ")
+    opener = FakeOpener(api_answers=[{"code": 0, "bills": []}])
+    t = lt.LiveTransport(str(tmp_path / "absent.json"), opener=opener, clock=lambda: 1000.0)
+    assert t.granted_scopes == {"ERP.bills.READ", "ERP.settings.READ"}
+    assert t.request(method="GET", base_url=BASE, path="/bills", scope="ERP.bills.READ")["bills"] == []
+
+
+def test_an_environment_without_a_refresh_token_still_needs_the_file(tmp_path, monkeypatch):
+    for name in (lt.ENV_CLIENT_ID, lt.ENV_CLIENT_SECRET, lt.ENV_REFRESH_TOKEN, lt.ENV_API_DOMAIN, lt.ENV_SCOPES):
+        monkeypatch.delenv(name, raising=False)
+    with pytest.raises(ad.IntegrationError) as exc:
+        lt.LiveTransport(str(tmp_path / "absent.json"))
+    assert lt.ENV_REFRESH_TOKEN in str(exc.value)

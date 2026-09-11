@@ -271,7 +271,7 @@ def verify_archive(out: Path) -> dict:
 
 
 # ------------------------------------------------------------------ main
-def build(wheels: Path, credentials: Path, out: Path) -> dict:
+def build(wheels: Path, credentials: Path, out: Path, ca_bundle: Path | None = None) -> dict:
     _refuse_inside_repo(out, "output archive")
     cred_sha = verify_credentials(credentials)
     with tempfile.TemporaryDirectory(prefix="wbs-uat-bundle-") as tmp:
@@ -289,6 +289,14 @@ def build(wheels: Path, credentials: Path, out: Path) -> dict:
             copy_tree(REPO / rel, root / rel)
         shutil.copyfile(HERE / "uat_main.py", root / "main.py")
         shutil.copyfile(credentials, root / "uat-credentials.json")
+        if ca_bundle is not None:
+            # Stage B: the PostgreSQL provider's PUBLIC root certificate, at the
+            # archive root where uat_main.py looks for it (sslmode verify-full).
+            # A certificate is not a secret; the gate below still scans it.
+            text = ca_bundle.read_text(encoding="utf-8")
+            if "BEGIN CERTIFICATE" not in text or "PRIVATE KEY" in text:
+                raise BuildFailed("--ca-bundle must be a PEM certificate chain and never a key")
+            shutil.copyfile(ca_bundle, root / "ca-bundle.pem")
         build_seed(root / "uat_seed.db")
         (root / "app-config.json").write_text(json.dumps({
             "command": COMMAND, "stack": STACK, "memory": MEMORY_MB,
@@ -308,6 +316,8 @@ def build(wheels: Path, credentials: Path, out: Path) -> dict:
         "tree_sha256": tree_hash,
         "stack": STACK, "command": COMMAND, "memory_mb": MEMORY_MB,
         "credentials_sha256": cred_sha,
+        "ca_bundle_sha256": (hashlib.sha256(ca_bundle.read_bytes()).hexdigest()
+                             if ca_bundle is not None else None),
         "pg_migrations": archive_info["pg_migrations"],
         "wheels": wheel_list,
         "git_head": subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(REPO),
@@ -323,9 +333,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--wheels", required=True)
     ap.add_argument("--credentials", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--ca-bundle", default=None,
+                    help="Stage B: the PostgreSQL provider's root CA (PEM), placed at the archive root")
     args = ap.parse_args(argv)
     try:
-        manifest = build(Path(args.wheels), Path(args.credentials), Path(args.out))
+        manifest = build(Path(args.wheels), Path(args.credentials), Path(args.out),
+                         Path(args.ca_bundle) if args.ca_bundle else None)
     except BuildFailed as exc:
         print(f"BUILD FAILED: {exc}", file=sys.stderr)
         return 2

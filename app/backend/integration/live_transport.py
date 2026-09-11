@@ -65,6 +65,14 @@ from . import erp as _erp
 
 PRODUCT = _erp.PRODUCT
 CREDENTIALS_ENV = "CAPEX_ERP_CREDENTIALS"
+#: Stage B: the same four facts as ENVIRONMENT VARIABLES, set once in the
+#: Catalyst AppSail configuration (never in the archive, never in a commit).
+#: Read only when no credential file is named or present.
+ENV_CLIENT_ID = "CAPEX_ERP_CLIENT_ID"
+ENV_CLIENT_SECRET = "CAPEX_ERP_CLIENT_SECRET"
+ENV_REFRESH_TOKEN = "CAPEX_ERP_REFRESH_TOKEN"
+ENV_API_DOMAIN = "CAPEX_ERP_API_DOMAIN"
+ENV_SCOPES = "CAPEX_ERP_SCOPES"
 DEFAULT_CREDENTIALS = os.path.join(os.path.expanduser("~"), ".capex-tools",
                                    "erp-demo", "erp-demo-credentials.json")
 #: `.zohoapis.in`, derived from the adapter's one India host.
@@ -94,15 +102,33 @@ class ZohoApiError(IntegrationError):
                          f"code={code!r} message={message!r}")
 
 
+def _credentials_from_environment() -> dict[str, Any] | None:
+    """The Catalyst form: every value from the process environment, or None
+    when the refresh token is absent (then the file is the source)."""
+    token = os.environ.get(ENV_REFRESH_TOKEN, "").strip()
+    if not token:
+        return None
+    return {"client_id": os.environ.get(ENV_CLIENT_ID, "").strip(),
+            "client_secret": os.environ.get(ENV_CLIENT_SECRET, "").strip(),
+            "refresh_token": token,
+            "api_domain": os.environ.get(ENV_API_DOMAIN, "").strip(),
+            "scope": os.environ.get(ENV_SCOPES, "").strip()}
+
+
 def _load_credentials(path: str) -> dict[str, Any]:
-    try:
-        with open(path, encoding="utf-8") as fh:
-            rec = json.load(fh)
-    except OSError as exc:
-        raise IntegrationError(
-            f"No ERP credential file at {path} ({exc.strerror}). Run "
-            f"tools/erp_demo/connect.py on the operator's machine first; the file "
-            f"lives outside the repository and is never committed.") from None
+    rec = _credentials_from_environment() if not os.path.isfile(path) else None
+    if rec is None:
+        try:
+            with open(path, encoding="utf-8") as fh:
+                rec = json.load(fh)
+        except OSError as exc:
+            raise IntegrationError(
+                f"No ERP credential file at {path} ({exc.strerror}) and no "
+                f"{ENV_REFRESH_TOKEN} in the environment. Run "
+                f"tools/erp_demo/connect.py on the operator's machine, or set "
+                f"{ENV_CLIENT_ID}/{ENV_CLIENT_SECRET}/{ENV_REFRESH_TOKEN}/"
+                f"{ENV_API_DOMAIN}/{ENV_SCOPES} in the platform configuration; "
+                f"nothing is read from the repository.") from None
     for key in ("client_id", "client_secret", "refresh_token", "api_domain"):
         if not str(rec.get(key) or "").strip():
             raise IntegrationError(f"The ERP credential file lacks {key}.")

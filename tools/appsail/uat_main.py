@@ -78,10 +78,31 @@ def prepare_environment() -> str:
     # peer address is the truth and a forged header must not be believed.
     if os.environ.get("X_ZOHO_CATALYST_LISTEN_PORT"):
         os.environ.setdefault("CAPEX_TRUST_PROXY", "1")
-    # A visual preview never talks to PostgreSQL or an ERP. Unset rather than
-    # trust that nothing in the container environment set them.
-    for name in ("CAPEX_DB_URL", "CAPEX_DB_HOST", "CAPEX_ERP_OUTBOUND_WRITES"):
-        os.environ.pop(name, None)
+    # STAGE B (Fable 5.1): when the Catalyst configuration supplies a
+    # PostgreSQL host or URL, the financial API runs against it -- the
+    # provider's CA at the bundle root with sslmode verify-full, never
+    # relaxed. The SQLite copy above still carries the shell (identities,
+    # sessions, legacy screens) and resets on restart, which the product
+    # owner accepted for UAT on 2026-09-11. Without a host this is Stage A:
+    # the variables are unset rather than trusted.
+    on_catalyst = bool(os.environ.get("X_ZOHO_CATALYST_LISTEN_PORT"))
+    if on_catalyst and (os.environ.get("CAPEX_DB_HOST") or os.environ.get("CAPEX_DB_URL")):
+        ca = os.path.join(BUNDLE, "ca-bundle.pem")
+        os.environ.setdefault("CAPEX_DB_SSLMODE", "verify-full")
+        if os.path.isfile(ca):
+            os.environ.setdefault("CAPEX_DB_SSLROOTCERT", ca)
+        elif os.environ.get("CAPEX_DB_SSLMODE", "verify-full") == "verify-full" \
+                and not os.environ.get("CAPEX_DB_SSLROOTCERT"):
+            _fail("CAPEX_DB_HOST is set but no ca-bundle.pem is at the bundle root and "
+                  "CAPEX_DB_SSLROOTCERT is unset; verify-full cannot be honoured")
+        print("UAT stage B: PostgreSQL configured from the platform environment "
+              f"(sslmode={os.environ.get('CAPEX_DB_SSLMODE')}, CA at bundle root="
+              f"{os.path.isfile(ca)})", flush=True)
+    else:
+        for name in ("CAPEX_DB_URL", "CAPEX_DB_HOST"):
+            os.environ.pop(name, None)
+    # Outbound ERP writes stay off in every stage until separately authorised.
+    os.environ.pop("CAPEX_ERP_OUTBOUND_WRITES", None)
     return db_path
 
 
