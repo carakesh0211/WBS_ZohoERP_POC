@@ -2698,6 +2698,7 @@ def build_emission_plan(*, po_id: str, po_number: str, connection_id: str,
                         acknowledged: bool = False,
                         fractional_quantity_policy: str = FRACTIONAL_QUANTITY_DEFAULT,
                         rounded: list[dict[str, Any]] | None = None,
+                        currency_code: str = BASE_CURRENCY,
                         ) -> tuple[ob.EmissionPlan, list[dict[str, Any]]]:
     """The whole emission decision, with NO database anywhere in it.
 
@@ -2727,7 +2728,8 @@ def build_emission_plan(*, po_id: str, po_number: str, connection_id: str,
             fractional_quantity_policy=fractional_quantity_policy,
             rounded=rounded),
         capabilities=capabilities,
-        document_date=document_date, reference=po_number)
+        document_date=document_date, reference=po_number,
+        currency_code=currency_code)
     try:
         plan.assert_acknowledged(acknowledged)
     except ob.EmissionShapeError as exc:

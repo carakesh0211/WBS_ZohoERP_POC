@@ -771,7 +771,11 @@ def _emission_body(po: Any, dedupe_key: str) -> dict[str, Any]:
         "vendor_id": po.vendor_external_id,
         "date": po.document_date.isoformat(),
         "currency_code": po.currency_code,
-        "line_items": [_outbound_line(line) for line in po.lines],
+        # Rendered at the ORDER'S currency exponent: a JPY line has no
+        # decimals and a KWD line has three. The DTO's amounts are minor
+        # units of `po.currency_code`, and 100 is only right for two of them.
+        "line_items": [_outbound_line(line, minor_exponent=minor_exponent_of(po.currency_code))
+                       for line in po.lines],
         "custom_fields": [{"api_name": DEDUPE_CUSTOM_FIELD, "value": dedupe_key}],
     }
 
@@ -789,7 +793,7 @@ def _opt_datetime(value: Any, *, field: str) -> datetime | None:
     return parse_zoho_datetime(value, field=field)
 
 
-def render_paise(paise: int) -> str:
+def render_paise(paise: int, *, minor_exponent: int = CURRENCY_EXPONENT) -> str:
     """Integer paise -> the decimal string that goes on the wire.
 
     Deliberately a byte-for-byte twin of ``erp.render_paise``, and NOT an
@@ -826,18 +830,36 @@ def render_paise(paise: int) -> str:
     ``-99 <= paise <= -1`` the magnitude's rupee part is ``0`` and an integer
     has no ``-0`` -- a sign read off the quotient would turn ``-0.99`` into
     ``0.99``.
+
+    THE EXPONENT (Fable 5.1)
+    ------------------------
+    ``paise`` is minor units of the document's ``currency_code`` and
+    ``minor_exponent`` is how many decimal places that currency has -- 2 for
+    INR/USD/EUR, 0 for JPY, 3 for KWD (``money.minor_exponent_of``). Fixed
+    ``100`` here sent a JPY 1,234 line as ``12.34`` and a KWD line ten times
+    too high; the divisor is now ``10 ** minor_exponent`` and the fraction is
+    zero-padded to exactly that many digits, so an exponent of 0 renders with
+    no decimal point at all. The default is INR's two, so every existing
+    caller and every row of the twin-agreement table is unchanged.
     """
+    exponent = int(minor_exponent)
+    if isinstance(minor_exponent, bool) or not (0 <= exponent <= 4):
+        raise ValueError(
+            f"minor_exponent must be 0..4 (ISO 4217 uses 0, 2 and 3); got "
+            f"{minor_exponent!r}.")
     sign = "-" if paise < 0 else ""
-    rupees, sub = divmod(abs(paise), 100)
-    return f"{sign}{rupees}.{sub:02d}"
+    units, sub = divmod(abs(paise), 10 ** exponent)
+    if exponent == 0:
+        return f"{sign}{units}"
+    return f"{sign}{units}.{sub:0{exponent}d}"
 
 
-def _outbound_line(line: LineDTO) -> dict[str, Any]:
+def _outbound_line(line: LineDTO, *, minor_exponent: int = CURRENCY_EXPONENT) -> dict[str, Any]:
     return {
         "item_id": line.item_external_id,
         "description": line.description,
         "quantity": line.quantity,
-        "rate": render_paise(line.unit_price_paise),
+        "rate": render_paise(line.unit_price_paise, minor_exponent=minor_exponent),
     }
 
 

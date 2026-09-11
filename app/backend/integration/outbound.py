@@ -372,7 +372,19 @@ class ControlCell:
 
 @dataclass(frozen=True)
 class PoLine:
-    """One purchase-order line, carrying the control cell it commits against."""
+    """One purchase-order line, carrying the control cell it commits against.
+
+    ``unit_price_paise`` and ``amount_paise`` are integer MINOR UNITS OF THE
+    DRAFT'S CURRENCY -- paise for an INR order, cents for USD, yen (exponent
+    0) for JPY, fils (exponent 3) for KWD. The names keep the ``_paise``
+    suffix because every DTO on both sides of the boundary uses it for "minor
+    units of ``currency_code``" (``dto.paise(..., minor_exponent=)`` on the
+    inbound side); the adapters render them at the exponent
+    ``money.minor_exponent_of(currency_code)`` names, never at a fixed two.
+    A foreign-currency order therefore reaches the vendor priced in the
+    currency they quoted, at the figures on the order, not at INR paise the
+    header's rate was divided back out of.
+    """
     line_id: str
     cell: ControlCell
     description: str
@@ -446,6 +458,15 @@ class PurchaseOrderDraft:
         if not self.lines:
             raise EmissionShapeError(
                 "A purchase order must carry at least one line.")
+        # The same rule the DTO enforces, applied at construction so a draft
+        # that could never become a DTO is refused before an outbox row exists.
+        if (not isinstance(self.currency_code, str)
+                or not re.fullmatch(r"[A-Z]{3}", self.currency_code)):
+            raise EmissionShapeError(
+                "PurchaseOrderDraft.currency_code must be a three-letter "
+                f"ISO-4217 code in upper case; got {self.currency_code!r}. "
+                "A purchase order emitted with no usable currency is one the "
+                "tenant fills in from its own default.")
         if not self.line_level_dimensions:
             cells = {line.cell.key for line in self.lines}
             if len(cells) != 1:
@@ -859,7 +880,8 @@ class EmissionPlan:
 def plan_emission(*, local_id: str, connection_id: str, vendor_external_id: str,
                   lines: Sequence[PoLine], capabilities: Any,
                   document_date: date,
-                  reference: str | None = None) -> EmissionPlan:
+                  reference: str | None = None,
+                  currency_code: str = "INR") -> EmissionPlan:
     """Decide the purchase-order shape from ``Capabilities`` -- never by default.
 
     Both paths are implemented, and which one runs is read from
@@ -875,6 +897,12 @@ def plan_emission(*, local_id: str, connection_id: str, vendor_external_id: str,
     Ordering is deterministic -- cells in first-appearance order, lines in input
     order -- because a plan that reorders under the same input makes the dedupe
     keys unstable, and an unstable dedupe key is a duplicate purchase order.
+
+    ``currency_code`` is the purchase order's OWN currency and is stamped on
+    every draft the plan produces -- one, or one per control cell -- so the
+    split cannot leave a foreign-currency order's second document labelled
+    with the default. The line amounts are already in that currency's minor
+    units (see :class:`PoLine`); nothing here converts.
     """
     if not lines:
         raise EmissionShapeError("plan_emission requires at least one line.")
@@ -892,6 +920,7 @@ def plan_emission(*, local_id: str, connection_id: str, vendor_external_id: str,
             vendor_external_id=vendor_external_id, lines=tuple(lines),
             document_date=document_date,
             header_cell=None, line_level_dimensions=True, reference=reference,
+            currency_code=currency_code,
             provenance=(
                 f"D-7 line-level custom fields assumed available: {UNVERIFIED}",),
         )
@@ -913,6 +942,7 @@ def plan_emission(*, local_id: str, connection_id: str, vendor_external_id: str,
             lines=tuple(cell_lines), document_date=document_date,
             header_cell=ControlCell(*cell),
             line_level_dimensions=False, reference=reference,
+            currency_code=currency_code,
             provenance=(f"Header-only dimensions (D-7 False); split {local_id} "
                         f"on control cell {cell[0]}/{cell[1]}",),
         )
