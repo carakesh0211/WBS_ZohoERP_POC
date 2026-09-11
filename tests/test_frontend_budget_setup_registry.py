@@ -42,14 +42,19 @@ NEW_JS_FILES = [
     FRONTEND / "src" / "features" / "budget" / "budget-setup.js",
     FRONTEND / "src" / "components" / "budget" / "governed-select.js",
     FRONTEND / "src" / "features" / "settings" / "budget-categories.js",
+    # Fable 5.1: exchange-rate administration (migration 028).
+    FRONTEND / "src" / "features" / "settings" / "fx-rates.js",
+    FRONTEND / "src" / "features" / "settings" / "fx-api.js",
 ]
 NEW_CSS_FILES = [
     FRONTEND / "src" / "features" / "budget" / "budget-setup.css",
+    FRONTEND / "src" / "features" / "settings" / "settings-fx.css",
 ]
 
 NEW_SCREEN_IDS = {
     "budget-setup": ["budget.read"],
     "budget-categories": ["settings.read"],
+    "fx-rates": ["fx.read"],
 }
 
 ANALYTICS_IDS = [

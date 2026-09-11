@@ -100,6 +100,7 @@ const SETTINGS_STYLES = ['/static/extensions.css', '/static/settings.css'];
    the same reason, plus governed-select for its parent-category picker. */
 const BUDGET_SETUP_STYLES = ['/static/extensions.css', '/static/budget.css', '/static/settings.css', '/static/src/features/budget/budget-setup.css'];
 const BUDGET_CATEGORIES_STYLES = ['/static/extensions.css', '/static/settings.css', '/static/src/features/budget/budget-setup.css'];
+const FX_RATES_STYLES = ['/static/extensions.css', '/static/settings.css', '/static/src/features/budget/budget-setup.css', '/static/src/features/settings/settings-fx.css'];
 /* extensions.css carries .audit-skel-bar and th .sort-btn, which the shared
    capex-datatable component needs; approvals.css carries only this feature's
    own layout. Unlike settings.css, every selector in approvals.css is scoped
@@ -492,6 +493,34 @@ export const SCREENS = [
           await ensureStyles(BUDGET_CATEGORIES_STYLES);
           const { mountBudgetCategories } = await import('../features/settings/budget-categories.js');
           mountBudgetCategories(root);
+        },
+      };
+    },
+  },
+  /* Fable 5.1: "Exchange Rates" -- the frontend for app/backend/api/fx_admin.py
+     (migration 028), the rate book every foreign-currency translation cites.
+     No SCR number, for the reason the two rows above give. */
+  {
+    id: 'fx-rates',
+    scr: null,
+    group: 'Governance',
+    ico: '⇄',
+    label: 'Exchange Rates',
+    title: 'Exchange Rates',
+    crumbs: ['Home', 'Governance', 'Exchange Rates'],
+    need: ['fx.read'],
+    build() {
+      const root = h('div');
+      const node = h('div', { class: 'scr-host' }, [
+        panel('scrFxRatesTitle', 'Exchange Rates', root),
+        liveRegion('fxRatesLiveRegion'),
+      ]);
+      return {
+        node,
+        async mount() {
+          await ensureStyles(FX_RATES_STYLES);
+          const { mountFxRates } = await import('../features/settings/fx-rates.js');
+          mountFxRates(root);
         },
       };
     },

@@ -310,6 +310,9 @@ const SCR_ROUTES = [
   // other SCR_ROUTES/router.js pair here already is.
   { id: 'budget-setup', ico: '✚', label: 'Budget Setup', need: ['budget.read'] },
   { id: 'budget-categories', ico: '⌸', label: 'Budget Categories', need: ['settings.read'] },
+  // Fable 5.1: the frontend for app/backend/api/fx_admin.py (migration 028).
+  // `need` restated from router.js's SCREENS row for the same id.
+  { id: 'fx-rates', ico: '⇄', label: 'Exchange Rates', need: ['fx.read'] },
 ];
 
 /** The SCR_ROUTES row for an id, spliced into NAV by reference. */
@@ -380,6 +383,7 @@ const NAV = [
      `scr('…')` splice per row, and needs only the approval, not a redesign. */
   scr('settings'),
   scr('budget-categories'),
+  scr('fx-rates'),
 
   /* Fable 5.1: Wave 7's analytics and mapping screens were deep-link-only —
      SCR_ROUTES carries all fifteen (eleven analytics, four mapping/connector-

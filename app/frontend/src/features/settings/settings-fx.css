@@ -1,0 +1,46 @@
+/* app/frontend/src/features/settings/settings-fx.css
+   Additive stylesheet for the "Exchange Rates" screen
+   (src/features/settings/fx-rates.js).
+
+   Loaded AFTER the byte-frozen app/frontend/styles.css, extensions.css,
+   settings.css and budget-setup.css (src/core/router.js's ensureStyles list
+   for this route). Every colour reference below is var(--…) against a
+   custom property already declared in styles.css's :root -- no new custom
+   property is declared here and no raw hex value appears anywhere in this
+   file. Tables, toolbars, messages, dialogs and empty/loading states reuse
+   the classes those files already define; what is here is only this
+   screen's own layout.
+*/
+
+/* ---------------- toolbar ---------------- */
+.fx-toolbar .field { min-width: 110px; }
+.fx-toolbar .fx-toolbar-writes { display: flex; gap: 8px; justify-content: flex-end; }
+.fx-more { display: flex; justify-content: center; padding: 10px 0; }
+
+/* ---------------- rate figures ---------------- */
+.fx-rate { font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+.fx-code { color: var(--negative); font-weight: 600; }
+
+/* ---------------- test lookup panel ---------------- */
+.fx-panel {
+  margin-top: 20px; padding: 14px 16px;
+  background: var(--n0); border: 1px solid var(--n200); border-radius: var(--radius);
+}
+.fx-panel .section-title { margin: 0 0 4px; }
+.fx-hint { margin: 0 0 10px; font-size: 12px; color: var(--n500); line-height: 1.45; }
+.fx-lookup .field { min-width: 120px; }
+.fx-lookup-result { margin-top: 10px; }
+.fx-lookup-result .xs { font-size: 12px; color: var(--n700); }
+
+/* ---------------- dialogs ---------------- */
+.fx-dialog-wide { width: min(960px, calc(100vw - 32px)); }
+.fx-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.fx-history-body { min-height: 120px; overflow-x: auto; }
+.fx-import-preview { margin-top: 12px; overflow-x: auto; }
+.fx-problems { margin: 6px 0 0; padding-left: 18px; font-size: 12px; }
+.fx-problems li { margin: 2px 0; }
+
+@media (max-width: 720px) {
+  .fx-grid-2 { grid-template-columns: 1fr; }
+  .fx-toolbar .fx-toolbar-writes { justify-content: flex-start; }
+}
