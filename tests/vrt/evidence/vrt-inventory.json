@@ -5,6 +5,7 @@
     "approved-ui.spec.js",
     "audit-trail.spec.js",
     "avatar-regions.spec.js",
+    "budget-setup.spec.js",
     "budget.spec.js",
     "closure.spec.js",
     "integration.spec.js",
@@ -16,6 +17,11 @@
     "vrt-inventory.spec.js"
   ],
   "baselines": {
+    "budget-setup.spec.js-snapshots": [
+      "budget-setup-categories-desktop-1440-win32.png",
+      "budget-setup-editor-desktop-1440-win32.png",
+      "budget-setup-list-desktop-1440-win32.png"
+    ],
     "approvals.spec.js-snapshots": [
       "approvals-approval-delegations-desktop-1440-win32.png",
       "approvals-approval-delegations-laptop-1024-win32.png",
