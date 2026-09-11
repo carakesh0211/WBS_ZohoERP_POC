@@ -931,6 +931,21 @@ def _outbound_line(line: LineDTO, *, minor_exponent: int = CURRENCY_EXPONENT) ->
 
 
 def _custom_field(row: Mapping[str, Any], api_name: str) -> str | None:
+    """A custom field's value in any of the three shapes Zoho ERP v3 uses.
+
+    VERIFIED LIVE (2026-09-11/12, DEMO WBS): a LIST row carries the field
+    top-level under its api_name (`"cf_capex_ref": "..."`), a DETAIL row
+    carries `custom_field_hash` {api_name: value} and the `custom_fields`
+    list. Reading only the list -- as this did until the first live sweep --
+    left every list-row key invisible, and with it the unsanctioned-commitment
+    control on orders the tenant raised outside this system.
+    """
+    top = row.get(api_name)
+    if top not in (None, ""):
+        return _opt_str(top)
+    hashed = row.get("custom_field_hash")
+    if isinstance(hashed, Mapping) and hashed.get(api_name) not in (None, ""):
+        return _opt_str(hashed.get(api_name))
     for field in row.get("custom_fields") or ():
         if field.get("api_name") == api_name:
             return _opt_str(field.get("value"))

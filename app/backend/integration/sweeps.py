@@ -348,9 +348,14 @@ def normalise(record: Any, *, module: str) -> SourceRecord:
         total_paise=_first_attr(record, ("total_paise", "amount_paise")),
         entity_id=_first_attr(record, ("entity_id",)),
         project_id=_first_attr(record, ("project_id",)),
+        # `dedupe_key` FIRST: that is what `dto.PurchaseOrderDTO` actually
+        # carries (erp.py reads cf_capex_ref into it). The others are the
+        # test fake's and a raw mapping's spellings. Until 2026-09-12 the real
+        # name was absent here, so a live order created in the tenant with a
+        # CAPEX reference never raised UNSANCTIONED_COMMITMENT.
         capex_reference=_first_attr(
-            record, ("capex_reference", "cf_capex_ref", "capex_ref",
-                     "wbs_code")),
+            record, ("dedupe_key", "capex_reference", "cf_capex_ref",
+                     "capex_ref", "wbs_code")),
         # `vendor_name` FIRST, because that is what `dto.BillDTO` and
         # `dto.PurchaseOrderDTO` actually carry. The other two are aliases for
         # a raw mapping that has not been through an adapter yet.

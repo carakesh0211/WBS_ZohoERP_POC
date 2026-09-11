@@ -93,3 +93,31 @@ def test_the_resolver_sends_the_api_name_as_the_parameter_with_the_bare_key():
     assert adapter.resolve_by_dedupe_key(KEY) is None
     assert rec.calls[0][DEDUPE_CUSTOM_FIELD] == KEY
     assert "custom_field" not in rec.calls[0]
+
+
+# ================================= the CAPEX reference, all three live shapes
+def test_a_list_row_top_level_key_reaches_the_dto_dedupe_key():
+    """Live shape of `GET /purchaseorders` rows for an order that carries
+    cf_capex_ref: the key is TOP-LEVEL, and it must reach `dedupe_key`."""
+    row = dict(LIST_PO, cf_capex_ref=KEY, cf_capex_ref_formatted=KEY)
+    assert erp._purchase_order(row, SOURCE, hydrated=False).dedupe_key == KEY
+
+
+def test_a_detail_row_hash_and_list_shapes_both_reach_the_dedupe_key():
+    hashed = dict(LIST_PO, custom_field_hash={DEDUPE_CUSTOM_FIELD: KEY})
+    listed = dict(LIST_PO, custom_fields=[{"api_name": DEDUPE_CUSTOM_FIELD, "value": KEY}])
+    assert erp._purchase_order(hashed, SOURCE, hydrated=False).dedupe_key == KEY
+    assert erp._purchase_order(listed, SOURCE, hydrated=False).dedupe_key == KEY
+    assert erp._purchase_order(dict(LIST_PO), SOURCE, hydrated=False).dedupe_key is None
+
+
+def test_the_sweep_reads_the_real_dto_name_for_the_capex_reference():
+    """sweeps.normalise looked for the FAKE's attribute (cf_capex_ref) and never
+    the DTO's (dedupe_key), so the first live sweep raised nothing for two
+    tenant-raised orders that carried a CAPEX reference."""
+    from app.backend.integration import sweeps
+    dto = erp._purchase_order(dict(LIST_PO, cf_capex_ref=KEY), SOURCE, hydrated=False)
+    rec = sweeps.normalise(dto, module="purchaseorders")
+    assert rec.capex_reference == KEY
+    assert sweeps.normalise(erp._purchase_order(dict(LIST_PO), SOURCE, hydrated=False),
+                            module="purchaseorders").capex_reference is None

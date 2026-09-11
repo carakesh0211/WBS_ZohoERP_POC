@@ -1630,6 +1630,18 @@
       "test_the_resolver_sends_the_api_name_as_the_parameter_with_the_bare_key": {
         "assertions": 3,
         "body_sha": "40da2337f06bbd5e"
+      },
+      "test_a_list_row_top_level_key_reaches_the_dto_dedupe_key": {
+        "assertions": 1,
+        "body_sha": "8f52e45d3aa7dbc4"
+      },
+      "test_a_detail_row_hash_and_list_shapes_both_reach_the_dedupe_key": {
+        "assertions": 3,
+        "body_sha": "1b8b4639ebdaabda"
+      },
+      "test_the_sweep_reads_the_real_dto_name_for_the_capex_reference": {
+        "assertions": 2,
+        "body_sha": "a54ef8208fb59165"
       }
     },
     "test_erp_write_gate.py": {
@@ -12919,7 +12931,7 @@
     "test_contracts_integration_statuses.py": 23,
     "test_data_classification.py": 11,
     "test_domain_invariants.py": 34,
-    "test_erp_list_row_shape_fable51.py": 8,
+    "test_erp_list_row_shape_fable51.py": 11,
     "test_erp_write_gate.py": 15,
     "test_export_poc.py": 17,
     "test_export_scope.py": 26,
@@ -13054,7 +13066,7 @@
     "test_contracts_integration_statuses.py": 48,
     "test_data_classification.py": 23,
     "test_domain_invariants.py": 94,
-    "test_erp_list_row_shape_fable51.py": 13,
+    "test_erp_list_row_shape_fable51.py": 19,
     "test_erp_write_gate.py": 29,
     "test_export_poc.py": 32,
     "test_export_scope.py": 69,
