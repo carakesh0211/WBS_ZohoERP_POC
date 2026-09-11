@@ -24,7 +24,7 @@ binds, and where it is applied. Nothing here is inferred.
 | GitHub Actions billing (CI has not run since 2026-09-09) | owner | open |
 | Stage B launcher: PostgreSQL env pass-through, provider CA at the bundle root, ERP credentials from environment variables, standalone deploy form | engineering | DONE `6d1eb79`; live 2026-09-12 (`STAGE_B_PERSISTENT_UAT.md` deploy record) |
 | LIVE_READ wiring: a connection in LIVE_READ mode builds the ERP adapter on the live transport; sweeps run server-side against the inbox | engineering | routes DONE `fc8c07e`/`314ba9f` (organisations, validate, scopes, health live on UAT); the sweep route is in progress (agent, branch `work/live-sweep`) |
-| Stamp `cf_wbs_code` / `cf_budget_head` on the six demo orders; `line_level_custom_fields=True` for ERP | engineering | open |
+| Stamp `cf_wbs_code` / `cf_budget_head` on the seven demo orders; `line_level_custom_fields=True` for ERP | engineering | capability DONE `d3d8054` (TRUE for org 60074128927 only); stamping BLOCKED by the auto-mode classifier on the MCP write — payloads in `evidence/erp-demo/line-field-stamping-plan.md` |
 | Foreign-order receive/bill matching refusal (decision 8) | engineering | open |
 | Purchase Order screen: currency selector and source-minor entry (API complete) | engineering | open |
 | Audit-anchor Cron Function deployed to the UAT project with its job token | engineering + owner (token) | open |

@@ -103,8 +103,14 @@ See `docs/fable51/DECISIONS_2026-09-11.md` (eight decisions, holders of each ope
    server-side sweep route (a Fable agent was building
    `app/backend/integration/live_sweep.py` + `api/integrations_live.py` on
    branch `work/live-sweep` when this was written — see the agents section),
-   then stamping `cf_wbs_code`/`cf_budget_head` on the seven demo orders and
-   `Capabilities.line_level_custom_fields=True` for ERP.
+   then stamping `cf_wbs_code`/`cf_budget_head` on the seven demo orders.
+   `Capabilities.line_level_custom_fields` is TRUE for org 60074128927 since
+   `d3d8054` (`erp.VERIFIED_LINE_CUSTOM_FIELDS`). The stamping itself is
+   BLOCKED: the Zoho ERP MCP `update_purchase_order` call was refused twice by
+   the Claude Code auto-mode classifier; the exact per-line payloads are in
+   `docs/fable51/evidence/erp-demo/line-field-stamping-plan.md` for the owner
+   to allow or apply. The five Budget Setup / Categories defects are on the
+   branch as `8adfa12`.
 7. GitHub Actions: blocked by account billing (confirmed from the check-run
    annotation); do not consume runs until the owner clears it.
 8. Independent adversarial review of the whole branch (D1/D2 reviewers never
