@@ -3937,7 +3937,7 @@
       },
       "test_throttled_reply_is_identical_for_existing_and_unknown_user_ids": {
         "assertions": 3,
-        "body_sha": "9f90975c9d7e50d1"
+        "body_sha": "69fc5d417354b42c"
       },
       "test_user_id_key_throttles_across_addresses": {
         "assertions": 2,
@@ -11066,6 +11066,38 @@
       "test_a_missing_currency_is_treated_as_base_not_refused": {
         "assertions": 2,
         "body_sha": "ce46749a68962cf0"
+      },
+      "test_a_wire_amount_is_rendered_at_the_currency_exponent": {
+        "assertions": 1,
+        "body_sha": "270dde042ec080c7"
+      },
+      "test_both_adapters_render_every_exponent_identically": {
+        "assertions": 1,
+        "body_sha": "49164e97df128aff"
+      },
+      "test_an_exponent_outside_iso_4217_is_refused_not_guessed": {
+        "assertions": 1,
+        "body_sha": "9f4d0bfe83023ce1"
+      },
+      "test_the_default_exponent_is_still_two_so_every_inr_caller_is_unchanged": {
+        "assertions": 2,
+        "body_sha": "9e72aab333c7ea0a"
+      },
+      "test_the_wire_body_prices_the_line_in_the_orders_own_currency": {
+        "assertions": 2,
+        "body_sha": "adaa739615bea952"
+      },
+      "test_the_plan_stamps_the_orders_currency_on_every_draft_and_payload": {
+        "assertions": 6,
+        "body_sha": "4fd307baba6293b7"
+      },
+      "test_the_plan_defaults_to_the_base_currency": {
+        "assertions": 2,
+        "body_sha": "48a33b28f9bca094"
+      },
+      "test_a_draft_with_a_malformed_currency_is_refused_before_any_outbox_row": {
+        "assertions": 1,
+        "body_sha": "0165d256edd96d6e"
       }
     },
     "test_procurement_emission.py": {
@@ -11200,8 +11232,8 @@
         "body_sha": "a1497827be253e1a"
       },
       "test_the_refusal_names_the_missing_column_not_just_a_code": {
-        "assertions": 3,
-        "body_sha": "cf79f0e9af18b55d"
+        "assertions": 8,
+        "body_sha": "ea5d32b6124984fa"
       },
       "test_an_unset_unsupported_filter_is_not_reported_as_unavailable": {
         "assertions": 1,
@@ -12633,7 +12665,7 @@
     "test_pg_settings.py": 17,
     "test_pg_transactions.py": 4,
     "test_pg_unattributed_triage.py": 14,
-    "test_po_emission_currency_fable51.py": 3,
+    "test_po_emission_currency_fable51.py": 11,
     "test_procurement_emission.py": 27,
     "test_reporting_filterset.py": 92,
     "test_reports_filters_fable51.py": 22,
@@ -12763,9 +12795,9 @@
     "test_pg_settings.py": 46,
     "test_pg_transactions.py": 10,
     "test_pg_unattributed_triage.py": 23,
-    "test_po_emission_currency_fable51.py": 8,
+    "test_po_emission_currency_fable51.py": 24,
     "test_procurement_emission.py": 98,
-    "test_reporting_filterset.py": 182,
+    "test_reporting_filterset.py": 187,
     "test_reports_filters_fable51.py": 56,
     "test_runtime_startup.py": 31,
     "test_scope_enforcement.py": 12,
