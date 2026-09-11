@@ -23,10 +23,12 @@ now carries a base-commit guard).
 
 ## Background jobs that may still have been running
 
-* Full local (non-PostgreSQL) suite: `python -m pytest -q --ignore=tests/vrt`
-  — result not yet recorded; re-run to get the authoritative number.
-* UAT bundle rebuild from HEAD + local smoke (`tools/appsail/build_uat_bundle.py`)
-  — re-run; the deployed Stage A artifact is still the `8f39bb7` build.
+* Full local (non-PostgreSQL) suite at `c51c2fe`: 2 failed / 4432 passed /
+  723 skipped in 18 min; both failures fixed in `bafbae4` (a wall-clock second
+  boundary in the throttle-parity test; a stale expectation after `vendor_ids`
+  became a conditional refusal).
+* UAT bundle rebuilt from `c51c2fe`, smoke-tested locally and REDEPLOYED to
+  `wbs-capex-uat` on 2026-09-11 (record in STAGE_A_UAT_PREVIEW.md).
 
 ## Local machine state a resumed session relies on
 
@@ -62,8 +64,7 @@ now carries a base-commit guard).
    gained rows, so every screen's baseline moves by the rail region only;
    inspect each diff image, then re-capture deliberately with a
    before/after record under `docs/ui-change-2026-09/`-style evidence.
-3. Rebuild and redeploy the Stage A bundle (adds the login throttle, the ERP
-   write gate, the new screens) — same project/service only.
+3. ~~Rebuild and redeploy the Stage A bundle~~ — done 2026-09-11 from `c51c2fe`.
 4. FX-rate maintenance API + admin UI (never started: the first agent died at
    the limit before committing). Currency-aware PO emission and DTO
    exactness (same). Audit-anchor Cron Function shim + deleted-and-recreated

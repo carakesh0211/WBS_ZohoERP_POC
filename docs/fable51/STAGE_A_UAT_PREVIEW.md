@@ -1,7 +1,7 @@
 # Stage A — UAT visual preview on Zoho Catalyst (Fable 5.1)
 
-**Status: DEPLOYED and verified on 2026-09-10. Visual and workflow review only.
-Not financial UAT. Not production.**
+**Status: DEPLOYED and verified on 2026-09-10; REDEPLOYED from `c51c2fe` and re-verified on 2026-09-11.
+Visual and workflow review only. Not financial UAT. Not production.**
 
 ## What is deployed
 
@@ -11,13 +11,40 @@ Not financial UAT. Not production.**
 | AppSail service | `wbs-capex-uat` — AppSail id `4239000000136436`, deployment id `4239000000136439`, deployed from the CLI |
 | Development URL | `https://wbs-capex-uat-50045784768.development.catalystappsail.in` |
 | Runtime | managed `python_3_13`, command `python3 -u main.py`, port `9000` (bound via `X_ZOHO_CATALYST_LISTEN_PORT`), 512 MB memory, 256 MB disk |
-| Artifact | `wbs-capex-uat.zip`, 1,551 entries, 12,899,176 bytes, built at commit `8f39bb7`; SHA-256 `ff020494dcade7991dfc671a4cd8a9cf2c9ada383c895aaa727f1a623524ebe5`; the builder's manifest (`wbs-capex-uat.zip.manifest.json`, kept outside the repository) records the tree hash and the credential-set hash `e60679c8…f24262` |
+| Artifact (current) | `wbs-capex-uat.zip`, 1,562 entries, 12,986,499 bytes, built at commit `c51c2fe`; SHA-256 `c31b5f567e1475821f59a0899c31d80ff2a5c798e6242242d804b553044ad1ad`; 27 PostgreSQL migrations shipped; same credential set (hash `e60679c8…`); the builder's manifest (`wbs-capex-uat.zip.manifest.json`, kept outside the repository) records the tree hash and every wheel's SHA-256 |
+| Artifact (superseded, 2026-09-10) | 1,551 entries, 12,899,176 bytes, commit `8f39bb7`, SHA-256 `ff020494dcade7991dfc671a4cd8a9cf2c9ada383c895aaa727f1a623524ebe5` |
 | Application profile | `CAPEX_PROFILE=uat-preview` (set by the launcher, not by Catalyst configuration); `/api/health` reports it and `zoho_mode: MOCK` |
 | Environment variables in Catalyst | **none** — `app-config.json` ships `env_variables: {}` and the bundle gate refuses otherwise, so no secret rides in the archive or the console |
 
 No other Catalyst project or service was opened, changed or redeployed. The
 existing `WBS-ZohoERP-POC` (4239000000062001), `wbs-capex-poc` and
 `wbs-platform-spike` were not touched.
+
+## What the 2026-09-11 redeploy added, and what was re-verified
+
+The `c51c2fe` build carries everything integrated since `8f39bb7`: the
+failed-login throttle (ten failures per user id and per client address in
+fifteen minutes → 429 with `Retry-After`), the ERP outbound write gate, the
+Budget Setup and Budget Categories screens, the two collapsible navigation
+groups, the reporting filter/grouping/export stream, migrations 026–027 (as
+schema files only — the preview still has no PostgreSQL), and the `--n500`
+hover-contrast fix. Because every request on Catalyst arrives from the
+platform gateway, the launcher sets `CAPEX_TRUST_PROXY=1` **only when
+`X_ZOHO_CATALYST_LISTEN_PORT` is present**, so the throttle keys on the
+gateway's forwarded client address rather than locking every reviewer out
+together; locally the peer address remains the truth and a forged header is
+ignored.
+
+| Check (2026-09-11, live URL) | Result |
+|---|---|
+| Root page | 200; banner rendered; no `!demo` hint; CSP present |
+| `/api/health` / `/readyz` / `/docs` | 200 / **503** (honest: no PostgreSQL) / 404 |
+| New static modules (`budget-setup.js`, `settings/budget-categories.js`) | 200 |
+| Sign-in with `U-REQ!demo` | 401 |
+| Sign-in with the UAT credential; `/api/auth/me` | 200 / 200 |
+| `/api/budget/categories`, `/api/budget/selectors`, `/api/budget/originals` | uniform **503 `DATABASE_NOT_CONFIGURED`** — the Budget Setup screen shows its unavailable state on the preview; the workflow is exercised on the local PostgreSQL demo (`tools/demo_pg.py`) and moves to the preview only with Stage B |
+| `/api/admin/reset` | 403 |
+| Login throttle (bundle smoke, run locally with the Catalyst port variable set) | 11th wrong guess from one forwarded address → 429; a correct sign-in from another forwarded address → 200 |
 
 ## What was verified on the live URL (2026-09-10)
 
