@@ -45,6 +45,11 @@ INSERT INTO role_grant (user_id, role, granted_by) VALUES
     ('U-CFO',      'CFO',                            'U-ADM'),
     ('U-AUD',      'Internal Auditor',               'U-ADM'),
     ('U-ADM',      'System Administrator',           'U-ADM'),
+    -- Fable 5.1 (2026-09-11): the ERP demo organisation's users, Administrators.
+    ('U-RAKESH',   'System Administrator',           'U-ADM'),
+    ('U-PRITHA',   'System Administrator',           'U-ADM'),
+    ('U-SURAJ',    'System Administrator',           'U-ADM'),
+    ('U-ABHISHEK', 'System Administrator',           'U-ADM'),
     ('U-NOGRANT',  'Read-only Management User',      'U-ADM'),
     -- SVC-ZOHO is a SERVICE principal (seed_demo.sql). It holds an ordinary,
     -- non-maker-checker role -- Procurement carries only budget.read/
@@ -58,7 +63,12 @@ INSERT INTO role_grant (user_id, role, granted_by) VALUES
 -- -------------------------------------------------------------- read_all flag
 INSERT INTO user_access_flag (user_id, read_all, updated_by) VALUES
     ('U-ADM', true, 'U-ADM'),   -- System Administrator: explicit whole-estate read
-    ('U-AUD', true, 'U-ADM');   -- Internal Auditor: explicit whole-estate read
+    ('U-AUD', true, 'U-ADM'),   -- Internal Auditor: explicit whole-estate read
+    -- Fable 5.1 (2026-09-11): the four ERP demo users, whole-estate read as Administrators.
+    ('U-RAKESH',   true, 'U-ADM'),
+    ('U-PRITHA',   true, 'U-ADM'),
+    ('U-SURAJ',    true, 'U-ADM'),
+    ('U-ABHISHEK', true, 'U-ADM');
 -- No row at all for U-CFO, U-PFC, U-PLH, U-PM, U-NOGRANT, U-REQ, U-PROC,
 -- U-FIN, SVC-ZOHO: read_all defaults to false for all of them, per
 -- user_access_flag's own DEFAULT and roles.resolve_scope's handling of a

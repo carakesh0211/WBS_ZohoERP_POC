@@ -106,6 +106,13 @@ VALUES
     ('U-CFO',  'v.krishnan@meridian-industries.example',   'V. Krishnan',    'USER',    'SEED-SCRIPT', 'SEED-SCRIPT'),
     ('U-AUD',  'p.singh@meridian-industries.example',      'P. Singh',       'USER',    'SEED-SCRIPT', 'SEED-SCRIPT'),
     ('U-ADM',  'admin@meridian-industries.example',        'Demo Administrator', 'USER', 'SEED-SCRIPT', 'SEED-SCRIPT'),
+    -- Fable 5.1 (2026-09-11): the Zoho ERP demo organisation's four users,
+    -- WBS Administrators by the product owner's decision (see
+    -- docs/fable51/DECISIONS_2026-09-11.md). Synthetic display names only.
+    ('U-RAKESH',   'rakesh.s@rapguru.net',   'Rakesh Singh',       'USER', 'SEED-SCRIPT', 'SEED-SCRIPT'),
+    ('U-PRITHA',   'pritha.b@rapguru.net',   'Pritha Rapguru',     'USER', 'SEED-SCRIPT', 'SEED-SCRIPT'),
+    ('U-SURAJ',    'surajk.d@rapguru.net',   'Suraj',              'USER', 'SEED-SCRIPT', 'SEED-SCRIPT'),
+    ('U-ABHISHEK', 'abhishek.s@rapguru.net', 'Abhishek Sonthalia', 'USER', 'SEED-SCRIPT', 'SEED-SCRIPT'),
     ('SVC-ZOHO', 'svc-zoho@meridian-industries.example',   'Zoho Sync Service',  'SERVICE', 'SEED-SCRIPT', 'SEED-SCRIPT');
 
 -- --------------------------------------------------------------- calendar
