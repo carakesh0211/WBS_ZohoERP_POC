@@ -820,6 +820,7 @@ def list_organisations(
         # tenant, and only it. The credential can see other organisations
         # on the same Zoho account; they are COUNTED, never named -- they are
         # not this connection's estate and do not belong in its evidence.
+        from ..integration import adapter as _ad
         from ..integration import erp as _erp
         adapter = _erp.ErpAdapter(organization_id=str(connection["organization_id"]),
                                   transport=transport)
@@ -827,7 +828,7 @@ def list_organisations(
             body = transport.request(method="GET", base_url=adapter.base_url("IN"),
                                      path=_erp.ORGANIZATIONS_PATH,
                                      scope=_erp.ORGANIZATIONS_SCOPE, params={})
-        except Exception as exc:  # noqa: BLE001 - mapped to a coded problem or re-raised
+        except _ad.IntegrationError as exc:
             raise _live_error_to_http(exc, connection_id=connection_id)
         rows = body.get("organizations") or []
         pinned = [o for o in rows if str(o.get("organization_id")) == str(connection["organization_id"])]
@@ -909,6 +910,7 @@ def validate_connection(
         # LIVE (Fable 5.1): what the grant ACTUALLY carries against what the
         # inventory requires, per module, plus one real read per readable
         # module so "granted" is proven by an answer, not by a token claim.
+        from ..integration import adapter as _ad
         from ..integration import erp as _erp
         from ..integration.erp import SCOPE_EVIDENCE
         adapter = _erp.ErpAdapter(organization_id=str(connection["organization_id"]),
@@ -952,7 +954,10 @@ def validate_connection(
                                       "rows": len(next((v for k, v in body.items()
                                                         if isinstance(v, list)), []))}
                     entry["result"] = "PASS"
-                except Exception as exc:  # noqa: BLE001
+                except _ad.IntegrationError as exc:
+                    # Authored family only (ZohoApiError carries Zoho's code
+                    # and message, never a token); anything else propagates
+                    # to the fixed catch-all sentence.
                     entry["probe"] = {"path": path, "answered": False,
                                       "error": type(exc).__name__ + ": " + str(exc)[:200]}
                     entry["result"] = "FAIL"
@@ -1156,9 +1161,11 @@ def _token_health(connection: dict) -> dict[str, Any]:
         return {"state": "UNKNOWN",
                 "reason": "This schema stores no access- or refresh-token expiry, "
                           "so token health is unknown rather than healthy."}
+    from ..integration import adapter as _ad
     try:
         transport._bearer()
-    except Exception as exc:  # noqa: BLE001 - the state carries the sentence
+    except _ad.IntegrationError as exc:
+        # The transport's own sentence (authored; never a token or a secret).
         return {"state": "REFUSED", "refresh_token_present": True,
                 "reason": f"{type(exc).__name__}: {str(exc)[:300]}"}
     facts = transport.describe()
