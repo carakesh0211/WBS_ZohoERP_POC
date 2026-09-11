@@ -278,6 +278,13 @@ MUTATING_ROUTES = [
     ("/api/integrations/connections/{connection_id}/validate", "POST",
      "/api/integrations/connections/CONN-01/validate", {},
      "connector.manage", "Auditor"),
+    # Fable 5.1: the live inbound sweep, on `api/integrations_live.py`. The
+    # same `connector.manage` as every other connection verb, the same
+    # denied role for the same reason: Auditor clears the router's
+    # `connector.read` floor and must stop at the route's own permission.
+    ("/api/integrations/connections/{connection_id}/sweep", "POST",
+     "/api/integrations/connections/CONN-01/sweep", {},
+     "connector.manage", "Auditor"),
     ("/api/integrations/dead-letters/{queue}/{row_id}/retry", "POST",
      "/api/integrations/dead-letters/outbox/OUT-1/retry", {},
      "connector.manage", "Auditor"),

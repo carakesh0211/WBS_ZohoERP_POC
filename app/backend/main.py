@@ -133,6 +133,13 @@ app.include_router(approvals_api.router)
 # fail immediately, and splitting the two across commits leaves a revision in
 # history whose test suite cannot pass.
 app.include_router(integrations_api.router)
+# Fable 5.1. The live inbound sweep, `POST .../connections/{id}/sweep`, on
+# its own router so `integrations.py` can be edited concurrently. Same guard
+# (imported, not restated), same rule, same commit: its one mutating path is
+# in `tests/test_api_auth.py::MUTATING_ROUTES` in the commit that mounts it.
+from .api import integrations_live as integrations_live_api  # noqa: E402
+
+app.include_router(integrations_live_api.router)
 # Wave 6. Same rule, same commit: the six mutating paths this router serves
 # are in `tests/test_api_auth.py::MUTATING_ROUTES` in the commit that mounts
 # it. `/api/procurement/*` is the PostgreSQL chain over migration 013's eight
