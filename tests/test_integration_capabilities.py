@@ -79,6 +79,23 @@ def test_an_unverified_capability_is_assumed_absent(erp):
                           ).line_level_custom_fields is True
 
 
+def test_d7_is_true_only_for_the_tenant_where_the_line_fields_were_verified():
+    """2026-09-11: cf_wbs_code and cf_budget_head exist on DEMO WBS's purchase
+    order lines (decision 5). That is a fact about ONE organisation. The
+    adapter reads it from erp.py's verified-tenant table by organisation id;
+    any other id keeps the pessimistic default, and an explicit bool still
+    wins in both directions."""
+    from app.backend.integration import erp as erp_mod
+    assert erp_mod.VERIFIED_LINE_CUSTOM_FIELDS == {
+        "60074128927": ("cf_wbs_code", "cf_budget_head")}
+    assert ErpAdapter(organization_id="60074128927").capabilities().line_level_custom_fields is True
+    assert ErpAdapter(organization_id="60074128928").capabilities().line_level_custom_fields is False
+    assert ErpAdapter(organization_id="60074128927",
+                      line_level_custom_fields=False).capabilities().line_level_custom_fields is False
+    assert erp_mod.line_level_custom_fields_for("60074128927") is True
+    assert erp_mod.line_level_custom_fields_for("1") is False
+
+
 def test_the_binding_ceiling_on_erp_standard_is_the_daily_one(erp):
     """100/min is shared by all three products; 2,000/day is what actually binds.
 

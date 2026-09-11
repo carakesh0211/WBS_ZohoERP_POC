@@ -2465,6 +2465,10 @@
         "assertions": 2,
         "body_sha": "f91ba3f43ac93c84"
       },
+      "test_d7_is_true_only_for_the_tenant_where_the_line_fields_were_verified": {
+        "assertions": 6,
+        "body_sha": "a6f6a647d4ccc066"
+      },
       "test_the_binding_ceiling_on_erp_standard_is_the_daily_one": {
         "assertions": 3,
         "body_sha": "7e0e34abd37dfee0"
@@ -12796,7 +12800,7 @@
     "test_financial_controls.py": 61,
     "test_frontend_budget_setup_registry.py": 12,
     "test_integration_adapter_contract.py": 72,
-    "test_integration_capabilities.py": 19,
+    "test_integration_capabilities.py": 20,
     "test_integration_dto_reader_contract.py": 4,
     "test_integration_jobs.py": 35,
     "test_integration_no_hardcoded_endpoints.py": 6,
@@ -12930,7 +12934,7 @@
     "test_financial_controls.py": 159,
     "test_frontend_budget_setup_registry.py": 21,
     "test_integration_adapter_contract.py": 169,
-    "test_integration_capabilities.py": 56,
+    "test_integration_capabilities.py": 62,
     "test_integration_dto_reader_contract.py": 5,
     "test_integration_jobs.py": 96,
     "test_integration_no_hardcoded_endpoints.py": 8,

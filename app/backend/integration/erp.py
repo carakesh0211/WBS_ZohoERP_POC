@@ -85,6 +85,8 @@ __all__ = [
     "SERVICE_PATH",
     "SORT_COLUMNS",
     "VALIDATION_PROBES",
+    "VERIFIED_LINE_CUSTOM_FIELDS",
+    "line_level_custom_fields_for",
 ]
 
 PRODUCT = "ERP"
@@ -156,6 +158,24 @@ PO_STATE_PATHS: Mapping[str, str] = {
 #: the one order carrying the value. The parameter IS the api_name; the value
 #: is the bare key.
 DEDUPE_SEARCH_PARAM = DEDUPE_CUSTOM_FIELD
+
+#: D-7 (line-level custom fields on purchase-order lines), resolved per
+#: TENANT and never per product. The product owner decided on 2026-09-11 to
+#: carry the WBS code and the budget head on the line, and the two fields
+#: were created on DEMO WBS the same day (ids ``3912780000000098001`` and
+#: ``3912780000000099001``, entity ``purchaseorder`` line items). An
+#: organisation absent from this table gets the pessimistic default, because
+#: assuming a capability present for a tenant nobody has looked at is how a
+#: design gets built on a feature that tenant does not have.
+VERIFIED_LINE_CUSTOM_FIELDS: Mapping[str, tuple[str, ...]] = {
+    "60074128927": ("cf_wbs_code", "cf_budget_head"),
+}
+
+
+def line_level_custom_fields_for(organization_id: str) -> bool:
+    """True only for a tenant whose line fields were verified (see above)."""
+    return str(organization_id) in VERIFIED_LINE_CUSTOM_FIELDS
+
 
 #: The organisation-discovery call (SCR-33): the one call every other call
 #: depends on. Fable 5.1 (2026-09-12), verified live against DEMO WBS.
@@ -266,17 +286,20 @@ class ErpAdapter:
         transport: Transport | None = None,
         per_page: int = 50,
         plan_daily_ceiling: int = DAILY_CALL_CEILING_STANDARD,
-        line_level_custom_fields: bool = False,
+        line_level_custom_fields: bool | None = None,
     ) -> None:
         self.organization_id = str(organization_id)
         self.dc = dc
         self.per_page = per_page
         self.plan_daily_ceiling = plan_daily_ceiling
-        # D-7 is unverified at the tenant. The plan says assume False, and an
-        # unverified capability is assumed absent rather than present: assuming
-        # it present would let line-level CAPEX dimensions be designed against
-        # a feature that may not exist.
-        self.line_level_custom_fields = line_level_custom_fields
+        # D-7 is a TENANT fact. ``None`` (the default) asks the verified-tenant
+        # table; an unverified tenant is assumed absent rather than present,
+        # because assuming it present would let line-level CAPEX dimensions be
+        # designed against a feature that tenant may not have. An explicit
+        # bool still wins, so a test can drive either branch on any org.
+        self.line_level_custom_fields = (
+            line_level_custom_fields_for(self.organization_id)
+            if line_level_custom_fields is None else bool(line_level_custom_fields))
         self.transport = transport or NoNetworkTransport(PRODUCT)
         if getattr(self.transport, "product", None) != PRODUCT:
             raise IntegrationError(
