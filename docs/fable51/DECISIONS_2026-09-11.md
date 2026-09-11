@@ -26,7 +26,7 @@ binds, and where it is applied. Nothing here is inferred.
 | LIVE_READ wiring: a connection in LIVE_READ mode builds the ERP adapter on the live transport; sweeps run server-side against the inbox | engineering | routes DONE `fc8c07e`/`314ba9f` (organisations, validate, scopes, health live on UAT); the sweep route is in progress (agent, branch `work/live-sweep`) |
 | Stamp `cf_wbs_code` / `cf_budget_head` on the seven demo orders; `line_level_custom_fields=True` for ERP | engineering | capability DONE `d3d8054` (TRUE for org 60074128927 only); stamping BLOCKED by the auto-mode classifier on the MCP write — payloads in `evidence/erp-demo/line-field-stamping-plan.md` |
 | Foreign-order receive/bill matching refusal (decision 8) | engineering | open |
-| Purchase Order screen: currency selector and source-minor entry (API complete) | engineering | open |
+| Purchase Order screen: currency selector and source-minor entry (API complete) | engineering | DONE 2026-09-12 (`a6e940a`…`413600d`, Raise Purchase Order screen + `tests/vrt/po-currency.spec.js`) |
 | Audit-anchor Cron Function deployed to the UAT project with its job token | engineering + owner (token) | open |
 | Backup and restore drill on the free tier (`pg_dump` based) | engineering | open |
 | Independent adversarial review of the branch (D1/D2 never completed) | engineering | open |

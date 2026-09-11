@@ -75,7 +75,13 @@ See `docs/fable51/DECISIONS_2026-09-11.md` (eight decisions, holders of each ope
    guard tests). ~~Currency-aware PO emission and DTO exactness~~ — done
    (migration 029, `test_pg_po_currency_fable51.py`; see the delivery status
    section "a purchase order in the currency the vendor quoted"; the PO
-   screen's currency selector is the one open piece). ~~Audit-anchor Cron
+   screen's currency selector landed 2026-09-12 as the Raise Purchase Order
+   screen, `a6e940a`…`413600d`: route `purchase-order` reached from the
+   Commitments header for `po.amend` holders, INR default sends today's body,
+   a foreign currency sends `currency`/`document_date`/`exchange_rate`/
+   `rate_source`/`fx_rate_id` and per-line `source_amount_minor`, the rate
+   lookup's refusal shown verbatim; `tests/vrt/po-currency.spec.js` 21 passed
+   at the three viewports). ~~Audit-anchor Cron
    Function shim + recreated-stream detection~~ — done. ~~023 live RLS
    matrix~~ — done (6 live tests).
 5. ~~Stage B launcher variant and provider decision~~ — LIVE 2026-09-12 on
