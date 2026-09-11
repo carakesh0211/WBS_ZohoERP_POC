@@ -757,6 +757,16 @@ RETURNING j.job_id, j.kind, j.checkpoint, j.resume_count,
 #: over and the next cron tick must be able to claim the row. Holding it to
 #: expiry would idle the work for the whole lease window; only a crash, which
 #: never reaches this statement at all, keeps its lease.
+#: BOTH halves of the lock are released, not one. `ck_job_only_claimed_holds_a_lock`
+#: reads ``state = 'CLAIMED' OR (locked_until IS NULL AND locked_by IS NULL)``,
+#: and this statement used to clear `locked_until` alone -- so the first
+#: CHECKPOINTED write against a real server raised 23514 on the row it was
+#: trying to pause, exactly as the claim once did for the converse constraint
+#: (see `CLAIM_JOB_SQL`). `finished_at` is cleared for the same family of
+#: reasons: `reschedule` moves DONE back to PENDING through this statement,
+#: and `ck_job_finished_at` holds that only DONE/DEAD carry a finish time.
+#: Neither was visible to `tests/test_integration_jobs.py`, whose session is
+#: a fake; `tests/test_live_sweep_fable51.py` runs the runner on a server.
 SAVE_CHECKPOINT_SQL = """
 UPDATE job
    SET checkpoint = %(checkpoint)s,
@@ -764,6 +774,9 @@ UPDATE job
        resume_count = %(resume_count)s,
        locked_until = CASE WHEN %(state)s = %(claimed_state)s
                            THEN locked_until ELSE NULL END,
+       locked_by = CASE WHEN %(state)s = %(claimed_state)s
+                        THEN locked_by ELSE NULL END,
+       finished_at = NULL,
        updated_at = %(now)s
  WHERE job_id = %(job_id)s
    AND {scope}
@@ -776,6 +789,7 @@ UPDATE job
        state = %(state)s,
        last_error = %(note)s,
        locked_until = NULL,
+       locked_by = NULL,
        finished_at = %(now)s,
        updated_at = %(now)s
  WHERE job_id = %(job_id)s
