@@ -167,8 +167,11 @@ PERMISSIONS: dict[str, tuple[str, ...]] = {
     # Recording, activating and retiring a rate is the finance controller's
     # and the administrator's; activation is additionally maker-checker
     # separated by fx_policy (FX_SELF_ACTIVATION), not by a third permission.
+    # NOT the Auditor: AUD-C-006 pinned that role's read set, and widening it
+    # -- even by a read -- is a client decision recorded against D-12
+    # (tests/test_security_identity.py holds the exact set).
     "fx.read":                ("Requestor", "BudgetController", "ProcurementApprover",
-                               "FinanceApprover", "CapitalisationApprover", "Auditor",
+                               "FinanceApprover", "CapitalisationApprover",
                                "Administrator"),
     "fx.manage":              ("FinanceApprover", "Administrator"),
 }

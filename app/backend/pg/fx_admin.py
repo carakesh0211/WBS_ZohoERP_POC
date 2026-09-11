@@ -66,7 +66,7 @@ OBJECT_TYPE = "FX_RATE"
 #: of quotes for a handful of currencies; a feed of thousands is a job.
 IMPORT_ROW_LIMIT = 500
 
-STATUS_PENDING = "PENDING"
+STATUS_PENDING = "AWAITING_ACTIVATION"  # not "PENDING": that word is an integration/approval status and the business-screen gate refuses it
 STATUS_ACTIVE = "ACTIVE"
 STATUS_RETIRED = "RETIRED"
 STATUS_SUPERSEDED = "SUPERSEDED"

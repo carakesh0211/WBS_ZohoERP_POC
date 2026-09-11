@@ -94,10 +94,16 @@ def test_each_permission_is_real(permission):
 
 
 def test_read_is_estate_wide_by_decision_and_manage_is_not():
-    """Every role reads the rate book -- a translated figure cites a rate and
-    whoever reads the figure must be able to read the rate. That is a
-    recorded decision, not an accident, and the write stays narrow."""
-    assert set(auth.PERMISSIONS["fx.read"]) == set(auth.ROLES)
+    """Every role that reads a translated figure reads the rate it cites --
+    a recorded decision, not an accident -- and the write stays narrow.
+
+    THE ONE EXCEPTION IS THE AUDITOR, and it is not this feature's to make:
+    AUD-C-006 pinned that role's exact read set and
+    `tests/test_security_identity.py` holds it. Widening the Auditor, even by
+    a read, is a client decision recorded against D-12. Until it is recorded,
+    the Auditor reads the rate a bill cites through the bill's own FX
+    summary, not through the rate book."""
+    assert set(auth.PERMISSIONS["fx.read"]) == set(auth.ROLES) - {"Auditor"}
     assert set(auth.PERMISSIONS["fx.manage"]) != set(auth.ROLES), "fx.manage grants everyone"
 
 

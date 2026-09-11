@@ -34,8 +34,8 @@ import { formatSettingsDate } from './format.js';
 import { createDataTable } from '../../components/capex-datatable.js';
 import { statusChip } from '../../components/capex-statuschip.js';
 
-const STATUS_TONE = { PENDING: 'warning', ACTIVE: 'positive', RETIRED: 'neutral', SUPERSEDED: 'neutral' };
-const STATUS_LABEL = { PENDING: 'Pending activation', ACTIVE: 'Active', RETIRED: 'Retired', SUPERSEDED: 'Superseded' };
+const STATUS_TONE = { AWAITING_ACTIVATION: 'warning', ACTIVE: 'positive', RETIRED: 'neutral', SUPERSEDED: 'neutral' };
+const STATUS_LABEL = { AWAITING_ACTIVATION: 'Awaiting activation', ACTIVE: 'Active', RETIRED: 'Retired', SUPERSEDED: 'Superseded' };
 const IMPORT_COLUMNS = ['from_currency', 'to_currency', 'rate_date', 'rate', 'rate_source', 'source_reference', 'note'];
 
 function msgBox(kind, body, { messageId, alert = false, actions = [] } = {}) {
@@ -184,7 +184,7 @@ export function mountFxRates(root) {
         label: 'Actions',
         render: (row) => h('div', { class: 'row-actions' }, [
           h('button', { type: 'button', class: 'btn-sm', onClick: (ev) => openHistory(row, ev.currentTarget) }, 'History'),
-          can('fx.manage') && row.status === 'PENDING'
+          can('fx.manage') && row.status === 'AWAITING_ACTIVATION'
             ? h('button', { type: 'button', class: 'btn-sm btn-primary', onClick: (ev) => openActivate(row, ev.currentTarget) }, 'Activate')
             : null,
           can('fx.manage') && row.status === 'ACTIVE'
@@ -410,7 +410,7 @@ export function mountFxRates(root) {
   const createForm = h('form', { novalidate: true }, [
     h('div', { class: 'dlg-msg' }, [cError]),
     h('div', { class: 'dlg-body' }, [
-      h('p', { class: 'fx-hint' }, 'A recorded rate is PENDING until a different user activates it. The rate is an exact decimal with up to eight places; it is validated by the server and never rounded.'),
+      h('p', { class: 'fx-hint' }, 'A recorded rate awaits activation by a different user before it translates anything. The rate is an exact decimal with up to eight places; it is validated by the server and never rounded.'),
       h('div', { class: 'fx-grid-2' }, [
         h('div', { class: 'field' }, [h('label', { for: 'fxCreateFrom' }, 'Source currency *'), cFrom, fieldErr('from')]),
         h('div', { class: 'field' }, [h('label', { for: 'fxCreateTo' }, 'Target currency'), cTo]),
@@ -573,7 +573,7 @@ export function mountFxRates(root) {
     h('div', { class: 'dlg-head' }, [iTitle, iClose]),
     iMsg,
     h('div', { class: 'dlg-body' }, [
-      h('p', { class: 'fx-hint' }, 'Paste a JSON array of rate objects, or CSV with a header row. Every row is validated before any is written: one problem imports nothing. Imported rates are PENDING until activated. Re-importing the same rows creates nothing.'),
+      h('p', { class: 'fx-hint' }, 'Paste a JSON array of rate objects, or CSV with a header row. Every row is validated before any is written: one problem imports nothing. Imported rates await activation. Re-importing the same rows creates nothing.'),
       h('div', { class: 'field' }, [h('label', { for: 'fxImportText' }, 'Rows'), iText]),
       iPreviewHost,
     ]),

@@ -664,11 +664,7 @@ def test_aud_c_006_administrator_holds_no_financial_approval():
 def test_aud_c_006_auditor_is_read_only():
     for permission, roles in auth.PERMISSIONS.items():
         if "Auditor" in roles:
-            # `fx.read` (Fable 5.1, migration 028) is a read: the rate book a
-            # translated figure cites. The write is `fx.manage`, which the
-            # Auditor does not hold.
-            assert permission in ("budget.read", "budget.check", "audit.read", "connector.read",
-                                  "fx.read"), \
+            assert permission in ("budget.read", "budget.check", "audit.read", "connector.read"), \
                 f"Auditor holds mutating permission {permission}"
 
 
