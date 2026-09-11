@@ -161,6 +161,16 @@ PERMISSIONS: dict[str, tuple[str, ...]] = {
                                "Administrator"),
     # The budget CATEGORY master (separate from budget_head, AMB-04).
     "budget.category.manage": ("Administrator", "BudgetController"),
+    # --- Fable 5.1: exchange-rate administration (migration 028) ----------
+    # Reading the rate book is wide: every role that reads a bill, a budget
+    # or an audit trail needs to see the rate a figure was translated at.
+    # Recording, activating and retiring a rate is the finance controller's
+    # and the administrator's; activation is additionally maker-checker
+    # separated by fx_policy (FX_SELF_ACTIVATION), not by a third permission.
+    "fx.read":                ("Requestor", "BudgetController", "ProcurementApprover",
+                               "FinanceApprover", "CapitalisationApprover", "Auditor",
+                               "Administrator"),
+    "fx.manage":              ("FinanceApprover", "Administrator"),
 }
 
 # Approval permissions are subject to maker-checker: the approver may not be the

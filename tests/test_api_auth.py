@@ -145,6 +145,26 @@ MUTATING_ROUTES = [
     ("/api/budget/categories/{category_id}/deactivate", "POST",
      "/api/budget/categories/BC-NONE/deactivate", {},
      "budget.category.manage", "ProcurementApprover"),
+    # Fable 5.1: exchange-rate administration (migration 028). Every write
+    # needs `fx.manage` (FinanceApprover, Administrator) on top of the
+    # router's `fx.read` floor; BudgetController holds the floor and not the
+    # write, which is the role that proves the two are distinct.
+    ("/api/fx/rates", "POST", "/api/fx/rates",
+     {"from_currency": "USD", "rate_date": "2026-08-06", "rate": "83.80",
+      "rate_source": "unauthorised attempt"},
+     "fx.manage", "BudgetController"),
+    ("/api/fx/rates/{fx_rate_id}/activate", "POST", "/api/fx/rates/FXR-NONE/activate", {},
+     "fx.manage", "BudgetController"),
+    ("/api/fx/rates/{fx_rate_id}/deactivate", "POST", "/api/fx/rates/FXR-NONE/deactivate",
+     {"reason": "unauthorised attempt"}, "fx.manage", "BudgetController"),
+    ("/api/fx/rates/import/preview", "POST", "/api/fx/rates/import/preview",
+     {"rows": [{"from_currency": "USD", "rate_date": "2026-08-06", "rate": "83.80",
+                "rate_source": "unauthorised attempt"}]},
+     "fx.manage", "BudgetController"),
+    ("/api/fx/rates/import", "POST", "/api/fx/rates/import",
+     {"rows": [{"from_currency": "USD", "rate_date": "2026-08-06", "rate": "83.80",
+                "rate_source": "unauthorised attempt"}]},
+     "fx.manage", "BudgetController"),
     ("/api/budget/revisions/{revision_id}/reject", "POST",
      "/api/budget/revisions/REV-DM1-ELEC-INC/reject",
      {"reason": "unauthorised attempt"}, "revision.approve", "Requestor"),
@@ -644,7 +664,11 @@ def test_aud_c_006_administrator_holds_no_financial_approval():
 def test_aud_c_006_auditor_is_read_only():
     for permission, roles in auth.PERMISSIONS.items():
         if "Auditor" in roles:
-            assert permission in ("budget.read", "budget.check", "audit.read", "connector.read"), \
+            # `fx.read` (Fable 5.1, migration 028) is a read: the rate book a
+            # translated figure cites. The write is `fx.manage`, which the
+            # Auditor does not hold.
+            assert permission in ("budget.read", "budget.check", "audit.read", "connector.read",
+                                  "fx.read"), \
                 f"Auditor holds mutating permission {permission}"
 
 

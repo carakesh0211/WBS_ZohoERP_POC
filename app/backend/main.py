@@ -105,6 +105,7 @@ from .api import admin_access as admin_access_api
 from .api import approvals as approvals_api
 from .api import budget as budget_api
 from .api import budgets_original as budgets_original_api
+from .api import fx_admin as fx_admin_api
 from .api import exports as exports_api
 
 from .api import closure as closure_api
@@ -120,6 +121,7 @@ app.include_router(budget_api.router)
 # `tests/test_api_auth.py::MUTATING_ROUTES`. Mounted right after the budget
 # router because it shares that router's `budget.read` floor and helpers.
 app.include_router(budgets_original_api.router)
+app.include_router(fx_admin_api.router)
 app.include_router(masters_api.router)
 app.include_router(settings_api.router)
 app.include_router(admin_access_api.router)
