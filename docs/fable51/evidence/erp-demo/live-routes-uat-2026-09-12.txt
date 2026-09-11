@@ -1,0 +1,76 @@
+readyz 200 029 ok
+login 200 {'user': {'user_id': 'U-RAKESH', 'name': 'Rakesh Singh', 'title': 'Administrator (ERP user)', 'roles': ['Administrator']}}
+
+/scopes 200 granted: ['ERP.accountants.READ', 'ERP.bills.READ', 'ERP.contacts.READ', 'ERP.custommodules.ALL', 'ERP.debitnotes.READ', 'ERP.department.READ', 'ERP.fixedasset.READ', 'ERP.projects.READ', 'ERP.purchaseorders.READ', 'ERP.purchasereceives.READ', 'ERP.settings.READ', 'ERP.vendorpayments.READ'] reason: None
+
+/organizations 200
+{
+ "connection_id": "CONN-32A904F37FEA",
+ "organization_id": "60074128927",
+ "organizations": [
+  {
+   "organization_id": "60074128927",
+   "name": "DEMO WBS",
+   "currency_code": "INR",
+   "country": "India",
+   "time_zone": "Asia/Calcutta",
+   "plan_name": "TRIAL",
+   "org_type": "live",
+   "is_gst_india_version": true,
+   "is_multientity_enabled": false
+  }
+ ],
+ "pinned_organisation": {
+  "organization_id": "60074128927",
+  "name": "DEMO WBS",
+  "currency_code": "INR",
+  "country": "India",
+  "time_zone": "Asia/Calcutta",
+  "plan_name": "TRIAL",
+  "org_type": "live",
+  "is_gst_india_version": true,
+  "is_multientity_enabled": false
+ },
+ "pinned_organisation_visible": true,
+ "other_organisations_visible": 21,
+ "source": {
+  "product": "ERP",
+  "api_domain": "https://www.zohoapis.in",
+  "endpoint": "/organizations",
+  "mode": "LIVE_READ"
+ }
+}
+
+/validate 200
+  ERP.bills.READ               granted=True  readable=True  result=PASS          endpoint=/bills probe={'path': '/bills', 'answered': True, 'rows': 1}
+  ERP.contacts.READ            granted=True  readable=True  result=PASS          endpoint=/contacts probe={'path': '/contacts', 'answered': True, 'rows': 1}
+  ERP.custommodules.ALL        granted=True  readable=True  result=NOT RUN       endpoint=None probe=None
+  ERP.purchaseorders.ALL       granted=False readable=True  result=PASS          endpoint=/purchaseorders probe={'path': '/purchaseorders', 'answered': True, 'rows': 1}
+  ERP.purchasereceives.READ    granted=True  readable=True  result=NOT AVAILABLE endpoint=None probe=None
+  ERP.settings.READ            granted=True  readable=True  result=PASS          endpoint=/organizations probe={'path': '/organizations', 'answered': True, 'rows': 22}
+  missing: ['ERP.purchaseorders.ALL'] unreadable: [] read_complete: True calls: 4
+
+/health 200 mode: LIVE_READ
+{
+ "state": "MINTED",
+ "reason": "An access token was minted from the platform-held refresh token; the token is not shown.",
+ "seconds_left": 3479,
+ "api_domain": "https://www.zohoapis.in",
+ "granted_scopes": [
+  "ERP.accountants.READ",
+  "ERP.bills.READ",
+  "ERP.contacts.READ",
+  "ERP.custommodules.ALL",
+  "ERP.debitnotes.READ",
+  "ERP.department.READ",
+  "ERP.fixedasset.READ",
+  "ERP.projects.READ",
+  "ERP.purchaseorders.READ",
+  "ERP.purchasereceives.READ",
+  "ERP.settings.READ",
+  "ERP.vendorpayments.READ"
+ ],
+ "access_token_expires_at": "2026-09-11T21:07:55.388342+00:00",
+ "token_last_refreshed": "2026-09-11T20:09:56.388342+00:00",
+ "refresh_token_present": true
+}

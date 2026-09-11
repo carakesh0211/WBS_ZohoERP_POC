@@ -78,8 +78,11 @@ See `docs/fable51/DECISIONS_2026-09-11.md` (eight decisions, holders of each ope
    screen's currency selector is the one open piece). ~~Audit-anchor Cron
    Function shim + recreated-stream detection~~ — done. ~~023 live RLS
    matrix~~ — done (6 live tests).
-5. Stage B launcher variant and provider decision (billing stop);
-   `docs/fable51/STAGE_B_PERSISTENT_UAT.md`.
+5. ~~Stage B launcher variant and provider decision~~ — LIVE 2026-09-12 on
+   Supabase Free (Mumbai); deploy record and the standalone-deploy rule in
+   `docs/fable51/STAGE_B_PERSISTENT_UAT.md`. Open from that table: readiness
+   under a paused instance, persistence across a restart, the RLS matrices
+   against the UAT instance, the anchor Cron Function, the restore drill.
 6. ~~ERP demo OAuth~~ — CONNECTED read-only 2026-09-11 (org 60074128927 DEMO WBS);
    credential at `%USERPROFILE%\.capex-tools\erp-demo\` (never in the repo);
    `python tools/erp_demo/connect.py --check` proves the refresh, `python
@@ -87,7 +90,21 @@ See `docs/fable51/DECISIONS_2026-09-11.md` (eight decisions, holders of each ope
    The org now holds 4 vendors, 8 items, 5 POs, 2 receives, 4 bills (loaded via
    the Zoho MCP server, all SYNTHETIC) plus a JPY vendor and PO-00006 in JPY
    carrying cf_capex_ref (unique field created); the probe passes on data and
-   resolve_by_dedupe_key is proven live. Next: the sweeps against the inbox.
+   resolve_by_dedupe_key is proven live. The org now also holds a GST vendor,
+   item, PO-00007 and bill (owner enabled GST 2026-09-11) and the two PO line
+   fields `cf_wbs_code` / `cf_budget_head` (D-7 TRUE for this tenant).
+   **LIVE_READ routes done 2026-09-12** (`fc8c07e`, `314ba9f`): connection
+   `CONN-32A904F37FEA` (entity ENT-DM1, org 60074128927, mode LIVE_READ) on
+   the UAT instance answers `/organizations` (pinned org only, 21 others
+   COUNTED never named), `/validate` (4 modules PASS, receives NOT AVAILABLE,
+   custom modules NOT RUN), `/scopes` (12 granted) and `/health.token`
+   (MINTED) from the tenant; evidence
+   `docs/fable51/evidence/erp-demo/live-routes-uat-2026-09-12.txt`. Next: the
+   server-side sweep route (a Fable agent was building
+   `app/backend/integration/live_sweep.py` + `api/integrations_live.py` on
+   branch `work/live-sweep` when this was written — see the agents section),
+   then stamping `cf_wbs_code`/`cf_budget_head` on the seven demo orders and
+   `Capabilities.line_level_custom_fields=True` for ERP.
 7. GitHub Actions: blocked by account billing (confirmed from the check-run
    annotation); do not consume runs until the owner clears it.
 8. Independent adversarial review of the whole branch (D1/D2 reviewers never

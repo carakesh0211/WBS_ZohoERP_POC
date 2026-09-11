@@ -18,12 +18,12 @@ binds, and where it is applied. Nothing here is inferred.
 
 | Item | Holder | State |
 |---|---|---|
-| Create the Supabase Free project in Mumbai and place the connection values outside the repository | owner | open |
-| Enable GST on DEMO WBS | owner | open |
-| Enter the ERP refresh token, client id and secret into the Catalyst AppSail environment for Stage B (never chat) | owner, at Stage B deploy | open |
+| Create the Supabase Free project in Mumbai and place the connection values outside the repository | owner | DONE 2026-09-11 (`wbs-capex-uat`, ref `lmljdkluuqpgjboiejro`) |
+| Enable GST on DEMO WBS | owner | DONE 2026-09-11; GST vendor/item/PO-00007/bill loaded |
+| Enter the ERP refresh token, client id and secret into the Catalyst AppSail environment for Stage B (never chat) | owner, at Stage B deploy | DONE 2026-09-11 (eleven variables in the console; they survived the standalone redeploy of 2026-09-12) |
 | GitHub Actions billing (CI has not run since 2026-09-09) | owner | open |
-| Stage B launcher: PostgreSQL env pass-through, provider CA at the bundle root, ERP credentials from environment variables, standalone deploy form | engineering | open |
-| LIVE_READ wiring: a connection in LIVE_READ mode builds the ERP adapter on the live transport; sweeps run server-side against the inbox | engineering | open |
+| Stage B launcher: PostgreSQL env pass-through, provider CA at the bundle root, ERP credentials from environment variables, standalone deploy form | engineering | DONE `6d1eb79`; live 2026-09-12 (`STAGE_B_PERSISTENT_UAT.md` deploy record) |
+| LIVE_READ wiring: a connection in LIVE_READ mode builds the ERP adapter on the live transport; sweeps run server-side against the inbox | engineering | routes DONE `fc8c07e`/`314ba9f` (organisations, validate, scopes, health live on UAT); the sweep route is in progress (agent, branch `work/live-sweep`) |
 | Stamp `cf_wbs_code` / `cf_budget_head` on the six demo orders; `line_level_custom_fields=True` for ERP | engineering | open |
 | Foreign-order receive/bill matching refusal (decision 8) | engineering | open |
 | Purchase Order screen: currency selector and source-minor entry (API complete) | engineering | open |
