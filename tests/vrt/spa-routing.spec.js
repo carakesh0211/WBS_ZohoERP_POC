@@ -593,6 +593,11 @@ test.describe('SPA routing — the two declarations cannot drift', () => {
       // C8_screens.json is the client's numbered inventory and is not
       // extended by an implementation stream.
       'budget-setup', 'budget-categories', 'fx-rates',
+      // Fable 5.1: fifty. Raise Purchase Order (migration 029's currency-
+      // at-origin API, which had no screen) brought tests/vrt/po-currency.
+      // spec.js; `scr: null` for the same reason, and route-only -- reached
+      // from the Commitments header, not the rail.
+      'purchase-order',
     ].sort());
   });
 

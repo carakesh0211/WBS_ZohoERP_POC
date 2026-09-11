@@ -45,10 +45,17 @@ NEW_JS_FILES = [
     # Fable 5.1: exchange-rate administration (migration 028).
     FRONTEND / "src" / "features" / "settings" / "fx-rates.js",
     FRONTEND / "src" / "features" / "settings" / "fx-api.js",
+    # Fable 5.1: purchase-order origination in the vendor's currency
+    # (migration 029). Route-only (no NAV row), so it is NOT in
+    # NEW_SCREEN_IDS; the CSP and token gates below still cover its files.
+    FRONTEND / "src" / "features" / "procurement" / "purchase-order.js",
+    FRONTEND / "src" / "features" / "procurement" / "procurement-api.js",
+    FRONTEND / "src" / "features" / "procurement" / "fx-translate.js",
 ]
 NEW_CSS_FILES = [
     FRONTEND / "src" / "features" / "budget" / "budget-setup.css",
     FRONTEND / "src" / "features" / "settings" / "settings-fx.css",
+    FRONTEND / "src" / "features" / "procurement" / "procurement-po.css",
 ]
 
 NEW_SCREEN_IDS = {
