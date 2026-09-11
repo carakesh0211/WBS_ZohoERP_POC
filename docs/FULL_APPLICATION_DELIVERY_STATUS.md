@@ -476,3 +476,12 @@ edited:
 - *"Waves 1-3 COMPLETE … Wave 4 in progress"* — stale by two waves.
 - *"19 of C8's 40 screens still unbuilt"* — they were built. Thirty-three were
   unreachable, which this file reported as delivery.
+
+## Fable 5.1 — FX administration
+
+- Migration 028 gives `fx_rate` a lifecycle (`active`, activation/deactivation metadata, `superseded_by`) and a trigger that refuses any change to a recorded quote's value, pair, date, source or provenance, and refuses DELETE: rate history is append-only at the database. `ux_fx_rate_natural` is now partial over ACTIVE rows so a correction can exist beside the row it supersedes. `fx_policy.FX_ACTIVATION_SEPARATION` is seeded `REQUIRED`.
+- `pg/fx_admin.py` + `api/fx_admin.py` (`/api/fx/rates`: list with cursor, get, create, activate, deactivate, import/preview, import, lookup, history) under `fx.read` (every role) / `fx.manage` (FinanceApprover, Administrator). A quote created here starts PENDING and is activated by a different user (`FX_SELF_ACTIVATION`); activation supersedes the previous active quote for the same key. Rates are exact decimal strings in both directions; exponents come from `money.py`.
+- The lookup — `pg/fx.py::resolve_basis` at the bill write and `/api/fx/rates/lookup` on the screen — reads ACTIVE quotes only and refuses a date none covers with `FX_RATE_UNAVAILABLE` (404 on the screen); an inactive `fx_rate_id` is `FX_RATE_INACTIVE`. There is no fallback to another day, a retired row, or 1.
+- Screen `fx-rates` ("Exchange Rates", Governance, after Budget Categories): table, create, activate/retire with confirmation, per-pair history, "Test lookup" showing the coded refusal verbatim, and JSON/CSV import with preview → all-or-nothing commit under an Idempotency-Key. Seed `seed_parts/010_fx_rates.sql` quotes USD/EUR/JPY/KWD→INR for 3–7 Aug 2026 with the 6th missing, one superseded EUR quote and one pending JPY quote.
+- Proof: `tests/test_pg_fx_admin.py` (16, live PostgreSQL) and `tests/test_api_fx_guard.py` (43, no server), both post-baseline in the manifest; the existing `test_pg_fx.py` / `test_pg_fx_ingest.py` (98) pass unchanged on 028.
+- Not done: no Playwright spec for the screen; the import accepts unquoted CSV only (a `source_reference` containing a comma must use the JSON form); rate rows recorded by ingestion (`record_rate`) remain active on creation, by design, and are not subject to activation separation.
