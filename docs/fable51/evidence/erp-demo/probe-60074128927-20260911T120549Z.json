@@ -1,0 +1,240 @@
+{
+  "organization_id": "60074128927",
+  "started_at": "2026-09-11T12:05:40.037506+00:00",
+  "mode": "LIVE_READ (probe; CAPEX_ERP_OUTBOUND_WRITES unset)",
+  "checks": [
+    {
+      "check": "data centre and product",
+      "ok": true,
+      "detail": {
+        "api_domain": "https://www.zohoapis.in",
+        "service_path": "/erp/v3"
+      }
+    },
+    {
+      "check": "pinned organisation is visible to the grant",
+      "ok": true,
+      "detail": {
+        "pinned": {
+          "organization_id": "60074128927",
+          "name": "DEMO WBS",
+          "currency_code": "INR",
+          "country": "India",
+          "time_zone": "Asia/Calcutta",
+          "plan_name": "TRIAL",
+          "org_type": "live",
+          "is_multientity_enabled": false,
+          "is_gst_india_version": false
+        },
+        "other_organisations_visible": 21
+      }
+    },
+    {
+      "check": "organisation currency is the base currency",
+      "ok": true,
+      "detail": {
+        "currency_code": "INR"
+      }
+    },
+    {
+      "check": "granted scopes cover every required READ scope",
+      "ok": true,
+      "detail": {
+        "required_read": [
+          "ERP.accountants.READ",
+          "ERP.bills.READ",
+          "ERP.contacts.READ",
+          "ERP.custommodules.ALL",
+          "ERP.debitnotes.READ",
+          "ERP.department.READ",
+          "ERP.fixedasset.READ",
+          "ERP.projects.READ",
+          "ERP.purchaseorders.READ",
+          "ERP.purchasereceives.READ",
+          "ERP.settings.READ",
+          "ERP.vendorpayments.READ"
+        ],
+        "granted": [
+          "ERP.accountants.READ",
+          "ERP.bills.READ",
+          "ERP.contacts.READ",
+          "ERP.custommodules.ALL",
+          "ERP.debitnotes.READ",
+          "ERP.department.READ",
+          "ERP.fixedasset.READ",
+          "ERP.projects.READ",
+          "ERP.purchaseorders.READ",
+          "ERP.purchasereceives.READ",
+          "ERP.settings.READ",
+          "ERP.vendorpayments.READ"
+        ],
+        "missing": []
+      }
+    },
+    {
+      "check": "token refresh",
+      "ok": true,
+      "detail": {
+        "token_seconds_left": 3478,
+        "token_mints": 1
+      }
+    },
+    {
+      "check": "vendors (contacts)",
+      "ok": true,
+      "detail": {
+        "pages": [
+          {
+            "count": 4,
+            "page": 1,
+            "per_page": 50,
+            "has_more": false
+          }
+        ],
+        "total_seen": 4,
+        "external_ids": [
+          "3912780000000079001",
+          "3912780000000076001",
+          "3912780000000075001",
+          "3912780000000074001"
+        ],
+        "statuses_raw": {
+          "active": 4
+        }
+      }
+    },
+    {
+      "check": "items",
+      "ok": true,
+      "detail": {
+        "pages": [
+          {
+            "count": 8,
+            "page": 1,
+            "per_page": 50,
+            "has_more": false
+          }
+        ],
+        "total_seen": 8,
+        "external_ids": [
+          "3912780000000076008",
+          "3912780000000084001",
+          "3912780000000082010",
+          "3912780000000083001",
+          "3912780000000079008",
+          "3912780000000082001",
+          "3912780000000080001",
+          "3912780000000081001"
+        ],
+        "statuses_raw": {
+          "active": 8
+        }
+      }
+    },
+    {
+      "check": "purchase orders (windowed)",
+      "ok": true,
+      "detail": {
+        "pages": [
+          {
+            "count": 5,
+            "page": 1,
+            "per_page": 50,
+            "has_more": false
+          }
+        ],
+        "total_seen": 5,
+        "external_ids": [
+          "3912780000000087001",
+          "3912780000000086001",
+          "3912780000000075008",
+          "3912780000000085009",
+          "3912780000000085001"
+        ],
+        "statuses_raw": {
+          "partially_billed": 3,
+          "open": 1,
+          "billed": 1
+        }
+      }
+    },
+    {
+      "check": "purchase receives via PO-anchored discovery",
+      "ok": true,
+      "detail": {
+        "by_po": {
+          "3912780000000087001": {
+            "count": 0,
+            "external_ids": []
+          },
+          "3912780000000086001": {
+            "count": 0,
+            "external_ids": []
+          },
+          "3912780000000075008": {
+            "count": 0,
+            "external_ids": []
+          },
+          "3912780000000085009": {
+            "count": 1,
+            "external_ids": [
+              "3912780000000074010"
+            ]
+          },
+          "3912780000000085001": {
+            "count": 1,
+            "external_ids": [
+              "3912780000000086010"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "check": "vendor bills (windowed)",
+      "ok": true,
+      "detail": {
+        "pages": [
+          {
+            "count": 4,
+            "page": 1,
+            "per_page": 50,
+            "has_more": false
+          }
+        ],
+        "total_seen": 4,
+        "external_ids": [
+          "3912780000000082036",
+          "3912780000000082022",
+          "3912780000000074020",
+          "3912780000000092004"
+        ],
+        "statuses_raw": {
+          "open": 4
+        }
+      }
+    },
+    {
+      "check": "one bill hydrated by detail fetch",
+      "ok": true,
+      "detail": {
+        "external_id": "3912780000000082036",
+        "line_count": 1,
+        "currency_code": "INR"
+      }
+    },
+    {
+      "check": "call budget spent",
+      "ok": true,
+      "detail": {
+        "calls_made": 13,
+        "minute_ceiling": 100,
+        "daily_ceiling_standard": 2000
+      }
+    }
+  ],
+  "stops": [],
+  "finished_at": "2026-09-11T12:05:49.352099+00:00",
+  "elapsed_seconds": 9.3,
+  "verdict": "PASS"
+}

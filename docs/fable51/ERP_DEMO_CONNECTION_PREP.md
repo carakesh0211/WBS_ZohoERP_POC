@@ -34,14 +34,58 @@ grant must satisfy a GET the adapter names as `ERP.purchaseorders.ALL`. The
 settings endpoints additionally need the `X-com-zoho-erp-organizationid`
 header when the user belongs to several organisations (Zoho code 6024).
 
+## The demo organisation is loaded (2026-09-11, later) and the probe passes on data
+
+The product owner loaded synthetic records through the Zoho MCP server
+(158 ERP tools over ten groups selected in the MCP console; every record is
+labelled SYNTHETIC in its name or notes). Nothing was written through the
+application; its outbound gate is still closed.
+
+| Loaded | Count | Notes |
+|---|---|---|
+| Vendors | 4 | three Indian, one overseas (Japan) |
+| Items | 8 | 7 goods + 1 service, purchase items, non-taxable (the org is not GST-enabled) |
+| Purchase orders | 5 | all issued; totals ₹35.0 L, ₹56.2 L, ₹125.0 L, ₹48.0 L, ₹28.5 L; reference numbers carry the WBS code |
+| Purchase receives | 2 | one partial (PO-00001), one full (PO-00002) |
+| Vendor bills | 4 | two partial, one full from the receive, one against the overseas vendor |
+
+Second probe (`docs/fable51/evidence/erp-demo/probe-60074128927-20260911T120549Z.json`): vendors 4, items 8, purchase orders 5
+(statuses raw: partially_billed 3, open 1, billed 1), receives discovered
+PO-anchored (2 of 5 orders carry one), bills 4, one bill hydrated by detail
+fetch with its line, 13 calls.
+
+**Two contract facts the first live pages proved, both now pinned by tests:**
+
+1. Zoho sends money as JSON numbers (`"rate": 0.0`). The transport parses
+   with `parse_float=str`, so `dto.paise`'s refusal of floats holds
+   (`test_live_transport_fable51.py`).
+2. The ERP v3 **list** rows of `/bills` and `/purchaseorders` carry `total`
+   and no `sub_total` / `tax_total`; the **detail** rows carry all three. The
+   cassettes assumed the detail shape on the list. A list row (discovery
+   only, `lines_hydrated=False`) now maps its subtotal from the total it
+   states; a hydrated row without `sub_total` is still refused
+   (`test_erp_list_row_shape_fable51.py`, `erp._header_subtotal`).
+
+**Zoho's receive/bill matching rule, observed:** once a receive exists
+unbilled, a bill for that order must reference the receive
+(`receive_id` / `receive_item_id` on the line); once a bill exists without a
+receive, no receive can be added for that order. The seed reflects both
+orders of events.
+
+**Still open, both the product owner's:** `cf_capex_ref` (the create call was
+blocked by this session's permission classifier; create it under Settings →
+Custom Fields → Purchase Orders, label "CAPEX Ref", type string, unique), and
+multi-currency (the organisation has INR only, so the overseas order is in
+INR; enabling JPY is a Zoho setting).
+
 ## What is next, in order
 
-1. The product owner loads demo records into DEMO WBS (vendors, items, a few
-   purchase orders, receives and bills) so steps 6–11 verify against data.
+1. ~~Load demo records~~ — done (table above); the probe passes on data.
 2. Create `cf_capex_ref` (Unique = ON) on purchase orders in the demo org and
    decide where line-level WBS/budget dimensions live (D-7) — both are client
    decisions recorded in the ADRs, not made here.
-3. Re-run the probe; then the sweeps against the inbox.
+3. Run the sweeps against the inbox on the local PostgreSQL demo with the
+   connection in LIVE_READ.
 4. Only then, and on separate authorisation, one controlled test purchase
    order with `CAPEX_ERP_OUTBOUND_WRITES=1` on that single connection.
 

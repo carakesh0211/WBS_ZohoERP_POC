@@ -629,6 +629,26 @@ def _lines(rows: Sequence[Mapping[str, Any]], *, po_line_key: str,
     return tuple(out)
 
 
+def _header_subtotal(row: Mapping[str, Any], *, field: str, hydrated: bool, exp: int) -> int:
+    """`sub_total` where the row carries it; on a LIST row that does not, the
+    stated `total`.
+
+    VERIFIED LIVE (Fable 5.1, 2026-09-11, DEMO WBS): the ERP v3 list rows of
+    `/bills` and `/purchaseorders` carry `total` and NO `sub_total` or
+    `tax_total`; the detail rows carry all three. The cassettes assumed the
+    detail shape on the list, and the first live page refused every document
+    with `po.sub_total is missing`. A list row is discovery only -- it is
+    marked `lines_hydrated=False` and nothing books it before the detail
+    fetch -- so its subtotal is taken as the total the row DOES state (tax on
+    such a row is already read as 0 by `allow_missing`). A HYDRATED row still
+    requires `sub_total`: a detail fetch that lacks it is a contract change
+    and is refused, not papered over.
+    """
+    if row.get("sub_total") not in (None, "") or hydrated:
+        return paise(row.get("sub_total"), field=f"{field}.sub_total", minor_exponent=exp)
+    return paise(row.get("total"), field=f"{field}.total", minor_exponent=exp)
+
+
 def _bill(row: Mapping[str, Any], source: SourceRef, *, hydrated: bool) -> BillDTO:
     # THE DOCUMENT'S OWN SCALE, resolved once and used for both the
     # header and the lines. `to_paise` multiplied by 100 regardless,
@@ -646,7 +666,7 @@ def _bill(row: Mapping[str, Any], source: SourceRef, *, hydrated: bool) -> BillD
         vendor_external_id=_opt_str(row.get("vendor_id")),
         vendor_name=str(row.get("vendor_name") or ""),
         currency_code=str(row.get("currency_code") or "INR"),
-        subtotal_paise=paise(row.get("sub_total"), field="bill.sub_total", minor_exponent=_exp),
+        subtotal_paise=_header_subtotal(row, field="bill", hydrated=hydrated, exp=_exp),
         tax_paise=paise(row.get("tax_total"), field="bill.tax_total", allow_missing=True, minor_exponent=_exp),
         total_paise=paise(row.get("total"), field="bill.total", minor_exponent=_exp),
         # Stored verbatim and never overwritten (C3/§8.4). An unmapped raw
@@ -677,7 +697,7 @@ def _purchase_order(row: Mapping[str, Any], source: SourceRef, *, hydrated: bool
         vendor_external_id=_opt_str(row.get("vendor_id")),
         vendor_name=str(row.get("vendor_name") or ""),
         currency_code=str(row.get("currency_code") or "INR"),
-        subtotal_paise=paise(row.get("sub_total"), field="po.sub_total", minor_exponent=_exp),
+        subtotal_paise=_header_subtotal(row, field="po", hydrated=hydrated, exp=_exp),
         tax_paise=paise(row.get("tax_total"), field="po.tax_total", allow_missing=True, minor_exponent=_exp),
         total_paise=paise(row.get("total"), field="po.total", minor_exponent=_exp),
         external_status_raw=str(row.get("status") or ""),

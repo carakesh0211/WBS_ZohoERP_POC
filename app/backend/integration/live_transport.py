@@ -271,7 +271,10 @@ class LiveTransport:
             raise IntegrationError(
                 f"{method} {path}: the API host could not be reached ({exc.reason}).") from None
         try:
-            parsed = json.loads(raw.decode("utf-8")) if raw else {}
+            # parse_float=str: money must never exist as a float. The DTO
+            # layer (`dto.paise`) refuses a float on principle, and the first
+            # live items page proved it: Zoho sends `"rate": 0.0`.
+            parsed = json.loads(raw.decode("utf-8"), parse_float=str) if raw else {}
         except ValueError:
             raise ZohoApiError(status=status, path=path, code=None,
                                message=f"non-JSON body of {len(raw)} bytes") from None

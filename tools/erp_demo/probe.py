@@ -32,6 +32,7 @@ if str(ROOT) not in sys.path:
 
 from app.backend import zoho as zoho_mod  # noqa: E402
 from app.backend.integration import adapter as ad  # noqa: E402
+from app.backend.integration.dto import DtoError  # noqa: E402
 from app.backend.integration import erp  # noqa: E402
 from app.backend.integration import live_transport as lt  # noqa: E402
 
@@ -108,8 +109,8 @@ def run(org_id: str, *, days: int, out_dir: Path) -> int:
         while page_no <= stop_after:
             try:
                 page = fn(since, until, page_no)
-            except ad.IntegrationError as exc:
-                check(name, False, str(exc)[:300])
+            except (ad.IntegrationError, DtoError) as exc:
+                check(name, False, f"{type(exc).__name__}: {str(exc)[:300]}")
                 return []
             pages.append(_page_summary(page))
             for item in page.items:
@@ -136,8 +137,8 @@ def run(org_id: str, *, days: int, out_dir: Path) -> int:
             got = adapter.receives_for_po(po_id)
             receives[po_id] = {"count": len(got),
                                "external_ids": [getattr(r, "external_id", None) for r in got][:20]}
-        except ad.IntegrationError as exc:
-            receives[po_id] = {"error": str(exc)[:200]}
+        except (ad.IntegrationError, DtoError) as exc:
+            receives[po_id] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
     check("purchase receives via PO-anchored discovery", True, {"by_po": receives})
     # 9. Bills with the windowed filter; one detail fetch proves hydration.
     bill_ids = paged("vendor bills (windowed)", adapter.list_bills)
@@ -147,8 +148,8 @@ def run(org_id: str, *, days: int, out_dir: Path) -> int:
             check("one bill hydrated by detail fetch", bool(getattr(bill, "lines_hydrated", False)),
                   {"external_id": bill_ids[0], "line_count": len(getattr(bill, "lines", ()) or ()),
                    "currency_code": getattr(bill, "currency_code", None)})
-        except ad.IntegrationError as exc:
-            check("one bill hydrated by detail fetch", False, str(exc)[:300])
+        except (ad.IntegrationError, DtoError) as exc:
+            check("one bill hydrated by detail fetch", False, f"{type(exc).__name__}: {str(exc)[:300]}")
     # 10. Budget and pagination facts.
     desc = transport.describe()
     check("call budget spent", desc["calls_made"] <= 60,

@@ -651,6 +651,7 @@ POST_BASELINE_FILES = {
     # rather than emitted labelled INR (Fable 5.1). Database-free.
     "test_po_emission_currency_fable51.py",
     "test_live_transport_fable51.py",
+    "test_erp_list_row_shape_fable51.py",
     "test_pg_po_currency_fable51.py",
 
     # --- Fable 5.1: period reopen (M-3). Post-baseline like every wave file: the 220 counts the

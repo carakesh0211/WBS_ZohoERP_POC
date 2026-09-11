@@ -80,7 +80,9 @@ now carries a base-commit guard).
    credential at `%USERPROFILE%\.capex-tools\erp-demo\` (never in the repo);
    `python tools/erp_demo/connect.py --check` proves the refresh, `python
    tools/erp_demo/probe.py --org 60074128927` re-runs the read-only probe.
-   The org is empty and has no `cf_capex_ref`: waiting on the product owner.
+   The org now holds 4 vendors, 8 items, 5 POs, 2 receives, 4 bills (loaded via
+   the Zoho MCP server, all SYNTHETIC); the probe passes on data. Still open:
+   `cf_capex_ref` (create in Zoho settings) and multi-currency; then the sweeps.
 7. GitHub Actions: blocked by account billing (confirmed from the check-run
    annotation); do not consume runs until the owner clears it.
 8. Independent adversarial review of the whole branch (D1/D2 reviewers never

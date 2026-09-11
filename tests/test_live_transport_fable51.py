@@ -248,3 +248,15 @@ def test_the_adapter_accepts_this_transport_and_refuses_it_for_another_product(t
     from app.backend.integration import books_inventory
     with pytest.raises(ad.IntegrationError):
         books_inventory.BooksInventoryAdapter(organization_id="1", transport=t)
+
+
+def test_a_decimal_in_the_wire_body_arrives_as_a_string_never_a_float(tmp_path):
+    """The first live items page carried `"rate": 0.0`; parsed as a float it
+    is refused by dto.paise (money never exists as a float). The transport
+    parses with parse_float=str so the DTO layer gets the exact text."""
+    opener = FakeOpener(api_answers=[{"code": 0, "items": [{"item_id": "1", "rate": 0.0, "purchase_rate": 68000.5}]}])
+    t = _transport(tmp_path, opener)
+    out = t.request(method="GET", base_url=BASE, path="/items", scope="ERP.settings.READ")
+    row = out["items"][0]
+    assert row["rate"] == "0.0" and row["purchase_rate"] == "68000.5"
+    assert not any(isinstance(v, float) for v in row.values())
