@@ -78,12 +78,39 @@ Custom Fields → Purchase Orders, label "CAPEX Ref", type string, unique), and
 multi-currency (the organisation has INR only, so the overseas order is in
 INR; enabling JPY is a Zoho setting).
 
+## `cf_capex_ref`, the JPY order, and the dedupe resolver (2026-09-11, latest)
+
+Both product-owner items are done in the demo organisation:
+
+| Item | Result |
+|---|---|
+| `cf_capex_ref` on purchase orders | created (custom field id `3912780000000093002`, api name `cf_capex_ref`, string, **unique**, not mandatory, not on PDF) |
+| Multi-currency | the organisation already carried JPY/USD/EUR and others; a JPY vendor was created and **PO-00006** raised in JPY (¥2,900,000 at 0.561, base ₹16,26,900) carrying `cf_capex_ref = DEMO-CAPEX-2026-001.07-JPY-0001`, then issued |
+
+Read back through the real adapter: PO-00006 maps as JPY with exponent 0
+(2,900,000 minor units, not ×100), its line at 1,450,000 × 2, and its
+`dedupe_key` from the custom field. Probe: `docs/fable51/evidence/erp-demo/probe-60074128927-20260911T174512Z.json` (6 orders, statuses raw
+open 2 / partially_billed 3 / billed 1).
+
+**A third live fact, and the most consequential:** Zoho ERP v3 IGNORES the
+documented `custom_field=cf_capex_ref:<value>` search and answers the
+unfiltered list; it honours the field's api_name as the parameter
+(`cf_capex_ref=<value>`), and a filtered list row carries the value as a
+top-level `cf_capex_ref` key rather than inside `custom_fields`. The
+resolver used the ignored form and the verifier read only `custom_fields`,
+so an order that DID carry the key resolved to `None` -- the silent miss
+the verifier exists to prevent. Fixed in `erp.DEDUPE_SEARCH_PARAM` (now the
+api name, bare value) and `adapter.verified_dedupe_match` (top-level key,
+`custom_field_hash`, or `custom_fields`; exact equality only), pinned in
+`tests/test_erp_list_row_shape_fable51.py`, and proven live:
+`resolve_by_dedupe_key` answers `3912780000000096001` for the key and `None`
+for an absent one in 3 calls.
+
 ## What is next, in order
 
 1. ~~Load demo records~~ — done (table above); the probe passes on data.
-2. Create `cf_capex_ref` (Unique = ON) on purchase orders in the demo org and
-   decide where line-level WBS/budget dimensions live (D-7) — both are client
-   decisions recorded in the ADRs, not made here.
+2. ~~Create `cf_capex_ref`~~ — done (unique). Where line-level WBS/budget
+   dimensions live (D-7) is still the client's decision.
 3. Run the sweeps against the inbox on the local PostgreSQL demo with the
    connection in LIVE_READ.
 4. Only then, and on separate authorisation, one controlled test purchase

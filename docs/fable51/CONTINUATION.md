@@ -81,8 +81,9 @@ now carries a base-commit guard).
    `python tools/erp_demo/connect.py --check` proves the refresh, `python
    tools/erp_demo/probe.py --org 60074128927` re-runs the read-only probe.
    The org now holds 4 vendors, 8 items, 5 POs, 2 receives, 4 bills (loaded via
-   the Zoho MCP server, all SYNTHETIC); the probe passes on data. Still open:
-   `cf_capex_ref` (create in Zoho settings) and multi-currency; then the sweeps.
+   the Zoho MCP server, all SYNTHETIC) plus a JPY vendor and PO-00006 in JPY
+   carrying cf_capex_ref (unique field created); the probe passes on data and
+   resolve_by_dedupe_key is proven live. Next: the sweeps against the inbox.
 7. GitHub Actions: blocked by account billing (confirmed from the check-run
    annotation); do not consume runs until the owner clears it.
 8. Independent adversarial review of the whole branch (D1/D2 reviewers never

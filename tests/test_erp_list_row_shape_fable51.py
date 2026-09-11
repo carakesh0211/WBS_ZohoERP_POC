@@ -49,3 +49,47 @@ def test_a_row_that_carries_sub_total_uses_it_not_the_total():
     row = {**LIST_BILL, "sub_total": "2800000", "tax_total": "10000"}
     dto = erp._bill(row, SOURCE, hydrated=False)
     assert (dto.subtotal_paise, dto.tax_paise, dto.total_paise) == (280_000_000, 1_000_000, 281_000_000)
+
+
+# ---------------------------------------------------------------- dedupe key
+from app.backend.integration.adapter import DEDUPE_CUSTOM_FIELD, verified_dedupe_match  # noqa: E402
+
+KEY = "DEMO-CAPEX-2026-001.07-JPY-0001"
+
+
+def test_a_filtered_list_row_carries_the_key_top_level_and_is_matched():
+    """The live shape of `GET /purchaseorders?cf_capex_ref=<key>`."""
+    row = {"purchaseorder_id": "3912780000000096001", "cf_capex_ref": KEY,
+           "cf_capex_ref_formatted": KEY, "cf_capex_ref_unformatted": KEY}
+    assert verified_dedupe_match([row], dedupe_key=KEY, id_field="purchaseorder_id") == "3912780000000096001"
+
+
+def test_a_detail_row_is_matched_through_custom_fields_or_the_hash():
+    detail = {"purchaseorder_id": "9", "custom_fields": [{"api_name": DEDUPE_CUSTOM_FIELD, "value": KEY}],
+              "custom_field_hash": {DEDUPE_CUSTOM_FIELD: KEY}}
+    assert verified_dedupe_match([detail], dedupe_key=KEY, id_field="purchaseorder_id") == "9"
+    hash_only = {"purchaseorder_id": "10", "custom_field_hash": {DEDUPE_CUSTOM_FIELD: KEY}}
+    assert verified_dedupe_match([hash_only], dedupe_key=KEY, id_field="purchaseorder_id") == "10"
+
+
+def test_a_prefix_or_an_unfiltered_row_never_matches():
+    """The ignored-parameter failure mode: an unfiltered list row carries no
+    key at all, and a longer key sharing the prefix is not this key."""
+    unfiltered = {"purchaseorder_id": "1", "purchaseorder_number": "PO-00001", "total": "5620000"}
+    longer = {"purchaseorder_id": "2", "cf_capex_ref": KEY + "0"}
+    assert verified_dedupe_match([unfiltered, longer], dedupe_key=KEY, id_field="purchaseorder_id") is None
+
+
+def test_the_resolver_sends_the_api_name_as_the_parameter_with_the_bare_key():
+    class Rec:
+        product = erp.PRODUCT
+        calls = []
+
+        def request(self, *, method, base_url, path, scope, params=None, body=None):
+            self.calls.append(dict(params or {}))
+            return {"code": 0, "purchaseorders": [], "page_context": {"has_more_page": False}}
+    rec = Rec()
+    adapter = erp.ErpAdapter(organization_id="60074128927", transport=rec)
+    assert adapter.resolve_by_dedupe_key(KEY) is None
+    assert rec.calls[0][DEDUPE_CUSTOM_FIELD] == KEY
+    assert "custom_field" not in rec.calls[0]

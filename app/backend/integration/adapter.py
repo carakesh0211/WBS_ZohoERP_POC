@@ -582,13 +582,24 @@ def verified_dedupe_match(
     if not dedupe_key:
         return None
     for row in rows:
+        # THREE PLACES THE VALUE ACTUALLY LIVES, verified live (Fable 5.1,
+        # 2026-09-11): a filtered LIST row carries it as a top-level key named
+        # by the api_name (`cf_capex_ref`); a DETAIL row carries it in the
+        # `custom_fields` array AND in `custom_field_hash`; an unfiltered list
+        # row carries none of them. Reading only `custom_fields` made a row
+        # that DID carry the key resolve to None. Exact equality in every
+        # case; the first exact hit wins.
+        candidates = [row.get(custom_field)]
+        hashed = row.get("custom_field_hash")
+        if isinstance(hashed, Mapping):
+            candidates.append(hashed.get(custom_field))
         for field in row.get("custom_fields") or ():
-            if field.get("api_name") != custom_field:
-                continue
-            if field.get("value") == dedupe_key:
-                found = row.get(id_field)
-                if found:
-                    return str(found)
+            if field.get("api_name") == custom_field:
+                candidates.append(field.get("value"))
+        if any(isinstance(v, str) and v == dedupe_key for v in candidates):
+            found = row.get(id_field)
+            if found:
+                return str(found)
     return None
 
 

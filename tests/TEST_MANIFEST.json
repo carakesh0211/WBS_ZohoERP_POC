@@ -1614,6 +1614,22 @@
       "test_a_row_that_carries_sub_total_uses_it_not_the_total": {
         "assertions": 1,
         "body_sha": "3b3651b8af3fcbb1"
+      },
+      "test_a_filtered_list_row_carries_the_key_top_level_and_is_matched": {
+        "assertions": 1,
+        "body_sha": "21fefdfe95c10797"
+      },
+      "test_a_detail_row_is_matched_through_custom_fields_or_the_hash": {
+        "assertions": 2,
+        "body_sha": "1ad2126b7d764782"
+      },
+      "test_a_prefix_or_an_unfiltered_row_never_matches": {
+        "assertions": 1,
+        "body_sha": "dcf9a000ff291702"
+      },
+      "test_the_resolver_sends_the_api_name_as_the_parameter_with_the_bare_key": {
+        "assertions": 3,
+        "body_sha": "40da2337f06bbd5e"
       }
     },
     "test_erp_write_gate.py": {
@@ -2389,7 +2405,7 @@
       },
       "test_the_erp_resolver_does_use_its_documented_search_parameter": {
         "assertions": 2,
-        "body_sha": "3c2750c55baaae96"
+        "body_sha": "2747b8cbc9020111"
       },
       "test_a_resolve_is_bounded_and_cannot_burn_the_daily_ceiling": {
         "assertions": 2,
@@ -12715,7 +12731,7 @@
     "test_contracts_integration_statuses.py": 23,
     "test_data_classification.py": 11,
     "test_domain_invariants.py": 34,
-    "test_erp_list_row_shape_fable51.py": 4,
+    "test_erp_list_row_shape_fable51.py": 8,
     "test_erp_write_gate.py": 15,
     "test_export_poc.py": 17,
     "test_export_scope.py": 26,
@@ -12848,7 +12864,7 @@
     "test_contracts_integration_statuses.py": 48,
     "test_data_classification.py": 23,
     "test_domain_invariants.py": 94,
-    "test_erp_list_row_shape_fable51.py": 6,
+    "test_erp_list_row_shape_fable51.py": 13,
     "test_erp_write_gate.py": 29,
     "test_export_poc.py": 32,
     "test_export_scope.py": 69,

@@ -146,7 +146,13 @@ PO_STATE_PATHS: Mapping[str, str] = {
 #: it: ``verified_dedupe_match`` re-reads the dedupe custom field off each
 #: returned row, so a filter that is misencoded -- and therefore ignored --
 #: degrades to a scan rather than to a wrong answer.
-DEDUPE_SEARCH_PARAM = "custom_field"
+#: VERIFIED LIVE (Fable 5.1, 2026-09-11, DEMO WBS 60074128927): the documented
+#: ``custom_field=cf_capex_ref:<value>`` form is IGNORED by Zoho ERP v3 -- it
+#: answered the unfiltered list of every purchase order -- while the field's
+#: own api_name as the parameter (``cf_capex_ref=<value>``) answered exactly
+#: the one order carrying the value. The parameter IS the api_name; the value
+#: is the bare key.
+DEDUPE_SEARCH_PARAM = DEDUPE_CUSTOM_FIELD
 
 #: What each list endpoint will actually accept as ``sort_column``.
 #: ``last_modified_time`` is absent from bills and purchase orders on purpose:
@@ -499,7 +505,7 @@ class ErpAdapter:
 
         filtered = self._get(PATH_PURCHASE_ORDERS, "ERP.purchaseorders.ALL", {
             "page": 1, "per_page": self.per_page,
-            DEDUPE_SEARCH_PARAM: f"{DEDUPE_CUSTOM_FIELD}:{dedupe_key}"})
+            DEDUPE_SEARCH_PARAM: dedupe_key})
         found = verified_dedupe_match(
             filtered.get("purchaseorders") or (),
             dedupe_key=dedupe_key, id_field="purchaseorder_id")

@@ -834,8 +834,13 @@ def test_the_erp_resolver_does_use_its_documented_search_parameter():
     erp = build("ERP")
     erp.resolve_by_dedupe_key("CAPEX-PO-000117")
     first = erp.transport.request_log[0]
-    assert erp_module.DEDUPE_SEARCH_PARAM in first["params"]
-    assert DEDUPE_CUSTOM_FIELD in first["params"][erp_module.DEDUPE_SEARCH_PARAM]
+    # VERIFIED LIVE (2026-09-11): the parameter is the field's api_name and
+    # the value is the bare key. The documented `custom_field=cf:value` form
+    # this assertion used to pin is ignored by the tenant (it answers the
+    # unfiltered list), which the verifier then rightly refused -- so a
+    # present key resolved to None. See test_erp_list_row_shape_fable51.py.
+    assert erp_module.DEDUPE_SEARCH_PARAM == DEDUPE_CUSTOM_FIELD
+    assert first["params"][erp_module.DEDUPE_SEARCH_PARAM] == "CAPEX-PO-000117"
 
 
 @pytest.mark.parametrize("product", PRODUCTS)
