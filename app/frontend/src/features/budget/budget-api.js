@@ -114,6 +114,9 @@ export class BudgetApiError extends ApiClientError {
   }
 }
 
+/** Empty base path: the one call outside /api/budget (the shell's bootstrap). */
+const shellClient = createApiClient({ ErrorClass: BudgetApiError });
+
 const client = createApiClient({
   basePath: '/api/budget',
   ErrorClass: BudgetApiError,
@@ -285,15 +288,10 @@ export function getOriginalAudit(budgetId) {
 }
 
 /** GET /api/budget/originals/import/template (text/csv, budget.create) */
-export async function getImportTemplate() {
-  const sid = (() => { try { return sessionStorage.getItem('capex.session_id') || ''; } catch { return ''; } })();
-  const headers = { Accept: 'text/csv' };
-  if (sid) headers['X-Session'] = sid;
-  const res = await fetch('/api/budget/originals/import/template', { headers });
-  if (!res.ok) {
-    throw new BudgetApiError('The import template could not be downloaded.', { status: res.status, kind: 'error' });
-  }
-  return res.text();
+export function getImportTemplate() {
+  // Through the shared client (session, correlation id, both error
+  // envelopes); `asText` returns the CSV body verbatim on success.
+  return client.request('GET', '/originals/import/template', { asText: true });
 }
 
 /** POST /api/budget/originals/import/preview (budget.create) */
@@ -348,13 +346,9 @@ export async function getPrincipal() {
     }
   } catch { /* fall through to the request below */ }
   try {
-    const headers = {};
-    try {
-      const sid = sessionStorage.getItem('capex.session_id');
-      if (sid) headers['X-Session'] = sid;
-    } catch { /* sessionStorage unavailable; request unauthenticated and fail safe below */ }
-    const res = await fetch('/api/bootstrap', { headers });
-    const body = await res.json();
+    // The shell's own bootstrap, through the shared client so the session
+    // header and correlation id come from exactly one place.
+    const body = await shellClient.get('/api/bootstrap');
     return { permissions: new Set(((body && body.permissions) || []).map(String)) };
   } catch {
     return { permissions: new Set() };

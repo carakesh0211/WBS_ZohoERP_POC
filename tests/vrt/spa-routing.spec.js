@@ -336,19 +336,33 @@ test.describe('SPA routing — every SCR-nn screen is reachable from the shell',
     // This is a RESTORATION, not a relaxation: it is still an exact ordered
     // sequence, so an unexpected entry, a reordering or a silent removal all
     // still fail here.
+    //
+    // FABLE 5.1 (2026-09-11) ADDS EXACTLY THREE ROWS, and the sequence is
+    // extended by exactly those three -- `budget-setup` after `budget`,
+    // `budget-categories` and `fx-rates` after `settings`. The first two are
+    // the product-owner brief of 2026-09-11 (Budget Setup, Category master);
+    // the third is the FX-administration screen the technical lead's brief
+    // asked for. None carries the written product-owner sign-off A1/A2 have,
+    // which is why they are accounted for separately in
+    // docs/ui-change-2026-09/A4-fable51-navigation.md, with the rail measured
+    // per role (the administrator scrolls 130px at desktop-1440; every other
+    // seeded role fits exactly). The two collapsible groups the same brief
+    // asked for (ANALYTICS, INTEGRATION MAPPING) render NO `.nav-item` while
+    // collapsed, which is their default, so their fifteen screens do not
+    // appear here -- and a change that expanded them by default would.
     await settleShell(page);
     const ids = await page.evaluate(
       () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
     );
     expect(ids).toEqual([
       'home', 'approvals', 'alerts',
-      'projects', 'wbs', 'budget', 'check', 'revisions',
+      'projects', 'wbs', 'budget', 'budget-setup', 'check', 'revisions',
       'budget-grid', 'budget-compare', 'budget-availability',
       'prs', 'pos', 'grns', 'bills', 'recon',
       'cap',
       'zoho', 'inventory',
       'audit', 'audit-trail',
-      'settings',
+      'settings', 'budget-categories', 'fx-rates',
     ]);
     // STRONGER than the assertion this replaces, which excluded only
     // Delegation Management. No approval screen belongs in the rail at all
@@ -572,6 +586,13 @@ test.describe('SPA routing — the two declarations cannot drift', () => {
       'audit-trail', 'budget-availability', 'budget-compare', 'budget-grid',
       'connector-audit', 'mapping-fields', 'mapping-master', 'mapping-sync',
       'settings',
+      // Fable 5.1: forty-nine. Each of the three brought its own spec --
+      // tests/vrt/budget-setup.spec.js for the first two,
+      // tests/vrt/fx-rates.spec.js for the third -- which is the condition
+      // this guard checks for. All three carry `scr: null` deliberately:
+      // C8_screens.json is the client's numbered inventory and is not
+      // extended by an implementation stream.
+      'budget-setup', 'budget-categories', 'fx-rates',
     ].sort());
   });
 

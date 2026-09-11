@@ -750,7 +750,10 @@ test.describe('Wave 5 integration screens — routes, and nothing in the rail', 
       expect(ids, `${s.scr || s.hash} is a route, not a rail entry`).not.toContain(s.hash);
     }
     expect(ids[0]).toBe('home');
-    expect(ids[ids.length - 1]).toBe('settings');
+    // Fable 5.1 (A4) listed `budget-categories` and `fx-rates` after
+    // `settings`; the property this stream owns -- none of ITS twelve is on
+    // the rail -- is asserted above and is unchanged.
+    expect(ids[ids.length - 1]).toBe('fx-rates');
   });
 
   for (const viewport of [

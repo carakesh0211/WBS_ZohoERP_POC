@@ -255,10 +255,18 @@ export function createApiClient({ basePath = '', ErrorClass = ApiClientError, me
     return new ErrorClass(message, opts);
   }
 
-  async function request(method, path, { params, body, headers: extraHeaders } = {}) {
+  /**
+   * `asText`: the endpoint answers a non-JSON body on success (a CSV
+   * template). The request still carries the session, the correlation id
+   * and the same error handling; only a 2xx body is returned verbatim
+   * instead of being parsed. Without this, a feature module that needs a
+   * text body grows its own fetch() -- which is the third copy of the
+   * session mechanics this module exists to prevent.
+   */
+  async function request(method, path, { params, body, headers: extraHeaders, asText = false } = {}) {
     const correlationId = newCorrelationId();
     const headers = {
-      Accept: 'application/json',
+      Accept: asText ? 'text/plain, text/csv' : 'application/json',
       'X-Correlation-Id': correlationId,
       ...(extraHeaders || {}),
     };
@@ -279,6 +287,7 @@ export function createApiClient({ basePath = '', ErrorClass = ApiClientError, me
     }
 
     const txt = await response.text().catch(() => '');
+    if (asText && response.ok) return txt;
     let parsed = null;
     let parsedOk = true;
     if (txt) {
