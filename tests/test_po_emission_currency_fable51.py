@@ -260,3 +260,70 @@ def test_a_draft_with_a_malformed_currency_is_refused_before_any_outbox_row(bad)
     with pytest.raises(ob.EmissionShapeError):
         ob.PurchaseOrderDraft(local_id="PO-1", connection_id="C", vendor_external_id="ZV-1",
                               lines=(line,), document_date=date(2026, 9, 1), currency_code=bad)
+
+
+# ===================================================================== step 2
+# The line shape rules, database-free: `_normalise_lines(foreign=True)`.
+# A mutation that dropped the base-paise refusal on a foreign line survived
+# every suite that runs without PostgreSQL; these hold the rules here too.
+def _cell(**over):
+    return {"wbs_id": "W", "budget_head_id": "H", "quantity": 1, **over}
+
+
+def test_a_foreign_line_carries_source_minor_units_and_never_base_paise():
+    out = ps._normalise_lines([_cell(source_amount_minor=5997, quantity=3)],
+                              what="purchase order", foreign=True)
+    assert out[0]["source_amount_minor"] == 5997 and out[0]["amount_paise"] is None
+    assert out[0]["source_rate_minor"] is None, "the rate is derived later, exactly, or refused"
+    for bad, code in ((_cell(source_amount_minor=5997, amount_paise=1), "PO_BASE_AMOUNT_ON_FOREIGN_ORDER"),
+                      (_cell(source_amount_minor=5997, rate_paise=1), "PO_BASE_AMOUNT_ON_FOREIGN_ORDER"),
+                      (_cell(), "PO_SOURCE_AMOUNT_REQUIRED"),
+                      (_cell(source_amount_minor=-1), "NEGATIVE_LINE_AMOUNT"),
+                      (_cell(source_amount_minor=10, source_rate_minor=-1), "NEGATIVE_RATE"),
+                      (_cell(source_amount_minor=10.5), "NON_INTEGER_MONEY")):
+        with pytest.raises(ps.ProcurementError) as exc:
+            ps._normalise_lines([bad], what="purchase order", foreign=True)
+        assert exc.value.code == code, (bad, exc.value.code)
+
+
+def test_a_base_line_carries_paise_and_never_source_figures():
+    out = ps._normalise_lines([_cell(amount_paise=100)], what="purchase order")
+    assert out[0]["amount_paise"] == 100 and out[0]["source_amount_minor"] is None
+    for bad, code in ((_cell(amount_paise=100, source_amount_minor=1), "PO_SOURCE_AMOUNT_ON_BASE_ORDER"),
+                      (_cell(amount_paise=100, source_rate_minor=1), "PO_SOURCE_AMOUNT_ON_BASE_ORDER"),
+                      (_cell(), "LINE_AMOUNT_REQUIRED")):
+        with pytest.raises(ps.ProcurementError) as exc:
+            ps._normalise_lines([bad], what="purchase order")
+        assert exc.value.code == code, (bad, exc.value.code)
+
+
+def test_the_currency_code_is_normalised_or_refused():
+    assert ps._po_currency(" usd ") == "USD" and ps._po_currency(None) == "INR"
+    for bad in ("US", "USDX", "12A", ""):
+        if bad == "":
+            assert ps._po_currency(bad) == "INR"  # empty means the base currency
+            continue
+        with pytest.raises(ps.ProcurementError) as exc:
+            ps._po_currency(bad)
+        assert exc.value.code == "PO_CURRENCY_INVALID"
+
+
+def test_translation_applies_the_rate_once_and_the_lines_sum_to_the_header():
+    from decimal import Decimal
+    from app.backend.pg import fx
+    basis = fx.TranslationBasis(source_currency="USD", minor_exponent=2, rate=Decimal("83.25"),
+                                rate_date=date(2026, 8, 5), rate_source="T", fx_rate_id="FXR-1")
+    lines = ps._normalise_lines([_cell(source_amount_minor=5997, quantity=3),
+                                 _cell(source_amount_minor=701)],
+                                what="purchase order", foreign=True)
+    out = ps._translate_po_lines(basis, lines)
+    assert [l["source_rate_minor"] for l in out] == [1999, 701]
+    header = fx.translate_to_base_paise(6698, Decimal("83.25"), source_minor_exponent=2)
+    assert sum(l["amount_paise"] for l in out) == header == 557_609
+    with pytest.raises(ps.ProcurementError) as exc:
+        ps._translate_po_lines(basis, ps._normalise_lines([_cell(source_amount_minor=10, quantity=3)],
+                                                          what="purchase order", foreign=True))
+    assert exc.value.code == "PO_LINE_RATE_NOT_EXACT"
+    identity = ps._translate_po_lines(fx.identity_basis(), ps._normalise_lines([_cell(amount_paise=100)],
+                                                                                what="purchase order"))
+    assert identity[0]["amount_paise"] == 100

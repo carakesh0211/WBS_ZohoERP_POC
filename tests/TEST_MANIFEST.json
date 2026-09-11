@@ -117,7 +117,7 @@
       },
       "test_aud_c_006_auditor_is_read_only": {
         "assertions": 1,
-        "body_sha": "56b8879de8c1f709"
+        "body_sha": "8b7c7755cd9b5802"
       },
       "test_aud_c_006_bootstrap_reports_only_the_callers_own_permissions": {
         "assertions": 2,
@@ -189,7 +189,7 @@
       },
       "test_read_is_estate_wide_by_decision_and_manage_is_not": {
         "assertions": 2,
-        "body_sha": "f47a9d2ebf4cc338"
+        "body_sha": "7479296aecf5efb6"
       },
       "test_manage_is_strictly_narrower_than_read": {
         "assertions": 4,
@@ -11144,6 +11144,22 @@
       "test_a_draft_with_a_malformed_currency_is_refused_before_any_outbox_row": {
         "assertions": 1,
         "body_sha": "0165d256edd96d6e"
+      },
+      "test_a_foreign_line_carries_source_minor_units_and_never_base_paise": {
+        "assertions": 4,
+        "body_sha": "64ac94c548ffd623"
+      },
+      "test_a_base_line_carries_paise_and_never_source_figures": {
+        "assertions": 3,
+        "body_sha": "8c1a69870067aa3a"
+      },
+      "test_the_currency_code_is_normalised_or_refused": {
+        "assertions": 4,
+        "body_sha": "7d1a345d0d8a7c48"
+      },
+      "test_translation_applies_the_rate_once_and_the_lines_sum_to_the_header": {
+        "assertions": 5,
+        "body_sha": "1db1e267b9b0707e"
       }
     },
     "test_procurement_emission.py": {
@@ -12712,7 +12728,7 @@
     "test_pg_settings.py": 17,
     "test_pg_transactions.py": 4,
     "test_pg_unattributed_triage.py": 14,
-    "test_po_emission_currency_fable51.py": 13,
+    "test_po_emission_currency_fable51.py": 17,
     "test_procurement_emission.py": 27,
     "test_reporting_filterset.py": 92,
     "test_reports_filters_fable51.py": 22,
@@ -12843,7 +12859,7 @@
     "test_pg_settings.py": 46,
     "test_pg_transactions.py": 10,
     "test_pg_unattributed_triage.py": 23,
-    "test_po_emission_currency_fable51.py": 32,
+    "test_po_emission_currency_fable51.py": 48,
     "test_procurement_emission.py": 98,
     "test_reporting_filterset.py": 187,
     "test_reports_filters_fable51.py": 56,
