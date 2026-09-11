@@ -306,8 +306,17 @@ def window_params(
     ``organization_id``, ``page`` and ``per_page``, so sending a
     ``last_modified_time`` it does not document would be a guess presented as
     a filter, and would silently return everything while looking like a delta.
+
+    ``since=None`` is the FIRST pull. `jobs.plan_window` answers "no watermark
+    yet" with ``Window(since=None, full_repull=True)``, and the sweeps hand
+    that ``since`` straight to the adapter's list call. Before Fable 5.1 no
+    caller outside the test doubles ever reached this line with ``None``, and
+    the formatter -- ``erp._format_delta`` -- dereferenced ``moment.tzinfo``
+    on it, so the very first live sweep on a fresh connection would have died
+    with an ``AttributeError`` before its first request. A full pull sends no
+    filter at all, which is exactly what the window planner meant.
     """
-    if not enabled:
+    if not enabled or since is None:
         return {}
     return {parameter: formatter(since)}
 
