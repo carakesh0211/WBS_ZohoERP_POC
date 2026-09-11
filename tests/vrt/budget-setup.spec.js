@@ -957,6 +957,13 @@ test.describe('Navigation rail — groups', () => {
   });
 
   test('ANALYTICS and INTEGRATION MAPPING are aria-expanded buttons; the six approved groups stay <h2>; clicking a button group reveals its rows', async ({ page }) => {
+    // Below 900px the rail is an overlay drawer, display:none until opened
+    // (AUD-M-004; see spa-routing.spec.js's openNavIfCollapsed()) — the
+    // group buttons still exist in the DOM at that width (evaluateAll below
+    // reads them regardless), but clicking one requires the drawer open.
+    const collapsed = await page.locator('#nav').evaluate((n) => getComputedStyle(n).display === 'none');
+    if (collapsed) await page.locator('#navToggle').click();
+
     const buttonGroupNames = await page.locator('#nav button.nav-group').evaluateAll(
       (els) => els.map((e) => e.dataset.navGroup),
     );
