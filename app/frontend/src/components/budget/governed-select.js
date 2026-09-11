@@ -72,8 +72,12 @@ export class GovernedSelectElement extends HTMLElement {
 
   connectedCallback() {
     if (!this._built) this._build();
+    // _syncDisabled() already calls _syncPlaceholder() itself once it knows
+    // whether the control is enabled -- when disabled (e.g. a WBS field with
+    // no project chosen yet) it sets the explanatory "Choose a project
+    // first" placeholder instead. Calling _syncPlaceholder() again here
+    // unconditionally would immediately clobber that with the generic one.
     this._syncDisabled();
-    this._syncPlaceholder();
   }
 
   attributeChangedCallback(name) {

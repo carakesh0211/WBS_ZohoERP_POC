@@ -524,7 +524,8 @@ export function mountBudgetSetup(root) {
       onInput: () => recomputeTotal(),
     });
     const amountErrEl = h('div', { class: 'field-err xs st-negative', hidden: true });
-    const justInput = h('textarea', { rows: '2' });
+    const justId = `budgetLineJustification_${key}`;
+    const justInput = h('textarea', { id: justId, rows: '2' });
 
     const customFields = buildCustomFieldsBlock(state.customFieldDefs, `budgetLine_${key}`);
 
@@ -540,7 +541,7 @@ export function mountBudgetSetup(root) {
         wbsSel.wrap, headSel.wrap, catSel.wrap,
         divSel.wrap, branchSel.wrap, zoneSel.wrap, plantSel.wrap, locSel.wrap,
         h('div', { class: 'field' }, [h('label', {}, 'Amount (₹) *'), amountInput, amountErrEl]),
-        h('div', { class: 'field span-2' }, [h('label', {}, 'Justification'), justInput]),
+        h('div', { class: 'field span-2' }, [h('label', { for: justId }, 'Justification'), justInput]),
       ]),
       customFields.el,
     ]);
@@ -549,6 +550,9 @@ export function mountBudgetSetup(root) {
       key, wrap: card, wbsSel, headSel, catSel, divSel, branchSel, zoneSel, plantSel, locSel,
       amountInput, amountErrEl, justInput, customFields,
     };
+
+    state.lineEls.push(entry);
+    linesContainer.appendChild(card);
 
     if (prefill) {
       if (prefill.wbs_id) wbsSel.el.presetSelection(prefill.wbs_id, `${prefill.wbs_code || ''} — ${prefill.wbs_description || ''}`.replace(/^— /, ''));
@@ -565,8 +569,6 @@ export function mountBudgetSetup(root) {
       customFields.fill(prefill.custom_fields);
     }
 
-    state.lineEls.push(entry);
-    linesContainer.appendChild(card);
     renumberLines();
     recomputeTotal();
     return entry;
@@ -843,15 +845,19 @@ export function mountBudgetSetup(root) {
       submitBtn.textContent = 'Submitting…';
       const result = await submitOriginal(saved.budget_id, saved.version_no);
       announce(`${saved.budget_number || saved.budget_id} submitted for approval.`);
-      editorStatusHost.appendChild(msgBox('success', h('div', {}, [
+      // Built now, but appended AFTER the refresh below -- applyDocToForm()
+      // calls resetEditorForm(), which clears editorStatusHost, so appending
+      // this before the refresh would wipe the confirmation immediately.
+      const confirmationEl = msgBox('success', h('div', {}, [
         h('div', {}, `Submitted. Approval instance ${result.approval_instance_id || '—'}.`),
         h('div', { class: 'btn-row' }, [
           h('a', { class: 'btn-sm linkish', href: `?instance=${encodeURIComponent(result.approval_instance_id || '')}#approval-request` }, 'Open approval request'),
           h('button', { type: 'button', class: 'btn-sm', dataset: { nav: 'approval-inbox' } }, 'Go to My Approval Inbox'),
         ]),
-      ])));
+      ]));
       const fresh = await getOriginal(saved.budget_id);
       applyDocToForm(fresh);
+      editorStatusHost.appendChild(confirmationEl);
       loadList(true);
     } catch (err) {
       handleDocError(err, 'submit');

@@ -255,9 +255,13 @@ export function mountBudgetCategories(root) {
     dlgMode = 'create'; dlgRow = null; dlgOpener = opener || document.activeElement;
     clearDlgErrors();
     dlgTitleEl.textContent = 'New budget category';
+    // Connect the dialog (and its governed-select parentEl) to the document
+    // BEFORE filling it -- fillDlg() presets/clears parentEl, and a
+    // governed-select's presetSelection()/clear() touch its internal input,
+    // which only exists once connectedCallback() has built it.
+    if (!dialogEl.isConnected) document.body.appendChild(dialogEl);
     fillDlg(null);
     dlgSubmitBtn.textContent = 'Save';
-    if (!dialogEl.isConnected) document.body.appendChild(dialogEl);
     dialogEl.showModal();
     codeInput.focus();
   }
@@ -266,9 +270,9 @@ export function mountBudgetCategories(root) {
     dlgMode = 'edit'; dlgRow = row; dlgOpener = opener || document.activeElement;
     clearDlgErrors();
     dlgTitleEl.textContent = `Edit ${row.code || ''}`.trim();
+    if (!dialogEl.isConnected) document.body.appendChild(dialogEl);
     fillDlg(row);
     dlgSubmitBtn.textContent = 'Save';
-    if (!dialogEl.isConnected) document.body.appendChild(dialogEl);
     dialogEl.showModal();
     nameInput.focus();
   }

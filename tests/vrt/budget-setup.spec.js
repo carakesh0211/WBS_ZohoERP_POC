@@ -82,23 +82,26 @@ const CATEGORIES_LIST = {
 };
 
 /**
- * DEFECT (reported, not fixed here — out of scope for a test-implementation
- * pass): app/frontend/src/features/budget/budget-setup.js's addLine(prefill)
- * calls governed-select's presetSelection() on each line field (lines
- * ~552-566) BEFORE linesContainer.appendChild(card) connects the card to the
- * document (line 569). components/budget/governed-select.js only builds its
+ * FIXED DEFECT: app/frontend/src/features/budget/budget-setup.js's
+ * addLine(prefill) used to call governed-select's presetSelection() on each
+ * line field BEFORE linesContainer.appendChild(card) connected the card to
+ * the document. components/budget/governed-select.js only builds its
  * internal <input> in connectedCallback(), so presetSelection() on a line
- * with any id field set (wbs_id, budget_head_id, ...) throws
+ * with any id field set (wbs_id, budget_head_id, ...) threw
  * "TypeError: Cannot set properties of undefined (setting 'value')" —
  * confirmed live via a page.on('pageerror') capture while authoring this
- * suite. This crashes applyDocToForm() for ANY document that already has a
- * line, which means: opening an existing budget with lines, and the
+ * suite. This crashed applyDocToForm() for ANY document that already had a
+ * line, which meant: opening an existing budget with lines, and the
  * doc-refresh that runs right after a successful Save/Submit/Import, all
- * break in the real application whenever the returned document is not
- * empty. The default fixture below therefore returns NO lines, so tests
- * that are not specifically about this defect do not trip over it; the
- * REQUEST body a test cares about is asserted from what was actually posted,
- * not from what the (crash-avoiding) response echoes back.
+ * broke in the real application whenever the returned document was not
+ * empty. addLine() now pushes the entry and appends the card BEFORE applying
+ * any prefill, so this no longer crashes (see the dedicated "reopening a
+ * saved budget with an existing line" test in the list describe block
+ * below, which deliberately returns a populated line to prove it). The
+ * default fixture here still returns NO lines, purely so tests that are not
+ * specifically about this scenario stay focused on what they are actually
+ * asserting; the REQUEST body a test cares about is asserted from what was
+ * actually posted, not from what the response echoes back.
  */
 function defaultOriginalDoc(over = {}) {
   return {
@@ -404,6 +407,55 @@ test.describe('Budget Setup — list', () => {
     await expect(page.getByRole('button', { name: '+ New Budget' })).toBeVisible();
   });
 
+  test('reopening a saved budget with an existing line does not throw a page error, and the line prefills', async ({ page }) => {
+    // FIXED DEFECT: budget-setup.js's addLine(prefill) used to call
+    // governed-select's presetSelection() on each line field BEFORE
+    // linesContainer.appendChild(card) connected the card to the document.
+    // components/budget/governed-select.js only builds its internal <input>
+    // in connectedCallback(), so presetSelection() on a line with any id
+    // field set (wbs_id, budget_head_id, ...) threw "TypeError: Cannot set
+    // properties of undefined (setting 'value')" -- this crashed
+    // applyDocToForm() for ANY document that already had a line, breaking
+    // both "reopen an existing budget" and the doc-refresh that runs right
+    // after a successful Save/Submit/Import. addLine() now pushes the entry
+    // and appends the card to linesContainer BEFORE applying any prefill, so
+    // presetSelection() always runs against a connected element. Unlike this
+    // file's other fixtures (see defaultOriginalDoc()'s comment), this test
+    // deliberately returns a document WITH a populated line, to prove the
+    // regression stays fixed; page.on('pageerror') is kept so any future
+    // regression here is loud rather than silently swallowed.
+    const pageErrors = [];
+    page.on('pageerror', (err) => pageErrors.push(err));
+
+    await page.route('**/api/budget/originals**', (route) => {
+      const req = route.request();
+      const { pathname } = new URL(req.url());
+      if (pathname === '/api/budget/originals/BUD-0001' && req.method() === 'GET') {
+        return fulfillJson(route, 200, defaultOriginalDoc({
+          lines: [{
+            wbs_id: 'WBS-01', wbs_code: '01', wbs_description: 'Civil works',
+            budget_head_id: 'CIVIL', budget_head_name: 'Civil',
+            budget_category_id: 'CAT-01', budget_category_name: 'Structural', budget_category_code: 'CAT-01',
+            amount_paise: 125000000, justification: 'Phase 1 civil works line',
+            custom_fields: {},
+          }],
+        }));
+      }
+      return route.fallback();
+    });
+
+    await gotoScreen(page, 'budget-setup');
+    await page.getByRole('button', { name: 'ORB-2026-0001' }).click();
+    await expect(page.locator('#budgetSetupEditorView')).toBeVisible();
+
+    const line = page.locator('#budgetSetupEditorView .budget-line-card').first();
+    await expect(line.getByRole('combobox', { name: 'WBS element *' })).toHaveValue('01 — Civil works');
+    await expect(line.getByRole('combobox', { name: 'Budget head *' })).toHaveValue('Civil');
+    await expect(line.getByRole('combobox', { name: 'Budget category *' })).toHaveValue('CAT-01 — Structural');
+
+    expect(pageErrors, `unexpected page error(s): ${pageErrors.map((e) => e.message).join('; ')}`).toEqual([]);
+  });
+
   test('loading state renders a table skeleton, never a blank panel', async ({ page }) => {
     let release;
     const held = new Promise((resolve) => { release = resolve; });
@@ -556,18 +608,20 @@ test.describe('Budget Setup — editor', () => {
     // Client-side refusal: the field is disabled before any network call is
     // even attempted.
     //
-    // DEFECT (reported, not fixed here): components/budget/governed-select.js
-    // ::connectedCallback() (lines 73-77) calls this._syncDisabled() — which
-    // sets the input's placeholder to "Choose a project first" when the WBS
-    // kind has no project-id — and then unconditionally calls
-    // this._syncPlaceholder() right after, which overwrites it straight back
-    // to the generic "Search wbs element…" placeholder from the `placeholder`
-    // attribute. So the explanatory placeholder text never actually reaches
-    // the screen on initial connection (confirmed live: the input IS
-    // correctly disabled, but its placeholder reads "Search wbs element…").
-    // The placeholder text is therefore not asserted here; the field's
-    // disabled state and the defense-in-depth server message below are.
+    // FIXED DEFECT: components/budget/governed-select.js's
+    // connectedCallback() used to call this._syncDisabled() — which sets the
+    // input's placeholder to "Choose a project first" when the WBS kind has
+    // no project-id — and then unconditionally call this._syncPlaceholder()
+    // right after, which overwrote it straight back to the generic "Search
+    // wbs element…" placeholder from the `placeholder` attribute. So the
+    // explanatory placeholder text never actually reached the screen on
+    // initial connection (confirmed live: the input WAS correctly disabled,
+    // but its placeholder read "Search wbs element…"). connectedCallback()
+    // now relies solely on _syncDisabled() (which already calls
+    // _syncPlaceholder() itself once it knows the enabled state), so the
+    // explanatory placeholder survives.
     await expect(wbsCombo).toBeDisabled();
+    await expect(wbsCombo).toHaveAttribute('placeholder', 'Choose a project first');
 
     // Defense in depth: even a caller that bypasses the disabled state (the
     // governed-select's OWN `disabled` attribute is untouched by the
@@ -666,16 +720,19 @@ test.describe('Budget Setup — editor', () => {
   });
 
   test('Submit for approval shows SUBMITTED with a link to the approval', async ({ page }) => {
-    // DEFECT (reported, not fixed here): budget-setup.js's doSubmit()
-    // (lines 846-854) appends the success message — "Submitted. Approval
-    // instance …", the "Open approval request" link, "Go to My Approval
-    // Inbox" — then immediately awaits getOriginal() and calls
-    // applyDocToForm(fresh) one more time. applyDocToForm() starts with
-    // resetEditorForm(), which unconditionally clears editorStatusHost —
-    // wiping the confirmation it just showed before a user (or this test)
-    // can observe it. Confirmed live: #budgetSetupEditorStatus is empty by
-    // the time the submit flow settles.
-    test.fixme(true, 'budget-setup.js doSubmit() (lines 846-854) clears its own success message — see comment above.');
+    // FIXED DEFECT: budget-setup.js's doSubmit() used to append the success
+    // message -- "Submitted. Approval instance …", the "Open approval
+    // request" link, "Go to My Approval Inbox" -- then immediately await
+    // getOriginal() and call applyDocToForm(fresh) one more time.
+    // applyDocToForm() starts with resetEditorForm(), which unconditionally
+    // clears editorStatusHost, wiping the confirmation it had just shown
+    // before a user could see it. doSubmit() now builds the confirmation
+    // node but appends it to editorStatusHost AFTER the post-submit refresh,
+    // so it survives resetEditorForm()'s clear. page.on('pageerror') is kept
+    // here (as everywhere else in this file) so any regression stays loud.
+    const pageErrors = [];
+    page.on('pageerror', (err) => pageErrors.push(err));
+
     await presetGovernedSelect(page, '#budgetSetupEditorView .budget-doc-header governed-select[kind="project"]', 'PRJ-01', 'CAPEX-01 — Atha Group WBS Rollout');
     await presetGovernedSelect(page, '#budgetSetupEditorView .budget-doc-header governed-select[kind="fiscal_year"]', 'FY26', 'FY26');
     await presetGovernedSelect(page, '#budgetSetupEditorView governed-select[kind="wbs"]', 'WBS-01', '01 — Civil works');
@@ -694,6 +751,8 @@ test.describe('Budget Setup — editor', () => {
     await expect(status).toContainText('AR-0007');
     await expect(status.getByRole('link', { name: 'Open approval request' })).toBeVisible();
     await expect(status.getByRole('button', { name: 'Go to My Approval Inbox' })).toBeVisible();
+
+    expect(pageErrors, `unexpected page error(s): ${pageErrors.map((e) => e.message).join('; ')}`).toEqual([]);
   });
 });
 
@@ -775,19 +834,20 @@ test.describe('Budget Categories', () => {
   });
 
   test('create form: an invalid code shape is refused by the server with its own message', async ({ page }) => {
-    // DEFECT (reported, not fixed here): app/frontend/src/features/settings/
-    // budget-categories.js openCreate() (lines 254-261) calls fillDlg(null)
-    // at line 258 BEFORE document.body.appendChild(dialogEl) at line 260.
-    // fillDlg(null) calls parentEl.clear() on the dialog's <governed-select
-    // kind="budget_category">, which has not been connected to the document
-    // yet — components/budget/governed-select.js only builds its internal
-    // <input> in connectedCallback() — so this throws
-    // "TypeError: Cannot set properties of undefined (setting 'value')"
-    // (confirmed live via page.on('pageerror') while authoring this suite)
-    // and the dialog never opens. Clicking "+ New category" is therefore
-    // completely non-functional in the current build; this test is left as
-    // fixme rather than adjusted to "pass" against a broken feature.
-    test.fixme(true, 'budget-categories.js:254-261 openCreate() crashes before the dialog opens — see comment above.');
+    // FIXED DEFECT: app/frontend/src/features/settings/budget-categories.js
+    // openCreate() used to call fillDlg(null) BEFORE
+    // document.body.appendChild(dialogEl). fillDlg(null) calls
+    // parentEl.clear() on the dialog's <governed-select kind="budget_category">,
+    // which had not yet been connected to the document --
+    // components/budget/governed-select.js only builds its internal <input>
+    // in connectedCallback() -- so this threw "TypeError: Cannot set
+    // properties of undefined (setting 'value')" and the dialog never
+    // opened. openCreate() now appends the dialog to the document first, so
+    // fillDlg() always runs against a connected governed-select. A
+    // page.on('pageerror') collector is kept so a regression here is loud.
+    const pageErrors = [];
+    page.on('pageerror', (err) => pageErrors.push(err));
+
     await signIn(page, ADMIN);
     await gotoScreen(page, 'budget-categories');
     await page.getByRole('button', { name: '+ New category' }).click();
@@ -808,15 +868,20 @@ test.describe('Budget Categories', () => {
     });
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(dialog.locator('.msg-error')).toContainText('code must be 2-40 characters');
+
+    expect(pageErrors, `unexpected page error(s): ${pageErrors.map((e) => e.message).join('; ')}`).toEqual([]);
   });
 
   test('edit sends expected_version matching the row being edited', async ({ page }) => {
-    // DEFECT (reported, not fixed here): same class of bug as the create-form
-    // test above, in openEdit() (budget-categories.js lines 265-272) — it
-    // calls fillDlg(row) (line 269), which presets the parent governed-select,
-    // BEFORE document.body.appendChild(dialogEl) (line 271). "Edit" is
-    // therefore also completely non-functional in the current build.
-    test.fixme(true, 'budget-categories.js:265-272 openEdit() crashes before the dialog opens — see comment above.');
+    // FIXED DEFECT: same class of bug as the create-form test above, in
+    // openEdit() -- it called fillDlg(row), which presets the parent
+    // governed-select, BEFORE document.body.appendChild(dialogEl). "Edit"
+    // was therefore also completely non-functional. openEdit() now appends
+    // the dialog before calling fillDlg(). A page.on('pageerror') collector
+    // is kept so a regression here is loud.
+    const pageErrors = [];
+    page.on('pageerror', (err) => pageErrors.push(err));
+
     await signIn(page, ADMIN);
     await gotoScreen(page, 'budget-categories');
     const row = page.locator('#content table tbody tr').filter({ hasText: 'ELEC' });
@@ -834,6 +899,8 @@ test.describe('Budget Categories', () => {
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(dialog).toBeHidden();
     expect(capturedBody.expected_version).toBe(2); // CATEGORIES_LIST's ELEC row carries version_no: 2
+
+    expect(pageErrors, `unexpected page error(s): ${pageErrors.map((e) => e.message).join('; ')}`).toEqual([]);
   });
 
   test('deactivate asks for confirmation before calling the API', async ({ page }) => {
@@ -891,23 +958,19 @@ test.describe('Budget Setup & Categories — accessibility', () => {
   });
 
   test('axe-core: Budget Setup editor (one line) has no violations', async ({ page }) => {
+    // FIXED DEFECT: budget-setup.js's per-line Justification field used to
+    // render `h('label', {}, 'Justification')` next to (not wrapping) the
+    // textarea, with neither a `for` on the label nor an `id` on the
+    // textarea -- unlike the header's own Justification field, which
+    // correctly pairs `h('label', { for: 'budgetSetupJustification' }, ...)`
+    // with `id: 'budgetSetupJustification'`. axe-core's "label" rule (WCAG
+    // 4.1.2, critical impact) failed on exactly this one control. addLine()
+    // now generates a per-line unique id (`budgetLineJustification_<key>`)
+    // and pairs it with the label's `for`, so no exclusion is needed here
+    // any more -- every violation on this screen fails the build.
     await gotoScreen(page, 'budget-setup');
     await openNewBudget(page);
-    const results = await new AxeBuilder({ page })
-      // DEFECT (reported, not fixed here): budget-setup.js's per-line
-      // Justification field (line ~543) renders
-      // `h('label', {}, 'Justification')` next to (not wrapping) the
-      // textarea, with neither a `for` on the label nor an `id` on the
-      // textarea — unlike the header's own Justification field two lines
-      // above it (line 452), which correctly pairs
-      // `h('label', { for: 'budgetSetupJustification' }, ...)` with
-      // `id: 'budgetSetupJustification'`. axe-core's "label" rule (WCAG
-      // 4.1.2, critical impact) fails on exactly this one control. Excluded
-      // here by its specific selector so every OTHER violation on this
-      // screen still fails the build, matching this suite's own precedent
-      // (see spa-routing.spec.js's now-removed avatar-contrast exclusion).
-      .exclude('.budget-line-grid .span-2.field textarea[rows="2"]')
-      .analyze();
+    const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
   });
 
