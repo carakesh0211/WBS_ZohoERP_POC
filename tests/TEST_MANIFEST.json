@@ -117,7 +117,7 @@
       },
       "test_aud_c_006_auditor_is_read_only": {
         "assertions": 1,
-        "body_sha": "8b7c7755cd9b5802"
+        "body_sha": "56b8879de8c1f709"
       },
       "test_aud_c_006_bootstrap_reports_only_the_callers_own_permissions": {
         "assertions": 2,
@@ -164,6 +164,56 @@
       "test_sharing_a_saved_view_needs_more_than_the_router_floor": {
         "assertions": 2,
         "body_sha": "549669d689e65499"
+      }
+    },
+    "test_api_fx_guard.py": {
+      "test_every_route_is_actually_served": {
+        "assertions": 1,
+        "body_sha": "d14d5610027fef7d"
+      },
+      "test_an_unauthenticated_caller_is_refused_before_any_lookup": {
+        "assertions": 1,
+        "body_sha": "5a5405e7ed2a66c5"
+      },
+      "test_a_forged_session_is_refused": {
+        "assertions": 1,
+        "body_sha": "0ead68dccc9b9a9d"
+      },
+      "test_the_guard_is_declared_on_the_router": {
+        "assertions": 1,
+        "body_sha": "4ebfde3af71ca8aa"
+      },
+      "test_each_permission_is_real": {
+        "assertions": 2,
+        "body_sha": "2fdc3d2b8e368527"
+      },
+      "test_read_is_estate_wide_by_decision_and_manage_is_not": {
+        "assertions": 2,
+        "body_sha": "f47a9d2ebf4cc338"
+      },
+      "test_manage_is_strictly_narrower_than_read": {
+        "assertions": 4,
+        "body_sha": "b42faf488ae7c18c"
+      },
+      "test_a_role_holding_only_the_read_floor_is_refused_on_every_write": {
+        "assertions": 3,
+        "body_sha": "54fd5ce65c8fe0dc"
+      },
+      "test_an_identity_with_no_role_is_refused_on_every_route": {
+        "assertions": 1,
+        "body_sha": "56d87e9ba1fb318f"
+      },
+      "test_a_manager_naming_an_unknown_id_gets_the_coded_404": {
+        "assertions": 2,
+        "body_sha": "c5470d88fad045c9"
+      },
+      "test_a_manager_looking_up_a_date_with_no_active_rate_gets_the_coded_refusal": {
+        "assertions": 2,
+        "body_sha": "62428f5e863c851a"
+      },
+      "test_a_float_rate_is_refused_at_the_boundary": {
+        "assertions": 1,
+        "body_sha": "291e8504be4a0365"
       }
     },
     "test_approval_e2e.py": {
@@ -7280,6 +7330,72 @@
         "body_sha": "cc836ec03424a130"
       }
     },
+    "test_pg_fx_admin.py": {
+      "test_a_quote_is_pending_until_another_user_activates_it": {
+        "assertions": 11,
+        "body_sha": "c9dd2b3ecd7f8dcb"
+      },
+      "test_the_maker_may_not_activate_their_own_quote_unless_the_policy_is_waived": {
+        "assertions": 3,
+        "body_sha": "1f392ac02561c35e"
+      },
+      "test_the_policy_refuses_a_value_it_does_not_name": {
+        "assertions": 1,
+        "body_sha": "6bf711fc4dc260f8"
+      },
+      "test_a_retired_quote_is_refused_by_the_lookup_and_cannot_come_back": {
+        "assertions": 7,
+        "body_sha": "7daa8a3a36759382"
+      },
+      "test_a_gap_between_two_quoted_days_is_refused_not_filled": {
+        "assertions": 4,
+        "body_sha": "66e918cd911967db"
+      },
+      "test_history_is_immutable_at_the_database": {
+        "assertions": 6,
+        "body_sha": "877393dc18c055d3"
+      },
+      "test_a_correction_supersedes_and_history_keeps_both": {
+        "assertions": 14,
+        "body_sha": "39bead8ad2038ff3"
+      },
+      "test_the_rate_is_an_exact_decimal_string_never_a_float": {
+        "assertions": 4,
+        "body_sha": "98257e7e8c09982d"
+      },
+      "test_jpy_and_kwd_preview_at_their_own_exponents": {
+        "assertions": 5,
+        "body_sha": "36568c6653b0690a"
+      },
+      "test_two_active_sources_for_one_day_are_ambiguous_until_named": {
+        "assertions": 3,
+        "body_sha": "7af24629ba97e4f9"
+      },
+      "test_import_is_all_or_nothing_and_resending_creates_nothing": {
+        "assertions": 10,
+        "body_sha": "5eb86ee791d791e6"
+      },
+      "test_the_list_pages_by_cursor_without_duplicates_or_gaps": {
+        "assertions": 6,
+        "body_sha": "1ded140700bf2970"
+      },
+      "test_the_bill_translation_path_refuses_an_inactive_quote": {
+        "assertions": 7,
+        "body_sha": "f90dc67e68945c4e"
+      },
+      "test_record_rate_from_a_vendor_document_still_finds_only_the_active_row": {
+        "assertions": 3,
+        "body_sha": "f02acf8679290a6d"
+      },
+      "test_every_mutation_leaves_an_intact_audit_chain": {
+        "assertions": 3,
+        "body_sha": "5fda1b2deeb7cc85"
+      },
+      "test_an_unknown_id_is_404_on_every_operation": {
+        "assertions": 2,
+        "body_sha": "7d34f2a52ece2a0b"
+      }
+    },
     "test_pg_fx_ingest.py": {
       "test_the_dtos_currency_survives_normalisation": {
         "assertions": 1,
@@ -12409,6 +12525,7 @@
     "test_anchor_function_shim.py": 8,
     "test_api_auth.py": 27,
     "test_api_auth_saved_views.py": 2,
+    "test_api_fx_guard.py": 12,
     "test_approval_e2e.py": 26,
     "test_approval_maker_checker.py": 19,
     "test_approval_negative_matrix.py": 23,
@@ -12478,6 +12595,7 @@
     "test_pg_fable51_inbound_ledger.py": 7,
     "test_pg_fixture_guard.py": 3,
     "test_pg_fx.py": 34,
+    "test_pg_fx_admin.py": 16,
     "test_pg_fx_ingest.py": 51,
     "test_pg_integration_rate_budget.py": 21,
     "test_pg_integration_schema.py": 81,
@@ -12537,6 +12655,7 @@
     "test_anchor_function_shim.py": 24,
     "test_api_auth.py": 50,
     "test_api_auth_saved_views.py": 4,
+    "test_api_fx_guard.py": 21,
     "test_approval_e2e.py": 124,
     "test_approval_maker_checker.py": 55,
     "test_approval_negative_matrix.py": 65,
@@ -12606,6 +12725,7 @@
     "test_pg_fable51_inbound_ledger.py": 30,
     "test_pg_fixture_guard.py": 3,
     "test_pg_fx.py": 89,
+    "test_pg_fx_admin.py": 89,
     "test_pg_fx_ingest.py": 136,
     "test_pg_integration_rate_budget.py": 109,
     "test_pg_integration_schema.py": 132,

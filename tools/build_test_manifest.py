@@ -667,6 +667,18 @@ POST_BASELINE_FILES = {
     "test_erp_write_gate.py",
     "test_zoho_routes_fable51.py",
     "test_frontend_budget_setup_registry.py",
+    # --- Fable 5.1: exchange-rate administration (migration 028) ------------
+    # `test_pg_fx_admin.py` drives create -> activate by a DIFFERENT user ->
+    # lookup / retire / correct-and-supersede against a live PostgreSQL, pins
+    # database-level immutability of rate history, the FX_RATE_UNAVAILABLE
+    # refusal on a retired quote and on a date gap, JPY/KWD exponents in the
+    # translation preview, all-or-nothing idempotent import, keyset paging,
+    # and that pg/fx.py's bill write path refuses an inactive quote.
+    # `test_api_fx_guard.py` holds auth-before-lookup, the fx.read/fx.manage
+    # negative matrix and the coded 404 for an unknown id without a server.
+    # Post-baseline like every wave file.
+    "test_pg_fx_admin.py",
+    "test_api_fx_guard.py",
 }
 
 
