@@ -101,6 +101,9 @@ const SETTINGS_STYLES = ['/static/extensions.css', '/static/settings.css'];
 const BUDGET_SETUP_STYLES = ['/static/extensions.css', '/static/budget.css', '/static/settings.css', '/static/src/features/budget/budget-setup.css'];
 const BUDGET_CATEGORIES_STYLES = ['/static/extensions.css', '/static/settings.css', '/static/src/features/budget/budget-setup.css'];
 const FX_RATES_STYLES = ['/static/extensions.css', '/static/settings.css', '/static/src/features/budget/budget-setup.css', '/static/src/features/settings/settings-fx.css'];
+/* Raise Purchase Order reuses settings.css's toolbar/field/field-err helpers
+   the way Exchange Rates does; its own sheet carries only its layout. */
+const PURCHASE_ORDER_STYLES = ['/static/extensions.css', '/static/settings.css', '/static/src/features/budget/budget-setup.css', '/static/src/features/procurement/procurement-po.css'];
 /* extensions.css carries .audit-skel-bar and th .sort-btn, which the shared
    capex-datatable component needs; approvals.css carries only this feature's
    own layout. Unlike settings.css, every selector in approvals.css is scoped
@@ -521,6 +524,41 @@ export const SCREENS = [
           await ensureStyles(FX_RATES_STYLES);
           const { mountFxRates } = await import('../features/settings/fx-rates.js');
           mountFxRates(root);
+        },
+      };
+    },
+  },
+  /* Fable 5.1: "Raise Purchase Order" -- the frontend for POST
+     /api/procurement/purchase-orders (migration 029), which shipped with no
+     screen: the Commitments view amends, cancels and closes orders but could
+     not originate one, in INR or in the vendor's currency. No SCR number,
+     for the reason the rows above give. Gated on `po.amend`, the permission
+     the route itself requires. REACHABLE BY ROUTE, NOT BY RAIL: it is
+     reached from the Commitments screen's "Raise purchase order" action,
+     the way the approval engine's eight screens are reached from their
+     inbox, so the approved rail does not move (see app.js's NAV comment on
+     the A3 measurement). */
+  {
+    id: 'purchase-order',
+    scr: null,
+    group: 'Procurement & Actuals',
+    ico: '▧',
+    label: 'Raise Purchase Order',
+    title: 'Raise Purchase Order',
+    crumbs: ['Home', 'Commitments', 'Raise Purchase Order'],
+    need: ['po.amend'],
+    build() {
+      const root = h('div');
+      const node = h('div', { class: 'scr-host' }, [
+        panel('scrPurchaseOrderTitle', 'Raise Purchase Order', root),
+        liveRegion('poLiveRegion'),
+      ]);
+      return {
+        node,
+        async mount() {
+          await ensureStyles(PURCHASE_ORDER_STYLES);
+          const { mountPurchaseOrder } = await import('../features/procurement/purchase-order.js');
+          mountPurchaseOrder(root);
         },
       };
     },

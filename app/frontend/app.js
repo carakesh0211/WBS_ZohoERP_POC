@@ -313,6 +313,11 @@ const SCR_ROUTES = [
   // Fable 5.1: the frontend for app/backend/api/fx_admin.py (migration 028).
   // `need` restated from router.js's SCREENS row for the same id.
   { id: 'fx-rates', ico: '⇄', label: 'Exchange Rates', need: ['fx.read'] },
+  // Fable 5.1: the frontend for POST /api/procurement/purchase-orders
+  // (migration 029). `need` restated from router.js's SCREENS row for the
+  // same id -- po.amend, the permission the route itself requires. Route
+  // only, no NAV row: reached from the Commitments screen's header action.
+  { id: 'purchase-order', ico: '▧', label: 'Raise Purchase Order', need: ['po.amend'] },
 ];
 
 /** The SCR_ROUTES row for an id, spliced into NAV by reference. */
@@ -809,8 +814,12 @@ V.prs = async () => {
 
 V.pos = async () => {
   const pos = await api('/purchase-orders');
-  setHeader('Commitments — Purchase Orders', ['Home', 'Commitments'], []);
   const mayAmend = can('po.amend'), mayCancel = can('po.cancel'), mayClose = can('po.close');
+  // Fable 5.1: the one way in to #purchase-order (route only, no rail row).
+  // Offered to the role that holds po.amend, the permission the route
+  // requires; every other role sees this header exactly as before.
+  setHeader('Commitments — Purchase Orders', ['Home', 'Commitments'], [],
+    mayAmend ? `<button class="btn-primary" type="button" data-nav="purchase-order">Raise purchase order</button>` : '');
   return `<div class="card"><h3>Purchase order commitment view</h3><div class="table-wrap"><table>
     <caption class="sr-only">Purchase orders with ordered value, billed value and open commitment, with their lines</caption>
     <thead><tr>

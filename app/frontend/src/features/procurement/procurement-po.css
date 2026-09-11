@@ -1,0 +1,45 @@
+/* app/frontend/src/features/procurement/procurement-po.css
+   Additive stylesheet for the "Raise Purchase Order" screen
+   (src/features/procurement/purchase-order.js).
+
+   Loaded AFTER the byte-frozen app/frontend/styles.css, extensions.css,
+   settings.css and budget-setup.css (src/core/router.js's ensureStyles list
+   for this route). Every colour reference below is var(--…) against a
+   custom property already declared in styles.css's :root -- no new custom
+   property is declared here and no raw hex value appears anywhere in this
+   file. Tables, toolbars, messages and form fields reuse the classes those
+   files already define; what is here is only this screen's own layout.
+*/
+
+/* ---------------- hosts ---------------- */
+.po-screen .section-title { margin: 16px 0 6px; }
+.po-error-host:empty, .po-result-host:empty { display: none; }
+.po-error-host, .po-result-host { margin-bottom: 12px; }
+
+/* ---------------- header ---------------- */
+.po-header .field { min-width: 140px; }
+.po-header .field.f2 { flex: 2; min-width: 220px; }
+.po-header .field-hint { color: var(--n500); }
+
+/* ---------------- rate panel ---------------- */
+.po-rate-panel { margin: 10px 0 4px; }
+.po-rate { font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+.po-code { color: var(--negative); font-weight: 600; }
+.po-fx-link { color: var(--primary-700); text-decoration: underline; }
+.po-fx-link:focus-visible { outline: 2px solid var(--primary-500); outline-offset: 2px; }
+
+/* ---------------- lines ---------------- */
+.po-lines td, .po-lines th { vertical-align: top; }
+.po-lines select { min-width: 160px; max-width: 100%; }
+.po-lines input[type="text"] { width: 100%; min-width: 120px; }
+.po-lines input.po-qty { min-width: 64px; width: 72px; }
+.po-lines input.po-amount { min-width: 140px; }
+.po-lines .po-inr { white-space: nowrap; }
+.po-lines tfoot th, .po-lines tfoot td { font-weight: 600; border-top: 1px solid var(--n300); }
+.po-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+.po-result-lines { margin-top: 8px; }
+
+@media (max-width: 720px) {
+  .po-header .field, .po-header .field.f2 { min-width: 100%; }
+  .po-actions { justify-content: flex-start; }
+}
