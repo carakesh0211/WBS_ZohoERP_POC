@@ -114,20 +114,22 @@ test.describe('Exchange Rates — registry, gate, rendering', () => {
     expect(pageErrors, pageErrors.map(String).join('\n')).toEqual([]);
   });
 
-  test('the Auditor holds no fx.read: no rail row, and the hash does not mount the screen', async ({ page }) => {
-    // AUD-C-006 pins the Auditor's read set; fx.read is not in it
-    // (tests/test_security_identity.py, tests/test_api_fx_guard.py).
+  test('the Auditor reads the rate book but holds no fx.manage: rail row present, no Record button', async ({ page }) => {
+    // 2026-09-11: the product owner decided the Auditor reads the rate book
+    // (recorded against D-12 / AUD-C-006). fx.manage stays with Finance and
+    // the Administrator, so the create/activate/retire controls are absent.
     await installFxRouter(page);
     await signIn(page, AUDITOR);
     const ids = await page.evaluate(
       () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
     );
-    expect(ids).not.toContain('fx-rates');
-    const allowed = await page.evaluate(() => viewAllowed('fx-rates'));
-    expect(allowed).toBe(false);
+    expect(ids).toContain('fx-rates');
+    expect(await page.evaluate(() => viewAllowed('fx-rates'))).toBe(true);
     await page.goto('/#fx-rates');
-    await page.waitForTimeout(1500);
-    expect(await page.locator('#content .scr-host[data-mounted="1"]').count()).toBe(0);
+    await settleScreen(page);
+    const host = page.locator('#content .scr-host[data-mounted="1"]');
+    await expect(host).toContainText('USD');
+    await expect(host.getByRole('button', { name: /new exchange rate|record/i })).toHaveCount(0);
   });
 
   test('the test lookup shows the coded refusal verbatim, never a substitute rate', async ({ page }) => {

@@ -1,11 +1,9 @@
 # A4 — the Fable 5.1 navigation rows: instructed, measured, and one decision referred
 
-**STATUS (2026-09-11): landed on `fable-5.1/full-app-hardening-uat`. The
-product-owner brief of 2026-09-11 INSTRUCTED the Budget Setup rows and the
-visible analytics/mapping navigation; the Exchange Rates row was added by the
-Fable 5.1 FX-administration stream on the technical lead's brief. None of the
-three has a product-owner signature of the kind A1/A2 carry. The measurements
-below are what a decision needs.**
+**STATUS (2026-09-11, later): DECIDED. The product owner accepted option 1 --
+the administrator's 130px scroll at desktop-1440, every other role fitting
+exactly -- so all three rows and both collapsible groups stay as measured
+below. The rail as re-baselined in `1ebf136` is the approved rail.**
 
 `README.md` records A1 and A2 (approved in writing). `A3-approval-navigation.md`
 records why the eight approval screens were withdrawn from the rail: the rail

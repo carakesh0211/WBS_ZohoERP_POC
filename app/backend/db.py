@@ -354,6 +354,16 @@ def _seed(con):
         ("U-CFO", "V. Agarwal", "CFO"),
         ("U-AUD", "P. Jena", "Internal Auditor"),
         ("U-ADM", "System Administrator", "System Administrator"),
+        # Fable 5.1 (2026-09-11): the four users of the Zoho ERP demo
+        # organisation, as WBS Administrators by the product owner's decision,
+        # so the whole team can test the UAT preview. Passwords are issued by
+        # tools/appsail/uat_credentials.py outside the repository; the
+        # local-demo `<id>!demo` convention applies to them like every other
+        # seeded identity.
+        ("U-RAKESH",   "Rakesh Singh",        "Administrator (ERP user)"),
+        ("U-PRITHA",   "Pritha Rapguru",      "Administrator (ERP user)"),
+        ("U-SURAJ",    "Suraj",               "Administrator (ERP user)"),
+        ("U-ABHISHEK", "Abhishek Sonthalia",  "Administrator (ERP user)"),
     ]
     x_many = con.executemany
     x_many("INSERT INTO app_user VALUES (?,?,?)", users)

@@ -97,13 +97,11 @@ def test_read_is_estate_wide_by_decision_and_manage_is_not():
     """Every role that reads a translated figure reads the rate it cites --
     a recorded decision, not an accident -- and the write stays narrow.
 
-    THE ONE EXCEPTION IS THE AUDITOR, and it is not this feature's to make:
-    AUD-C-006 pinned that role's exact read set and
-    `tests/test_security_identity.py` holds it. Widening the Auditor, even by
-    a read, is a client decision recorded against D-12. Until it is recorded,
-    the Auditor reads the rate a bill cites through the bill's own FX
-    summary, not through the rate book."""
-    assert set(auth.PERMISSIONS["fx.read"]) == set(auth.ROLES) - {"Auditor"}
+    THE AUDITOR INCLUDED, since 2026-09-11: the product owner decided
+    (recorded against D-12 and AUD-C-006) that the Auditor reads the rate
+    book and its history. A read only -- `fx.manage` stays with the finance
+    controller and the administrator."""
+    assert set(auth.PERMISSIONS["fx.read"]) == set(auth.ROLES)
     assert set(auth.PERMISSIONS["fx.manage"]) != set(auth.ROLES), "fx.manage grants everyone"
 
 

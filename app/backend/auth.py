@@ -167,12 +167,13 @@ PERMISSIONS: dict[str, tuple[str, ...]] = {
     # Recording, activating and retiring a rate is the finance controller's
     # and the administrator's; activation is additionally maker-checker
     # separated by fx_policy (FX_SELF_ACTIVATION), not by a third permission.
-    # NOT the Auditor: AUD-C-006 pinned that role's read set, and widening it
-    # -- even by a read -- is a client decision recorded against D-12
-    # (tests/test_security_identity.py holds the exact set).
+    # THE AUDITOR READS THE RATE BOOK: decided by the product owner on
+    # 2026-09-11 (Fable 5.1; recorded against D-12 and AUD-C-006). A read,
+    # never fx.manage; tests/test_security_identity.py holds the exact
+    # Auditor set with this permission named.
     "fx.read":                ("Requestor", "BudgetController", "ProcurementApprover",
                                "FinanceApprover", "CapitalisationApprover",
-                               "Administrator"),
+                               "Auditor", "Administrator"),
     "fx.manage":              ("FinanceApprover", "Administrator"),
 }
 
@@ -309,6 +310,12 @@ DEV_USERS = [
     ("U-CFO",  ["FinanceApprover", "CapitalisationApprover"]),
     ("U-AUD",  ["Auditor"]),
     ("U-ADM",  ["Administrator"]),
+    # Fable 5.1 (2026-09-11): the Zoho ERP demo organisation's four users,
+    # Administrators by the product owner's decision ("everyone tests").
+    ("U-RAKESH",   ["Administrator"]),
+    ("U-PRITHA",   ["Administrator"]),
+    ("U-SURAJ",    ["Administrator"]),
+    ("U-ABHISHEK", ["Administrator"]),
 ]
 
 

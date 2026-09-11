@@ -278,7 +278,10 @@ MUTATING_TOKENS = (
 #: version is the audit-finding assertion and stays the reference; this copy
 #: exists so a change has to be made in two places by somebody who has read
 #: both, rather than quietly widened in one.
-AUDITOR_PERMISSIONS = {"budget.read", "budget.check", "audit.read", "connector.read"}
+AUDITOR_PERMISSIONS = {"budget.read", "budget.check", "audit.read", "connector.read",
+                       # 2026-09-11: the product owner's decision (D-12 / AUD-C-006):
+                       # the Auditor reads the rate book. A read; never fx.manage.
+                       "fx.read"}
 
 
 def test_the_auditor_holds_exactly_the_permissions_the_finding_allows():

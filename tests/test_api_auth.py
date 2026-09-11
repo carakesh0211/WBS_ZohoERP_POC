@@ -664,7 +664,8 @@ def test_aud_c_006_administrator_holds_no_financial_approval():
 def test_aud_c_006_auditor_is_read_only():
     for permission, roles in auth.PERMISSIONS.items():
         if "Auditor" in roles:
-            assert permission in ("budget.read", "budget.check", "audit.read", "connector.read"), \
+            assert permission in ("budget.read", "budget.check", "audit.read", "connector.read",
+                                  "fx.read"), \
                 f"Auditor holds mutating permission {permission}"
 
 
