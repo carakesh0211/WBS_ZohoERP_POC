@@ -99,11 +99,16 @@ See `docs/fable51/DECISIONS_2026-09-11.md` (eight decisions, holders of each ope
    COUNTED never named), `/validate` (4 modules PASS, receives NOT AVAILABLE,
    custom modules NOT RUN), `/scopes` (12 granted) and `/health.token`
    (MINTED) from the tenant; evidence
-   `docs/fable51/evidence/erp-demo/live-routes-uat-2026-09-12.txt`. Next: the
-   server-side sweep route (a Fable agent was building
-   `app/backend/integration/live_sweep.py` + `api/integrations_live.py` on
-   branch `work/live-sweep` when this was written — see the agents section),
-   then stamping `cf_wbs_code`/`cf_budget_head` on the seven demo orders.
+   `docs/fable51/evidence/erp-demo/live-routes-uat-2026-09-12.txt`.
+   **Live sweeps done 2026-09-12**: the sweep stream's five commits are on the
+   branch (`8d25bc0`…`4c41ce4` from `work/live-sweep`, cherry-picked with
+   `-x`; the last lands as `2f55f78`), the route ran
+   three rounds on UAT (evidence `live-sweep-uat-2026-09-12.txt`), and the
+   two findings it produced are in `STAGE_B_PERSISTENT_UAT.md` "Findings from
+   the first live sweeps": the receive walk anchors on app-raised orders
+   (decision needed) and the CAPEX-reference read (fixed `6a3987c`, live proof
+   pending an owner action). Next: stamping `cf_wbs_code`/`cf_budget_head` on
+   the seven demo orders.
    `Capabilities.line_level_custom_fields` is TRUE for org 60074128927 since
    `d3d8054` (`erp.VERIFIED_LINE_CUSTOM_FIELDS`). The stamping itself is
    BLOCKED: the Zoho ERP MCP `update_purchase_order` call was refused twice by

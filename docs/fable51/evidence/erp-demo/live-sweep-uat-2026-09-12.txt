@@ -1,0 +1,248 @@
+readyz 200 029 ok
+login 200
+
+/sweep round 1: 200
+{
+ "connection_id": "CONN-32A904F37FEA",
+ "mode": "LIVE_READ",
+ "product": "ERP",
+ "external_source": "ZOHO_ERP",
+ "receives_strategy": "PO_ANCHORED",
+ "modules": {
+  "contacts": {
+   "job_id": "JOB-46d7192bfc1744b38b445c84c23b9d56",
+   "kind": "poll_contacts",
+   "claimed": true,
+   "state": "DONE",
+   "reason": "COMPLETED",
+   "error": null,
+   "records_seen": 6,
+   "inbox_created": 0,
+   "inbox_duplicates": 6,
+   "pages": 1,
+   "steps": 2,
+   "calls": 1,
+   "checkpoint": {
+    "module": "contacts",
+    "page": 1,
+    "hwm": "2026-09-11T20:33:43.552688+00:00"
+   }
+  },
+  "items": {
+   "job_id": "JOB-78a72001132641d5afa1588e430dcd04",
+   "kind": "poll_items",
+   "claimed": true,
+   "state": "DONE",
+   "reason": "COMPLETED",
+   "error": null,
+   "records_seen": 9,
+   "inbox_created": 0,
+   "inbox_duplicates": 9,
+   "pages": 1,
+   "steps": 2,
+   "calls": 1,
+   "checkpoint": {
+    "module": "items",
+    "page": 1,
+    "hwm": "2026-09-11T20:33:44.103774+00:00"
+   }
+  },
+  "purchaseorders": {
+   "job_id": "JOB-80aba492154a4e76b8a3c5240735fdaa",
+   "kind": "poll_purchaseorders",
+   "claimed": true,
+   "state": "DONE",
+   "reason": "COMPLETED",
+   "error": null,
+   "records_seen": 0,
+   "inbox_created": 0,
+   "inbox_duplicates": 0,
+   "pages": 1,
+   "steps": 2,
+   "calls": 1,
+   "checkpoint": {
+    "module": "purchaseorders",
+    "page": 1,
+    "hwm": "2026-09-11T20:33:44.338539+00:00"
+   }
+  },
+  "bills": {
+   "job_id": "JOB-a6fc798c2e6b4d5291b23b1a4963f5cc",
+   "kind": "poll_bills",
+   "claimed": true,
+   "state": "DONE",
+   "reason": "COMPLETED",
+   "error": null,
+   "records_seen": 0,
+   "inbox_created": 0,
+   "inbox_duplicates": 0,
+   "pages": 1,
+   "steps": 2,
+   "calls": 1,
+   "checkpoint": {
+    "module": "bills",
+    "page": 1,
+    "hwm": "2026-09-11T20:33:44.515121+00:00"
+   }
+  },
+  "receives": {
+   "job_id": "JOB-ce1ce408df67488b96b511ddbf5dc8a3",
+   "kind": "sweep_po_anchored",
+   "claimed": true,
+   "state": "DONE",
+   "reason": "COMPLETED",
+   "error": null,
+   "records_seen": 0,
+   "inbox_created": 0,
+   "inbox_duplicates": 0,
+   "pages": 0,
+   "steps": 1,
+   "calls": 0,
+   "checkpoint": {
+    "last_po_id_swept": null,
+    "cycle": 3,
+    "sole_grn_mechanism": true
+   }
+  }
+ },
+ "skipped_for_deadline": [],
+ "dead_jobs": {},
+ "watermarks": {
+  "contacts": "2026-09-11T20:33:43.552688+00:00",
+  "items": "2026-09-11T20:33:44.103774+00:00",
+  "purchaseorders": "2026-09-11T20:33:44.338539+00:00",
+  "bills": "2026-09-11T20:33:44.515121+00:00"
+ },
+ "exceptions": {
+  "raised": 0,
+  "ids": []
+ },
+ "receive_lines_recorded": 0,
+ "budget": {
+  "asked": true,
+  "refusals": 0,
+  "binding": null,
+  "windows": {
+   "DAY": {
+    "used": 12,
+    "ceiling": 1200,
+    "remaining": 1188
+   },
+   "MINUTE": {
+    "used": 12,
+    "ceiling": 60,
+    "remaining": 48
+   }
+  }
+ },
+ "transport": {
+  "product": "ERP",
+  "api_domain": "https://www.zohoapis.in",
+  "granted_scopes": [
+   "ERP.accountants.READ",
+   "ERP.bills.READ",
+   "ERP.contacts.READ",
+   "ERP.custommodules.ALL",
+   "ERP.debitnotes.READ",
+   "ERP.department.READ",
+   "ERP.fixedasset.READ",
+   "ERP.projects.READ",
+   "ERP.purchaseorders.READ",
+   "ERP.purchasereceives.READ",
+   "ERP.settings.READ",
+   "ERP.vendorpayments.READ"
+  ],
+  "token_minted": true,
+  "token_seconds_left": 3478,
+  "calls_made": 4,
+  "token_mints": 1
+ },
+ "correlation_id": "37a43d3c62c7",
+ "started_at": "2026-09-11T20:33:43.537397+00:00",
+ "finished_at": "2026-09-11T20:33:44.805430+00:00"
+}
+
+/health 200
+watermarks: [
+ {
+  "module": "bills",
+  "hwm": "2026-09-11T20:33:44.515121+00:00",
+  "overlap_seconds": 300,
+  "last_polled_at": "2026-09-11T20:33:44.731285+00:00",
+  "last_page_count": null,
+  "rewound_at": null,
+  "rewind_reason": null
+ },
+ {
+  "module": "contacts",
+  "hwm": "2026-09-11T20:33:43.552688+00:00",
+  "overlap_seconds": 300,
+  "last_polled_at": "2026-09-11T20:33:44.066425+00:00",
+  "last_page_count": null,
+  "rewound_at": null,
+  "rewind_reason": null
+ },
+ {
+  "module": "items",
+  "hwm": "2026-09-11T20:33:44.103774+00:00",
+  "overlap_seconds": 300,
+  "last_polled_at": "2026-09-11T20:33:44.297721+00:00",
+  "last_page_count": null,
+  "rewound_at": null,
+  "rewind_reason": null
+ },
+ {
+  "module": "purchaseorders",
+  "hwm": "2026-09-11T20:33:44.338539+00:00",
+  "overlap_seconds": 300,
+  "last_polled_at": "2026-09-11T20:33:44.479588+00:00",
+  "last_page_count": null,
+  "rewound_at": null,
+  "rewind_reason": null
+ }
+]
+rate_budget: [
+ {
+  "window_kind": "DAY",
+  "allocation": "POLLING",
+  "window_start_key": "2026-09-11",
+  "window_seconds": 86400,
+  "ceiling": 1200,
+  "used": 12,
+  "remaining": 1188,
+  "exhausted_at": null
+ },
+ {
+  "window_kind": "MINUTE",
+  "allocation": "POLLING",
+  "window_start_key": "2026-09-11T20:33",
+  "window_seconds": 60,
+  "ceiling": 60,
+  "used": 12,
+  "remaining": 48,
+  "exhausted_at": null
+ }
+]
+
+/events 200 count: 16
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:44.775871+00:00', 'detail': {'kind': 'sweep_po_anchored', 'calls': 0, 'steps': 1, 'units': 0, 'reason': 'COMPLETED', 'last_step': {'note': 'cycle complete', 'cycle': 3}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:44.744418+00:00', 'detail': {'kind': 'poll_bills', 'calls': 1, 'steps': 2, 'units': 0, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:44.493250+00:00', 'detail': {'kind': 'poll_purchaseorders', 'calls': 1, 'steps': 2, 'units': 0, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:44.311797+00:00', 'detail': {'kind': 'poll_items', 'calls': 1, 'steps': 2, 'units': 9, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:44.080580+00:00', 'detail': {'kind': 'poll_contacts', 'calls': 1, 'steps': 2, 'units': 6, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:23.739881+00:00', 'detail': {'kind': 'sweep_po_anchored', 'calls': 0, 'steps': 1, 'units': 0, 'reason': 'COMPLETED', 'last_step': {'note': 'cycle complete', 'cycle': 2}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:23.709634+00:00', 'detail': {'kind': 'poll_bills', 'calls': 1, 'steps': 2, 'units': 0, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:23.546355+00:00', 'detail': {'kind': 'poll_purchaseorders', 'calls': 1, 'steps': 2, 'units': 0, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:23.359428+00:00', 'detail': {'kind': 'poll_items', 'calls': 1, 'steps': 2, 'units': 9, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:23.052576+00:00', 'detail': {'kind': 'poll_contacts', 'calls': 1, 'steps': 2, 'units': 6, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:22.038508+00:00', 'detail': {'kind': 'sweep_po_anchored', 'calls': 0, 'steps': 1, 'units': 0, 'reason': 'COMPLETED', 'last_step': {'note': 'cycle complete', 'cycle': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:21.982681+00:00', 'detail': {'kind': 'poll_bills', 'calls': 1, 'steps': 2, 'units': 5, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:21.768040+00:00', 'detail': {'kind': 'poll_purchaseorders', 'calls': 1, 'steps': 2, 'units': 7, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:21.546754+00:00', 'detail': {'kind': 'poll_items', 'calls': 1, 'steps': 2, 'units': 9, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:21.260394+00:00', 'detail': {'kind': 'poll_contacts', 'calls': 1, 'steps': 2, 'units': 6, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'CONNECTION_CREATED', 'module': None, 'at': '2026-09-11T19:46:39.066242+00:00', 'detail': {'dc': 'IN', 'product': 'ERP', 'entity_id': 'ENT-DM1'}}
+
+/exceptions 200 {
+ "items": [],
+ "next_cursor": null
+}

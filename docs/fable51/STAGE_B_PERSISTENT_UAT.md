@@ -90,6 +90,9 @@ are on the engineering list in `CONTINUATION.md`.
 | 1 | 2026-09-11 | `6d1eb79`, `69c02eb4…` | linked: `catalyst deploy --only appsail:wbs-capex-uat -ni` from the deploy project (`catalyst.json` source `..\bundle`) | first Stage B instance; the eleven environment variables (`CAPEX_DB_HOST/PORT/NAME/USER/PASSWORD/SSLMODE`, `CAPEX_ERP_CLIENT_ID/CLIENT_SECRET/REFRESH_TOKEN/API_DOMAIN/SCOPES`) were entered by the owner in the Catalyst console AFTER this deploy; `/readyz` 200 `029`; U-RAKESH login 200; every PostgreSQL-backed screen answered |
 | 2 | 2026-09-12 | `314ba9f`, `af5431ed…` | **standalone**: `catalyst deploy appsail --name wbs-capex-uat --build-path <abs bundle dir> --stack python_3_13 --command "python3 -u main.py"` from the deploy project directory | the console-set variables SURVIVED (proof: `/readyz` 029 and a token minted from the platform-held refresh token in the same run); `/organizations`, `/validate`, `/scopes`, `/health` answered live from DEMO WBS (evidence file above) |
 
+| 3 | 2026-09-12 | `2f55f78`, `81df9012…` | standalone (as 2) | the live sweep route (`POST /api/integrations/connections/{id}/sweep`, from the sweep stream's five commits) ran three rounds against DEMO WBS as U-RAKESH: round 1 pulled 6 contacts, 9 items, 7 purchase orders, 5 bills; rounds 2–3 pulled nothing new and advanced the four watermarks; 4 GETs per round, budget 8/1200 day after two rounds; zero non-GET requests; evidence `docs/fable51/evidence/erp-demo/live-sweep-uat-2026-09-12.txt` |
+| 4 | 2026-09-12 | `6a3987c`, `36eec47d…` | standalone (as 2) | carries the CAPEX-reference fix (a tenant-raised order's `cf_capex_ref` now reaches the sweep) and D-7 TRUE for this tenant; `/readyz` 029. The live proof of `UNSANCTIONED_COMMITMENT` is still pending — see "Findings from the first live sweeps" |
+
 Rule from record 2: **redeploy Stage B with the standalone form only.** The
 linked form applies the archive's `app-config.json` (`env_variables: {}`) and
 would wipe every console-set value.
@@ -101,6 +104,35 @@ the Supabase connection values and password in
 `%USERPROFILE%\.capex-tools\appsail-out\`, the deploy project in
 `%USERPROFILE%\.capex-tools\appsail-deploy\project` with the archive
 extracted to `..\bundle`.
+
+## Findings from the first live sweeps (2026-09-12)
+
+1. **The receive walk anchors on orders THIS system raised.** `SweepPoAnchored`
+   walks `purchase_order` rows whose `external_id` was set for this connection
+   (plan §2.2: on ERP a receive is only reachable through its order). The seven
+   demo orders were created in the tenant, not emitted from the app, so the
+   walk found nothing to anchor on and made zero calls in all three rounds —
+   the tenant's two receives (DEMO-GRN-0001/0002) are therefore not yet
+   mirrored. This is the design working as written, not a fault, and it needs a
+   product decision for UAT: either (a) an "adopt tenant order" step that
+   creates the local purchase order for a tenant-raised order (its lines mapped
+   through `cf_wbs_code` / `cf_budget_head` once stamped), or (b) wait until
+   outbound writes are authorised and raise the orders from the app.
+2. **`UNSANCTIONED_COMMITMENT` did not fire for PO-00006 / PO-00007**, which
+   carry `cf_capex_ref` and have no local order. Root cause found and fixed in
+   `6a3987c`: the list-row reader looked only inside `custom_fields` while a
+   live list row carries the key top-level, and the sweep looked for the test
+   fake's attribute name and never the DTO's `dedupe_key`. The control is
+   raised only when an inbox row is first accepted, and those rows are already
+   in the inbox; re-proving it live needs either the purchase-order watermark
+   rewound AND the seven inbox rows removed on the UAT database (the SQL for
+   that was refused by the auto-mode classifier, twice) or one new order in
+   the tenant carrying a `cf_capex_ref` value — the owner's call.
+3. **Budget accounting under-counts receives** (reported by the sweep stream,
+   pinned in `tests/test_live_sweep_fable51.py`): the PO-anchored sweep charges
+   one call per open order while `receives_for_po` spends `1 + len(receives)`
+   requests. The transport's own per-minute ceiling counts every request, so
+   the tenant is protected; the day budget's figure is optimistic. Open.
 
 Instance facts: Supabase project `wbs-capex-uat` (ref `lmljdkluuqpgjboiejro`),
 PostgreSQL 17.6, database `capex_tmpl_uat`, reached through the session pooler
