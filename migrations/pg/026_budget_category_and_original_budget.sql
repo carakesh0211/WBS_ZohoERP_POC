@@ -74,26 +74,6 @@
 -- Expand-only. Nothing 001..025 created is dropped or narrowed; the two
 -- CHECK constraints are WIDENED (dropped and re-added with a superset).
 --
--- ROLLBACK:
---   DROP TRIGGER IF EXISTS original_budget_released_immutable ON original_budget;
---   DROP TRIGGER IF EXISTS original_budget_line_released_immutable ON original_budget_line;
---   DROP TRIGGER IF EXISTS budget_control_cell_category_immutable ON budget_control_cell;
---   DROP TRIGGER IF EXISTS budget_line_category_matches_cell ON budget_line;
---   DROP FUNCTION IF EXISTS assert_original_budget_released_immutable() CASCADE;
---   DROP FUNCTION IF EXISTS assert_original_budget_line_released_immutable() CASCADE;
---   DROP FUNCTION IF EXISTS assert_cell_category_immutable() CASCADE;
---   DROP FUNCTION IF EXISTS assert_budget_line_category_matches_cell() CASCADE;
---   DROP TABLE IF EXISTS original_budget_line, original_budget CASCADE;
---   ALTER TABLE budget_line DROP COLUMN IF EXISTS budget_category_id;
---   ALTER TABLE budget_control_cell DROP COLUMN IF EXISTS budget_category_id;
---   DROP TABLE IF EXISTS budget_category CASCADE;
---   ALTER TABLE custom_field_applicability DROP CONSTRAINT IF EXISTS custom_field_applicability_applies_to_check;
---   ALTER TABLE custom_field_applicability ADD CONSTRAINT custom_field_applicability_applies_to_check CHECK (applies_to IN ('ITEM', 'VENDOR'));
---   ALTER TABLE custom_field_value DROP CONSTRAINT IF EXISTS custom_field_value_object_type_check;
---   ALTER TABLE custom_field_value ADD CONSTRAINT custom_field_value_object_type_check CHECK (object_type IN ('ITEM', 'VENDOR'));
---   DELETE FROM numbering_series WHERE code = 'ORIGINAL_BUDGET';
---   DELETE FROM schema_migrations WHERE version = '026';
-
 -- ============================================================ budget_category
 -- A genuine master, separate from budget_head. `entity_id` NULL means the
 -- category applies estate-wide; a non-NULL value restricts it to one entity
@@ -375,3 +355,26 @@ COMMENT ON TABLE budget_category IS
     'Budget CATEGORY master (Fable 5.1, AMB-04 resolved): a classification dimension SEPARATE from budget_head. One category per control cell, set on release, immutable.';
 COMMENT ON TABLE original_budget IS
     'The original-budget document: maker-checker, numbered, approved through the engine, immutable once RELEASED. Its lines create kind=ORIGINAL budget_line rows.';
+
+-- ROLLBACK:
+--
+--   BEGIN;
+--   DROP TRIGGER IF EXISTS original_budget_released_immutable ON original_budget;
+--   DROP TRIGGER IF EXISTS original_budget_line_released_immutable ON original_budget_line;
+--   DROP TRIGGER IF EXISTS budget_control_cell_category_immutable ON budget_control_cell;
+--   DROP TRIGGER IF EXISTS budget_line_category_matches_cell ON budget_line;
+--   DROP FUNCTION IF EXISTS assert_original_budget_released_immutable() CASCADE;
+--   DROP FUNCTION IF EXISTS assert_original_budget_line_released_immutable() CASCADE;
+--   DROP FUNCTION IF EXISTS assert_cell_category_immutable() CASCADE;
+--   DROP FUNCTION IF EXISTS assert_budget_line_category_matches_cell() CASCADE;
+--   DROP TABLE IF EXISTS original_budget_line, original_budget CASCADE;
+--   ALTER TABLE budget_line DROP COLUMN IF EXISTS budget_category_id;
+--   ALTER TABLE budget_control_cell DROP COLUMN IF EXISTS budget_category_id;
+--   DROP TABLE IF EXISTS budget_category CASCADE;
+--   ALTER TABLE custom_field_applicability DROP CONSTRAINT IF EXISTS custom_field_applicability_applies_to_check;
+--   ALTER TABLE custom_field_applicability ADD CONSTRAINT custom_field_applicability_applies_to_check CHECK (applies_to IN ('ITEM', 'VENDOR'));
+--   ALTER TABLE custom_field_value DROP CONSTRAINT IF EXISTS custom_field_value_object_type_check;
+--   ALTER TABLE custom_field_value ADD CONSTRAINT custom_field_value_object_type_check CHECK (object_type IN ('ITEM', 'VENDOR'));
+--   DELETE FROM numbering_series WHERE code = 'ORIGINAL_BUDGET';
+--   DELETE FROM schema_migrations WHERE version = '026';
+--   COMMIT;

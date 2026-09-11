@@ -7475,7 +7475,7 @@
       },
       "test_the_document_types_mirror_the_migrations_own_check": {
         "assertions": 2,
-        "body_sha": "8e8afe3014589bbf"
+        "body_sha": "229ec6cc52b0a08f"
       },
       "test_one_rounding_rule_and_not_two": {
         "assertions": 3,
@@ -8842,6 +8842,44 @@
       "test_a_refused_request_is_kept_and_blocks_nothing_further": {
         "assertions": 5,
         "body_sha": "5af2dbb1bd18a6dc"
+      }
+    },
+    "test_pg_po_currency_fable51.py": {
+      "test_no_active_rate_means_no_order_no_line_no_ledger_row": {
+        "assertions": 5,
+        "body_sha": "5b551d18a410f553"
+      },
+      "test_a_pending_rate_is_not_on_file": {
+        "assertions": 3,
+        "body_sha": "ac8cc18356125dc8"
+      },
+      "test_a_usd_order_stores_the_vendors_figures_and_the_translated_paise": {
+        "assertions": 11,
+        "body_sha": "15a7083a4523eec3"
+      },
+      "test_the_budget_is_checked_on_the_paise_the_rate_produced": {
+        "assertions": 4,
+        "body_sha": "63f384245870ddb9"
+      },
+      "test_a_second_source_for_the_same_day_is_ambiguous_unless_named": {
+        "assertions": 3,
+        "body_sha": "c8e68567bdb20d83"
+      },
+      "test_source_figures_on_an_inr_order_and_paise_on_a_usd_order_are_both_refused": {
+        "assertions": 12,
+        "body_sha": "e69fb5720cb09bf4"
+      },
+      "test_the_database_refuses_the_same_shapes_and_freezes_what_was_written": {
+        "assertions": 2,
+        "body_sha": "4969e9aef89a0fc9"
+      },
+      "test_the_usd_order_is_planned_in_usd_at_the_vendors_figures": {
+        "assertions": 6,
+        "body_sha": "e03bb11418e4792c"
+      },
+      "test_a_request_converts_into_a_usd_order_only_with_the_vendors_figures": {
+        "assertions": 10,
+        "body_sha": "a0918a6ca8a70657"
       }
     },
     "test_pg_principal_scope.py": {
@@ -11055,9 +11093,17 @@
       }
     },
     "test_po_emission_currency_fable51.py": {
-      "test_a_non_base_purchase_order_is_refused_before_planning": {
+      "test_a_foreign_order_without_source_figures_is_refused_before_planning": {
         "assertions": 4,
-        "body_sha": "a3ddd7ad427ce27c"
+        "body_sha": "3fc5e0cdb8a033cd"
+      },
+      "test_a_foreign_order_is_planned_at_its_source_figures_not_the_translated_paise": {
+        "assertions": 6,
+        "body_sha": "03b304247ca9ff57"
+      },
+      "test_a_base_order_still_emits_rate_paise_and_ignores_null_source_columns": {
+        "assertions": 2,
+        "body_sha": "56a25b7c7c294072"
       },
       "test_a_base_currency_purchase_order_proceeds_to_the_line_read": {
         "assertions": 2,
@@ -11089,7 +11135,7 @@
       },
       "test_the_plan_stamps_the_orders_currency_on_every_draft_and_payload": {
         "assertions": 6,
-        "body_sha": "4fd307baba6293b7"
+        "body_sha": "dcaae529b089e964"
       },
       "test_the_plan_defaults_to_the_base_currency": {
         "assertions": 2,
@@ -12642,6 +12688,7 @@
     "test_pg_periods.py": 18,
     "test_pg_periods_reconciliation_gate.py": 7,
     "test_pg_periods_reopen.py": 23,
+    "test_pg_po_currency_fable51.py": 9,
     "test_pg_principal_scope.py": 37,
     "test_pg_procurement.py": 50,
     "test_pg_procurement_ingest.py": 66,
@@ -12665,7 +12712,7 @@
     "test_pg_settings.py": 17,
     "test_pg_transactions.py": 4,
     "test_pg_unattributed_triage.py": 14,
-    "test_po_emission_currency_fable51.py": 11,
+    "test_po_emission_currency_fable51.py": 13,
     "test_procurement_emission.py": 27,
     "test_reporting_filterset.py": 92,
     "test_reports_filters_fable51.py": 22,
@@ -12772,6 +12819,7 @@
     "test_pg_periods.py": 49,
     "test_pg_periods_reconciliation_gate.py": 18,
     "test_pg_periods_reopen.py": 60,
+    "test_pg_po_currency_fable51.py": 56,
     "test_pg_principal_scope.py": 83,
     "test_pg_procurement.py": 139,
     "test_pg_procurement_ingest.py": 281,
@@ -12795,7 +12843,7 @@
     "test_pg_settings.py": 46,
     "test_pg_transactions.py": 10,
     "test_pg_unattributed_triage.py": 23,
-    "test_po_emission_currency_fable51.py": 24,
+    "test_po_emission_currency_fable51.py": 32,
     "test_procurement_emission.py": 98,
     "test_reporting_filterset.py": 187,
     "test_reports_filters_fable51.py": 56,

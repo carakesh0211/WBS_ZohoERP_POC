@@ -222,13 +222,28 @@ def _actor(request: Request) -> str:
 # =================================================================== payloads
 
 class _LineIn(BaseModel):
+    """One line. Base paise on an INR document; source minor units on a
+    foreign-currency purchase order (029) -- the service refuses the one that
+    does not belong, so a caller cannot commit one number and quote another."""
     model_config = ConfigDict(extra="forbid")
     wbs_id: str
     budget_head_id: str
-    amount_paise: int
+    amount_paise: int | None = None
     quantity: float = 1
     description: str | None = None
     rate_paise: int | None = None
+    #: The vendor's figures in the ORDER'S currency's minor units (cents,
+    #: yen, fils). Required on every line of a non-INR purchase order.
+    source_amount_minor: int | None = None
+    source_rate_minor: int | None = None
+
+
+class _SourceLineIn(BaseModel):
+    """A foreign-currency conversion names the vendor's figure per request line."""
+    model_config = ConfigDict(extra="forbid")
+    pr_line_id: str
+    source_amount_minor: int
+    source_rate_minor: int | None = None
 
 
 class _PurchaseRequestIn(BaseModel):
@@ -277,14 +292,20 @@ class _ApproveIn(BaseModel):
 # `mode="before"`, so the raw JSON value is inspected BEFORE Pydantic coerces
 # it. Without that, a JSON `92.5` arrives as a Python float, Pydantic converts
 # it to Decimal, and the float refusal never sees the float it exists to refuse.
-def _validate_exchange_rate(value: Any) -> Decimal:
+def _validate_exchange_rate(value: Any) -> Decimal | None:
     """`fx.parse_rate`, with its refusal re-raised as a ValueError.
 
     Pydantic v2 turns a ValueError inside a validator into a 422 with the
     message attached; any other exception type propagates and becomes a 500.
     An unparseable rate is a bad request, not a server fault, so the FxError is
     translated rather than allowed through.
+
+    ``None`` means "not supplied" (029): the rate is then the ACTIVE one on
+    file for the document date, or the named ``fx_rate_id``. A supplied rate
+    must name its ``rate_source`` -- the FX engine refuses one without.
     """
+    if value is None:
+        return None
     try:
         return fx_svc.parse_rate(value)
     except fx_svc.FxError as exc:
@@ -296,7 +317,14 @@ class _ConvertIn(BaseModel):
     vendor_name: str
     po_number: str | None = None
     currency: str = "INR"
-    exchange_rate: Decimal = Decimal(1)
+    #: 029: None = the ACTIVE rate on file for `document_date` (or the named
+    #: `fx_rate_id`); a supplied figure must name `rate_source`.
+    exchange_rate: Decimal | None = None
+    rate_source: str | None = None
+    fx_rate_id: str | None = None
+    document_date: date | None = None
+    #: Required when `currency` is not INR: the vendor's figure per request line.
+    source_lines: list[_SourceLineIn] | None = None
     version_no: int | None = None
 
     _rate = field_validator("exchange_rate", mode="before")(
@@ -310,7 +338,12 @@ class _PurchaseOrderIn(BaseModel):
     lines: list[_LineIn] = Field(min_length=1)
     po_number: str | None = None
     currency: str = "INR"
-    exchange_rate: Decimal = Decimal(1)
+    #: 029: None = the ACTIVE rate on file for `document_date` (or the named
+    #: `fx_rate_id`); a supplied figure must name `rate_source`.
+    exchange_rate: Decimal | None = None
+    rate_source: str | None = None
+    fx_rate_id: str | None = None
+    document_date: date | None = None
 
     _rate = field_validator("exchange_rate", mode="before")(
         classmethod(lambda cls, v: _validate_exchange_rate(v)))
@@ -400,6 +433,10 @@ def post_purchase_request_convert(
                 session, pr_id=pr_id, actor=_actor(request),
                 vendor_name=body.vendor_name, po_number=body.po_number,
                 currency=body.currency, exchange_rate=body.exchange_rate,
+                rate_source=body.rate_source, fx_rate_id=body.fx_rate_id,
+                document_date=body.document_date,
+                source_lines=([s.model_dump() for s in body.source_lines]
+                              if body.source_lines is not None else None),
                 expected_version=body.version_no,
                 correlation_id=_correlation_id(request))
     except procurement_svc.ProcurementError as exc:
@@ -423,6 +460,8 @@ def post_purchase_order(
                 lines=[line.model_dump() for line in body.lines],
                 actor=_actor(request), po_number=body.po_number,
                 currency=body.currency, exchange_rate=body.exchange_rate,
+                rate_source=body.rate_source, fx_rate_id=body.fx_rate_id,
+                document_date=body.document_date,
                 correlation_id=_correlation_id(request))
     except procurement_svc.ProcurementError as exc:
         raise _service_error_to_http(exc)

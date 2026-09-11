@@ -65,11 +65,14 @@ now carries a base-commit guard).
    inspect each diff image, then re-capture deliberately with a
    before/after record under `docs/ui-change-2026-09/`-style evidence.
 3. ~~Rebuild and redeploy the Stage A bundle~~ — done 2026-09-11 from `c51c2fe`.
-4. FX-rate maintenance API + admin UI (never started: the first agent died at
-   the limit before committing). Currency-aware PO emission and DTO
-   exactness (same). Audit-anchor Cron Function shim + deleted-and-recreated
-   stream detection (same). The 023 live RLS matrix (`test_pg_rls_fable51_023_matrix.py`)
-   was never delivered by the security agent either.
+4. ~~FX-rate maintenance API + admin UI~~ — integrated (migration 028,
+   `pg/fx_admin.py`, `api/fx_admin.py`, Exchange Rates screen; 16 live + 43
+   guard tests). ~~Currency-aware PO emission and DTO exactness~~ — done
+   (migration 029, `test_pg_po_currency_fable51.py`; see the delivery status
+   section "a purchase order in the currency the vendor quoted"; the PO
+   screen's currency selector is the one open piece). ~~Audit-anchor Cron
+   Function shim + recreated-stream detection~~ — done. ~~023 live RLS
+   matrix~~ — done (6 live tests).
 5. Stage B launcher variant and provider decision (billing stop);
    `docs/fable51/STAGE_B_PERSISTENT_UAT.md`.
 6. ERP demo OAuth: stopped at the manual authorisation;

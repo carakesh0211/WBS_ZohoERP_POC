@@ -1,14 +1,16 @@
-"""A foreign-currency purchase order is refused at emission, not relabelled INR
-(Fable 5.1).
+"""A foreign-currency purchase order is emitted in its own currency, at the
+vendor's own figures -- or refused, never relabelled INR (Fable 5.1).
 
-`PurchaseOrderEmissionDTO.currency_code` defaults to "INR" and nothing in the
-emission path read the purchase order's own `currency`, so a USD purchase
-order reached the vendor labelled INR and priced in INR paise. `po_line`
-stores base paise only; the source-currency line amounts the boundary needs
-do not exist yet, and dividing base paise by the header rate would invent
-them. So `plan_po_emission` now refuses a non-base purchase order BEFORE any
-planning or outbox row, with a coded 409. Database-free: the header and line
-readers are stubbed, and the assertion is that planning is never reached.
+`PurchaseOrderEmissionDTO.currency_code` defaulted to "INR" and nothing in
+the emission path read the purchase order's own `currency`, so a USD order
+reached the vendor labelled INR and priced in INR paise. Step 1 made the
+boundary carry the currency and render at its exponent; step 2 (migration
+029) stores `source_amount_minor` / `source_rate_minor` on `po_line` and
+`plan_po_emission` emits those for a foreign order. A foreign order whose
+lines carry no source figures -- written before 029, or by a path that
+bypassed the writer -- is refused per line with `PO_CURRENCY_SOURCE_MISSING`
+before planning, before an outbox row. Database-free: the header and line
+readers are stubbed.
 """
 from __future__ import annotations
 
@@ -29,20 +31,75 @@ class _Session:
     pass
 
 
+def _legacy_row(po_line_id="L1", **over):
+    row = {"po_line_id": po_line_id, "line_no": 1, "wbs_id": "W", "budget_head_id": "H",
+           "description": "pump", "quantity": 1, "rate_paise": 1_00_000_00,
+           "amount_paise": 1_00_000_00, "tax_paise": 0, "non_creditable_tax_paise": 0,
+           "freight_paise": 0, "line_external_id": None,
+           "source_rate_minor": None, "source_amount_minor": None}
+    row.update(over)
+    return row
+
+
+class _PlainAdapter:
+    def capabilities(self):
+        return _Caps()
+
+
 @pytest.mark.parametrize("currency", ["USD", "usd", "EUR", "JPY", "KWD"])
-def test_a_non_base_purchase_order_is_refused_before_planning(monkeypatch, currency):
+def test_a_foreign_order_without_source_figures_is_refused_before_planning(monkeypatch, currency):
+    """The pre-029 shape: a foreign header over lines that hold base paise
+    only. Refused per line, before `build_emission_plan`, before an outbox
+    row -- never emitted at paise divided back by the rate."""
     monkeypatch.setattr(ps, "_po_header", lambda session, po_id: {
         "po_id": po_id, "po_number": "PO-2026-0001", "project_id": "P", "pr_id": "R",
         "vendor_name": "V", "currency": currency, "status": "Approved", "version_no": 1})
+    monkeypatch.setattr(ps, "po_lines", lambda session, po_id: [_legacy_row()])
+    monkeypatch.setattr(ps, "fractional_quantity_policy", lambda session: ps.POLICY_REFUSE)
     reached = []
-    monkeypatch.setattr(ps, "po_lines", lambda session, po_id: reached.append("lines") or [])
-    monkeypatch.setattr(ps, "build_emission_plan", lambda **kw: reached.append("plan"))
+    monkeypatch.setattr(ps.ob, "plan_emission", lambda **kw: reached.append("plan"))
     with pytest.raises(ps.ProcurementError) as exc:
-        ps.plan_po_emission(_Session(), po_id="PO-1", connection_id="C", adapter=None,
+        ps.plan_po_emission(_Session(), po_id="PO-1", connection_id="C", adapter=_PlainAdapter(),
                             vendor_external_id="VX", document_date=date(2026, 9, 1), actor="U")
-    assert exc.value.code == "PO_CURRENCY_NOT_EMITTABLE" and exc.value.status == 409
-    assert currency.upper() in exc.value.message and "INR" in exc.value.message
-    assert reached == [], "planning or line reading happened before the refusal"
+    assert exc.value.code == "PO_CURRENCY_SOURCE_MISSING" and exc.value.status == 409
+    assert currency.upper() in exc.value.message
+    assert reached == [], "planning happened before the refusal"
+
+
+@pytest.mark.parametrize("currency, unit, total, quantity", [
+    ("USD", 1999, 5997, 3), ("JPY", 1234, 2468, 2), ("KWD", 1234, 1234, 1)])
+def test_a_foreign_order_is_planned_at_its_source_figures_not_the_translated_paise(
+        currency, unit, total, quantity):
+    """The 029 shape. The emitted unit price and line total are the SOURCE
+    figures; the translated `rate_paise` / `amount_paise` are not sent."""
+    row = _legacy_row(quantity=quantity, rate_paise=83_00 * unit, amount_paise=83_00 * total,
+                      source_rate_minor=unit, source_amount_minor=total)
+    plan, planned = ps.build_emission_plan(
+        po_id="PO-1", po_number="PO-2026-0001", connection_id="C",
+        vendor_external_id="ZV-1", document_date=date(2026, 9, 1),
+        capabilities=_Caps(), line_rows=[row], acknowledged=True,
+        currency_code=currency)
+    line = plan.drafts[0].lines[0]
+    assert (line.unit_price_paise, line.amount_paise) == (unit, total)
+    assert plan.drafts[0].currency_code == currency
+    payload = planned[0]["payload"]
+    assert payload["currency_code"] == currency
+    assert payload["lines"][0]["unit_price_paise"] == unit
+    assert payload["subtotal_paise"] == payload["total_paise"] == total
+    dto = ob.emission_dto(payload=payload, connection_id="C", module="purchaseorders",
+                          local_id=planned[0]["local_id"], dedupe_key=planned[0]["dedupe_key"])
+    assert dto.currency_code == currency and dto.total_paise == total
+
+
+def test_a_base_order_still_emits_rate_paise_and_ignores_null_source_columns():
+    row = _legacy_row(quantity=2, rate_paise=500, amount_paise=1000)
+    plan, planned = ps.build_emission_plan(
+        po_id="PO-1", po_number="PO-2026-0001", connection_id="C",
+        vendor_external_id="ZV-1", document_date=date(2026, 9, 1),
+        capabilities=_Caps(), line_rows=[row], acknowledged=True)
+    line = plan.drafts[0].lines[0]
+    assert (line.unit_price_paise, line.amount_paise) == (500, 1000)
+    assert planned[0]["payload"]["currency_code"] == "INR"
 
 
 def test_a_base_currency_purchase_order_proceeds_to_the_line_read(monkeypatch):
@@ -89,13 +146,18 @@ class _LineLevelCaps(_Caps):
     line_level_custom_fields = True
 
 
-def _row(po_line_id, *, wbs="WBS-A", head="BH-CIVIL", quantity=1, amount=250_000_00):
+def _row(po_line_id, *, wbs="WBS-A", head="BH-CIVIL", quantity=1, amount=250_000_00,
+         source=None):
+    """A `po_lines()` row. `source` = the line total in the order's own minor
+    units for a foreign order (the translated paise stay in `amount`)."""
     return {"po_line_id": po_line_id, "line_no": 1, "wbs_id": wbs,
             "budget_head_id": head, "description": f"line {po_line_id}",
             "quantity": quantity, "rate_paise": amount // quantity,
             "amount_paise": amount, "tax_paise": 0,
             "non_creditable_tax_paise": 0, "freight_paise": 0,
-            "line_external_id": None}
+            "line_external_id": None,
+            "source_rate_minor": None if source is None else source // quantity,
+            "source_amount_minor": source}
 
 
 @pytest.mark.parametrize("product", sorted(RENDERERS))
@@ -162,7 +224,8 @@ def test_the_wire_body_prices_the_line_in_the_orders_own_currency(
 
 @pytest.mark.parametrize("caps", [_Caps(), _LineLevelCaps()], ids=["split", "line-level"])
 def test_the_plan_stamps_the_orders_currency_on_every_draft_and_payload(caps):
-    rows = [_row("L1", wbs="WBS-A", amount=1999), _row("L2", wbs="WBS-B", amount=2500)]
+    rows = [_row("L1", wbs="WBS-A", amount=165_917, source=1999),
+            _row("L2", wbs="WBS-B", amount=207_500, source=2500)]
     plan, planned = ps.build_emission_plan(
         po_id="PO-1", po_number="PO-2026-0009", connection_id="C",
         vendor_external_id="ZV-1", document_date=date(2026, 9, 1),

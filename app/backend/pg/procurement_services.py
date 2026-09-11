@@ -149,6 +149,7 @@ from ..integration import throttle
 from ..integration.dto import DtoError
 from ..money import MoneyError
 from . import audit as audit_mod
+from . import fx
 from .fx import BASE_CURRENCY
 from . import budget as budget_svc
 from . import integration_store as store
@@ -998,13 +999,22 @@ def recompute_commitment(session: Session, wbs_id: str, budget_head_id: str,
 
 # ==================================================================== PR lines
 
-def _normalise_lines(lines: Sequence[Mapping[str, Any]], *, what: str
-                     ) -> list[dict[str, Any]]:
+def _normalise_lines(lines: Sequence[Mapping[str, Any]], *, what: str,
+                     foreign: bool = False) -> list[dict[str, Any]]:
     """Validate the caller's lines and number them 1..N in input order.
 
     ``line_no`` is assigned here rather than accepted, because
     ``ux_pr_line_number`` / ``ux_po_line_number`` make "line 3" mean one row
     and a caller-supplied number is a caller-supplied collision.
+
+    ONE CURRENCY PER LINE, AND IT IS THE HEADER'S. A base-currency document's
+    lines carry ``amount_paise`` and nothing else; a foreign-currency
+    purchase order's lines (``foreign=True``) carry ``source_amount_minor``
+    -- the figure the vendor quoted, in that currency's own minor units --
+    and ``amount_paise`` is DERIVED from it by :func:`_translate_po_lines`,
+    never accepted. Accepting both would let a caller commit one number and
+    quote another; refusing the one that does not belong is what keeps the
+    budget check and the vendor's document describing the same money.
     """
     if not lines:
         _err("NO_LINES", f"A {what} must carry at least one line.", 422)
@@ -1018,6 +1028,67 @@ def _normalise_lines(lines: Sequence[Mapping[str, Any]], *, what: str
                  f"budget_head_id are both required. A line with no control "
                  f"cell cannot be budget-checked, and an unchecked commitment "
                  f"is the failure this product exists to prevent.", 422)
+        source_amount = raw.get("source_amount_minor")
+        source_rate = raw.get("source_rate_minor")
+        if foreign:
+            if raw.get("amount_paise") is not None:
+                _err("PO_BASE_AMOUNT_ON_FOREIGN_ORDER",
+                     f"{what} line {index} supplies amount_paise on a "
+                     f"foreign-currency order. The base figure is DERIVED "
+                     f"from source_amount_minor at the order's rate, applied "
+                     f"once; a typed one could disagree with it, and the two "
+                     f"would then describe different money.", 422)
+            if raw.get("rate_paise") is not None:
+                _err("PO_BASE_AMOUNT_ON_FOREIGN_ORDER",
+                     f"{what} line {index} supplies rate_paise on a "
+                     f"foreign-currency order; supply source_rate_minor, the "
+                     f"per-unit price the vendor quoted.", 422)
+            if source_amount is None:
+                _err("PO_SOURCE_AMOUNT_REQUIRED",
+                     f"{what} line {index} carries no source_amount_minor. A "
+                     f"foreign-currency order's lines are the vendor's own "
+                     f"figures in the order's currency (minor units: cents, "
+                     f"yen, fils); amount_paise is what the rate makes of "
+                     f"them, not the other way round.", 422)
+            amount_minor = _as_paise(source_amount,
+                                     field=f"{what} line {index} source_amount_minor")
+            if amount_minor < 0:
+                _err("NEGATIVE_LINE_AMOUNT",
+                     f"{what} line {index} source_amount_minor is "
+                     f"{amount_minor}; an order is for a positive sum or for "
+                     f"nothing.", 422)
+            if source_rate is not None:
+                source_rate = _as_paise(
+                    source_rate, field=f"{what} line {index} source_rate_minor")
+                if source_rate < 0:
+                    _err("NEGATIVE_RATE",
+                         f"{what} line {index} source_rate_minor is "
+                         f"{source_rate}; a purchase order does not carry a "
+                         f"negative unit price.", 422)
+            out.append({
+                "line_no": index,
+                "wbs_id": wbs_id,
+                "budget_head_id": head_id,
+                "description": raw.get("description"),
+                "quantity": _as_quantity(raw.get("quantity", 1),
+                                         field=f"{what} line {index} quantity"),
+                # Filled by _translate_po_lines; None until the rate is applied.
+                "amount_paise": None,
+                "rate_paise": None,
+                "source_amount_minor": amount_minor,
+                "source_rate_minor": source_rate,
+            })
+            continue
+        if source_amount is not None or source_rate is not None:
+            _err("PO_SOURCE_AMOUNT_ON_BASE_ORDER",
+                 f"{what} line {index} supplies a source-currency amount, but "
+                 f"the document is in {BASE_CURRENCY}. {BASE_CURRENCY} is the "
+                 f"identity translation: its lines carry amount_paise only. "
+                 f"Name the order's currency, or drop the source figures.",
+                 422)
+        if raw.get("amount_paise") is None:
+            _err("LINE_AMOUNT_REQUIRED",
+                 f"{what} line {index} carries no amount_paise.", 422)
         amount = _as_paise(raw.get("amount_paise"),
                            field=f"{what} line {index} amount_paise")
         if amount < 0:
@@ -1034,8 +1105,174 @@ def _normalise_lines(lines: Sequence[Mapping[str, Any]], *, what: str
                                      field=f"{what} line {index} quantity"),
             "amount_paise": amount,
             "rate_paise": raw.get("rate_paise"),
+            "source_amount_minor": None,
+            "source_rate_minor": None,
         })
     return out
+
+
+# ============================================ the order's currency and rate
+#
+# A purchase order is ORIGINATED here and EMITTED to the vendor, so its
+# currency is decided here, at the moment of writing, and the rate it is
+# committed at is resolved ONCE -- the same `fx.TranslationBasis` a bill is
+# translated by, carried by value from the basis resolution to the header
+# write to the ledger row, so no step can resolve it again and get a
+# different answer.
+
+def _po_currency(value: Any) -> str:
+    code = str(value or BASE_CURRENCY).strip().upper()
+    if len(code) != 3 or not code.isalpha():
+        _err("PO_CURRENCY_INVALID",
+             f"{value!r} is not a three-letter ISO-4217 currency code.", 422)
+    return code
+
+
+def _po_basis(session: Session, *, currency: str, document_date: date,
+              actor: str, exchange_rate: Any, rate_source: str | None,
+              fx_rate_id: str | None, reference: str | None
+              ) -> "fx.TranslationBasis":
+    """The rate this order is committed at, resolved once, or a refusal.
+
+    Delegates to :func:`fx.resolve_basis` so an order and a bill in the same
+    currency on the same date translate at the SAME row: the ACTIVE
+    `fx_rate` for the document date, or the vendor's own rate recorded with
+    its source, or the row the caller names. No rate on file is
+    `FX_RATE_UNAVAILABLE` (409) and the order is NOT written -- writing it at
+    a typed base figure and a decorative rate is the defect 029 closes.
+
+    An INR order is the identity basis and may not carry a rate: the same
+    rule `ck_purchase_order_fx_provenance` applies at the database.
+    """
+    if currency == BASE_CURRENCY:
+        if fx_rate_id or rate_source or (
+                exchange_rate is not None and Decimal(str(exchange_rate)) != 1):
+            _err("PO_IDENTITY_TRANSLATION",
+                 f"a {BASE_CURRENCY} purchase order is the identity "
+                 f"translation and carries no rate, but this one names "
+                 f"exchange_rate={exchange_rate!r}, rate_source="
+                 f"{rate_source!r}, fx_rate_id={fx_rate_id!r}. Name the "
+                 f"order's currency, or drop the rate.", 422)
+        return fx.identity_basis()
+    # `1` is the API model's historical default and means "not supplied";
+    # a genuine parity rate is passed with its source, which disambiguates.
+    supplied_rate = None
+    if exchange_rate is not None and (
+            rate_source or Decimal(str(exchange_rate)) != 1):
+        supplied_rate = exchange_rate
+    try:
+        return fx.resolve_basis(
+            session, source_currency=currency, document_date=document_date,
+            actor=actor, exchange_rate=supplied_rate, rate_source=rate_source,
+            fx_rate_id=fx_rate_id, source_reference=reference)
+    except fx.FxError as exc:
+        # Same code, same status, same sentence: the refusal is the FX
+        # engine's and the router renders it as such. Nothing was written.
+        raise ProcurementError(exc.code, exc.message, status=exc.status,
+                               detail={"currency": currency,
+                                       "document_date": document_date.isoformat()}
+                               ) from exc
+
+
+def _translate_po_lines(basis: "fx.TranslationBasis",
+                        lines: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Fill ``amount_paise`` (and ``rate_paise``) on a foreign order's lines.
+
+    THE RATE IS APPLIED ONCE, TO THE DOCUMENT TOTAL. `fx.translate_lines`
+    quantises the product once and allocates the paise across the lines by
+    `money.split_pro_rata`, so the lines sum to the header EXACTLY and no
+    line is rounded on its own -- the same arithmetic a bill's lines get
+    (023), so an order and its bill in the same currency at the same rate
+    agree to the paisa. Lines are translated in `line_no` order, which is
+    their stored order, so the odd paisa lands on the same line every time
+    the same order is read back.
+
+    THE SOURCE RATE IS EXACT OR THE LINE IS REFUSED, for the reason
+    `_write_po` gives for base paise: the vendor multiplies rate by quantity,
+    and a source total not divisible by its quantity has no per-unit price
+    that reproduces it. The rule is applied to the SOURCE figures because
+    those are what the vendor sees; `rate_paise` is then the translated
+    per-unit figure, informational only, and the emission never reads it for
+    a foreign order.
+    """
+    if basis.is_identity:
+        return lines
+    for line in lines:
+        units_raw = line["quantity"]
+        as_float = float(units_raw)
+        amount_minor = int(line["source_amount_minor"])
+        if line.get("source_rate_minor") is None:
+            if as_float != int(as_float):
+                _err("PO_LINE_QUANTITY_NOT_WHOLE",
+                     f"line {line['line_no']} has quantity {units_raw}. A "
+                     "purchase order line is emitted as rate x quantity, so a "
+                     "fractional quantity has no exact per-unit price. Supply "
+                     "`source_rate_minor` explicitly, or express the line in "
+                     "whole units.", 422)
+            units = int(as_float)
+            if units <= 0:
+                _err("PO_LINE_QUANTITY_NOT_POSITIVE",
+                     f"line {line['line_no']} has quantity {units_raw}, which "
+                     "cannot price a line.", 422)
+            if amount_minor % units != 0:
+                _err("PO_LINE_RATE_NOT_EXACT",
+                     f"line {line['line_no']}: {amount_minor} "
+                     f"{basis.source_currency} minor units over {units} units "
+                     "does not divide into a whole number of minor units. The "
+                     "vendor multiplies rate by quantity, so this line would "
+                     "be invoiced for a different amount than was committed. "
+                     "Split the line or supply `source_rate_minor`.", 422)
+            line["source_rate_minor"] = amount_minor // units
+    minors = [int(line["source_amount_minor"]) for line in lines]
+    _header_paise, per_line = fx.translate_lines(basis, minors)
+    for line, paise in zip(lines, per_line):
+        line["amount_paise"] = int(paise)
+        line["rate_paise"] = fx.translate_to_base_paise(
+            int(line["source_rate_minor"]), basis.rate,
+            source_minor_exponent=basis.minor_exponent)
+    return lines
+
+
+def _plain_quantity(value: Any) -> int | float:
+    """A stored `numeric` quantity as the int/float `_as_quantity` accepts:
+    the exact int when whole, else a float (the shape the API delivers)."""
+    as_decimal = Decimal(str(value))
+    if as_decimal == as_decimal.to_integral_value():
+        return int(as_decimal)
+    return float(as_decimal)
+
+
+def _po_entity_id(session: Session, project_id: str) -> str:
+    row = repo.query_one(
+        session,
+        "SELECT p.entity_id FROM project p WHERE p.project_id = %(project_id)s AND {scope}",
+        {"project_id": project_id}, columns=_PROJECT_SCOPE_COLUMNS)
+    if row is None:
+        _err("PROJECT_NOT_FOUND", f"Project {project_id} does not exist.", 404)
+    return str(row[0])
+
+
+def _register_po_translation(session: Session, *, basis: "fx.TranslationBasis",
+                             po_id: str, project_id: str,
+                             lines: Sequence[Mapping[str, Any]], actor: str,
+                             correlation_id: str | None) -> None:
+    """One `fx_translation_event` row of kind PURCHASE_ORDER, or nothing for INR.
+
+    The ledger is what makes "exactly once" a primary-key fact: a second
+    translation of this order cannot be inserted, and a replay that
+    recomputes the same figures is a no-op rather than a second application.
+    """
+    if basis.is_identity:
+        return
+    try:
+        fx.register_translation(
+            session, document_type="PURCHASE_ORDER", document_id=po_id,
+            entity_id=_po_entity_id(session, project_id), basis=basis,
+            source_total_minor=sum(int(l["source_amount_minor"]) for l in lines),
+            base_total_paise=sum(int(l["amount_paise"]) for l in lines),
+            line_count=len(lines), actor=actor, correlation_id=correlation_id)
+    except fx.FxError as exc:
+        raise ProcurementError(exc.code, exc.message, status=exc.status) from exc
 
 
 def _amounts_by_cell(lines: Sequence[Mapping[str, Any]]
@@ -2302,7 +2539,9 @@ def _po_header(session: Session, po_id: str) -> dict[str, Any]:
         session,
         """
         SELECT po.po_id, po.po_number, po.project_id, po.pr_id, po.vendor_name,
-               po.currency, po.status, po.version_no
+               po.currency, po.status, po.version_no,
+               po.exchange_rate, po.fx_rate_id, po.fx_rate_date,
+               po.fx_rate_source, po.source_minor_exponent
         FROM purchase_order po
         JOIN project p ON p.project_id = po.project_id
         WHERE po.po_id = %(po_id)s AND {scope}
@@ -2314,7 +2553,10 @@ def _po_header(session: Session, po_id: str) -> dict[str, Any]:
         _err("PO_NOT_FOUND", f"Purchase order {po_id} does not exist.", 404)
     return {"po_id": row[0], "po_number": row[1], "project_id": row[2],
             "pr_id": row[3], "vendor_name": row[4], "currency": row[5],
-            "status": row[6], "version_no": row[7]}
+            "status": row[6], "version_no": row[7],
+            "exchange_rate": row[8], "fx_rate_id": row[9],
+            "fx_rate_date": row[10], "fx_rate_source": row[11],
+            "source_minor_exponent": row[12]}
 
 
 def po_lines(session: Session, po_id: str) -> list[dict[str, Any]]:
@@ -2324,7 +2566,7 @@ def po_lines(session: Session, po_id: str) -> list[dict[str, Any]]:
         SELECT l.po_line_id, l.line_no, l.wbs_id, l.budget_head_id,
                l.description, l.quantity, l.rate_paise, l.amount_paise,
                l.tax_paise, l.non_creditable_tax_paise, l.freight_paise,
-               l.line_external_id
+               l.line_external_id, l.source_rate_minor, l.source_amount_minor
         FROM po_line l
         JOIN project p ON p.project_id = l.project_id
         WHERE l.po_id = %(po_id)s AND {scope}
@@ -2338,7 +2580,8 @@ def po_lines(session: Session, po_id: str) -> list[dict[str, Any]]:
          "budget_head_id": r[3], "description": r[4], "quantity": r[5],
          "rate_paise": r[6], "amount_paise": r[7], "tax_paise": r[8],
          "non_creditable_tax_paise": r[9], "freight_paise": r[10],
-         "line_external_id": r[11]}
+         "line_external_id": r[11], "source_rate_minor": r[12],
+         "source_amount_minor": r[13]}
         for r in rows
     ]
 
@@ -2346,8 +2589,14 @@ def po_lines(session: Session, po_id: str) -> list[dict[str, Any]]:
 def _write_po(session: Session, *, project_id: str, vendor_name: str,
               lines: Sequence[Mapping[str, Any]], actor: str,
               pr_id: str | None, po_number: str | None,
-              currency: str, exchange_rate: Any) -> dict[str, Any]:
+              basis: "fx.TranslationBasis") -> dict[str, Any]:
     """Insert the header and its lines. Writes NO cell.
+
+    ``basis`` is the order's currency and the rate it is committed at,
+    resolved ONCE by :func:`_po_basis` before the budget check and carried
+    here by value: the header records the currency, the rate and its
+    provenance (`ck_purchase_order_fx_provenance`), and a foreign order's
+    lines record the vendor's own figures beside the translated paise.
 
     Called ONLY with the affected cells already locked and the budget already
     re-checked under that lock. It performs no check of its own precisely so
@@ -2372,13 +2621,19 @@ def _write_po(session: Session, *, project_id: str, vendor_name: str,
         """
         INSERT INTO purchase_order (
             po_id, po_number, pr_id, project_id, vendor_name, currency,
-            exchange_rate, status, ordered_at, created_by, updated_by)
+            exchange_rate, fx_rate_id, fx_rate_date, fx_rate_source,
+            source_minor_exponent, status, ordered_at, created_by, updated_by)
         VALUES (%(po_id)s, %(number)s, %(pr_id)s, %(project_id)s, %(vendor)s,
-                %(currency)s, %(rate)s, 'Draft', now(), %(actor)s, %(actor)s)
+                %(currency)s, %(rate)s, %(fx_rate_id)s, %(fx_rate_date)s,
+                %(fx_rate_source)s, %(exponent)s, 'Draft', now(), %(actor)s,
+                %(actor)s)
         """,
         {"po_id": po_id, "number": number, "pr_id": pr_id,
-         "project_id": project_id, "vendor": vendor_name, "currency": currency,
-         "rate": exchange_rate, "actor": actor},
+         "project_id": project_id, "vendor": vendor_name,
+         "currency": basis.source_currency, "rate": basis.rate,
+         "fx_rate_id": basis.fx_rate_id, "fx_rate_date": basis.rate_date,
+         "fx_rate_source": basis.rate_source,
+         "exponent": basis.minor_exponent, "actor": actor},
     )
     for line in lines:
         amount = int(line["amount_paise"])
@@ -2388,6 +2643,14 @@ def _write_po(session: Session, *, project_id: str, vendor_name: str,
         # one -- never by float arithmetic, which is how a rate becomes
         # 249999.99999999997 paise.
         rate = line.get("rate_paise")
+        if rate is None and not basis.is_identity:
+            # Unreachable by construction: _translate_po_lines fills both
+            # figures for a foreign order. Said out loud rather than allowed
+            # to fall into the base-paise derivation below, which would
+            # apply the exactness rule to the wrong currency.
+            _err("PO_LINE_NOT_TRANSLATED",
+                 f"line {line['line_no']} of a {basis.source_currency} order "
+                 f"reached the writer without a translated rate.", 500)
         if rate is None:
             # DERIVED ONLY WHEN IT IS EXACT. This was
             # `amount // units if units > 0 else amount`, which had two ways of
@@ -2435,36 +2698,61 @@ def _write_po(session: Session, *, project_id: str, vendor_name: str,
             INSERT INTO po_line (
                 po_line_id, po_id, line_no, project_id, wbs_id, budget_head_id,
                 description, quantity, rate_paise, amount_paise,
+                source_rate_minor, source_amount_minor,
                 created_by, updated_by)
             VALUES (%(id)s, %(po_id)s, %(line_no)s, %(project_id)s, %(wbs_id)s,
                     %(head)s, %(description)s, %(quantity)s, %(rate)s,
-                    %(amount)s, %(actor)s, %(actor)s)
+                    %(amount)s, %(source_rate)s, %(source_amount)s,
+                    %(actor)s, %(actor)s)
             """,
             {"id": _new_id("POL"), "po_id": po_id, "line_no": line["line_no"],
              "project_id": project_id, "wbs_id": line["wbs_id"],
              "head": line["budget_head_id"], "description": line["description"],
              "quantity": quantity, "rate": int(rate),
-             "amount": amount, "actor": actor},
+             "amount": amount,
+             "source_rate": (None if basis.is_identity
+                             else int(line["source_rate_minor"])),
+             "source_amount": (None if basis.is_identity
+                               else int(line["source_amount_minor"])),
+             "actor": actor},
         )
 
     return {"po_id": po_id, "po_number": number,
-            "amount_paise": sum(int(x["amount_paise"]) for x in lines)}
+            "amount_paise": sum(int(x["amount_paise"]) for x in lines),
+            "currency": basis.source_currency,
+            "exchange_rate": str(basis.rate),
+            "fx_rate_id": basis.fx_rate_id,
+            "source_amount_minor": (None if basis.is_identity else
+                                    sum(int(x["source_amount_minor"]) for x in lines))}
 
 
 def create_po(session: Session, *, project_id: str, vendor_name: str,
               lines: Sequence[Mapping[str, Any]], actor: str,
               po_number: str | None = None, currency: str = "INR",
-              exchange_rate: int = 1,
+              exchange_rate: Any = None, rate_source: str | None = None,
+              fx_rate_id: str | None = None,
+              document_date: date | None = None,
               correlation_id: str | None = None) -> dict[str, Any]:
     """Create a purchase order directly, without a purchase request.
 
     A multi-WBS purchase order is normal and is NOT flattened: one header, one
     ``po_line`` per ``(wbs_id, budget_head_id)`` the caller names, which is the
     grain the table is keyed on and the grain the emission counts.
+
+    CURRENCY (029). ``currency`` other than INR makes this a foreign-currency
+    order: the lines carry ``source_amount_minor`` (and optionally
+    ``source_rate_minor``) in that currency's minor units, the rate is
+    resolved ONCE for ``document_date`` (today unless stated) by the same
+    rules a bill uses -- the ACTIVE rate on file, the caller's own rate with
+    its ``rate_source``, or a named ``fx_rate_id`` -- and REFUSED when none
+    exists. ``amount_paise`` is derived, the budget is checked on it, and the
+    application is recorded in `fx_translation_event`.
     """
     if not (vendor_name or "").strip():
         _err("VENDOR_REQUIRED", "A purchase order requires a vendor.", 422)
-    normalised = _normalise_lines(lines, what="purchase order")
+    po_currency = _po_currency(currency)
+    normalised = _normalise_lines(lines, what="purchase order",
+                                  foreign=po_currency != BASE_CURRENCY)
     _project_row(session, project_id)
     for line in normalised:
         _, wbs_project, wbs_code, _status, is_abandoned = _wbs_row(
@@ -2477,6 +2765,15 @@ def create_po(session: Session, *, project_id: str, vendor_name: str,
             _err("WBS_ABANDONED",
                  f"{wbs_code} is abandoned and cannot receive procurement.", 422)
 
+    # The rate BEFORE the budget check: the check runs on the base paise the
+    # rate produces, never on a figure the caller typed beside it.
+    basis = _po_basis(session, currency=po_currency,
+                      document_date=document_date or _utcnow().date(),
+                      actor=actor, exchange_rate=exchange_rate,
+                      rate_source=rate_source, fx_rate_id=fx_rate_id,
+                      reference=po_number)
+    normalised = _translate_po_lines(basis, normalised)
+
     lock_affected_cells(session, _affected_cells(normalised))
     verdicts = budget_verdicts(session, _amounts_by_cell(normalised))
     if exceeds_budget(verdicts):
@@ -2486,8 +2783,10 @@ def create_po(session: Session, *, project_id: str, vendor_name: str,
 
     written = _write_po(session, project_id=project_id, vendor_name=vendor_name,
                         lines=normalised, actor=actor, pr_id=None,
-                        po_number=po_number, currency=currency,
-                        exchange_rate=exchange_rate)
+                        po_number=po_number, basis=basis)
+    _register_po_translation(session, basis=basis, po_id=written["po_id"],
+                             project_id=project_id, lines=normalised,
+                             actor=actor, correlation_id=correlation_id)
     # The commitment limb of exposure, re-derived under the locks taken above.
     # Without it this order is invisible to the next budget check.
     for wbs_id, head_id in _affected_cells(normalised):
@@ -2496,7 +2795,11 @@ def create_po(session: Session, *, project_id: str, vendor_name: str,
         session, actor, "PO_CREATED", "PurchaseOrder", written["po_id"],
         f"{written['po_number']} raised on {project_id} for {vendor_name}: "
         f"{len(normalised)} line(s), {written['amount_paise']} paise, "
-        f"{len(_affected_cells(normalised))} control cell(s).",
+        f"{len(_affected_cells(normalised))} control cell(s)"
+        + ("" if basis.is_identity else
+           f"; {written['source_amount_minor']} {basis.source_currency} minor "
+           f"units translated at {basis.describe()}")
+        + ".",
         correlation_id=correlation_id)
     return {**written, "project_id": project_id, "status": "Draft",
             "verdicts": verdicts, "line_count": len(normalised)}
@@ -2504,10 +2807,24 @@ def create_po(session: Session, *, project_id: str, vendor_name: str,
 
 def convert_pr_to_po(session: Session, *, pr_id: str, actor: str,
                      vendor_name: str, po_number: str | None = None,
-                     currency: str = "INR", exchange_rate: int = 1,
+                     currency: str = "INR", exchange_rate: Any = None,
+                     rate_source: str | None = None,
+                     fx_rate_id: str | None = None,
+                     document_date: date | None = None,
+                     source_lines: Sequence[Mapping[str, Any]] | None = None,
                      expected_version: int | None = None,
                      correlation_id: str | None = None) -> dict[str, Any]:
     """Approval-driven conversion: an APPROVED request becomes a purchase order.
+
+    A FOREIGN-CURRENCY CONVERSION NAMES THE VENDOR'S FIGURES. The request's
+    lines are base paise -- an estimate in rupees -- and a USD order cannot
+    be made from them by dividing: the vendor quoted in dollars, and that
+    quote is the order. ``source_lines`` therefore supplies, for EVERY line
+    of the request by ``pr_line_id``, its ``source_amount_minor`` (and
+    optionally ``source_rate_minor``) in the order's currency; the control
+    cell is still copied from the request line, never re-supplied. The rate
+    is resolved once, the paise derived, and the budget re-checked on them --
+    which is the truth of a conversion whose currency moved since approval.
 
     ``services.convert_pr_to_po`` guards AUD-H-001 -- "a reservation converts
     exactly once" -- through ``pr_reservation``, which has no PostgreSQL table.
@@ -2534,6 +2851,46 @@ def convert_pr_to_po(session: Session, *, pr_id: str, actor: str,
     if not lines:
         _err("NO_LINES",
              f"{header['pr_number']} carries no lines to convert.", 422)
+
+    po_currency = _po_currency(currency)
+    lines = [{**line, "rate_paise": None, "source_amount_minor": None,
+              "source_rate_minor": None} for line in lines]
+    if po_currency != BASE_CURRENCY:
+        by_line = {str(s.get("pr_line_id") or ""): s for s in (source_lines or ())}
+        wanted = {line["pr_line_id"] for line in lines}
+        unknown = sorted(set(by_line) - wanted)
+        missing = sorted(wanted - set(by_line))
+        if not source_lines or missing or unknown or len(by_line) != len(source_lines):
+            _err("PO_CONVERSION_SOURCE_LINES_REQUIRED",
+                 f"Converting {header['pr_number']} into a {po_currency} "
+                 f"order needs the vendor's own figure for every request "
+                 f"line: source_lines = [{{pr_line_id, source_amount_minor, "
+                 f"source_rate_minor?}}] naming each of "
+                 f"{sorted(wanted)} exactly once"
+                 + (f"; missing {missing}" if missing else "")
+                 + (f"; unknown {unknown}" if unknown else "")
+                 + ". The request's rupee estimate is not a dollar quote and "
+                 "is not divided into one.", 422)
+        foreign = _normalise_lines(
+            [{**line, "amount_paise": None,
+              "quantity": _plain_quantity(line["quantity"]),
+              "source_amount_minor": by_line[line["pr_line_id"]].get("source_amount_minor"),
+              "source_rate_minor": by_line[line["pr_line_id"]].get("source_rate_minor")}
+             for line in lines],
+            what="purchase order", foreign=True)
+        # `_normalise_lines` renumbers 1..N in the request's line order, which
+        # is also the PR's own numbering; the cell came from the PR line.
+        lines = [{**line, **norm} for line, norm in zip(lines, foreign)]
+    elif source_lines:
+        _err("PO_SOURCE_AMOUNT_ON_BASE_ORDER",
+             f"source_lines were supplied but the order is in {BASE_CURRENCY}; "
+             f"a base-currency conversion copies the request's paise.", 422)
+    basis = _po_basis(session, currency=po_currency,
+                      document_date=document_date or _utcnow().date(),
+                      actor=actor, exchange_rate=exchange_rate,
+                      rate_source=rate_source, fx_rate_id=fx_rate_id,
+                      reference=po_number)
+    lines = _translate_po_lines(basis, lines)
 
     lock_affected_cells(session, _affected_cells(lines))
     current = _lock_pr_row(session, pr_id)
@@ -2565,9 +2922,11 @@ def convert_pr_to_po(session: Session, *, pr_id: str, actor: str,
 
     written = _write_po(
         session, project_id=header["project_id"], vendor_name=vendor_name,
-        lines=[{**line, "rate_paise": None} for line in lines], actor=actor,
-        pr_id=pr_id, po_number=po_number, currency=currency,
-        exchange_rate=exchange_rate)
+        lines=lines, actor=actor, pr_id=pr_id, po_number=po_number,
+        basis=basis)
+    _register_po_translation(session, basis=basis, po_id=written["po_id"],
+                             project_id=header["project_id"], lines=lines,
+                             actor=actor, correlation_id=correlation_id)
 
     # THE RESERVATION IS SETTLED, NOT LEFT STANDING. A converted request whose
     # hold stays `Reserved` is counted TWICE against the same budget -- once as
@@ -2609,9 +2968,18 @@ def convert_pr_to_po(session: Session, *, pr_id: str, actor: str,
 
 def _emission_lines(po_line_rows: Sequence[Mapping[str, Any]],
                     *, fractional_quantity_policy: str = FRACTIONAL_QUANTITY_DEFAULT,
-                    rounded: list[dict[str, Any]] | None = None
+                    rounded: list[dict[str, Any]] | None = None,
+                    currency_code: str = BASE_CURRENCY
                     ) -> tuple[ob.PoLine, ...]:
     """``po_line`` rows as ``outbound.PoLine`` values, or a refusal.
+
+    IN THE ORDER'S OWN CURRENCY (029). For a foreign-currency order the
+    emitted unit price and line total are `source_rate_minor` and
+    `source_amount_minor` -- the vendor's figures -- and `rate_paise` /
+    `amount_paise` (the translated base) are not sent. A foreign order whose
+    line lacks them (written before 029, or by a path that bypassed the
+    writer) is REFUSED with `PO_CURRENCY_SOURCE_MISSING` rather than emitted
+    at base paise the header's rate would have to be divided back out of.
 
     TWO SHAPES DO NOT SURVIVE THE CROSSING:
 
@@ -2673,10 +3041,24 @@ def _emission_lines(po_line_rows: Sequence[Mapping[str, Any]],
                     "emitted_quantity": rounded_qty,
                 })
             as_float = float(rounded_qty)
-        rate = int(row["rate_paise"])
+        if currency_code == BASE_CURRENCY:
+            rate = int(row["rate_paise"])
+            amount = int(row["amount_paise"])
+        else:
+            if row.get("source_rate_minor") is None or row.get("source_amount_minor") is None:
+                _err("PO_CURRENCY_SOURCE_MISSING",
+                     f"PO line {row['po_line_id']} belongs to a "
+                     f"{currency_code} order but carries no source-currency "
+                     f"figures (source_rate_minor / source_amount_minor). It "
+                     f"predates migration 029 or bypassed the writer; it is "
+                     f"not emitted at INR paise divided back by the rate, "
+                     f"which would price the vendor a number they never "
+                     f"quoted.", 409)
+            rate = int(row["source_rate_minor"])
+            amount = int(row["source_amount_minor"])
         if rate < 0:
             _err("NEGATIVE_RATE",
-                 f"PO line {row['po_line_id']} has rate_paise {rate}. A "
+                 f"PO line {row['po_line_id']} has a unit price of {rate}. A "
                  f"purchase order is a commitment and does not carry a "
                  f"negative unit price.", 422)
         out.append(ob.PoLine(
@@ -2686,7 +3068,7 @@ def _emission_lines(po_line_rows: Sequence[Mapping[str, Any]],
             description=row["description"] or row["po_line_id"],
             quantity=int(as_float),
             unit_price_paise=rate,
-            amount_paise=int(row["amount_paise"]),
+            amount_paise=amount,
         ))
     return tuple(out)
 
@@ -2726,7 +3108,7 @@ def build_emission_plan(*, po_id: str, po_number: str, connection_id: str,
         lines=_emission_lines(
             line_rows,
             fractional_quantity_policy=fractional_quantity_policy,
-            rounded=rounded),
+            rounded=rounded, currency_code=currency_code),
         capabilities=capabilities,
         document_date=document_date, reference=po_number,
         currency_code=currency_code)
@@ -2789,23 +3171,14 @@ def plan_po_emission(session: Session, *, po_id: str, connection_id: str,
     is what talks to an adapter.
     """
     header = _po_header(session, po_id)
-    # CURRENCY-AWARE, BY REFUSAL (Fable 5.1). The emission DTO defaulted to
-    # "INR" whatever the purchase order said, so a USD or EUR purchase order
-    # reached the vendor labelled INR and priced in INR paise -- a number the
-    # vendor never quoted. `po_line` stores BASE (INR) paise; the source-
-    # currency line amounts a foreign purchase order needs at the boundary
-    # are not stored yet, and dividing base paise by the header's rate would
-    # invent them. Until source-minor amounts exist on po_line, a non-base
-    # purchase order is refused here -- before planning, before an outbox
-    # row -- with a code that says so, rather than emitted as something it
-    # is not.
-    po_currency = str(header.get("currency") or BASE_CURRENCY).upper()
-    if po_currency != BASE_CURRENCY:
-        _err("PO_CURRENCY_NOT_EMITTABLE",
-             f"{header['po_number']} is denominated in {po_currency}; the outbound "
-             f"connector can emit only {BASE_CURRENCY} purchase orders exactly. "
-             f"Emitting it would price the vendor in a currency they did not "
-             f"quote. Nothing was planned or queued.", 409)
+    # CURRENCY-AWARE (Fable 5.1, 029). The emission DTO once defaulted to
+    # "INR" whatever the purchase order said, so a USD order reached the
+    # vendor labelled INR and priced in INR paise. The order's currency now
+    # rides on every draft and payload, and a foreign order's lines are
+    # emitted at the source figures the writer stored beside the translated
+    # paise. A foreign order with no source figures is refused per line by
+    # `_emission_lines`; it is never emitted at base paise divided back.
+    po_currency = _po_currency(header.get("currency"))
     rows = po_lines(session, po_id)
     if not rows:
         _err("NO_LINES",
@@ -2824,7 +3197,7 @@ def plan_po_emission(session: Session, *, po_id: str, connection_id: str,
         document_date=document_date, capabilities=adapter.capabilities(),
         line_rows=rows, acknowledged=acknowledged,
         fractional_quantity_policy=fractional_quantity_policy(session),
-        rounded=rounded_lines)
+        rounded=rounded_lines, currency_code=po_currency)
 
     for entry in rounded_lines:
         audit_mod.append(
@@ -2856,7 +3229,10 @@ def plan_po_emission(session: Session, *, po_id: str, connection_id: str,
                          "local_id": entry["local_id"],
                          "dedupe_key": entry["dedupe_key"], "created": created,
                          "control_cells": entry["control_cells"],
-                         "total_paise": entry["total_paise"]})
+                         # Minor units of `currency_code`: paise for INR,
+                         # cents/yen/fils for a foreign order.
+                         "total_paise": entry["total_paise"],
+                         "currency_code": po_currency})
 
     audit_mod.append(
         session, actor, "PO_EMISSION_PLANNED", "PurchaseOrder", po_id,
@@ -2870,6 +3246,7 @@ def plan_po_emission(session: Session, *, po_id: str, connection_id: str,
     return {
         "po_id": po_id, "po_number": header["po_number"],
         "connection_id": connection_id, "module": PO_MODULE,
+        "currency_code": po_currency,
         "line_level_dimensions": plan.line_level_dimensions,
         "control_cells": [list(c) for c in plan.control_cells],
         "purchase_orders": len(plan.drafts),

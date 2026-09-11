@@ -923,7 +923,7 @@ def bill_fx_summary(session: Session, bill_id: str) -> Mapping[str, Any]:
 #: what forces the schema change and its writer to arrive together. 023 added
 #: `bill.source_currency` and `bill_line.source_amount_minor` with no writer,
 #: and the guard built on the second of them stayed unreachable for two waves.
-TRANSLATABLE_DOCUMENT_TYPES: tuple[str, ...] = ("BILL",)
+TRANSLATABLE_DOCUMENT_TYPES: tuple[str, ...] = ("BILL", "PURCHASE_ORDER")
 
 #: The rounding rule, named ONCE.
 #:

@@ -516,12 +516,19 @@ def test_the_document_types_mirror_the_migrations_own_check():
     """The constant and the CHECK are two statements of one fact, and the whole
     value of the constant is that it is the same fact. `SEEDED_MINOR_EXPONENTS`
     carries the same guard against the same drift."""
-    match = re.search(
+    # The CHECK is (re)declared by whichever migration last widened it -- 025
+    # named BILL, 029 added PURCHASE_ORDER when the purchase order gained a
+    # writer for its source money. The LAST declaration in version order is
+    # the one the database holds, so it is the one the constant must mirror.
+    pattern = re.compile(
         r"ck_fx_translation_event_document_type\s*\n?\s*CHECK\s*\("
-        r"document_type IN \(([^)]*)\)\)",
-        MIGRATION.read_text(encoding="utf-8"))
-    assert match, "the CHECK could not be found; this guard has stopped guarding"
-    declared = tuple(re.findall(r"'([A-Z_]+)'", match.group(1)))
+        r"document_type IN \(([^)]*)\)\)")
+    declared = None
+    for path in sorted(MIGRATION.parent.glob("0*.sql")):
+        applied = path.read_text(encoding="utf-8").split("-- ROLLBACK:", 1)[0]
+        for match in pattern.finditer(applied):
+            declared = tuple(re.findall(r"'([A-Z_]+)'", match.group(1)))
+    assert declared, "the CHECK could not be found; this guard has stopped guarding"
     assert declared == fx.TRANSLATABLE_DOCUMENT_TYPES
 
 
