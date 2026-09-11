@@ -59,23 +59,12 @@ now carries a base-commit guard).
 ## Not done — in order of value
 
 1. Integrate the reporting stream (filters/grouping/reconciliation/exports).
-2. ~~Integrate the Playwright spec~~ (done, plus five defect fixes in `8adfa12`).
-   The bounded VRT (`VRT_PER_TEST_MS=120000 bash tools/run_vrt_batches.sh`)
-   was started 2026-09-11 12:15 and writes `.vrt-batches/summary.txt` (one
-   line per spec × viewport). Expected pattern, confirmed on the first
-   batches: analytics green; every full-page spec that includes the rail
-   fails by ~10,010 px (0.01 ratio) at desktop and laptop — the rail region
-   (docs/ui-change-2026-09/A4-fable51-navigation.md). RE-BASELINE
-   PROCEDURE, deliberate and accounted for: (a) read the summary and list
-   the FAIL specs; (b) `set CAPEX_VRT_PORT=8897` and
-   `npx playwright test tests/vrt/<spec> --update-snapshots` for those
-   specs only; (c) `python tests/vrt/evidence/prove-baseline-delta.py
-   --ref HEAD --regions docs/ui-change-2026-09/after-regions.json >
-   docs/ui-change-2026-09/BASELINE-DELTA-2026-09-11.txt` — it exits
-   non-zero and names any snapshot whose difference lies outside the rail
-   box; such a snapshot is a regression, is NOT committed, and is
-   investigated; (d) commit the confined snapshots with the delta file;
-   (e) re-run the failing specs once more without `--update-snapshots`.
+2. ~~Integrate the Playwright spec~~ ~~bounded VRT~~ — done 2026-09-11: 45 batches,
+   11 failed, all answered (`3ca2db3`); 63 baselines re-recorded with the delta
+   proof (`1ebf136`, A4 "The account"). A confirmation run of approvals,
+   approved-ui, spa-routing, integration and fx-rates on the new baselines
+   writes `.vrt-batches-confirm/summary.txt`; if any batch is not `ok` there,
+   read its log before touching a baseline.
 3. ~~Rebuild and redeploy the Stage A bundle~~ — done 2026-09-11 from `c51c2fe`.
 4. ~~FX-rate maintenance API + admin UI~~ — integrated (migration 028,
    `pg/fx_admin.py`, `api/fx_admin.py`, Exchange Rates screen; 16 live + 43

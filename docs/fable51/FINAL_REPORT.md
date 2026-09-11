@@ -1,6 +1,6 @@
 # Fable 5.1 — final report (branch `fable-5.1/full-app-hardening-uat`)
 
-Written 2026-09-11 at `bbc528d`. Everything below is either verified on this
+Written 2026-09-11 at `bbc528d`; updated at `1ebf136` after the VRT run. Everything below is either verified on this
 machine, verified on the live Catalyst preview, or marked as not done. Nothing
 is claimed on the strength of a document.
 
@@ -75,7 +75,8 @@ Migration 029 and `procurement_services`: `create_po` / `convert_pr_to_po` resol
 - Budget Setup and Budget Categories screens: a Playwright + axe spec (`tests/vrt/budget-setup.spec.js`, 87 tests × 3 viewports) found five real defects (governed-select presets before connection, categories dialog never opening, lost submit confirmation, clobbered placeholder, unlabelled textarea); all five fixed in `8adfa12` with the `fixme` entries turned into passing tests and zero axe violations with no exclusion.
 - `--n500` hover contrast: `tbody tr:hover .muted` and the tree toggle now use `--n700` (9.35:1 on the hover surface vs 4.32:1), added as one rule with the checksum pin updated in the same commit.
 - Navigation: five rows added on instruction; measured per role in `docs/ui-change-2026-09/A4-fable51-navigation.md` — the administrator's rail overflows 130px at desktop-1440, every other seeded role fits exactly. Decision referred (§14).
-- Bounded VRT (`tools/run_vrt_batches.sh`, one spec × one viewport per batch, 120s per test): running at the time of writing; the first batches show exactly the expected pattern — analytics green at all three viewports; approvals' full-page snapshots differ by ~10,010 pixels (0.01 ratio) at desktop and laptop, the rail region. The re-baseline is deliberate: re-capture the moved specs, run `tests/vrt/evidence/prove-baseline-delta.py` against the rail box, record `BASELINE-DELTA-2026-09-11.txt`, commit only snapshots whose difference is confined to the rail. See `CONTINUATION.md` for the exact steps if this session ends first.
+- Bounded VRT (`tools/run_vrt_batches.sh`, one spec × one viewport per batch, 120s per test): 45 batches in 1h35, 11 failed. The failures were exactly the expected rail movement (approvals, approved-ui, spa-routing at desktop and laptop), one 30-pixel tablet difference, and four non-screenshot guards. Each guard was answered in `3ca2db3`: the approved-navigation sequence and the 49-screen registry are extended by exactly the three Fable 5.1 rows and say why; the Exchange Rates screen brings its own spec (`tests/vrt/fx-rates.spec.js`, 15 passed × 3 viewports, zero axe violations); the integration stream's last-rail-row assertion follows; and two raw `fetch()` calls in the budget API client were moved onto the shared client (which gained `asText` for the CSV template).
+- The re-baseline is accounted for, not waved through (`1ebf136`): 102 snapshots compared, 39 unchanged, 63 changed; 59 confined to the rail box by `prove-baseline-delta.py`; the 4 outside it (`wbs` at three viewports, `pos` at laptop) differ by a maximum channel delta of 56/255, which is `--n700` against `--n500` exactly, the approved hover-contrast correction on the row the pointer rests on. Record: `docs/ui-change-2026-09/A4-fable51-navigation.md` and `BASELINE-DELTA-2026-09-11.txt`. A confirmation run of the five affected specs on the new baselines was started after this report's first version; its result is recorded in `CONTINUATION.md`.
 
 ## 11. Verification evidence
 
@@ -87,7 +88,8 @@ Migration 029 and `procurement_services`: `create_po` / `convert_pr_to_po` resol
 | Mutation checks (database-free) | adapter ignores the exponent → 7 failed; split drafts drop the currency → 4 failed; foreign lines emitted at base paise → 8 failed; base paise accepted on a foreign line → survived, then killed by the tests added in `006ca86` (1 failed) |
 | Supply chain | clean-venv resolution, 31 components, closure complete, OSV.dev: no findings (`2dfb802`) |
 | Deployment smoke | bundle smoke locally under the Catalyst port variable; live URL checks (§4) |
-| Playwright + axe | Budget Setup spec 87 passed × 3 viewports, zero violations |
+| Playwright + axe | Budget Setup spec 87 passed × 3 viewports; Exchange Rates spec 15 passed × 3 viewports; zero violations on both |
+| Bounded VRT | 45 batches; 11 failed for the reasons in §10, all answered; 63 baselines re-recorded with the delta proof |
 | CI | not run: "The job was not started because recent account payments have failed or your spending limit needs to be increased" (GitHub check-run annotation). Only the account owner can clear it |
 
 ## 12. Blind-spot review — what I could not see or did not do
@@ -100,7 +102,7 @@ Migration 029 and `procurement_services`: `create_po` / `convert_pr_to_po` resol
 6. The Exchange Rates screen has no Playwright spec; the FX import accepts unquoted CSV only.
 7. The Auditor cannot read the rate book; a bill's own FX summary is their route until D-12 is recorded.
 8. Windows is the only machine that ran anything; the bundle targets Linux x86-64 wheels resolved deliberately, and the AppSail deploy proves the Linux runtime for the preview only.
-9. The full VRT run was still in progress when this report was written (§10).
+9. The VRT confirmation run of the five re-baselined specs was still in progress when this report was updated (§10).
 10. Independent adversarial review of the new financial code (a second Fable pass) did not happen; the mutation checks and live tests are the substitute.
 
 ## 13. Stage B and ERP demo connection — where they stop
