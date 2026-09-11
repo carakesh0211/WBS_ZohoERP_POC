@@ -56,6 +56,10 @@ now carries a base-commit guard).
   navigation with two collapsible groups (approved groups' markup unchanged),
   measured no rail overflow at 1440×900.
 
+## Decisions of 2026-09-11
+
+See `docs/fable51/DECISIONS_2026-09-11.md` (eight decisions, holders of each open item).
+
 ## Not done — in order of value
 
 1. Integrate the reporting stream (filters/grouping/reconciliation/exports).
