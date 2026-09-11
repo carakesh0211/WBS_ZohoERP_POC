@@ -656,6 +656,11 @@ POST_BASELINE_FILES = {
     # from the tenant through the live transport; MOCK keeps every refusal.
     "test_integrations_live_routes_fable51.py",
     "test_pg_po_currency_fable51.py",
+    # The live inbound sweep (Fable 5.1): `PgSweepStore`'s mapping onto the
+    # store, `run_inbound_sweep` end to end on live PostgreSQL with a
+    # recording fake transport, and the `/sweep` route's guard. The
+    # PostgreSQL half SKIPS without CAPEX_DB_URL, the rest is database-free.
+    "test_live_sweep_fable51.py",
 
     # --- Fable 5.1: period reopen (M-3). Post-baseline like every wave file: the 220 counts the
     # POC's audit-remediation suite, and inflating it would make the removal

@@ -4014,6 +4014,132 @@
         "body_sha": "de8cca51b1daefc1"
       }
     },
+    "test_live_sweep_fable51.py": {
+      "test_pg_sweep_store_implements_every_sweep_store_method_with_its_keywords": {
+        "assertions": 4,
+        "body_sha": "113559bda72360fe"
+      },
+      "test_upsert_inbox_maps_to_record_inbound_and_reports_creation": {
+        "assertions": 9,
+        "body_sha": "3d9e55d18d005eb8"
+      },
+      "test_upsert_inbox_does_not_read_an_invisible_connection_as_a_duplicate": {
+        "assertions": 2,
+        "body_sha": "09d38163fa4cdc7e"
+      },
+      "test_watermarks_map_to_read_and_advance_with_greatest_and_the_actor": {
+        "assertions": 6,
+        "body_sha": "113ae0dd6e8af443"
+      },
+      "test_open_purchase_orders_is_scoped_keyed_on_po_id_and_bound_to_the_source": {
+        "assertions": 7,
+        "body_sha": "4915b1bab7932b01"
+      },
+      "test_known_purchase_order_answers_by_external_id_under_this_source": {
+        "assertions": 4,
+        "body_sha": "aa51b8ebca476d44"
+      },
+      "test_every_store_statement_this_module_issues_carries_the_scope_token": {
+        "assertions": 4,
+        "body_sha": "ceb60d059e715825"
+      },
+      "test_the_control_total_surface_refuses_with_a_code_rather_than_an_empty_list": {
+        "assertions": 3,
+        "body_sha": "af9eb55ac43e1148"
+      },
+      "test_adapter_for_connection_answers_none_for_everything_that_is_not_live_erp_in": {
+        "assertions": 7,
+        "body_sha": "d9931325fb5e306d"
+      },
+      "test_adapter_for_connection_builds_a_live_transport_and_it_refuses_without_a_credential": {
+        "assertions": 3,
+        "body_sha": "104f499e7227c4c5"
+      },
+      "test_the_connection_bound_claim_is_derived_from_the_framework_statement": {
+        "assertions": 7,
+        "body_sha": "2ceac7797dfd831d"
+      },
+      "test_a_first_pull_with_no_watermark_sends_no_filter_instead_of_crashing": {
+        "assertions": 6,
+        "body_sha": "2d5abc1fed7e6a1e"
+      },
+      "test_run_inbound_sweep_refuses_a_non_live_connection_before_touching_anything": {
+        "assertions": 3,
+        "body_sha": "d42c9f8a45606ce6"
+      },
+      "test_run_inbound_sweep_refuses_a_product_with_no_live_transport": {
+        "assertions": 3,
+        "body_sha": "69792753bfcbd801"
+      },
+      "test_run_inbound_sweep_refuses_an_unknown_module_before_touching_anything": {
+        "assertions": 3,
+        "body_sha": "0727cc6826755aec"
+      },
+      "test_the_module_never_spells_a_product_endpoint_scope_or_host": {
+        "assertions": 1,
+        "body_sha": "e83859b8916e37ee"
+      },
+      "test_live_a_live_read_connection_sweeps_the_tenant_into_the_inbox": {
+        "assertions": 56,
+        "body_sha": "509c772ae7eae716"
+      },
+      "test_live_re_running_the_sweep_creates_nothing_twice": {
+        "assertions": 18,
+        "body_sha": "bf30468b397bbf5a"
+      },
+      "test_live_an_exhausted_polling_budget_checkpoints_and_holds_the_watermark": {
+        "assertions": 13,
+        "body_sha": "6774ddf0e3b7133d"
+      },
+      "test_live_the_sweep_claims_only_its_own_connections_job_rows": {
+        "assertions": 4,
+        "body_sha": "9928e7b0c62ea4ac"
+      },
+      "test_live_a_caller_without_an_app_user_row_cannot_own_a_job": {
+        "assertions": 4,
+        "body_sha": "ecee160230bcde47"
+      },
+      "test_route_the_guard_is_on_the_router_and_reused_not_restated": {
+        "assertions": 5,
+        "body_sha": "d54c469dfe4ff09b"
+      },
+      "test_route_is_in_the_authorisation_matrix_with_manage_and_a_denied_role": {
+        "assertions": 5,
+        "body_sha": "355ec87e252eb360"
+      },
+      "test_route_an_unauthenticated_caller_is_refused": {
+        "assertions": 2,
+        "body_sha": "c22dd7197c1b426b"
+      },
+      "test_route_a_role_without_connector_read_stops_at_the_floor": {
+        "assertions": 1,
+        "body_sha": "5ded7ec7b88858db"
+      },
+      "test_route_the_read_only_role_is_refused_the_sweep": {
+        "assertions": 1,
+        "body_sha": "55dbb268f02a9226"
+      },
+      "test_route_without_a_database_answers_the_coded_503": {
+        "assertions": 3,
+        "body_sha": "6c698eae3cd2825e"
+      },
+      "test_route_the_manage_role_gets_409_on_a_mock_connection": {
+        "assertions": 7,
+        "body_sha": "436cc3cae1f614e8"
+      },
+      "test_route_an_invisible_connection_is_404_not_403": {
+        "assertions": 1,
+        "body_sha": "9254ce90bc8c58ab"
+      },
+      "test_route_a_live_connection_with_no_credential_is_a_coded_503": {
+        "assertions": 3,
+        "body_sha": "c0853646c75229d4"
+      },
+      "test_route_the_openapi_template_is_spelled_with_connection_id": {
+        "assertions": 3,
+        "body_sha": "56af9f88745f74ee"
+      }
+    },
     "test_live_transport_fable51.py": {
       "test_a_credential_on_another_data_centre_is_refused_at_construction": {
         "assertions": 1,
@@ -12815,6 +12941,7 @@
     "test_integrations_live_routes_fable51.py": 12,
     "test_known_defects.py": 5,
     "test_ledger_cell_writers.py": 16,
+    "test_live_sweep_fable51.py": 31,
     "test_live_transport_fable51.py": 17,
     "test_login_throttle.py": 11,
     "test_manifest.py": 10,
@@ -12949,6 +13076,7 @@
     "test_integrations_live_routes_fable51.py": 67,
     "test_known_defects.py": 13,
     "test_ledger_cell_writers.py": 32,
+    "test_live_sweep_fable51.py": 198,
     "test_live_transport_fable51.py": 40,
     "test_login_throttle.py": 26,
     "test_manifest.py": 15,
