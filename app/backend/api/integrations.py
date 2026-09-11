@@ -103,7 +103,7 @@ from __future__ import annotations
 import base64
 import dataclasses
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 from uuid import uuid4
@@ -306,6 +306,62 @@ def _problem(status_code: int, code: str, title: str,
     if extra:
         body.update(extra)
     return HTTPException(status_code=status_code, detail=body)
+
+
+LIVE_MODES = ("LIVE_READ", "LIVE_WRITE")
+
+
+def _live_transport_for(connection: dict):
+    """The read-only live transport for a LIVE ERP connection, or None.
+
+    Fable 5.1 (2026-09-12). Only an ERP connection on the India data centre in
+    LIVE_READ or LIVE_WRITE mode gets a transport; MOCK and SANDBOX keep every
+    refusal below exactly as it was, and Books has no live transport at all.
+    The transport is GET-only while CAPEX_ERP_OUTBOUND_WRITES is unset, refuses
+    other hosts, products and ungranted scopes before any byte leaves, and
+    never surfaces a token or secret in an error. Its credential comes from the
+    platform configuration (or, on the operator's machine, from the file
+    tools/erp_demo/connect.py wrote) -- never from this repository.
+    """
+    if str(connection.get("product") or "") != "ERP":
+        return None
+    if str(connection.get("mode") or "") not in LIVE_MODES:
+        return None
+    if str(connection.get("dc") or "").upper() != "IN":
+        return None
+    from ..integration import adapter as _ad
+    from ..integration.live_transport import LiveTransport
+    try:
+        return LiveTransport()
+    except _ad.IntegrationError as exc:
+        # No credential in the platform configuration (or a malformed one):
+        # a coded 503 in the transport's own words, never a 500.
+        raise _live_error_to_http(exc, connection_id=str(connection.get("connection_id")))
+
+
+def _live_error_to_http(exc: Exception, *, connection_id: str) -> HTTPException:
+    """A live-transport refusal or a Zoho error, as a coded problem.
+
+    Every message is the transport's own sentence: it is built from status,
+    path and Zoho's code/message, never from a token. 502 for the tenant's
+    errors (they are upstream), 409 for our own refusals (scope, host, gate).
+    """
+    from ..integration import adapter as _ad
+    from ..integration import live_transport as _lt
+    if isinstance(exc, _lt.ZohoApiError):
+        return _problem(502, "ERP_TENANT_ERROR", "ERP Tenant Error", str(exc),
+                        extra={"connection_id": connection_id, "status": exc.status,
+                               "zoho_code": exc.zoho_code})
+    if isinstance(exc, _lt.RateBudgetExhausted):
+        return _problem(429, "ERP_RATE_BUDGET_EXHAUSTED", "ERP Rate Budget Exhausted", str(exc))
+    if isinstance(exc, _ad.CapabilityError):
+        return _problem(409, "ERP_SCOPE_NOT_GRANTED", "ERP Scope Not Granted", str(exc))
+    if isinstance(exc, _ad.NetworkForbidden):
+        return _problem(409, "ERP_WRITES_DISABLED", "ERP Writes Disabled", str(exc))
+    if isinstance(exc, _ad.IntegrationError):
+        return _problem(503, "ERP_LIVE_TRANSPORT_UNAVAILABLE", "ERP Live Transport Unavailable",
+                        str(exc))
+    raise exc
 
 
 def _unavailable(code: str, what_is_missing: str, *,
@@ -757,7 +813,39 @@ def list_organisations(
     somebody already typed in, not the ones the credential can actually reach.
     """
     _set_correlation_header(response, request)
-    _require_visible_connection(request, database, connection_id)
+    connection = _require_visible_connection(request, database, connection_id)
+    transport = _live_transport_for(connection)
+    if transport is not None:
+        # LIVE (Fable 5.1): the pinned organisation, verified against the
+        # tenant, and only it. The credential can see other organisations
+        # on the same Zoho account; they are COUNTED, never named -- they are
+        # not this connection's estate and do not belong in its evidence.
+        from ..integration import erp as _erp
+        adapter = _erp.ErpAdapter(organization_id=str(connection["organization_id"]),
+                                  transport=transport)
+        try:
+            body = transport.request(method="GET", base_url=adapter.base_url("IN"),
+                                     path="/organizations", scope="ERP.settings.READ",
+                                     params={})
+        except Exception as exc:  # noqa: BLE001 - mapped to a coded problem or re-raised
+            raise _live_error_to_http(exc, connection_id=connection_id)
+        rows = body.get("organizations") or []
+        pinned = [o for o in rows if str(o.get("organization_id")) == str(connection["organization_id"])]
+        keep = ("organization_id", "name", "currency_code", "country", "time_zone",
+                "plan_name", "org_type", "is_gst_india_version", "is_multientity_enabled")
+        shown = {k: pinned[0].get(k) for k in keep} if pinned else None
+        return {
+            "connection_id": connection_id,
+            "organization_id": connection["organization_id"],
+            # org-mapping.js reads this list. It holds the pinned organisation
+            # and nothing else: the other organisations are counted below.
+            "organizations": [shown] if shown else [],
+            "pinned_organisation": shown,
+            "pinned_organisation_visible": bool(pinned),
+            "other_organisations_visible": max(0, len(rows) - len(pinned)),
+            "source": {"product": "ERP", "api_domain": transport.api_domain,
+                       "endpoint": "/organizations", "mode": connection.get("mode")},
+        }
     raise _unavailable(
         "ORGANISATION_DISCOVERY_UNAVAILABLE",
         "a live authorised Zoho tenant: GET /organizations is a tenant call "
@@ -815,7 +903,77 @@ def validate_connection(
     operator consults to find out whether the grant is real.
     """
     _set_correlation_header(response, request)
-    _require_visible_connection(request, database, connection_id)
+    connection = _require_visible_connection(request, database, connection_id)
+    transport = _live_transport_for(connection)
+    if transport is not None:
+        # LIVE (Fable 5.1): what the grant ACTUALLY carries against what the
+        # inventory requires, per module, plus one real read per readable
+        # module so "granted" is proven by an answer, not by a token claim.
+        from ..integration import erp as _erp
+        from ..integration.erp import SCOPE_EVIDENCE
+        adapter = _erp.ErpAdapter(organization_id=str(connection["organization_id"]),
+                                  transport=transport)
+        granted = set(transport.granted_scopes)
+        required = sorted({e.scope for e in SCOPE_EVIDENCE})
+        # One collection read per module that HAS a collection. Purchase
+        # receives have none (erp.py: receives_for_po only) and custom modules
+        # are not probed blind; both are reported from the grant alone.
+        probes = {"ERP.settings.READ": "/organizations", "ERP.contacts.READ": "/contacts",
+                  "ERP.purchaseorders.ALL": "/purchaseorders", "ERP.bills.READ": "/bills"}
+        purpose = {e.scope: e.purpose for e in SCOPE_EVIDENCE}
+        results = []
+        for scope in required:
+            module = scope.split(".")[1]
+            # `granted` is the scope itself (or the module's ALL, which
+            # contains it). `readable` is weaker: the module's READ satisfies
+            # a GET, which is all a read-only credential is meant to do.
+            held = scope in granted or f"ERP.{module}.ALL" in granted
+            readable = held or f"ERP.{module}.READ" in granted
+            path = probes.get(scope)
+            entry = {"scope": scope, "module": module, "granted": held, "readable": readable,
+                     "probe": None, "endpoint": path, "http_method": "GET" if path else None,
+                     "why": purpose.get(scope),
+                     # scope-validation.js: PASS / FAIL / NOT AVAILABLE / NOT RUN / MISSING
+                     "result": ("MISSING" if not readable
+                                else "NOT RUN" if path is None else "NOT RUN"),
+                     "error_code": None, "error_message": None}
+            if path is None and readable:
+                entry["result"] = "NOT AVAILABLE" if module == "purchasereceives" else "NOT RUN"
+                entry["error_message"] = (
+                    "Zoho ERP publishes no receives collection; receives are read per "
+                    "purchase order (erp.py receives_for_po)." if module == "purchasereceives"
+                    else "Custom modules are not probed blind: none is configured for this "
+                         "integration yet.")
+            if readable and path:
+                try:
+                    body = transport.request(method="GET", base_url=adapter.base_url("IN"),
+                                             path=path, scope=scope,
+                                             params={"organization_id": str(connection["organization_id"]),
+                                                     "per_page": 1})
+                    entry["probe"] = {"path": path, "answered": True,
+                                      "rows": len(next((v for k, v in body.items()
+                                                        if isinstance(v, list)), []))}
+                    entry["result"] = "PASS"
+                except Exception as exc:  # noqa: BLE001
+                    entry["probe"] = {"path": path, "answered": False,
+                                      "error": type(exc).__name__ + ": " + str(exc)[:200]}
+                    entry["result"] = "FAIL"
+                    entry["error_code"] = type(exc).__name__
+                    entry["error_message"] = str(exc)[:200]
+            results.append(entry)
+        missing = [r["scope"] for r in results if not r["granted"]]
+        unreadable = [r["scope"] for r in results if not r["readable"]]
+        return {
+            "connection_id": connection_id, "mode": connection.get("mode"),
+            "verified": True, "granted_scopes": sorted(granted),
+            "results": results, "missing": missing, "unreadable": unreadable,
+            "read_complete": not unreadable,
+            "note": ("The .ALL scopes are not granted on this read-only credential by design "
+                     "(their READ halves are); they are listed as missing, not as faults, and "
+                     "become faults only when writes are authorised."
+                     if missing and not unreadable else None),
+            "calls_made": transport.describe()["calls_made"],
+        }
     raise _unavailable(
         "SCOPE_VALIDATION_UNAVAILABLE",
         "a live authorised Zoho tenant: validation calls each module and "
@@ -879,12 +1037,14 @@ def list_scopes(
             f"the scope inventory for product {product!r}: the adapter module "
             f"no longer exports it.") from exc
 
+    transport = _live_transport_for(connection)
+    granted_live = sorted(transport.granted_scopes) if transport is not None else None
     return {
         "connection_id": connection_id,
         "product": product,
         "required": required,
-        "granted": None,
-        "granted_unavailable_reason": (
+        "granted": granted_live,
+        "granted_unavailable_reason": (None if granted_live is not None else
             "What a credential has actually been granted is a property of a "
             "live token. This build holds no token, so granted scopes are "
             "unknown rather than empty."),
@@ -975,12 +1135,46 @@ def get_health(
              "rewound_at": _iso(r[5]), "rewind_reason": r[6]}
             for r in watermarks
         ],
-        "token": {
-            "state": "UNKNOWN",
-            "reason": "This schema stores no access- or refresh-token expiry, "
-                      "so token health is unknown rather than healthy.",
-        },
+        "token": _token_health(connection),
     }
+
+
+def _token_health(connection: dict) -> dict[str, Any]:
+    """Token health: proven by a mint on a LIVE ERP connection, UNKNOWN otherwise.
+
+    Fable 5.1 (2026-09-12). The schema still stores no expiry; on a live
+    connection the answer comes from the transport minting an access token
+    from the platform-held refresh token and reporting seconds left -- the
+    token itself never appears. Any failure is reported as a state with the
+    transport's own sentence, never as healthy.
+    """
+    try:
+        transport = _live_transport_for(connection)
+    except HTTPException as exc:
+        detail = exc.detail if isinstance(exc.detail, dict) else {"detail": str(exc.detail)}
+        return {"state": "REFUSED", "refresh_token_present": False,
+                "reason": f"IntegrationError: {detail.get('detail')}"[:300]}
+    if transport is None:
+        return {"state": "UNKNOWN",
+                "reason": "This schema stores no access- or refresh-token expiry, "
+                          "so token health is unknown rather than healthy."}
+    try:
+        transport._bearer()
+    except Exception as exc:  # noqa: BLE001 - the state carries the sentence
+        return {"state": "REFUSED", "refresh_token_present": True,
+                "reason": f"{type(exc).__name__}: {str(exc)[:300]}"}
+    facts = transport.describe()
+    now = datetime.now(timezone.utc)
+    left = int(facts["token_seconds_left"] or 0)
+    return {"state": "MINTED", "reason": "An access token was minted from the platform-held "
+                                          "refresh token; the token is not shown.",
+            "seconds_left": left, "api_domain": facts["api_domain"],
+            "granted_scopes": facts["granted_scopes"],
+            # health-dashboard.js reads these three; the values are expiry
+            # facts, never the token (REQ-INT-024).
+            "access_token_expires_at": (now + timedelta(seconds=left)).isoformat(),
+            "token_last_refreshed": now.isoformat(),
+            "refresh_token_present": True}
 
 
 # ===================================================================== events

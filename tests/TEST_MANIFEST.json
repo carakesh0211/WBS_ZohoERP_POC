@@ -3872,6 +3872,56 @@
         "body_sha": "7efe5e4a071a1ce2"
       }
     },
+    "test_integrations_live_routes_fable51.py": {
+      "test_a_non_live_connection_keeps_every_refusal": {
+        "assertions": 4,
+        "body_sha": "ca652f4799e45065"
+      },
+      "test_a_live_books_connection_gets_no_transport": {
+        "assertions": 3,
+        "body_sha": "87c49d61d3e1babb"
+      },
+      "test_organisations_names_only_the_pinned_one_and_counts_the_rest": {
+        "assertions": 9,
+        "body_sha": "d95551d4887ee3f6"
+      },
+      "test_organisations_reports_a_pinned_org_the_credential_cannot_see": {
+        "assertions": 6,
+        "body_sha": "ab36834a089f115c"
+      },
+      "test_a_tenant_error_is_a_coded_502_without_the_token": {
+        "assertions": 2,
+        "body_sha": "cebf5b7a4c3c4838"
+      },
+      "test_a_transport_refusal_is_a_coded_503": {
+        "assertions": 3,
+        "body_sha": "fc559322f03027f7"
+      },
+      "test_validate_reports_the_grant_and_proves_each_readable_module": {
+        "assertions": 22,
+        "body_sha": "b4d96780bf332c89"
+      },
+      "test_validate_reports_a_module_that_refuses_without_failing_the_whole_run": {
+        "assertions": 5,
+        "body_sha": "6e5c4ff453633603"
+      },
+      "test_scopes_carries_the_granted_list_on_a_live_connection": {
+        "assertions": 4,
+        "body_sha": "f0b7ee969db245d2"
+      },
+      "test_token_health_is_a_mint_and_never_the_token": {
+        "assertions": 6,
+        "body_sha": "35f7ad073bc2ba1a"
+      },
+      "test_token_health_stays_unknown_off_live": {
+        "assertions": 1,
+        "body_sha": "976c9f76aa033ab8"
+      },
+      "test_token_health_reports_a_refused_mint_in_the_transports_words": {
+        "assertions": 2,
+        "body_sha": "9cf3ef904a47ec7b"
+      }
+    },
     "test_known_defects.py": {
       "test_def_01_a_legacy_v1_database_can_be_upgraded": {
         "assertions": 5,
@@ -12758,6 +12808,7 @@
     "test_integration_sweeps.py": 40,
     "test_integration_throttle.py": 76,
     "test_integrations_api_guard.py": 51,
+    "test_integrations_live_routes_fable51.py": 12,
     "test_known_defects.py": 5,
     "test_ledger_cell_writers.py": 16,
     "test_live_transport_fable51.py": 17,
@@ -12891,6 +12942,7 @@
     "test_integration_sweeps.py": 110,
     "test_integration_throttle.py": 244,
     "test_integrations_api_guard.py": 114,
+    "test_integrations_live_routes_fable51.py": 67,
     "test_known_defects.py": 13,
     "test_ledger_cell_writers.py": 32,
     "test_live_transport_fable51.py": 40,

@@ -652,6 +652,9 @@ POST_BASELINE_FILES = {
     "test_po_emission_currency_fable51.py",
     "test_live_transport_fable51.py",
     "test_erp_list_row_shape_fable51.py",
+    # A LIVE_READ ERP connection answers organisations/validate/scopes/health
+    # from the tenant through the live transport; MOCK keeps every refusal.
+    "test_integrations_live_routes_fable51.py",
     "test_pg_po_currency_fable51.py",
 
     # --- Fable 5.1: period reopen (M-3). Post-baseline like every wave file: the 220 counts the
