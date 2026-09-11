@@ -78,10 +78,13 @@ __all__ = [
     "ErpAdapter",
     "PO_STATE_PATHS",
     "PRODUCT",
+    "ORGANIZATIONS_PATH",
+    "ORGANIZATIONS_SCOPE",
     "SCOPE_EVIDENCE",
     "SERVICE",
     "SERVICE_PATH",
     "SORT_COLUMNS",
+    "VALIDATION_PROBES",
 ]
 
 PRODUCT = "ERP"
@@ -153,6 +156,23 @@ PO_STATE_PATHS: Mapping[str, str] = {
 #: the one order carrying the value. The parameter IS the api_name; the value
 #: is the bare key.
 DEDUPE_SEARCH_PARAM = DEDUPE_CUSTOM_FIELD
+
+#: The organisation-discovery call (SCR-33): the one call every other call
+#: depends on. Fable 5.1 (2026-09-12), verified live against DEMO WBS.
+ORGANIZATIONS_PATH = "/organizations"
+ORGANIZATIONS_SCOPE = "ERP.settings.READ"
+
+#: SCR-34 validation probes: one one-row collection read per required scope
+#: whose module HAS a collection. Purchase receives have none (receives are
+#: read per purchase order -- see ``receives_for_po``) and custom modules are
+#: not probed blind; both are absent here on purpose and the validate route
+#: reports them from the grant alone.
+VALIDATION_PROBES: Mapping[str, str] = {
+    "ERP.settings.READ": ORGANIZATIONS_PATH,
+    "ERP.contacts.READ": "/contacts",
+    "ERP.purchaseorders.ALL": "/purchaseorders",
+    "ERP.bills.READ": "/bills",
+}
 
 #: What each list endpoint will actually accept as ``sort_column``.
 #: ``last_modified_time`` is absent from bills and purchase orders on purpose:

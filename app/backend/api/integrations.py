@@ -825,8 +825,8 @@ def list_organisations(
                                   transport=transport)
         try:
             body = transport.request(method="GET", base_url=adapter.base_url("IN"),
-                                     path="/organizations", scope="ERP.settings.READ",
-                                     params={})
+                                     path=_erp.ORGANIZATIONS_PATH,
+                                     scope=_erp.ORGANIZATIONS_SCOPE, params={})
         except Exception as exc:  # noqa: BLE001 - mapped to a coded problem or re-raised
             raise _live_error_to_http(exc, connection_id=connection_id)
         rows = body.get("organizations") or []
@@ -843,8 +843,8 @@ def list_organisations(
             "pinned_organisation": shown,
             "pinned_organisation_visible": bool(pinned),
             "other_organisations_visible": max(0, len(rows) - len(pinned)),
-            "source": {"product": "ERP", "api_domain": transport.api_domain,
-                       "endpoint": "/organizations", "mode": connection.get("mode")},
+            "source": {"product": _erp.PRODUCT, "api_domain": transport.api_domain,
+                       "endpoint": _erp.ORGANIZATIONS_PATH, "mode": connection.get("mode")},
         }
     raise _unavailable(
         "ORGANISATION_DISCOVERY_UNAVAILABLE",
@@ -915,20 +915,18 @@ def validate_connection(
                                   transport=transport)
         granted = set(transport.granted_scopes)
         required = sorted({e.scope for e in SCOPE_EVIDENCE})
-        # One collection read per module that HAS a collection. Purchase
-        # receives have none (erp.py: receives_for_po only) and custom modules
-        # are not probed blind; both are reported from the grant alone.
-        probes = {"ERP.settings.READ": "/organizations", "ERP.contacts.READ": "/contacts",
-                  "ERP.purchaseorders.ALL": "/purchaseorders", "ERP.bills.READ": "/bills"}
+        # One collection read per module that HAS a collection; which modules
+        # those are is the adapter's fact (erp.VALIDATION_PROBES), not ours.
+        probes = dict(_erp.VALIDATION_PROBES)
         purpose = {e.scope: e.purpose for e in SCOPE_EVIDENCE}
         results = []
         for scope in required:
-            module = scope.split(".")[1]
+            product, module = scope.split(".")[0], scope.split(".")[1]
             # `granted` is the scope itself (or the module's ALL, which
             # contains it). `readable` is weaker: the module's READ satisfies
             # a GET, which is all a read-only credential is meant to do.
-            held = scope in granted or f"ERP.{module}.ALL" in granted
-            readable = held or f"ERP.{module}.READ" in granted
+            held = scope in granted or f"{product}.{module}.ALL" in granted
+            readable = held or f"{product}.{module}.READ" in granted
             path = probes.get(scope)
             entry = {"scope": scope, "module": module, "granted": held, "readable": readable,
                      "probe": None, "endpoint": path, "http_method": "GET" if path else None,
