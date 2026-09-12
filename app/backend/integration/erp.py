@@ -630,6 +630,38 @@ class ErpAdapter:
     # There is deliberately no list_receives() here. See the module docstring
     # and adapter.acquire_receives: on ERP the absence is the capability.
 
+    def po_receive_refs(self, po_external_id: str) -> tuple[str, ...]:
+        """The receive ids named on one PO's detail -- half of what
+        ``receives_for_po`` spends, split out so a caller can charge for it
+        separately from the per-receive GETs that follow.
+
+        **Added after the freeze.** A budget consulted BEFORE a request (see
+        ``JobContext.charge``) has no way to know, before this call returns,
+        how many receive-detail GETs a PO's receipt count will cost. Folding
+        both levels into one method -- as ``receives_for_po`` did and still
+        does, for existing callers -- forces the caller to either charge 1 for
+        the whole walk (under-counting by ``len(receives)``, the finding this
+        method exists to close) or guess a count before asking. Splitting the
+        PO-detail GET out lets ``SweepPoAnchored`` charge 1 here, then 1 per
+        receive id returned, each before its own GET. See
+        ``tests/ADAPTATIONS.md``.
+        """
+        po = self.get_purchase_order(po_external_id)
+        return tuple(po.receive_external_ids)
+
+    def get_receive(self, receive_external_id: str, *, fallback_po: str) -> ReceiveDTO:
+        """One receive, fetched by id -- the other half of what
+        ``receives_for_po`` spends per receive it names.
+
+        **Added after the freeze**, alongside ``po_receive_refs``, for the
+        same reason: see its docstring and ``tests/ADAPTATIONS.md``.
+        """
+        path = PATH_PURCHASE_RECEIVE.format(external_id=receive_external_id)
+        body = self._get(path, "ERP.purchasereceives.READ")
+        return _receive(
+            body.get("purchasereceive") or {}, self._source(path),
+            fallback_po=fallback_po)
+
     def receives_for_po(self, po_external_id: str) -> list[ReceiveDTO]:
         """PO-anchored discovery -- the sole GRN mechanism on ERP (§11.4).
 
@@ -639,16 +671,17 @@ class ErpAdapter:
         ``1 + len(receives)`` calls per open PO, against 2,000 calls/day on ERP
         Standard -- which is why §11.4 says GRN sync frequency may have to be
         negotiated down with the client rather than engineered around.
+
+        Built from :meth:`po_receive_refs` and :meth:`get_receive` -- the same
+        two GETs, in the same order, so every existing caller of this method
+        keeps exactly the behaviour and the cost it always had. A caller that
+        needs to charge a polling budget per request rather than per PO should
+        call the two split methods directly instead; see
+        ``SweepPoAnchored.resume`` in ``sweeps.py``.
         """
-        po = self.get_purchase_order(po_external_id)
-        out: list[ReceiveDTO] = []
-        for receive_id in po.receive_external_ids:
-            path = PATH_PURCHASE_RECEIVE.format(external_id=receive_id)
-            body = self._get(path, "ERP.purchasereceives.READ")
-            out.append(_receive(
-                body.get("purchasereceive") or {}, self._source(path),
-                fallback_po=po_external_id))
-        return out
+        receive_ids = self.po_receive_refs(po_external_id)
+        return [self.get_receive(receive_id, fallback_po=po_external_id)
+                for receive_id in receive_ids]
 
 
 # ================================================================== mapping

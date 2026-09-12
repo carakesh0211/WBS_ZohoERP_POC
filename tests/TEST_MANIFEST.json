@@ -4171,11 +4171,11 @@
       },
       "test_live_a_live_read_connection_sweeps_the_tenant_into_the_inbox": {
         "assertions": 56,
-        "body_sha": "509c772ae7eae716"
+        "body_sha": "93e3fb8f90cd519d"
       },
       "test_live_re_running_the_sweep_creates_nothing_twice": {
         "assertions": 18,
-        "body_sha": "bf30468b397bbf5a"
+        "body_sha": "b59b9efd15d0272c"
       },
       "test_live_an_exhausted_polling_budget_checkpoints_and_holds_the_watermark": {
         "assertions": 13,

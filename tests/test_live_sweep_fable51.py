@@ -640,7 +640,9 @@ def test_live_a_live_read_connection_sweeps_the_tenant_into_the_inbox(
     assert modules["purchaseorders"]["inbox_created"] == 1
     assert modules["bills"]["inbox_created"] == 1
     assert modules["receives"]["inbox_created"] == 1
-    assert modules["receives"]["calls"] == 1, "one call charged per open PO"
+    assert modules["receives"]["calls"] == 2, (
+        "one call charged for the open PO's detail, one more for its "
+        "single receive")
     assert modules["receives"]["checkpoint"]["last_po_id_swept"] == "PO-LS-1"
     assert modules["receives"]["checkpoint"]["sole_grn_mechanism"] is True
     assert result["receives_strategy"] == "PO_ANCHORED"
@@ -648,17 +650,17 @@ def test_live_a_live_read_connection_sweeps_the_tenant_into_the_inbox(
     assert result["transport"] == {"product": "ERP", "fake": True,
                                    "calls_made": len(fake.requests)}
     assert result["budget"]["asked"] is True and result["budget"]["refusals"] == 0
-    # REPORTED, NOT SMOOTHED OVER. Seven requests left the machine and SIX
-    # were charged: `SweepPoAnchored` asks the budget for one call per open
-    # PO, but `ErpAdapter.receives_for_po` spends `1 + len(receives)` -- the
-    # PO detail plus one fetch per receive it names -- so the POLLING lane's
-    # daily figure under-counts by one per receive. The frozen C1 seam gives
-    # the sweep no way to see the receive count before the detail call. A
-    # finding for stream 1 / stream 4; the transport's own sliding-minute
-    # ceiling counts every request regardless.
+    # FIXED, NOT SMOOTHED OVER. Seven requests left the machine and all SEVEN
+    # are charged: `SweepPoAnchored` now asks the budget once for the PO
+    # detail GET and once more per receive id that detail names, each charge
+    # immediately before the GET it pays for (`erp.ErpAdapter.po_receive_refs`
+    # / `get_receive` -- see `tests/ADAPTATIONS.md`). This used to under-count
+    # the POLLING lane's daily figure by one per receive; requests made and
+    # calls charged now agree exactly. The transport's own sliding-minute
+    # ceiling counted every request regardless, before and after.
     assert len(fake.requests) == 7
-    assert result["budget"]["windows"]["DAY"]["used"] == 6
-    assert result["budget"]["windows"]["MINUTE"]["used"] == 6
+    assert result["budget"]["windows"]["DAY"]["used"] == 7
+    assert result["budget"]["windows"]["MINUTE"]["used"] == 7
     assert result["skipped_for_deadline"] == [] and result["dead_jobs"] == {}
 
     # ---- the inbox, per module, verbatim payloads with the raw status
@@ -768,10 +770,11 @@ def test_live_re_running_the_sweep_creates_nothing_twice(
     assert second["modules"]["contacts"]["inbox_duplicates"] == 3
     assert second["modules"]["bills"]["inbox_duplicates"] == 1
     # The second run found the walk off the end of the population: it
-    # reports the cycle and spends no call; the third re-walks the one PO.
+    # reports the cycle and spends no call; the third re-walks the one PO,
+    # charging once for its detail and once more for its single receive.
     assert second["modules"]["receives"]["calls"] == 0
     assert second["modules"]["receives"]["checkpoint"]["cycle"] == 1
-    assert third["modules"]["receives"]["calls"] == 1
+    assert third["modules"]["receives"]["calls"] == 2
     assert third["modules"]["receives"]["inbox_duplicates"] == 1
 
     assert _count(con, "SELECT count(*) FROM grn_line") == 1

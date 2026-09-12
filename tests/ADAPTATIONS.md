@@ -3160,3 +3160,51 @@ which is the behaviour a fail-closed control requires.
 **Approved by:** the product-owner instruction of 2026-09-09 authorising Wave 8
 security and audit closure, which names "separation of duties" among the items
 to prove. No individual approver is fabricated.
+
+---
+
+## 2026-09-12 — `test_live_a_live_read_connection_sweeps_the_tenant_into_the_inbox`
+and `test_live_re_running_the_sweep_creates_nothing_twice`, assertion values
+changed (P1, independent review 2026-09-12, item 1)
+
+**Change.** `SweepPoAnchored.resume` in `sweeps.py` used to charge the
+POLLING budget exactly 1 call per open PO before calling
+`adapter.receives_for_po(...)`, while `ErpAdapter.receives_for_po` actually
+spends `1 + len(receives)` requests -- one PO-detail GET, then one GET per
+receive it names. `ErpAdapter` now exposes the two halves of that walk
+separately, `po_receive_refs` and `get_receive` (both additive;
+`receives_for_po` is unchanged for every existing caller, now built from the
+two split methods), and `SweepPoAnchored` charges 1 for the PO-detail GET and
+1 more per receive id, each immediately before the GET it pays for.
+Books/Inventory has neither split method, so its `receives_for_po` path -- a
+different cost model entirely, a bounded list-and-filter scan -- is
+untouched; `SweepPoAnchored` falls back to the old one-charge-per-PO
+behaviour there via a `getattr` check.
+
+Two live-PostgreSQL test functions asserted the OLD, incorrect figure:
+
+* `test_live_a_live_read_connection_sweeps_the_tenant_into_the_inbox` asserted
+  `modules["receives"]["calls"] == 1` against seven actual requests (one PO
+  detail GET, one receive GET, plus five master-data/PO/bill requests) and
+  `result["budget"]["windows"]["DAY"]["used"] == 6` /
+  `MINUTE`["used"] == 6`. These are now `2`, `7` and `7` -- the fix's whole
+  point is that requests made and calls charged agree exactly, and the
+  test's own comment ("REPORTED, NOT SMOOTHED OVER") is updated to say so.
+* `test_live_re_running_the_sweep_creates_nothing_twice`'s third run
+  re-walks the one seeded PO after the cycle wraps; its
+  `modules["receives"]["calls"]` assertion moves from `1` to `2` for the
+  same reason.
+
+**Not a weakening.** Every assertion in both functions still runs, with the
+same count of `assert` statements in each; only the two numeric literals that
+were themselves the pinned defect have changed, to the value the fix
+produces. No case, tolerance or coverage was removed. `ErpAdapter`'s two new
+methods are additive per the pattern `po_dedupe_search` and `list_items` /
+`list_contacts` established above: existing constructions and existing
+callers of `receives_for_po` are unaffected, and `C1_METHODS` in
+`tests/test_integration_adapter_contract.py` is untouched because neither
+method is required on Books/Inventory.
+
+**Approved by:** the independent review of 2026-09-12, item 1, which is the
+instruction authorising this fix and names the exact discrepancy (7 requests
+made, 6 charged) this entry closes.

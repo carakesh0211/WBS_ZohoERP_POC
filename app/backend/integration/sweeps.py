@@ -923,8 +923,15 @@ class PollPurchaseOrders(WindowedPoll):
 class SweepPoAnchored:
     """`sweep_po_anchored` — on ERP, the ONLY way a receive is ever seen.
 
-    Walks locally-open POs 50 at a time (plan §2.2), spending exactly one
-    adapter call per PO, and reads the receive references off each PO's detail.
+    Walks locally-open POs 50 at a time (plan §2.2) and reads the receive
+    references off each PO's detail. Where the adapter exposes the split
+    `po_receive_refs` / `get_receive` pair (see `erp.ErpAdapter`, added to
+    close a budget under-count — `tests/ADAPTATIONS.md`), the budget is
+    charged once for the PO-detail GET and once more per receive id, each
+    charge immediately before the GET it pays for, so requests made and calls
+    charged agree exactly. An adapter without that pair (Books/Inventory,
+    where this walk is a completeness sweep rather than the sole mechanism)
+    keeps the one-call-per-PO behaviour through `receives_for_po` unchanged.
     The checkpoint is `last_po_id_swept`; when the walk runs off the end it
     wraps to the beginning and increments `cycle`, because a **deleted receive
     arrives as an absence** and only a re-read of the PO detects it. A sweep
@@ -991,14 +998,31 @@ class SweepPoAnchored:
             return
 
         for po in batch:
-            # Cost scales with OPEN PO COUNT, not receive volume. This is the
-            # binding constraint on ERP Standard's 2,000 calls/day, so the
-            # budget is asked before every single PO and a refusal stops the
-            # walk exactly where it is.
+            # Cost scales with OPEN PO COUNT plus receive volume: the PO
+            # detail is one GET and each receive it names is one more (see
+            # `erp.ErpAdapter.receives_for_po`). Charged before the requests
+            # it pays for, never after (`JobContext.charge`), and a refusal
+            # stops the walk exactly where it is -- mid-PO, if it comes to
+            # that, so the PO is retried whole next time rather than
+            # checkpointed half-read.
             if not ctx.charge(1):
                 return
-            receives = _adapter_call(self.adapter, "receives_for_po")(
-                po_external_id=po.external_id)
+            po_receive_refs = getattr(self.adapter, "po_receive_refs", None)
+            get_receive = getattr(self.adapter, "get_receive", None)
+            if po_receive_refs is not None and get_receive is not None:
+                receive_ids = po_receive_refs(po_external_id=po.external_id)
+                receives = []
+                for receive_id in receive_ids:
+                    if not ctx.charge(1):
+                        return
+                    receives.append(get_receive(
+                        receive_id, fallback_po=po.external_id))
+            else:
+                # No split surface on this adapter (Books/Inventory, where
+                # this walk is a completeness sweep, not the sole mechanism):
+                # unchanged one-charge-per-PO behaviour.
+                receives = _adapter_call(self.adapter, "receives_for_po")(
+                    po_external_id=po.external_id)
             unattributed = 0
             attributed = 0
             for receive in receives or []:
