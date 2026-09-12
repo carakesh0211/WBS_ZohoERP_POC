@@ -1356,7 +1356,14 @@ class SweepBillDetail:
         # so two bills dated the same day at two dealt rates must each cite
         # their own row rather than the second being refused as a conflict
         # with the first.
-        stated_rate = record.exchange_rate
+        # VERIFIED LIVE 2026-09-12 (bill 3912780000000117004, INR): Zoho ERP
+        # states `exchange_rate: 1` on every base-currency document. A base-
+        # currency document IS the identity translation and carries no rate
+        # (023's ck_bill_fx_provenance; mirror_bill's FX_IDENTITY_TRANSLATION),
+        # so the tenant's "1" is dropped here, not forwarded as provenance --
+        # the first live bill-detail sweep failed on exactly that.
+        base = str(record.currency_code or BASE_CURRENCY).strip().upper() == BASE_CURRENCY
+        stated_rate = None if base else record.exchange_rate
         rate_source = (f"{self.external_source} bill {record.external_id}"
                        if stated_rate is not None else None)
         try:

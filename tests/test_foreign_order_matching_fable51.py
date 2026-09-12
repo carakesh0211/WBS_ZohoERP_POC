@@ -429,3 +429,21 @@ def test_a_foreign_unsanctioned_order_names_its_face_value_with_its_currency():
     assert "not paise" in raised["PO-EXT-0006"]["detail"]
     assert raised["PO-EXT-0001"]["source_paise"] == 562_000_000
     assert "Face value" not in raised["PO-EXT-0001"]["detail"]
+
+
+def test_an_inr_bill_stating_the_identity_rate_reaches_the_ledger_with_no_rate():
+    """VERIFIED LIVE 2026-09-12 (DEMO WBS bill 3912780000000117004): Zoho ERP
+    states `exchange_rate: 1` on every base-currency document. That is the
+    identity, not provenance; forwarded as a stated rate it is refused by
+    mirror_bill (FX_IDENTITY_TRANSLATION) and the first live bill-detail sweep
+    failed on it. The sweep now drops the tenant's rate for a base-currency
+    bill and forwards None, so the ledger's identity path applies."""
+    record = bill(1, modified=T0, with_lines=True, total_paise=185_000_000,
+                  currency_code="INR", exchange_rate="1")
+    clock, store, job = _bill_estate(record)
+    run = _run(job, store, clock)
+    assert run.state == jobs.JOB_DONE, run.error
+    assert len(store.mirrored_bills) == 1
+    sent = store.mirrored_bills[0]
+    assert sent["source_currency"] == "INR"
+    assert sent["exchange_rate"] is None and sent["fx_rate_source"] is None

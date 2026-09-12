@@ -2396,6 +2396,10 @@
       "test_a_foreign_unsanctioned_order_names_its_face_value_with_its_currency": {
         "assertions": 5,
         "body_sha": "3f79b04a9b6d2a03"
+      },
+      "test_an_inr_bill_stating_the_identity_rate_reaches_the_ledger_with_no_rate": {
+        "assertions": 4,
+        "body_sha": "066fec64f435abba"
       }
     },
     "test_frontend_budget_setup_registry.py": {
@@ -13330,7 +13334,7 @@
     "test_export_poc.py": 17,
     "test_export_scope.py": 26,
     "test_financial_controls.py": 61,
-    "test_foreign_order_matching_fable51.py": 20,
+    "test_foreign_order_matching_fable51.py": 21,
     "test_frontend_budget_setup_registry.py": 12,
     "test_integration_adapter_contract.py": 72,
     "test_integration_capabilities.py": 20,
@@ -13469,7 +13473,7 @@
     "test_export_poc.py": 32,
     "test_export_scope.py": 69,
     "test_financial_controls.py": 159,
-    "test_foreign_order_matching_fable51.py": 82,
+    "test_foreign_order_matching_fable51.py": 86,
     "test_frontend_budget_setup_registry.py": 21,
     "test_integration_adapter_contract.py": 169,
     "test_integration_capabilities.py": 62,
