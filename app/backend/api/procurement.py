@@ -359,6 +359,12 @@ class _EmitIn(BaseModel):
     #: against and invoices separately. That is a procurement PROCESS change
     #: and the plan refuses to proceed until it is acknowledged here.
     acknowledge_process_change: bool = False
+    #: `{po_line_id: <tenant item id>}` -- the EXISTING tenant item each line
+    #: is for, named by the operator like the vendor above. A line absent
+    #: here is emitted as a description-only line; a key that is not a line
+    #: of this order is refused (422 UNKNOWN_PO_LINE). Nothing is created in
+    #: the tenant's item master from here.
+    item_external_ids: dict[str, str] = Field(default_factory=dict)
 
 
 # ========================================================= purchase requests
@@ -534,7 +540,8 @@ def post_purchase_order_emit(
                 vendor_external_id=body.vendor_external_id,
                 document_date=body.document_date, actor=_actor(request),
                 acknowledged=body.acknowledge_process_change,
-                correlation_id=_correlation_id(request))
+                correlation_id=_correlation_id(request),
+                item_external_ids=body.item_external_ids)
     except procurement_svc.ProcurementError as exc:
         raise _service_error_to_http(exc)
     except store_svc.IntegrationStoreError as exc:

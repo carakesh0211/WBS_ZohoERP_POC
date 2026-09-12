@@ -440,6 +440,15 @@ class ErpAdapter:
         return _purchase_order(
             body.get("purchaseorder") or {}, self._source(path), hydrated=True)
 
+    def line_custom_field_names(self) -> tuple[str, ...]:
+        """The line-level custom fields an emission may carry for THIS tenant:
+        the verified names when `line_level_custom_fields` resolved True,
+        nothing otherwise. An emission never invents a field the tenant has
+        not been seen to have."""
+        if not self.line_level_custom_fields:
+            return ()
+        return tuple(VERIFIED_LINE_CUSTOM_FIELDS.get(str(self.organization_id), ()))
+
     def create_purchase_order(self, po: PurchaseOrderDTO, dedupe_key: str) -> str:
         """Emit a PO, carrying our synthesised idempotency key.
 
@@ -457,10 +466,13 @@ class ErpAdapter:
                 "A purchase order may not be emitted without a dedupe_key: "
                 "Zoho offers no idempotency header, so this field is the only "
                 "thing standing between a retry and a duplicate commitment.")
-        body = _emission_body(po, dedupe_key)
+        body = _emission_body(po, dedupe_key,
+                              line_custom_fields=self.line_custom_field_names())
         response = self.transport.request(
             method="POST", base_url=self.base, path=PATH_PURCHASE_ORDERS,
-            scope="ERP.purchaseorders.ALL",
+            # The verb's own scope, so the credential can be granted the
+            # exact minimum a create needs (the transport also accepts ALL).
+            scope="ERP.purchaseorders.CREATE",
             params={"organization_id": self.organization_id}, body=body)
         created = (response.get("purchaseorder") or {}).get("purchaseorder_id")
         if not created:
@@ -597,11 +609,12 @@ class ErpAdapter:
             raise IntegrationError(
                 "update_purchase_order() requires the dedupe_key, so an update "
                 "cannot strip the field the retry path depends on.")
-        body = _emission_body(payload, dedupe_key)
+        body = _emission_body(payload, dedupe_key,
+                              line_custom_fields=self.line_custom_field_names())
         path = PATH_PURCHASE_ORDER_UPDATE.format(external_id=external_id)
         response = self.transport.request(
             method="PUT", base_url=self.base, path=path,
-            scope="ERP.purchaseorders.ALL",
+            scope="ERP.purchaseorders.UPDATE",
             params={"organization_id": self.organization_id}, body=body)
         updated = (response.get("purchaseorder") or {}).get("purchaseorder_id")
         return str(updated or external_id)
@@ -897,24 +910,47 @@ def _contact(row: Mapping[str, Any], source: SourceRef) -> ContactDTO:
     )
 
 
-def _emission_body(po: Any, dedupe_key: str) -> dict[str, Any]:
+#: Line-level custom field -> the `LineDTO.dimensions` key that carries its
+#: value. The plan resolves the WBS element's own `wbs_code` and the budget
+#: head's name at planning time (procurement_services.po_lines), so the wire
+#: carries the same values the adoption path reads back (adoption.CF_WBS_CODE
+#: / CF_BUDGET_HEAD), and a receive or bill against an emitted order resolves
+#: through the same fields as one against an adopted order.
+LINE_CUSTOM_FIELD_DIMENSIONS: Mapping[str, str] = {
+    "cf_wbs_code": "wbs_code", "cf_budget_head": "budget_head"}
+
+
+def _emission_body(po: Any, dedupe_key: str, *,
+                   line_custom_fields: Sequence[str] = ()) -> dict[str, Any]:
     """The wire body for a create or an update, built once.
 
     Shared so a retry that updates cannot drift from the create it is standing
     in for -- if the two built different bodies, an adopted purchase order
     would end up holding different values from the one we thought we sent.
+
+    `reference_number` carries the local order number (the plan's
+    `reference`), so the tenant's own list shows WBS-... beside PO-000nn and a
+    person can find the document without the dedupe key. `line_custom_fields`
+    names the line-level fields THIS tenant is verified to have; nothing is
+    sent for a tenant without them.
     """
-    return {
+    body: dict[str, Any] = {
         "vendor_id": po.vendor_external_id,
         "date": po.document_date.isoformat(),
         "currency_code": po.currency_code,
-        # Rendered at the ORDER'S currency exponent: a JPY line has no
-        # decimals and a KWD line has three. The DTO's amounts are minor
-        # units of `po.currency_code`, and 100 is only right for two of them.
-        "line_items": [_outbound_line(line, minor_exponent=minor_exponent_of(po.currency_code))
-                       for line in po.lines],
-        "custom_fields": [{"api_name": DEDUPE_CUSTOM_FIELD, "value": dedupe_key}],
     }
+    # Rendered at the ORDER'S currency exponent: a JPY line has no decimals
+    # and a KWD line has three. The DTO's amounts are minor units of
+    # `po.currency_code`, and 100 is only right for two of them.
+    exponent = minor_exponent_of(po.currency_code)
+    body["line_items"] = [_outbound_line(line, minor_exponent=exponent,
+                                         custom_fields=line_custom_fields)
+                          for line in po.lines]
+    body["custom_fields"] = [{"api_name": DEDUPE_CUSTOM_FIELD, "value": dedupe_key}]
+    reference = getattr(po, "reference", None)
+    if reference:
+        body["reference_number"] = str(reference)
+    return body
 
 
 def _opt_datetime(value: Any, *, field: str) -> datetime | None:
@@ -1000,14 +1036,34 @@ def render_paise(paise: int, *, minor_exponent: int = CURRENCY_EXPONENT) -> str:
     return f"{sign}{units}.{sub:0{exponent}d}"
 
 
-def _outbound_line(line: LineDTO, *, minor_exponent: int = CURRENCY_EXPONENT) -> dict[str, Any]:
-    """One line of an emitted PO, its rate in the order's own minor units."""
-    return {
-        "item_id": line.item_external_id,
+def _outbound_line(line: LineDTO, *, minor_exponent: int = CURRENCY_EXPONENT,
+                   custom_fields: Sequence[str] = ()) -> dict[str, Any]:
+    """One line of an emitted PO, its rate in the order's own minor units.
+
+    `item_id` is sent only when the plan supplied one (an existing tenant
+    item the operator named at emission): a line with no item is a
+    description-only line, and `"item_id": null` on the wire is a different
+    claim from "no item". The verified line custom fields are sent by
+    `api_name`, the shape a detail read returns them in (VERIFIED LIVE
+    2026-09-12, `item_custom_fields[*].api_name`), and only for the values
+    the plan resolved.
+    """
+    item: dict[str, Any] = {
         "description": line.description,
         "quantity": line.quantity,
         "rate": render_paise(line.unit_price_paise, minor_exponent=minor_exponent),
     }
+    if line.item_external_id:
+        item["item_id"] = str(line.item_external_id)
+    fields = []
+    for api_name in custom_fields:
+        key = LINE_CUSTOM_FIELD_DIMENSIONS.get(api_name)
+        value = line.dimensions.get(key) if key else None
+        if value not in (None, ""):
+            fields.append({"api_name": api_name, "value": str(value)})
+    if fields:
+        item["item_custom_fields"] = fields
+    return item
 
 
 def _custom_field(row: Mapping[str, Any], api_name: str) -> str | None:

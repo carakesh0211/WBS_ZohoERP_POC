@@ -710,6 +710,16 @@ POST_BASELINE_FILES = {
     # shared helper, wrong organisation refused, concurrent adoption blocked.
     # Post-baseline like every wave file.
     "test_adoption_fable51.py",
+    # Fable 5.1, 2026-09-12 (the owner's controlled outbound test):
+    # application-originated emission. The transport's verb-scope rule
+    # (CREATE satisfies a POST, never a READ), the wire body (reference,
+    # item id, line custom fields by api_name), the payload round trip, the
+    # /mode and /drain-outbox refusals and an honest /api/health -- and, on
+    # PostgreSQL, the plan carrying item ids into the payload, the drain
+    # sending once and stamping PO_EMITTED, the identical retry sending
+    # nothing, and the health summary counting through forced RLS.
+    "test_outbound_live_write_fable51.py",
+    "test_pg_outbound_drain_fable51.py",
 }
 
 

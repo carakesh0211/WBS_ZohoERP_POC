@@ -2574,22 +2574,29 @@ def po_lines(session: Session, po_id: str) -> list[dict[str, Any]]:
         SELECT l.po_line_id, l.line_no, l.wbs_id, l.budget_head_id,
                l.description, l.quantity, l.rate_paise, l.amount_paise,
                l.tax_paise, l.non_creditable_tax_paise, l.freight_paise,
-               l.line_external_id, l.source_rate_minor, l.source_amount_minor
+               l.line_external_id, l.source_rate_minor, l.source_amount_minor,
+               w.wbs_code, bh.name
         FROM po_line l
         JOIN project p ON p.project_id = l.project_id
+        LEFT JOIN wbs_element w ON w.wbs_id = l.wbs_id
+        LEFT JOIN budget_head bh ON bh.budget_head_id = l.budget_head_id
         WHERE l.po_id = %(po_id)s AND {scope}
         ORDER BY l.line_no
         """,
         {"po_id": po_id},
         columns=_PROJECT_SCOPE_COLUMNS,
     )
+    # `wbs_code` / `budget_head_name`: what the tenant's line custom fields
+    # carry on emission (erp.LINE_CUSTOM_FIELD_DIMENSIONS) -- the same values
+    # adoption reads back from a tenant-raised order.
     return [
         {"po_line_id": r[0], "line_no": r[1], "wbs_id": r[2],
          "budget_head_id": r[3], "description": r[4], "quantity": r[5],
          "rate_paise": r[6], "amount_paise": r[7], "tax_paise": r[8],
          "non_creditable_tax_paise": r[9], "freight_paise": r[10],
          "line_external_id": r[11], "source_rate_minor": r[12],
-         "source_amount_minor": r[13]}
+         "source_amount_minor": r[13], "wbs_code": r[14],
+         "budget_head_name": r[15]}
         for r in rows
     ]
 
@@ -2674,6 +2681,7 @@ def _write_po(session: Session, *, project_id: str, vendor_name: str,
          "adopted_by": adopted_by, "external_capex_ref": external_capex_ref,
          "actor": actor},
     )
+    written_lines: list[dict[str, Any]] = []
     for line in lines:
         amount = int(line["amount_paise"])
         quantity = line["quantity"]
@@ -2732,6 +2740,11 @@ def _write_po(session: Session, *, project_id: str, vendor_name: str,
             # a truncated integer -- which is exactly the leak `_as_paise`
             # exists to stop, performed by the guard itself.
             rate = _as_paise(rate, field=f"line {line['line_no']} rate_paise")
+        line_id = _new_id("POL")
+        written_lines.append({"po_line_id": line_id, "line_no": line["line_no"],
+                              "wbs_id": line["wbs_id"],
+                              "budget_head_id": line["budget_head_id"],
+                              "amount_paise": amount})
         session.execute(
             """
             INSERT INTO po_line (
@@ -2744,7 +2757,7 @@ def _write_po(session: Session, *, project_id: str, vendor_name: str,
                     %(amount)s, %(source_rate)s, %(source_amount)s,
                     %(line_external_id)s, %(actor)s, %(actor)s)
             """,
-            {"id": _new_id("POL"), "po_id": po_id, "line_no": line["line_no"],
+            {"id": line_id, "po_id": po_id, "line_no": line["line_no"],
              "project_id": project_id, "wbs_id": line["wbs_id"],
              "head": line["budget_head_id"], "description": line["description"],
              "quantity": quantity, "rate": int(rate),
@@ -2759,6 +2772,10 @@ def _write_po(session: Session, *, project_id: str, vendor_name: str,
 
     return {"po_id": po_id, "po_number": number,
             "amount_paise": sum(int(x["amount_paise"]) for x in lines),
+            # The line ids as written, so a caller that goes on to emit can
+            # name each line's tenant item (`_EmitIn.item_external_ids`)
+            # without a second read.
+            "lines": written_lines,
             "currency": basis.source_currency,
             "exchange_rate": str(basis.rate),
             "fx_rate_id": basis.fx_rate_id,
@@ -3122,7 +3139,8 @@ def convert_pr_to_po(session: Session, *, pr_id: str, actor: str,
 def _emission_lines(po_line_rows: Sequence[Mapping[str, Any]],
                     *, fractional_quantity_policy: str = FRACTIONAL_QUANTITY_DEFAULT,
                     rounded: list[dict[str, Any]] | None = None,
-                    currency_code: str = BASE_CURRENCY
+                    currency_code: str = BASE_CURRENCY,
+                    item_external_ids: Mapping[str, str] | None = None,
                     ) -> tuple[ob.PoLine, ...]:
     """``po_line`` rows as ``outbound.PoLine`` values, or a refusal.
 
@@ -3222,6 +3240,9 @@ def _emission_lines(po_line_rows: Sequence[Mapping[str, Any]],
             quantity=int(as_float),
             unit_price_paise=rate,
             amount_paise=amount,
+            item_external_id=(item_external_ids or {}).get(row["po_line_id"]),
+            wbs_code=row.get("wbs_code") or None,
+            budget_head=row.get("budget_head_name") or None,
         ))
     return tuple(out)
 
@@ -3234,6 +3255,7 @@ def build_emission_plan(*, po_id: str, po_number: str, connection_id: str,
                         fractional_quantity_policy: str = FRACTIONAL_QUANTITY_DEFAULT,
                         rounded: list[dict[str, Any]] | None = None,
                         currency_code: str = BASE_CURRENCY,
+                        item_external_ids: Mapping[str, str] | None = None,
                         ) -> tuple[ob.EmissionPlan, list[dict[str, Any]]]:
     """The whole emission decision, with NO database anywhere in it.
 
@@ -3261,7 +3283,8 @@ def build_emission_plan(*, po_id: str, po_number: str, connection_id: str,
         lines=_emission_lines(
             line_rows,
             fractional_quantity_policy=fractional_quantity_policy,
-            rounded=rounded, currency_code=currency_code),
+            rounded=rounded, currency_code=currency_code,
+            item_external_ids=item_external_ids),
         capabilities=capabilities,
         document_date=document_date, reference=po_number,
         currency_code=currency_code)
@@ -3290,7 +3313,9 @@ def plan_po_emission(session: Session, *, po_id: str, connection_id: str,
                      document_date: date, actor: str,
                      acknowledged: bool = False,
                      correlation_id: str | None = None,
-                     now: datetime | None = None) -> dict[str, Any]:
+                     now: datetime | None = None,
+                     item_external_ids: Mapping[str, str] | None = None,
+                     ) -> dict[str, Any]:
     """Decide the emission shape, then write one outbox row per purchase order.
 
     ONE PURCHASE ORDER PER CONTROL CELL, WHEN D-7 SAYS SO. ``plan_emission``
@@ -3337,6 +3362,21 @@ def plan_po_emission(session: Session, *, po_id: str, connection_id: str,
         _err("NO_LINES",
              f"{header['po_number']} carries no lines and cannot be emitted.",
              422)
+    # The tenant items the operator named, keyed by OUR line id. Every key
+    # must be a line of this order and every value a non-blank id; a mapping
+    # naming a line that is not here is a request for a different order.
+    items = {str(k): str(v).strip() for k, v in (item_external_ids or {}).items()}
+    known = {row["po_line_id"] for row in rows}
+    unknown = sorted(set(items) - known)
+    if unknown:
+        _err("UNKNOWN_PO_LINE",
+             f"item_external_ids names {unknown}, which are not lines of "
+             f"{header['po_number']}. Nothing was planned.", 422)
+    blank = sorted(k for k, v in items.items() if not v)
+    if blank:
+        _err("BLANK_ITEM_EXTERNAL_ID",
+             f"item_external_ids carries an empty id for {blank}. Nothing "
+             f"was planned.", 422)
 
     # C5. REFUSE unless this deployment has explicitly chosen otherwise, and
     # every rounded line is audited below -- so a quantity that reached the
@@ -3350,7 +3390,8 @@ def plan_po_emission(session: Session, *, po_id: str, connection_id: str,
         document_date=document_date, capabilities=adapter.capabilities(),
         line_rows=rows, acknowledged=acknowledged,
         fractional_quantity_policy=fractional_quantity_policy(session),
-        rounded=rounded_lines, currency_code=po_currency)
+        rounded=rounded_lines, currency_code=po_currency,
+        item_external_ids=items or None)
 
     for entry in rounded_lines:
         audit_mod.append(
@@ -3622,6 +3663,72 @@ def failure_from_exception(exc: Exception) -> throttle.Failure:
         # is a caller bug, and reading it as TRANSIENT is the safe answer.
         status_int = None
     return throttle.Failure(status=status_int, code=code, message=str(exc))
+
+
+def record_po_emitted(session: Session, *, po_id: str, external_source: str,
+                      external_id: str, outbox_id: str, dedupe_key: str,
+                      actor: str, created: bool,
+                      correlation_id: str | None = None) -> dict[str, Any]:
+    """The local order learns the id the tenant minted, once, and the audit
+    stream records the emission.
+
+    `external_id` is written only where the order carries none yet (the
+    emission path) or already carries THIS id (a repeated drain reporting the
+    same send); an order that carries a DIFFERENT id is refused with a coded
+    error and left as it was -- two tenant records for one local order is a
+    reconciliation finding, never something this call overwrites. The
+    `PO_EMITTED` audit entry names the outbox row, the dedupe key
+    (`cf_capex_ref`) and whether the tenant created or adopted the record.
+    """
+    external_id = str(external_id or "").strip()
+    if not external_id:
+        _err("BLANK_EXTERNAL_ID",
+             f"The emission of {po_id} reported no external id; nothing was "
+             f"recorded.", 422)
+    rows = repo.query(
+        session,
+        """
+        UPDATE purchase_order po SET
+            external_source = %(source)s, external_id = %(external_id)s,
+            updated_by = %(actor)s, updated_at = now(),
+            version_no = po.version_no + 1
+        FROM project p
+        WHERE p.project_id = po.project_id AND po.po_id = %(po_id)s
+          AND (po.external_id IS NULL
+               OR (po.external_source = %(source)s
+                   AND po.external_id = %(external_id)s))
+          AND {scope}
+        RETURNING po.po_id, po.po_number, po.external_id, po.version_no
+        """,
+        {"source": external_source, "external_id": external_id,
+         "actor": actor, "po_id": po_id},
+        columns=_PROJECT_SCOPE_COLUMNS,
+    )
+    if not rows:
+        current = repo.query_one(
+            session,
+            """
+            SELECT po.external_source, po.external_id FROM purchase_order po
+            JOIN project p ON p.project_id = po.project_id
+            WHERE po.po_id = %(po_id)s AND {scope}
+            """,
+            {"po_id": po_id}, columns=_PROJECT_SCOPE_COLUMNS)
+        if current is None:
+            _err("PO_NOT_FOUND", f"Purchase order {po_id} does not exist.", 404)
+        _err("EXTERNAL_ID_CONFLICT",
+             f"Purchase order {po_id} already carries external id "
+             f"{current[0]}:{current[1]}, not {external_source}:{external_id}. "
+             f"The order was left as it was; reconcile the two tenant records "
+             f"before either is trusted.", 409)
+    row = rows[0]
+    audit_mod.append(
+        session, actor, "PO_EMITTED", "PurchaseOrder", po_id,
+        f"{row[1]} {'created' if created else 'adopted'} in the tenant as "
+        f"{external_source}:{external_id} from outbox row {outbox_id} "
+        f"(cf_capex_ref {dedupe_key}).",
+        correlation_id=correlation_id)
+    return {"po_id": row[0], "po_number": row[1], "external_source": external_source,
+            "external_id": row[2], "version_no": row[3]}
 
 
 def send_purchase_order(session: Session, *, outbox_id: str,

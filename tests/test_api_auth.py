@@ -291,6 +291,16 @@ MUTATING_ROUTES = [
     ("/api/integrations/connections/{connection_id}/adopt-orders", "POST",
      "/api/integrations/connections/CONN-01/adopt-orders", {},
      "connector.manage", "Auditor"),
+    # The two write-side operator routes (2026-09-12): a mode change and an
+    # outbox drain. Same scope, same denied role; the drain is additionally
+    # refused by the outbound gate, which is a dependency AFTER the
+    # permission check, so a denied role never learns the gate's state.
+    ("/api/integrations/connections/{connection_id}/mode", "POST",
+     "/api/integrations/connections/CONN-01/mode", {"mode": "MOCK"},
+     "connector.manage", "Auditor"),
+    ("/api/integrations/connections/{connection_id}/drain-outbox", "POST",
+     "/api/integrations/connections/CONN-01/drain-outbox", {},
+     "connector.manage", "Auditor"),
     ("/api/integrations/dead-letters/{queue}/{row_id}/retry", "POST",
      "/api/integrations/dead-letters/outbox/OUT-1/retry", {},
      "connector.manage", "Auditor"),

@@ -1042,12 +1042,55 @@ def reset(p: dict = Depends(perm("admin.reset"))):
     return {"ok": True, "db": db.DB_PATH, "schema_version": version}
 
 
+#: Connection modes, strongest first: the mode `/api/health` reports is the
+#: strongest an ACTIVE connection holds, so a deployment with one LIVE_READ
+#: ERP connection beside its MOCK Books profile says LIVE_READ.
+_MODE_ORDER = ("LIVE_WRITE", "LIVE_READ", "SANDBOX", "MOCK")
+_MODE_NOTES = {
+    "LIVE_WRITE": "LIVE_WRITE - a live Zoho tenant is connected and outbound "
+                  "writes are enabled through the platform gate",
+    "LIVE_READ": "LIVE_READ - a live Zoho tenant is connected read-only; "
+                 "outbound writes are disabled",
+    "SANDBOX": "SANDBOX - a sandbox tenant is connected; no production tenant",
+    "MOCK": "MOCK - no live Zoho tenant is connected; integration is NOT VERIFIED",
+}
+
+
+def _integration_mode() -> tuple[str, str, dict | None]:
+    """`(mode, note, summary)` from the connections the database holds.
+
+    The legacy `zoho.MODE` constant is the mock connector's own declaration
+    and stays MOCK for ever; reporting it on a deployment with a live
+    connection (Stage B, 2026-09-12) was a misleading health statement. With
+    no PostgreSQL configured, or an unreachable one, the honest answer is the
+    constant: nothing live can be proven.
+    """
+    try:
+        database = health_api.get_database()
+    except RuntimeError:
+        return zoho.MODE, _MODE_NOTES["MOCK"], None
+    summary = database.integration_summary()
+    if summary.get("status") != "ok":
+        return zoho.MODE, _MODE_NOTES["MOCK"], summary
+    held = {mode for modes in summary.get("connections", {}).values() for mode in modes}
+    for mode in _MODE_ORDER:
+        if mode in held:
+            return mode, _MODE_NOTES[mode], summary
+    return zoho.MODE, _MODE_NOTES["MOCK"], summary
+
+
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "app": "CAPEX & WBS Control Hub", "version": app.version,
-            "zoho_mode": zoho.MODE,
-            "zoho_mode_note": "MOCK - no live Zoho tenant is connected; integration is NOT VERIFIED",
+    mode, note, summary = _integration_mode()
+    body = {"status": "ok", "app": "CAPEX & WBS Control Hub", "version": app.version,
+            "zoho_mode": mode,
+            "zoho_mode_note": note,
             "profile": os.environ.get("CAPEX_PROFILE", "unset")}
+    if summary is not None:
+        # `{product: {mode: count}}`, or the error class -- never a row.
+        body["integrations"] = summary
+    body["outbound_writes_enabled"] = zoho.outbound_writes_enabled()
+    return body
 
 
 # ---------------------------------------------------------------- frontend

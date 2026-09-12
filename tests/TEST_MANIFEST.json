@@ -5818,6 +5818,76 @@
         "body_sha": "dd5b16e8a829e08d"
       }
     },
+    "test_outbound_live_write_fable51.py": {
+      "test_a_post_is_satisfied_by_the_create_scope_alone": {
+        "assertions": 1,
+        "body_sha": "4cc3aa7b744c61b1"
+      },
+      "test_a_create_grant_satisfies_no_update_no_read_and_no_other_module": {
+        "assertions": 2,
+        "body_sha": "fc61085cb12b3dc1"
+      },
+      "test_a_read_grant_still_satisfies_no_write_under_any_name": {
+        "assertions": 1,
+        "body_sha": "d0682e0c16afd2d4"
+      },
+      "test_the_gate_is_checked_before_the_scope": {
+        "assertions": 1,
+        "body_sha": "7c7ec59ba04ece39"
+      },
+      "test_the_body_carries_the_reference_and_only_the_items_and_fields_it_was_given": {
+        "assertions": 6,
+        "body_sha": "845c6cb1369c8fac"
+      },
+      "test_no_line_custom_fields_leave_for_a_tenant_without_them": {
+        "assertions": 2,
+        "body_sha": "b3819e8ff730ab54"
+      },
+      "test_the_adapter_names_the_verb_scopes_and_its_tenants_line_fields": {
+        "assertions": 7,
+        "body_sha": "d511f0d0fb2a2c33"
+      },
+      "test_item_and_codes_survive_the_payload_and_reach_the_dto": {
+        "assertions": 7,
+        "body_sha": "3c99932af3b9c353"
+      },
+      "test_a_line_without_them_writes_no_keys_and_maps_to_none": {
+        "assertions": 3,
+        "body_sha": "2b46de2d13f3962d"
+      },
+      "test_a_blank_item_id_on_a_line_is_refused": {
+        "assertions": 1,
+        "body_sha": "4f3ca5cd5dc2a66c"
+      },
+      "test_mode_refuses_live_write_while_the_gate_is_shut": {
+        "assertions": 2,
+        "body_sha": "517871c49167d72b"
+      },
+      "test_drain_refuses_before_any_lookup_while_the_gate_is_shut": {
+        "assertions": 2,
+        "body_sha": "bea601c091347d84"
+      },
+      "test_drain_refuses_a_live_read_connection_with_the_gate_open": {
+        "assertions": 3,
+        "body_sha": "ec6c65b6080b19a9"
+      },
+      "test_drain_rejects_an_unknown_body_key": {
+        "assertions": 1,
+        "body_sha": "a96a7c0379870177"
+      },
+      "test_health_reports_the_strongest_mode_an_active_connection_holds": {
+        "assertions": 6,
+        "body_sha": "d29a616bb202777c"
+      },
+      "test_health_falls_back_to_the_constant_without_a_database_or_with_an_unreachable_one": {
+        "assertions": 4,
+        "body_sha": "8ce02c92147ff5df"
+      },
+      "test_health_reports_the_gate_honestly": {
+        "assertions": 1,
+        "body_sha": "d3dff42262a4d8b9"
+      }
+    },
     "test_outbound_unsanctioned.py": {
       "test_a_purchase_order_raised_in_zoho_against_a_capex_cell_is_an_exception": {
         "assertions": 10,
@@ -9212,6 +9282,32 @@
       "test_category_master_is_governed": {
         "assertions": 10,
         "body_sha": "e8de637f9ccd7c55"
+      }
+    },
+    "test_pg_outbound_drain_fable51.py": {
+      "test_the_plan_carries_the_item_and_the_resolved_codes_into_the_payload": {
+        "assertions": 5,
+        "body_sha": "57f1683248b793b8"
+      },
+      "test_an_item_for_a_line_that_is_not_on_the_order_is_refused_before_anything_is_written": {
+        "assertions": 3,
+        "body_sha": "e7217403487ec63f"
+      },
+      "test_the_drain_sends_once_stamps_the_order_and_a_second_pass_sends_nothing": {
+        "assertions": 12,
+        "body_sha": "1b5b759546a6c01f"
+      },
+      "test_a_different_external_id_on_the_order_is_a_refusal_not_an_overwrite": {
+        "assertions": 5,
+        "body_sha": "0dae2d6939f42d61"
+      },
+      "test_the_routes_drain_through_the_adapter_and_move_the_mode_with_its_authorisation": {
+        "assertions": 19,
+        "body_sha": "56602f4ed0febd9a"
+      },
+      "test_the_health_summary_counts_connections_through_row_level_security": {
+        "assertions": 4,
+        "body_sha": "9cd4631df89d42e2"
       }
     },
     "test_pg_period_concurrency.py": {
@@ -13303,7 +13399,7 @@
       },
       "test_every_mutating_zoho_route_is_in_the_authorisation_matrix": {
         "assertions": 2,
-        "body_sha": "6223a27985166193"
+        "body_sha": "d8a2899d0041f650"
       }
     }
   },
@@ -13371,6 +13467,7 @@
     "test_ops_readiness.py": 28,
     "test_outbound_chaos.py": 26,
     "test_outbound_emission.py": 52,
+    "test_outbound_live_write_fable51.py": 17,
     "test_outbound_unsanctioned.py": 20,
     "test_period_reopen_permissions.py": 17,
     "test_pg_adoption.py": 16,
@@ -13399,6 +13496,7 @@
     "test_pg_migration_import.py": 8,
     "test_pg_migrations_runner.py": 11,
     "test_pg_original_budget.py": 15,
+    "test_pg_outbound_drain_fable51.py": 6,
     "test_pg_period_concurrency.py": 9,
     "test_pg_periods.py": 18,
     "test_pg_periods_reconciliation_gate.py": 7,
@@ -13510,6 +13608,7 @@
     "test_ops_readiness.py": 44,
     "test_outbound_chaos.py": 123,
     "test_outbound_emission.py": 154,
+    "test_outbound_live_write_fable51.py": 50,
     "test_outbound_unsanctioned.py": 55,
     "test_period_reopen_permissions.py": 51,
     "test_pg_adoption.py": 39,
@@ -13538,6 +13637,7 @@
     "test_pg_migration_import.py": 12,
     "test_pg_migrations_runner.py": 32,
     "test_pg_original_budget.py": 99,
+    "test_pg_outbound_drain_fable51.py": 48,
     "test_pg_period_concurrency.py": 28,
     "test_pg_periods.py": 49,
     "test_pg_periods_reconciliation_gate.py": 18,

@@ -67,7 +67,7 @@ import urllib.parse
 import urllib.request
 from collections import deque
 from collections.abc import Mapping
-from typing import Any, Callable
+from typing import Mapping, Any, Callable
 
 from app.backend import zoho as zoho_mod
 
@@ -160,6 +160,11 @@ def _load_credentials(path: str) -> dict[str, Any]:
     return rec
 
 
+#: The scope verb each HTTP method needs when the grant carries no ALL.
+WRITE_VERB_SCOPE: Mapping[str, str] = {"POST": "CREATE", "PUT": "UPDATE",
+                                       "DELETE": "DELETE"}
+
+
 class LiveTransport:
     """See the module docstring. Construct ONE per process and hand it to the
     adapter explicitly; it is never a default."""
@@ -235,18 +240,37 @@ class LiveTransport:
     # --------------------------------------------------------------- scope
     def _scope_satisfied(self, method: str, scope: str) -> bool:
         """`ERP.<module>.READ` in the grant satisfies a GET the adapter names as
-        `ERP.<module>.ALL` (Zoho treats ALL as the superset); a write needs
-        the exact scope or the module's ALL. Never the other way round: a
-        READ grant satisfies no write."""
-        if scope in self.granted_scopes:
-            return True
+        `ERP.<module>.ALL` (Zoho treats ALL as the superset). A write is
+        satisfied by the VERB'S OWN scope -- CREATE for POST, UPDATE for PUT,
+        DELETE for DELETE -- or by the module's ALL, so a credential can be
+        staged at the exact minimum a write needs (2026-09-12: the owner's
+        controlled outbound test runs on `ERP.purchaseorders.CREATE` alone).
+        Never the other way round: a READ grant satisfies no write, and a
+        CREATE grant satisfies no update."""
         parts = scope.split(".")
         if len(parts) != 3:
             return False
         product, module, verb = parts
-        if method == "GET" and verb in ("ALL", "READ"):
-            return f"{product}.{module}.READ" in self.granted_scopes or                 f"{product}.{module}.ALL" in self.granted_scopes
-        return f"{product}.{module}.ALL" in self.granted_scopes
+        if method != "GET" and verb == "READ":
+            # A write named under a READ scope is refused whatever the grant
+            # holds: the name is wrong, and a READ grant must never be the
+            # thing that lets a byte be written.
+            return False
+        if scope in self.granted_scopes:
+            return True
+        if f"{product}.{module}.ALL" in self.granted_scopes:
+            return True
+        if method == "GET":
+            return verb in ("ALL", "READ") and \
+                f"{product}.{module}.READ" in self.granted_scopes
+        own = WRITE_VERB_SCOPE.get(method)
+        if own is None:
+            return False
+        # An adapter that names the module's ALL on a write is satisfied by
+        # the verb's own grant; an adapter that names the verb is satisfied by
+        # exactly that verb.
+        return verb in ("ALL", own) and \
+            f"{product}.{module}.{own}" in self.granted_scopes
 
     # -------------------------------------------------------------- budget
     def _spend_one(self) -> None:

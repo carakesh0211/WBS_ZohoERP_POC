@@ -233,7 +233,12 @@ def test_the_audit_chain_still_verifies_after_the_new_rows(admin, auditor):
 def test_every_mutating_zoho_route_is_in_the_authorisation_matrix():
     from test_api_auth import MUTATING_ROUTES
     listed = {t for t, *_ in MUTATING_ROUTES}
-    live = {r.path for r in main.app.routes
-            if r.path.startswith("/api/zoho/") and "POST" in getattr(r, "methods", set())}
+    # From the OpenAPI schema, not `app.routes`: on FastAPI 0.141 / starlette
+    # 1.6 (CI) an included router sits in `app.routes` as an `_IncludedRouter`
+    # with no `.path`, and the route table's shape is an internal detail (see
+    # `test_api_auth._mutating_paths`). The schema is the application's own
+    # published description of what it serves.
+    live = {path for path, operations in main.app.openapi().get("paths", {}).items()
+            if path.startswith("/api/zoho/") and "post" in operations}
     assert live, "no /api/zoho POST routes found"
     assert live <= listed, f"unlisted: {sorted(live - listed)}"

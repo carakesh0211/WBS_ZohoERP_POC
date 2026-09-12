@@ -294,6 +294,37 @@ class Database:
                 "schema_version": row[0] if row else None,
                 "schema_applied_at": row[1].isoformat() if row else None}
 
+    def integration_summary(self) -> dict[str, Any]:
+        """Active integration connections, as `{product: {mode: count}}`.
+
+        A start-up-check-class read like `readiness()`, on a pooled
+        connection and outside any scope: it is an AGGREGATE over the
+        connection catalogue (no row, no id, no organisation, no secret --
+        the table holds none) and it exists so `/api/health` can say whether
+        a live tenant is connected instead of repeating a constant. The same
+        honesty rule as `readiness()`: an unreachable database is reported by
+        error class, never by message.
+        """
+        try:
+            with self._pool.connection(timeout=self.config.connect_timeout) as con:
+                # `integration_connection` is under FORCED row-level security
+                # (010) and `capex_scope_permits` fails closed with no session
+                # settings, so the count would read zero. `Scope.system()` is
+                # documented for exactly this class of read -- a start-up /
+                # health check, never a request -- and it is SET LOCAL, so it
+                # dies with the transaction below.
+                self._apply_scope(con, Scope.system("SVC-HEALTH"))
+                rows = con.execute(  # scope-exempt: aggregate over the connection catalogue for the unauthenticated health probe; no row-level data leaves
+                    "SELECT product, mode, count(*) FROM integration_connection "
+                    "WHERE is_active GROUP BY product, mode").fetchall()
+                con.rollback()
+        except Exception as exc:
+            return {"status": "unavailable", "error_class": type(exc).__name__}
+        summary: dict[str, dict[str, int]] = {}
+        for product, mode, count in rows:
+            summary.setdefault(str(product), {})[str(mode)] = int(count)
+        return {"status": "ok", "connections": summary}
+
     # ------------------------------------------------------------------ session
     @contextlib.contextmanager
     def session(self, scope: Scope) -> Iterator[Session]:

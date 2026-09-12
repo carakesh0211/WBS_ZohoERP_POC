@@ -9,7 +9,7 @@
     "method": "PUT",
     "base_url": "https://www.zohoapis.in/erp/v3",
     "path": "/purchaseorders/PO-ERP-5001",
-    "scope": "ERP.purchaseorders.ALL",
+    "scope": "ERP.purchaseorders.UPDATE",
     "page": 1
   },
   "response": {

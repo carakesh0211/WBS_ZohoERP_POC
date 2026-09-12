@@ -391,8 +391,24 @@ class PoLine:
     quantity: int
     unit_price_paise: int
     amount_paise: int
+    #: An EXISTING tenant item this line is for, named by the operator at
+    #: emission (`_EmitIn.item_external_ids`), or None for a description-only
+    #: line. Never derived: the local line carries no item and inventing one
+    #: would commit against a master record nobody chose.
+    item_external_id: str | None = None
+    #: The WBS element's own `wbs_code` and the budget head's name, resolved
+    #: by the plan so the tenant's line custom fields carry the values the
+    #: adoption path reads back. None when the plan had none to give.
+    wbs_code: str | None = None
+    budget_head: str | None = None
 
     def __post_init__(self) -> None:
+        for name in ("item_external_id", "wbs_code", "budget_head"):
+            value = getattr(self, name)
+            if value is not None and (not isinstance(value, str) or not value.strip()):
+                raise EmissionShapeError(
+                    f"PoLine.{name} must be a non-empty string or None; got "
+                    f"{value!r}.")
         _require_paise(self.unit_price_paise, "PoLine.unit_price_paise")
         _require_paise(self.amount_paise, "PoLine.amount_paise")
         if isinstance(self.quantity, bool) or not isinstance(self.quantity, int):
@@ -555,6 +571,14 @@ class PurchaseOrderDraft:
             if self.line_level_dimensions:
                 item["wbs_id"] = line.cell.wbs_id
                 item["budget_head_id"] = line.cell.budget_head_id
+            # Optional, and absent rather than null when unknown, so a payload
+            # written before these existed reads back unchanged.
+            if line.item_external_id is not None:
+                item["item_external_id"] = line.item_external_id
+            if line.wbs_code is not None:
+                item["wbs_code"] = line.wbs_code
+            if line.budget_head is not None:
+                item["budget_head"] = line.budget_head
             lines.append(item)
         header["lines"] = lines
         return header
@@ -699,9 +723,11 @@ def _emission_line(item: Any, *, number: int, where: str) -> LineDTO:
     total = _payload_paise(item, "amount_paise", where=line_where)
 
     dimensions: dict[str, Any] = {}
-    for name in ("wbs_id", "budget_head_id"):
+    for name in ("wbs_id", "budget_head_id", "wbs_code", "budget_head"):
         if item.get(name) is not None:
             dimensions[name] = item[name]
+    item_external_id = _payload_str(item, "item_external_id", where=line_where,
+                                    allow_none=True)
 
     return LineDTO(
         external_line_id=None,
@@ -717,7 +743,7 @@ def _emission_line(item: Any, *, number: int, where: str) -> LineDTO:
         # bill. Zero rather than absent, so the header identity
         # `subtotal + tax == total` has a real number on both sides.
         tax_paise=0,
-        item_external_id=None,
+        item_external_id=item_external_id,
         purchase_order_line_external_id=None,
         dimensions=freeze(dimensions),
         raw=freeze(dict(item)),
@@ -877,6 +903,20 @@ class EmissionPlan:
                 "before emission, not discovered afterwards.")
 
 
+def cell_local_id(local_id: str, wbs_id: str, budget_head_id: str) -> str:
+    """The outbox `local_id` of the one-purchase-order-per-cell shape (D-7
+    False): the ORDER's id, then the cell, `#`-joined. `purchase_order_id_of`
+    is its inverse, and the two live together so neither can drift."""
+    return f"{local_id}#{wbs_id}#{budget_head_id}"
+
+
+def purchase_order_id_of(local_id: str) -> str:
+    """The local purchase order an outbox row belongs to: the row's own
+    `local_id` on the line-level shape, the part before the first `#` on the
+    per-cell shape (`cell_local_id`). Purchase-order ids carry no `#`."""
+    return str(local_id).split("#", 1)[0]
+
+
 def plan_emission(*, local_id: str, connection_id: str, vendor_external_id: str,
                   lines: Sequence[PoLine], capabilities: Any,
                   document_date: date,
@@ -937,7 +977,7 @@ def plan_emission(*, local_id: str, connection_id: str, vendor_external_id: str,
             # each split purchase order differs. Without it the three POs of a
             # three-cell requisition would all claim one cf_capex_ref and two
             # would be refused as duplicates of the first.
-            local_id=f"{local_id}#{cell[0]}#{cell[1]}",
+            local_id=cell_local_id(local_id, cell[0], cell[1]),
             connection_id=connection_id, vendor_external_id=vendor_external_id,
             lines=tuple(cell_lines), document_date=document_date,
             header_cell=ControlCell(*cell),

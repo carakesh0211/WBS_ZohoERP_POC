@@ -9,7 +9,7 @@
     "method": "POST",
     "base_url": "https://www.zohoapis.in/erp/v3",
     "path": "/purchaseorders",
-    "scope": "ERP.purchaseorders.ALL",
+    "scope": "ERP.purchaseorders.CREATE",
     "page": 1
   },
   "response": {
