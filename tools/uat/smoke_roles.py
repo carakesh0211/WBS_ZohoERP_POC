@@ -400,7 +400,11 @@ def run(base: str, credentials_path: str, out_path: str, sample: int = 5) -> int
 
         def hit(name: str, status: int, expected: int, body: str) -> None:
             nonlocal ok
-            passed = status == expected
+            # A permitted GET that answers 422 has passed the guard and refused
+            # only the missing query parameters this script does not know how
+            # to supply: reachable, not a failure. (200 and 422 are both
+            # post-authorisation answers; 401/403/404/5xx are not.)
+            passed = status == expected or (expected == 200 and status == 422)
             ok = ok and passed
             leaks = scan_for_credentials(body)
             if leaks:
