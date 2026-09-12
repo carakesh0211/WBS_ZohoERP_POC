@@ -557,7 +557,8 @@ def _require_principal(session: Session, actor: str) -> str:
 
 def _job_row_for(session: Session, *, kind: str, connection_id: str,
                  entity_id: str, principal: str, actor: str,
-                 correlation_id: str | None) -> tuple[str, list[str]]:
+                 correlation_id: str | None,
+                 now: datetime | None = None) -> tuple[str, list[str]]:
     """The one `job` row this connection's `kind` runs on, creating it if
     absent. Returns ``(job_id, dead_job_ids)``.
 
@@ -611,10 +612,17 @@ def _job_row_for(session: Session, *, kind: str, connection_id: str,
     live = [r[0] for r in rows if r[1] in jobs.CLAIMABLE_STATES]
     if live:
         return live[0], dead
+    # The row is stamped with the SWEEP'S clock, not the database's, and is
+    # due at once (`run_after = now`): the claim compares `run_after` with
+    # the same clock, so a row enqueued and claimed in one call is claimable
+    # whatever the database server's wall clock says. (Found 2026-09-12: the
+    # live tests' fixed clock fell behind the server's `now()` at 06:00 UTC
+    # and every job stayed unclaimed.)
     job_id = store.enqueue_job(
         session, job_id=f"JOB-{uuid.uuid4().hex}", kind=kind,
         principal_user_id=principal, actor=actor, entity_id=entity_id,
-        connection_id=connection_id, correlation_id=correlation_id)
+        connection_id=connection_id, correlation_id=correlation_id,
+        run_after=now, now=now)
     return job_id, dead
 
 
@@ -724,7 +732,8 @@ def run_inbound_sweep(session: Session, *, connection: Mapping[str, Any],
         job_id, dead = _job_row_for(
             session, kind=job.kind, connection_id=connection_id,
             entity_id=entity_id, principal=principal, actor=actor,
-            correlation_id=correlation_id)
+            correlation_id=correlation_id,
+            now=clock.now())
         if dead:
             dead_jobs[module] = dead
         before_created = dict(sweep_store.created)
