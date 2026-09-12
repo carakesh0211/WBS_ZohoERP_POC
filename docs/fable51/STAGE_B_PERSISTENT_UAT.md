@@ -114,6 +114,23 @@ the Catalyst console points the app at it) and the provider's default
 **Cleanup is a DROP of those 82 tables in `postgres`, which the lead will not
 run without the owner's explicit approval**; until then the extra schema is
 inert and costs nothing but a few MB of the 500 MB allowance.
+
+**Conditional approval of 2026-09-12 and the stop it hit.** The owner approved the
+drop on conditions, one being that every listed table holds zero rows. The
+read-only audit (`tools/uat/stray_schema_audit.py`, evidence in
+`evidence/uat-db/stray-schema-audit-*.json`) verified the identity (project
+ref `lmljdkluuqpgjboiejro`, database `postgres`, schema `public`, PG 17.6),
+the explicit list of 82 tables (the identical set to `capex_tmpl_uat`), no
+view, cross-schema foreign key or provider object among them, and found
+**six tables carrying the catalogue rows their migrations seed** (five
+row-for-row identical to the estate; `numbering_series` 5 vs the estate's 7)
+plus the 30-row migration log. That is the stop condition, so **nothing was
+dropped**. Also blocking: the only `pg_dump` on the build machine is 16.10 and
+refuses the 17.6 server (`server version mismatch`); a real dump needs the
+PostgreSQL 17 client tools (a download the owner has not authorised).
+Cleanup resumes only on the owner's word that migration-seeded catalogue rows
+count as no data, and with either pg_dump 17 or the migration-based
+reproduction accepted as the rollback record.
  The
 linked form applies the archive's `app-config.json` (`env_variables: {}`) and
 would wipe every console-set value.
