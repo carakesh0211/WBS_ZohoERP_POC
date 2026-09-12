@@ -53,10 +53,12 @@ from conftest_pg import (  # noqa: E402,F401  (re-exported as fixtures)
 
 from app.backend.api import integrations_live  # noqa: E402
 from app.backend.integration import adoption, jobs, live_sweep, sweeps  # noqa: E402
+from app.backend.integration import outbound as ob  # noqa: E402
 from app.backend.integration.dto import LineDTO, PurchaseOrderDTO, ReceiveDTO, SourceRef  # noqa: E402
 from app.backend.pg import fx  # noqa: E402
 from app.backend.pg import integration_store as store  # noqa: E402
 from app.backend.pg import procurement  # noqa: E402
+from app.backend.pg import procurement_services as psvc  # noqa: E402
 from app.backend.pg.engine import Scope  # noqa: E402
 
 PG = pytest.mark.skipif(
@@ -322,6 +324,22 @@ def _adopt(database, con, adapter, **kwargs) -> dict[str, Any]:
             **kwargs)
 
 
+def _create_local_po(database, *, amount_paise: int = 100000) -> str:
+    """A LOCAL purchase order THIS SYSTEM raised, with no `external_id` --
+    exactly the shape an emission `CAPEX_ERP_OUTBOUND_WRITES` never
+    authorised leaves behind. Two units at half the total each, matching
+    `_line`'s own default shape so a LINK candidate built against it lines
+    up without extra bookkeeping."""
+    with database.session(_scope()) as session:
+        written = psvc.create_po(
+            session, project_id=PROJECT, vendor_name="Acme Cables",
+            lines=[{"wbs_id": WBS, "budget_head_id": HEAD_ID,
+                    "description": "Cable tray", "quantity": 2,
+                    "amount_paise": amount_paise}],
+            actor=ACTOR)
+    return written["po_id"]
+
+
 @PG
 @pytest.mark.pg
 def test_live_adopts_a_tenant_raised_order_and_resolves_the_unsanctioned_commitment(
@@ -344,8 +362,8 @@ def test_live_adopts_a_tenant_raised_order_and_resolves_the_unsanctioned_commitm
     finally:
         database.close()
 
-    assert result == {"adopted": 1, "skipped": 0, "exceptions": 0, "calls": 1,
-                      "exception_ids": []}
+    assert result == {"adopted": 1, "linked": 0, "skipped": 0, "exceptions": 0,
+                      "calls": 1, "exception_ids": []}
     assert adapter.calls == ["ZPO-1"]
     row = con.execute(
         "SELECT po_id, commitment_origin, external_source, external_id,"
@@ -394,8 +412,8 @@ def test_live_repeat_adoption_is_idempotent(pg_connection, pg_url, pg_disposable
         database.close()
 
     assert first["adopted"] == 1
-    assert second == {"adopted": 0, "skipped": 1, "exceptions": 0, "calls": 1,
-                      "exception_ids": []}
+    assert second == {"adopted": 0, "linked": 0, "skipped": 1, "exceptions": 0,
+                      "calls": 1, "exception_ids": []}
     assert adapter.calls == ["ZPO-2", "ZPO-2"], "the detail is re-read every sweep"
     assert con.execute(
         "SELECT count(*) FROM purchase_order WHERE external_id = 'ZPO-2'"
@@ -530,6 +548,52 @@ def test_live_a_line_whose_budget_head_does_not_resolve_posts_nothing(
     assert con.execute(
         "SELECT count(*) FROM purchase_order WHERE external_id = 'ZPO-5B'"
     ).fetchone() == (0,)
+
+
+@PG
+@pytest.mark.pg
+def test_live_a_line_whose_head_disagrees_with_its_wbs_elements_own_head_is_invalid(
+        pg_connection, pg_url, pg_disposable_db_name):
+    """Budget-head isolation: a WBS element that names its OWN budget head is
+    not a suggestion. A line stamped with a different one is invalid, never a
+    second head the WBS may also carry."""
+    con = pg_connection
+    _seed(con)
+    con.execute(
+        "INSERT INTO budget_head (budget_head_id, entity_id, code, name,"
+        " created_by, updated_by) VALUES ('BH-AD-CIVIL', %s, 'CIVIL',"
+        " 'Civil Works', 'T', 'T')", (ENTITY,))
+    con.execute(
+        "INSERT INTO wbs_element (wbs_id, project_id, wbs_code, description,"
+        " wbs_path, budget_head_id, status, created_by, updated_by)"
+        " VALUES ('WBS-AD-ISO', %s, 'CAPEX-2026-001.06', 'iso', 'iso',"
+        " %s, 'Released', 'T', 'T')", (PROJECT, HEAD_ID))
+    con.commit()
+
+    database = scoped_role_database(pg_url, pg_disposable_db_name)
+    # The WBS element's own head is HEAD_ID ("Electrical"); the line names
+    # "Civil Works" instead.
+    order = _order("ZPO-5C", capex_ref="CAPEX-REF-5C",
+                   lines=(_line(external_line_id="ZPOL-5C",
+                                wbs_code="CAPEX-2026-001.06",
+                                head="Civil Works"),))
+    adapter = _FakeAdapter({"ZPO-5C": order})
+    try:
+        with database.session(_scope()) as session:
+            _record_inbox(session, external_id="ZPO-5C")
+        result = _adopt(database, con, adapter)
+    finally:
+        database.close()
+
+    assert (result["adopted"], result["linked"], result["exceptions"]) == (0, 0, 1)
+    assert con.execute(
+        "SELECT count(*) FROM purchase_order WHERE external_id = 'ZPO-5C'"
+    ).fetchone() == (0,)
+    exc = con.execute(
+        "SELECT kind, detail FROM reconciliation_exception"
+        " WHERE object_id = 'ZPO-5C'").fetchone()
+    assert exc[0] == "ADOPTION_DIMENSION_INVALID"
+    assert "WBS-AD-ISO" in exc[1] and "own budget head" in exc[1]
 
 
 @PG
@@ -753,3 +817,117 @@ def test_live_grn_matching_then_bill_matching_against_the_adopted_order(
         " JOIN purchase_order po ON po.po_id = pol.po_id"
         " WHERE po.external_id = 'ZPO-9'").fetchone()
     assert bill_line == (100000,)
+
+
+# ==================================================================== LINK mode
+@PG
+@pytest.mark.pg
+def test_live_link_mode_links_a_matching_local_order_once(
+        pg_connection, pg_url, pg_disposable_db_name):
+    """A tenant order whose cf_capex_ref equals a LOCAL order's own
+    deterministic dedupe key is LINKED, not adopted as a second,
+    EXTERNAL_UNSANCTIONED order -- and a repeat sweep is a no-op."""
+    con = pg_connection
+    _seed(con)
+    database = scoped_role_database(pg_url, pg_disposable_db_name)
+    try:
+        po_id = _create_local_po(database)
+        capex_ref = ob.derive_dedupe_key(CONN, psvc.PO_MODULE, po_id)
+        order = _order("ZPO-10", capex_ref=capex_ref,
+                       lines=(_line(external_line_id="ZPOL-10", qty="2",
+                                    rate_paise=50000, total_paise=100000),))
+        adapter = _FakeAdapter({"ZPO-10": order})
+        with database.session(_scope()) as session:
+            _record_inbox(session, external_id="ZPO-10")
+            store.raise_exception(
+                session, kind="UNSANCTIONED_COMMITMENT",
+                object_type="purchase_order", object_id="ZPO-10",
+                detail="raised by a prior poll", raised_at=T0,
+                entity_id=ENTITY, actor="SVC-SWEEP")
+        first = _adopt(database, con, adapter, correlation_id="c1")
+        second = _adopt(database, con, adapter, correlation_id="c2")
+    finally:
+        database.close()
+
+    assert first == {"adopted": 0, "linked": 1, "skipped": 0, "exceptions": 0,
+                     "calls": 1, "exception_ids": []}
+    assert second == {"adopted": 0, "linked": 0, "skipped": 1, "exceptions": 0,
+                      "calls": 1, "exception_ids": []}
+
+    row = con.execute(
+        "SELECT commitment_origin, external_source, external_id,"
+        " external_capex_ref, adopted_by FROM purchase_order"
+        " WHERE po_id = %s", (po_id,)).fetchone()
+    assert row == ("LOCAL", SOURCE, "ZPO-10", None, None), (
+        "a linked order stays LOCAL, keeps external_capex_ref NULL "
+        "(ck_purchase_order_adoption_provenance) and gains only its anchor")
+    assert con.execute(
+        "SELECT count(*) FROM purchase_order WHERE external_id = 'ZPO-10'"
+    ).fetchone() == (1,), "no second, EXTERNAL_UNSANCTIONED order was created"
+
+    exc = con.execute(
+        "SELECT status, resolution_note FROM reconciliation_exception"
+        " WHERE kind = 'UNSANCTIONED_COMMITMENT' AND object_id = 'ZPO-10'"
+    ).fetchone()
+    assert exc == ("Resolved", f"linked to {po_id}")
+
+
+@PG
+@pytest.mark.pg
+def test_live_link_mode_mismatched_lines_conflict_and_do_not_link(
+        pg_connection, pg_url, pg_disposable_db_name):
+    con = pg_connection
+    _seed(con)
+    database = scoped_role_database(pg_url, pg_disposable_db_name)
+    try:
+        po_id = _create_local_po(database, amount_paise=100000)
+        capex_ref = ob.derive_dedupe_key(CONN, psvc.PO_MODULE, po_id)
+        # A DIFFERENT total than the local order's 100000 paise.
+        order = _order("ZPO-11", capex_ref=capex_ref,
+                       lines=(_line(external_line_id="ZPOL-11", qty="2",
+                                    rate_paise=60000, total_paise=120000),))
+        adapter = _FakeAdapter({"ZPO-11": order})
+        with database.session(_scope()) as session:
+            _record_inbox(session, external_id="ZPO-11")
+        result = _adopt(database, con, adapter)
+    finally:
+        database.close()
+
+    assert (result["adopted"], result["linked"], result["exceptions"]) == (0, 0, 1)
+    row = con.execute(
+        "SELECT external_id FROM purchase_order WHERE po_id = %s",
+        (po_id,)).fetchone()
+    assert row == (None,), "the local order is left exactly as it was"
+    exc = con.execute(
+        "SELECT kind FROM reconciliation_exception WHERE object_id = 'ZPO-11'"
+    ).fetchone()
+    assert exc == ("ADOPTION_DIMENSION_CONFLICT",)
+
+
+@PG
+@pytest.mark.pg
+def test_live_link_mode_an_unmatched_capex_ref_still_adopts_as_external_unsanctioned(
+        pg_connection, pg_url, pg_disposable_db_name):
+    """LINK mode changes nothing about the existing path: an order whose key
+    matches no local order is adopted exactly as before LINK mode existed --
+    even with an unrelated LOCAL order (no external_id) also present."""
+    con = pg_connection
+    _seed(con)
+    database = scoped_role_database(pg_url, pg_disposable_db_name)
+    try:
+        _create_local_po(database)  # unrelated: a different dedupe key
+        order = _order("ZPO-12", capex_ref="CAPEX-NO-LOCAL-MATCH",
+                       lines=(_line(external_line_id="ZPOL-12"),))
+        adapter = _FakeAdapter({"ZPO-12": order})
+        with database.session(_scope()) as session:
+            _record_inbox(session, external_id="ZPO-12")
+        result = _adopt(database, con, adapter)
+    finally:
+        database.close()
+
+    assert result == {"adopted": 1, "linked": 0, "skipped": 0, "exceptions": 0,
+                      "calls": 1, "exception_ids": []}
+    row = con.execute(
+        "SELECT commitment_origin FROM purchase_order"
+        " WHERE external_id = 'ZPO-12'").fetchone()
+    assert row == ("EXTERNAL_UNSANCTIONED",)
