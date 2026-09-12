@@ -141,11 +141,18 @@ RECEIVE_ROW = {
     "last_modified_time": "2026-09-08T12:00:00+0530",
     "purchaseorder_id": PO_EXT, "status": "received",
     "line_items": [
-        {"line_item_id": POL_EXT, "quantity": "1", "rate": "1000.00",
-         "item_total": "1000.00"},
+        # THE LIVE SHAPE (verified 2026-09-12 on receive 3912780000000116003):
+        # a receive line carries its OWN line id and the item, never the
+        # order line. The adapter attributes it through the order's item map
+        # (ZIT-1 is on exactly one order line, POL_EXT).
+        {"line_item_id": "ZRL-1", "item_id": "ZIT-1", "item_order": 1,
+         "quantity": "1", "rate": "1000.00", "item_total": "1000.00"},
         # Documented is not populated: a line whose linkage names no local
-        # po_line. Quarantined at FULL value, never spread.
-        {"line_item_id": GHOST, "quantity": "2", "rate": "10.00",
+        # po_line (here an explicit order-line key that matches nothing, and
+        # an item the order does not carry). Quarantined at FULL value,
+        # never spread.
+        {"line_item_id": "ZRL-2", "item_id": "ZIT-GHOST", "item_order": 2,
+         "purchaseorder_item_id": GHOST, "quantity": "2", "rate": "10.00",
          "item_total": "20.00"}],
 }
 BILL_LIST_ROW = {
@@ -153,6 +160,18 @@ BILL_LIST_ROW = {
     "last_modified_time": "2026-09-10T11:00:00+0530",
     "vendor_id": "ZCT-1", "vendor_name": "Acme Cables", "currency_code": "INR",
     "total": "500.00", "status": "open", "purchaseorder_ids": [PO_EXT],
+}
+#: The bill DETAIL the sixth module hydrates: sub_total present (a detail row),
+#: one line citing the order line and the receive line, as Zoho's bill lines do.
+BILL_DETAIL_ROW = {
+    # No exchange_rate: an INR bill is the identity translation and must not
+    # state one (mirror_bill refuses FX_IDENTITY_TRANSLATION, as 023 does).
+    **BILL_LIST_ROW, "sub_total": "500.00", "tax_total": "0.00",
+    "line_items": [
+        {"line_item_id": "ZBLL-1", "item_id": "ZIT-1", "description": "Cable",
+         "quantity": "1", "rate": "500.00", "item_total": "500.00", "tax_total": "0.00",
+         "purchaseorder_id": PO_EXT, "purchaseorder_item_id": POL_EXT,
+         "receive_id": RCV_EXT, "receive_item_id": "ZRL-1"}],
 }
 
 
@@ -197,6 +216,8 @@ class FakeErpTransport:
             return {"code": 0, "purchaseorder": PO_DETAIL_ROW}
         if path == erp.PATH_PURCHASE_RECEIVE.format(external_id=RCV_EXT):
             return {"code": 0, "purchasereceive": RECEIVE_ROW}
+        if path == erp.PATH_BILL.format(external_id="ZBL-1"):
+            return {"code": 0, "bill": BILL_DETAIL_ROW}
         raise AssertionError(f"unexpected path {path}")
 
 
@@ -659,9 +680,11 @@ def test_live_a_live_read_connection_sweeps_the_tenant_into_the_inbox(
     # the POLLING lane's daily figure by one per receive; requests made and
     # calls charged now agree exactly. The transport's own sliding-minute
     # ceiling counted every request regardless, before and after.
-    assert len(fake.requests) == 7
-    assert result["budget"]["windows"]["DAY"]["used"] == 7
-    assert result["budget"]["windows"]["MINUTE"]["used"] == 7
+    assert len(fake.requests) == 8
+    # Eight, since 2026-09-12: the sixth module (bill detail) spends one GET
+    # for the one queued bill, charged before it like every other request.
+    assert result["budget"]["windows"]["DAY"]["used"] == 8
+    assert result["budget"]["windows"]["MINUTE"]["used"] == 8
     assert result["skipped_for_deadline"] == [] and result["dead_jobs"] == {}
 
     # ---- the inbox, per module, verbatim payloads with the raw status
@@ -670,8 +693,12 @@ def test_live_a_live_read_connection_sweeps_the_tenant_into_the_inbox(
         " external_status_product, external_status_api_version, payload"
         " FROM integration_inbox WHERE connection_id = %s"
         " ORDER BY module, external_id", (CONN,)).fetchall()
+    # The bill appears TWICE: the list row the poll recorded and the
+    # hydrated detail the sixth module recorded -- two versions of the same
+    # document, distinguished by payload_sha (section 11.10), never one
+    # overwritten by the other.
     assert [(r[0], r[1], r[2]) for r in rows] == [
-        ("bills", "ZBL-1", "open"),
+        ("bills", "ZBL-1", "open"), ("bills", "ZBL-1", "open"),
         ("contacts", "ZCT-1", "active"), ("contacts", "ZCT-2", "active"),
         ("contacts", "ZCT-3", "inactive"),
         ("items", "ZIT-1", "active"),
@@ -721,13 +748,13 @@ def test_live_a_live_read_connection_sweeps_the_tenant_into_the_inbox(
     assert [(r[0], r[1], r[2], r[3]) for r in job_rows] == [
         (k, jobs.JOB_PENDING, CONN, ACTOR)
         for k in sorted(("poll_contacts", "poll_items", "poll_purchaseorders",
-                         "poll_bills", "sweep_po_anchored"))]
+                         "poll_bills", "sweep_po_anchored", "sweep_bill_detail"))]
     po_walk = next(r[4] for r in job_rows if r[0] == "sweep_po_anchored")
     assert po_walk["last_po_id_swept"] == "PO-LS-1"
     events = dict(con.execute(
         "SELECT kind, count(*) FROM integration_event WHERE connection_id = %s"
         " GROUP BY kind", (CONN,)).fetchall())
-    assert events.get("JOB_DONE") == 5
+    assert events.get("JOB_DONE") == 6   # six modules since the bill-detail sweep joined (2026-09-12)
     # The exception's own event hangs off the entity, not the connection:
     # `raise_exception` records it with no connection_id, so it is looked for
     # by kind and correlation rather than through the connection.
@@ -763,8 +790,9 @@ def test_live_re_running_the_sweep_creates_nothing_twice(
         database.close()
 
     assert fake.non_get == []
-    assert inbox_after_first == 7
-    assert _count(con, "SELECT count(*) FROM integration_inbox") == 7
+    # Eight: seven documents plus the bill's hydrated detail version.
+    assert inbox_after_first == 8
+    assert _count(con, "SELECT count(*) FROM integration_inbox") == 8
     for name, module in second["modules"].items():
         assert module["state"] == jobs.JOB_DONE, (name, module)
         assert module["inbox_created"] == 0, (name, module)
@@ -789,7 +817,7 @@ def test_live_re_running_the_sweep_creates_nothing_twice(
         "SELECT module, hwm FROM integration_watermark").fetchall())
     for module, hwm in marks_after_third.items():
         assert hwm > marks_after_first[module], module
-    assert _count(con, "SELECT count(*) FROM job WHERE connection_id = %s", (CONN,)) == 5
+    assert _count(con, "SELECT count(*) FROM job WHERE connection_id = %s", (CONN,)) == 6
 
 
 @PG
@@ -1169,3 +1197,20 @@ def test_pg_store_carries_the_orders_currency_and_the_bills_rate(monkeypatch):
     assert seen["exchange_rate"] == "0.561"
     assert seen["fx_rate_source"] == f"{SOURCE} bill X"
     assert seen["actor"] == ACTOR
+
+
+# ========================================= the bill DETAIL sweep is a module
+def test_bill_detail_is_the_sixth_module_and_builds_the_bill_detail_sweep():
+    """The first post-deploy cycle (2026-09-12) put a bill in the inbox and
+    nothing carried it to the ledger: the route ran the bill POLL and never
+    the bill DETAIL sweep. It is now the last module, after the receive walk,
+    with no watermark of its own and the bills inbox module."""
+    assert live_sweep.DEFAULT_MODULES[-1] == live_sweep.MODULE_BILL_DETAIL == "bill_detail"
+    assert live_sweep.DEFAULT_MODULES.index("receives") < live_sweep.DEFAULT_MODULES.index("bill_detail")
+    assert live_sweep.WATERMARK_MODULE["bill_detail"] is None
+    assert live_sweep.INBOX_MODULE["bill_detail"] == sweeps.MODULE_BILLS
+    found, _session = _store_under_test(rows=[])
+    job = live_sweep._build_job("bill_detail", adapter=object(), sweep_store=found,
+                                connection_id=CONN, max_pages=1)
+    assert isinstance(job, sweeps.SweepBillDetail) and job.kind == "sweep_bill_detail"
+    assert live_sweep._require_modules(["bill_detail", "bills"]) == ("bills", "bill_detail")

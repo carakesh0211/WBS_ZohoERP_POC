@@ -342,12 +342,25 @@ def test_an_unlinked_bill_line_reports_no_linkage_rather_than_guessing_one():
     assert unlinked.line_total_paise == 1000000
 
 
-def test_an_unlinked_receive_line_is_preserved_with_its_amount_intact():
+def test_a_receive_line_is_attributed_through_its_item_and_its_amount_is_intact():
+    """VERIFIED LIVE 2026-09-12 (DEMO WBS receive 3912780000000116003): a Zoho
+    ERP purchase-receive line carries NO order-line reference -- only its own
+    line_item_id, item_id, item_order and quantity. The cassette's receive
+    line (no line id at all, item ITM-ERP-7001) was therefore never
+    "unlinked" in the sense this test once asserted; the adapter now
+    attributes it through the ORDER'S item -> line map it learns from the PO
+    detail, and its amount travels untouched. An item absent from the order,
+    or present on two of its lines, still yields None and the sweep
+    quarantines it (`tests/test_erp_list_row_shape_fable51.py`)."""
     receives = build("ERP").receives_for_po("PO-ERP-5001")
-    unattributed = [line for r in receives for line in r.lines
-                    if line.purchase_order_line_external_id is None]
-    assert len(unattributed) == 1
-    assert unattributed[0].line_total_paise == 17250075
+    lines = [line for r in receives for line in r.lines]
+    attributed = [line for line in lines if line.purchase_order_line_external_id is not None]
+    assert len(lines) >= 1 and len(attributed) == len(lines), [
+        (line.item_external_id, line.purchase_order_line_external_id) for line in lines]
+    # The line the old assertion called "unlinked" (17250075 paise): still
+    # there, amount intact, and now attributed through its item.
+    kept = [line for line in lines if line.line_total_paise == 17250075]
+    assert len(kept) == 1 and kept[0].purchase_order_line_external_id is not None
 
 
 # ============================================================ raw status, source

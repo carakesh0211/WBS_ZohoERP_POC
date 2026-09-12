@@ -94,8 +94,8 @@
         "body_sha": "0d64023d1b10045e"
       },
       "test_live_link_mode_links_a_matching_local_order_once": {
-        "assertions": 5,
-        "body_sha": "ae391c3bca6dfcd4"
+        "assertions": 8,
+        "body_sha": "ee6c75594a5f581a"
       },
       "test_live_link_mode_mismatched_lines_conflict_and_do_not_link": {
         "assertions": 3,
@@ -1822,6 +1822,14 @@
       "test_the_sweep_reads_the_real_dto_name_for_the_capex_reference": {
         "assertions": 2,
         "body_sha": "a54ef8208fb59165"
+      },
+      "test_a_receive_line_is_attributed_to_the_order_line_through_its_item": {
+        "assertions": 3,
+        "body_sha": "91906c67392fba6a"
+      },
+      "test_a_receive_fetched_without_its_order_first_is_left_unattributed": {
+        "assertions": 1,
+        "body_sha": "a58bb799a964d9e0"
       }
     },
     "test_erp_write_gate.py": {
@@ -2521,9 +2529,9 @@
         "assertions": 3,
         "body_sha": "db5a4d5eb672e68d"
       },
-      "test_an_unlinked_receive_line_is_preserved_with_its_amount_intact": {
+      "test_a_receive_line_is_attributed_through_its_item_and_its_amount_is_intact": {
         "assertions": 2,
-        "body_sha": "fb58f6e10514353f"
+        "body_sha": "ccbb3bac3691188c"
       },
       "test_the_external_status_is_carried_verbatim_and_not_translated": {
         "assertions": 2,
@@ -4359,11 +4367,11 @@
       },
       "test_live_a_live_read_connection_sweeps_the_tenant_into_the_inbox": {
         "assertions": 56,
-        "body_sha": "93e3fb8f90cd519d"
+        "body_sha": "e9101a12b36a1b24"
       },
       "test_live_re_running_the_sweep_creates_nothing_twice": {
         "assertions": 18,
-        "body_sha": "b59b9efd15d0272c"
+        "body_sha": "b8d60506b21031e2"
       },
       "test_live_an_exhausted_polling_budget_checkpoints_and_holds_the_watermark": {
         "assertions": 13,
@@ -4424,6 +4432,10 @@
       "test_pg_store_carries_the_orders_currency_and_the_bills_rate": {
         "assertions": 5,
         "body_sha": "8e4e7c322f120612"
+      },
+      "test_bill_detail_is_the_sixth_module_and_builds_the_bill_detail_sweep": {
+        "assertions": 6,
+        "body_sha": "0df9002aaee46588"
       }
     },
     "test_live_transport_fable51.py": {
@@ -13313,7 +13325,7 @@
     "test_contracts_integration_statuses.py": 23,
     "test_data_classification.py": 11,
     "test_domain_invariants.py": 34,
-    "test_erp_list_row_shape_fable51.py": 11,
+    "test_erp_list_row_shape_fable51.py": 13,
     "test_erp_write_gate.py": 15,
     "test_export_poc.py": 17,
     "test_export_scope.py": 26,
@@ -13336,7 +13348,7 @@
     "test_integrations_live_routes_fable51.py": 12,
     "test_known_defects.py": 5,
     "test_ledger_cell_writers.py": 16,
-    "test_live_sweep_fable51.py": 33,
+    "test_live_sweep_fable51.py": 34,
     "test_live_transport_fable51.py": 22,
     "test_login_throttle.py": 11,
     "test_manifest.py": 10,
@@ -13431,7 +13443,7 @@
     "test_zoho_routes_fable51.py": 21
   },
   "assertions": {
-    "test_adoption_fable51.py": 79,
+    "test_adoption_fable51.py": 82,
     "test_anchor_function_shim.py": 24,
     "test_api_auth.py": 50,
     "test_api_auth_saved_views.py": 4,
@@ -13452,7 +13464,7 @@
     "test_contracts_integration_statuses.py": 48,
     "test_data_classification.py": 23,
     "test_domain_invariants.py": 94,
-    "test_erp_list_row_shape_fable51.py": 19,
+    "test_erp_list_row_shape_fable51.py": 23,
     "test_erp_write_gate.py": 29,
     "test_export_poc.py": 32,
     "test_export_scope.py": 69,
@@ -13475,7 +13487,7 @@
     "test_integrations_live_routes_fable51.py": 67,
     "test_known_defects.py": 13,
     "test_ledger_cell_writers.py": 32,
-    "test_live_sweep_fable51.py": 208,
+    "test_live_sweep_fable51.py": 214,
     "test_live_transport_fable51.py": 50,
     "test_login_throttle.py": 26,
     "test_manifest.py": 15,

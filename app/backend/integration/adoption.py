@@ -680,6 +680,11 @@ def _reconcile_existing(session: Session, *, existing: Mapping[str, Any],
             session, kind="ADOPTION_DIMENSION_CONFLICT",
             external_id=external_id, entity_id=entity_id, detail=detail,
             actor=actor, correlation_id=correlation_id, now=now)
+    if was_linked and resolved:
+        # A linked order whose lines were born locally may still lack the
+        # tenant's line ids (linked before the stamping existed, or a line
+        # added since): fill only what is NULL, every run, idempotently.
+        _stamp_line_ids(session, po_id=existing["po_id"], resolved=resolved, actor=actor)
     return "skipped"
 
 
@@ -751,6 +756,47 @@ def _local_order_snapshot(session: Session, *, po_id: str
             for r in rows]
     return currency, lines
 
+
+
+def _stamp_line_ids(session: Session, *, po_id: str, resolved: Sequence[Any],
+                    actor: str) -> int:
+    """Write the tenant's line ids onto the local order's lines that carry
+    none yet, positionally (local lines by line_no against `resolved` in
+    tenant order -- the same order the LINK equality check admitted).
+    Idempotent: only a NULL is ever written over; returns the count stamped.
+    Without this the PO-anchored receive walk cannot resolve a receive
+    against a LINKED order (`resolve_po_line` matches on the order's and the
+    line's external ids, and a locally raised order's lines are born with
+    none). Found on the first post-deploy cycle, 2026-09-12."""
+    local_line_ids = [r[0] for r in repo.query(
+        session,
+        """
+        SELECT pol.po_line_id FROM po_line pol
+        JOIN purchase_order po ON po.po_id = pol.po_id
+        JOIN project p ON p.project_id = po.project_id
+        WHERE pol.po_id = %(po_id)s AND {scope}
+        ORDER BY pol.line_no
+        """,
+        {"po_id": po_id}, columns=store.PROCUREMENT_SCOPE_COLUMNS)]
+    stamped = 0
+    for local_line_id, tenant_line in zip(local_line_ids, resolved):
+        if tenant_line.line_external_id:
+            rows = repo.query(
+                session,
+                """
+                UPDATE po_line pol SET line_external_id = %(ext)s,
+                       updated_by = %(actor)s, updated_at = now()
+                FROM purchase_order po
+                JOIN project p ON p.project_id = po.project_id
+                WHERE pol.po_id = po.po_id AND pol.po_line_id = %(id)s
+                  AND pol.line_external_id IS NULL AND {scope}
+                RETURNING pol.po_line_id
+                """,
+                {"ext": tenant_line.line_external_id, "actor": actor,
+                 "id": local_line_id},
+                columns=store.PROCUREMENT_SCOPE_COLUMNS)
+            stamped += len(rows)
+    return stamped
 
 def _link_existing_local_order(session: Session, *, po_id: str,
                                resolved: list[_ResolvedLine] | None,
@@ -832,6 +878,7 @@ def _link_existing_local_order(session: Session, *, po_id: str,
                         f"linked (it left scope or gained a different "
                         f"external id concurrently). Not linked."),
                 actor=actor, correlation_id=correlation_id, now=now)
+    _stamp_line_ids(session, po_id=po_id, resolved=resolved, actor=actor)
 
     outbox = repo.query_one(
         session,

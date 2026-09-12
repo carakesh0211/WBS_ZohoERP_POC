@@ -35,6 +35,8 @@ data centre raises rather than being synthesised from CRM's DC table.
 """
 from __future__ import annotations
 
+import dataclasses
+
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Mapping, Sequence
@@ -302,6 +304,14 @@ class ErpAdapter:
             line_level_custom_fields_for(self.organization_id)
             if line_level_custom_fields is None else bool(line_level_custom_fields))
         self.transport = transport or NoNetworkTransport(PRODUCT)
+        #: item external id -> purchase-order LINE external id, per order,
+        #: learnt from the PO detail `po_receive_refs` fetches. VERIFIED LIVE
+        #: 2026-09-12: a Zoho ERP purchase-receive line carries no reference
+        #: to the order line it fulfils (only its own line_item_id, item_id,
+        #: item_order, quantity), so the item is the only handle. An item that
+        #: appears on more than one line of the same order is left unmapped
+        #: (ambiguous), and the sweep quarantines that line rather than guess.
+        self._po_lines_by_item: dict[str, dict[str, str | None]] = {}
         if getattr(self.transport, "product", None) != PRODUCT:
             raise IntegrationError(
                 f"An ERP adapter was given a {getattr(self.transport, 'product', None)!r} "
@@ -647,6 +657,12 @@ class ErpAdapter:
         ``tests/ADAPTATIONS.md``.
         """
         po = self.get_purchase_order(po_external_id)
+        by_item: dict[str, str | None] = {}
+        for line in po.lines:
+            if line.item_external_id:
+                by_item[line.item_external_id] = (
+                    None if line.item_external_id in by_item else line.external_line_id)
+        self._po_lines_by_item[str(po_external_id)] = by_item
         return tuple(po.receive_external_ids)
 
     def get_receive(self, receive_external_id: str, *, fallback_po: str) -> ReceiveDTO:
@@ -658,9 +674,10 @@ class ErpAdapter:
         """
         path = PATH_PURCHASE_RECEIVE.format(external_id=receive_external_id)
         body = self._get(path, "ERP.purchasereceives.READ")
-        return _receive(
+        return _attribute_receive_lines(_receive(
             body.get("purchasereceive") or {}, self._source(path),
-            fallback_po=fallback_po)
+            fallback_po=fallback_po),
+            self._po_lines_by_item.get(str(fallback_po), {}))
 
     def receives_for_po(self, po_external_id: str) -> list[ReceiveDTO]:
         """PO-anchored discovery -- the sole GRN mechanism on ERP (§11.4).
@@ -819,9 +836,30 @@ def _receive(row: Mapping[str, Any], source: SourceRef, *, fallback_po: str) -> 
         # FOREIGN_CURRENCY_BASIS_MISSING rather than booking it into
         # `received_paise` -- not something to paper over here by
         # inventing a currency the contract does not carry.
-        _lines(row.get("line_items") or (), po_line_key="line_item_id"),
+        # A receive line names no order line (verified live 2026-09-12); the
+        # key below is read only in case Zoho ever adds one, and the item map
+        # learnt from the order (see `_attribute_receive_lines`) fills the gap.
+        _lines(row.get("line_items") or (), po_line_key="purchaseorder_item_id"),
         raw=freeze(row),
     )
+
+
+def _attribute_receive_lines(receive: ReceiveDTO,
+                             po_lines_by_item: Mapping[str, str | None]) -> ReceiveDTO:
+    """Fill each receive line's `purchase_order_line_external_id` from the
+    order's item map when the line names none and the item is unique on the
+    order. A line whose item is absent or ambiguous keeps None, and the sweep
+    quarantines it (GRN_LINE_UNATTRIBUTED) -- never a guess."""
+    if not po_lines_by_item:
+        return receive
+    lines = []
+    for line in receive.lines:
+        if line.purchase_order_line_external_id is None and line.item_external_id:
+            mapped = po_lines_by_item.get(line.item_external_id)
+            if mapped:
+                line = dataclasses.replace(line, purchase_order_line_external_id=mapped)
+        lines.append(line)
+    return dataclasses.replace(receive, lines=tuple(lines))
 
 
 def _item(row: Mapping[str, Any], source: SourceRef) -> ItemDTO:

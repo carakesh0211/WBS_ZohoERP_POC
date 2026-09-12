@@ -72,9 +72,15 @@ MODULE_ITEMS = "items"
 MODULE_PURCHASE_ORDERS = "purchaseorders"
 MODULE_BILLS = "bills"
 MODULE_RECEIVES = "receives"
+#: The bill DETAIL sweep: the queue of bills the poll put in the inbox, each
+#: hydrated and mirrored into the ledger against its order and receive. Runs
+#: LAST, after the receive walk, so a bill that cites a receive finds it.
+#: Absent until 2026-09-12: the first post-deploy cycle put the bill in the
+#: inbox and nothing ever carried it to the ledger.
+MODULE_BILL_DETAIL = "bill_detail"
 DEFAULT_MODULES: tuple[str, ...] = (
     MODULE_CONTACTS, MODULE_ITEMS, MODULE_PURCHASE_ORDERS, MODULE_BILLS,
-    MODULE_RECEIVES)
+    MODULE_RECEIVES, MODULE_BILL_DETAIL)
 
 #: ``integration_connection.product`` -> the ``external_source`` label
 #: `purchase_order`, `grn` and `bill` carry (`002_financial_controls.sql`,
@@ -644,6 +650,10 @@ def _build_job(module: str, *, adapter: Any, sweep_store: PgSweepStore,
         return sweeps.SweepPoAnchored(
             adapter=adapter, store=sweep_store, connection_id=connection_id,
             external_source=sweep_store.external_source)
+    if module == MODULE_BILL_DETAIL:
+        return sweeps.SweepBillDetail(
+            adapter=adapter, store=sweep_store, connection_id=connection_id,
+            external_source=sweep_store.external_source)
     raise LiveSweepError("UNKNOWN_SWEEP_MODULE", f"{module!r}", status=422)
 
 
@@ -656,6 +666,7 @@ WATERMARK_MODULE: Mapping[str, str | None] = {
     MODULE_PURCHASE_ORDERS: sweeps.MODULE_PURCHASE_ORDERS,
     MODULE_BILLS: sweeps.MODULE_BILLS,
     MODULE_RECEIVES: None,
+    MODULE_BILL_DETAIL: None,
 }
 
 #: Which `integration_inbox.module` each request-facing module writes.
@@ -665,6 +676,7 @@ INBOX_MODULE: Mapping[str, str] = {
     MODULE_PURCHASE_ORDERS: sweeps.MODULE_PURCHASE_ORDERS,
     MODULE_BILLS: sweeps.MODULE_BILLS,
     MODULE_RECEIVES: sweeps.MODULE_PURCHASE_RECEIVES,
+    MODULE_BILL_DETAIL: sweeps.MODULE_BILLS,
 }
 
 

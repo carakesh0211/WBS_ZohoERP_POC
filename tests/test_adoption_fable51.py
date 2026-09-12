@@ -870,6 +870,25 @@ def test_live_link_mode_links_a_matching_local_order_once(
         " WHERE kind = 'UNSANCTIONED_COMMITMENT' AND object_id = 'ZPO-10'"
     ).fetchone()
     assert exc == ("Resolved", f"linked to {po_id}")
+    # LINK stamps the tenant's line ids on the local lines, so the PO-anchored
+    # receive walk can resolve a receive against a linked order (the first
+    # post-deploy cycle quarantined the linked order's receive without this).
+    assert con.execute(
+        "SELECT line_external_id FROM po_line WHERE po_id = %s ORDER BY line_no",
+        (po_id,)).fetchall() == [("ZPOL-10",)]
+    # And a linked order whose line ids were lost (linked before the stamping
+    # existed) gets them back on the next idempotent run, without re-linking.
+    con.execute("UPDATE po_line SET line_external_id = NULL WHERE po_id = %s", (po_id,))
+    con.commit()
+    database = scoped_role_database(pg_url, pg_disposable_db_name)
+    try:
+        third = _adopt(database, con, adapter, correlation_id="c3")
+    finally:
+        database.close()
+    assert third["linked"] == 0 and third["adopted"] == 0
+    assert con.execute(
+        "SELECT line_external_id FROM po_line WHERE po_id = %s ORDER BY line_no",
+        (po_id,)).fetchall() == [("ZPOL-10",)]
 
 
 @PG
