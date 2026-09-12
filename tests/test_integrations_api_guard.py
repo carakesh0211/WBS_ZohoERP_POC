@@ -835,6 +835,25 @@ def _repo_query_statements() -> list[str]:
     return found
 
 
+def test_no_statement_carries_a_bare_percent_sign_anywhere_not_even_in_a_comment():
+    """psycopg scans the WHOLE statement text for `%` placeholders -- SQL
+    comments included -- and refuses anything but `%(name)s`, `%s`, `%b`,
+    `%t` or the escaped `%%`. A `'#%'` inside a `--` comment in
+    `_emission_state` passed every database-free test (the fakes never parse)
+    and answered 500 on the first live reconciliation that had a local order
+    to ask about (UAT, 2026-09-12). This holds the property at the source."""
+    statements = _repo_query_statements()
+    assert statements
+    offenders = []
+    for statement in statements:
+        # `%%` is the escaped literal and is fine; strip the pairs first so
+        # the second half of a pair is not read as a bare sign.
+        text = statement.replace("%%", "")
+        for m in re.finditer(r"%(?![(sbt])", text):
+            offenders.append(text[max(0, m.start() - 40):m.start() + 10])
+    assert offenders == [], offenders
+
+
 def test_every_statement_this_module_runs_carries_a_scope_token():
     """`repo.query` refuses a statement without `{scope}` before it reaches the
     database, so this is belt and braces -- but it fails at BUILD time rather

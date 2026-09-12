@@ -2518,7 +2518,12 @@ def _emission_state(session: Any, po_ids: Sequence[str]) -> dict[str, Any]:
         -- Equality OR the split prefix. `split_part` is not used to compare:
         -- a po_id is free to contain the separator itself, and comparing the
         -- first segment would then match a DIFFERENT purchase order whose id
-        -- happens to share that prefix. `LIKE prefix || '#%'` with the
+        -- happens to share that prefix. LIKE with the separator appended
+        -- to the known id and the wildcard after it (a bare percent sign
+        -- cannot appear anywhere in this text, not even in a comment:
+        -- psycopg reads the whole statement for placeholders, and the
+        -- first live reconciliation with one local order answered 500
+        -- on exactly that, 2026-09-12) with the
         -- separator pinned to the end of the known id cannot do that.
         WHERE (o.local_id = ANY(%(po_ids)s)
                OR EXISTS (SELECT 1 FROM unnest(%(po_ids)s::text[]) AS pid
