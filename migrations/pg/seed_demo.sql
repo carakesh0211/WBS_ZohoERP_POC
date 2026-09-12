@@ -195,6 +195,12 @@ VALUES
     ('WBS-A-ELEC', 'PRJ-DM-001', NULL, 'CAPEX-DEMO-001.03', 'Electrical Installations',
      'wbs_a_elec', 1, 3, 'BH-DM1-ELEC', 'U-PM', 'U-PM');
 
+-- PRJ-DM-001 is seeded Released, and lifecycle_state (014) lets procurement
+-- run only on a Released WBS element: a Draft element under a Released
+-- project refused every purchase request on the UAT estate (found
+-- 2026-09-12, LIFECYCLE_STATE). The demo estate's elements are Released.
+UPDATE wbs_element SET status = 'Released' WHERE project_id = 'PRJ-DM-001';
+
 -- PRJ-DM-002:
 --   wbs_b_pm                                      (L1, BH-DM2-PM)
 --     wbs_b_pm.wbs_b_pm_mod                         (L2, BH-DM2-PM -- 2nd owning level)

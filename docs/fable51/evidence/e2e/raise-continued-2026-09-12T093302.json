@@ -1,0 +1,77 @@
+{
+ "reference": "WBS-UAT-E2E-20260912",
+ "pr_id": "PR-223A9C8AB6F5",
+ "started_at": "2026-09-12T09:33:02.784904+00:00",
+ "steps": [
+  {
+   "step": "3b PO created from PR (U-PLH)",
+   "status": 201,
+   "at": "2026-09-12T09:33:03.980189+00:00",
+   "body": {
+    "po_id": "PO-15C1EEC1E554",
+    "po_number": "WBS-UAT-E2E-20260912",
+    "amount_paise": 185000000,
+    "currency": "INR",
+    "exchange_rate": "1",
+    "fx_rate_id": null,
+    "source_amount_minor": null,
+    "pr_id": "PR-223A9C8AB6F5",
+    "pr_number": "PR-0001",
+    "project_id": "PRJ-DM-001",
+    "status": "Draft",
+    "verdicts": [
+     {
+      "wbs_id": "WBS-A-ELEC",
+      "budget_head_id": "BH-DM1-ELEC",
+      "owning_wbs_id": "WBS-A-ELEC",
+      "budget_paise": 400000000,
+      "exposure_paise": 185000000,
+      "available_paise": 215000000,
+      "requested_paise": 185000000,
+      "verdict": "CRITICAL",
+      "shortfall_paise": 0,
+      "checked_at": "2026-09-12T09:33:03.439189+00:00",
+      "requested_for_cells": [
+       [
+        "WBS-A-ELEC",
+        "BH-DM1-ELEC"
+       ]
+      ]
+     }
+    ],
+    "line_count": 1
+   }
+  },
+  {
+   "step": "4b emit attempt (gate shut, read-only credential)",
+   "status": 409,
+   "at": "2026-09-12T09:33:05.199259+00:00",
+   "body": {
+    "detail": {
+     "type": "about:blank",
+     "title": "ERP Writes Disabled",
+     "status": 409,
+     "code": "ERP_WRITES_DISABLED",
+     "detail": "Outbound ERP writes are disabled in this deployment (CAPEX_ERP_OUTBOUND_WRITES is not 1). Nothing was planned or queued."
+    }
+   }
+  },
+  {
+   "step": "4c identical retry",
+   "status": 409,
+   "at": "2026-09-12T09:33:05.363164+00:00",
+   "body": {
+    "detail": {
+     "type": "about:blank",
+     "title": "ERP Writes Disabled",
+     "status": 409,
+     "code": "ERP_WRITES_DISABLED",
+     "detail": "Outbound ERP writes are disabled in this deployment (CAPEX_ERP_OUTBOUND_WRITES is not 1). Nothing was planned or queued."
+    }
+   }
+  }
+ ],
+ "note": "continuation of raise-*.json: convert as U-PLH (U-PROC's row scope does not include PRJ-DM-001, which the route reports as 404 by design)",
+ "po_id": "PO-15C1EEC1E554",
+ "dedupe_key": "CAPEX-purchaseorders-PO-15C1EEC1E554-d7c8a5bde09810f9"
+}

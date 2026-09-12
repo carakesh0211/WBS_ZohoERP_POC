@@ -274,7 +274,9 @@ EXPECTED_COUNTS = {
     "zone": 3,
     "plant": 3,
     "location": 5,
-    "app_user": 10,
+    # 10 synthetic identities + the four Zoho ERP demo users seeded as
+    # administrators on the owner's decision of 2026-09-11 (218b544).
+    "app_user": 14,
     "accounting_period": 7,
     "budget_head": 5,
     "project": 2,
