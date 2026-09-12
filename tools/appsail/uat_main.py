@@ -88,6 +88,19 @@ def prepare_environment() -> str:
     on_catalyst = bool(os.environ.get("X_ZOHO_CATALYST_LISTEN_PORT"))
     if on_catalyst and (os.environ.get("CAPEX_DB_HOST") or os.environ.get("CAPEX_DB_URL")):
         ca = os.path.join(BUNDLE, "ca-bundle.pem")
+        # 2026-09-12 review, item 4: `setdefault` alone only supplies
+        # verify-full when the console left the variable UNSET -- a console
+        # value of `require`, `prefer` or `disable` passed straight through,
+        # silently weaker than "never relaxed" above promises. A value is
+        # accepted here ONLY if it is already verify-full or absent; anything
+        # else refuses to start rather than connect at a weaker level.
+        _sslmode = os.environ.get("CAPEX_DB_SSLMODE")
+        if _sslmode and _sslmode != "verify-full":
+            _fail(f"CAPEX_DB_SSLMODE is {_sslmode!r}, not 'verify-full'. Stage "
+                  f"B's PostgreSQL connection is never relaxed below "
+                  f"verify-full; unset CAPEX_DB_SSLMODE in the platform "
+                  f"configuration (Stage B supplies verify-full itself) or "
+                  f"set it explicitly to 'verify-full'.")
         os.environ.setdefault("CAPEX_DB_SSLMODE", "verify-full")
         if os.path.isfile(ca):
             os.environ.setdefault("CAPEX_DB_SSLROOTCERT", ca)

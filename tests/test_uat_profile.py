@@ -280,6 +280,70 @@ def test_uat_launcher_refuses_a_bundle_without_the_seed(tmp_path, monkeypatch):
         mod.prepare_environment()
 
 
+def _stage_b_bundle(tmp_path, *, module_name: str, with_ca: bool = True):
+    """A bundle wired for Stage B: the seed, the credentials, and (unless the
+    test wants the CA-missing refusal instead) a CA bundle at the root so a
+    weaker-`CAPEX_DB_SSLMODE` test fails on THAT check alone, not on the
+    unrelated missing-CA one."""
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    (bundle / "uat_seed.db").write_bytes(b"seed-bytes")
+    (bundle / "uat-credentials.json").write_text("{}", encoding="utf-8")
+    if with_ca:
+        (bundle / "ca-bundle.pem").write_bytes(b"pem-bytes")
+    launcher = bundle / "main.py"
+    launcher.write_text((ROOT / "tools" / "appsail" / "uat_main.py").read_text(encoding="utf-8"),
+                        encoding="utf-8")
+    spec = importlib.util.spec_from_file_location(module_name, launcher)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@pytest.mark.parametrize("sslmode", ["require", "prefer", "disable"])
+def test_uat_launcher_refuses_a_weaker_sslmode_than_verify_full(
+        tmp_path, monkeypatch, capsys, sslmode):
+    """2026-09-12 review, item 4: `os.environ.setdefault("CAPEX_DB_SSLMODE",
+    "verify-full")` only supplies the value when the console left it UNSET --
+    a console value of `require`, `prefer` or `disable` passed straight
+    through, silently weaker than Stage B's own "never relaxed" promise. The
+    launcher must now refuse to start, naming the variable, rather than
+    connect at that weaker level."""
+    mod = _stage_b_bundle(tmp_path, module_name=f"uat_launcher_sslmode_{sslmode}")
+    monkeypatch.setenv("X_ZOHO_CATALYST_LISTEN_PORT", "8080")
+    monkeypatch.setenv("CAPEX_DB_HOST", "db.uat.internal")
+    monkeypatch.setenv("CAPEX_DB_SSLMODE", sslmode)
+    try:
+        with pytest.raises(SystemExit):
+            mod.prepare_environment()
+        assert "CAPEX_DB_SSLMODE" in capsys.readouterr().err
+    finally:
+        monkeypatch.delenv("CAPEX_DB_SSLMODE", raising=False)
+        monkeypatch.delenv("CAPEX_DB_SSLROOTCERT", raising=False)
+
+
+@pytest.mark.parametrize("preset_sslmode", [None, "verify-full"])
+def test_uat_launcher_accepts_verify_full_or_unset_under_stage_b(
+        tmp_path, monkeypatch, preset_sslmode):
+    """The other half of the same refusal: a console that left
+    `CAPEX_DB_SSLMODE` unset (Stage B supplies verify-full itself) or that
+    set it explicitly to `verify-full` must still start."""
+    mod = _stage_b_bundle(
+        tmp_path, module_name=f"uat_launcher_sslmode_ok_{preset_sslmode}")
+    monkeypatch.setenv("X_ZOHO_CATALYST_LISTEN_PORT", "8080")
+    monkeypatch.setenv("CAPEX_DB_HOST", "db.uat.internal")
+    if preset_sslmode is None:
+        monkeypatch.delenv("CAPEX_DB_SSLMODE", raising=False)
+    else:
+        monkeypatch.setenv("CAPEX_DB_SSLMODE", preset_sslmode)
+    try:
+        mod.prepare_environment()
+        assert os.environ["CAPEX_DB_SSLMODE"] == "verify-full"
+    finally:
+        monkeypatch.delenv("CAPEX_DB_SSLMODE", raising=False)
+        monkeypatch.delenv("CAPEX_DB_SSLROOTCERT", raising=False)
+
+
 # ---------------------------------------------------------- the bundle gate
 def test_bundle_verifier_refuses_windows_binaries_and_plaintext(tmp_path):
     sys.path.insert(0, str(ROOT / "tools" / "appsail"))

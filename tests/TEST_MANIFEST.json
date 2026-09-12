@@ -12827,6 +12827,14 @@
         "assertions": 1,
         "body_sha": "facd0c40f2536b4c"
       },
+      "test_uat_launcher_refuses_a_weaker_sslmode_than_verify_full": {
+        "assertions": 2,
+        "body_sha": "1a1690397d2c2ea0"
+      },
+      "test_uat_launcher_accepts_verify_full_or_unset_under_stage_b": {
+        "assertions": 1,
+        "body_sha": "512fd577ae3b039f"
+      },
       "test_bundle_verifier_refuses_windows_binaries_and_plaintext": {
         "assertions": 8,
         "body_sha": "22fbb48c195c271d"
@@ -13067,7 +13075,7 @@
     "test_security_identity.py": 10,
     "test_security_scope_tristate.py": 13,
     "test_security_secrets.py": 12,
-    "test_uat_profile.py": 21,
+    "test_uat_profile.py": 23,
     "test_zoho_routes_fable51.py": 21
   },
   "assertions": {
@@ -13202,7 +13210,7 @@
     "test_security_identity.py": 18,
     "test_security_scope_tristate.py": 39,
     "test_security_secrets.py": 29,
-    "test_uat_profile.py": 72,
+    "test_uat_profile.py": 75,
     "test_zoho_routes_fable51.py": 47
   }
 }
