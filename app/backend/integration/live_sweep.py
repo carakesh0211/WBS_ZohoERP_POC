@@ -566,7 +566,34 @@ def _job_row_for(session: Session, *, kind: str, connection_id: str,
     on the row, and a fresh row per call would reset it every time. A DEAD
     row is left exactly as it is (a human's to revive) and a new row is
     started beside it; the dead ids are reported so that decision is visible.
+
+    THE SELECT AND THE INSERT ARE ONE DECISION, so they are made under one
+    lock (2026-09-12 review, item 3). Without it, two concurrent sweep ticks
+    on the same connection -- a scheduled tick racing a manual trigger, or
+    two workers both waking for the same due job -- could each run the
+    SELECT below, each see no live row, and each call `enqueue_job`: a
+    plain SELECT-then-INSERT has no way to see a concurrent transaction's
+    uncommitted work. Two job rows for the same `(kind, connection_id)`
+    then race on the single watermark row and on the PO-anchored walk's
+    checkpoint. `pg_advisory_xact_lock(hashtext(...))`, keyed on this
+    connection and kind, is the same primitive `budget.py` uses for the
+    per-project first-revision race (see its comment there): transaction-
+    scoped, so it releases on commit or rollback with no code path to
+    forget, and it needs no row to lock, which matters here because the
+    first call for a (kind, connection_id) has no row yet to lock. A second
+    transaction blocks here until the first commits, and then its own
+    SELECT sees the row the first transaction just created.
+
+    `031_job_one_live_row_per_connection.sql` adds a partial UNIQUE index
+    on `(kind, connection_id)` over the same non-terminal states as a
+    second, database-level guarantee: even a caller that skipped this lock
+    -- or skipped `_job_row_for` entirely -- cannot create a second live row.
+    This lock is what keeps that from ever being reached in the first place,
+    so `enqueue_job` here is never refused by it in ordinary operation.
     """
+    session.execute(
+        "SELECT pg_advisory_xact_lock(hashtext(%s))",
+        (f"capex.job_row:{kind}:{connection_id}",))
     rows = repo.query(
         session,
         f"""

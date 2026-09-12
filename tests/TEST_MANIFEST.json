@@ -4111,6 +4111,10 @@
         "assertions": 4,
         "body_sha": "ecee160230bcde47"
       },
+      "test_live_two_concurrent_sessions_cannot_both_create_a_live_job_row": {
+        "assertions": 4,
+        "body_sha": "9c295fd5e9ecaa9e"
+      },
       "test_route_the_guard_is_on_the_router_and_reused_not_restated": {
         "assertions": 5,
         "body_sha": "d54c469dfe4ff09b"
@@ -12973,7 +12977,7 @@
     "test_integrations_live_routes_fable51.py": 12,
     "test_known_defects.py": 5,
     "test_ledger_cell_writers.py": 16,
-    "test_live_sweep_fable51.py": 31,
+    "test_live_sweep_fable51.py": 32,
     "test_live_transport_fable51.py": 22,
     "test_login_throttle.py": 11,
     "test_manifest.py": 10,
@@ -13108,7 +13112,7 @@
     "test_integrations_live_routes_fable51.py": 67,
     "test_known_defects.py": 13,
     "test_ledger_cell_writers.py": 32,
-    "test_live_sweep_fable51.py": 198,
+    "test_live_sweep_fable51.py": 202,
     "test_live_transport_fable51.py": 50,
     "test_login_throttle.py": 26,
     "test_manifest.py": 15,

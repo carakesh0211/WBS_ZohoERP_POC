@@ -43,6 +43,7 @@ import inspect
 import json
 import os
 import sys as _sys
+import threading
 import typing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path as _Path
@@ -890,6 +891,76 @@ def test_live_a_caller_without_an_app_user_row_cannot_own_a_job(
     assert refused.value.code == "PRINCIPAL_NOT_PROVISIONED"
     assert refused.value.status == 409
     assert _count(con, "SELECT count(*) FROM job") == 0
+
+
+@PG
+@pytest.mark.pg
+def test_live_two_concurrent_sessions_cannot_both_create_a_live_job_row(
+        pg_connection, pg_url, pg_disposable_db_name):
+    """2026-09-12 review, item 3. `_job_row_for` used to SELECT for an
+    existing live row and INSERT one if absent with no lock between the two
+    -- two sessions racing for the same `(kind, connection_id)` could each
+    see no row and each enqueue one. `pg_advisory_xact_lock`, keyed on the
+    same connection and kind, now serialises the SELECT-and-maybe-INSERT as
+    one decision (live_sweep.py); `031_job_one_live_row_per_connection.sql`
+    backs it with a partial UNIQUE index that would refuse a second live row
+    even if some future caller forgot the lock.
+
+    Two real sessions, each its own pooled connection
+    (`scoped_role_database`'s pool defaults to `max_size=2`), released
+    together by a barrier so they genuinely overlap rather than merely run
+    in sequence -- the harness `test_pg_approval_concurrency.py` uses for the
+    same reason.
+    """
+    con = pg_connection
+    _seed(con)
+    # min_size=2, not the default 1: both pooled connections are opened up
+    # front, so neither thread's first query pays a lazy-provisioning delay
+    # that would serialise the two sessions by accident and hide the race.
+    database = scoped_role_database(pg_url, pg_disposable_db_name,
+                                    min_size=2, max_size=2)
+    barrier = threading.Barrier(2)
+    results: list[tuple[Any, Any] | None] = [None, None]
+    KIND = "poll_bills"
+
+    def attempt(index: int):
+        def run() -> None:
+            barrier.wait(timeout=30)
+            try:
+                with database.session(_scope()) as session:
+                    job_id, dead = live_sweep._job_row_for(
+                        session, kind=KIND, connection_id=CONN,
+                        entity_id=ENTITY, principal=ACTOR, actor=ACTOR,
+                        correlation_id=f"race-{index}")
+                results[index] = (job_id, None)
+            except BaseException as exc:            # noqa: BLE001 - reported, not swallowed
+                results[index] = (None, exc)
+        return run
+
+    threads = [threading.Thread(target=attempt(i)) for i in range(2)]
+    try:
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=30)
+        for thread in threads:
+            assert not thread.is_alive(), (
+                "a worker did not finish within 30s: the advisory lock is "
+                "deadlocked or blocked indefinitely")
+    finally:
+        database.close()
+
+    errors = [exc for _job_id, exc in results if exc is not None]
+    assert not errors, errors
+    job_ids = {job_id for job_id, _exc in results}
+    assert len(job_ids) == 1, (
+        f"two concurrent callers must resolve to the SAME job row, not "
+        f"{job_ids}")
+    assert _count(
+        con, "SELECT count(*) FROM job WHERE kind = %s AND connection_id = %s",
+        (KIND, CONN)) == 1, (
+        "two live job rows exist for the same (kind, connection_id): the "
+        "race the advisory lock and migration 031 both exist to close")
 
 
 # ================================================================ 4. the route
