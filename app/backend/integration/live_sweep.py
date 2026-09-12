@@ -328,7 +328,7 @@ class PgSweepStore:
             self.session,
             f"""
             SELECT po.po_id, po.external_id, p.entity_id, po.project_id,
-                   po.po_number
+                   po.po_number, po.currency
             FROM {store.PURCHASE_ORDER} po
             JOIN project p ON p.project_id = po.project_id
             WHERE po.external_source = %(source)s
@@ -345,9 +345,16 @@ class PgSweepStore:
              "limit": int(limit)},
             columns=store.PROCUREMENT_SCOPE_COLUMNS,
         )
+        # `currency` (migration 029) rides along so the PO-anchored walk can
+        # hold a receive against a non-INR order under
+        # FOREIGN_CURRENCY_BASIS_MISSING (decision 8) instead of booking its
+        # face value as paise. NULL never happens post-029, but the dataclass
+        # default is the base currency, so a NULL would mean INR -- the same
+        # reading `_po_basis` gives an order with no currency stated.
         return [sweeps.LocalPurchaseOrder(
             po_id=r[0], external_id=r[1], entity_id=r[2], project_id=r[3],
-            document_number=r[4]) for r in rows]
+            document_number=r[4], currency_code=str(r[5] or sweeps.BASE_CURRENCY))
+            for r in rows]
 
     def known_purchase_order(self, *, connection_id: str,
                              external_id: str) -> bool:
@@ -408,7 +415,13 @@ class PgSweepStore:
                     external_last_modified: datetime | None = None,
                     payload_sha: str | None = None,
                     source_currency: str = "INR",
+                    exchange_rate: Any = None,
+                    fx_rate_source: str | None = None,
                     correlation_id: str | None = None) -> Mapping[str, Any]:
+        # `exchange_rate` / `fx_rate_source` are the bill's OWN rate as the
+        # sweep read it (a decimal string, never a float) and its provenance;
+        # the ledger's `mirror_bill` uses them for a non-INR bill and refuses
+        # the bill with FOREIGN_CURRENCY_BASIS_MISSING when they are absent.
         return procurement.mirror_bill(
             self.session, external_source=external_source,
             external_id=external_id, bill_number=bill_number,
@@ -417,6 +430,7 @@ class PgSweepStore:
             entity_id=entity_id, external_status_raw=external_status_raw,
             external_last_modified=external_last_modified,
             payload_sha=payload_sha, source_currency=source_currency,
+            exchange_rate=exchange_rate, fx_rate_source=fx_rate_source,
             correlation_id=correlation_id, actor=self.actor)
 
     def bills_awaiting_detail(self, *, connection_id: str,

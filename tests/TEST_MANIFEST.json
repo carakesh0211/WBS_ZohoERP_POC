@@ -4228,6 +4228,10 @@
       "test_route_the_openapi_template_is_spelled_with_connection_id": {
         "assertions": 3,
         "body_sha": "56af9f88745f74ee"
+      },
+      "test_pg_store_carries_the_orders_currency_and_the_bills_rate": {
+        "assertions": 6,
+        "body_sha": "0a36a5c67a776171"
       }
     },
     "test_live_transport_fable51.py": {
@@ -13032,7 +13036,7 @@
     "test_integrations_live_routes_fable51.py": 12,
     "test_known_defects.py": 5,
     "test_ledger_cell_writers.py": 16,
-    "test_live_sweep_fable51.py": 31,
+    "test_live_sweep_fable51.py": 32,
     "test_live_transport_fable51.py": 17,
     "test_login_throttle.py": 11,
     "test_manifest.py": 10,
@@ -13168,7 +13172,7 @@
     "test_integrations_live_routes_fable51.py": 67,
     "test_known_defects.py": 13,
     "test_ledger_cell_writers.py": 32,
-    "test_live_sweep_fable51.py": 198,
+    "test_live_sweep_fable51.py": 204,
     "test_live_transport_fable51.py": 40,
     "test_login_throttle.py": 26,
     "test_manifest.py": 15,

@@ -1062,3 +1062,41 @@ def test_route_the_openapi_template_is_spelled_with_connection_id():
     op = schema["paths"]["/api/integrations/connections/{connection_id}/sweep"]
     assert set(op) == {"post"}
     assert json.dumps(op)  # serialisable, like every other route's
+
+
+# ============================== decision 8: the currency and the rate reach the store
+def test_pg_store_carries_the_orders_currency_and_the_bills_rate(monkeypatch):
+    """`PgSweepStore` was the last unwired seam of decision 8: it built
+    `LocalPurchaseOrder` without the order's currency (so every order read as
+    INR and a JPY receive would have been booked at face value) and dropped a
+    bill's own `exchange_rate` on the floor before the ledger. Both wires,
+    proven on a fake session and a fake ledger."""
+    from app.backend.integration import live_sweep, sweeps
+    from app.backend.pg import repo
+    from app.backend.pg import procurement as ledger
+
+    seen = {}
+
+    def fake_query(session, sql, params, columns=None):
+        seen["sql"] = sql
+        return [("PO-1", "EXT-1", "ENT-1", "PRJ-1", "PO-00006", "JPY"),
+                ("PO-2", "EXT-2", "ENT-1", "PRJ-1", "PO-00001", None)]
+    monkeypatch.setattr(repo, "query", fake_query)
+    st = live_sweep.PgSweepStore.__new__(live_sweep.PgSweepStore)
+    st.session, st.external_source, st.entity_id, st.actor = object(), "ERP", "ENT-1", "U-T"
+    pos = st.open_purchase_orders(connection_id="C", after_po_id=None, limit=50)
+    assert "po.currency" in seen["sql"]
+    assert [(p.po_id, p.currency_code) for p in pos] == [("PO-1", "JPY"), ("PO-2", sweeps.BASE_CURRENCY)]
+
+    def fake_mirror(session, **kw):
+        seen["mirror"] = kw
+        return {"bill_id": "B-1"}
+    monkeypatch.setattr(ledger, "mirror_bill", fake_mirror)
+    from datetime import date
+    st.mirror_bill(external_source="ERP", external_id="X", bill_number="B", vendor_name="V",
+                   bill_date=date(2026, 9, 12), lines=(), source_currency="JPY",
+                   exchange_rate="0.561", fx_rate_source="ERP bill X")
+    assert seen["mirror"]["source_currency"] == "JPY"
+    assert seen["mirror"]["exchange_rate"] == "0.561"
+    assert seen["mirror"]["fx_rate_source"] == "ERP bill X"
+    assert seen["mirror"]["actor"] == "U-T"
