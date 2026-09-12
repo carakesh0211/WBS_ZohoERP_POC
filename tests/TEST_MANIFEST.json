@@ -2055,7 +2055,7 @@
       },
       "test_a_denied_principal_cannot_even_queue_an_export": {
         "assertions": 4,
-        "body_sha": "5243feb851d55f43"
+        "body_sha": "e85e828f792bbf62"
       },
       "test_a_job_cannot_be_created_carrying_somebody_elses_scope": {
         "assertions": 2,
@@ -4065,6 +4065,10 @@
         "assertions": 2,
         "body_sha": "f019d8f25abc3ff9"
       },
+      "test_no_statement_carries_a_bare_percent_sign_anywhere_not_even_in_a_comment": {
+        "assertions": 2,
+        "body_sha": "ab688701a658472e"
+      },
       "test_every_statement_this_module_runs_carries_a_scope_token": {
         "assertions": 2,
         "body_sha": "7ffca2995835d367"
@@ -5137,7 +5141,7 @@
       },
       "test_api_read_grants_for_unknown_user_is_not_found_live": {
         "assertions": 2,
-        "body_sha": "3321e827f07b9a86"
+        "body_sha": "86290e3525d160fa"
       },
       "test_api_write_grants_requires_admin_reset_permission_live": {
         "assertions": 3,
@@ -5145,7 +5149,7 @@
       },
       "test_api_write_grants_denies_service_maker_checker_role_live": {
         "assertions": 2,
-        "body_sha": "ef8cbe519dda39df"
+        "body_sha": "8dabface7e05793a"
       },
       "test_api_write_grants_is_audited_live": {
         "assertions": 6,
@@ -12500,8 +12504,8 @@
         "body_sha": "eba487f2f5cbaa6c"
       },
       "test_live_cross_entity_approval_and_period_close_are_refused": {
-        "assertions": 8,
-        "body_sha": "53d7c9a4584cd693"
+        "assertions": 9,
+        "body_sha": "ae29addff742114e"
       },
       "test_live_out_of_scope_write_is_physically_refused_by_rls": {
         "assertions": 2,
@@ -12971,11 +12975,11 @@
       },
       "test_capex_scope_permits_agrees_with_the_python_mirror_live": {
         "assertions": 2,
-        "body_sha": "cf3db78a4ee1fcd0"
+        "body_sha": "8e35ed250c048076"
       },
       "test_a_denied_scope_reads_no_row_through_the_repository_live": {
         "assertions": 2,
-        "body_sha": "a88db1afafd5b051"
+        "body_sha": "39d70ec272f142cb"
       }
     },
     "test_security_secrets.py": {
@@ -13328,7 +13332,7 @@
     "test_integration_store.py": 47,
     "test_integration_sweeps.py": 40,
     "test_integration_throttle.py": 76,
-    "test_integrations_api_guard.py": 51,
+    "test_integrations_api_guard.py": 52,
     "test_integrations_live_routes_fable51.py": 12,
     "test_known_defects.py": 5,
     "test_ledger_cell_writers.py": 16,
@@ -13467,7 +13471,7 @@
     "test_integration_store.py": 94,
     "test_integration_sweeps.py": 110,
     "test_integration_throttle.py": 244,
-    "test_integrations_api_guard.py": 114,
+    "test_integrations_api_guard.py": 116,
     "test_integrations_live_routes_fable51.py": 67,
     "test_known_defects.py": 13,
     "test_ledger_cell_writers.py": 32,
@@ -13552,7 +13556,7 @@
     "test_reports_filters_fable51.py": 56,
     "test_runtime_startup.py": 31,
     "test_scope_enforcement.py": 12,
-    "test_scope_negative_matrix.py": 82,
+    "test_scope_negative_matrix.py": 83,
     "test_scope_sentinel.py": 54,
     "test_security_approval_oracle.py": 11,
     "test_security_audit_anchor.py": 117,
