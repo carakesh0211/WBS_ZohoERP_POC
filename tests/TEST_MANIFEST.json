@@ -51,11 +51,11 @@
       },
       "test_live_adopts_a_tenant_raised_order_and_resolves_the_unsanctioned_commitment": {
         "assertions": 10,
-        "body_sha": "75edb0b4b33d0e6a"
+        "body_sha": "7cf3507eb07db0e4"
       },
       "test_live_repeat_adoption_is_idempotent": {
         "assertions": 4,
-        "body_sha": "8a862ac6dd10095b"
+        "body_sha": "1fc27a59d0376ea6"
       },
       "test_live_changed_dimensions_on_repeat_raise_conflict_and_leave_the_order": {
         "assertions": 4,
@@ -73,6 +73,10 @@
         "assertions": 2,
         "body_sha": "74432e7f1bc9f0b5"
       },
+      "test_live_a_line_whose_head_disagrees_with_its_wbs_elements_own_head_is_invalid": {
+        "assertions": 4,
+        "body_sha": "580731986b44e854"
+      },
       "test_live_jpy_order_without_an_active_rate_is_held_as_foreign_currency_basis_missing": {
         "assertions": 3,
         "body_sha": "4d212f5c6e848b5b"
@@ -88,6 +92,18 @@
       "test_live_grn_matching_then_bill_matching_against_the_adopted_order": {
         "assertions": 6,
         "body_sha": "0d64023d1b10045e"
+      },
+      "test_live_link_mode_links_a_matching_local_order_once": {
+        "assertions": 5,
+        "body_sha": "ae391c3bca6dfcd4"
+      },
+      "test_live_link_mode_mismatched_lines_conflict_and_do_not_link": {
+        "assertions": 3,
+        "body_sha": "3c75e42d23b72743"
+      },
+      "test_live_link_mode_an_unmatched_capex_ref_still_adopts_as_external_unsanctioned": {
+        "assertions": 2,
+        "body_sha": "a709f73977d72e27"
       }
     },
     "test_anchor_function_shim.py": {
@@ -13108,7 +13124,7 @@
     }
   },
   "counts": {
-    "test_adoption_fable51.py": 19,
+    "test_adoption_fable51.py": 23,
     "test_anchor_function_shim.py": 8,
     "test_api_auth.py": 27,
     "test_api_auth_saved_views.py": 2,
@@ -13245,7 +13261,7 @@
     "test_zoho_routes_fable51.py": 21
   },
   "assertions": {
-    "test_adoption_fable51.py": 65,
+    "test_adoption_fable51.py": 79,
     "test_anchor_function_shim.py": 24,
     "test_api_auth.py": 50,
     "test_api_auth_saved_views.py": 4,
