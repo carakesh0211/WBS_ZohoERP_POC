@@ -17,6 +17,19 @@ correctly, before the lead had done the integration only the lead could do, is
 not a defect in the agent's work — and deleting the number would hide that the
 five failures had a single cause.
 
+## 2026-09-12 — UAT release candidate (branch `fable-5.1/full-app-hardening-uat`)
+
+**Deployed:** `f19907b` (bundle sha256 `37eee12a56eca3d3d672973d87d753875ba5649979da6014d8526d5fe370372e`), Catalyst AppSail
+`wbs-capex-uat` (project 4239000000144371, Development), https://wbs-capex-uat-50045784768.development.catalystappsail.in,
+`/readyz` 200 schema 032 on Supabase `capex_tmpl_uat`. The CLI exposes no deployment id; the two deploy logs are the record.
+**HEAD:** `532bb9d` (one commit ahead of the deployed build: the bill identity-rate fix, deploy pending the owner).
+**Gates:** see `docs/fable51/CONTINUATION.md` "Sprint of 2026-09-12". CI pending GitHub billing.
+**Demo cycle:** `docs/fable51/evidence/e2e/` — PR → availability → approval → order → gated emission → tenant PO-00008 /
+GRN / bill → adoption link → receive mirrored → reconciliation balanced. Bill sync: blocked until the pending deploy.
+**Release-blocking (open):** bill-detail sweep on UAT (fixed at HEAD, not deployed). **Post-UAT:** anchor Cron Function
+deploy (audit verify is NEVER_ANCHORED), stray-schema cleanup (stopped at the zero-rows condition), write-scoped ERP
+credential for app-side emission, a tester-facing trigger for sweep/adoption, restore drill, pg_dump 17 client tools.
+
 ## Fable 5.1 — independent hardening, UAT preview and the budget-creation correction
 
 **Branch `fable-5.1/full-app-hardening-uat`** (from `full-application/build` @ 0b240fa),

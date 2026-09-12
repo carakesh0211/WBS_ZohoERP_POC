@@ -56,6 +56,28 @@ now carries a base-commit guard).
   navigation with two collapsible groups (approved groups' markup unchanged),
   measured no rail overflow at 1440×900.
 
+## Sprint of 2026-09-12: release candidate and the demo cycle
+
+UAT runs `f19907b` (bundle `37eee12a…`, schema 032; deploy records 8–9). Local
+gates at HEAD `532bb9d`: non-PG suite 4696 passed / 1 failed (fixed), the
+database-backed files 2142 passed / 28 failed (every one fixed since: 8 by
+the lead, 20 by the closure stream, re-run green), 21 bounded VRT batches
+green, bundle scan clean, all-roles smoke 13/13 sign in (one by-design 503 on
+control totals). CI: **pending GitHub billing**, not green, not claimed.
+
+The demo cycle (`docs/fable51/evidence/e2e/`): PR-0001 raised, over-budget
+probe refused, availability checked, approved by a second role, converted to
+WBS-UAT-E2E-20260912 (`PO-15C1EEC1E554`); emission refused twice by the shut
+gate (the credential is read-only — write scope is the owner's manual step);
+tenant PO-00008 / GRN / bill created under the owner's authorisation; adoption
+LINKED PO-00008 to the local order, adopted five demo orders, refused two
+(unmapped head); the receive walk mirrored the GRN (received = ordered
+₹18,50,000); reconciliation identity balanced; the ELEC cell shows the adopted
+exposure (EXCEEDS_BUDGET, by design); audit verify reports NEVER_ANCHORED
+honestly (the anchor Cron Function is not deployed). **Bill sync is the open
+blocker**: fixed at `532bb9d`, not deployed (third deploy not permitted).
+Cleanup of the stray schema: STOPPED at the zero-rows condition.
+
 ## Deploys 6 and 7, and the migration incident (2026-09-12)
 
 See `STAGE_B_PERSISTENT_UAT.md` deploy records 6–7 and "Incident 2026-09-12":
