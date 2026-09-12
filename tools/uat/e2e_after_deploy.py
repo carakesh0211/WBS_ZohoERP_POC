@@ -57,7 +57,7 @@ def main() -> Path:
     adopt("d adopt-orders again: idempotent")
 
     st, body = call("GET", f"/api/integrations/reconciliation?project_id={PROJECT}&limit=500", session=s)
-    rows = body.get("items") if isinstance(body, dict) else None
+    rows = body.get("rows") if isinstance(body, dict) else None   # the route's key is `rows`
     mine = [r for r in (rows or []) if REFERENCE in json.dumps(r) or LOCAL_PO in json.dumps(r) or TENANT_PO in json.dumps(r)]
     step(ev, "8 reconciliation rows for the cycle", st, {"count_all": len(rows or []), "rows": mine[:6]} if st == 200 else body)
     st, body = call("GET", f"/api/budget/availability?wbs_id={WBS}&budget_head_id={HEAD}&amount_paise=0", session=s)
