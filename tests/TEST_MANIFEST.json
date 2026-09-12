@@ -4122,8 +4122,8 @@
         "body_sha": "113ae0dd6e8af443"
       },
       "test_open_purchase_orders_is_scoped_keyed_on_po_id_and_bound_to_the_source": {
-        "assertions": 7,
-        "body_sha": "4915b1bab7932b01"
+        "assertions": 8,
+        "body_sha": "a02a30daee2c1d40"
       },
       "test_known_purchase_order_answers_by_external_id_under_this_source": {
         "assertions": 4,
@@ -4230,8 +4230,8 @@
         "body_sha": "56af9f88745f74ee"
       },
       "test_pg_store_carries_the_orders_currency_and_the_bills_rate": {
-        "assertions": 6,
-        "body_sha": "0a36a5c67a776171"
+        "assertions": 5,
+        "body_sha": "8e4e7c322f120612"
       }
     },
     "test_live_transport_fable51.py": {
