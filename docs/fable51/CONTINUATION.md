@@ -133,3 +133,51 @@ See `docs/fable51/DECISIONS_2026-09-11.md` (eight decisions, holders of each ope
    annotation); do not consume runs until the owner clears it.
 8. Independent adversarial review of the whole branch (D1/D2 reviewers never
    completed — both died at the limit before writing findings).
+
+## Review findings 2026-09-12
+
+A later independent review of `c51c2fe..6a3987c` confirmed four defects (one
+P1, three P2), distinct from item 8's incomplete D1/D2 run above. All four
+are fixed, one commit per item:
+
+1. **P1 — the PO-anchored receive walk under-charged the polling budget.**
+   `SweepPoAnchored` charged the budget 1 call per open PO before calling
+   `adapter.receives_for_po(...)`, but that call actually spends
+   `1 + len(receives)` requests. `ErpAdapter` gained the split
+   `po_receive_refs()` / `get_receive()` pair (additive; `receives_for_po`
+   unchanged for existing callers), and the sweep now charges 1 for the PO
+   detail and 1 more per receive, each immediately before the GET it pays
+   for. Books/Inventory (`receives_listable=True`, a different cost model)
+   is unaffected. Commit `40aad73`.
+2. **P2 — the live transport was rebuilt per HTTP request**, so its
+   100/minute sliding window and its minted-token cache never spanned more
+   than one call. `live_transport.py` gained `shared_transport()`, a
+   process-wide cache keyed on the resolved credential path and guarded by a
+   lock, plus `reset()` for tests; both call sites
+   (`api/integrations.py::_live_transport_for`,
+   `live_sweep.py::adapter_for_connection`) now ask it instead of
+   constructing directly. Commit `4a018df`.
+3. **P2 — TOCTOU on job-row creation.** `live_sweep.py::_job_row_for` did a
+   plain SELECT-then-INSERT with no lock, so two concurrent sweep ticks on
+   one connection could each enqueue a live job row for the same
+   `(kind, connection_id)` and race on the shared watermark and checkpoint
+   afterwards. `_job_row_for` now takes `pg_advisory_xact_lock` before its
+   SELECT (the same primitive `budget.py` already uses for the per-project
+   first-revision race), and migration
+   `031_job_one_live_row_per_connection.sql` adds a partial UNIQUE index on
+   `job (kind, connection_id)` over the non-terminal states as a
+   database-level backstop. (Migration number 031, not 030 — 030 was taken
+   by the decision-8 stream's `030_foreign_currency_basis_missing.sql`
+   landing on the branch concurrently.) Commit `30e535a`.
+4. **P2 — Stage B's `verify-full` was a default, not enforced.**
+   `tools/appsail/uat_main.py` used
+   `os.environ.setdefault("CAPEX_DB_SSLMODE", "verify-full")`, so a weaker
+   console value (`require`, `prefer`, `disable`) passed straight through.
+   The launcher now refuses to start (naming the variable) unless
+   `CAPEX_DB_SSLMODE` is unset or already `verify-full`. Commit `5745e54`.
+
+Each fix carries a test proven to fail against the pre-fix code and pass
+against the fix (items 3 and 4 verified by temporarily reverting the change
+and re-running; item 1's pinned test was itself the failing assertion). See
+`tests/ADAPTATIONS.md`'s 2026-09-12 entry for item 1's assertion-value
+change.
