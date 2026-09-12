@@ -325,7 +325,15 @@ def test_api_read_grants_for_unknown_user_is_not_found_live(
     resp = local_admin_client.get("/api/admin/users/U-DOES-NOT-EXIST/grants",
                                    **_with_session(auditor))
     assert resp.status_code == 404
-    assert resp.json()["code"] == "USER_NOT_FOUND"
+    # `admin_access.py::_problem` raises a plain `HTTPException` with its
+    # RFC-7807 body as `detail`; FastAPI/Starlette wrap that unmodified as
+    # `{"detail": <body>}` (no handler here re-flattens it -- unlike
+    # `services.BusinessError`/`auth.AuthError`, `admin_access.py` registers
+    # no `@app.exception_handler` at all). Every other test against this
+    # nesting reads `resp.json()["detail"]["code"]`
+    # (e.g. `tests/test_approval_negative_matrix.py`); this one never ran
+    # against a live server before and asserted the wrong shape.
+    assert resp.json()["detail"]["code"] == "USER_NOT_FOUND"
 
 
 @PG
@@ -355,7 +363,9 @@ def test_api_write_grants_denies_service_maker_checker_role_live(
     resp = local_admin_client.put("/api/admin/users/SVC-ZOHO/grants", json=body,
                                    **_with_session(administrator))
     assert resp.status_code == 409
-    assert resp.json()["code"] == "SERVICE_MAKER_CHECKER_DENIED"
+    # See the comment on the shape of this response in
+    # test_api_read_grants_for_unknown_user_is_not_found_live above.
+    assert resp.json()["detail"]["code"] == "SERVICE_MAKER_CHECKER_DENIED"
 
 
 @PG
