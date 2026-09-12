@@ -655,6 +655,11 @@ POST_BASELINE_FILES = {
     # A LIVE_READ ERP connection answers organisations/validate/scopes/health
     # from the tenant through the live transport; MOCK keeps every refusal.
     "test_integrations_live_routes_fable51.py",
+    # Release gates of 2026-09-12: the AppSail archive scanner (credentials,
+    # non-Linux binaries, stray files) and the all-roles smoke script's
+    # derived permission->route map. Database-free.
+    "test_appsail_scan_bundle.py",
+    "test_uat_smoke_roles.py",
     "test_pg_po_currency_fable51.py",
     # The live inbound sweep (Fable 5.1): `PgSweepStore`'s mapping onto the
     # store, `run_inbound_sweep` end to end on live PostgreSQL with a

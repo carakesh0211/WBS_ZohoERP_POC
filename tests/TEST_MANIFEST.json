@@ -826,6 +826,92 @@
         "body_sha": "82b7e5710fb2ca28"
       }
     },
+    "test_appsail_scan_bundle.py": {
+      "test_clean_archive_passes_with_no_findings": {
+        "assertions": 5,
+        "body_sha": "91971e0c700c62f1"
+      },
+      "test_main_returns_zero_and_prints_summary_for_a_clean_archive": {
+        "assertions": 2,
+        "body_sha": "40c7e2fc057b5e1f"
+      },
+      "test_credential_shape_password_literal": {
+        "assertions": 2,
+        "body_sha": "44d1c9e102b43c17"
+      },
+      "test_credential_shape_pg_dsn": {
+        "assertions": 1,
+        "body_sha": "ad56d374a8bf4051"
+      },
+      "test_credential_shape_pgpassword_and_env_style": {
+        "assertions": 2,
+        "body_sha": "8796a6c3894510b0"
+      },
+      "test_credential_shape_refresh_token_and_client_secret_with_real_values": {
+        "assertions": 1,
+        "body_sha": "da4ea1344bcd4348"
+      },
+      "test_credential_shape_zoho_oauthtoken_header": {
+        "assertions": 1,
+        "body_sha": "24e272884ff58f79"
+      },
+      "test_credential_shape_aws_github_slack_shapes_still_caught": {
+        "assertions": 1,
+        "body_sha": "128ae243e234bac3"
+      },
+      "test_credential_shape_skips_vendor_text_files": {
+        "assertions": 1,
+        "body_sha": "f8c20f38b8ca2d81"
+      },
+      "test_windows_binary": {
+        "assertions": 1,
+        "body_sha": "894b2f3e4d3be98e"
+      },
+      "test_non_manylinux_wheel_via_dist_info_tag": {
+        "assertions": 1,
+        "body_sha": "8b79fd58331ad695"
+      },
+      "test_non_manylinux_wheel_via_raw_whl_filename": {
+        "assertions": 1,
+        "body_sha": "546310bd2b244d67"
+      },
+      "test_macosx_and_musllinux_wheel_tags_also_refused": {
+        "assertions": 1,
+        "body_sha": "9cda92104a20cebf"
+      },
+      "test_unexpected_top_level": {
+        "assertions": 1,
+        "body_sha": "c0e0b246c7232bab"
+      },
+      "test_forbidden_paths": {
+        "assertions": 1,
+        "body_sha": "4f8bf0c7af6491be"
+      },
+      "test_archive_path_escape": {
+        "assertions": 1,
+        "body_sha": "7b9ed1dda7d5a2ac"
+      },
+      "test_stray_database": {
+        "assertions": 1,
+        "body_sha": "e786c81f74634ab8"
+      },
+      "test_stray_python_file": {
+        "assertions": 1,
+        "body_sha": "d6bd705f568dd055"
+      },
+      "test_main_returns_nonzero_and_prints_coded_findings": {
+        "assertions": 2,
+        "body_sha": "6756a2460920224a"
+      },
+      "test_main_refuses_a_missing_file": {
+        "assertions": 2,
+        "body_sha": "8727775133099421"
+      },
+      "test_credential_re_does_not_match_the_lookalike_corpus": {
+        "assertions": 1,
+        "body_sha": "db9bcf4466c34d94"
+      }
+    },
     "test_audit.py": {
       "test_aud_c_010_an_audit_row_cannot_be_updated": {
         "assertions": 2,
@@ -9937,7 +10023,7 @@
       },
       "test_a_receive_with_no_external_source_is_refused_not_written_as_null": {
         "assertions": 3,
-        "body_sha": "d9b15ee4c6513e5d"
+        "body_sha": "d37fb98a698b6cc4"
       },
       "test_the_grn_id_and_the_grn_number_can_no_longer_disagree": {
         "assertions": 4,
@@ -13036,6 +13122,84 @@
         "body_sha": "921857ae8c4f6ead"
       }
     },
+    "test_uat_smoke_roles.py": {
+      "test_derive_route_permissions_public_routes": {
+        "assertions": 1,
+        "body_sha": "2494ea9620c5b4d4"
+      },
+      "test_derive_route_permissions_auth_only_routes": {
+        "assertions": 1,
+        "body_sha": "651fcc2793cff4d3"
+      },
+      "test_derive_route_permissions_explicit_permission_routes": {
+        "assertions": 11,
+        "body_sha": "834f9fda4c717277"
+      },
+      "test_derive_route_permissions_cross_file_floor_resolution": {
+        "assertions": 2,
+        "body_sha": "ab7640c4f5c5f5d5"
+      },
+      "test_every_derived_permission_is_known_or_public": {
+        "assertions": 1,
+        "body_sha": "4bdf048ae384baf9"
+      },
+      "test_derive_route_permissions_finds_every_get_route_in_source": {
+        "assertions": 2,
+        "body_sha": "d3cc5f05d941de37"
+      },
+      "test_screen_routes_excludes_path_parameters_and_fixed_checks": {
+        "assertions": 5,
+        "body_sha": "ee7ced357fd0b6f3"
+      },
+      "test_screen_routes_is_deterministic_and_sorted": {
+        "assertions": 2,
+        "body_sha": "028bceee200dd446"
+      },
+      "test_permitted_and_forbidden_partitions_by_role": {
+        "assertions": 2,
+        "body_sha": "f21f5c02fd1f0aca"
+      },
+      "test_permitted_and_forbidden_samples_deterministically": {
+        "assertions": 2,
+        "body_sha": "fc69885de9a2fc9b"
+      },
+      "test_permitted_and_forbidden_refuses_an_unknown_permission": {
+        "assertions": 1,
+        "body_sha": "dcba6ed363664620"
+      },
+      "test_every_dev_user_role_reaches_at_least_one_screen_route": {
+        "assertions": 1,
+        "body_sha": "59f40335429c1cbb"
+      },
+      "test_scan_for_credentials_catches_every_named_shape": {
+        "assertions": 1,
+        "body_sha": "5b7b7d1637264dee"
+      },
+      "test_scan_for_credentials_is_clean_on_ordinary_responses": {
+        "assertions": 1,
+        "body_sha": "e7cdddfbf7a8cd3d"
+      },
+      "test_scan_for_credentials_dedupes_and_sorts": {
+        "assertions": 1,
+        "body_sha": "11f5a41b42d4b363"
+      },
+      "test_credential_re_matches_module_docstring_claims": {
+        "assertions": 1,
+        "body_sha": "033b19c3cd60c3be"
+      },
+      "test_password_for_reads_tab_separated_credentials": {
+        "assertions": 2,
+        "body_sha": "48ef4d514b6808c2"
+      },
+      "test_password_for_raises_for_unknown_user": {
+        "assertions": 2,
+        "body_sha": "cc35bca184e5c7f2"
+      },
+      "test_password_for_never_prints": {
+        "assertions": 3,
+        "body_sha": "ca67b43fd165603e"
+      }
+    },
     "test_zoho_routes_fable51.py": {
       "test_manage_routes_refuse_the_auditor_before_looking_the_connection_up": {
         "assertions": 1,
@@ -13135,6 +13299,7 @@
     "test_approval_writeback.py": 28,
     "test_approvals_api_guard.py": 26,
     "test_approvals_api_seam.py": 4,
+    "test_appsail_scan_bundle.py": 21,
     "test_audit.py": 17,
     "test_budget_api_guard.py": 10,
     "test_budget_submission.py": 32,
@@ -13258,6 +13423,7 @@
     "test_security_scope_tristate.py": 13,
     "test_security_secrets.py": 12,
     "test_uat_profile.py": 23,
+    "test_uat_smoke_roles.py": 19,
     "test_zoho_routes_fable51.py": 21
   },
   "assertions": {
@@ -13272,6 +13438,7 @@
     "test_approval_writeback.py": 63,
     "test_approvals_api_guard.py": 51,
     "test_approvals_api_seam.py": 4,
+    "test_appsail_scan_bundle.py": 30,
     "test_audit.py": 39,
     "test_budget_api_guard.py": 17,
     "test_budget_submission.py": 68,
@@ -13395,6 +13562,7 @@
     "test_security_scope_tristate.py": 39,
     "test_security_secrets.py": 29,
     "test_uat_profile.py": 75,
+    "test_uat_smoke_roles.py": 42,
     "test_zoho_routes_fable51.py": 47
   }
 }
