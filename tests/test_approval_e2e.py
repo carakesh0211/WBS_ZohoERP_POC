@@ -1252,15 +1252,15 @@ def _seed_exception_workflow(connection, entity_id):
     definition_id = f"APD-E2E-{tag}"
     connection.execute(
         "INSERT INTO approval_definition (definition_id, object_type, code, version, "
-        "status, entity_id, effective_from, created_by) "
-        "VALUES (%s,'BUDGET_REVISION',%s,1,'ACTIVE',%s,%s,'E2E')",
+        "status, entity_id, effective_from, created_by, activated_at, activated_by) "
+        "VALUES (%s,'BUDGET_REVISION',%s,1,'ACTIVE',%s,%s,'E2E',now(),'E2E')",
         (definition_id, f"BREV-EXC-{tag}", entity_id, date(2020, 1, 1)))
     connection.execute(
         "INSERT INTO approval_rule (rule_id, definition_id, priority, predicate, "
         "description, created_by) VALUES (%s,%s,10,%s,%s,'E2E')",
         (f"APR-E2E-{tag}", definition_id,
-         Jsonb({"all": [{"field": "object_type", "op": "eq",
-                         "value": "BUDGET_REVISION"}], "route": "EXCEPTION"}),
+         Jsonb({"op": "==", "left": {"path": "object_type"},
+                "right": {"value": "BUDGET_REVISION"}}),
          "Every budget revision in this entity."))
     connection.execute(
         "INSERT INTO approval_stage (stage_id, definition_id, stage_no, name, "
@@ -1276,7 +1276,8 @@ def _seed_exception_workflow(connection, entity_id):
         "created_by) VALUES (%s,%s,2,'Finance exception approval',NULL,'ALL',"
         "NULL,%s,24,NULL,NULL,false,true,'E2E')",
         (f"APS-E2E-{tag}-2", definition_id,
-         Jsonb({"field": "exceeds_available", "op": "eq", "value": True})))
+         Jsonb({"op": "==", "left": {"path": "exceeds_available"},
+                "right": {"value": True}})))
     connection.execute(
         "INSERT INTO approval_stage_approver (stage_id, ordinal, approver_kind, "
         "approver_ref, scope_expr) VALUES (%s,1,'ROLE','Project Finance Controller',NULL)",
@@ -1387,19 +1388,20 @@ def _seed_parallel_group_workflow(connection, entity_id, *, conditional_only=Fal
     definition_id = f"APD-E2E-PG-{tag}"
     connection.execute(
         "INSERT INTO approval_definition (definition_id, object_type, code, version, "
-        "status, entity_id, effective_from, created_by) "
-        "VALUES (%s,'BUDGET_REVISION',%s,1,'ACTIVE',%s,%s,'E2E')",
+        "status, entity_id, effective_from, created_by, activated_at, activated_by) "
+        "VALUES (%s,'BUDGET_REVISION',%s,1,'ACTIVE',%s,%s,'E2E',now(),'E2E')",
         (definition_id, f"BREV-PG-{tag}", entity_id, date(2020, 1, 1)))
     connection.execute(
         "INSERT INTO approval_rule (rule_id, definition_id, priority, predicate, "
         "description, created_by) VALUES (%s,%s,5,%s,%s,'E2E')",
         (f"APR-E2E-PG-{tag}", definition_id,
-         Jsonb({"all": [{"field": "object_type", "op": "eq",
-                         "value": "BUDGET_REVISION"}], "route": "PARALLEL"}),
+         Jsonb({"op": "==", "left": {"path": "object_type"},
+                "right": {"value": "BUDGET_REVISION"}}),
          "Every budget revision in this entity, priority 5 so it beats the "
          "sequential exception workflow if both are seeded."))
 
-    over_budget = Jsonb({"field": "exceeds_available", "op": "eq", "value": True})
+    over_budget = Jsonb({"op": "==", "left": {"path": "exceeds_available"},
+                         "right": {"value": True}})
     connection.execute(
         "INSERT INTO approval_stage (stage_id, definition_id, stage_no, name, "
         "parallel_group, quorum_type, quorum_n, applies_when, sla_hours, "
