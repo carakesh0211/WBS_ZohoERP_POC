@@ -1,0 +1,1846 @@
+{
+ "taken_at": "2026-09-12T08:21:35.103963+00:00",
+ "identity": {
+  "project_ref": "lmljdkluuqpgjboiejro",
+  "host": "aws-0-ap-south-1.pooler.supabase.com",
+  "user_prefix": "postgres",
+  "database": "postgres",
+  "schema": "public"
+ },
+ "server": {
+  "current_database": "postgres",
+  "current_user": "postgres",
+  "version": "PostgreSQL 17.6"
+ },
+ "stray": {
+  "tables": [
+   "accounting_period",
+   "app_user",
+   "approval_action",
+   "approval_assignment",
+   "approval_definition",
+   "approval_delegation",
+   "approval_instance",
+   "approval_rule",
+   "approval_stage",
+   "approval_stage_approver",
+   "approval_stage_instance",
+   "asset_allocation",
+   "audit_anchor",
+   "audit_log",
+   "bill",
+   "bill_line",
+   "branch",
+   "budget_category",
+   "budget_control_cell",
+   "budget_head",
+   "budget_ledger_cell",
+   "budget_line",
+   "budget_revision",
+   "budget_transfer",
+   "budget_version",
+   "budget_version_cell",
+   "capitalisation_request",
+   "currency_denomination",
+   "custom_field_applicability",
+   "custom_field_def",
+   "custom_field_value",
+   "department",
+   "division",
+   "entity",
+   "export_job",
+   "export_job_chunk",
+   "fx_policy",
+   "fx_rate",
+   "fx_revaluation_attempt",
+   "fx_translation_event",
+   "grn",
+   "grn_line",
+   "integration_circuit",
+   "integration_connection",
+   "integration_event",
+   "integration_inbox",
+   "integration_outbox",
+   "integration_rate_budget",
+   "integration_watermark",
+   "item_master",
+   "job",
+   "lifecycle_state",
+   "location",
+   "numbering_counter",
+   "numbering_issued",
+   "numbering_series",
+   "organisation",
+   "original_budget",
+   "original_budget_line",
+   "period_reopen_request",
+   "plant",
+   "po_line",
+   "pr_line",
+   "pr_reservation",
+   "procurement_policy",
+   "procurement_transition",
+   "project",
+   "project_completion_review",
+   "purchase_order",
+   "purchase_request",
+   "reason_code",
+   "reconciliation_exception",
+   "report_saved_view",
+   "report_view_default",
+   "role_grant",
+   "schema_migrations",
+   "user_access_flag",
+   "user_scope_grant",
+   "user_scope_restriction",
+   "vendor_master",
+   "wbs_element",
+   "zone"
+  ],
+  "table_count": 82,
+  "row_counts": {
+   "accounting_period": 0,
+   "app_user": 0,
+   "approval_action": 0,
+   "approval_assignment": 0,
+   "approval_definition": 0,
+   "approval_delegation": 0,
+   "approval_instance": 0,
+   "approval_rule": 0,
+   "approval_stage": 0,
+   "approval_stage_approver": 0,
+   "approval_stage_instance": 0,
+   "asset_allocation": 0,
+   "audit_anchor": 0,
+   "audit_log": 0,
+   "bill": 0,
+   "bill_line": 0,
+   "branch": 0,
+   "budget_category": 0,
+   "budget_control_cell": 0,
+   "budget_head": 0,
+   "budget_ledger_cell": 0,
+   "budget_line": 0,
+   "budget_revision": 0,
+   "budget_transfer": 0,
+   "budget_version": 0,
+   "budget_version_cell": 0,
+   "capitalisation_request": 0,
+   "currency_denomination": 11,
+   "custom_field_applicability": 0,
+   "custom_field_def": 0,
+   "custom_field_value": 0,
+   "department": 0,
+   "division": 0,
+   "entity": 0,
+   "export_job": 0,
+   "export_job_chunk": 0,
+   "fx_policy": 4,
+   "fx_rate": 0,
+   "fx_revaluation_attempt": 0,
+   "fx_translation_event": 0,
+   "grn": 0,
+   "grn_line": 0,
+   "integration_circuit": 0,
+   "integration_connection": 0,
+   "integration_event": 0,
+   "integration_inbox": 0,
+   "integration_outbox": 0,
+   "integration_rate_budget": 0,
+   "integration_watermark": 0,
+   "item_master": 0,
+   "job": 0,
+   "lifecycle_state": 21,
+   "location": 0,
+   "numbering_counter": 0,
+   "numbering_issued": 0,
+   "numbering_series": 5,
+   "organisation": 0,
+   "original_budget": 0,
+   "original_budget_line": 0,
+   "period_reopen_request": 0,
+   "plant": 0,
+   "po_line": 0,
+   "pr_line": 0,
+   "pr_reservation": 0,
+   "procurement_policy": 1,
+   "procurement_transition": 29,
+   "project": 0,
+   "project_completion_review": 0,
+   "purchase_order": 0,
+   "purchase_request": 0,
+   "reason_code": 0,
+   "reconciliation_exception": 0,
+   "report_saved_view": 0,
+   "report_view_default": 0,
+   "role_grant": 0,
+   "schema_migrations": 30,
+   "user_access_flag": 0,
+   "user_scope_grant": 0,
+   "user_scope_restriction": 0,
+   "vendor_master": 0,
+   "wbs_element": 0,
+   "zone": 0
+  },
+  "tables_with_rows": {
+   "currency_denomination": 11,
+   "fx_policy": 4,
+   "lifecycle_state": 21,
+   "numbering_series": 5,
+   "procurement_policy": 1,
+   "procurement_transition": 29,
+   "schema_migrations": 30
+  },
+  "schema_migrations_rows": [
+   [
+    "001",
+    "foundation",
+    "2026-09-12T03:51:54.200498+00:00"
+   ],
+   [
+    "002",
+    "budget_control",
+    "2026-09-12T03:51:54.967738+00:00"
+   ],
+   [
+    "003",
+    "budget_planning",
+    "2026-09-12T03:51:55.176758+00:00"
+   ],
+   [
+    "004",
+    "identity_scope",
+    "2026-09-12T03:51:55.420220+00:00"
+   ],
+   [
+    "005",
+    "master_data",
+    "2026-09-12T03:51:55.664223+00:00"
+   ],
+   [
+    "006",
+    "rls_coverage",
+    "2026-09-12T03:51:55.870637+00:00"
+   ],
+   [
+    "007",
+    "scope_sentinel",
+    "2026-09-12T03:51:56.113826+00:00"
+   ],
+   [
+    "008",
+    "approval_engine",
+    "2026-09-12T03:51:56.303826+00:00"
+   ],
+   [
+    "009",
+    "document_approval_states",
+    "2026-09-12T03:51:56.798649+00:00"
+   ],
+   [
+    "010",
+    "integration",
+    "2026-09-12T03:51:57.064903+00:00"
+   ],
+   [
+    "011",
+    "reconciliation_exception",
+    "2026-09-12T03:51:58.136535+00:00"
+   ],
+   [
+    "012",
+    "unattributed_triage",
+    "2026-09-12T03:51:58.701381+00:00"
+   ],
+   [
+    "013",
+    "procurement",
+    "2026-09-12T03:51:59.110487+00:00"
+   ],
+   [
+    "014",
+    "procurement_corrections",
+    "2026-09-12T03:51:59.715426+00:00"
+   ],
+   [
+    "015",
+    "reservation_grain",
+    "2026-09-12T03:52:00.054294+00:00"
+   ],
+   [
+    "016",
+    "grn_line_ordinal",
+    "2026-09-12T03:52:00.287224+00:00"
+   ],
+   [
+    "017",
+    "reporting",
+    "2026-09-12T03:52:00.539976+00:00"
+   ],
+   [
+    "018",
+    "export_jobs",
+    "2026-09-12T03:52:00.814937+00:00"
+   ],
+   [
+    "019",
+    "closure",
+    "2026-09-12T03:52:01.080481+00:00"
+   ],
+   [
+    "020",
+    "reservation_revert_ledger",
+    "2026-09-12T03:52:01.301977+00:00"
+   ],
+   [
+    "021",
+    "export_closure_revert_ledger",
+    "2026-09-12T03:52:01.582126+00:00"
+   ],
+   [
+    "022",
+    "saved_view_policies_and_revert_ledger",
+    "2026-09-12T03:52:01.913725+00:00"
+   ],
+   [
+    "023",
+    "fx_translation_and_period_reopen",
+    "2026-09-12T03:52:02.333845+00:00"
+   ],
+   [
+    "024",
+    "audit_anchor_integrity",
+    "2026-09-12T03:52:02.579234+00:00"
+   ],
+   [
+    "025",
+    "fx_applied_at_ingestion",
+    "2026-09-12T03:52:02.861346+00:00"
+   ],
+   [
+    "026",
+    "budget_category_and_original_budget",
+    "2026-09-12T03:52:02.998895+00:00"
+   ],
+   [
+    "027",
+    "grn_reversal_and_commitment_sources",
+    "2026-09-12T03:52:03.367110+00:00"
+   ],
+   [
+    "028",
+    "fx_rate_administration",
+    "2026-09-12T03:52:03.770094+00:00"
+   ],
+   [
+    "029",
+    "po_currency_at_origin",
+    "2026-09-12T03:52:04.012782+00:00"
+   ],
+   [
+    "030",
+    "foreign_currency_basis_missing",
+    "2026-09-12T03:52:04.614176+00:00"
+   ]
+  ],
+  "views": [
+   [
+    "extensions",
+    "pg_stat_statements"
+   ],
+   [
+    "extensions",
+    "pg_stat_statements_info"
+   ],
+   [
+    "vault",
+    "decrypted_secrets"
+   ]
+  ],
+  "public_functions": [
+   [
+    "public",
+    "_lt_q_regex"
+   ],
+   [
+    "public",
+    "_lt_q_rregex"
+   ],
+   [
+    "public",
+    "_ltq_extract_regex"
+   ],
+   [
+    "public",
+    "_ltq_regex"
+   ],
+   [
+    "public",
+    "_ltq_rregex"
+   ],
+   [
+    "public",
+    "_ltree_compress"
+   ],
+   [
+    "public",
+    "_ltree_consistent"
+   ],
+   [
+    "public",
+    "_ltree_extract_isparent"
+   ],
+   [
+    "public",
+    "_ltree_extract_risparent"
+   ],
+   [
+    "public",
+    "_ltree_gist_options"
+   ],
+   [
+    "public",
+    "_ltree_isparent"
+   ],
+   [
+    "public",
+    "_ltree_penalty"
+   ],
+   [
+    "public",
+    "_ltree_picksplit"
+   ],
+   [
+    "public",
+    "_ltree_r_isparent"
+   ],
+   [
+    "public",
+    "_ltree_r_risparent"
+   ],
+   [
+    "public",
+    "_ltree_risparent"
+   ],
+   [
+    "public",
+    "_ltree_same"
+   ],
+   [
+    "public",
+    "_ltree_union"
+   ],
+   [
+    "public",
+    "_ltxtq_exec"
+   ],
+   [
+    "public",
+    "_ltxtq_extract_exec"
+   ],
+   [
+    "public",
+    "_ltxtq_rexec"
+   ],
+   [
+    "public",
+    "assert_append_only"
+   ],
+   [
+    "public",
+    "assert_approval_action_append_only"
+   ],
+   [
+    "public",
+    "assert_approval_definition_child_immutable"
+   ],
+   [
+    "public",
+    "assert_approval_definition_immutable"
+   ],
+   [
+    "public",
+    "assert_approval_instance_frozen_fields"
+   ],
+   [
+    "public",
+    "assert_budget_line_category_matches_cell"
+   ],
+   [
+    "public",
+    "assert_cell_category_immutable"
+   ],
+   [
+    "public",
+    "assert_integration_event_append_only"
+   ],
+   [
+    "public",
+    "assert_integration_inbox_receipt_frozen"
+   ],
+   [
+    "public",
+    "assert_integration_watermark_no_silent_rewind"
+   ],
+   [
+    "public",
+    "assert_original_budget_line_immutable"
+   ],
+   [
+    "public",
+    "assert_original_budget_line_released_immutable"
+   ],
+   [
+    "public",
+    "assert_original_budget_released_immutable"
+   ],
+   [
+    "public",
+    "bill_fx_basis_is_immutable"
+   ],
+   [
+    "public",
+    "bill_line_source_amount_is_immutable"
+   ],
+   [
+    "public",
+    "bill_line_source_tax_freight_is_immutable"
+   ],
+   [
+    "public",
+    "capex_dimension_permits"
+   ],
+   [
+    "public",
+    "capex_may_triage_unattributed"
+   ],
+   [
+    "public",
+    "capex_normalise_text"
+   ],
+   [
+    "public",
+    "capex_payload_carries_restricted_key"
+   ],
+   [
+    "public",
+    "capex_principal_present"
+   ],
+   [
+    "public",
+    "capex_purchase_request_total_refresh"
+   ],
+   [
+    "public",
+    "capex_restricted_payload_keys"
+   ],
+   [
+    "public",
+    "capex_scope_permits"
+   ],
+   [
+    "public",
+    "cash_dist"
+   ],
+   [
+    "public",
+    "date_dist"
+   ],
+   [
+    "public",
+    "export_job_chunk_is_append_only"
+   ],
+   [
+    "public",
+    "export_job_identity_is_immutable"
+   ],
+   [
+    "public",
+    "float4_dist"
+   ],
+   [
+    "public",
+    "float8_dist"
+   ],
+   [
+    "public",
+    "fx_rate_history_is_immutable"
+   ],
+   [
+    "public",
+    "fx_translation_event_is_immutable"
+   ],
+   [
+    "public",
+    "gbt_bit_compress"
+   ],
+   [
+    "public",
+    "gbt_bit_consistent"
+   ],
+   [
+    "public",
+    "gbt_bit_penalty"
+   ],
+   [
+    "public",
+    "gbt_bit_picksplit"
+   ],
+   [
+    "public",
+    "gbt_bit_same"
+   ],
+   [
+    "public",
+    "gbt_bit_union"
+   ],
+   [
+    "public",
+    "gbt_bool_compress"
+   ],
+   [
+    "public",
+    "gbt_bool_consistent"
+   ],
+   [
+    "public",
+    "gbt_bool_fetch"
+   ],
+   [
+    "public",
+    "gbt_bool_penalty"
+   ],
+   [
+    "public",
+    "gbt_bool_picksplit"
+   ],
+   [
+    "public",
+    "gbt_bool_same"
+   ],
+   [
+    "public",
+    "gbt_bool_union"
+   ],
+   [
+    "public",
+    "gbt_bpchar_compress"
+   ],
+   [
+    "public",
+    "gbt_bpchar_consistent"
+   ],
+   [
+    "public",
+    "gbt_bytea_compress"
+   ],
+   [
+    "public",
+    "gbt_bytea_consistent"
+   ],
+   [
+    "public",
+    "gbt_bytea_penalty"
+   ],
+   [
+    "public",
+    "gbt_bytea_picksplit"
+   ],
+   [
+    "public",
+    "gbt_bytea_same"
+   ],
+   [
+    "public",
+    "gbt_bytea_union"
+   ],
+   [
+    "public",
+    "gbt_cash_compress"
+   ],
+   [
+    "public",
+    "gbt_cash_consistent"
+   ],
+   [
+    "public",
+    "gbt_cash_distance"
+   ],
+   [
+    "public",
+    "gbt_cash_fetch"
+   ],
+   [
+    "public",
+    "gbt_cash_penalty"
+   ],
+   [
+    "public",
+    "gbt_cash_picksplit"
+   ],
+   [
+    "public",
+    "gbt_cash_same"
+   ],
+   [
+    "public",
+    "gbt_cash_union"
+   ],
+   [
+    "public",
+    "gbt_date_compress"
+   ],
+   [
+    "public",
+    "gbt_date_consistent"
+   ],
+   [
+    "public",
+    "gbt_date_distance"
+   ],
+   [
+    "public",
+    "gbt_date_fetch"
+   ],
+   [
+    "public",
+    "gbt_date_penalty"
+   ],
+   [
+    "public",
+    "gbt_date_picksplit"
+   ],
+   [
+    "public",
+    "gbt_date_same"
+   ],
+   [
+    "public",
+    "gbt_date_union"
+   ],
+   [
+    "public",
+    "gbt_decompress"
+   ],
+   [
+    "public",
+    "gbt_enum_compress"
+   ],
+   [
+    "public",
+    "gbt_enum_consistent"
+   ],
+   [
+    "public",
+    "gbt_enum_fetch"
+   ],
+   [
+    "public",
+    "gbt_enum_penalty"
+   ],
+   [
+    "public",
+    "gbt_enum_picksplit"
+   ],
+   [
+    "public",
+    "gbt_enum_same"
+   ],
+   [
+    "public",
+    "gbt_enum_union"
+   ],
+   [
+    "public",
+    "gbt_float4_compress"
+   ],
+   [
+    "public",
+    "gbt_float4_consistent"
+   ],
+   [
+    "public",
+    "gbt_float4_distance"
+   ],
+   [
+    "public",
+    "gbt_float4_fetch"
+   ],
+   [
+    "public",
+    "gbt_float4_penalty"
+   ],
+   [
+    "public",
+    "gbt_float4_picksplit"
+   ],
+   [
+    "public",
+    "gbt_float4_same"
+   ],
+   [
+    "public",
+    "gbt_float4_union"
+   ],
+   [
+    "public",
+    "gbt_float8_compress"
+   ],
+   [
+    "public",
+    "gbt_float8_consistent"
+   ],
+   [
+    "public",
+    "gbt_float8_distance"
+   ],
+   [
+    "public",
+    "gbt_float8_fetch"
+   ],
+   [
+    "public",
+    "gbt_float8_penalty"
+   ],
+   [
+    "public",
+    "gbt_float8_picksplit"
+   ],
+   [
+    "public",
+    "gbt_float8_same"
+   ],
+   [
+    "public",
+    "gbt_float8_union"
+   ],
+   [
+    "public",
+    "gbt_inet_compress"
+   ],
+   [
+    "public",
+    "gbt_inet_consistent"
+   ],
+   [
+    "public",
+    "gbt_inet_penalty"
+   ],
+   [
+    "public",
+    "gbt_inet_picksplit"
+   ],
+   [
+    "public",
+    "gbt_inet_same"
+   ],
+   [
+    "public",
+    "gbt_inet_union"
+   ],
+   [
+    "public",
+    "gbt_int2_compress"
+   ],
+   [
+    "public",
+    "gbt_int2_consistent"
+   ],
+   [
+    "public",
+    "gbt_int2_distance"
+   ],
+   [
+    "public",
+    "gbt_int2_fetch"
+   ],
+   [
+    "public",
+    "gbt_int2_penalty"
+   ],
+   [
+    "public",
+    "gbt_int2_picksplit"
+   ],
+   [
+    "public",
+    "gbt_int2_same"
+   ],
+   [
+    "public",
+    "gbt_int2_union"
+   ],
+   [
+    "public",
+    "gbt_int4_compress"
+   ],
+   [
+    "public",
+    "gbt_int4_consistent"
+   ],
+   [
+    "public",
+    "gbt_int4_distance"
+   ],
+   [
+    "public",
+    "gbt_int4_fetch"
+   ],
+   [
+    "public",
+    "gbt_int4_penalty"
+   ],
+   [
+    "public",
+    "gbt_int4_picksplit"
+   ],
+   [
+    "public",
+    "gbt_int4_same"
+   ],
+   [
+    "public",
+    "gbt_int4_union"
+   ],
+   [
+    "public",
+    "gbt_int8_compress"
+   ],
+   [
+    "public",
+    "gbt_int8_consistent"
+   ],
+   [
+    "public",
+    "gbt_int8_distance"
+   ],
+   [
+    "public",
+    "gbt_int8_fetch"
+   ],
+   [
+    "public",
+    "gbt_int8_penalty"
+   ],
+   [
+    "public",
+    "gbt_int8_picksplit"
+   ],
+   [
+    "public",
+    "gbt_int8_same"
+   ],
+   [
+    "public",
+    "gbt_int8_union"
+   ],
+   [
+    "public",
+    "gbt_intv_compress"
+   ],
+   [
+    "public",
+    "gbt_intv_consistent"
+   ],
+   [
+    "public",
+    "gbt_intv_decompress"
+   ],
+   [
+    "public",
+    "gbt_intv_distance"
+   ],
+   [
+    "public",
+    "gbt_intv_fetch"
+   ],
+   [
+    "public",
+    "gbt_intv_penalty"
+   ],
+   [
+    "public",
+    "gbt_intv_picksplit"
+   ],
+   [
+    "public",
+    "gbt_intv_same"
+   ],
+   [
+    "public",
+    "gbt_intv_union"
+   ],
+   [
+    "public",
+    "gbt_macad8_compress"
+   ],
+   [
+    "public",
+    "gbt_macad8_consistent"
+   ],
+   [
+    "public",
+    "gbt_macad8_fetch"
+   ],
+   [
+    "public",
+    "gbt_macad8_penalty"
+   ],
+   [
+    "public",
+    "gbt_macad8_picksplit"
+   ],
+   [
+    "public",
+    "gbt_macad8_same"
+   ],
+   [
+    "public",
+    "gbt_macad8_union"
+   ],
+   [
+    "public",
+    "gbt_macad_compress"
+   ],
+   [
+    "public",
+    "gbt_macad_consistent"
+   ],
+   [
+    "public",
+    "gbt_macad_fetch"
+   ],
+   [
+    "public",
+    "gbt_macad_penalty"
+   ],
+   [
+    "public",
+    "gbt_macad_picksplit"
+   ],
+   [
+    "public",
+    "gbt_macad_same"
+   ],
+   [
+    "public",
+    "gbt_macad_union"
+   ],
+   [
+    "public",
+    "gbt_numeric_compress"
+   ],
+   [
+    "public",
+    "gbt_numeric_consistent"
+   ],
+   [
+    "public",
+    "gbt_numeric_penalty"
+   ],
+   [
+    "public",
+    "gbt_numeric_picksplit"
+   ],
+   [
+    "public",
+    "gbt_numeric_same"
+   ],
+   [
+    "public",
+    "gbt_numeric_union"
+   ],
+   [
+    "public",
+    "gbt_oid_compress"
+   ],
+   [
+    "public",
+    "gbt_oid_consistent"
+   ],
+   [
+    "public",
+    "gbt_oid_distance"
+   ],
+   [
+    "public",
+    "gbt_oid_fetch"
+   ],
+   [
+    "public",
+    "gbt_oid_penalty"
+   ],
+   [
+    "public",
+    "gbt_oid_picksplit"
+   ],
+   [
+    "public",
+    "gbt_oid_same"
+   ],
+   [
+    "public",
+    "gbt_oid_union"
+   ],
+   [
+    "public",
+    "gbt_text_compress"
+   ],
+   [
+    "public",
+    "gbt_text_consistent"
+   ],
+   [
+    "public",
+    "gbt_text_penalty"
+   ],
+   [
+    "public",
+    "gbt_text_picksplit"
+   ],
+   [
+    "public",
+    "gbt_text_same"
+   ],
+   [
+    "public",
+    "gbt_text_union"
+   ],
+   [
+    "public",
+    "gbt_time_compress"
+   ],
+   [
+    "public",
+    "gbt_time_consistent"
+   ],
+   [
+    "public",
+    "gbt_time_distance"
+   ],
+   [
+    "public",
+    "gbt_time_fetch"
+   ],
+   [
+    "public",
+    "gbt_time_penalty"
+   ],
+   [
+    "public",
+    "gbt_time_picksplit"
+   ],
+   [
+    "public",
+    "gbt_time_same"
+   ],
+   [
+    "public",
+    "gbt_time_union"
+   ],
+   [
+    "public",
+    "gbt_timetz_compress"
+   ],
+   [
+    "public",
+    "gbt_timetz_consistent"
+   ],
+   [
+    "public",
+    "gbt_ts_compress"
+   ],
+   [
+    "public",
+    "gbt_ts_consistent"
+   ],
+   [
+    "public",
+    "gbt_ts_distance"
+   ],
+   [
+    "public",
+    "gbt_ts_fetch"
+   ],
+   [
+    "public",
+    "gbt_ts_penalty"
+   ],
+   [
+    "public",
+    "gbt_ts_picksplit"
+   ],
+   [
+    "public",
+    "gbt_ts_same"
+   ],
+   [
+    "public",
+    "gbt_ts_union"
+   ],
+   [
+    "public",
+    "gbt_tstz_compress"
+   ],
+   [
+    "public",
+    "gbt_tstz_consistent"
+   ],
+   [
+    "public",
+    "gbt_tstz_distance"
+   ],
+   [
+    "public",
+    "gbt_uuid_compress"
+   ],
+   [
+    "public",
+    "gbt_uuid_consistent"
+   ],
+   [
+    "public",
+    "gbt_uuid_fetch"
+   ],
+   [
+    "public",
+    "gbt_uuid_penalty"
+   ],
+   [
+    "public",
+    "gbt_uuid_picksplit"
+   ],
+   [
+    "public",
+    "gbt_uuid_same"
+   ],
+   [
+    "public",
+    "gbt_uuid_union"
+   ],
+   [
+    "public",
+    "gbt_var_decompress"
+   ],
+   [
+    "public",
+    "gbt_var_fetch"
+   ],
+   [
+    "public",
+    "gbtreekey16_in"
+   ],
+   [
+    "public",
+    "gbtreekey16_out"
+   ],
+   [
+    "public",
+    "gbtreekey2_in"
+   ],
+   [
+    "public",
+    "gbtreekey2_out"
+   ],
+   [
+    "public",
+    "gbtreekey32_in"
+   ],
+   [
+    "public",
+    "gbtreekey32_out"
+   ],
+   [
+    "public",
+    "gbtreekey4_in"
+   ],
+   [
+    "public",
+    "gbtreekey4_out"
+   ],
+   [
+    "public",
+    "gbtreekey8_in"
+   ],
+   [
+    "public",
+    "gbtreekey8_out"
+   ],
+   [
+    "public",
+    "gbtreekey_var_in"
+   ],
+   [
+    "public",
+    "gbtreekey_var_out"
+   ],
+   [
+    "public",
+    "grn_line_source_amount_is_immutable"
+   ],
+   [
+    "public",
+    "hash_ltree"
+   ],
+   [
+    "public",
+    "hash_ltree_extended"
+   ],
+   [
+    "public",
+    "index"
+   ],
+   [
+    "public",
+    "index"
+   ],
+   [
+    "public",
+    "int2_dist"
+   ],
+   [
+    "public",
+    "int4_dist"
+   ],
+   [
+    "public",
+    "int8_dist"
+   ],
+   [
+    "public",
+    "interval_dist"
+   ],
+   [
+    "public",
+    "lca"
+   ],
+   [
+    "public",
+    "lca"
+   ],
+   [
+    "public",
+    "lca"
+   ],
+   [
+    "public",
+    "lca"
+   ],
+   [
+    "public",
+    "lca"
+   ],
+   [
+    "public",
+    "lca"
+   ],
+   [
+    "public",
+    "lca"
+   ],
+   [
+    "public",
+    "lca"
+   ],
+   [
+    "public",
+    "lquery_in"
+   ],
+   [
+    "public",
+    "lquery_out"
+   ],
+   [
+    "public",
+    "lquery_recv"
+   ],
+   [
+    "public",
+    "lquery_send"
+   ],
+   [
+    "public",
+    "lt_q_regex"
+   ],
+   [
+    "public",
+    "lt_q_rregex"
+   ],
+   [
+    "public",
+    "ltq_regex"
+   ],
+   [
+    "public",
+    "ltq_rregex"
+   ],
+   [
+    "public",
+    "ltree2text"
+   ],
+   [
+    "public",
+    "ltree_addltree"
+   ],
+   [
+    "public",
+    "ltree_addtext"
+   ],
+   [
+    "public",
+    "ltree_cmp"
+   ],
+   [
+    "public",
+    "ltree_compress"
+   ],
+   [
+    "public",
+    "ltree_consistent"
+   ],
+   [
+    "public",
+    "ltree_decompress"
+   ],
+   [
+    "public",
+    "ltree_eq"
+   ],
+   [
+    "public",
+    "ltree_ge"
+   ],
+   [
+    "public",
+    "ltree_gist_in"
+   ],
+   [
+    "public",
+    "ltree_gist_options"
+   ],
+   [
+    "public",
+    "ltree_gist_out"
+   ],
+   [
+    "public",
+    "ltree_gt"
+   ],
+   [
+    "public",
+    "ltree_in"
+   ],
+   [
+    "public",
+    "ltree_isparent"
+   ],
+   [
+    "public",
+    "ltree_le"
+   ],
+   [
+    "public",
+    "ltree_lt"
+   ],
+   [
+    "public",
+    "ltree_ne"
+   ],
+   [
+    "public",
+    "ltree_out"
+   ],
+   [
+    "public",
+    "ltree_penalty"
+   ],
+   [
+    "public",
+    "ltree_picksplit"
+   ],
+   [
+    "public",
+    "ltree_recv"
+   ],
+   [
+    "public",
+    "ltree_risparent"
+   ],
+   [
+    "public",
+    "ltree_same"
+   ],
+   [
+    "public",
+    "ltree_send"
+   ],
+   [
+    "public",
+    "ltree_textadd"
+   ],
+   [
+    "public",
+    "ltree_union"
+   ],
+   [
+    "public",
+    "ltreeparentsel"
+   ],
+   [
+    "public",
+    "ltxtq_exec"
+   ],
+   [
+    "public",
+    "ltxtq_in"
+   ],
+   [
+    "public",
+    "ltxtq_out"
+   ],
+   [
+    "public",
+    "ltxtq_recv"
+   ],
+   [
+    "public",
+    "ltxtq_rexec"
+   ],
+   [
+    "public",
+    "ltxtq_send"
+   ],
+   [
+    "public",
+    "nlevel"
+   ],
+   [
+    "public",
+    "oid_dist"
+   ],
+   [
+    "public",
+    "period_reopen_request_is_append_only"
+   ],
+   [
+    "public",
+    "period_reopen_request_no_delete"
+   ],
+   [
+    "public",
+    "po_line_source_matches_header"
+   ],
+   [
+    "public",
+    "purchase_order_fx_basis_is_immutable"
+   ],
+   [
+    "public",
+    "report_saved_view_owner_is_immutable"
+   ],
+   [
+    "public",
+    "subltree"
+   ],
+   [
+    "public",
+    "subpath"
+   ],
+   [
+    "public",
+    "subpath"
+   ],
+   [
+    "public",
+    "text2ltree"
+   ],
+   [
+    "public",
+    "time_dist"
+   ],
+   [
+    "public",
+    "ts_dist"
+   ],
+   [
+    "public",
+    "tstz_dist"
+   ]
+  ],
+  "triggers_on_public_tables": 44,
+  "cross_schema_foreign_keys": [
+   [
+    "auth",
+    "identities",
+    "auth",
+    "users"
+   ],
+   [
+    "auth",
+    "sessions",
+    "auth",
+    "users"
+   ],
+   [
+    "auth",
+    "refresh_tokens",
+    "auth",
+    "sessions"
+   ],
+   [
+    "auth",
+    "mfa_factors",
+    "auth",
+    "users"
+   ],
+   [
+    "auth",
+    "mfa_challenges",
+    "auth",
+    "mfa_factors"
+   ],
+   [
+    "auth",
+    "mfa_amr_claims",
+    "auth",
+    "sessions"
+   ],
+   [
+    "auth",
+    "sso_domains",
+    "auth",
+    "sso_providers"
+   ],
+   [
+    "auth",
+    "saml_providers",
+    "auth",
+    "sso_providers"
+   ],
+   [
+    "auth",
+    "saml_relay_states",
+    "auth",
+    "sso_providers"
+   ],
+   [
+    "auth",
+    "saml_relay_states",
+    "auth",
+    "flow_state"
+   ],
+   [
+    "auth",
+    "one_time_tokens",
+    "auth",
+    "users"
+   ],
+   [
+    "auth",
+    "oauth_authorizations",
+    "auth",
+    "oauth_clients"
+   ],
+   [
+    "auth",
+    "oauth_authorizations",
+    "auth",
+    "users"
+   ],
+   [
+    "auth",
+    "oauth_consents",
+    "auth",
+    "users"
+   ],
+   [
+    "auth",
+    "oauth_consents",
+    "auth",
+    "oauth_clients"
+   ],
+   [
+    "auth",
+    "sessions",
+    "auth",
+    "oauth_clients"
+   ],
+   [
+    "auth",
+    "webauthn_credentials",
+    "auth",
+    "users"
+   ],
+   [
+    "auth",
+    "webauthn_challenges",
+    "auth",
+    "users"
+   ],
+   [
+    "storage",
+    "objects",
+    "storage",
+    "buckets"
+   ],
+   [
+    "storage",
+    "s3_multipart_uploads",
+    "storage",
+    "buckets"
+   ],
+   [
+    "storage",
+    "s3_multipart_uploads_parts",
+    "storage",
+    "s3_multipart_uploads"
+   ],
+   [
+    "storage",
+    "s3_multipart_uploads_parts",
+    "storage",
+    "buckets"
+   ],
+   [
+    "storage",
+    "vector_indexes",
+    "storage",
+    "buckets_vectors"
+   ]
+  ],
+  "tables_per_schema": [
+   [
+    "auth",
+    23
+   ],
+   [
+    "public",
+    82
+   ],
+   [
+    "realtime",
+    3
+   ],
+   [
+    "storage",
+    8
+   ],
+   [
+    "vault",
+    1
+   ]
+  ],
+  "public_total_size": "3248 kB"
+ },
+ "estate": {
+  "database": "capex_tmpl_uat",
+  "schema_version": "031",
+  "app_user_rows": 16,
+  "table_count": 82,
+  "stray_tables_not_in_estate": [],
+  "estate_tables_not_in_stray": []
+ },
+ "populated_tables": {
+  "rows_identical_to_estate": {
+   "currency_denomination": {
+    "stray_rows": 11,
+    "estate_rows": 11
+   },
+   "fx_policy": {
+    "stray_rows": 4,
+    "estate_rows": 4
+   },
+   "lifecycle_state": {
+    "stray_rows": 21,
+    "estate_rows": 21
+   },
+   "procurement_policy": {
+    "stray_rows": 1,
+    "estate_rows": 1
+   },
+   "procurement_transition": {
+    "stray_rows": 29,
+    "estate_rows": 29
+   }
+  },
+  "rows_differ_from_estate": {
+   "numbering_series": {
+    "stray_rows": 5,
+    "estate_rows": 7
+   }
+  },
+  "seeded_by_migration_file": {
+   "currency_denomination": [
+    "023_fx_translation_and_period_reopen.sql"
+   ],
+   "fx_policy": [
+    "023_fx_translation_and_period_reopen.sql",
+    "028_fx_rate_administration.sql"
+   ],
+   "lifecycle_state": [
+    "014_procurement_corrections.sql"
+   ],
+   "numbering_series": [
+    "014_procurement_corrections.sql",
+    "026_budget_category_and_original_budget.sql"
+   ],
+   "procurement_policy": [
+    "014_procurement_corrections.sql"
+   ],
+   "procurement_transition": [
+    "014_procurement_corrections.sql"
+   ]
+  }
+ },
+ "objects_vs_estate": {
+  "public_functions_only_in_stray": [],
+  "public_functions_only_in_estate": [
+   "armor/bytea",
+   "armor/bytea, text[], text[]",
+   "crypt/text, text",
+   "dearmor/text",
+   "decrypt/bytea, bytea, text",
+   "decrypt_iv/bytea, bytea, bytea, text",
+   "digest/bytea, text",
+   "digest/text, text",
+   "encrypt/bytea, bytea, text",
+   "encrypt_iv/bytea, bytea, bytea, text",
+   "gen_random_bytes/integer",
+   "gen_random_uuid/",
+   "gen_salt/text",
+   "gen_salt/text, integer",
+   "hmac/bytea, bytea, text",
+   "hmac/text, text, text",
+   "pgp_armor_headers/text, OUT key text, OUT value text",
+   "pgp_key_id/bytea",
+   "pgp_pub_decrypt/bytea, bytea",
+   "pgp_pub_decrypt/bytea, bytea, text",
+   "pgp_pub_decrypt/bytea, bytea, text, text",
+   "pgp_pub_decrypt_bytea/bytea, bytea",
+   "pgp_pub_decrypt_bytea/bytea, bytea, text",
+   "pgp_pub_decrypt_bytea/bytea, bytea, text, text",
+   "pgp_pub_encrypt/text, bytea",
+   "pgp_pub_encrypt/text, bytea, text",
+   "pgp_pub_encrypt_bytea/bytea, bytea",
+   "pgp_pub_encrypt_bytea/bytea, bytea, text",
+   "pgp_sym_decrypt/bytea, text",
+   "pgp_sym_decrypt/bytea, text, text",
+   "pgp_sym_decrypt_bytea/bytea, text",
+   "pgp_sym_decrypt_bytea/bytea, text, text",
+   "pgp_sym_encrypt/text, text",
+   "pgp_sym_encrypt/text, text, text",
+   "pgp_sym_encrypt_bytea/bytea, text",
+   "pgp_sym_encrypt_bytea/bytea, text, text"
+  ],
+  "public_function_count": [
+   302,
+   338
+  ],
+  "triggers_only_in_stray": [],
+  "triggers_only_in_estate": [],
+  "trigger_count": [
+   44,
+   44
+  ]
+ }
+}
