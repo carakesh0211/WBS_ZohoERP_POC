@@ -19,7 +19,10 @@ five failures had a single cause.
 
 ## 2026-09-12 — UAT release candidate (branch `fable-5.1/full-app-hardening-uat`)
 
-**Deployed:** `f19907b` (bundle sha256 `37eee12a56eca3d3d672973d87d753875ba5649979da6014d8526d5fe370372e`), Catalyst AppSail
+**Deployed (latest):** `2852be5` (bundle sha256 `c3dffe79012840f80189abd1527d8815a0a67886424496e44ba2503a217617a7`), records 10–11 in
+`docs/fable51/STAGE_B_PERSISTENT_UAT.md`; bill sync proven (E2E ordered = received = billed = 185,000,000 paise, open 0). The
+application-originated emission path (`/mode`, `/drain-outbox`, item ids and line fields on the wire) is deployed and waits at the
+owner's credential checkpoint. Repository public; history scan clean. Earlier: `f19907b` (bundle sha256 `37eee12a56eca3d3d672973d87d753875ba5649979da6014d8526d5fe370372e`), Catalyst AppSail
 `wbs-capex-uat` (project 4239000000144371, Development), https://wbs-capex-uat-50045784768.development.catalystappsail.in,
 `/readyz` 200 schema 032 on Supabase `capex_tmpl_uat`. The CLI exposes no deployment id; the two deploy logs are the record.
 **HEAD:** `532bb9d` (one commit ahead of the deployed build: the bill identity-rate fix, deploy pending the owner).

@@ -1,0 +1,422 @@
+{
+ "reference": "WBS-UAT-E2E-20260912",
+ "local_po": "PO-15C1EEC1E554",
+ "tenant_po": "3912780000000109005",
+ "started_at": "2026-09-12T18:39:59.958342+00:00",
+ "steps": [
+  {
+   "step": "readyz",
+   "status": 200,
+   "at": "2026-09-12T18:40:01.877471+00:00",
+   "body": {
+    "status": "ok",
+    "check": "readiness",
+    "schema_version": "032",
+    "schema_applied_at": "2026-09-12T10:29:09.586738+00:00"
+   }
+  },
+  {
+   "step": "a sweep: tenant records into the inbox",
+   "status": 200,
+   "at": "2026-09-12T18:40:03.871451+00:00",
+   "body": {
+    "modules": {
+     "contacts": {
+      "state": "DONE",
+      "reason": "COMPLETED",
+      "records_seen": 6,
+      "inbox_created": 0,
+      "calls": 1
+     },
+     "items": {
+      "state": "DONE",
+      "reason": "COMPLETED",
+      "records_seen": 9,
+      "inbox_created": 0,
+      "calls": 1
+     },
+     "purchaseorders": {
+      "state": "DONE",
+      "reason": "COMPLETED",
+      "records_seen": 0,
+      "inbox_created": 0,
+      "calls": 1
+     },
+     "bills": {
+      "state": "DONE",
+      "reason": "COMPLETED",
+      "records_seen": 0,
+      "inbox_created": 0,
+      "calls": 1
+     },
+     "receives": {
+      "state": "DONE",
+      "reason": "COMPLETED",
+      "records_seen": 0,
+      "inbox_created": 0,
+      "calls": 0
+     },
+     "bill_detail": {
+      "state": "DONE",
+      "reason": "COMPLETED",
+      "records_seen": 0,
+      "inbox_created": 0,
+      "calls": 0
+     }
+    },
+    "receive_lines_recorded": 0,
+    "exceptions": {
+     "raised": 0,
+     "ids": []
+    },
+    "transport": {
+     "product": "ERP",
+     "api_domain": "https://www.zohoapis.in",
+     "granted_scopes": [
+      "ERP.accountants.READ",
+      "ERP.bills.READ",
+      "ERP.contacts.READ",
+      "ERP.custommodules.ALL",
+      "ERP.debitnotes.READ",
+      "ERP.department.READ",
+      "ERP.fixedasset.READ",
+      "ERP.projects.READ",
+      "ERP.purchaseorders.READ",
+      "ERP.purchasereceives.READ",
+      "ERP.settings.READ",
+      "ERP.vendorpayments.READ"
+     ],
+     "token_minted": true,
+     "token_seconds_left": 3478,
+     "calls_made": 4,
+     "token_mints": 1
+    }
+   }
+  },
+  {
+   "step": "b adopt-orders: LINK PO-00008 to the local order; demo orders adopted or refused",
+   "status": 200,
+   "at": "2026-09-12T18:40:06.673771+00:00",
+   "body": {
+    "adopted": 0,
+    "linked": 0,
+    "skipped": 6,
+    "exceptions": 2,
+    "calls": 8,
+    "exception_ids": [
+     "EXC-14108C9AF59F",
+     "EXC-B9EF8F3E6376"
+    ]
+   }
+  },
+  {
+   "step": "c sweep: receive walk and bill match against the linked order",
+   "status": 200,
+   "at": "2026-09-12T18:40:11.040777+00:00",
+   "body": {
+    "modules": {
+     "contacts": {
+      "state": "DONE",
+      "reason": "COMPLETED",
+      "records_seen": 6,
+      "inbox_created": 0,
+      "calls": 1
+     },
+     "items": {
+      "state": "DONE",
+      "reason": "COMPLETED",
+      "records_seen": 9,
+      "inbox_created": 0,
+      "calls": 1
+     },
+     "purchaseorders": {
+      "state": "DONE",
+      "reason": "COMPLETED",
+      "records_seen": 0,
+      "inbox_created": 0,
+      "calls": 1
+     },
+     "bills": {
+      "state": "DONE",
+      "reason": "COMPLETED",
+      "records_seen": 0,
+      "inbox_created": 0,
+      "calls": 1
+     },
+     "receives": {
+      "state": "DONE",
+      "reason": "COMPLETED",
+      "records_seen": 6,
+      "inbox_created": 1,
+      "calls": 9
+     },
+     "bill_detail": {
+      "state": "DONE",
+      "reason": "COMPLETED",
+      "records_seen": 0,
+      "inbox_created": 0,
+      "calls": 0
+     }
+    },
+    "receive_lines_recorded": 4,
+    "exceptions": {
+     "raised": 0,
+     "ids": []
+    },
+    "transport": {
+     "product": "ERP",
+     "api_domain": "https://www.zohoapis.in",
+     "granted_scopes": [
+      "ERP.accountants.READ",
+      "ERP.bills.READ",
+      "ERP.contacts.READ",
+      "ERP.custommodules.ALL",
+      "ERP.debitnotes.READ",
+      "ERP.department.READ",
+      "ERP.fixedasset.READ",
+      "ERP.projects.READ",
+      "ERP.purchaseorders.READ",
+      "ERP.purchasereceives.READ",
+      "ERP.settings.READ",
+      "ERP.vendorpayments.READ"
+     ],
+     "token_minted": true,
+     "token_seconds_left": 3471,
+     "calls_made": 25,
+     "token_mints": 1
+    }
+   }
+  },
+  {
+   "step": "d adopt-orders again: idempotent",
+   "status": 200,
+   "at": "2026-09-12T18:40:13.914441+00:00",
+   "body": {
+    "adopted": 0,
+    "linked": 0,
+    "skipped": 6,
+    "exceptions": 2,
+    "calls": 8,
+    "exception_ids": [
+     "EXC-14108C9AF59F",
+     "EXC-B9EF8F3E6376"
+    ]
+   }
+  },
+  {
+   "step": "8 reconciliation rows for the cycle",
+   "status": 200,
+   "at": "2026-09-12T18:40:14.319008+00:00",
+   "body": {
+    "count_all": 8,
+    "rows": [
+     {
+      "po_line_id": "POL-4C12CCFAF615",
+      "line_no": 1,
+      "description": "11kV switchgear panels (UAT E2E)",
+      "wbs_id": "WBS-A-ELEC",
+      "wbs_code": "CAPEX-DEMO-001.03",
+      "budget_head_id": "BH-DM1-ELEC",
+      "budget_head": "Electrical",
+      "project_id": "PRJ-DM-001",
+      "po_id": "PO-15C1EEC1E554",
+      "po_number": "WBS-UAT-E2E-20260912",
+      "po_status": "Draft",
+      "po_external_id": "3912780000000109005",
+      "vendor_name": "Demo Vendor - Kalinga Electricals (SYNTHETIC)",
+      "currency": "INR",
+      "exchange_rate": "1",
+      "amendment_no": 0,
+      "ordered_paise": 185000000,
+      "received_paise": 185000000,
+      "billed_paise": 185000000,
+      "open_commitment_paise": 0,
+      "received_not_billed_paise": 0,
+      "exposure_paise": 185000000,
+      "residual_released_paise": 0,
+      "over_billed_paise": 0,
+      "flag": "ok",
+      "position": "Fully billed",
+      "emission_state": null
+     }
+    ]
+   }
+  },
+  {
+   "step": "9 cell exposure after the cycle",
+   "status": 200,
+   "at": "2026-09-12T18:40:14.829868+00:00",
+   "body": {
+    "wbs_id": "WBS-A-ELEC",
+    "budget_head_id": "BH-DM1-ELEC",
+    "owning_wbs_id": "WBS-A-ELEC",
+    "budget_paise": 400000000,
+    "exposure_paise": 747000000,
+    "available_paise": -347000000,
+    "requested_paise": 0,
+    "verdict": "EXCEEDS_BUDGET",
+    "shortfall_paise": 347000000,
+    "checked_at": "2026-09-12T18:40:14.545141+00:00"
+   }
+  },
+  {
+   "step": "9b control totals",
+   "status": 503,
+   "at": "2026-09-12T18:40:15.012388+00:00",
+   "body": {
+    "detail": {
+     "type": "about:blank",
+     "title": "Control Totals Unavailable",
+     "status": 503,
+     "code": "CONTROL_TOTALS_UNAVAILABLE",
+     "detail": "Zoho's side of the comparison: a control total asserts that OUR count and value equal THEIRS for a window, and no endpoint in this build knows theirs. Nothing here is synthesised from the ledger: a control total that only ever compared us with ourselves would always balance, including when the integration had stopped.",
+     "message_id": null,
+     "missing": "Zoho's side of the comparison: a control total asserts that OUR count and value equal THEIRS for a window, and no endpoint in this build knows theirs.",
+     "remedy": "Nothing here is synthesised from the ledger: a control total that only ever compared us with ourselves would always balance, including when the integration had stopped.",
+     "unavailable": true
+    }
+   }
+  },
+  {
+   "step": "10 audit chain verify",
+   "status": 200,
+   "at": "2026-09-12T18:40:15.275199+00:00",
+   "body": {
+    "anchored": false,
+    "intact": false,
+    "anchors_checked": 0,
+    "state": "NEVER_ANCHORED",
+    "anchor_chain_intact": false,
+    "first_broken_anchor_date": null,
+    "newest_anchor_date": null,
+    "anchor_age_days": null,
+    "anchor_stale": false,
+    "streams_anchored": 0,
+    "streams_anchored_ever": 0,
+    "malformed_anchor_dates": [],
+    "missing_streams": [],
+    "truncated_streams": [],
+    "diverged_streams": [],
+    "recreated_streams": [],
+    "dropped_from_newest_anchor": [],
+    "note": "No audit anchor has ever been written, so deletion of an entire audit stream is not detectable. Run write_anchor().",
+    "verified_at": "2026-09-12T18:40:15.084144+00:00"
+   }
+  },
+  {
+   "step": "11 open exceptions (expect ADOPTION_DIMENSION_INVALID x2, FOREIGN_CURRENCY_BASIS_MISSING for the JPY order)",
+   "status": 200,
+   "at": "2026-09-12T18:40:15.646537+00:00",
+   "body": {
+    "open": [
+     {
+      "exception_id": "EXC-5A6C7F5C5E17",
+      "kind": "GRN_LINE_UNATTRIBUTED",
+      "object_id": "3912780000000074010:3912780000000074015",
+      "status": "Resolved",
+      "source_paise": 1250000000
+     },
+     {
+      "exception_id": "EXC-2DC1A60F6071",
+      "kind": "GRN_LINE_UNATTRIBUTED",
+      "object_id": "3912780000000086010:3912780000000086016",
+      "status": "Resolved",
+      "source_paise": 96000000
+     },
+     {
+      "exception_id": "EXC-4A2E1ED35FED",
+      "kind": "GRN_LINE_UNATTRIBUTED",
+      "object_id": "3912780000000086010:3912780000000086015",
+      "status": "Resolved",
+      "source_paise": 185000000
+     },
+     {
+      "exception_id": "EXC-8EAE16799C1D",
+      "kind": "GRN_LINE_UNATTRIBUTED",
+      "object_id": "3912780000000116003:3912780000000116008",
+      "status": "Resolved",
+      "source_paise": 185000000
+     },
+     {
+      "exception_id": "EXC-B9EF8F3E6376",
+      "kind": "ADOPTION_DIMENSION_INVALID",
+      "object_id": "3912780000000096001",
+      "status": "Open",
+      "source_paise": null
+     },
+     {
+      "exception_id": "EXC-14108C9AF59F",
+      "kind": "ADOPTION_DIMENSION_INVALID",
+      "object_id": "3912780000000086001",
+      "status": "Open",
+      "source_paise": null
+     },
+     {
+      "exception_id": "EXC-32BF993571F3",
+      "kind": "UNSANCTIONED_COMMITMENT",
+      "object_id": "3912780000000109005",
+      "status": "Resolved",
+      "source_paise": 185000000
+     },
+     {
+      "exception_id": "EXC-BBEE13DD2175",
+      "kind": "UNSANCTIONED_COMMITMENT",
+      "object_id": "3912780000000085001",
+      "status": "Resolved",
+      "source_paise": 562000000
+     },
+     {
+      "exception_id": "EXC-5FB22649AD06",
+      "kind": "UNSANCTIONED_COMMITMENT",
+      "object_id": "3912780000000085009",
+      "status": "Resolved",
+      "source_paise": 1250000000
+     },
+     {
+      "exception_id": "EXC-C3910B8D4A4B",
+      "kind": "UNSANCTIONED_COMMITMENT",
+      "object_id": "3912780000000075008",
+      "status": "Resolved",
+      "source_paise": 480000000
+     },
+     {
+      "exception_id": "EXC-752A458C26B8",
+      "kind": "UNSANCTIONED_COMMITMENT",
+      "object_id": "3912780000000086001",
+      "status": "Open",
+      "source_paise": 285000000
+     },
+     {
+      "exception_id": "EXC-4E606BEB0753",
+      "kind": "UNSANCTIONED_COMMITMENT",
+      "object_id": "3912780000000087001",
+      "status": "Resolved",
+      "source_paise": 350000000
+     },
+     {
+      "exception_id": "EXC-9813326166DD",
+      "kind": "UNSANCTIONED_COMMITMENT",
+      "object_id": "3912780000000096001",
+      "status": "Open",
+      "source_paise": 2900000
+     },
+     {
+      "exception_id": "EXC-678656FFA6A5",
+      "kind": "UNSANCTIONED_COMMITMENT",
+      "object_id": "3912780000000099012",
+      "status": "Resolved",
+      "source_paise": 226560000
+     }
+    ]
+   }
+  },
+  {
+   "step": "11b unattributed",
+   "status": 200,
+   "at": "2026-09-12T18:40:16.055590+00:00",
+   "body": {
+    "count": 8
+   }
+  }
+ ]
+}

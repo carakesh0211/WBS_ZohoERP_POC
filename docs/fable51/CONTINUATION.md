@@ -56,6 +56,21 @@ now carries a base-commit guard).
   navigation with two collapsible groups (approved groups' markup unchanged),
   measured no rail overflow at 1440×900.
 
+## Decisions of 2026-09-12 (evening): public repository, bill sync deployed, outbound path built
+
+The repository is PUBLIC. The full history was scanned before any further
+commit (`evidence/release/PUBLIC_HISTORY_SCAN_2026-09-12.md`): nothing
+credible, nothing rotated. GitHub Actions runs on every push now; the
+route-listing test reads the OpenAPI schema (FastAPI 0.141 in CI) and the
+VRT inventory records `po-currency.spec.js`. UAT runs `2852be5` (deploy
+records 10–11): bill sync works — WBS-UAT-E2E-20260912 is ordered =
+received = billed = ₹18,50,000, open 0. The application-originated
+emission path exists and is tested but **has not written to the tenant
+yet**: it waits at the manual checkpoint (the owner installs a
+CREATE-scoped credential and sets `CAPEX_ERP_OUTBOUND_WRITES=1` in the
+Catalyst console), then `tools/uat/e2e_outbound.py raise|emit|close|refused`
+runs the proof. The gate stays shut and the connection LIVE_READ until then.
+
 ## Sprint of 2026-09-12: release candidate and the demo cycle
 
 UAT runs `f19907b` (bundle `37eee12a…`, schema 032; deploy records 8–9). Local
