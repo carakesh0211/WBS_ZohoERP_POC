@@ -257,8 +257,20 @@ def test_capex_scope_permits_agrees_with_the_python_mirror_live(pg_connection):
     for mode, ids, row_value, expected in cases:
         pg_connection.execute("SELECT set_config('capex.entity_mode', %s, false)", (mode,))
         pg_connection.execute("SELECT set_config('capex.entity_ids', %s, false)", (ids,))
+        # `capex_dimension_permits(p_setting_key, p_value)`'s first argument is
+        # the FULL ids-setting key (migration 004:198, called as
+        # 'capex.entity_ids' by every real RLS policy, e.g. 004:228). The
+        # function derives the mode key itself via
+        # `regexp_replace(p_setting_key, '_ids$', '_mode')`; passing bare
+        # 'entity' doesn't end in '_ids', so the derived key is 'entity'
+        # unchanged, `current_setting('entity', true)` finds nothing, and the
+        # function falls through to its fail-closed ELSE -- false regardless
+        # of `capex.entity_mode`. That is the exact defect this test's own
+        # module exists to catch, just aimed at the test's own SQL literal
+        # instead of the function.
         got = pg_connection.execute(
-            "SELECT capex_dimension_permits('entity', %s)", (row_value,)).fetchone()[0]
+            "SELECT capex_dimension_permits('capex.entity_ids', %s)",
+            (row_value,)).fetchone()[0]
         assert got is expected, (
             f"capex_dimension_permits(mode={mode!r}, ids={ids!r}, "
             f"row={row_value!r}) returned {got!r}, expected {expected!r}")
@@ -272,6 +284,19 @@ def test_a_denied_scope_reads_no_row_through_the_repository_live(pg_database):
     """End to end: an empty grant returns zero rows, not the whole table."""
     denied = Scope(user_id="U-DENIED", entity_ids=frozenset())
     with pg_database.session(Scope.system()) as session:
+        # `pg_database` is a freshly migrated, otherwise-empty database
+        # (`conftest_pg.py::pg_template` runs only `migrate_pg.upgrade`, no
+        # seed) -- so without a row to hide, the precondition below is
+        # trivially false and the test never reaches its actual assertion.
+        # One organisation and one entity is the minimum `entity` needs.
+        session.execute(
+            "INSERT INTO organisation (organisation_id, code, name, "
+            "created_by, updated_by) VALUES ('ORG-TRI', 'ORG-TRI', "
+            "'Tristate probe org', 'T', 'T')")
+        session.execute(
+            "INSERT INTO entity (entity_id, organisation_id, code, name, "
+            "created_by, updated_by) VALUES ('ENT-TRI', 'ORG-TRI', "
+            "'ENT-TRI', 'Tristate probe entity', 'T', 'T')")
         everything = repo.query(
             session, "SELECT entity_id FROM entity WHERE {scope}",
             scope=Scope.system(), columns={"entity": "entity_id"})
