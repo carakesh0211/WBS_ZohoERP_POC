@@ -56,6 +56,14 @@ now carries a base-commit guard).
   navigation with two collapsible groups (approved groups' markup unchanged),
   measured no rail overflow at 1440×900.
 
+## Deploys 6 and 7, and the migration incident (2026-09-12)
+
+See `STAGE_B_PERSISTENT_UAT.md` deploy records 6–7 and "Incident 2026-09-12":
+UAT is at `39f30e6` / schema 031; an empty 30-migration schema sits in the
+project's `postgres` database awaiting the owner's approval to drop; `db.env`
+now names `capex_tmpl_uat`. Rule added: check `migrate_pg --status` shows the
+expected current version before `--upgrade`.
+
 ## VRT note 2026-09-12
 
 In a 186-test run of `spa-routing.spec.js` + `po-currency.spec.js` on the merged

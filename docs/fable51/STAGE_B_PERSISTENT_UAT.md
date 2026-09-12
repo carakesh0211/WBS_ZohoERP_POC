@@ -95,7 +95,26 @@ are on the engineering list in `CONTINUATION.md`.
 
 | 5 | 2026-09-12 | `b4a2ecb`, `9c087974…` | standalone (as 2) | carries the Raise Purchase Order screen (`a6e940a`…`413600d`), the CAPEX-reference fix and the stamping evidence; `/readyz` 029; the screen's modules are served (`purchase-order.js`, `fx-translate.js` 200). Before this deploy the stamping sweep on record 4's build raised the 7 exceptions |
 
-Rule from record 2: **redeploy Stage B with the standalone form only.** The
+| 6 | 2026-09-12 | `7f9eecd`, `2f3674e7…` (ships migration 030) | standalone (as 2) | **Started failing on purpose**: the bundle shipped 030 while `capex_tmpl_uat` was at 029, and the launcher refuses to run ahead of the schema (`/readyz` 503 for ~15 minutes). Cause: the pre-deploy `migrate_pg --upgrade` had run against the WRONG database — `db.env` still named `postgres` from before the UAT database existed — and built a fresh, empty 30-migration schema there. Fixed by correcting `CAPEX_DB_NAME=capex_tmpl_uat` in `db.env` and applying 030 (and 031, already in the tree) to `capex_tmpl_uat`; `/readyz` 200 `031`. See "Incident 2026-09-12" |
+| 7 | 2026-09-12 | `39f30e6`, `05faf7c4…` (ships 031) | standalone (as 2) | decision 8 end to end (`d620bb8`…`7f9eecd`), the four review-finding fixes (`1dbb366`…`2983ff2`: receive walk charges 1 per request, one shared LiveTransport per credential, job-row TOCTOU closed by migration 031 + advisory lock, `verify-full` enforced not defaulted); `/readyz` 200 `031`; one live sweep round recorded in `evidence/erp-demo/live-sweep-merged-2026-09-12.txt` |
+
+Rule from record 2: **redeploy Stage B with the standalone form only.**
+
+Rule from record 6: **`migrate_pg --status` must show the expected `current`
+version BEFORE `--upgrade`** — a `current: null` means the wrong database, stop.
+
+## Incident 2026-09-12: an empty schema in the project's `postgres` database
+
+The Supabase project holds two databases: `capex_tmpl_uat` (the UAT estate;
+the Catalyst console points the app at it) and the provider's default
+`postgres`. During deploy 6 the migration tool, fed a stale `db.env` naming
+`postgres`, applied migrations 001–030 there: 82 empty public tables and a
+`schema_migrations` log, no data, no users, no ERP rows. The UAT estate in
+`capex_tmpl_uat` was never touched (16 users, 34 inbox rows before and after).
+**Cleanup is a DROP of those 82 tables in `postgres`, which the lead will not
+run without the owner's explicit approval**; until then the extra schema is
+inert and costs nothing but a few MB of the 500 MB allowance.
+ The
 linked form applies the archive's `app-config.json` (`env_variables: {}`) and
 would wipe every console-set value.
 
