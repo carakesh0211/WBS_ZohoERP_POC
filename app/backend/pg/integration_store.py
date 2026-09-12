@@ -235,16 +235,23 @@ EXCEPTION_OPEN_UNIQUE_INDEX = "ux_reconciliation_exception_open"
 
 #: ``reconciliation_exception.kind`` -- exactly what
 #: ``ck_reconciliation_exception_kind`` permits, and nothing else: the five 011
-#: froze, and FOREIGN_CURRENCY_BASIS_MISSING, which migration 030 added as the
+#: froze, FOREIGN_CURRENCY_BASIS_MISSING, which migration 030 added as the
 #: deliberate contract change 011 said a sixth kind would have to be (product
 #: owner decision 8, 2026-09-11: a receive or bill against a non-INR order is
-#: held here, unbooked, until it carries its own currency and rate). A
-#: document-number gap is still folded into CONTROL_TOTAL_MISMATCH with the
-#: missing numbers named, rather than inventing a kind outside the set.
+#: held here, unbooked, until it carries its own currency and rate), and the
+#: two migration 032 adds for adopting a tenant-raised order (product owner,
+#: 2026-09-12): ADOPTION_DIMENSION_INVALID (the order's cf_capex_ref,
+#: cf_wbs_code or cf_budget_head is missing, invalid or ambiguous -- nothing
+#: is adopted) and ADOPTION_DIMENSION_CONFLICT (a repeat adoption sweep finds
+#: those values changed since the order was adopted -- the local order is
+#: left exactly as it was). A document-number gap is still folded into
+#: CONTROL_TOTAL_MISMATCH with the missing numbers named, rather than
+#: inventing a kind outside the set.
 EXCEPTION_KINDS: tuple[str, ...] = (
     "GRN_LINE_UNATTRIBUTED", "CONTROL_TOTAL_MISMATCH",
     "LATE_ARRIVAL_CLOSED_PERIOD", "UNMAPPED_EXTERNAL_STATUS",
     "UNSANCTIONED_COMMITMENT", "FOREIGN_CURRENCY_BASIS_MISSING",
+    "ADOPTION_DIMENSION_INVALID", "ADOPTION_DIMENSION_CONFLICT",
 )
 
 #: C18's frozen ``exception_status`` namespace, verbatim, matching

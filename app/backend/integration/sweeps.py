@@ -125,10 +125,25 @@ KIND_UNMAPPED_EXTERNAL_STATUS = "UNMAPPED_EXTERNAL_STATUS"
 #: vendor's currency, and a column named `_paise` is the wrong place for it.
 KIND_FOREIGN_CURRENCY_BASIS_MISSING = "FOREIGN_CURRENCY_BASIS_MISSING"
 
+#: Migration 032 (product owner, 2026-09-12): "Adopt the seven tenant-raised
+#: Zoho demo orders into local WBS orders using their stamped line fields."
+#: Neither kind is raised by any sweep in THIS module -- adoption is not a
+#: sweep, it is `app.backend.integration.adoption.adopt_tenant_orders`, run
+#: once per operator request rather than on the poll/watermark cadence -- but
+#: both are declared here anyway, because `tests/test_integration_sweeps.py::
+#: test_every_kind_a_sweep_can_raise_is_one_the_registry_declares` asserts
+#: `sweeps.EXCEPTION_KINDS` equals the FULL set research/30_contracts/
+#: C18_domain_statuses.json declares, not merely the subset this module uses.
+#: Omitting them here would make that registry a second, competing
+#: declaration of what exists rather than the single one C18 is meant to be.
+KIND_ADOPTION_DIMENSION_INVALID = "ADOPTION_DIMENSION_INVALID"
+KIND_ADOPTION_DIMENSION_CONFLICT = "ADOPTION_DIMENSION_CONFLICT"
+
 EXCEPTION_KINDS: frozenset[str] = frozenset({
     KIND_GRN_LINE_UNATTRIBUTED, KIND_CONTROL_TOTAL_MISMATCH,
     KIND_LATE_ARRIVAL_CLOSED_PERIOD, KIND_UNSANCTIONED_COMMITMENT,
     KIND_UNMAPPED_EXTERNAL_STATUS, KIND_FOREIGN_CURRENCY_BASIS_MISSING,
+    KIND_ADOPTION_DIMENSION_INVALID, KIND_ADOPTION_DIMENSION_CONFLICT,
 })
 
 #: The estate's base currency. The sweeps do not import `pg.fx` (they run
@@ -1686,6 +1701,7 @@ JOB_CADENCES: Mapping[str, str] = {
 __all__ = [
     "AdapterMethodMissing", "BASE_CURRENCY", "ControlTotal", "ControlTotalSource",
     "EXCEPTION_KINDS", "EXCEPTION_OPEN", "JOB_CADENCES",
+    "KIND_ADOPTION_DIMENSION_CONFLICT", "KIND_ADOPTION_DIMENSION_INVALID",
     "KIND_CONTROL_TOTAL_MISMATCH", "KIND_FOREIGN_CURRENCY_BASIS_MISSING",
     "KIND_GRN_LINE_UNATTRIBUTED",
     "KIND_LATE_ARRIVAL_CLOSED_PERIOD", "KIND_UNMAPPED_EXTERNAL_STATUS",
