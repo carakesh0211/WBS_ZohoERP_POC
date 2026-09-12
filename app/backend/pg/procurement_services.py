@@ -1077,6 +1077,13 @@ def _normalise_lines(lines: Sequence[Mapping[str, Any]], *, what: str,
                 "rate_paise": None,
                 "source_amount_minor": amount_minor,
                 "source_rate_minor": source_rate,
+                # 032: the source's OWN line identifier, carried through so
+                # `_write_po` can stamp `po_line.line_external_id` -- the half
+                # of the external anchor `sweeps.resolve_po_line` matches a
+                # receive line against. `None` for every caller but adoption
+                # (`create_po` / `convert_pr_to_po` author a line that has no
+                # external identity yet).
+                "line_external_id": raw.get("line_external_id"),
             })
             continue
         if source_amount is not None or source_rate is not None:
@@ -1107,6 +1114,7 @@ def _normalise_lines(lines: Sequence[Mapping[str, Any]], *, what: str,
             "rate_paise": raw.get("rate_paise"),
             "source_amount_minor": None,
             "source_rate_minor": None,
+            "line_external_id": raw.get("line_external_id"),
         })
     return out
 
@@ -2589,7 +2597,13 @@ def po_lines(session: Session, po_id: str) -> list[dict[str, Any]]:
 def _write_po(session: Session, *, project_id: str, vendor_name: str,
               lines: Sequence[Mapping[str, Any]], actor: str,
               pr_id: str | None, po_number: str | None,
-              basis: "fx.TranslationBasis") -> dict[str, Any]:
+              basis: "fx.TranslationBasis", status: str = "Draft",
+              external_source: str | None = None,
+              external_id: str | None = None,
+              commitment_origin: str = "LOCAL",
+              adopted_from_inbox_id: str | None = None,
+              adopted_by: str | None = None,
+              external_capex_ref: str | None = None) -> dict[str, Any]:
     """Insert the header and its lines. Writes NO cell.
 
     ``basis`` is the order's currency and the rate it is committed at,
@@ -2599,16 +2613,25 @@ def _write_po(session: Session, *, project_id: str, vendor_name: str,
     lines record the vendor's own figures beside the translated paise.
 
     Called ONLY with the affected cells already locked and the budget already
-    re-checked under that lock. It performs no check of its own precisely so
-    the two callers cannot each grow a slightly different one.
+    re-checked under that lock -- for a LOCAL order (`commitment_origin`
+    defaulted). :func:`adopt_purchase_order` (032) calls this with the
+    caller's own affected cells locked and NO budget check at all: an adopted
+    order was never proposed through this system and its exposure is a
+    detective record of an external fact, not a sanctioning one.
 
     ``recompute_commitment`` is deliberately NOT called from here, even though
-    both callers call it immediately afterwards and the duplication is two
+    every caller calls it immediately afterwards and the duplication is two
     lines. ``tests/test_pg_locking_order.py`` walks this module's AST and
     requires the cell write to appear in a function that also declares its lock
     set; burying it one frame deeper would put the write in a helper that takes
     no lock, which is the exact shape the analyser exists to refuse. The
     invariant reads better where it is enforced.
+
+    ``status``, ``external_source``, ``external_id``, ``commitment_origin``,
+    ``adopted_from_inbox_id``, ``adopted_by`` and ``external_capex_ref`` are
+    032's adoption columns, all defaulted to the LOCAL shape
+    (`ck_purchase_order_adoption_provenance`) so every pre-032 call site --
+    :func:`create_po`, :func:`convert_pr_to_po` -- is unchanged.
     """
     po_id = _new_id("PO")
     # As `create_pr`: minted atomically from `numbering_series`, whose counter
@@ -2622,18 +2645,34 @@ def _write_po(session: Session, *, project_id: str, vendor_name: str,
         INSERT INTO purchase_order (
             po_id, po_number, pr_id, project_id, vendor_name, currency,
             exchange_rate, fx_rate_id, fx_rate_date, fx_rate_source,
-            source_minor_exponent, status, ordered_at, created_by, updated_by)
+            source_minor_exponent, status, ordered_at, external_source,
+            external_id, commitment_origin, adopted_from_inbox_id,
+            adopted_at, adopted_by, external_capex_ref, created_by, updated_by)
         VALUES (%(po_id)s, %(number)s, %(pr_id)s, %(project_id)s, %(vendor)s,
                 %(currency)s, %(rate)s, %(fx_rate_id)s, %(fx_rate_date)s,
-                %(fx_rate_source)s, %(exponent)s, 'Draft', now(), %(actor)s,
-                %(actor)s)
+                %(fx_rate_source)s, %(exponent)s, %(status)s, now(),
+                %(external_source)s, %(external_id)s, %(commitment_origin)s,
+                %(adopted_from_inbox_id)s, %(adopted_at)s, %(adopted_by)s,
+                %(external_capex_ref)s, %(actor)s, %(actor)s)
         """,
         {"po_id": po_id, "number": number, "pr_id": pr_id,
          "project_id": project_id, "vendor": vendor_name,
          "currency": basis.source_currency, "rate": basis.rate,
          "fx_rate_id": basis.fx_rate_id, "fx_rate_date": basis.rate_date,
          "fx_rate_source": basis.rate_source,
-         "exponent": basis.minor_exponent, "actor": actor},
+         "exponent": basis.minor_exponent, "status": status,
+         "external_source": external_source, "external_id": external_id,
+         "commitment_origin": commitment_origin,
+         "adopted_from_inbox_id": adopted_from_inbox_id,
+         # A PLAIN PARAMETER, never a `CASE WHEN %(x)s IS NULL ...` in SQL:
+         # psycopg cannot infer a NULL bind parameter's type when every
+         # branch of the expression it feeds is untyped, and raises
+         # `AmbiguousParameter` on the very first LOCAL order this function
+         # writes (adopted_by is NULL on every one). Decided here, in
+         # Python, where `None` and `_utcnow()` are unambiguous types.
+         "adopted_at": (_utcnow() if adopted_by is not None else None),
+         "adopted_by": adopted_by, "external_capex_ref": external_capex_ref,
+         "actor": actor},
     )
     for line in lines:
         amount = int(line["amount_paise"])
@@ -2698,12 +2737,12 @@ def _write_po(session: Session, *, project_id: str, vendor_name: str,
             INSERT INTO po_line (
                 po_line_id, po_id, line_no, project_id, wbs_id, budget_head_id,
                 description, quantity, rate_paise, amount_paise,
-                source_rate_minor, source_amount_minor,
+                source_rate_minor, source_amount_minor, line_external_id,
                 created_by, updated_by)
             VALUES (%(id)s, %(po_id)s, %(line_no)s, %(project_id)s, %(wbs_id)s,
                     %(head)s, %(description)s, %(quantity)s, %(rate)s,
                     %(amount)s, %(source_rate)s, %(source_amount)s,
-                    %(actor)s, %(actor)s)
+                    %(line_external_id)s, %(actor)s, %(actor)s)
             """,
             {"id": _new_id("POL"), "po_id": po_id, "line_no": line["line_no"],
              "project_id": project_id, "wbs_id": line["wbs_id"],
@@ -2714,6 +2753,7 @@ def _write_po(session: Session, *, project_id: str, vendor_name: str,
                              else int(line["source_rate_minor"])),
              "source_amount": (None if basis.is_identity
                                else int(line["source_amount_minor"])),
+             "line_external_id": line.get("line_external_id"),
              "actor": actor},
         )
 
@@ -2803,6 +2843,119 @@ def create_po(session: Session, *, project_id: str, vendor_name: str,
         correlation_id=correlation_id)
     return {**written, "project_id": project_id, "status": "Draft",
             "verdicts": verdicts, "line_count": len(normalised)}
+
+
+def adopt_purchase_order(session: Session, *, project_id: str,
+                         vendor_name: str, lines: Sequence[Mapping[str, Any]],
+                         actor: str, po_number: str, currency: str,
+                         document_date: date, status: str,
+                         external_source: str, external_id: str,
+                         external_capex_ref: str,
+                         adopted_from_inbox_id: str,
+                         correlation_id: str | None = None) -> dict[str, Any]:
+    """Adopt a TENANT-RAISED order into the ledger as an external commitment.
+
+    NOT `create_po` with a label. `create_po` and `convert_pr_to_po` both
+    write a commitment THIS SYSTEM is sanctioning: `budget_verdicts` /
+    `exceeds_budget` run under the affected cells' lock and the order is
+    refused, unwritten, if it would exceed availability. An adopted order was
+    already committed by the tenant, outside this system's budget check
+    (§11.7's acknowledged weakness -- a PO created directly in Zoho bypasses
+    it), and `app.backend.integration.adoption.adopt_tenant_orders` calls this
+    ONLY after `PollPurchaseOrders._accept` has already raised
+    `UNSANCTIONED_COMMITMENT` for exactly this order. Re-running the budget
+    gate here would not un-commit a rupee the tenant already spent; it would
+    only decide, after the fact, whether to let the estate SEE the exposure it
+    already carries. So this function skips `budget_verdicts` entirely and
+    goes straight from the affected cells' lock to the write -- the caller has
+    already validated `cf_capex_ref` / `cf_wbs_code` / `cf_budget_head` and
+    resolved every line's `wbs_id` / `budget_head_id` before calling this.
+
+    THE EXPOSURE STILL LANDS ON THE CONTROL CELLS. `recompute_commitment` runs
+    exactly as it does after `create_po`, under the SAME lock set, so an
+    adopted order's commitment is visible to the NEXT budget check the moment
+    it is adopted -- classified `commitment_origin='EXTERNAL_UNSANCTIONED'
+    <https://032_adopted_external_commitments.sql>`_ so every report can tell
+    it apart from a commitment this system sanctioned.
+
+    CURRENCY AND FACE VALUE ARE PRESERVED, NEVER GUESSED. ``currency`` is the
+    order's own, exactly as the tenant stated it; a foreign-currency order's
+    lines carry ``source_amount_minor`` (foreign=True in `_normalise_lines`)
+    and are translated through :func:`_po_basis` / :func:`_translate_po_lines`
+    -- the SAME rate resolution `create_po` uses, which refuses
+    (`FX_RATE_UNAVAILABLE` / `FX_RATE_SOURCE_REQUIRED`) rather than book a
+    face value as paise when no ACTIVE rate is on file. The caller (adoption)
+    is expected to catch that refusal and file it as
+    `FOREIGN_CURRENCY_BASIS_MISSING` -- the kind decision 8 already names for
+    exactly this fact -- rather than let it surface as a generic 409.
+
+    ``status`` is the caller's own mapped value (adoption maps the tenant's
+    raw ERP status through the same status registry a bill's does), never a
+    hardcoded ``'Draft'``: an order the tenant already marked ``open`` is not
+    a draft here either.
+    """
+    if not (vendor_name or "").strip():
+        _err("VENDOR_REQUIRED", "An adopted purchase order requires a vendor.",
+             422)
+    po_currency = _po_currency(currency)
+    normalised = _normalise_lines(lines, what="adopted purchase order",
+                                  foreign=po_currency != BASE_CURRENCY)
+    _project_row(session, project_id)
+    for line in normalised:
+        _, wbs_project, wbs_code, _status, is_abandoned = _wbs_row(
+            session, line["wbs_id"])
+        if wbs_project != project_id:
+            _err("PROJECT_WBS_MISMATCH",
+                 f"{wbs_code} belongs to {wbs_project}, not {project_id}. "
+                 f"The order was not adopted.", 422)
+        if is_abandoned:
+            _err("WBS_ABANDONED",
+                 f"{wbs_code} is abandoned and cannot receive procurement.",
+                 422)
+
+    # The rate resolved exactly as `create_po` resolves it -- the ACTIVE rate
+    # on file for the order's own document date. Adoption never supplies its
+    # own exchange_rate/rate_source: a Zoho purchase order carries no stated
+    # rate of its own (only a BillDTO does), so the only basis available is
+    # the rate book.
+    basis = _po_basis(session, currency=po_currency,
+                      document_date=document_date, actor=actor,
+                      exchange_rate=None, rate_source=None, fx_rate_id=None,
+                      reference=f"{external_source} po {external_id}")
+    normalised = _translate_po_lines(basis, normalised)
+
+    lock_affected_cells(session, _affected_cells(normalised))
+    # NO budget_verdicts / exceeds_budget here -- see the docstring. This is
+    # the one deliberate divergence from create_po's shape.
+    written = _write_po(
+        session, project_id=project_id, vendor_name=vendor_name,
+        lines=normalised, actor=actor, pr_id=None, po_number=po_number,
+        basis=basis, status=status, external_source=external_source,
+        external_id=external_id, commitment_origin="EXTERNAL_UNSANCTIONED",
+        adopted_from_inbox_id=adopted_from_inbox_id, adopted_by=actor,
+        external_capex_ref=external_capex_ref)
+    _register_po_translation(session, basis=basis, po_id=written["po_id"],
+                             project_id=project_id, lines=normalised,
+                             actor=actor, correlation_id=correlation_id)
+    # The commitment limb of exposure, re-derived under the locks taken above.
+    # Without it this order is invisible to the next budget check.
+    for wbs_id, head_id in _affected_cells(normalised):
+        recompute_commitment(session, wbs_id, head_id, actor=actor)
+    audit_mod.append(
+        session, actor, "PO_ADOPTED", "PurchaseOrder", written["po_id"],
+        f"{written['po_number']} adopted from {external_source} "
+        f"{external_id} (cf_capex_ref={external_capex_ref!r}) on "
+        f"{project_id} for {vendor_name}: external, unsanctioned "
+        f"commitment, {len(normalised)} line(s), {written['amount_paise']} "
+        f"paise, {len(_affected_cells(normalised))} control cell(s)"
+        + ("" if basis.is_identity else
+           f"; {written['source_amount_minor']} {basis.source_currency} minor "
+           f"units translated at {basis.describe()}")
+        + ".",
+        correlation_id=correlation_id)
+    return {**written, "project_id": project_id, "status": status,
+            "commitment_origin": "EXTERNAL_UNSANCTIONED",
+            "line_count": len(normalised)}
 
 
 def convert_pr_to_po(session: Session, *, pr_id: str, actor: str,
