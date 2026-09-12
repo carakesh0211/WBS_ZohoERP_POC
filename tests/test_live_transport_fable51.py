@@ -282,3 +282,84 @@ def test_an_environment_without_a_refresh_token_still_needs_the_file(tmp_path, m
     with pytest.raises(ad.IntegrationError) as exc:
         lt.LiveTransport(str(tmp_path / "absent.json"))
     assert lt.ENV_REFRESH_TOKEN in str(exc.value)
+
+
+# ============================================== the process-wide cache (P2)
+#
+# 2026-09-12 review, item 2: both call sites used to build a fresh
+# `LiveTransport` per call, so its 100/minute window and its minted-token
+# cache lived for exactly one HTTP request or one sweep tick.
+# `shared_transport()` is a process-wide cache keyed on the resolved
+# credential path. `reset()` is provided so these tests -- and any other
+# module exercising the cache -- do not leak state into each other.
+
+@pytest.fixture(autouse=True)
+def _reset_shared_transport_cache():
+    lt.reset()
+    yield
+    lt.reset()
+
+
+def test_shared_transport_returns_the_same_instance_across_calls(tmp_path):
+    path = _credentials(tmp_path)
+    opener = FakeOpener()
+    first = lt.shared_transport(path, opener=opener, clock=lambda: 1000.0)
+    second = lt.shared_transport(path, opener=FakeOpener(), clock=lambda: 2000.0)
+    assert second is first, (
+        "a second call with the same credential path must return the SAME "
+        "instance, not a fresh one -- otherwise the minute window and the "
+        "token cache never span more than one call")
+
+
+def test_shared_transport_shares_the_minute_window_and_the_minted_token(tmp_path):
+    path = _credentials(tmp_path)
+    opener = FakeOpener(api_answers=[{"code": 0, "bills": []}, {"code": 0, "bills": []}])
+    ticks = [1000.0]
+    first = lt.shared_transport(path, opener=opener, clock=lambda: ticks[0])
+    first.request(method="GET", base_url=BASE, path="/bills", scope="ERP.bills.READ")
+    # A later call asking for the SAME path needs no opener/clock of its own
+    # -- it gets back the already-built, already-authenticated instance.
+    second = lt.shared_transport(path)
+    second.request(method="GET", base_url=BASE, path="/bills", scope="ERP.bills.READ")
+    assert second is first
+    # One token mint across two requests (the token is cached on the shared
+    # instance, not re-minted per call), and both requests landed in the
+    # SAME sliding-minute window because they share one `_calls` deque.
+    assert opener.token_mints == 1
+    assert first.calls_made == 2
+    assert len(first._calls) == 2
+
+
+def test_shared_transport_keys_on_the_resolved_credential_path(tmp_path):
+    dir_a, dir_b = tmp_path / "a", tmp_path / "b"
+    dir_a.mkdir()
+    dir_b.mkdir()
+    path_a = _credentials(dir_a)
+    path_b = _credentials(dir_b)
+    first = lt.shared_transport(path_a, opener=FakeOpener())
+    second = lt.shared_transport(path_b, opener=FakeOpener())
+    assert first is not second, (
+        "a different credential must not silently reuse another tenant's "
+        "cached transport, window or token")
+    assert first.api_domain == second.api_domain  # both fixtures use IN
+    # Re-asking for path_a still returns the FIRST instance.
+    assert lt.shared_transport(path_a) is first
+
+
+def test_reset_clears_the_cache_so_a_later_call_builds_fresh(tmp_path):
+    path = _credentials(tmp_path)
+    before = lt.shared_transport(path, opener=FakeOpener())
+    lt.reset()
+    after = lt.shared_transport(path, opener=FakeOpener())
+    assert after is not before, (
+        "reset() must drop the cache so the next call builds and caches a "
+        "genuinely new instance, not the one from before the reset")
+
+
+def test_live_transport_stays_directly_constructible_for_tests(tmp_path):
+    """`shared_transport()` is additive: `LiveTransport()` on its own -- what
+    every other test in this file uses -- keeps working unshared."""
+    path = _credentials(tmp_path)
+    a = lt.LiveTransport(path, opener=FakeOpener())
+    b = lt.LiveTransport(path, opener=FakeOpener())
+    assert a is not b

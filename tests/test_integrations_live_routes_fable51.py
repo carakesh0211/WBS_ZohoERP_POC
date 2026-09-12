@@ -62,15 +62,27 @@ def _app(monkeypatch, *, mode="LIVE_READ", product="ERP", dc="IN") -> FastAPI:
 
 @pytest.fixture()
 def live(tmp_path, monkeypatch):
-    """A LiveTransport whose opener answers from a script; installed for the router."""
+    """A LiveTransport whose opener answers from a script; installed for the
+    router. The route asks `live_transport.shared_transport()`, not
+    `LiveTransport()` directly (2026-09-12 review, item 2), which calls
+    `LiveTransport(credentials_path, opener=..., clock=..., minute_ceiling=...,
+    timeout=...)` internally -- so `factory` accepts and forwards those same
+    keywords rather than the zero-argument shape a direct call used to need.
+    `lt.reset()` around the test keeps the process-wide cache from leaking
+    into or out of it: each test gets its own tmp_path credential file and
+    therefore its own cache key, but nothing here should depend on that.
+    """
     state = {"opener": FakeOpener(api_answers=[])}
     monkeypatch.setenv(lt.CREDENTIALS_ENV, _credentials(tmp_path, scope=GRANT))
     real = lt.LiveTransport
+    lt.reset()
 
-    def factory():
-        return real(opener=state["opener"])
+    def factory(credentials_path=None, **kwargs):
+        kwargs["opener"] = state["opener"]
+        return real(credentials_path, **kwargs)
     monkeypatch.setattr(lt, "LiveTransport", factory)
-    return state
+    yield state
+    lt.reset()
 
 
 def _session_headers(make_user):

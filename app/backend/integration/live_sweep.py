@@ -497,9 +497,12 @@ def adapter_for_connection(connection: Mapping[str, Any], *,
     turns that into a coded refusal rather than a silent no-op.
 
     `transport` is injectable so a test can drive the real adapter with a
-    recording fake; when it is omitted a :class:`LiveTransport` is built,
-    which reads its credential from outside the repository and refuses
-    every non-GET.
+    recording fake; when it is omitted the process-wide
+    :func:`~app.backend.integration.live_transport.shared_transport` cache is
+    asked instead of constructing a fresh :class:`LiveTransport`, so the
+    100/minute sliding window and the minted-token cache span more than one
+    sweep tick (2026-09-12 review, item 2). It reads its credential from
+    outside the repository and refuses every non-GET.
     """
     product = str(connection.get("product") or "").strip().upper()
     dc = str(connection.get("dc") or "").strip().upper()
@@ -510,8 +513,8 @@ def adapter_for_connection(connection: Mapping[str, Any], *,
         # credential at import, but keeping it out of the import graph of a
         # module the router loads means a process with no credential file
         # still mounts the route and answers a coded 503 from it.
-        from .live_transport import LiveTransport
-        transport = LiveTransport()
+        from .live_transport import shared_transport
+        transport = shared_transport()
     # The connection row's own ceiling, so `Capabilities.daily_call_ceiling`
     # reports the tenant's plan rather than the Standard-plan default.
     return ErpAdapter(organization_id=str(connection["organization_id"]),

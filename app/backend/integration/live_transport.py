@@ -40,11 +40,27 @@ WHERE THE CREDENTIAL COMES FROM
   minted from the refresh token on first use and re-minted two minutes
   before it expires; one 401 that Zoho attributes to the token triggers one
   re-mint and one retry, never a loop.
+
+WHY A SHARED INSTANCE (Fable 5.1, 2026-09-12 review, item 2)
+  Both call sites -- ``api/integrations.py::_live_transport_for`` and
+  ``integration/live_sweep.py::adapter_for_connection`` -- used to construct
+  a fresh :class:`LiveTransport` on every call, which is once per HTTP
+  request or once per sweep tick. The 100/minute sliding window and the
+  minted access token then lived for exactly that one call: the window never
+  actually bound anything across requests, and every call re-minted a token
+  Zoho would have honoured for up to an hour. :func:`shared_transport` is a
+  process-wide cache, one instance per resolved credential path, so the
+  window and the token are shared the way the module docstring above always
+  described them ("construct ONE per process"). Keyed on the credential
+  path/env rather than unconditionally reused, so a credential rotated onto
+  a different file or a different set of environment variables is a
+  different cache entry rather than a stale transport silently kept alive.
 """
 from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -316,3 +332,63 @@ class LiveTransport:
             raise ZohoApiError(status=status, path=path, code=None,
                                message="the body is not a JSON object")
         return parsed
+
+
+# ======================================================= the process-wide cache
+#
+# See the module docstring, "WHY A SHARED INSTANCE". One `LiveTransport` per
+# resolved credential path, guarded by a lock because both call sites can be
+# reached concurrently (a request thread and a sweep tick, or two of either).
+_SHARED_LOCK = threading.Lock()
+_SHARED_TRANSPORTS: dict[str, "LiveTransport"] = {}
+
+
+def _resolved_credentials_path(credentials_path: str | None) -> str:
+    """The same three-way fallback `LiveTransport.__init__` uses, computed
+    ahead of construction so it can also serve as the cache key. Kept as one
+    line rather than imported apart from `__init__`, because a construction
+    and a cache lookup that resolved the path differently would defeat the
+    "keyed on the credential" guarantee below."""
+    return credentials_path or os.environ.get(CREDENTIALS_ENV) or DEFAULT_CREDENTIALS
+
+
+def shared_transport(credentials_path: str | None = None, *,
+                     opener: Callable[..., Any] = urllib.request.urlopen,
+                     clock: Callable[[], float] = time.monotonic,
+                     minute_ceiling: int = MINUTE_CALL_CEILING,
+                     timeout: float = 30.0) -> "LiveTransport":
+    """One `LiveTransport` per process per resolved credential path.
+
+    `LiveTransport()` is still fully constructible on its own -- tests, and
+    anything that deliberately wants an unshared instance, keep doing that.
+    This is for the two call sites that need the 100/minute sliding window
+    and the minted-token cache to actually span more than one request: they
+    call this instead of constructing directly.
+
+    Keyed on the RESOLVED path (the same file-or-environment fallback
+    `LiveTransport.__init__` applies), not on an unconditional singleton: a
+    caller that names a different credentials file, or whose environment
+    now resolves to a different one, gets a different -- correctly
+    unauthenticated-until-first-use -- instance rather than another
+    tenant's cached token. `opener`/`clock`/`minute_ceiling`/`timeout` are
+    honoured only on the call that actually constructs the cached instance;
+    a later call sharing its key returns that instance regardless of what
+    it is passed, which is the point of sharing it.
+    """
+    key = _resolved_credentials_path(credentials_path)
+    with _SHARED_LOCK:
+        transport = _SHARED_TRANSPORTS.get(key)
+        if transport is None:
+            transport = LiveTransport(
+                credentials_path, opener=opener, clock=clock,
+                minute_ceiling=minute_ceiling, timeout=timeout)
+            _SHARED_TRANSPORTS[key] = transport
+        return transport
+
+
+def reset() -> None:
+    """Clear the process-wide cache. For tests: a test that exercises
+    `shared_transport()` should call this before (or after) so it is never
+    handed a previous test's cached window or token."""
+    with _SHARED_LOCK:
+        _SHARED_TRANSPORTS.clear()

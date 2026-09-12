@@ -322,6 +322,12 @@ def _live_transport_for(connection: dict):
     never surfaces a token or secret in an error. Its credential comes from the
     platform configuration (or, on the operator's machine, from the file
     tools/erp_demo/connect.py wrote) -- never from this repository.
+
+    2026-09-12 review, item 2: this asks the process-wide
+    ``live_transport.shared_transport()`` cache rather than constructing a
+    fresh ``LiveTransport`` per request, so its 100/minute sliding window and
+    its minted-token cache actually span more than the one HTTP request that
+    is asking for it.
     """
     if str(connection.get("product") or "") != "ERP":
         return None
@@ -330,9 +336,9 @@ def _live_transport_for(connection: dict):
     if str(connection.get("dc") or "").upper() != "IN":
         return None
     from ..integration import adapter as _ad
-    from ..integration.live_transport import LiveTransport
+    from ..integration.live_transport import shared_transport
     try:
-        return LiveTransport()
+        return shared_transport()
     except _ad.IntegrationError as exc:
         # No credential in the platform configuration (or a malformed one):
         # a coded 503 in the transport's own words, never a 500.
