@@ -1151,6 +1151,27 @@ JOB_SCOPE_COLUMNS: dict[str, str | None] = {
     "entity": None, "plant": None, "location": None, "project": None,
 }
 
+
+def _job_registry_denies(scope: Scope) -> bool:
+    """Would `compile_scope(scope, JOB_SCOPE_COLUMNS)` return `FALSE`?
+
+    Deliberately NOT `principal_scope.is_denied(scope)`. That function answers
+    "does this scope see nothing on ANY dimension" -- all four fields empty --
+    which is the right question for `create_job`'s "may this principal export
+    at all", but the WRONG one here. `JOB_SCOPE_COLUMNS` maps every dimension
+    to `None` (waived), yet `compile_scope`'s own contract checks emptiness
+    BEFORE the waiver (see that mapping's comment above): a requester whose
+    GRANTS ON ONE DIMENSION were revoked -- entity, say, with the other three
+    still unrestricted -- is not `is_denied` (three of four fields are `None`,
+    not `frozenset()`), but their re-select of their OWN `export_job` row
+    against this mapping still compiles to `FALSE`, because that one empty
+    dimension is enough. `advance_job` must catch that BEFORE
+    `_advance_within_session` runs the same re-select and mistakes an
+    unreadable row for a nonexistent one.
+    """
+    predicate, _params = repo.compile_scope(scope, JOB_SCOPE_COLUMNS)
+    return predicate == "FALSE"
+
 _JOB_COLUMNS = (
     "export_job_id", "dataset", "output_format", "state", "requested_by",
     "requested_principal_kind", "scope_json", "scope_digest", "filter_json",
@@ -1824,9 +1845,17 @@ def advance_job(database: Database, export_job_id: str, *,
                                   exc.message, now=at)
         raise
 
-    if principal_scope.is_denied(scope):
+    if principal_scope.is_denied(scope) or _job_registry_denies(scope):
         # A permission state, reported as one. NOT an empty export -- see the
         # module docstring on the three states.
+        #
+        # `is_denied` alone is not enough: it is true only when EVERY
+        # dimension is empty, but `_job_registry_denies` is also true for a
+        # requester who lost their grant on just one dimension (see that
+        # function's docstring). Either one means this requester's own
+        # `_advance_within_session` re-select below would find no row --
+        # and reporting that as EXPORT_JOB_NOT_FOUND, rather than as this
+        # permission state, would answer "gone" to a job that still exists.
         detail = (f"the requester {job['requested_by']!r} now resolves to a "
                   f"scope that permits no rows. An export of nothing is not "
                   f"the same statement as an export you may not have.")

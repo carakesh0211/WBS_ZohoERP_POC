@@ -726,9 +726,19 @@ def test_a_denied_principal_cannot_even_queue_an_export(pg_database):
             "INSERT INTO app_user (user_id, email, display_name, created_by, "
             "updated_by) VALUES ('U-EXP-NONE', 'none@example.test', 'none', "
             "'TEST', 'TEST')")
-        session.execute(
-            "INSERT INTO user_scope_restriction (user_id, dimension, updated_by) "
-            "VALUES ('U-EXP-NONE', 'entity', 'TEST')")
+        # `is_denied` is true only when EVERY dimension is restricted to zero
+        # grants (`principal_scope.is_denied`'s own docstring, pinned by
+        # `test_pg_principal_scope.py::test_is_denied_is_a_property_of_the_value_not_a_flag`,
+        # which asserts NOT denied for three-of-four empty). Restricting only
+        # 'entity' -- the first version of this fixture -- left plant/project/
+        # location unrestricted (`None`), so the scope was merely narrowed,
+        # not denied, and `create_job` raised nothing. The seed_parts/004
+        # `U-NOGRANT` archetype is genuinely denied because it is restricted
+        # on all four dimensions with no grants on any; mirrored here.
+        for dimension in ("entity", "plant", "project", "location"):
+            session.execute(
+                "INSERT INTO user_scope_restriction (user_id, dimension, "
+                "updated_by) VALUES ('U-EXP-NONE', %s, 'TEST')", (dimension,))
 
     scope = principal_scope.scope_for_request(pg_database,
                                               {"user_id": "U-EXP-NONE"})
