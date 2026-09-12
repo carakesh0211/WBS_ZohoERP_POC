@@ -943,12 +943,17 @@ def test_live_cross_entity_approval_and_period_close_are_refused(seeded_pg):
     # through the join instead, and P-DM1-Q2's entity ENT-DM1 has no project
     # on PLT-DM2-A, so both U-FIN and U-PROC land on the same, correct
     # not-found refusal -- neither closed, neither widened.
-    for scope, actor in ((fin, "U-FIN"), (proc, "U-PROC")):
-        with seeded_pg.session(scope) as session:
-            with pytest.raises(periods_mod.PeriodServiceError) as excinfo:
-                periods_mod.transition_period(
-                    session, period_id="P-DM1-Q2", to_state="CLOSED", actor=actor)
-            assert excinfo.value.code == "PERIOD_NOT_FOUND"
+    with seeded_pg.session(fin) as session:
+        with pytest.raises(periods_mod.PeriodServiceError) as excinfo:
+            periods_mod.transition_period(
+                session, period_id="P-DM1-Q2", to_state="CLOSED", actor="U-FIN")
+        assert excinfo.value.code == "PERIOD_NOT_FOUND"
+
+    with seeded_pg.session(proc) as session:
+        with pytest.raises(periods_mod.PeriodServiceError) as excinfo:
+            periods_mod.transition_period(
+                session, period_id="P-DM1-Q2", to_state="CLOSED", actor="U-PROC")
+        assert excinfo.value.code == "PERIOD_NOT_FOUND"
 
 
 @PG
