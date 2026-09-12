@@ -401,3 +401,31 @@ def test_the_fake_record_only_carries_names_the_real_bill_dto_has():
     for name in ("currency_code", "exchange_rate"):
         assert name in real
         assert name in {f.name for f in dataclasses.fields(FakeRecord)}
+
+
+# ================== the poll's unsanctioned-commitment record on a foreign order
+def test_a_foreign_unsanctioned_order_names_its_face_value_with_its_currency():
+    """Live finding 2026-09-12 (DEMO WBS PO-00006): the JPY order's
+    UNSANCTIONED_COMMITMENT exception carried source_paise=2900000 -- yen
+    minor units in the one column the closure gate sums as rupees.
+    source_paise is None for a non-INR order and the face value is named in
+    detail WITH its currency, where nothing can add it up as paise."""
+    import dataclasses
+    from tests.integration_fakes import (ERP, T0, FakeAdapter, FakeClock, FakePage,
+                                         InMemoryStore, purchase_order)
+    clock = FakeClock()
+    store = InMemoryStore()
+    jpy = dataclasses.replace(purchase_order(6, modified=T0, capex_ref="DEMO-JPY-0001",
+                                             total_paise=2_900_000), currency_code="JPY")
+    inr = purchase_order(1, modified=T0, capex_ref="DEMO-INR-0001", total_paise=562_000_000)
+    adapter = FakeAdapter(clock, po_pages=[FakePage((jpy, inr), False)], seconds_per_call=1)
+    job = sweeps.poll_purchaseorders(adapter, store, store.connection_id)
+    store.enqueue(job.kind)
+    jobs.run_job(job, store=store, clock=clock, capabilities=ERP)
+    raised = {e["object_id"]: e for e in store.exceptions.values()
+              if e["kind"] == sweeps.KIND_UNSANCTIONED_COMMITMENT}
+    assert raised["PO-EXT-0006"]["source_paise"] is None
+    assert "JPY 2900000" in raised["PO-EXT-0006"]["detail"]
+    assert "not paise" in raised["PO-EXT-0006"]["detail"]
+    assert raised["PO-EXT-0001"]["source_paise"] == 562_000_000
+    assert "Face value" not in raised["PO-EXT-0001"]["detail"]

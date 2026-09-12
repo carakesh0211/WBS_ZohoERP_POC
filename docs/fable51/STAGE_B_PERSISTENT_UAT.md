@@ -153,7 +153,7 @@ extracted to `..\bundle`.
    seven modified orders were re-accepted by the next sweep and raised seven
    `UNSANCTIONED_COMMITMENT` exceptions (`evidence/erp-demo/po-stamping/AUDIT_REPORT_2026-09-12.md`).
    New finding from that run: a JPY order's exception carries its JPY minor
-   units in `source_paise` — labelled as paise; open for the decision-8 stream.
+   units in `source_paise` — labelled as paise. FIXED the same day (decision-8 stream + lead follow-up): NULL `source_paise` and the face value named with its currency in `detail`.
 3. **Budget accounting under-counts receives** (reported by the sweep stream,
    pinned in `tests/test_live_sweep_fable51.py`): the PO-anchored sweep charges
    one call per open order while `receives_for_po` spends `1 + len(receives)`

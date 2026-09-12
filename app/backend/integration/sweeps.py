@@ -899,6 +899,10 @@ class PollPurchaseOrders(WindowedPoll):
         if inserted and record.capex_reference and not self.store.known_purchase_order(
                 connection_id=self.connection_id,
                 external_id=record.external_id):
+            face_value = _face_value_paise(record)
+            foreign = ("" if face_value is not None or record.total_paise is None else
+                       f" Face value {record.currency_code} {record.total_paise} "
+                       f"(minor units of that currency, not paise; nothing is booked).")
             self.store.raise_exception(
                 kind=KIND_UNSANCTIONED_COMMITMENT,
                 object_type="purchase_order",
@@ -907,12 +911,12 @@ class PollPurchaseOrders(WindowedPoll):
                         f"carries CAPEX dimension "
                         f"{record.capex_reference!r} but has no local "
                         f"purchase order. It was created outside this "
-                        f"system's budget check."),
+                        f"system's budget check." + foreign),
                 raised_at=ctx.now(), entity_id=record.entity_id,
                 project_id=record.project_id,
                 # A foreign-currency order's total is a face value in its own
                 # currency; only an INR figure is paise. See _face_value_paise.
-                source_paise=_face_value_paise(record),
+                source_paise=face_value,
                 correlation_id=ctx.correlation_id)
         return inserted
 

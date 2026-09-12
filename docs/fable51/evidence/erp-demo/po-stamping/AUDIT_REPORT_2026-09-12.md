@@ -92,7 +92,7 @@ calls, zero writes from the app; the app's write gate stayed unset.
 `source_paise = 2900000` — the order's JPY total in minor units labelled as
 paise. Nothing books it, but the label is wrong for a foreign order; the
 decision-8 stream (foreign-currency basis) must give the exception record the
-source currency and minor units, or translate through the rate book. Open.
+source currency and minor units, or translate through the rate book. **Closed the same day:** `sweeps._face_value_paise` (decision-8 stream) leaves `source_paise` NULL for a non-INR order, and the lead's follow-up names the face value with its currency in `detail`; pinned in `tests/test_foreign_order_matching_fable51.py`. The one live row raised before the fix (EXC-9813326166DD) still carries 2900000 and should be resolved with a note citing this report.
 
 ## 6. Rollback instructions (exact)
 
