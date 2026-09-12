@@ -730,6 +730,19 @@ class _Estate:
     # ------------------------------------------------------------- seeding
     def seed_estate(self, *, budget_paise=100_000_000):
         ex = self._con.execute
+        # `approval_action.actor_user_id` is a foreign key to `app_user`, and
+        # `approvals.py` attributes every system-initiated action (an
+        # unroutable object, an empty approver set, an SLA escalation) to
+        # actor_user_id='SYSTEM'. In the real estate this row comes from
+        # `migrations/pg/seed_parts/008_approvals.sql`, which this synthetic
+        # estate deliberately does not load (see the class docstring); without
+        # it here, every fail-closed path this suite exercises raises
+        # ForeignKeyViolation instead of reaching EXCEPTION_PENDING. Same
+        # `principal_kind='SERVICE'`, no role grant, `ON CONFLICT DO NOTHING`
+        # in case a suffix is ever reused within one connection.
+        ex("INSERT INTO app_user (user_id, email, display_name, principal_kind, "
+           "created_by, updated_by) VALUES ('SYSTEM', 'system@capex.invalid', "
+           "'System', 'SERVICE', 'SEED', 'SEED') ON CONFLICT (user_id) DO NOTHING")
         org = f"O_{self.suffix}"
         ex("INSERT INTO organisation (organisation_id, code, name, created_by, updated_by) "
            "VALUES (%s,%s,%s,'t','t')", (org, f"OC_{self.suffix}", "Org"))
@@ -776,7 +789,8 @@ class _Estate:
         definition_id = f"AD_{self.suffix}_{tag}"
         self._con.execute(
             "INSERT INTO approval_definition (definition_id, object_type, code, version, "
-            "status, entity_id, effective_from, created_by) VALUES (%s,%s,%s,1,%s,%s,%s,'TEST')",
+            "status, entity_id, effective_from, created_by, activated_at, activated_by) "
+            "VALUES (%s,%s,%s,1,%s,%s,%s,'TEST',now(),'TEST')",
             (definition_id, object_type, f"CODE_{self.suffix}_{tag}", rules.DEF_ACTIVE,
              self.entity, date(2020, 1, 1)))
         self._con.execute(

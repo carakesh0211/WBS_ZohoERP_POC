@@ -60,6 +60,32 @@ class DelegatedSelfApproval(ApprovalError):
         super().__init__(ERR_SELF_APPROVAL, message, status=403, detail=detail)
 
 
+# The storage sentinel for "this delegation covers everything".
+#
+# The `Delegation` dataclass and `is_live()` below are pure logic and predate
+# any database: `scope_key=None` meaning "unscoped" is a domain rule pinned by
+# ``tests/test_pg_approvals.py::test_a_delegation_with_no_scope_key_covers_everything``,
+# and that pure-Python test never touches PostgreSQL, so it cannot see this
+# constant at all -- it is exercising the domain contract, which is correct as
+# written and stays exactly as it is.
+#
+# `approval_delegation.scope_key`, however, is `NOT NULL` with
+# `ck_approval_delegation_scope_key_not_blank` (migration 008), and Contract 3's
+# `POST /api/approvals/delegations` body requires `scope_key` as a plain `str`
+# -- no caller of the real API can ever produce a NULL here, and the planned
+# `EXCLUDE USING gist (delegator_user_id WITH =, scope_key WITH =, ...)`
+# constraint in docs/APPROVED_PRODUCTION_IMPLEMENTATION_PLAN.md section 6.2
+# only works if `scope_key` is a real, comparable value (SQL `NULL` is never
+# equal to anything, including itself, so an EXCLUDE on it would not catch two
+# overlapping "covers everything" delegations). The schema is the contract:
+# `create_delegation` must never write a SQL NULL for "covers everything", so
+# it writes this sentinel instead, and `_row_to_delegation` translates it back
+# to `None` on the way out -- the ONE place either direction of that
+# translation happens, so the domain layer above never has to know the
+# database cannot store its `None`.
+SCOPE_ALL = "*"
+
+
 @dataclass(frozen=True)
 class Delegation:
     """One ``approval_delegation`` row, as the pure logic below wants it.
@@ -246,9 +272,11 @@ _SELECT_COLUMNS = (
 
 
 def _row_to_delegation(row: tuple) -> Delegation:
+    stored_scope = row[3]
     return Delegation(
         delegation_id=row[0], delegator_user_id=row[1], delegate_user_id=row[2],
-        scope_key=row[3], active_from=row[4], active_to=row[5], revoked_at=row[6],
+        scope_key=None if stored_scope == SCOPE_ALL else stored_scope,
+        active_from=row[4], active_to=row[5], revoked_at=row[6],
     )
 
 
@@ -291,6 +319,10 @@ def create_delegation(session: Session, *, delegator_user_id: str,
 
     delegation_id = f"ADLG-{uuid.uuid4().hex[:12].upper()}"
     upper = active_to.isoformat() if active_to else None
+    # `approval_delegation.scope_key` is NOT NULL (migration 008); NULL is only
+    # ever the domain-layer spelling of "covers everything" (see SCOPE_ALL
+    # above the Delegation dataclass). Write the sentinel, never the null.
+    stored_scope = scope_key if scope_key is not None else SCOPE_ALL
     session.execute(
         f"""
         INSERT INTO approval_delegation
@@ -300,7 +332,7 @@ def create_delegation(session: Session, *, delegator_user_id: str,
                 daterange(%(lower)s::date, %(upper)s::date, '[)'), %(by)s)
         """,
         {"id": delegation_id, "delegator": delegator_user_id,
-         "delegate": delegate_user_id, "scope": scope_key,
+         "delegate": delegate_user_id, "scope": stored_scope,
          "lower": active_from.isoformat(), "upper": upper, "by": created_by},
     )
     return Delegation(delegation_id=delegation_id,
