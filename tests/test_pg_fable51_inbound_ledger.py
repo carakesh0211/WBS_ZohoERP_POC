@@ -128,20 +128,31 @@ def _seed(con: psycopg.Connection) -> None:
         " VALUES ('POL-F51-INR', 'PO-F51-INR', 1, %s, %s, %s, %s, %s, %s,"
         " 'T', 'T') ON CONFLICT DO NOTHING",
         (PROJECT, WBS_B, HEAD, ORDERED_INR, ORDERED_INR, POL_INR))
+    # A foreign order must name its rate's provenance (migration 029,
+    # ck_purchase_order_fx_provenance): the fx_rate row, its date and source.
+    # The row is the rate EUR_BASE_PAISE was computed at.
+    con.execute(
+        "INSERT INTO fx_rate (fx_rate_id, from_currency, to_currency, rate_date,"
+        " rate, rate_source, created_by)"
+        " VALUES ('FXR-F51-EUR', 'EUR', 'INR', %s, %s, 'TEST', 'T')"
+        " ON CONFLICT DO NOTHING", (PO_DATE, EUR_RATE))
     con.execute(
         "INSERT INTO purchase_order (po_id, po_number, project_id,"
         " vendor_name, currency, ordered_at, external_source, external_id,"
-        " created_by, updated_by)"
+        " exchange_rate, fx_rate_id, fx_rate_date, fx_rate_source,"
+        " source_minor_exponent, created_by, updated_by)"
         " VALUES ('PO-F51-EUR', 'PO-NUM-F51-EUR', %s, 'SunPeak Energy GmbH',"
-        " 'EUR', %s, %s, %s, 'T', 'T') ON CONFLICT DO NOTHING",
-        (PROJECT, T0, SOURCE_LABEL, PO_EUR))
+        " 'EUR', %s, %s, %s, %s, 'FXR-F51-EUR', %s, 'TEST', 2, 'T', 'T')"
+        " ON CONFLICT DO NOTHING",
+        (PROJECT, T0, SOURCE_LABEL, PO_EUR, EUR_RATE, PO_DATE))
     con.execute(
         "INSERT INTO po_line (po_line_id, po_id, line_no, project_id, wbs_id,"
         " budget_head_id, rate_paise, amount_paise, line_external_id,"
-        " created_by, updated_by)"
+        " source_rate_minor, source_amount_minor, created_by, updated_by)"
         " VALUES ('POL-F51-EUR', 'PO-F51-EUR', 1, %s, %s, %s, %s, %s, %s,"
-        " 'T', 'T') ON CONFLICT DO NOTHING",
-        (PROJECT, WBS_C, HEAD, EUR_BASE_PAISE, EUR_BASE_PAISE, POL_EUR))
+        " %s, %s, 'T', 'T') ON CONFLICT DO NOTHING",
+        (PROJECT, WBS_C, HEAD, EUR_BASE_PAISE, EUR_BASE_PAISE, POL_EUR,
+         ORDERED_EUR_MINOR, ORDERED_EUR_MINOR))
     con.commit()
 
 

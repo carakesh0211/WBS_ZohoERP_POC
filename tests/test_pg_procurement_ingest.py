@@ -1812,7 +1812,10 @@ def test_a_receive_with_no_external_source_is_refused_not_written_as_null():
 
         def fetchall(self, statement, params=None):
             self.statements.append(statement)
-            return [("PO-ING", PROJECT, WBS + "-a", HEAD + "-a")]
+            # `_po_line_cell` selects the order's currency as a fifth column
+            # since decision 8 (2026-09-12); an INR order keeps the refusal
+            # under test the provenance one.
+            return [("PO-ING", PROJECT, WBS + "-a", HEAD + "-a", "INR")]
 
     session = _CellResolves()
     for blank in (None, "", "   "):

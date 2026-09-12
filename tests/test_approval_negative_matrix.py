@@ -703,25 +703,79 @@ def seeded_instances(pg_connection):
             "approval_instance is absent; migration 008 (stream 1) has not landed")
 
     with pg_connection.cursor() as cur:
+        # The parents Contract 1 makes mandatory (organisation -> entity ->
+        # plant -> location), inserted the way the sibling suites do; the
+        # fixture had only ever inserted the project (found by the full
+        # live-PG run of 2026-09-12).
+        cur.execute(
+            """INSERT INTO organisation (organisation_id, code, name, created_by, updated_by)
+               VALUES ('ORG-PROBE', 'ORG-PROBE', 'Scope probe org', 'T', 'T')
+               ON CONFLICT (organisation_id) DO NOTHING""")
         for suffix in ("A", "B"):
             cur.execute(
+                """INSERT INTO entity (entity_id, organisation_id, code, name, created_by, updated_by)
+                   VALUES (%(e)s, 'ORG-PROBE', %(e)s, %(n)s, 'T', 'T')
+                   ON CONFLICT (entity_id) DO NOTHING""",
+                {"e": f"ENT-{suffix}", "n": f"Scope probe entity {suffix}"})
+            cur.execute(
+                """INSERT INTO plant (plant_id, entity_id, code, name, created_by, updated_by)
+                   VALUES (%(p)s, %(e)s, %(p)s, %(p)s, 'T', 'T')
+                   ON CONFLICT (plant_id) DO NOTHING""",
+                {"p": f"PL-{suffix}", "e": f"ENT-{suffix}"})
+            cur.execute(
+                """INSERT INTO location (location_id, entity_id, plant_id, code, name, created_by, updated_by)
+                   VALUES (%(l)s, %(e)s, %(p)s, %(l)s, %(l)s, 'T', 'T')
+                   ON CONFLICT (location_id) DO NOTHING""",
+                {"l": f"LOC-{suffix}", "e": f"ENT-{suffix}", "p": f"PL-{suffix}"})
+            cur.execute(
                 """INSERT INTO project (project_id, entity_id, plant_id,
-                                        location_id, name)
+                                        location_id, capex_code, name,
+                                        created_by, updated_by)
                    VALUES (%(project_id)s, %(entity_id)s, %(plant_id)s,
-                           %(location_id)s, %(name)s)
+                           %(location_id)s, %(capex_code)s, %(name)s,
+                           'T', 'T')
                    ON CONFLICT (project_id) DO NOTHING""",
                 {"project_id": f"PRJ-{suffix}", "entity_id": f"ENT-{suffix}",
                  "plant_id": f"PL-{suffix}", "location_id": f"LOC-{suffix}",
+                 # `capex_code` is NOT NULL since migration 002; the fixture
+                 # had never supplied it (found by the full live-PG run of
+                 # 2026-09-12).
+                 "capex_code": f"CAPEX-PROBE-{suffix}",
                  "name": f"Scope probe {suffix}"})
+            # The maker is a foreign key to app_user; the instance carries the
+            # content hash and the snapshot Contract 1 makes NOT NULL. All
+            # three were absent from this fixture until it first ran on a
+            # real database (2026-09-12).
+            cur.execute(
+                """INSERT INTO app_user (user_id, email, display_name, created_by, updated_by)
+                   VALUES ('U-MAKER', 'u-maker@probe.invalid', 'Scope probe maker', 'T', 'T')
+                   ON CONFLICT (user_id) DO NOTHING""")
+            # An OPEN instance must have been routed by a definition
+            # (ck_approval_instance_definition: unrouted means
+            # EXCEPTION_PENDING, never OPEN), so each entity gets one.
+            cur.execute(
+                """INSERT INTO approval_definition
+                       (definition_id, object_type, code, version, status,
+                        entity_id, effective_from, created_by,
+                        activated_at, activated_by)
+                   VALUES (%(d)s, 'BUDGET_REVISION', %(d)s, 1, 'ACTIVE',
+                           %(e)s, DATE '2020-01-01', 'T', now(), 'T')
+                   ON CONFLICT (definition_id) DO NOTHING""",
+                {"d": f"DEF-PROBE-{suffix}", "e": f"ENT-{suffix}"})
             cur.execute(
                 """INSERT INTO approval_instance
                        (instance_id, object_type, object_id, object_version,
+                        object_content_sha, snapshot,
+                        definition_id, definition_version,
                         status, current_stage_no, maker_user_id,
                         entity_id, project_id, opened_at)
                    VALUES (%(instance_id)s, 'BUDGET_REVISION', %(object_id)s, 1,
+                           %(sha)s, '{}'::jsonb,
+                           %(definition_id)s, 1,
                            'OPEN', 1, %(maker)s, %(entity_id)s, %(project_id)s,
                            now())""",
                 {"instance_id": f"AI-{suffix}", "object_id": f"REV-{suffix}",
+                 "sha": "0" * 64, "definition_id": f"DEF-PROBE-{suffix}",
                  "maker": "U-MAKER", "entity_id": f"ENT-{suffix}",
                  "project_id": f"PRJ-{suffix}"})
     pg_connection.commit()
