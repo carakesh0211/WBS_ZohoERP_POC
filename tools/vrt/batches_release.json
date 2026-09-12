@@ -1,0 +1,67 @@
+{
+  "generated_from": [
+    "docs/fable51/CONTINUATION.md, \"VRT note 2026-09-12\" and \"Not done\" item 2 (the bounded VRT run, the re-baseline account, and the confirmation-run convention .vrt-batches-confirm/summary.txt this plan follows for the release run)",
+    "git diff --name-only c51c2fe..HEAD -- app/frontend tests/vrt"
+  ],
+  "purpose": "Every spec that touches a screen changed since c51c2fe, plus the seven the UAT release candidate names explicitly. Run one spec at a time, one viewport at a time (tools/run_vrt_batches.sh's own reasoning: a hang or a failure is attributable to a batch, never to \"the suite\"). tools/vrt/run_batches.py reads this file; it is NOT executed by the change that adds it.",
+  "viewports": ["desktop-1440", "laptop-1024", "tablet-800"],
+  "port_env": "CAPEX_VRT_PORT",
+  "reuse_env": "CAPEX_VRT_REUSE",
+  "defaults": {
+    "per_test_timeout_ms": 60000,
+    "per_batch_timeout_s": 900
+  },
+  "batches": [
+    {
+      "spec": "spa-routing.spec.js",
+      "priority": "P0",
+      "blocking": true,
+      "changed_since_c51c2fe": true,
+      "reason": "Sign-in lands on the shell, and every screen's reachability, deep-link and permission-gating goes through this spec (\"the primary navigation is exactly the approved navigation\", back/forward, re-mount, the app.js/router.js SCREENS agreement). app/frontend/src/core/router.js and api-client.js both changed since c51c2fe; a routing or session-header regression here blocks every other screen."
+    },
+    {
+      "spec": "approved-ui.spec.js",
+      "priority": "P0",
+      "blocking": true,
+      "changed_since_c51c2fe": true,
+      "reason": "The client-approved visual baseline for the sixteen core screens (home, WBS, budget, PRs, POs, GRNs, bills, reconciliation, revisions, capitalisation, audit, check, projects, Zoho, inventory, alerts) plus the shell invariants (no horizontal scroll, the cosy density toggle, a non-colour status indicator on every state). Its own baselines moved in the bounded VRT run (1ebf136); a release cannot go out on unconfirmed navigation-adjacent baselines."
+    },
+    {
+      "spec": "approvals.spec.js",
+      "priority": "P0",
+      "blocking": true,
+      "changed_since_c51c2fe": true,
+      "reason": "The approval engine's thirteen routable screens, their own-permission gating (not approval.read alone), the four required states, and the engine invariants that must reach the user (skipped stage, escalation, delegation). Its baselines moved in the bounded VRT run (1ebf136)."
+    },
+    {
+      "spec": "budget-setup.spec.js",
+      "priority": "P0",
+      "blocking": true,
+      "changed_since_c51c2fe": true,
+      "reason": "Budget Setup is named explicitly in the release scope. app/frontend/src/features/budget/budget-setup.js, budget-api.js, and the governed-select/money-input components it depends on all changed since c51c2fe; the spec file and its own baselines changed too."
+    },
+    {
+      "spec": "po-currency.spec.js",
+      "priority": "P0",
+      "blocking": true,
+      "changed_since_c51c2fe": true,
+      "reason": "PO currency is named explicitly in the release scope: the Raise Purchase Order screen's INR default, foreign-currency body, FX_RATE_UNAVAILABLE refusal and axe pass. app/frontend/src/features/procurement/purchase-order.js, procurement-api.js and fx-translate.js all changed since c51c2fe."
+    },
+    {
+      "spec": "integration.spec.js",
+      "priority": "P0",
+      "blocking": true,
+      "changed_since_c51c2fe": true,
+      "reason": "Integration screens are named explicitly in the release scope: the twelve Wave 5 routes stay out of the primary rail, the permission gates (Auditor vs. Requestor vs. connector.read), and REQ-INT-024 -- a client secret never reaching the browser or the DOM. Nothing here changed the shell's own navigation module by name, but router.js and api-client.js (both changed since c51c2fe) are exactly what this spec's routing and secret-scrub assertions exercise."
+    },
+    {
+      "spec": "fx-rates.spec.js",
+      "priority": "P2",
+      "blocking": false,
+      "changed_since_c51c2fe": true,
+      "reason": "Informational. Exchange Rates is a settings/admin screen (registry row, fx.manage vs. fx.read rendering, the coded refusal shown verbatim, axe) rather than one of the six named release-blocking categories (sign-in, navigation, approvals, budget setup, PO currency, integration screens). app/frontend/src/features/settings/fx-api.js and fx-rates.js changed since c51c2fe, so it still runs -- a failure here is read and reported, not silently skipped -- but it does not by itself hold the release."
+    }
+  ],
+  "blocking_categories": ["sign-in", "navigation", "approvals", "budget setup", "PO currency", "integration screens"],
+  "informational_specs": ["fx-rates.spec.js"]
+}
