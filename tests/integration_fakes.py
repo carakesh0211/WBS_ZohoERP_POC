@@ -129,6 +129,11 @@ class FakeRecord:
     entity_id: str | None = None
     project_id: str | None = None
     cf_capex_ref: str | None = None
+    #: Both names are `dto.BillDTO`'s, not the reader's. `None` means the
+    #: double does not state them, and `sweeps.normalise` then falls back to
+    #: the base currency and to "no rate" exactly as it does for a real DTO.
+    currency_code: str | None = None
+    exchange_rate: str | None = None
     lines: tuple[FakeLine, ...] = ()
 
 
@@ -142,7 +147,9 @@ class FakePage:
 
 def bill(n: int, *, modified: datetime, total_paise: int = 100_000,
          with_lines: bool = False, entity_id: str = "ENT-1",
-         project_id: str = "PRJ-1", number: str | None = None) -> FakeRecord:
+         project_id: str = "PRJ-1", number: str | None = None,
+         currency_code: str | None = None,
+         exchange_rate: str | None = None) -> FakeRecord:
     external_id = f"BILL-EXT-{n:04d}"
     return FakeRecord(
         external_id=external_id,
@@ -152,6 +159,7 @@ def bill(n: int, *, modified: datetime, total_paise: int = 100_000,
         document_number=number if number is not None else f"BILL-{n:04d}",
         document_date=modified.date(), status="open", total_paise=total_paise,
         entity_id=entity_id, project_id=project_id,
+        currency_code=currency_code, exchange_rate=exchange_rate,
         lines=(FakeLine(purchase_order_line_external_id=f"BL-{n}", line_total_paise=total_paise),)
         if with_lines else ())
 
@@ -440,7 +448,7 @@ class InMemoryStore:
         a second copy of every exception it already raised.
         """
         assert kind in sweeps.EXCEPTION_KINDS, (
-            f"{kind} is not one of the five kinds C18 declares")
+            f"{kind} is not one of the kinds C18 declares")
         key = (kind, object_type, object_id)
         existing = self.exceptions.get(key)
         if existing is not None and existing["status"] == sweeps.EXCEPTION_OPEN:

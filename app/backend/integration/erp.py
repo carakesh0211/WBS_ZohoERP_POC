@@ -64,6 +64,7 @@ from app.backend.integration.dto import (
     SourceRef,
     freeze,
     paise,
+    rate_text,
     parse_zoho_date,
     parse_zoho_datetime,
     quantity,
@@ -725,6 +726,10 @@ def _bill(row: Mapping[str, Any], source: SourceRef, *, hydrated: bool) -> BillD
             str(x) for x in (row.get("purchaseorder_ids") or [])),
         lines=_lines(row.get("line_items") or (), po_line_key="purchaseorder_item_id", minor_exponent=_exp),
         lines_hydrated=hydrated,
+        # The bill's own rate, verbatim as a decimal string (the transport
+        # parses with parse_float=str). What decision 8 requires a bill
+        # against a non-INR order to carry.
+        exchange_rate=rate_text(row.get("exchange_rate"), field="bill.exchange_rate"),
         raw=freeze(row),
     )
 
@@ -774,8 +779,12 @@ def _receive(row: Mapping[str, Any], source: SourceRef, *, fallback_po: str) -> 
         # `ReceiveDTO` is the only inbound money-document DTO with no
         # `currency_code` -- a reported contract gap -- so a receive is
         # parsed at the base scale. A foreign-currency receipt is
-        # therefore booked at face value into `received_paise`, which is
-        # that gap's consequence and not something to paper over by
+        # therefore a FACE VALUE in the order's currency, and since
+        # product owner decision 8 (2026-09-11) the matching layer
+        # (`sweeps.SweepPoAnchored._attribute`, and `pg.procurement.
+        # record_receive_line` behind it) refuses it with
+        # FOREIGN_CURRENCY_BASIS_MISSING rather than booking it into
+        # `received_paise` -- not something to paper over here by
         # inventing a currency the contract does not carry.
         _lines(row.get("line_items") or (), po_line_key="line_item_id"),
         raw=freeze(row),

@@ -104,22 +104,38 @@ MODULE_ITEMS = "items"
 MODULE_CONTACTS = "contacts"
 
 # ------------------------------------------------------- reconciliation kinds
-# The frozen five from research/30_contracts/C18_domain_statuses.json. A sweep
-# that needs a sixth REPORTS it; it does not invent one here. Gap detection
-# therefore lands in CONTROL_TOTAL_MISMATCH -- a gap IS a count disagreement --
-# with the missing numbers named in `detail`, rather than under a
-# DOCUMENT_NUMBER_GAP kind that no registry declares.
+# The five research/30_contracts/C18_domain_statuses.json froze, and the sixth
+# it declares since migration 030. A sweep that needs a kind the registry does
+# not declare REPORTS it; it does not invent one here. Gap detection therefore
+# lands in CONTROL_TOTAL_MISMATCH -- a gap IS a count disagreement -- with the
+# missing numbers named in `detail`, rather than under a DOCUMENT_NUMBER_GAP
+# kind that no registry declares.
 KIND_GRN_LINE_UNATTRIBUTED = "GRN_LINE_UNATTRIBUTED"
 KIND_CONTROL_TOTAL_MISMATCH = "CONTROL_TOTAL_MISMATCH"
 KIND_LATE_ARRIVAL_CLOSED_PERIOD = "LATE_ARRIVAL_CLOSED_PERIOD"
 KIND_UNSANCTIONED_COMMITMENT = "UNSANCTIONED_COMMITMENT"
 KIND_UNMAPPED_EXTERNAL_STATUS = "UNMAPPED_EXTERNAL_STATUS"
+#: Product owner decision 8 (2026-09-11): "A receive or bill against a non-INR
+#: order is refused with a coded reconciliation exception until it carries its
+#: own currency and rate; nothing is booked at face value." This is the code.
+#: The SAME string is the `.code` of the refusal `pg.procurement` raises, so
+#: the bill-detail sweep can recognise the ledger's refusal without importing
+#: the ledger. A row of this kind carries NO `local_paise` and NO
+#: `source_paise`: the only figure available is the vendor's face value in the
+#: vendor's currency, and a column named `_paise` is the wrong place for it.
+KIND_FOREIGN_CURRENCY_BASIS_MISSING = "FOREIGN_CURRENCY_BASIS_MISSING"
 
 EXCEPTION_KINDS: frozenset[str] = frozenset({
     KIND_GRN_LINE_UNATTRIBUTED, KIND_CONTROL_TOTAL_MISMATCH,
     KIND_LATE_ARRIVAL_CLOSED_PERIOD, KIND_UNSANCTIONED_COMMITMENT,
-    KIND_UNMAPPED_EXTERNAL_STATUS,
+    KIND_UNMAPPED_EXTERNAL_STATUS, KIND_FOREIGN_CURRENCY_BASIS_MISSING,
 })
+
+#: The estate's base currency. The sweeps do not import `pg.fx` (they run
+#: against any `SweepStore`, database or not), so the one currency that is the
+#: identity translation is spelled here and compared by every rule that turns
+#: on it. `pg.fx.BASE_CURRENCY` says the same thing on the ledger side.
+BASE_CURRENCY = "INR"
 
 #: The exception status that blocks. C18: "Open -- unresolved. BLOCKS
 #: capitalisation, and blocks accounting-period close."
@@ -314,11 +330,37 @@ class SourceRecord:
     #: whose base currency is INR. The difference is that a document that DOES
     #: say EUR is now believed.
     currency_code: str = "INR"
+    #: THE RATE THE DOCUMENT ITSELF STATES, as an exact decimal STRING, or
+    #: None when the source stated none. Never a float: `dto.rate_text`
+    #: refuses one at the adapter and `normalise` refuses one here, for the
+    #: reason `dto.paise` gives -- a rate is multiplied into money.
+    #:
+    #: Only a bill can carry one (`dto.BillDTO.exchange_rate`; a Zoho bill row
+    #: carries `currency_code` and `exchange_rate`). A purchase receive carries
+    #: no currency and no rate of its own on any product this integrates with,
+    #: which is why decision 8 (2026-09-11) refuses a receive against a
+    #: non-INR order outright rather than looking for one.
+    exchange_rate: str | None = None
     lines: tuple[Any, ...] = ()
 
     @property
     def has_line_items(self) -> bool:
         return bool(self.lines)
+
+
+def _rate_text(value: Any, *, external_id: str) -> str | None:
+    """A stated exchange rate as the exact decimal string, or None. No floats."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool) or isinstance(value, float):
+        raise SweepError(
+            f"bill {external_id}: exchange_rate arrived as "
+            f"{type(value).__name__} ({value!r}). An exchange rate is "
+            f"multiplied into money, so it must be an exact decimal string; "
+            f"the transport parses JSON with parse_float=str for exactly this "
+            f"reason, and nothing here rounds a float into a rate.")
+    text = str(value).strip()
+    return text or None
 
 
 def normalise(record: Any, *, module: str) -> SourceRecord:
@@ -375,7 +417,13 @@ def normalise(record: Any, *, module: str) -> SourceRecord:
         # currency, which is what the value has effectively been for every
         # document ever mirrored.
         currency_code=(str(_first_attr(record, ("currency_code", "currency"))
-                           or "INR").strip().upper() or "INR"),
+                           or BASE_CURRENCY).strip().upper() or BASE_CURRENCY),
+        # `exchange_rate` is the name `dto.BillDTO` carries (and the name the
+        # Zoho row carries, so a raw mapping reads the same way). Read for
+        # every module and None for every one but bills, because only a bill
+        # DTO defines it.
+        exchange_rate=_rate_text(_first_attr(record, ("exchange_rate",)),
+                                 external_id=str(external_id)),
         lines=tuple(lines),
     )
 
@@ -411,6 +459,15 @@ class LocalPurchaseOrder:
     entity_id: str | None = None
     project_id: str | None = None
     document_number: str | None = None
+    #: THE CURRENCY THE ORDER IS DENOMINATED IN (`purchase_order.currency`,
+    #: migration 029). The PO-anchored walk reads it before it resolves a
+    #: single receive line, because a receive inherits the order's currency
+    #: and carries none of its own: against a non-INR order every line's
+    #: amount is a face value in that currency, and decision 8 (2026-09-11)
+    #: holds it under FOREIGN_CURRENCY_BASIS_MISSING rather than booking it as
+    #: paise. Defaults to the base currency so every existing construction of
+    #: this record, all of them INR, is unchanged.
+    currency_code: str = BASE_CURRENCY
 
 
 @dataclass(frozen=True)
@@ -853,7 +910,9 @@ class PollPurchaseOrders(WindowedPoll):
                         f"system's budget check."),
                 raised_at=ctx.now(), entity_id=record.entity_id,
                 project_id=record.project_id,
-                source_paise=record.total_paise,
+                # A foreign-currency order's total is a face value in its own
+                # currency; only an INR figure is paise. See _face_value_paise.
+                source_paise=_face_value_paise(record),
                 correlation_id=ctx.correlation_id)
         return inserted
 
@@ -999,6 +1058,57 @@ class SweepPoAnchored:
         # branch exists to fill accumulated nothing while reporting success.
         amount_paise = _first_attr(
             line, ("line_total_paise", "amount_paise", "total_paise"), 0) or 0
+
+        # THE ORDER'S CURRENCY DECIDES BEFORE THE LINKAGE DOES. Product owner
+        # decision 8 (2026-09-11): a receive against a non-INR order is refused
+        # with a coded reconciliation exception until it carries its own
+        # currency and rate, and nothing is booked at face value. A purchase
+        # receive carries neither -- on Zoho ERP it has no `currency_code` and
+        # no `exchange_rate` at all; it inherits the order's -- so against a
+        # JPY order the figure this line states is YEN, whatever the DTO field
+        # is called, and there is no basis on which to make it paise.
+        #
+        # Checked BEFORE `resolve_po_line`, deliberately. The other two
+        # outcomes of this function both write that figure into a paise
+        # column: attribution records it on `grn_line.amount_paise`, and the
+        # quarantine below holds it "at full value" in the unattributed
+        # bucket. Either would book a yen amount as rupees, which is the
+        # defect the decision closes. So a foreign order takes neither path:
+        # the line is held under its own kind, with NO `source_paise` (the
+        # only figure available is not paise) and NO bucket contribution, and
+        # the receive stays in the inbox unmatched. `pg.procurement.
+        # record_receive_line` refuses the same case with the same code, so a
+        # caller that reaches the ledger around this sweep gets the same
+        # answer.
+        order_currency = str(po.currency_code or BASE_CURRENCY).strip().upper()
+        if order_currency != BASE_CURRENCY:
+            receive_label = (f" ({receive.document_number})"
+                             if receive.document_number else "")
+            order_label = (f" ({po.document_number})"
+                           if po.document_number else "")
+            self.store.raise_exception(
+                kind=KIND_FOREIGN_CURRENCY_BASIS_MISSING,
+                object_type="grn_line",
+                object_id=f"{receive.external_id}:{line_key}",
+                detail=(
+                    f"Receive {receive.external_id}{receive_label} line "
+                    f"{line_external_id or '(no line identifier)'} is against "
+                    f"purchase order {po.external_id}{order_label}, which is "
+                    f"denominated in {order_currency}. A purchase receive "
+                    f"carries no currency and no exchange rate of its own, so "
+                    f"its stated line amount, {int(amount_paise)} "
+                    f"{order_currency} minor units, is a face value in the "
+                    f"order's currency and has NOT been booked as paise. "
+                    f"Missing: the receive's own currency and its rate to "
+                    f"{BASE_CURRENCY} for its date. Nothing was recorded on "
+                    f"grn_line and nothing was added to the unattributed "
+                    f"bucket; the receive stays in the inbox, unmatched, until "
+                    f"a basis is supplied (decision 8, 2026-09-11)."),
+                raised_at=ctx.now(), entity_id=po.entity_id,
+                project_id=po.project_id,
+                correlation_id=ctx.correlation_id)
+            return False
+
         po_line_id = self.store.resolve_po_line(
             po_external_id=po.external_id,
             line_external_id=str(line_external_id) if line_external_id else None)
@@ -1119,7 +1229,7 @@ class SweepBillDetail:
                             f"element."),
                     raised_at=ctx.now(), entity_id=record.entity_id,
                     project_id=record.project_id,
-                    source_paise=record.total_paise,
+                    source_paise=_face_value_paise(record),
                     correlation_id=ctx.correlation_id)
             else:
                 mirrored = self._mirror(ctx, record)
@@ -1172,7 +1282,7 @@ class SweepBillDetail:
                         f"first. Held at full value; nothing was mirrored."),
                 raised_at=ctx.now(), entity_id=record.entity_id,
                 project_id=record.project_id,
-                source_paise=record.total_paise,
+                source_paise=_face_value_paise(record),
                 correlation_id=ctx.correlation_id)
             return None
 
@@ -1192,17 +1302,34 @@ class SweepBillDetail:
                 "whole estate, and the reconciliation identity would balance "
                 "on three figures all derived from an empty table. "
                 "SweepStore.mirror_bill is not optional.")
-        return mirror(
-            external_source=self.external_source,
-            external_id=record.external_id,
-            bill_number=record.document_number,
-            vendor_name=record.vendor_name,
-            bill_date=record.document_date,
-            lines=record.lines,
-            po_external_id=(record.po_external_ids[0]
-                            if record.po_external_ids else None),
-            project_id=record.project_id,
-            entity_id=record.entity_id,
+        # THE BILL'S OWN RATE, WHEN IT STATES ONE, travels with its currency.
+        # Decision 8 (2026-09-11) lets a bill against a non-INR order book
+        # only when it "carries its own currency and rate"; the ledger
+        # resolves the rate (`fx.resolve_basis`: the stated rate recorded
+        # against the bill's date, else the ACTIVE rate on file for that
+        # date) and refuses with FOREIGN_CURRENCY_BASIS_MISSING when there is
+        # neither. The rate's SOURCE is the document itself, named per bill:
+        # `fx_rate` is unique on (pair, date, source) and never overwritten,
+        # so two bills dated the same day at two dealt rates must each cite
+        # their own row rather than the second being refused as a conflict
+        # with the first.
+        stated_rate = record.exchange_rate
+        rate_source = (f"{self.external_source} bill {record.external_id}"
+                       if stated_rate is not None else None)
+        try:
+            return mirror(
+                external_source=self.external_source,
+                external_id=record.external_id,
+                bill_number=record.document_number,
+                vendor_name=record.vendor_name,
+                bill_date=record.document_date,
+                lines=record.lines,
+                po_external_id=(record.po_external_ids[0]
+                                if record.po_external_ids else None),
+                project_id=record.project_id,
+                entity_id=record.entity_id,
+                exchange_rate=stated_rate,
+                fx_rate_source=rate_source,
             # VERBATIM, never interpreted here. C17's mapping happens in the
             # ledger, which is also where the UNMAPPED_EXTERNAL_STATUS
             # exception is raised; this sweep only carries the raw value
@@ -1220,8 +1347,49 @@ class SweepBillDetail:
             # resolves the rate for `record.document_date` and refuses the bill
             # outright if none is on file, rather than writing a euro figure
             # into a rupee column, which is what it did before.
-            source_currency=record.currency_code,
-            correlation_id=ctx.correlation_id)
+                source_currency=record.currency_code,
+                correlation_id=ctx.correlation_id)
+        except Exception as exc:  # noqa: BLE001 -- matched on `.code`; everything else re-raised
+            # ONE refusal is a reconciliation fact rather than a wiring fault,
+            # and it is recognised by its code, not its type: the sweeps do
+            # not import the ledger. FOREIGN_CURRENCY_BASIS_MISSING means the
+            # bill is against a non-INR order and carries no currency-and-rate
+            # basis the ledger can honour (decision 8). It is held OPEN under
+            # that kind -- blocking capitalisation and period close like every
+            # Open exception -- with the ledger's own sentence as its detail,
+            # NO `source_paise` (the face value is not paise), and the inbox
+            # row untouched, so the source document is recoverable when the
+            # basis arrives. The queue entry is marked hydrated by the caller
+            # exactly as the other held-at-full-value branches above are: the
+            # detail WAS fetched and paid for, and re-fetching it every tick
+            # would not change what it lacks. Every OTHER refusal still
+            # propagates, for the reason `SweepStore.mirror_bill` gives.
+            if getattr(exc, "code", None) != KIND_FOREIGN_CURRENCY_BASIS_MISSING:
+                raise
+            self.store.raise_exception(
+                kind=KIND_FOREIGN_CURRENCY_BASIS_MISSING,
+                object_type="bill", object_id=record.external_id,
+                detail=str(getattr(exc, "message", None) or exc),
+                raised_at=ctx.now(), entity_id=record.entity_id,
+                project_id=record.project_id,
+                correlation_id=ctx.correlation_id)
+            return None
+
+
+def _face_value_paise(record: SourceRecord) -> int | None:
+    """`record.total_paise` when it IS paise, and None when it is not.
+
+    A bill labelled JPY carries its total in yen, whatever `total_paise` is
+    called on the DTO. Writing that figure into `reconciliation_exception.
+    source_paise` would state a yen amount as rupees in the one column the
+    closure gate sums (`closure._open_exceptions`), which is the silent
+    relabelling decision 8 forbids. Only a base-currency document's total is
+    paise; every other document's face value is named in `detail`, with its
+    currency, where it cannot be summed as rupees.
+    """
+    if str(record.currency_code or BASE_CURRENCY).strip().upper() == BASE_CURRENCY:
+        return record.total_paise
+    return None
 
 
 # ======================================================= completeness sweeps
@@ -1488,9 +1656,10 @@ JOB_CADENCES: Mapping[str, str] = {
 
 
 __all__ = [
-    "AdapterMethodMissing", "ControlTotal", "ControlTotalSource",
+    "AdapterMethodMissing", "BASE_CURRENCY", "ControlTotal", "ControlTotalSource",
     "EXCEPTION_KINDS", "EXCEPTION_OPEN", "JOB_CADENCES",
-    "KIND_CONTROL_TOTAL_MISMATCH", "KIND_GRN_LINE_UNATTRIBUTED",
+    "KIND_CONTROL_TOTAL_MISMATCH", "KIND_FOREIGN_CURRENCY_BASIS_MISSING",
+    "KIND_GRN_LINE_UNATTRIBUTED",
     "KIND_LATE_ARRIVAL_CLOSED_PERIOD", "KIND_UNMAPPED_EXTERNAL_STATUS",
     "KIND_UNSANCTIONED_COMMITMENT", "LocalDocument", "LocalPurchaseOrder",
     "MODULE_BILLS", "MODULE_CONTACTS", "MODULE_ITEMS",

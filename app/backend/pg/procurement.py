@@ -146,6 +146,19 @@ AUDIT_QUARANTINE_RETRACTED = "RECONCILIATION_QUARANTINE_RETRACTED"
 #: drift into keying on different strings -- which would leave the exception
 #: Open for ever while the line posts, and count the same rupees twice.
 QUARANTINE_RECEIVE_LINE: tuple[str, str] = ("GRN_LINE_UNATTRIBUTED", "grn_line")
+
+#: Product owner decision 8 (2026-09-11): "A receive or bill against a non-INR
+#: order is refused with a coded reconciliation exception until it carries its
+#: own currency and rate; nothing is booked at face value."
+#:
+#: ONE STRING, THREE ROLES. It is the `.code` of the `ProcurementIngestError`
+#: this module raises, the `kind` of the `reconciliation_exception` row the
+#: bill-detail sweep files when it catches that error, and the sixth member of
+#: `ck_reconciliation_exception_kind` (migration 030). The sweeps do not import
+#: this module, so `sweeps.KIND_FOREIGN_CURRENCY_BASIS_MISSING` spells the same
+#: value independently and `tests/test_foreign_order_matching_fable51.py` pins
+#: the two together.
+FOREIGN_CURRENCY_BASIS_MISSING = "FOREIGN_CURRENCY_BASIS_MISSING"
 QUARANTINE_BILL_LINE: tuple[str, str] = ("CONTROL_TOTAL_MISMATCH", "bill_line")
 
 #: What a superseded `bill_line`'s description is stamped with.
@@ -380,8 +393,10 @@ def resolve_po_line(session: Session, *, po_external_id: str,
     return rows[0][0]
 
 
-def _po_line_cell(session: Session, po_line_id: str) -> tuple[str, str, str, str]:
-    """`(po_id, project_id, wbs_id, budget_head_id)` for one PO line, scoped.
+def _po_line_cell(session: Session, po_line_id: str
+                  ) -> tuple[str, str, str, str, str]:
+    """`(po_id, project_id, wbs_id, budget_head_id, currency)` for one PO
+    line, scoped.
 
     The control cell is read from the PO LINE, never accepted from the caller.
     `fk_bill_line_po_line_cell` is a four-column FK precisely because a bill
@@ -389,12 +404,19 @@ def _po_line_cell(session: Session, po_line_id: str) -> tuple[str, str, str, str
     the FK is the only thing standing between a mis-supplied `wbs_id` and a
     posting to another project's budget, and a constraint violation at 3am is a
     worse report than a lookup here.
+
+    THE ORDER'S CURRENCY COMES WITH THE CELL, for the same reason the cell
+    comes from the line: a receive against this line inherits the order's
+    currency and carries none of its own, so whether its amount IS paise is a
+    fact about the order, read here, and not a claim the caller makes.
     """
     row = repo.query_one(
         session,
         f"""
-        SELECT pl.po_id, pl.project_id, pl.wbs_id, pl.budget_head_id
+        SELECT pl.po_id, pl.project_id, pl.wbs_id, pl.budget_head_id,
+               po.currency
         FROM {PO_LINE} pl
+        JOIN {PURCHASE_ORDER} po ON po.po_id = pl.po_id
         JOIN project p ON p.project_id = pl.project_id
         WHERE pl.po_line_id = %(po_line_id)s AND {{scope}}
         """,
@@ -408,12 +430,23 @@ def _po_line_cell(session: Session, po_line_id: str) -> tuple[str, str, str, str
             f"this principal. Nothing was written: a document line attributed "
             f"to a control cell nobody can name is not attributed at all.",
             status=404)
-    return row[0], row[1], row[2], row[3]
+    return row[0], row[1], row[2], row[3], _order_currency(row[4])
+
+
+def _order_currency(value: Any) -> str:
+    """`purchase_order.currency` as the ledger compares it: upper-cased, and
+    the base currency when a pre-013 row left it blank."""
+    text = str(value or "").strip().upper()
+    return text or fx_svc.BASE_CURRENCY
 
 
 def _purchase_order(session: Session,
-                    po_external_id: str) -> tuple[str, str, str]:
-    """`(po_id, project_id, entity_id)` for one external PO, scoped.
+                    po_external_id: str) -> tuple[str, str, str, str]:
+    """`(po_id, project_id, entity_id, currency)` for one external PO, scoped.
+
+    `currency` is the order's own (`purchase_order.currency`, 029), read here
+    so `mirror_bill` can hold a bill to decision 8 (2026-09-11) against the
+    order it is raised on rather than against whatever the bill claims.
 
     `entity_id` is READ here rather than taken from the caller, and that is not
     convenience. A reconciliation exception raised with `project_id` set but
@@ -426,7 +459,7 @@ def _purchase_order(session: Session,
     rows = repo.query(
         session,
         f"""
-        SELECT po.po_id, po.project_id, p.entity_id
+        SELECT po.po_id, po.project_id, p.entity_id, po.currency
         FROM {PURCHASE_ORDER} po
         JOIN project p ON p.project_id = po.project_id
         WHERE po.external_id = %(external_id)s AND {{scope}}
@@ -451,7 +484,7 @@ def _purchase_order(session: Session,
             f"(external_source, external_id), so one id under two sources is "
             f"legal and choosing between them is not.",
             status=409)
-    return rows[0][0], rows[0][1], rows[0][2]
+    return rows[0][0], rows[0][1], rows[0][2], _order_currency(rows[0][3])
 
 
 def _project_entity(session: Session, project_id: str) -> str:
@@ -581,8 +614,37 @@ def record_receive_line(session: Session, *, po_line_id: str,
     # `fk_grn_line_po_line` and `fk_grn_line_grn_po` must BOTH agree with, and
     # taking it from anywhere else is precisely the hole the trigger
     # `grn_line_po_ownership` existed to plug.
-    po_id, _project_id, cell_wbs_id, cell_head_id = _po_line_cell(
+    po_id, _project_id, cell_wbs_id, cell_head_id, order_currency = _po_line_cell(
         session, po_line_id)
+    # THE ORDER'S CURRENCY, BEFORE ANYTHING IS WRITTEN. Product owner decision
+    # 8 (2026-09-11): a receive against a non-INR order is refused with a coded
+    # reconciliation exception until it carries its own currency and rate, and
+    # nothing is booked at face value. `grn_line.amount_paise` is base paise
+    # (013), a purchase receive on every product here carries no currency and
+    # no rate of its own, and so against a JPY order the figure this call was
+    # handed is yen. Writing it would state a yen amount as rupees in
+    # `received_paise` and `received_not_billed_paise` -- the relabelling the
+    # decision exists to stop -- so it is refused here, with the same code the
+    # sweep files its reconciliation exception under, before the header, the
+    # line, the cell refresh or the audit entry. `sweeps.SweepPoAnchored.
+    # _attribute` normally stops such a line before it reaches this function;
+    # this is the answer a caller that reaches the ledger some other way gets.
+    #
+    # Placed AFTER the cell lookup (so an unreachable line is still 404, as
+    # before) and BEFORE the provenance check (a missing source label says
+    # less about the document than an untranslatable amount does).
+    if order_currency != fx_svc.BASE_CURRENCY:
+        raise ProcurementIngestError(
+            FOREIGN_CURRENCY_BASIS_MISSING,
+            f"Receive {receive_external_id!r} line {line_external_id!r} is "
+            f"against purchase order {po_id!r}, which is denominated in "
+            f"{order_currency}. A purchase receive carries no currency and no "
+            f"exchange rate of its own, so its stated amount, {int(amount_paise)} "
+            f"{order_currency} minor units, is a face value in the order's "
+            f"currency and has NOT been booked as paise. Missing: the "
+            f"receive's own currency and its rate to {fx_svc.BASE_CURRENCY} for "
+            f"its date. Nothing was written (decision 8, 2026-09-11).",
+            status=409)
     # ...and only now the provenance, for the reason given at the top of this
     # function: still before anything is written, and after the two refusals
     # that say more about the document than a missing source label does.
@@ -1255,8 +1317,9 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
             status=422)
 
     po_id: str | None = None
+    order_currency: str | None = None
     if po_external_id:
-        po_id, po_project_id, po_entity_id = _purchase_order(
+        po_id, po_project_id, po_entity_id, order_currency = _purchase_order(
             session, po_external_id)
         entity_id = entity_id or po_entity_id
         if project_id is not None and project_id != po_project_id:
@@ -1330,6 +1393,56 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
                   for index, line in enumerate(lines or ())]
     source_money = [_bill_line_source_money(line) for line in (lines or ())]
 
+    # ================================ THE ORDER'S CURRENCY, BEFORE THE BILL'S
+    #
+    # Product owner decision 8 (2026-09-11): "A receive or bill against a
+    # non-INR order is refused with a coded reconciliation exception until it
+    # carries its own currency and rate; nothing is booked at face value."
+    #
+    # A bill against a JPY order that arrives labelled INR -- which is what a
+    # source that says nothing is normalised to -- is NOT an INR bill; it is a
+    # JPY bill that has lost its currency, and treating its figures as paise
+    # would book yen as rupees. So the bill must state the ORDER's currency,
+    # and then it must have a rate: its own (`exchange_rate` + a source), a
+    # named `fx_rate_id`, or an ACTIVE rate on file for its date -- exactly the
+    # three ways `fx.resolve_basis` admits. Anything less is refused with
+    # FOREIGN_CURRENCY_BASIS_MISSING, which the bill-detail sweep files as the
+    # reconciliation exception of the same kind and leaves the inbox row
+    # unmatched. A bill in some THIRD currency against a JPY order is refused
+    # too: whichever of the two the vendor meant, one of them is wrong, and
+    # neither this function nor the sweep decides which.
+    #
+    # BEFORE THE POSTED-BASIS READ, deliberately. The replay short-circuit
+    # below reuses a stored basis so a re-walk recomputes the same figures;
+    # that is right for a bill whose basis was ever valid, and a bill posted
+    # in INR against a foreign order never had one. No such row exists in
+    # any database this migration set has been applied to (the seed carries
+    # no purchase orders and the demo tenant's JPY order has no bill), but
+    # the rule is stated once, ahead of every path, rather than once per
+    # path.
+    presented_currency = str(source_currency or fx_svc.BASE_CURRENCY).strip().upper()
+    if order_currency is not None and order_currency != fx_svc.BASE_CURRENCY:
+        if presented_currency != order_currency:
+            missing = (
+                f"the bill carries no currency of its own (it presents as "
+                f"{fx_svc.BASE_CURRENCY}, which for a source that states "
+                f"nothing means it stated nothing)"
+                if presented_currency == fx_svc.BASE_CURRENCY else
+                f"the bill presents as {presented_currency}, not "
+                f"{order_currency}")
+            raise ProcurementIngestError(
+                FOREIGN_CURRENCY_BASIS_MISSING,
+                f"Bill {external_id!r} is against purchase order "
+                f"{po_external_id!r}, which is denominated in "
+                f"{order_currency}, but {missing}. Its line amounts are "
+                f"therefore a face value in a currency this call cannot name "
+                f"and have NOT been booked as paise. Missing: the bill's own "
+                f"currency ({order_currency}) and its rate to "
+                f"{fx_svc.BASE_CURRENCY} for {bill_date.isoformat()}. Nothing "
+                f"was written; the bill stays in the inbox unmatched "
+                f"(decision 8, 2026-09-11).",
+                status=409)
+
     # A BILL ALREADY TRANSLATED IS NOT TRANSLATED AGAIN -- requirement 4, and
     # the reason this reads the row before deciding anything. The sweeps
     # re-walk on a 300-second overlap, so re-presenting a bill that has already
@@ -1375,11 +1488,46 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
         # rather than being flattened into a generic ingest failure: "no EUR
         # rate is on file for 2026-06-15" is the sentence an operator can act
         # on, and re-wrapping it would lose the currency and the date.
-        basis = fx_svc.resolve_basis(
-            session, source_currency=source_currency, document_date=bill_date,
-            actor=actor, exchange_rate=exchange_rate,
-            rate_source=fx_rate_source, fx_rate_id=fx_rate_id,
-            source_reference=f"{external_source} bill {external_id}")
+        try:
+            basis = fx_svc.resolve_basis(
+                session, source_currency=source_currency, document_date=bill_date,
+                actor=actor, exchange_rate=exchange_rate,
+                rate_source=fx_rate_source, fx_rate_id=fx_rate_id,
+                source_reference=f"{external_source} bill {external_id}")
+        except fx_svc.FxError as exc:
+            # AGAINST A FOREIGN ORDER, "no rate" IS decision 8's refusal and is
+            # reported under its code, so the sweep can file it as the
+            # reconciliation exception the decision names rather than fail the
+            # run. Two FX codes mean "no usable basis": no ACTIVE rate on file
+            # and none supplied (FX_RATE_UNAVAILABLE), and a supplied rate
+            # with no provenance (FX_RATE_SOURCE_REQUIRED). Every other FX
+            # refusal -- two sources for one date, a rate for the wrong pair
+            # or date, a conflicting quote, an inactive row -- is a fact about
+            # the RATE BOOK, is still refused, and keeps its own code: it is
+            # not "the bill lacks a basis", and relabelling it would send an
+            # operator to supply a rate that is already there.
+            if (order_currency is None or order_currency == fx_svc.BASE_CURRENCY
+                    or exc.code not in ("FX_RATE_UNAVAILABLE",
+                                        "FX_RATE_SOURCE_REQUIRED")):
+                raise
+            raise ProcurementIngestError(
+                FOREIGN_CURRENCY_BASIS_MISSING,
+                f"Bill {external_id!r} is against purchase order "
+                f"{po_external_id!r}, which is denominated in "
+                f"{order_currency}, and it carries that currency but no "
+                f"usable rate: "
+                + (f"it states exchange_rate={exchange_rate!r} with no source "
+                   f"for it" if exc.code == "FX_RATE_SOURCE_REQUIRED" else
+                   f"it states no exchange_rate and no ACTIVE "
+                   f"{order_currency}/{fx_svc.BASE_CURRENCY} rate is on file "
+                   f"for {bill_date.isoformat()}")
+                + f". Its line amounts are a face value in {order_currency} "
+                f"and have NOT been booked as paise. Missing: the bill's own "
+                f"rate to {fx_svc.BASE_CURRENCY} (with its source), or an "
+                f"ACTIVE rate recorded for {bill_date.isoformat()}. Nothing "
+                f"was written; the bill stays in the inbox unmatched "
+                f"(decision 8, 2026-09-11). FX said: {exc.message}",
+                status=409) from exc
 
     header_base_paise, line_base_money = _translate_bill_payload(
         session, bill_id=bill_id, identities=identities,
@@ -1869,7 +2017,7 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
                                      line_external_id=line_external_id)
 
     if po_line_id is not None:
-        line_po_id, _project, wbs_id, budget_head_id = _po_line_cell(
+        line_po_id, _project, wbs_id, budget_head_id, _currency = _po_line_cell(
             session, po_line_id)
     else:
         # A non-PO bill line may name its own cell -- that is what

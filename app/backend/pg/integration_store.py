@@ -233,14 +233,18 @@ EVENT_BILL_DETAIL_HYDRATED = "integration.bill.detail.hydrated"
 #: but only if the predicate is written out. See :func:`raise_exception`.
 EXCEPTION_OPEN_UNIQUE_INDEX = "ux_reconciliation_exception_open"
 
-#: ``reconciliation_exception.kind`` -- the five
-#: ``ck_reconciliation_exception_kind`` permits, and no sixth. A document-number
-#: gap is folded into CONTROL_TOTAL_MISMATCH with the missing numbers named,
-#: rather than inventing a kind outside the frozen set.
+#: ``reconciliation_exception.kind`` -- exactly what
+#: ``ck_reconciliation_exception_kind`` permits, and nothing else: the five 011
+#: froze, and FOREIGN_CURRENCY_BASIS_MISSING, which migration 030 added as the
+#: deliberate contract change 011 said a sixth kind would have to be (product
+#: owner decision 8, 2026-09-11: a receive or bill against a non-INR order is
+#: held here, unbooked, until it carries its own currency and rate). A
+#: document-number gap is still folded into CONTROL_TOTAL_MISMATCH with the
+#: missing numbers named, rather than inventing a kind outside the set.
 EXCEPTION_KINDS: tuple[str, ...] = (
     "GRN_LINE_UNATTRIBUTED", "CONTROL_TOTAL_MISMATCH",
     "LATE_ARRIVAL_CLOSED_PERIOD", "UNMAPPED_EXTERNAL_STATUS",
-    "UNSANCTIONED_COMMITMENT",
+    "UNSANCTIONED_COMMITMENT", "FOREIGN_CURRENCY_BASIS_MISSING",
 )
 
 #: C18's frozen ``exception_status`` namespace, verbatim, matching
@@ -2382,9 +2386,10 @@ def raise_exception(session: Session, *, kind: str, object_type: str,
     if kind not in EXCEPTION_KINDS:
         raise IntegrationStoreError(
             "UNKNOWN_EXCEPTION_KIND",
-            f"{kind!r} is not one of the five kinds C18 freezes and "
+            f"{kind!r} is not one of the kinds C18 declares and "
             f"ck_reconciliation_exception_kind permits ({', '.join(EXCEPTION_KINDS)}). "
-            f"A sixth kind is a deliberate contract change, not a typo that "
+            f"A new kind is a deliberate contract change -- a migration, the "
+            f"registry and this tuple together, as 030 did -- not a typo that "
             f"silently creates a category nobody triages.")
     moment = raised_at or _utcnow()
     candidate = _exception_id()

@@ -661,6 +661,10 @@ POST_BASELINE_FILES = {
     # recording fake transport, and the `/sweep` route's guard. The
     # PostgreSQL half SKIPS without CAPEX_DB_URL, the rest is database-free.
     "test_live_sweep_fable51.py",
+    # Decision 8 (2026-09-11): a receive or bill against a non-INR order is
+    # refused with FOREIGN_CURRENCY_BASIS_MISSING until it carries its own
+    # currency and rate. The sweeps, DTOs and adapters, database-free.
+    "test_foreign_order_matching_fable51.py",
 
     # --- Fable 5.1: period reopen (M-3). Post-baseline like every wave file: the 220 counts the
     # POC's audit-remediation suite, and inflating it would make the removal

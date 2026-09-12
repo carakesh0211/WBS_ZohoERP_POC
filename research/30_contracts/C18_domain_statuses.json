@@ -67,7 +67,8 @@
         "CONTROL_TOTAL_MISMATCH",
         "LATE_ARRIVAL_CLOSED_PERIOD",
         "UNSANCTIONED_COMMITMENT",
-        "UNMAPPED_EXTERNAL_STATUS"
+        "UNMAPPED_EXTERNAL_STATUS",
+        "FOREIGN_CURRENCY_BASIS_MISSING"
       ]
     },
     "lifecycle_state": {

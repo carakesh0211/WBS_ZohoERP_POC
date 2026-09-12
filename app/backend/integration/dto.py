@@ -54,6 +54,7 @@ __all__ = [
     "emitted_paise",
     "freeze",
     "paise",
+    "rate_text",
     "parse_zoho_date",
     "parse_zoho_datetime",
     "quantity",
@@ -113,6 +114,31 @@ def paise(value: Any, *, field: str, allow_missing: bool = False,
                         minor_exponent=minor_exponent)
     except MoneyError as exc:
         raise DtoError(str(exc)) from exc
+
+
+def rate_text(value: Any, *, field: str) -> str | None:
+    """A source exchange rate as the exact decimal STRING it was stated as.
+
+    ``None`` when the source stated none (a receive never states one; a bill
+    in the base currency may carry ``1`` or nothing). A float is REFUSED, for
+    the reason :func:`paise` refuses one: an exchange rate is multiplied into
+    money, and the transport parses JSON with ``parse_float=str`` so that a
+    rate, like an amount, never exists as a float even momentarily. Nothing
+    here parses the string into a number -- that is `pg.fx.parse_rate`'s job,
+    at :data:`pg.fx.RATE_SCALE`, where a rate too precise to store is refused
+    rather than rounded.
+    """
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool):
+        raise DtoError(f"{field} must be a number, not a boolean.")
+    if isinstance(value, float):
+        raise DtoError(
+            f"{field} arrived as a float ({value!r}). An exchange rate is "
+            f"multiplied into money and must never exist as a float: parse "
+            f"the source JSON with parse_float=str.")
+    text = str(value).strip()
+    return text or None
 
 
 def quantity(value: Any, *, field: str) -> str:
@@ -271,6 +297,16 @@ class BillDTO:
     purchase_order_external_ids: tuple[str, ...] = ()
     lines: tuple[LineDTO, ...] = ()
     lines_hydrated: bool = False
+    #: The rate the bill itself states, source currency -> the organisation's
+    #: base currency, as the exact decimal STRING the row carried (Zoho's
+    #: ``exchange_rate``; both adapters populate it through :func:`rate_text`).
+    #: ``None`` when the row states none. This is the "its own currency and
+    #: rate" of product owner decision 8 (2026-09-11): a bill against a
+    #: non-INR order books only when it carries both, or an ACTIVE rate is on
+    #: file for its date, and is otherwise held as
+    #: FOREIGN_CURRENCY_BASIS_MISSING. Defaulted so every existing
+    #: construction is unchanged.
+    exchange_rate: str | None = None
     raw: Mapping[str, Any] = field(default_factory=_EMPTY_MAPPING)
 
 
