@@ -1,0 +1,366 @@
+{
+ "label": "after",
+ "taken_at": "2026-09-12T03:12:46.737761+00:00",
+ "organization": {
+  "organization_id": "60074128927",
+  "name": "DEMO WBS",
+  "currency_code": "INR"
+ },
+ "orders": {
+  "PO-00001": {
+   "purchaseorder_id": "3912780000000085001",
+   "vendor_id": "3912780000000075001",
+   "status": "partially_billed",
+   "currency_code": "INR",
+   "total": "5620000.00",
+   "last_modified_time": "2026-09-12T02:50:46+0530",
+   "reference_number": "CAPEX-2026-001.04 / WBS electrical",
+   "custom_fields": [
+    {
+     "customfield_id": "3912780000000093002",
+     "api_name": "cf_capex_ref",
+     "value": "DEMO-CAPEX-2026-001.04-INR-0001"
+    }
+   ],
+   "lines": [
+    {
+     "line_item_id": "3912780000000085004",
+     "item_id": "3912780000000076008",
+     "account_id": "3912780000000000465",
+     "item_order": 1,
+     "description": "11kV switchgear panels, WBS CAPEX-2026-001.04",
+     "rate": "1850000.00",
+     "quantity": "2.00",
+     "tax_id": null,
+     "hsn_or_sac": null,
+     "quantity_received": "1.00",
+     "quantity_billed": "1.00",
+     "item_custom_fields": [
+      {
+       "index": 1,
+       "api_name": "cf_wbs_code",
+       "value": "CAPEX-2026-001.04"
+      },
+      {
+       "index": 2,
+       "api_name": "cf_budget_head",
+       "value": "Electrical"
+      }
+     ]
+    },
+    {
+     "line_item_id": "3912780000000085005",
+     "item_id": "3912780000000081001",
+     "account_id": "3912780000000000465",
+     "item_order": 2,
+     "description": "XLPE power cable, WBS CAPEX-2026-001.04",
+     "rate": "2400.00",
+     "quantity": "800.00",
+     "tax_id": null,
+     "hsn_or_sac": null,
+     "quantity_received": "400.00",
+     "quantity_billed": "400.00",
+     "item_custom_fields": [
+      {
+       "index": 1,
+       "api_name": "cf_wbs_code",
+       "value": "CAPEX-2026-001.04"
+      },
+      {
+       "index": 2,
+       "api_name": "cf_budget_head",
+       "value": "Electrical"
+      }
+     ]
+    }
+   ]
+  },
+  "PO-00002": {
+   "purchaseorder_id": "3912780000000085009",
+   "vendor_id": "3912780000000076001",
+   "status": "billed",
+   "currency_code": "INR",
+   "total": "12500000.00",
+   "last_modified_time": "2026-09-12T08:41:54+0530",
+   "reference_number": "CAPEX-2026-001.03.01 / WBS plant and machinery",
+   "custom_fields": [
+    {
+     "customfield_id": "3912780000000093002",
+     "api_name": "cf_capex_ref",
+     "value": "DEMO-CAPEX-2026-001.03.01-INR-0001"
+    }
+   ],
+   "lines": [
+    {
+     "line_item_id": "3912780000000085012",
+     "item_id": "3912780000000082001",
+     "account_id": "3912780000000000465",
+     "item_order": 1,
+     "description": "Rolling mill stand assembly, WBS CAPEX-2026-001.03.01",
+     "rate": "12500000.00",
+     "quantity": "1.00",
+     "tax_id": null,
+     "hsn_or_sac": null,
+     "quantity_received": "1.00",
+     "quantity_billed": "1.00",
+     "item_custom_fields": [
+      {
+       "index": 1,
+       "api_name": "cf_wbs_code",
+       "value": "CAPEX-2026-001.03.01"
+      },
+      {
+       "index": 2,
+       "api_name": "cf_budget_head",
+       "value": "Plant & Machinery"
+      }
+     ]
+    }
+   ]
+  },
+  "PO-00003": {
+   "purchaseorder_id": "3912780000000075008",
+   "vendor_id": "3912780000000076001",
+   "status": "open",
+   "currency_code": "INR",
+   "total": "4800000.00",
+   "last_modified_time": "2026-09-12T02:51:07+0530",
+   "reference_number": "CAPEX-2026-001.03.02 / WBS material handling",
+   "custom_fields": [
+    {
+     "customfield_id": "3912780000000093002",
+     "api_name": "cf_capex_ref",
+     "value": "DEMO-CAPEX-2026-001.03.02-INR-0001"
+    }
+   ],
+   "lines": [
+    {
+     "line_item_id": "3912780000000075011",
+     "item_id": "3912780000000082010",
+     "account_id": "3912780000000000465",
+     "item_order": 1,
+     "description": "20t EOT crane, WBS CAPEX-2026-001.03.02",
+     "rate": "4800000.00",
+     "quantity": "1.00",
+     "tax_id": null,
+     "hsn_or_sac": null,
+     "quantity_received": "0.00",
+     "quantity_billed": "0.00",
+     "item_custom_fields": [
+      {
+       "index": 1,
+       "api_name": "cf_wbs_code",
+       "value": "CAPEX-2026-001.03.02"
+      },
+      {
+       "index": 2,
+       "api_name": "cf_budget_head",
+       "value": "Plant & Machinery"
+      }
+     ]
+    }
+   ]
+  },
+  "PO-00004": {
+   "purchaseorder_id": "3912780000000086001",
+   "vendor_id": "3912780000000079001",
+   "status": "partially_billed",
+   "currency_code": "INR",
+   "total": "2850000.00",
+   "last_modified_time": "2026-09-12T02:51:12+0530",
+   "reference_number": "CAPEX-2026-001.07 / WBS instrumentation",
+   "custom_fields": [
+    {
+     "customfield_id": "3912780000000093002",
+     "api_name": "cf_capex_ref",
+     "value": "DEMO-CAPEX-2026-001.07-INR-0001"
+    }
+   ],
+   "lines": [
+    {
+     "line_item_id": "3912780000000086004",
+     "item_id": "3912780000000083001",
+     "account_id": "3912780000000000465",
+     "item_order": 1,
+     "description": "PLC controller sets, WBS CAPEX-2026-001.07",
+     "rate": "950000.00",
+     "quantity": "3.00",
+     "tax_id": null,
+     "hsn_or_sac": null,
+     "quantity_received": "0.00",
+     "quantity_billed": "1.00",
+     "item_custom_fields": [
+      {
+       "index": 1,
+       "api_name": "cf_wbs_code",
+       "value": "CAPEX-2026-001.07"
+      },
+      {
+       "index": 2,
+       "api_name": "cf_budget_head",
+       "value": "Instrumentation & Automation"
+      }
+     ]
+    }
+   ]
+  },
+  "PO-00005": {
+   "purchaseorder_id": "3912780000000087001",
+   "vendor_id": "3912780000000074001",
+   "status": "partially_billed",
+   "currency_code": "INR",
+   "total": "3500000.00",
+   "last_modified_time": "2026-09-12T02:51:41+0530",
+   "reference_number": "CAPEX-2026-001.02 / WBS civil",
+   "custom_fields": [
+    {
+     "customfield_id": "3912780000000093002",
+     "api_name": "cf_capex_ref",
+     "value": "DEMO-CAPEX-2026-001.02-INR-0001"
+    }
+   ],
+   "lines": [
+    {
+     "line_item_id": "3912780000000087004",
+     "item_id": "3912780000000080001",
+     "account_id": "3912780000000000465",
+     "item_order": 1,
+     "description": "Structural steel for plant building, WBS CAPEX-2026-001.02.02",
+     "rate": "68000.00",
+     "quantity": "40.00",
+     "tax_id": null,
+     "hsn_or_sac": null,
+     "quantity_received": "0.00",
+     "quantity_billed": "0.00",
+     "item_custom_fields": [
+      {
+       "index": 1,
+       "api_name": "cf_wbs_code",
+       "value": "CAPEX-2026-001.02.02"
+      },
+      {
+       "index": 2,
+       "api_name": "cf_budget_head",
+       "value": "Civil"
+      }
+     ]
+    },
+    {
+     "line_item_id": "3912780000000087005",
+     "item_id": "3912780000000079008",
+     "account_id": "3912780000000000465",
+     "item_order": 2,
+     "description": "RMC M30 for foundations, WBS CAPEX-2026-001.02.01",
+     "rate": "5200.00",
+     "quantity": "150.00",
+     "tax_id": null,
+     "hsn_or_sac": null,
+     "quantity_received": "0.00",
+     "quantity_billed": "150.00",
+     "item_custom_fields": [
+      {
+       "index": 1,
+       "api_name": "cf_wbs_code",
+       "value": "CAPEX-2026-001.02.01"
+      },
+      {
+       "index": 2,
+       "api_name": "cf_budget_head",
+       "value": "Civil"
+      }
+     ]
+    }
+   ]
+  },
+  "PO-00006": {
+   "purchaseorder_id": "3912780000000096001",
+   "vendor_id": "3912780000000095001",
+   "status": "open",
+   "currency_code": "JPY",
+   "total": 2900000,
+   "last_modified_time": "2026-09-12T08:41:44+0530",
+   "reference_number": "CAPEX-2026-001.07 / WBS instrumentation (JPY)",
+   "custom_fields": [
+    {
+     "customfield_id": "3912780000000093002",
+     "api_name": "cf_capex_ref",
+     "value": "DEMO-CAPEX-2026-001.07-JPY-0001"
+    }
+   ],
+   "lines": [
+    {
+     "line_item_id": "3912780000000096004",
+     "item_id": "3912780000000083001",
+     "account_id": "3912780000000000465",
+     "item_order": 1,
+     "description": "PLC controller sets priced in JPY, WBS CAPEX-2026-001.07",
+     "rate": 1450000,
+     "quantity": "2.00",
+     "tax_id": null,
+     "hsn_or_sac": null,
+     "quantity_received": "0.00",
+     "quantity_billed": "0.00",
+     "item_custom_fields": [
+      {
+       "index": 1,
+       "api_name": "cf_wbs_code",
+       "value": "CAPEX-2026-001.07"
+      },
+      {
+       "index": 2,
+       "api_name": "cf_budget_head",
+       "value": "Instrumentation & Automation"
+      }
+     ]
+    }
+   ]
+  },
+  "PO-00007": {
+   "purchaseorder_id": "3912780000000099012",
+   "vendor_id": "3912780000000099002",
+   "status": "partially_billed",
+   "currency_code": "INR",
+   "total": "2265600.00",
+   "last_modified_time": "2026-09-12T08:41:49+0530",
+   "reference_number": "CAPEX-2026-001.02.02 / WBS structural (GST)",
+   "custom_fields": [
+    {
+     "customfield_id": "3912780000000093002",
+     "api_name": "cf_capex_ref",
+     "value": "DEMO-CAPEX-2026-001.02.02-GST-0001"
+    }
+   ],
+   "lines": [
+    {
+     "line_item_id": "3912780000000099013",
+     "item_id": "3912780000000100021",
+     "account_id": "3912780000000000465",
+     "item_order": 1,
+     "description": "Fabricated steel access platforms, GST 18%, WBS CAPEX-2026-001.02.02",
+     "rate": "640000.00",
+     "quantity": "3.00",
+     "tax_id": "3912780000000085140",
+     "hsn_or_sac": "7308",
+     "quantity_received": "0.00",
+     "quantity_billed": "1.00",
+     "item_custom_fields": [
+      {
+       "index": 1,
+       "api_name": "cf_wbs_code",
+       "value": "CAPEX-2026-001.02.02"
+      },
+      {
+       "index": 2,
+       "api_name": "cf_budget_head",
+       "value": "Civil"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "transport": {
+  "api_domain": "https://www.zohoapis.in",
+  "calls_made": 8
+ }
+}

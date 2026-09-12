@@ -1,6 +1,8 @@
 # Stamping `cf_wbs_code` / `cf_budget_head` on the DEMO WBS purchase-order lines
 
-**State (2026-09-12): NOT APPLIED.** The two line fields exist on DEMO WBS
+**State (2026-09-12, later): APPLIED under the owner's written authorisation; see `po-stamping/AUDIT_REPORT_2026-09-12.md` (before/after snapshots, diff, tests, rollback).** The text below is the plan as it stood before.
+
+~~**State (2026-09-12): NOT APPLIED.**~~ The two line fields exist on DEMO WBS
 (entity `purchaseorder_item`; `cf_wbs_code` id `3912780000000098001` index 10,
 `cf_budget_head` id `3912780000000099001` index 11 — read live via the Zoho
 ERP MCP `list_custom_fields`). Every line of the seven demo orders still has

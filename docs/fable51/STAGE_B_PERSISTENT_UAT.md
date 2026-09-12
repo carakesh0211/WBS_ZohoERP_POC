@@ -128,6 +128,11 @@ extracted to `..\bundle`.
    rewound AND the seven inbox rows removed on the UAT database (the SQL for
    that was refused by the auto-mode classifier, twice) or one new order in
    the tenant carrying a `cf_capex_ref` value — the owner's call.
+   **RESOLVED 2026-09-12:** the owner authorised the line-field stamping; the
+   seven modified orders were re-accepted by the next sweep and raised seven
+   `UNSANCTIONED_COMMITMENT` exceptions (`evidence/erp-demo/po-stamping/AUDIT_REPORT_2026-09-12.md`).
+   New finding from that run: a JPY order's exception carries its JPY minor
+   units in `source_paise` — labelled as paise; open for the decision-8 stream.
 3. **Budget accounting under-counts receives** (reported by the sweep stream,
    pinned in `tests/test_live_sweep_fable51.py`): the PO-anchored sweep charges
    one call per open order while `receives_for_po` spends `1 + len(receives)`
