@@ -694,6 +694,17 @@ POST_BASELINE_FILES = {
     # Post-baseline like every wave file.
     "test_pg_fx_admin.py",
     "test_api_fx_guard.py",
+    # Adopting a tenant-raised Zoho order (migration 032, product owner
+    # 2026-09-12): `adoption.adopt_tenant_orders` database-free with the
+    # fakes, and live-PostgreSQL end to end -- adoption, then a receive
+    # mirrors against the adopted order's line (GRN matching), then a bill
+    # matches it (bill matching). Repeat sweeps idempotent, changed fields ->
+    # ADOPTION_DIMENSION_CONFLICT, duplicate cf_capex_ref, missing WBS/budget
+    # head -> ADOPTION_DIMENSION_INVALID with no posting, JPY with no active
+    # rate -> FOREIGN_CURRENCY_BASIS_MISSING, JPY with one -> paise via the
+    # shared helper, wrong organisation refused, concurrent adoption blocked.
+    # Post-baseline like every wave file.
+    "test_adoption_fable51.py",
 }
 
 
