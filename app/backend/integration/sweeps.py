@@ -1414,16 +1414,50 @@ class SweepBillDetail:
             # detail WAS fetched and paid for, and re-fetching it every tick
             # would not change what it lacks. Every OTHER refusal still
             # propagates, for the reason `SweepStore.mirror_bill` gives.
-            if getattr(exc, "code", None) != KIND_FOREIGN_CURRENCY_BASIS_MISSING:
-                raise
-            self.store.raise_exception(
-                kind=KIND_FOREIGN_CURRENCY_BASIS_MISSING,
-                object_type="bill", object_id=record.external_id,
-                detail=str(getattr(exc, "message", None) or exc),
-                raised_at=ctx.now(), entity_id=record.entity_id,
-                project_id=record.project_id,
-                correlation_id=ctx.correlation_id)
-            return None
+            code = getattr(exc, "code", None)
+            if code == KIND_FOREIGN_CURRENCY_BASIS_MISSING:
+                self.store.raise_exception(
+                    kind=KIND_FOREIGN_CURRENCY_BASIS_MISSING,
+                    object_type="bill", object_id=record.external_id,
+                    detail=str(getattr(exc, "message", None) or exc),
+                    raised_at=ctx.now(), entity_id=record.entity_id,
+                    project_id=record.project_id,
+                    correlation_id=ctx.correlation_id)
+                return None
+            if code == "PURCHASE_ORDER_NOT_FOUND":
+                # VERIFIED LIVE 2026-09-12 (DEMO WBS bill against PO-00004,
+                # an order adoption REFUSED for an unmapped budget head): the
+                # ledger's PURCHASE_ORDER_NOT_FOUND propagated, the job
+                # FAILED and the bill stayed on the queue to fail every tick
+                # -- blocking every bill behind it. A bill against an order
+                # this system never held is the second reconciliation fact
+                # the sweep recognises: it is held OPEN as an
+                # UNSANCTIONED_COMMITMENT at its face value (paise only when
+                # the bill is INR; a foreign face value is named in the
+                # detail, never written as paise), blocking period close like
+                # the order itself does, and the queue entry is marked
+                # hydrated because re-fetching the detail would not create
+                # the order. Adopting or linking the order later is what
+                # resolves it; the inbox row stays so the bill is
+                # re-mirrorable then.
+                face = _face_value_paise(record)
+                currency = str(record.currency_code or BASE_CURRENCY).strip().upper()
+                self.store.raise_exception(
+                    kind=KIND_UNSANCTIONED_COMMITMENT,
+                    object_type="bill", object_id=record.external_id,
+                    detail=(f"Bill {record.document_number or record.external_id} "
+                            f"({currency} {record.total_paise} minor units"
+                            f"{'' if face is not None else ', not paise'}) is "
+                            f"against tenant purchase order "
+                            f"{record.po_external_ids[0] if record.po_external_ids else None!r}, "
+                            f"which this system does not hold. "
+                            f"{getattr(exc, 'message', None) or exc}"),
+                    raised_at=ctx.now(), entity_id=record.entity_id,
+                    project_id=record.project_id,
+                    source_paise=face,
+                    correlation_id=ctx.correlation_id)
+                return None
+            raise
 
 
 def _face_value_paise(record: SourceRecord) -> int | None:

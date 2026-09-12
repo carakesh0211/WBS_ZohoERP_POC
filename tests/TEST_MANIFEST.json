@@ -2369,9 +2369,17 @@
         "assertions": 9,
         "body_sha": "73bf1fbb4763ee43"
       },
+      "test_a_bill_against_an_order_this_system_never_held_is_held_as_an_unsanctioned_commitment": {
+        "assertions": 9,
+        "body_sha": "21eed5ec0da6987b"
+      },
+      "test_an_inr_bill_against_an_unheld_order_is_held_at_its_paise_face_value": {
+        "assertions": 2,
+        "body_sha": "167a14571b49b4dd"
+      },
       "test_every_other_ledger_refusal_still_propagates_and_files_nothing": {
-        "assertions": 3,
-        "body_sha": "452effc43aff689c"
+        "assertions": 4,
+        "body_sha": "94f488d48dab3c89"
       },
       "test_a_refusal_without_a_code_attribute_is_not_mistaken_for_the_hold": {
         "assertions": 1,
@@ -13430,7 +13438,7 @@
     "test_export_poc.py": 17,
     "test_export_scope.py": 26,
     "test_financial_controls.py": 61,
-    "test_foreign_order_matching_fable51.py": 21,
+    "test_foreign_order_matching_fable51.py": 23,
     "test_frontend_budget_setup_registry.py": 12,
     "test_integration_adapter_contract.py": 72,
     "test_integration_capabilities.py": 20,
@@ -13571,7 +13579,7 @@
     "test_export_poc.py": 32,
     "test_export_scope.py": 69,
     "test_financial_controls.py": 159,
-    "test_foreign_order_matching_fable51.py": 86,
+    "test_foreign_order_matching_fable51.py": 98,
     "test_frontend_budget_setup_registry.py": 21,
     "test_integration_adapter_contract.py": 169,
     "test_integration_capabilities.py": 62,

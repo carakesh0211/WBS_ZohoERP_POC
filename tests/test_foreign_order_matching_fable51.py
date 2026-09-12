@@ -338,12 +338,54 @@ def test_the_ledgers_coded_refusal_is_filed_as_the_reconciliation_exception_and_
                for key in store.inbox)
 
 
+def test_a_bill_against_an_order_this_system_never_held_is_held_as_an_unsanctioned_commitment():
+    """VERIFIED LIVE 2026-09-12: a tenant bill against PO-00004 (an order
+    adoption refused) failed the bill-detail job with the ledger's
+    PURCHASE_ORDER_NOT_FOUND and stayed queued to fail every tick. It is a
+    reconciliation fact, held at face value as UNSANCTIONED_COMMITMENT, and
+    the run completes; the inbox row stays for the day the order is held."""
+    sentence = "No local purchase order carries external id 'PO-EXT-1', or it is out of scope."
+    clock, store, job = _refusing_estate(
+        _LedgerRefusal("PURCHASE_ORDER_NOT_FOUND", sentence, 404))
+    run = _run(job, store, clock)
+    assert run.state == jobs.JOB_DONE, run.error
+    assert store.mirror_calls == 1
+    held = [e for e in store.exceptions.values()
+            if e["kind"] == sweeps.KIND_UNSANCTIONED_COMMITMENT]
+    assert len(held) == 1 and _held(store) == []
+    row = held[0]
+    assert row["object_type"] == "bill" and row["object_id"] == "BILL-EXT-0001"
+    assert sentence in row["detail"] and "PO-EXT-1" in row["detail"]
+    # A JPY bill: its face value is named in the detail, never written as paise.
+    assert row["source_paise"] is None and "JPY" in row["detail"]
+    assert row["project_id"] == "PRJ-1" and row["entity_id"] == "ENT-1"
+    assert store.hydrated == ["BILL-EXT-0001"]
+    assert any(key[1] == sweeps.MODULE_BILLS and key[2] == "BILL-EXT-0001"
+               for key in store.inbox)
+
+
+def test_an_inr_bill_against_an_unheld_order_is_held_at_its_paise_face_value():
+    store = _RefusingStore(_LedgerRefusal("PURCHASE_ORDER_NOT_FOUND", "no such order", 404))
+    clock = FakeClock()
+    record = bill(1, modified=T0, with_lines=True, total_paise=185_000_000, currency_code="INR")
+    store.detail_queue.append(record.external_id)
+    adapter = FakeAdapter(clock, bill_details={record.external_id: record}, seconds_per_call=1)
+    job = sweeps.SweepBillDetail(adapter, store, store.connection_id, external_source="ZOHO_ERP")
+    run = _run(job, store, clock)
+    assert run.state == jobs.JOB_DONE, run.error
+    held = [e for e in store.exceptions.values()
+            if e["kind"] == sweeps.KIND_UNSANCTIONED_COMMITMENT]
+    assert len(held) == 1 and held[0]["source_paise"] == 185_000_000
+
+
 def test_every_other_ledger_refusal_still_propagates_and_files_nothing():
     clock, store, job = _refusing_estate(
-        _LedgerRefusal("PURCHASE_ORDER_NOT_FOUND", "no such order", 404))
+        _LedgerRefusal("PURCHASE_ORDER_AMBIGUOUS", "two orders carry that id", 409))
     run = _run(job, store, clock)
     assert run.state != jobs.JOB_DONE
     assert _held(store) == []
+    assert not any(e["kind"] == sweeps.KIND_UNSANCTIONED_COMMITMENT
+                   for e in store.exceptions.values())
     assert store.hydrated == [], "a refused bill is not marked done"
 
 
