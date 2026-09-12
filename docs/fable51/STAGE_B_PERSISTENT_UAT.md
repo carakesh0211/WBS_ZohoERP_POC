@@ -93,6 +93,8 @@ are on the engineering list in `CONTINUATION.md`.
 | 3 | 2026-09-12 | `2f55f78`, `81df9012…` | standalone (as 2) | the live sweep route (`POST /api/integrations/connections/{id}/sweep`, from the sweep stream's five commits) ran three rounds against DEMO WBS as U-RAKESH: round 1 pulled 6 contacts, 9 items, 7 purchase orders, 5 bills; rounds 2–3 pulled nothing new and advanced the four watermarks; 4 GETs per round, budget 8/1200 day after two rounds; zero non-GET requests; evidence `docs/fable51/evidence/erp-demo/live-sweep-uat-2026-09-12.txt` |
 | 4 | 2026-09-12 | `6a3987c`, `36eec47d…` | standalone (as 2) | carries the CAPEX-reference fix (a tenant-raised order's `cf_capex_ref` now reaches the sweep) and D-7 TRUE for this tenant; `/readyz` 029. The live proof of `UNSANCTIONED_COMMITMENT` is still pending — see "Findings from the first live sweeps" |
 
+| 5 | 2026-09-12 | `b4a2ecb`, `9c087974…` | standalone (as 2) | carries the Raise Purchase Order screen (`a6e940a`…`413600d`), the CAPEX-reference fix and the stamping evidence; `/readyz` 029; the screen's modules are served (`purchase-order.js`, `fx-translate.js` 200). Before this deploy the stamping sweep on record 4's build raised the 7 exceptions |
+
 Rule from record 2: **redeploy Stage B with the standalone form only.** The
 linked form applies the archive's `app-config.json` (`env_variables: {}`) and
 would wipe every console-set value.

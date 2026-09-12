@@ -56,6 +56,13 @@ now carries a base-commit guard).
   navigation with two collapsible groups (approved groups' markup unchanged),
   measured no rail overflow at 1440×900.
 
+## VRT note 2026-09-12
+
+In a 186-test run of `spa-routing.spec.js` + `po-currency.spec.js` on the merged
+branch, one test failed: axe-core SCR-30 at laptop-1024. Rerun alone it passed
+(35 s). Treated as a one-off under load; nothing re-baselined. If it recurs,
+read `test-results/` before touching a baseline.
+
 ## Decisions of 2026-09-11
 
 See `docs/fable51/DECISIONS_2026-09-11.md` (eight decisions, holders of each open item).
