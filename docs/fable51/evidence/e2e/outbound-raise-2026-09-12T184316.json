@@ -1,0 +1,183 @@
+{
+ "reference": "WBS-UAT-OUTBOUND-20260912",
+ "phase": "raise",
+ "started_at": "2026-09-12T18:43:16.434966+00:00",
+ "steps": [
+  {
+   "step": "1 availability on the civil cell before the request",
+   "status": 200,
+   "at": "2026-09-12T18:43:19.212108+00:00",
+   "body": {
+    "wbs_id": "WBS-A-CIVIL",
+    "budget_head_id": "BH-DM1-CIVIL",
+    "owning_wbs_id": "WBS-A-CIVIL",
+    "budget_paise": 970000000,
+    "exposure_paise": 612000000,
+    "available_paise": 358000000,
+    "requested_paise": 68000000,
+    "verdict": "OK",
+    "shortfall_paise": 0,
+    "checked_at": "2026-09-12T18:43:19.020254+00:00"
+   }
+  },
+  {
+   "step": "2 PR raised",
+   "status": 201,
+   "at": "2026-09-12T18:43:19.873089+00:00",
+   "body": {
+    "pr_id": "PR-CF4759A89D75",
+    "pr_number": "PR-0002",
+    "project_id": "PRJ-DM-001",
+    "status": "Draft",
+    "check_result": "WITHIN_BUDGET",
+    "amount_paise": 68000000,
+    "line_count": 1,
+    "verdicts": [
+     {
+      "wbs_id": "WBS-A-CIVIL",
+      "budget_head_id": "BH-DM1-CIVIL",
+      "owning_wbs_id": "WBS-A-CIVIL",
+      "budget_paise": 970000000,
+      "exposure_paise": 612000000,
+      "available_paise": 358000000,
+      "requested_paise": 68000000,
+      "verdict": "OK",
+      "shortfall_paise": 0,
+      "checked_at": "2026-09-12T18:43:19.476109+00:00",
+      "requested_for_cells": [
+       [
+        "WBS-A-CIVIL",
+        "BH-DM1-CIVIL"
+       ]
+      ]
+     }
+    ],
+    "lifecycle_gate": "PERMITTED",
+    "reservation_ids": [
+     "PRRES-A0FBE7479BDD"
+    ],
+    "reserves_budget": true
+   }
+  },
+  {
+   "step": "2b PR submitted",
+   "status": 200,
+   "at": "2026-09-12T18:43:20.587909+00:00",
+   "body": {
+    "pr_id": "PR-CF4759A89D75",
+    "pr_number": "PR-0002",
+    "status": "Submitted",
+    "check_result": "WITHIN_BUDGET",
+    "verdicts": [
+     {
+      "wbs_id": "WBS-A-CIVIL",
+      "budget_head_id": "BH-DM1-CIVIL",
+      "owning_wbs_id": "WBS-A-CIVIL",
+      "budget_paise": 970000000,
+      "exposure_paise": 680000000,
+      "available_paise": 290000000,
+      "requested_paise": 68000000,
+      "verdict": "OK",
+      "shortfall_paise": 0,
+      "checked_at": "2026-09-12T18:43:20.280640+00:00",
+      "requested_for_cells": [
+       [
+        "WBS-A-CIVIL",
+        "BH-DM1-CIVIL"
+       ]
+      ]
+     }
+    ],
+    "lifecycle_gate": "PERMITTED",
+    "version_no": 2
+   }
+  },
+  {
+   "step": "3 PR approved by the checker",
+   "status": 200,
+   "at": "2026-09-12T18:43:21.236023+00:00",
+   "body": {
+    "pr_id": "PR-CF4759A89D75",
+    "pr_number": "PR-0002",
+    "status": "Approved",
+    "exception": false,
+    "approver": "U-PLH",
+    "verdicts": [
+     {
+      "wbs_id": "WBS-A-CIVIL",
+      "budget_head_id": "BH-DM1-CIVIL",
+      "owning_wbs_id": "WBS-A-CIVIL",
+      "budget_paise": 970000000,
+      "exposure_paise": 680000000,
+      "available_paise": 290000000,
+      "requested_paise": 68000000,
+      "verdict": "OK",
+      "shortfall_paise": 0,
+      "checked_at": "2026-09-12T18:43:20.818681+00:00",
+      "requested_for_cells": [
+       [
+        "WBS-A-CIVIL",
+        "BH-DM1-CIVIL"
+       ]
+      ]
+     }
+    ],
+    "version_no": 3
+   }
+  },
+  {
+   "step": "3b converted to the local order",
+   "status": 201,
+   "at": "2026-09-12T18:43:21.704790+00:00",
+   "body": {
+    "po_id": "PO-9EBFF8A906FB",
+    "po_number": "WBS-UAT-OUTBOUND-20260912",
+    "amount_paise": 68000000,
+    "lines": [
+     {
+      "po_line_id": "POL-0EDAA5C3AA7B",
+      "line_no": 1,
+      "wbs_id": "WBS-A-CIVIL",
+      "budget_head_id": "BH-DM1-CIVIL",
+      "amount_paise": 68000000
+     }
+    ],
+    "currency": "INR",
+    "exchange_rate": "1",
+    "fx_rate_id": null,
+    "source_amount_minor": null,
+    "pr_id": "PR-CF4759A89D75",
+    "pr_number": "PR-0002",
+    "project_id": "PRJ-DM-001",
+    "status": "Draft",
+    "verdicts": [
+     {
+      "wbs_id": "WBS-A-CIVIL",
+      "budget_head_id": "BH-DM1-CIVIL",
+      "owning_wbs_id": "WBS-A-CIVIL",
+      "budget_paise": 970000000,
+      "exposure_paise": 680000000,
+      "available_paise": 290000000,
+      "requested_paise": 68000000,
+      "verdict": "OK",
+      "shortfall_paise": 0,
+      "checked_at": "2026-09-12T18:43:21.434818+00:00",
+      "requested_for_cells": [
+       [
+        "WBS-A-CIVIL",
+        "BH-DM1-CIVIL"
+       ]
+      ]
+     }
+    ],
+    "line_count": 1
+   }
+  }
+ ],
+ "dedupe_key": "CAPEX-purchaseorders-PO-9EBFF8A906FB-def58905459601a8",
+ "po_id": "PO-9EBFF8A906FB",
+ "pr_id": "PR-CF4759A89D75",
+ "po_line_ids": [
+  "POL-0EDAA5C3AA7B"
+ ]
+}
