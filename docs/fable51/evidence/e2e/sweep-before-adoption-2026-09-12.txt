@@ -1,0 +1,365 @@
+readyz 200 031 ok
+login 200
+
+/sweep round 1: 200
+{
+ "connection_id": "CONN-32A904F37FEA",
+ "mode": "LIVE_READ",
+ "product": "ERP",
+ "external_source": "ZOHO_ERP",
+ "receives_strategy": "PO_ANCHORED",
+ "modules": {
+  "contacts": {
+   "job_id": "JOB-46d7192bfc1744b38b445c84c23b9d56",
+   "kind": "poll_contacts",
+   "claimed": true,
+   "state": "DONE",
+   "reason": "COMPLETED",
+   "error": null,
+   "records_seen": 6,
+   "inbox_created": 1,
+   "inbox_duplicates": 5,
+   "pages": 1,
+   "steps": 2,
+   "calls": 1,
+   "checkpoint": {
+    "module": "contacts",
+    "page": 1,
+    "hwm": "2026-09-12T09:38:14.295440+00:00"
+   }
+  },
+  "items": {
+   "job_id": "JOB-78a72001132641d5afa1588e430dcd04",
+   "kind": "poll_items",
+   "claimed": true,
+   "state": "DONE",
+   "reason": "COMPLETED",
+   "error": null,
+   "records_seen": 9,
+   "inbox_created": 0,
+   "inbox_duplicates": 9,
+   "pages": 1,
+   "steps": 2,
+   "calls": 1,
+   "checkpoint": {
+    "module": "items",
+    "page": 1,
+    "hwm": "2026-09-12T09:38:14.812165+00:00"
+   }
+  },
+  "purchaseorders": {
+   "job_id": "JOB-80aba492154a4e76b8a3c5240735fdaa",
+   "kind": "poll_purchaseorders",
+   "claimed": true,
+   "state": "DONE",
+   "reason": "COMPLETED",
+   "error": null,
+   "records_seen": 6,
+   "inbox_created": 6,
+   "inbox_duplicates": 0,
+   "pages": 1,
+   "steps": 2,
+   "calls": 1,
+   "checkpoint": {
+    "module": "purchaseorders",
+    "page": 1,
+    "hwm": "2026-09-12T09:38:15.347917+00:00"
+   }
+  },
+  "bills": {
+   "job_id": "JOB-a6fc798c2e6b4d5291b23b1a4963f5cc",
+   "kind": "poll_bills",
+   "claimed": true,
+   "state": "DONE",
+   "reason": "COMPLETED",
+   "error": null,
+   "records_seen": 1,
+   "inbox_created": 1,
+   "inbox_duplicates": 0,
+   "pages": 1,
+   "steps": 2,
+   "calls": 1,
+   "checkpoint": {
+    "module": "bills",
+    "page": 1,
+    "hwm": "2026-09-12T09:38:15.945830+00:00"
+   }
+  },
+  "receives": {
+   "job_id": "JOB-ce1ce408df67488b96b511ddbf5dc8a3",
+   "kind": "sweep_po_anchored",
+   "claimed": true,
+   "state": "DONE",
+   "reason": "COMPLETED",
+   "error": null,
+   "records_seen": 0,
+   "inbox_created": 0,
+   "inbox_duplicates": 0,
+   "pages": 0,
+   "steps": 1,
+   "calls": 0,
+   "checkpoint": {
+    "last_po_id_swept": null,
+    "cycle": 6,
+    "sole_grn_mechanism": true
+   }
+  }
+ },
+ "skipped_for_deadline": [],
+ "dead_jobs": {},
+ "watermarks": {
+  "contacts": "2026-09-12T09:38:14.295440+00:00",
+  "items": "2026-09-12T09:38:14.812165+00:00",
+  "purchaseorders": "2026-09-12T09:38:15.347917+00:00",
+  "bills": "2026-09-12T09:38:15.945830+00:00"
+ },
+ "exceptions": {
+  "raised": 6,
+  "ids": [
+   "EXC-32BF993571F3",
+   "EXC-4E606BEB0753",
+   "EXC-5FB22649AD06",
+   "EXC-678656FFA6A5",
+   "EXC-BBEE13DD2175",
+   "EXC-C3910B8D4A4B"
+  ]
+ },
+ "receive_lines_recorded": 0,
+ "budget": {
+  "asked": true,
+  "refusals": 0,
+  "binding": null,
+  "windows": {
+   "DAY": {
+    "used": 12,
+    "ceiling": 1200,
+    "remaining": 1188
+   },
+   "MINUTE": {
+    "used": 4,
+    "ceiling": 60,
+    "remaining": 56
+   }
+  }
+ },
+ "transport": {
+  "product": "ERP",
+  "api_domain": "https://www.zohoapis.in",
+  "granted_scopes": [
+   "ERP.accountants.READ",
+   "ERP.bills.READ",
+   "ERP.contacts.READ",
+   "ERP.custommodules.ALL",
+   "ERP.debitnotes.READ",
+   "ERP.department.READ",
+   "ERP.fixedasset.READ",
+   "ERP.projects.READ",
+   "ERP.purchaseorders.READ",
+   "ERP.purchasereceives.READ",
+   "ERP.settings.READ",
+   "ERP.vendorpayments.READ"
+  ],
+  "token_minted": true,
+  "token_seconds_left": 3478,
+  "calls_made": 4,
+  "token_mints": 1
+ },
+ "correlation_id": "13e32a9d70ee",
+ "started_at": "2026-09-12T09:38:14.248125+00:00",
+ "finished_at": "2026-09-12T09:38:16.269593+00:00"
+}
+
+/health 200
+watermarks: [
+ {
+  "module": "bills",
+  "hwm": "2026-09-12T09:38:15.945830+00:00",
+  "overlap_seconds": 300,
+  "last_polled_at": "2026-09-12T09:38:16.193314+00:00",
+  "last_page_count": null,
+  "rewound_at": null,
+  "rewind_reason": null
+ },
+ {
+  "module": "contacts",
+  "hwm": "2026-09-12T09:38:14.295440+00:00",
+  "overlap_seconds": 300,
+  "last_polled_at": "2026-09-12T09:38:14.761822+00:00",
+  "last_page_count": null,
+  "rewound_at": null,
+  "rewind_reason": null
+ },
+ {
+  "module": "items",
+  "hwm": "2026-09-12T09:38:14.812165+00:00",
+  "overlap_seconds": 300,
+  "last_polled_at": "2026-09-12T09:38:15.304132+00:00",
+  "last_page_count": null,
+  "rewound_at": null,
+  "rewind_reason": null
+ },
+ {
+  "module": "purchaseorders",
+  "hwm": "2026-09-12T09:38:15.347917+00:00",
+  "overlap_seconds": 300,
+  "last_polled_at": "2026-09-12T09:38:15.908243+00:00",
+  "last_page_count": null,
+  "rewound_at": null,
+  "rewind_reason": null
+ }
+]
+rate_budget: [
+ {
+  "window_kind": "DAY",
+  "allocation": "POLLING",
+  "window_start_key": "2026-09-11",
+  "window_seconds": 86400,
+  "ceiling": 1200,
+  "used": 12,
+  "remaining": 1188,
+  "exhausted_at": null
+ },
+ {
+  "window_kind": "DAY",
+  "allocation": "POLLING",
+  "window_start_key": "2026-09-12",
+  "window_seconds": 86400,
+  "ceiling": 1200,
+  "used": 12,
+  "remaining": 1188,
+  "exhausted_at": null
+ },
+ {
+  "window_kind": "MINUTE",
+  "allocation": "POLLING",
+  "window_start_key": "2026-09-11T20:33",
+  "window_seconds": 60,
+  "ceiling": 60,
+  "used": 12,
+  "remaining": 48,
+  "exhausted_at": null
+ },
+ {
+  "window_kind": "MINUTE",
+  "allocation": "POLLING",
+  "window_start_key": "2026-09-12T03:13",
+  "window_seconds": 60,
+  "ceiling": 60,
+  "used": 4,
+  "remaining": 56,
+  "exhausted_at": null
+ },
+ {
+  "window_kind": "MINUTE",
+  "allocation": "POLLING",
+  "window_start_key": "2026-09-12T04:14",
+  "window_seconds": 60,
+  "ceiling": 60,
+  "used": 4,
+  "remaining": 56,
+  "exhausted_at": null
+ },
+ {
+  "window_kind": "MINUTE",
+  "allocation": "POLLING",
+  "window_start_key": "2026-09-12T09:38",
+  "window_seconds": 60,
+  "ceiling": 60,
+  "used": 4,
+  "remaining": 56,
+  "exhausted_at": null
+ }
+]
+
+/events 200 count: 20
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-12T09:38:16.240618+00:00', 'detail': {'kind': 'sweep_po_anchored', 'calls': 0, 'steps': 1, 'units': 0, 'reason': 'COMPLETED', 'last_step': {'note': 'cycle complete', 'cycle': 6}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-12T09:38:16.206213+00:00', 'detail': {'kind': 'poll_bills', 'calls': 1, 'steps': 2, 'units': 1, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-12T09:38:15.920414+00:00', 'detail': {'kind': 'poll_purchaseorders', 'calls': 1, 'steps': 2, 'units': 6, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-12T09:38:15.317292+00:00', 'detail': {'kind': 'poll_items', 'calls': 1, 'steps': 2, 'units': 9, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-12T09:38:14.775898+00:00', 'detail': {'kind': 'poll_contacts', 'calls': 1, 'steps': 2, 'units': 6, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-12T04:14:35.206801+00:00', 'detail': {'kind': 'sweep_po_anchored', 'calls': 0, 'steps': 1, 'units': 0, 'reason': 'COMPLETED', 'last_step': {'note': 'cycle complete', 'cycle': 5}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-12T04:14:35.139483+00:00', 'detail': {'kind': 'poll_bills', 'calls': 1, 'steps': 2, 'units': 0, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-12T04:14:34.880505+00:00', 'detail': {'kind': 'poll_purchaseorders', 'calls': 1, 'steps': 2, 'units': 3, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-12T04:14:34.632792+00:00', 'detail': {'kind': 'poll_items', 'calls': 1, 'steps': 2, 'units': 9, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-12T04:14:34.359301+00:00', 'detail': {'kind': 'poll_contacts', 'calls': 1, 'steps': 2, 'units': 6, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-12T03:13:08.281112+00:00', 'detail': {'kind': 'sweep_po_anchored', 'calls': 0, 'steps': 1, 'units': 0, 'reason': 'COMPLETED', 'last_step': {'note': 'cycle complete', 'cycle': 4}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-12T03:13:08.251721+00:00', 'detail': {'kind': 'poll_bills', 'calls': 1, 'steps': 2, 'units': 0, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-12T03:13:08.083242+00:00', 'detail': {'kind': 'poll_purchaseorders', 'calls': 1, 'steps': 2, 'units': 7, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-12T03:13:07.665141+00:00', 'detail': {'kind': 'poll_items', 'calls': 1, 'steps': 2, 'units': 9, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-12T03:13:07.431613+00:00', 'detail': {'kind': 'poll_contacts', 'calls': 1, 'steps': 2, 'units': 6, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:44.775871+00:00', 'detail': {'kind': 'sweep_po_anchored', 'calls': 0, 'steps': 1, 'units': 0, 'reason': 'COMPLETED', 'last_step': {'note': 'cycle complete', 'cycle': 3}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:44.744418+00:00', 'detail': {'kind': 'poll_bills', 'calls': 1, 'steps': 2, 'units': 0, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:44.493250+00:00', 'detail': {'kind': 'poll_purchaseorders', 'calls': 1, 'steps': 2, 'units': 0, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:44.311797+00:00', 'detail': {'kind': 'poll_items', 'calls': 1, 'steps': 2, 'units': 9, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+  {'kind': 'JOB_DONE', 'module': None, 'at': '2026-09-11T20:33:44.080580+00:00', 'detail': {'kind': 'poll_contacts', 'calls': 1, 'steps': 2, 'units': 6, 'reason': 'COMPLETED', 'last_step': {'note': 'window complete', 'pages': 1}, 'resume_count': 0}}
+
+/exceptions 200 {
+ "items": [
+  {
+   "exception_id": "EXC-32BF993571F3",
+   "kind": "UNSANCTIONED_COMMITMENT",
+   "object_type": "purchase_order",
+   "object_id": "3912780000000109005",
+   "entity_id": null,
+   "project_id": null,
+   "status": "Open",
+   "detail": "PO PO-00008 carries CAPEX dimension 'CAPEX-purchaseorders-PO-15C1EEC1E554-d7c8a5bde09810f9' but has no local purchase order. It was created outside this system's budget check.",
+   "local_paise": null,
+   "source_paise": 185000000,
+   "correlation_id": "7d25ae0c25fc",
+   "raised_at": "2026-09-12T09:38:15.789810+00:00",
+   "resolved_at": null,
+   "resolved_by": null,
+   "resolution_note": null
+  },
+  {
+   "exception_id": "EXC-BBEE13DD2175",
+   "kind": "UNSANCTIONED_COMMITMENT",
+   "object_type": "purchase_order",
+   "object_id": "3912780000000085001",
+   "entity_id": null,
+   "project_id": null,
+   "status": "Open",
+   "detail": "PO PO-00001 carries CAPEX dimension 'DEMO-CAPEX-2026-001.04-INR-0001' but has no local purchase order. It was created outside this system's budget check.",
+   "local_paise": null,
+   "source_paise": 562000000,
+   "correlation_id": "7d25ae0c25fc",
+   "raised_at": "2026-09-12T03:13:08.057808+00:00",
+   "resolved_at": null,
+   "resolved_by": null,
+   "resolution_note": null
+  },
+  {
+   "exception_id": "EXC-5FB22649AD06",
+   "kind": "UNSANCTIONED_COMMITMENT",
+   "object_type": "purchase_order",
+   "object_id": "3912780000000085009",
+   "entity_id": null,
+   "project_id": null,
+   "status": "Open",
+   "detail": "PO PO-00002 carries CAPEX dimension 'DEMO-CAPEX-2026-001.03.01-INR-0001' but has no local purchase order. It was created outside this system's budget check.",
+   "local_paise": null,
+   "source_paise": 1250000000,
+   "correlation_id": "7d25ae0c25fc",
+   "raised_at": "2026-09-12T03:13:08.032287+00:00",
+   "resolved_at": null,
+   "resolved_by": null,
+   "resolution_note": null
+  },
+  {
+   "exception_id": "EXC-C3910B8D4A4B",
+   "kind": "UNSANCTIONED_COMMITMENT",
+   "object_type": "purchase_order",
+   "object_id": "3912780000000075008",
+   "entity_id": null,
+   "project_id": null,
+   "status": "Open",
+   "detail": "PO PO-00003 carries CAPEX dimension 'DEMO-CAPEX-2026-001.03.02-INR-0001' but has no local purchase order. It was created outside this system's budget check.",
+   "local_paise": null,
+   "source_paise": 480000000,
+   "correlation_id": "7d25ae0c25fc",
+   "raised_at": "2026-09-12T03:13:08.011314+00:00",
+   "resolved_at": null,
+   "resolved_by": null,
+   "resolution_note": null
+  
