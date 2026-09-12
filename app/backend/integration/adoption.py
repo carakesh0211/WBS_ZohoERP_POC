@@ -38,26 +38,66 @@ VALIDATION, THEN THE WRITE, NEVER THE OTHER WAY ROUND
   `cf_capex_ref` must be present and not already claimed by another adopted
   order; every line's `cf_wbs_code` must resolve to EXACTLY ONE WBS element in
   the connection's entity, every line's `cf_budget_head` to EXACTLY ONE
-  budget head, and every line's WBS must belong to the SAME project. Any
-  failure raises `ADOPTION_DIMENSION_INVALID` naming the order and the line,
-  and NOTHING is written -- no local purchase order, no `po_line`, no control-
+  budget head, and every line's WBS must belong to the SAME project.
+  BUDGET-HEAD ISOLATION: when the resolved WBS element names its own
+  `budget_head_id`, the line's resolved budget head must AGREE with it -- a
+  line whose stamped `cf_budget_head` disagrees with its WBS element's own
+  head is invalid, not a second head the WBS may also carry. Any failure
+  raises `ADOPTION_DIMENSION_INVALID` naming the order and the line, and
+  NOTHING is written -- no local purchase order, no `po_line`, no control-
   cell exposure. Currency is preserved exactly as the tenant stated it
   (`pg.procurement_services.adopt_purchase_order` resolves the rate through
   the SAME `fx.py` path a created order uses); a non-INR order with no ACTIVE
   rate on file is held under `FOREIGN_CURRENCY_BASIS_MISSING` -- decision 8's
   existing kind -- rather than booked at face value.
 
+LINK MODE: A TENANT ORDER THAT IS ALREADY ONE OF OURS
+  Before treating an inbox order as a brand-new external commitment, this
+  module asks whether it is actually a purchase order THIS SYSTEM raised and
+  is waiting to hear back about. `outbound.derive_dedupe_key(connection_id,
+  "purchaseorders", po_id)` is deterministic and is the value this system
+  would have stamped into the tenant's `cf_capex_ref` had the outbound
+  emission path been authorised to send it (`CAPEX_ERP_OUTBOUND_WRITES`
+  stays unset on this branch, so it never has been -- the tenant-side order
+  was created by the owner's own hand, carrying the SAME derived key, for
+  today's end-to-end demo). For every LOCAL order in the connection's entity
+  with no `external_id` yet, this module computes that key and compares it
+  against the inbox order's `cf_capex_ref`; NOT by looking for a pending
+  `integration_outbox` row first, because a locally-raised order with the
+  write gate closed has none.
+
+  A match LINKS rather than adopts: the local order's `external_source` /
+  `external_id` are set to the tenant's, its lines are validated against the
+  tenant's (same `wbs_id` / `budget_head_id` per line, same amount in the
+  order's own currency) -- a mismatch is `ADOPTION_DIMENSION_CONFLICT` and
+  the local order is left untouched, exactly as a changed-dimension conflict
+  on an already-adopted order is. `commitment_origin` stays `'LOCAL'`: this
+  order WAS proposed and budget-checked by this system: only its external
+  anchor was missing. The pending `integration_outbox` row, if one exists, is
+  marked SENT the way `outbound.emit_purchase_order`'s own
+  `resolve_by_dedupe_key` branch marks it (`store.mark_outbox_sent`) --
+  outbox rows are indexed by `local_id`, this order's `po_id`, so finding one
+  costs a lookup and touches nothing when the write gate genuinely produced
+  none. Either way the pre-existing `UNSANCTIONED_COMMITMENT` exception is
+  resolved, with a note naming the link rather than a fresh adoption, and
+  counted under `linked` in the summary -- never under `adopted`.
+
+  An order whose `cf_capex_ref` matches no local order's derived key is
+  adopted as `EXTERNAL_UNSANCTIONED`, exactly as before LINK mode existed.
+
 IDEMPOTENT AND CONCURRENCY-SAFE
   A second sweep finds the local order by `(external_source, external_id)`
   and, if the tenant's own dimensions are UNCHANGED, does nothing. If they
-  have changed since adoption, it raises `ADOPTION_DIMENSION_CONFLICT` and
-  leaves the local order exactly as it was -- an adopted commitment is never
-  silently re-based, for the same reason `trg_purchase_order_fx_basis_
-  immutable` (029) refuses to re-base a created one. Each order is processed
-  under `pg_advisory_xact_lock(hashtext(...))`, keyed on this connection and
-  this external id -- the same primitive `live_sweep._job_row_for` uses for
-  its own race -- plus the database's own `ux_po_external` / `ux_po_external_
-  capex_ref` unique indexes as the backstop.
+  have changed since adoption -- or since a link -- it raises
+  `ADOPTION_DIMENSION_CONFLICT` and leaves the local order exactly as it was
+  -- an adopted or linked commitment is never silently re-based, for the same
+  reason `trg_purchase_order_fx_basis_immutable` (029) refuses to re-base a
+  created one. Each order is processed under
+  `pg_advisory_xact_lock(hashtext(...))`, keyed on this connection and this
+  external id -- the same primitive `live_sweep._job_row_for` uses for its
+  own race -- plus the database's own `ux_po_external` / `ux_po_external_
+  capex_ref` unique indexes, and the LINK write's own
+  `WHERE external_id IS NULL`, as the backstop.
 """
 from __future__ import annotations
 
@@ -71,6 +111,7 @@ from ..pg import procurement_services as psvc
 from ..pg import repo
 from ..pg.engine import Session
 from . import jobs, live_sweep, throttle
+from . import outbound as ob
 from .dto import LineDTO, PurchaseOrderDTO
 
 #: The one organisation this adoption path is authorised for (product owner,
@@ -115,15 +156,20 @@ class AdoptionError(store.IntegrationStoreError):
 @dataclass
 class _AdoptionCounters:
     adopted: int = 0
+    #: A tenant order matched to a LOCAL order this system already raised
+    #: (via `outbound.derive_dedupe_key`), never counted under `adopted`:
+    #: nothing new was written as EXTERNAL_UNSANCTIONED, an existing LOCAL
+    #: order merely gained its external anchor.
+    linked: int = 0
     skipped: int = 0
     exceptions: int = 0
     calls: int = 0
     exception_ids: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
-        return {"adopted": self.adopted, "skipped": self.skipped,
-                "exceptions": self.exceptions, "calls": self.calls,
-                "exception_ids": list(self.exception_ids)}
+        return {"adopted": self.adopted, "linked": self.linked,
+                "skipped": self.skipped, "exceptions": self.exceptions,
+                "calls": self.calls, "exception_ids": list(self.exception_ids)}
 
 
 # ============================================================ line dimensions
@@ -189,13 +235,20 @@ class _ResolvedLine:
     line_external_id: str | None
 
 
-def _resolve_wbs(session: Session, *, entity_id: str,
-                 wbs_code: str) -> list[tuple[str, str, bool]]:
-    """Every WBS element in this entity carrying `wbs_code`, however many."""
+def _resolve_wbs(session: Session, *, entity_id: str, wbs_code: str
+                 ) -> list[tuple[str, str, bool, str | None]]:
+    """Every WBS element in this entity carrying `wbs_code`, however many.
+
+    Carries the WBS element's OWN `budget_head_id` (nullable: many WBS
+    elements name no default) so `_resolve_lines` can enforce budget-head
+    isolation -- a line whose stamped `cf_budget_head` disagrees with its
+    WBS element's own head is invalid, never a second head the WBS may also
+    carry.
+    """
     rows = repo.query(
         session,
         """
-        SELECT w.wbs_id, w.project_id, w.is_abandoned
+        SELECT w.wbs_id, w.project_id, w.is_abandoned, w.budget_head_id
         FROM wbs_element w
         JOIN project p ON p.project_id = w.project_id
         WHERE p.entity_id = %(entity_id)s AND w.wbs_code = %(code)s AND {scope}
@@ -203,7 +256,8 @@ def _resolve_wbs(session: Session, *, entity_id: str,
         {"entity_id": entity_id, "code": wbs_code},
         columns=store.PROCUREMENT_SCOPE_COLUMNS,
     )
-    return [(str(r[0]), str(r[1]), bool(r[2])) for r in rows]
+    return [(str(r[0]), str(r[1]), bool(r[2]),
+            None if r[3] is None else str(r[3])) for r in rows]
 
 
 def _resolve_budget_head(session: Session, *, entity_id: str,
@@ -254,7 +308,7 @@ def _resolve_lines(session: Session, *, entity_id: str,
                 f"{order_label} line {index}: {CF_WBS_CODE}={wbs_code!r} "
                 f"resolves to {len(wbs_matches)} WBS element(s) in this "
                 f"connection's entity, not exactly one.")
-        wbs_id, project_id, is_abandoned = wbs_matches[0]
+        wbs_id, project_id, is_abandoned, wbs_own_head = wbs_matches[0]
         if is_abandoned:
             return None, (
                 f"{order_label} line {index}: {CF_WBS_CODE}={wbs_code!r} "
@@ -267,10 +321,25 @@ def _resolve_lines(session: Session, *, entity_id: str,
                 f"{order_label} line {index}: {CF_BUDGET_HEAD}="
                 f"{head_value!r} resolves to {len(head_matches)} budget "
                 f"head(s) in this connection's entity, not exactly one.")
+        resolved_head = head_matches[0]
+        # BUDGET-HEAD ISOLATION. A WBS element that names its own head is
+        # not a suggestion here: a line stamped with a DIFFERENT head is a
+        # data-quality fact about the tenant order, not a second head the
+        # WBS may also carry, and adoption is the conservative side of that
+        # question because it is admitting exposure this system never
+        # budget-checked. A WBS element naming NO head (`wbs_own_head is
+        # None`) enforces nothing -- there is no isolation to violate.
+        if wbs_own_head is not None and wbs_own_head != resolved_head:
+            return None, (
+                f"{order_label} line {index}: {CF_BUDGET_HEAD}="
+                f"{head_value!r} resolves to budget head {resolved_head}, "
+                f"but WBS element {wbs_id} ({CF_WBS_CODE}={wbs_code!r}) "
+                f"names its own budget head {wbs_own_head}. A line's budget "
+                f"head must agree with its WBS element's.")
         amount_minor = int(line.line_total_paise)
         resolved.append(_ResolvedLine(
             line_no=index, wbs_id=wbs_id, project_id=project_id,
-            budget_head_id=head_matches[0],
+            budget_head_id=resolved_head,
             description=line.description or "",
             quantity=_quantity_number(line.quantity),
             amount_minor=amount_minor,
@@ -291,7 +360,8 @@ def _find_local_po(session: Session, *, external_source: str,
     row = repo.query_one(
         session,
         """
-        SELECT po.po_id, po.external_capex_ref, po.currency, po.status
+        SELECT po.po_id, po.external_capex_ref, po.currency, po.status,
+               po.commitment_origin
         FROM purchase_order po
         JOIN project p ON p.project_id = po.project_id
         WHERE po.external_source = %(source)s AND po.external_id = %(external_id)s
@@ -303,7 +373,7 @@ def _find_local_po(session: Session, *, external_source: str,
     if row is None:
         return None
     return {"po_id": row[0], "external_capex_ref": row[1],
-           "currency": row[2], "status": row[3]}
+           "currency": row[2], "status": row[3], "commitment_origin": row[4]}
 
 
 def _stored_lines(session: Session, *, po_id: str) -> list[tuple[str, str]]:
@@ -370,9 +440,10 @@ def adopt_tenant_orders(session: Session, *, connection: Mapping[str, Any],
     Reads at most `limit` distinct purchase-order external ids already in
     this connection's inbox, and for each: fetches the order's DETAIL (one
     GET, charged against the POLLING budget), validates its dimensions, and
-    either writes a local `purchase_order` (+ lines) with `commitment_origin
-    = 'EXTERNAL_UNSANCTIONED'` or raises a coded reconciliation exception.
-    Returns ``{adopted, skipped, exceptions, calls, exception_ids}``.
+    either LINKS a matching LOCAL order this system already raised, writes a
+    new local `purchase_order` (+ lines) with `commitment_origin =
+    'EXTERNAL_UNSANCTIONED'`, or raises a coded reconciliation exception.
+    Returns ``{adopted, linked, skipped, exceptions, calls, exception_ids}``.
 
     Refuses outright, before a single GET, when the connection is not LIVE
     or is not the demo organisation on ERP -- see the module docstring.
@@ -432,6 +503,8 @@ def adopt_tenant_orders(session: Session, *, connection: Mapping[str, Any],
             correlation_id=correlation_id, now=clock.now())
         if outcome == "adopted":
             counters.adopted += 1
+        elif outcome == "linked":
+            counters.linked += 1
         elif outcome == "skipped":
             counters.skipped += 1
         else:
@@ -446,9 +519,10 @@ def _process_one(session: Session, *, connection_id: str, entity_id: str,
                  detail: PurchaseOrderDTO, existing: Mapping[str, Any] | None,
                  actor: str, correlation_id: str | None,
                  now: datetime) -> str:
-    """Adopt, skip (idempotent no-op) or file an exception for one order.
+    """Link, adopt, skip (idempotent no-op) or file an exception for one order.
 
-    Returns ``"adopted"``, ``"skipped"``, or the raised exception's id.
+    Returns ``"adopted"``, ``"linked"``, ``"skipped"``, or the raised
+    exception's id.
     """
     order_label = f"purchase order {detail.document_number or external_id}"
     capex_ref = detail.dedupe_key
@@ -469,6 +543,21 @@ def _process_one(session: Session, *, connection_id: str, entity_id: str,
             resolved=resolved, reason=reason, external_id=external_id,
             entity_id=entity_id, order_label=order_label, actor=actor,
             correlation_id=correlation_id, now=now)
+
+    # LINK MODE: this may not be an external order at all -- it may be one
+    # THIS SYSTEM raised, waiting for its outbound emission (gated off on
+    # this branch) to give it an external anchor. Checked before the
+    # brand-new-adoption path, never after: a local order that matches must
+    # never also become a second, EXTERNAL_UNSANCTIONED one.
+    link_po_id = _find_link_candidate(
+        session, entity_id=entity_id, connection_id=connection_id,
+        capex_ref=capex_ref)
+    if link_po_id is not None:
+        return _link_existing_local_order(
+            session, po_id=link_po_id, resolved=resolved, reason=reason,
+            detail=detail, external_source=external_source,
+            external_id=external_id, entity_id=entity_id, actor=actor,
+            correlation_id=correlation_id, now=now, order_label=order_label)
 
     if reason is not None:
         return _raise(session, kind="ADOPTION_DIMENSION_INVALID",
@@ -549,17 +638,20 @@ def _reconcile_existing(session: Session, *, existing: Mapping[str, Any],
                         reason: str | None, external_id: str, entity_id: str,
                         order_label: str, actor: str,
                         correlation_id: str | None, now: datetime) -> str:
-    """Already adopted: idempotent no-op, or `ADOPTION_DIMENSION_CONFLICT`.
+    """Already adopted OR already linked: idempotent no-op, or
+    `ADOPTION_DIMENSION_CONFLICT`.
 
-    Never re-writes the local order either way -- an adopted commitment is
-    posted, and a repeat sweep's job is to notice drift, not to correct it in
-    place.
+    Never re-writes the local order either way -- an adopted or linked
+    commitment is posted, and a repeat sweep's job is to notice drift, not to
+    correct it in place.
     """
+    was_linked = existing["commitment_origin"] == "LOCAL"
+    verb = "linked to" if was_linked else "adopted as"
     if reason is not None:
         return _raise(
             session, kind="ADOPTION_DIMENSION_CONFLICT",
             external_id=external_id, entity_id=entity_id,
-            detail=(f"{order_label} was adopted as {existing['po_id']} and "
+            detail=(f"{order_label} was {verb} {existing['po_id']} and "
                     f"the tenant's dimensions no longer resolve: {reason} "
                     f"The local order is left as it was."),
             actor=actor, correlation_id=correlation_id, now=now)
@@ -567,19 +659,205 @@ def _reconcile_existing(session: Session, *, existing: Mapping[str, Any],
 
     stored_lines = _stored_lines(session, po_id=existing["po_id"])
     current_lines = [(r.wbs_id, r.budget_head_id) for r in resolved]
-    if (existing["external_capex_ref"] != capex_ref
-            or stored_lines != current_lines):
+    # A LINKED order never carries external_capex_ref -- it stays
+    # commitment_origin='LOCAL', and ck_purchase_order_adoption_provenance
+    # requires that column NULL for every LOCAL row. Its identity is the
+    # deterministic dedupe key alone, permanently true as long as its po_id
+    # is; only the LINES are compared for drift. An ADOPTED
+    # (EXTERNAL_UNSANCTIONED) order compares its stored cf_capex_ref too.
+    capex_ref_changed = (not was_linked
+                        and existing["external_capex_ref"] != capex_ref)
+    if capex_ref_changed or stored_lines != current_lines:
+        detail = (
+            f"{order_label} was {verb} {existing['po_id']}"
+            + ("" if was_linked else
+               f" with cf_capex_ref={existing['external_capex_ref']!r}")
+            + f" and lines {stored_lines}; the tenant now presents "
+            + ("" if was_linked else f"cf_capex_ref={capex_ref!r} and ")
+            + f"lines {current_lines}. The local order is left as it was; "
+              f"a changed commitment is not silently re-based.")
+        return _raise(
+            session, kind="ADOPTION_DIMENSION_CONFLICT",
+            external_id=external_id, entity_id=entity_id, detail=detail,
+            actor=actor, correlation_id=correlation_id, now=now)
+    return "skipped"
+
+
+def _find_link_candidate(session: Session, *, entity_id: str,
+                         connection_id: str, capex_ref: str) -> str | None:
+    """A LOCAL order in this entity, with no `external_id` yet, whose
+    deterministic dedupe key equals the tenant's `cf_capex_ref` -- or `None`.
+
+    `outbound.derive_dedupe_key(connection_id, "purchaseorders", po_id)` is
+    exactly the value this system would have stamped into the tenant's
+    `cf_capex_ref` had the outbound write path been authorised to send it.
+    It is a PURE function of `(connection_id, module, po_id)`, so this
+    compares by RECOMPUTING it for every candidate rather than by reading a
+    stored `integration_outbox.dedupe_key`: a locally-raised order with
+    `CAPEX_ERP_OUTBOUND_WRITES` unset has never had an outbox row at all
+    (`pg/procurement_services.py`'s emission plan is never reached), and the
+    tenant-side order was created carrying the same derived key directly.
+    """
+    rows = repo.query(
+        session,
+        """
+        SELECT po.po_id FROM purchase_order po
+        JOIN project p ON p.project_id = po.project_id
+        WHERE p.entity_id = %(entity_id)s AND po.commitment_origin = 'LOCAL'
+          AND po.external_id IS NULL AND {scope}
+        """,
+        {"entity_id": entity_id}, columns=store.PROCUREMENT_SCOPE_COLUMNS,
+    )
+    for (po_id,) in rows:
+        po_id = str(po_id)
+        if ob.derive_dedupe_key(connection_id, psvc.PO_MODULE, po_id) == capex_ref:
+            return po_id
+    return None
+
+
+def _local_order_snapshot(session: Session, *, po_id: str
+                          ) -> tuple[str, list[tuple[str, str, int]]]:
+    """`(currency, [(wbs_id, budget_head_id, amount_minor), ...])` for a
+    local order's own lines, ordered by `line_no` -- the shape LINK mode
+    compares the tenant's lines against. `amount_minor` is `amount_paise`
+    for an INR order and `source_amount_minor` (the vendor's own figure) for
+    a foreign one, matching how `_ResolvedLine.amount_minor` is built from
+    the DTO on the other side of the comparison."""
+    header = repo.query_one(
+        session,
+        """
+        SELECT po.currency FROM purchase_order po
+        JOIN project p ON p.project_id = po.project_id
+        WHERE po.po_id = %(po_id)s AND {scope}
+        """,
+        {"po_id": po_id}, columns=store.PROCUREMENT_SCOPE_COLUMNS,
+    )
+    currency = str(header[0]) if header else psvc.BASE_CURRENCY
+    is_base = currency.strip().upper() == psvc.BASE_CURRENCY
+    rows = repo.query(
+        session,
+        """
+        SELECT pol.wbs_id, pol.budget_head_id, pol.amount_paise,
+               pol.source_amount_minor
+        FROM po_line pol
+        JOIN purchase_order po ON po.po_id = pol.po_id
+        JOIN project p ON p.project_id = po.project_id
+        WHERE pol.po_id = %(po_id)s AND {scope}
+        ORDER BY pol.line_no
+        """,
+        {"po_id": po_id}, columns=store.PROCUREMENT_SCOPE_COLUMNS,
+    )
+    lines = [(str(r[0]), str(r[1]), int(r[2] if is_base else r[3]))
+            for r in rows]
+    return currency, lines
+
+
+def _link_existing_local_order(session: Session, *, po_id: str,
+                               resolved: list[_ResolvedLine] | None,
+                               reason: str | None, detail: PurchaseOrderDTO,
+                               external_source: str, external_id: str,
+                               entity_id: str, actor: str,
+                               correlation_id: str | None, now: datetime,
+                               order_label: str) -> str:
+    """Link a tenant order to the LOCAL order it was raised for.
+
+    `commitment_origin` stays `'LOCAL'`: this order WAS proposed and
+    budget-checked by this system, and linking gives it the external anchor
+    it was always going to need -- it is never re-classified as an
+    unsanctioned commitment for having arrived this way. Never re-writes the
+    local order's lines or currency; a mismatch is a fact worth surfacing
+    (`ADOPTION_DIMENSION_CONFLICT`), not a correction to apply.
+    """
+    if reason is not None:
         return _raise(
             session, kind="ADOPTION_DIMENSION_CONFLICT",
             external_id=external_id, entity_id=entity_id,
-            detail=(f"{order_label} was adopted as {existing['po_id']} with "
-                    f"cf_capex_ref={existing['external_capex_ref']!r} and "
-                    f"lines {stored_lines}; the tenant now presents "
-                    f"cf_capex_ref={capex_ref!r} and lines {current_lines}. "
-                    f"The local order is left as it was; a changed "
-                    f"commitment is not silently re-based."),
+            detail=(f"{order_label} matches local order {po_id}'s own "
+                    f"dedupe key, but its own dimensions do not resolve: "
+                    f"{reason} Not linked; {po_id} is left as it was."),
             actor=actor, correlation_id=correlation_id, now=now)
-    return "skipped"
+    assert resolved is not None
+
+    tenant_currency = detail.currency_code.strip().upper()
+    local_currency, local_lines = _local_order_snapshot(session, po_id=po_id)
+    tenant_lines = [(r.wbs_id, r.budget_head_id, r.amount_minor)
+                    for r in resolved]
+    if local_currency.strip().upper() != tenant_currency or local_lines != tenant_lines:
+        return _raise(
+            session, kind="ADOPTION_DIMENSION_CONFLICT",
+            external_id=external_id, entity_id=entity_id,
+            detail=(f"{order_label} matches local order {po_id}'s own "
+                    f"dedupe key, but the lines disagree: local "
+                    f"{local_currency!r} {local_lines}, tenant "
+                    f"{tenant_currency!r} {tenant_lines}. Not linked; "
+                    f"{po_id} is left as it was."),
+            actor=actor, correlation_id=correlation_id, now=now)
+
+    linked = repo.query_one(
+        session,
+        """
+        UPDATE purchase_order po SET
+            external_source = %(source)s, external_id = %(external_id)s,
+            updated_by = %(actor)s, updated_at = now()
+        FROM project p
+        WHERE p.project_id = po.project_id AND po.po_id = %(po_id)s
+          AND po.external_id IS NULL AND {scope}
+        RETURNING po.po_id
+        """,
+        {"source": external_source, "external_id": external_id,
+         "actor": actor, "po_id": po_id},
+        columns=store.PROCUREMENT_SCOPE_COLUMNS,
+    )
+    if linked is None:
+        # Lost a race under the very lock meant to prevent one, or the row
+        # is out of scope for this actor. Reported rather than silently
+        # treated as success: an id this call did not itself confirm is not
+        # evidence the link happened.
+        current = repo.query_one(
+            session,
+            """
+            SELECT po.external_id FROM purchase_order po
+            JOIN project p ON p.project_id = po.project_id
+            WHERE po.po_id = %(po_id)s AND {scope}
+            """,
+            {"po_id": po_id}, columns=store.PROCUREMENT_SCOPE_COLUMNS,
+        )
+        if current is not None and current[0] == external_id:
+            pass  # already linked to this exact tenant order; fall through
+        else:
+            return _raise(
+                session, kind="ADOPTION_DIMENSION_CONFLICT",
+                external_id=external_id, entity_id=entity_id,
+                detail=(f"{order_label}: local order {po_id} could not be "
+                        f"linked (it left scope or gained a different "
+                        f"external id concurrently). Not linked."),
+                actor=actor, correlation_id=correlation_id, now=now)
+
+    outbox = repo.query_one(
+        session,
+        f"""
+        SELECT o.outbox_id FROM {store.INTEGRATION_OUTBOX} o
+        JOIN {store.INTEGRATION_CONNECTION} c ON c.connection_id = o.connection_id
+        WHERE o.local_id = %(po_id)s AND o.module = %(module)s
+          AND o.state IN ('PENDING', 'FAILED') AND {{scope}}
+        """,
+        {"po_id": po_id, "module": psvc.PO_MODULE},
+        columns=store.VIA_CONNECTION_SCOPE_COLUMNS,
+    )
+    if outbox is not None:
+        # The same call `outbound.emit_purchase_order`'s own
+        # `resolve_by_dedupe_key` branch makes when Zoho itself names an
+        # existing record for this key -- the outcome ("this key is already
+        # SENT, under this external id") is identical, only how it was
+        # discovered differs.
+        store.mark_outbox_sent(session, outbox_id=outbox[0],
+                               external_id=external_id, actor=actor, now=now)
+
+    _resolve_unsanctioned_commitment(
+        session, external_id=external_id, entity_id=entity_id, po_id=po_id,
+        actor=actor, correlation_id=correlation_id, now=now,
+        note=f"linked to {po_id}")
+    return "linked"
 
 
 def _raise(session: Session, *, kind: str, external_id: str, entity_id: str,
@@ -594,9 +872,11 @@ def _raise(session: Session, *, kind: str, external_id: str, entity_id: str,
 def _resolve_unsanctioned_commitment(session: Session, *, external_id: str,
                                      entity_id: str, po_id: str, actor: str,
                                      correlation_id: str | None,
-                                     now: datetime) -> None:
+                                     now: datetime,
+                                     note: str | None = None) -> None:
     """Close the UNSANCTIONED_COMMITMENT `PollPurchaseOrders._accept` raised
-    for this order, if it is still Open. Adoption is the resolution."""
+    for this order, if it is still Open. Adoption -- or a link -- is the
+    resolution; `note` names which (defaults to "adopted as <po_id>")."""
     row = repo.query_one(
         session,
         """
@@ -614,7 +894,7 @@ def _resolve_unsanctioned_commitment(session: Session, *, external_id: str,
         return
     store.act_on_exception(
         session, exception_id=row[0], action="resolve", actor=actor,
-        reason=f"adopted as {po_id}")
+        reason=note or f"adopted as {po_id}")
 
 
 __all__ = [
