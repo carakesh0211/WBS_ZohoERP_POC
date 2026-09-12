@@ -33,7 +33,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel, ConfigDict
 
-from ..integration import live_sweep
+from ..integration import adoption, live_sweep
 from ..integration.adapter import (CapabilityError, IntegrationError,
                                    NetworkForbidden, UnsupportedDataCentre)
 from ..pg import integration_store as store
@@ -121,6 +121,89 @@ def run_sweep(
         # `live_transport.RateBudgetExhausted` and `ZohoApiError` are both
         # IntegrationErrors; the class name is the discriminator the
         # transport gives us, and the message never carries a token.
+        name = type(exc).__name__
+        if name == "RateBudgetExhausted":
+            raise _integrations._problem(
+                429, "RATE_BUDGET_EXHAUSTED", "Rate Budget Exhausted", str(exc))
+        if name == "ZohoApiError":
+            raise _integrations._problem(
+                502, "ZOHO_API_ERROR", "Zoho Api Error", str(exc),
+                extra={"zoho_status": getattr(exc, "status", None),
+                       "zoho_code": getattr(exc, "zoho_code", None)})
+        raise _integrations._problem(
+            503, "LIVE_TRANSPORT_UNAVAILABLE", "Live Transport Unavailable",
+            str(exc))
+
+
+class _AdoptIn(BaseModel):
+    """`{limit?: int}`. Absent means `adoption.adopt_tenant_orders`'s own
+    default (50)."""
+
+    model_config = ConfigDict(extra="forbid")
+    limit: int | None = None
+
+
+@router.post("/api/integrations/connections/{connection_id}/adopt-orders",
+             dependencies=[Depends(_integrations._requires("connector.manage"))])
+def run_adopt_orders(
+    connection_id: str, response: Response, request: Request,
+    body: _AdoptIn | None = None,
+    database: Database = Depends(_integrations._get_database),
+) -> dict[str, Any]:
+    """Adopt this LIVE connection's tenant-raised purchase orders now.
+
+    `docs/fable51/ORDER_ADOPTION.md` has the rule this route enacts. THE
+    ORDER OF THE REFUSALS is the same as `run_sweep`'s, with one more
+    inserted after "is it live": (1) no PostgreSQL, (2) invisible connection
+    -> 404, (3) not live -> 409 `CONNECTION_NOT_LIVE`, (4) no live transport
+    -> 503 `LIVE_TRANSPORT_UNAVAILABLE`, (5) not the demo organisation on ERP
+    -> 403 `ADOPTION_NOT_AUTHORISED_FOR_ORGANISATION`, (6) Zoho refused or
+    failed -> 502 / 429. Read-only: every call this route can reach is a GET
+    (`adapter.get_purchase_order`); nothing here writes to Zoho.
+
+    The response is `adoption.adopt_tenant_orders`'s summary verbatim:
+    ``adopted``, ``skipped``, ``exceptions``, ``calls`` and the raised
+    exceptions' ids.
+    """
+    correlation_id = _integrations._set_correlation_header(response, request)
+    connection = _integrations._require_visible_connection(
+        request, database, connection_id)
+    if not live_sweep.is_live(connection):
+        raise _integrations._problem(
+            409, "CONNECTION_NOT_LIVE", "Connection Not Live",
+            f"Connection {connection_id} is in mode "
+            f"{connection.get('mode')!r}; adoption reaches the tenant and "
+            f"only {list(store.LIVE_MODES)} may. Nothing was adopted.")
+    limit = body.limit if body is not None and body.limit is not None else 50
+    try:
+        adapter = live_sweep.adapter_for_connection(connection)
+        if adapter is None:
+            raise live_sweep.LiveSweepError(
+                "LIVE_ADAPTER_UNAVAILABLE",
+                f"No live adapter exists for product "
+                f"{connection.get('product')!r} on data centre "
+                f"{connection.get('dc')!r}: only Zoho ERP on IN has a "
+                f"transport that can reach a tenant on this branch.",
+                status=503)
+        with _integrations._session(request, database) as session:
+            return adoption.adopt_tenant_orders(
+                session, connection=connection, adapter=adapter,
+                actor=_integrations._actor(request),
+                correlation_id=correlation_id, limit=limit)
+    except store.IntegrationStoreError as exc:
+        raise _integrations._store_error_to_http(exc)
+    except UnsupportedDataCentre as exc:
+        raise _integrations._problem(
+            503, "LIVE_TRANSPORT_UNAVAILABLE", "Live Transport Unavailable",
+            str(exc))
+    except NetworkForbidden as exc:
+        raise _integrations._problem(
+            503, "LIVE_TRANSPORT_UNAVAILABLE", "Live Transport Unavailable",
+            str(exc))
+    except CapabilityError as exc:
+        raise _integrations._problem(
+            409, "SCOPE_NOT_GRANTED", "Scope Not Granted", str(exc))
+    except IntegrationError as exc:
         name = type(exc).__name__
         if name == "RateBudgetExhausted":
             raise _integrations._problem(

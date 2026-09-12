@@ -285,6 +285,12 @@ MUTATING_ROUTES = [
     ("/api/integrations/connections/{connection_id}/sweep", "POST",
      "/api/integrations/connections/CONN-01/sweep", {},
      "connector.manage", "Auditor"),
+    # Fable 5.1: adopting a tenant-raised order, on the same router as the
+    # sweep above. Same `connector.manage` scope, same denied role, for the
+    # same reason.
+    ("/api/integrations/connections/{connection_id}/adopt-orders", "POST",
+     "/api/integrations/connections/CONN-01/adopt-orders", {},
+     "connector.manage", "Auditor"),
     ("/api/integrations/dead-letters/{queue}/{row_id}/retry", "POST",
      "/api/integrations/dead-letters/outbox/OUT-1/retry", {},
      "connector.manage", "Auditor"),
