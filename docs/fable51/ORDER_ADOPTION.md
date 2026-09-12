@@ -39,6 +39,11 @@ local `po_line` to resolve against.
   the connection's entity, and that WBS must not be abandoned.
 - **Every line's `cf_budget_head`** must resolve to *exactly one* budget head
   in the connection's entity (matched by name or code, case-insensitively).
+- **Budget-head isolation.** When the resolved WBS element names its own
+  `budget_head_id`, the line's resolved head must AGREE with it -- a line
+  whose `cf_budget_head` disagrees with its WBS element's own head is
+  invalid, never treated as a second head the WBS may also carry. A WBS
+  element that names no head of its own enforces nothing.
 - **Every line's WBS must belong to the same project.** A purchase order
   spanning two projects is not a shape this ledger admits.
 - Any failure of the above raises **`ADOPTION_DIMENSION_INVALID`** naming the
@@ -90,6 +95,49 @@ Adopting an order that already carries an Open `UNSANCTIONED_COMMITMENT`
 exception (raised by `PollPurchaseOrders._accept` when the poll first saw a
 CAPEX-tagged order with no local match) **resolves** that exception with the
 note `"adopted as <po_id>"`.
+
+## LINK mode: a tenant order that is already one of ours
+
+Before treating an inbox order as brand new, adoption asks whether it is
+actually a purchase order **this system already raised**, still waiting for
+its outbound emission to give it an external anchor.
+`outbound.derive_dedupe_key(connection_id, "purchaseorders", po_id)` is
+**deterministic** -- a pure function of `(connection_id, module, po_id)` --
+and is exactly the value this system's own emission path would stamp into
+the tenant's `cf_capex_ref` were `CAPEX_ERP_OUTBOUND_WRITES` authorised. For
+every **LOCAL** order in the connection's entity with no `external_id` yet,
+adoption recomputes that key and compares it against the inbox order's
+`cf_capex_ref` -- recomputed, not read from a stored `integration_outbox`
+row, because a locally-raised order with the write gate closed has never had
+an outbox row to store it in.
+
+A match **links** rather than adopts:
+
+- the local order's own `wbs_id` / `budget_head_id` per line, and its total
+  amount in its own currency, are compared against the tenant's -- a
+  mismatch is **`ADOPTION_DIMENSION_CONFLICT`** and the local order is left
+  untouched, exactly as a changed-dimension conflict on an already-adopted
+  order is;
+- on a match, the local order's `external_source` / `external_id` are set to
+  the tenant's. `commitment_origin` **stays `'LOCAL'`**: this order WAS
+  proposed and budget-checked by this system, and `ck_purchase_order_
+  adoption_provenance` (032) requires `external_capex_ref` stay `NULL` for
+  every `LOCAL` row -- linking never reclassifies it as an external,
+  unsanctioned commitment;
+- a pending `integration_outbox` row for that `po_id`, if one exists, is
+  marked `SENT` the way `outbound.emit_purchase_order`'s own
+  `resolve_by_dedupe_key` branch marks it (`store.mark_outbox_sent`) --
+  looked up by `local_id`, so finding none (the ordinary case with the write
+  gate closed) touches nothing;
+- the pre-existing `UNSANCTIONED_COMMITMENT` exception is resolved with the
+  note `"linked to <po_id>"`, and the order is counted under **`linked`** in
+  the summary -- never under `adopted`.
+
+An order whose `cf_capex_ref` matches no local order's derived key is
+adopted as `EXTERNAL_UNSANCTIONED`, exactly as before LINK mode existed. A
+**repeat** sweep against an already-linked order compares only its lines
+(a linked order never carries `external_capex_ref` to compare) and is a
+no-op when they still agree.
 
 ## Idempotency and concurrency
 
@@ -169,8 +217,10 @@ uses.
 up-front refusals proved never to touch the session, the route's 401/403
 guard) and live-PostgreSQL end to end (adopt, resolve the pre-existing
 `UNSANCTIONED_COMMITMENT`, idempotent repeat, changed-dimension conflict,
-duplicate `cf_capex_ref`, missing WBS / budget head, JPY with and without an
-active rate, two concurrent sessions racing the same order, and the whole
+duplicate `cf_capex_ref`, missing WBS / budget head, budget-head isolation,
+JPY with and without an active rate, two concurrent sessions racing the same
+order, LINK mode -- link once / idempotent repeat / mismatched lines conflict
+/ an unmatched key still adopts as `EXTERNAL_UNSANCTIONED` -- and the whole
 point of the feature -- `SweepPoAnchored` mirroring a receive and
 `pg.procurement.mirror_bill` attributing a bill against the adopted order's
 line).
