@@ -521,13 +521,28 @@ def _refuse_self_approval(actor: str, closed_by: str, *, what: str,
     This function compares the applier against the CLOSER. The route layer
     (`api/budget.py`) separately compares the applier against the REQUESTER,
     through the same `require_separation`, before this engine is reached.
+
+    BOTH LAYERS RAISE THE SAME EXCEPTION TYPE. Now that the first layer is
+    live, it raises before the second layer's own comparison ever runs (found
+    by this suite's first live-PostgreSQL run: `test_the_closer_may_not_apply_
+    the_reopening_either` got a raw `auth.AuthError` instead of the
+    `PeriodServiceError` every other refusal in this module raises).
+    `auth.require_separation`'s `AuthError` and this function's own `_err` are
+    the same rule stated twice, in two modules with two different exception
+    hierarchies, so the first is caught here and re-raised through `_err` with
+    its own code, message and status carried over verbatim -- a caller of
+    this module matches on `PeriodServiceError.code` regardless of which of
+    the two layers actually fired.
     """
     principal = {"user_id": actor}
     # Reused, not reimplemented. Live: REOPEN_PERMISSION is in
     # auth.MAKER_CHECKER -- see this function's docstring.
-    auth_mod.require_separation(
-        principal, REOPEN_PERMISSION, closed_by,
-        object_label=f"the close of period {period_id}", require_maker=True)
+    try:
+        auth_mod.require_separation(
+            principal, REOPEN_PERMISSION, closed_by,
+            object_label=f"the close of period {period_id}", require_maker=True)
+    except auth_mod.AuthError as exc:
+        _err(exc.code, exc.message, status=exc.status)
 
     if actor == closed_by:
         _err("SELF_APPROVAL",
