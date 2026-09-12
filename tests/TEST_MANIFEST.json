@@ -2128,6 +2128,84 @@
         "body_sha": "61fee1e08beccf7c"
       }
     },
+    "test_foreign_order_matching_fable51.py": {
+      "test_the_code_is_one_string_in_every_place_a_kind_lives": {
+        "assertions": 8,
+        "body_sha": "718efa6ad088c336"
+      },
+      "test_a_receive_against_a_jpy_order_is_held_under_the_code_and_nothing_is_booked": {
+        "assertions": 10,
+        "body_sha": "ea36fe98a3ff9949"
+      },
+      "test_the_currency_is_decided_before_the_linkage_so_an_unresolvable_jpy_line_is_not_quarantined_at_face_value": {
+        "assertions": 4,
+        "body_sha": "9ff2d8bb92635d31"
+      },
+      "test_the_hold_is_idempotent_across_the_re_walk": {
+        "assertions": 2,
+        "body_sha": "0f61daebc7d23720"
+      },
+      "test_the_order_currency_comparison_is_case_and_whitespace_insensitive": {
+        "assertions": 1,
+        "body_sha": "ff53725f80ffd7fb"
+      },
+      "test_the_inr_order_path_is_unchanged": {
+        "assertions": 4,
+        "body_sha": "1e4878f90dbd800f"
+      },
+      "test_a_local_purchase_order_defaults_to_the_base_currency": {
+        "assertions": 1,
+        "body_sha": "4855947ab7a6d8ab"
+      },
+      "test_a_jpy_bill_with_its_own_rate_reaches_the_ledger_with_the_rate_and_a_per_document_source": {
+        "assertions": 7,
+        "body_sha": "de8473668615a68b"
+      },
+      "test_a_bill_that_states_no_rate_reaches_the_ledger_with_none_so_the_rate_book_decides": {
+        "assertions": 3,
+        "body_sha": "fae15dff8b3ffd64"
+      },
+      "test_normalise_carries_the_rate_as_text_and_refuses_a_float": {
+        "assertions": 4,
+        "body_sha": "a8fa76f8f007f28a"
+      },
+      "test_rate_text_keeps_the_stated_string_and_refuses_a_float_or_a_boolean": {
+        "assertions": 6,
+        "body_sha": "d2a01bc1fcd189cf"
+      },
+      "test_the_erp_adapter_populates_the_bills_rate_from_the_row": {
+        "assertions": 5,
+        "body_sha": "8f34a31f3c6b6a03"
+      },
+      "test_the_ledgers_coded_refusal_is_filed_as_the_reconciliation_exception_and_the_run_completes": {
+        "assertions": 9,
+        "body_sha": "73bf1fbb4763ee43"
+      },
+      "test_every_other_ledger_refusal_still_propagates_and_files_nothing": {
+        "assertions": 3,
+        "body_sha": "452effc43aff689c"
+      },
+      "test_a_refusal_without_a_code_attribute_is_not_mistaken_for_the_hold": {
+        "assertions": 1,
+        "body_sha": "1669af32f98bc132"
+      },
+      "test_a_foreign_bills_face_value_never_lands_in_source_paise_on_the_other_branches": {
+        "assertions": 1,
+        "body_sha": "3f45db9f4a1cd6ba"
+      },
+      "test_an_inr_bills_face_value_still_lands_in_source_paise_unchanged": {
+        "assertions": 1,
+        "body_sha": "8ecdc6d089decdf6"
+      },
+      "test_the_live_jpy_vector_and_the_half_up_rule_hold_through_the_fx_engine": {
+        "assertions": 5,
+        "body_sha": "d3dcb1d5470cee1b"
+      },
+      "test_the_fake_record_only_carries_names_the_real_bill_dto_has": {
+        "assertions": 2,
+        "body_sha": "0ad43aa52b7a2409"
+      }
+    },
     "test_frontend_budget_setup_registry.py": {
       "test_new_screen_id_in_app_js_scr_routes": {
         "assertions": 1,
@@ -4044,8 +4122,8 @@
         "body_sha": "113ae0dd6e8af443"
       },
       "test_open_purchase_orders_is_scoped_keyed_on_po_id_and_bound_to_the_source": {
-        "assertions": 7,
-        "body_sha": "4915b1bab7932b01"
+        "assertions": 8,
+        "body_sha": "a02a30daee2c1d40"
       },
       "test_known_purchase_order_answers_by_external_id_under_this_source": {
         "assertions": 4,
@@ -4154,6 +4232,10 @@
       "test_route_the_openapi_template_is_spelled_with_connection_id": {
         "assertions": 3,
         "body_sha": "56af9f88745f74ee"
+      },
+      "test_pg_store_carries_the_orders_currency_and_the_bills_rate": {
+        "assertions": 5,
+        "body_sha": "8e4e7c322f120612"
       }
     },
     "test_live_transport_fable51.py": {
@@ -12968,6 +13050,7 @@
     "test_export_poc.py": 17,
     "test_export_scope.py": 26,
     "test_financial_controls.py": 61,
+    "test_foreign_order_matching_fable51.py": 19,
     "test_frontend_budget_setup_registry.py": 12,
     "test_integration_adapter_contract.py": 72,
     "test_integration_capabilities.py": 20,
@@ -12985,7 +13068,7 @@
     "test_integrations_live_routes_fable51.py": 12,
     "test_known_defects.py": 5,
     "test_ledger_cell_writers.py": 16,
-    "test_live_sweep_fable51.py": 32,
+    "test_live_sweep_fable51.py": 33,
     "test_live_transport_fable51.py": 22,
     "test_login_throttle.py": 11,
     "test_manifest.py": 10,
@@ -13103,6 +13186,7 @@
     "test_export_poc.py": 32,
     "test_export_scope.py": 69,
     "test_financial_controls.py": 159,
+    "test_foreign_order_matching_fable51.py": 77,
     "test_frontend_budget_setup_registry.py": 21,
     "test_integration_adapter_contract.py": 169,
     "test_integration_capabilities.py": 62,
@@ -13120,7 +13204,7 @@
     "test_integrations_live_routes_fable51.py": 67,
     "test_known_defects.py": 13,
     "test_ledger_cell_writers.py": 32,
-    "test_live_sweep_fable51.py": 202,
+    "test_live_sweep_fable51.py": 208,
     "test_live_transport_fable51.py": 50,
     "test_login_throttle.py": 26,
     "test_manifest.py": 15,
