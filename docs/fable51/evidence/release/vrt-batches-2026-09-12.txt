@@ -1,0 +1,28 @@
+plan=tools\vrt\batches_release.json port=8897 per_test=60000ms per_batch=900s
+viewports: desktop-1440, laptop-1024, tablet-800
+started_at: 2026-09-12T15:59:23
+
+spa-routing                  desktop-1440   BLOCKING      ok                       55 passed (3.4m)
+spa-routing                  laptop-1024    BLOCKING      ok                       55 passed (3.4m)
+spa-routing                  tablet-800     BLOCKING      ok                       55 passed (3.3m)
+approved-ui                  desktop-1440   BLOCKING      ok                       20 passed (51.7s)
+approved-ui                  laptop-1024    BLOCKING      ok                       20 passed (44.6s)
+approved-ui                  tablet-800     BLOCKING      ok                       20 passed (48.4s)
+approvals                    desktop-1440   BLOCKING      ok                       104 passed (5.4m)
+approvals                    laptop-1024    BLOCKING      ok                       103 passed (4.3m)
+approvals                    tablet-800     BLOCKING      ok                       103 passed (4.7m)
+budget-setup                 desktop-1440   BLOCKING      ok                       29 passed (1.5m)
+budget-setup                 laptop-1024    BLOCKING      ok                       29 passed (1.2m)
+budget-setup                 tablet-800     BLOCKING      ok                       29 passed (1.3m)
+po-currency                  desktop-1440   BLOCKING      ok                       7 passed (20.2s)
+po-currency                  laptop-1024    BLOCKING      ok                       7 passed (22.4s)
+po-currency                  tablet-800     BLOCKING      ok                       7 passed (28.1s)
+integration                  desktop-1440   BLOCKING      ok                       107 passed (4.8m)
+integration                  laptop-1024    BLOCKING      ok                       107 passed (4.3m)
+integration                  tablet-800     BLOCKING      ok                       107 passed (3.7m)
+fx-rates                     desktop-1440   informational ok                       5 passed (20.1s)
+fx-rates                     laptop-1024    informational ok                       5 passed (20.0s)
+fx-rates                     tablet-800     informational ok                       5 passed (13.7s)
+
+blocking batches failed: 0
+informational batches failed: 0
