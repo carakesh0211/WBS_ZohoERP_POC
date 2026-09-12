@@ -12,6 +12,84 @@
     "database": "SQLite"
   },
   "files": {
+    "test_adoption_fable51.py": {
+      "test_line_custom_field_reads_the_verified_live_shape": {
+        "assertions": 4,
+        "body_sha": "1f046c43bd219d65"
+      },
+      "test_quantity_number_is_int_when_whole_and_float_otherwise": {
+        "assertions": 4,
+        "body_sha": "5d796a08edcc00e9"
+      },
+      "test_resolve_status_mirrors_the_verified_erp_raw_values": {
+        "assertions": 1,
+        "body_sha": "4746fe2b89ee0f4b"
+      },
+      "test_adopt_tenant_orders_refuses_a_non_live_connection_before_touching_anything": {
+        "assertions": 3,
+        "body_sha": "06c423a5363e19f3"
+      },
+      "test_adopt_tenant_orders_refuses_the_wrong_organisation_before_touching_anything": {
+        "assertions": 3,
+        "body_sha": "e49bde5e5fb0a50f"
+      },
+      "test_route_is_in_the_authorisation_matrix_with_manage_and_a_denied_role": {
+        "assertions": 3,
+        "body_sha": "289f27760c6bfae1"
+      },
+      "test_route_an_unauthenticated_caller_is_refused": {
+        "assertions": 1,
+        "body_sha": "8f4a8f5ddd27944f"
+      },
+      "test_route_a_role_without_connector_read_stops_at_the_floor": {
+        "assertions": 1,
+        "body_sha": "bbef89f067603fc5"
+      },
+      "test_route_the_read_only_role_is_refused_adoption": {
+        "assertions": 1,
+        "body_sha": "8a919d6d36ddba49"
+      },
+      "test_live_adopts_a_tenant_raised_order_and_resolves_the_unsanctioned_commitment": {
+        "assertions": 10,
+        "body_sha": "75edb0b4b33d0e6a"
+      },
+      "test_live_repeat_adoption_is_idempotent": {
+        "assertions": 4,
+        "body_sha": "8a862ac6dd10095b"
+      },
+      "test_live_changed_dimensions_on_repeat_raise_conflict_and_leave_the_order": {
+        "assertions": 4,
+        "body_sha": "45d6472b6bed8992"
+      },
+      "test_live_a_duplicate_capex_ref_across_two_orders_is_refused": {
+        "assertions": 3,
+        "body_sha": "e0bc5fee69bf186c"
+      },
+      "test_live_a_line_whose_wbs_code_does_not_resolve_posts_nothing": {
+        "assertions": 4,
+        "body_sha": "1b201898b1be0ae7"
+      },
+      "test_live_a_line_whose_budget_head_does_not_resolve_posts_nothing": {
+        "assertions": 2,
+        "body_sha": "74432e7f1bc9f0b5"
+      },
+      "test_live_jpy_order_without_an_active_rate_is_held_as_foreign_currency_basis_missing": {
+        "assertions": 3,
+        "body_sha": "4d212f5c6e848b5b"
+      },
+      "test_live_jpy_order_with_an_active_rate_adopts_at_paise_via_the_shared_helper": {
+        "assertions": 4,
+        "body_sha": "4ad07468a38876fa"
+      },
+      "test_live_second_concurrent_adoption_of_the_same_order_is_blocked": {
+        "assertions": 4,
+        "body_sha": "17301f6f0d1e96a6"
+      },
+      "test_live_grn_matching_then_bill_matching_against_the_adopted_order": {
+        "assertions": 6,
+        "body_sha": "0d64023d1b10045e"
+      }
+    },
     "test_anchor_function_shim.py": {
       "test_success_closes_with_success_and_returns_the_redacted_result": {
         "assertions": 3,
@@ -13030,6 +13108,7 @@
     }
   },
   "counts": {
+    "test_adoption_fable51.py": 19,
     "test_anchor_function_shim.py": 8,
     "test_api_auth.py": 27,
     "test_api_auth_saved_views.py": 2,
@@ -13166,6 +13245,7 @@
     "test_zoho_routes_fable51.py": 21
   },
   "assertions": {
+    "test_adoption_fable51.py": 65,
     "test_anchor_function_shim.py": 24,
     "test_api_auth.py": 50,
     "test_api_auth_saved_views.py": 4,
