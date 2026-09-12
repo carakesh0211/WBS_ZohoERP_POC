@@ -654,19 +654,37 @@ def test_live_an_unscoped_session_reads_nothing_from_any_integration_table(
 
 def _seed_two_projects_in_one_entity(con: psycopg.Connection) -> None:
     """`job` and `reconciliation_exception` rows on PRJ-A and PRJ-B, both
-    inside ENT-A, so only the PROJECT dimension can tell them apart."""
+    inside ENT-A, so only the PROJECT dimension can tell them apart.
+
+    One connection per project, not one shared connection. Migration 031's
+    `ux_job_one_live_row_per_connection` is a UNIQUE index on
+    `(kind, connection_id)` for a live (non-terminal) job -- one row per
+    connection per kind, with no project dimension at all, by design (a
+    connection's sweep is not partitioned by project). Two 'poll_bills' rows
+    sharing 'CONN-A' therefore collide on that index regardless of their
+    distinct `project_id`s (found by this suite's first live-PostgreSQL run,
+    which the index -- added after this fixture was written -- had never
+    seen). `organization_id` differs per connection because
+    `uq_integration_connection_org` is UNIQUE (entity_id, organization_id):
+    two connections for the same entity need two organisation ids, exactly
+    as two Zoho organisations under one legal entity would in reality.
+    """
     _seed_estate(con)
-    con.execute(
-        "INSERT INTO integration_connection (connection_id, entity_id,"
-        " product, dc, organization_id, connector_name, created_by,"
-        " updated_by) VALUES ('CONN-A', 'ENT-A', 'ERP', 'in', 'ORG-ENT-A',"
-        " 'zoho', 'T', 'T') ON CONFLICT DO NOTHING")
-    for project in ("PRJ-A", "PRJ-B"):
+    for project, connection_id, organization_id in (
+            ("PRJ-A", "CONN-A", "ORG-ENT-A"),
+            ("PRJ-B", "CONN-B", "ORG-ENT-A-2")):
+        con.execute(
+            "INSERT INTO integration_connection (connection_id, entity_id,"
+            " product, dc, organization_id, connector_name, created_by,"
+            " updated_by) VALUES (%s, 'ENT-A', 'ERP', 'in', %s,"
+            " 'zoho', 'T', 'T') ON CONFLICT DO NOTHING",
+            (connection_id, organization_id))
         con.execute(
             "INSERT INTO job (job_id, kind, connection_id, entity_id,"
             " project_id, principal_user_id, created_by, updated_by)"
-            " VALUES (%s, 'poll_bills', 'CONN-A', 'ENT-A', %s,"
-            " 'SVC-INTEGRATION', 'T', 'T')", (f"JOB-{project}", project))
+            " VALUES (%s, 'poll_bills', %s, 'ENT-A', %s,"
+            " 'SVC-INTEGRATION', 'T', 'T')",
+            (f"JOB-{project}", connection_id, project))
         con.execute(
             "INSERT INTO reconciliation_exception (exception_id, kind,"
             " object_type, object_id, entity_id, project_id, status, detail,"
