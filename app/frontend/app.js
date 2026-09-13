@@ -2021,17 +2021,25 @@ document.addEventListener('click', async (ev) => {
   if (t.dataset.approvePr) {
     const isExc = t.dataset.exc === '1';
     const ref = t.dataset.ref || t.dataset.approvePr;
+    let pendingReason = null;
     dialog(isExc ? 'Exception approval — reason required' : 'Approve purchase request',
       (isExc ? msg('warning', 'This request exceeds available budget. A reason is mandatory and will be stored in the audit trail with your name and the current time.', 'MSG-SEC-003') : '')
       + approvingAs(`You are approving ${esc(ref)}. The server records the signed-in user as the approver; it cannot be nominated from this screen, and you may not approve anything you raised yourself.`)
       + (isExc ? `<div class="field"><label for="dReason">Exception reason</label><textarea id="dReason" rows="3" placeholder="Why is this overrun justified?"></textarea></div>` : ''),
-      async () => {
-        const reason = document.getElementById('dReason')?.value?.trim();
-        if (isExc && !reason) throw new Error('An exception reason is mandatory.');
-        await api(`/purchase-requests/${t.dataset.approvePr}/approve`,
-          { method: 'POST', json: { reason: reason || null } });
+      withAdminOverride(async (overrideReason) => {
+        // Read the form ONLY on the first attempt: an override retry runs
+        // against the SAME dialog element after its body has been replaced
+        // by the override warning + reason textarea, so #dReason no longer
+        // exists by then.
+        if (overrideReason === null) {
+          pendingReason = document.getElementById('dReason')?.value?.trim() || null;
+          if (isExc && !pendingReason) throw new Error('An exception reason is mandatory.');
+        }
+        const body = { reason: pendingReason };
+        if (overrideReason) body.admin_override_reason = overrideReason;
+        await api(`/purchase-requests/${t.dataset.approvePr}/approve`, { method: 'POST', json: body });
         flash('success', `${esc(ref)} approved.`);
-      }, 'Approve');
+      }), 'Approve');
     return;
   }
 
@@ -2040,25 +2048,32 @@ document.addEventListener('click', async (ev) => {
     dialog('Approve budget revision',
       msg('info', 'The original approved budget is not modified. The revision is recorded as a separate versioned line carrying requestor, approver, date, reason and approval reference.')
       + approvingAs(`You are approving ${esc(ref)}.`),
-      async () => {
-        await api(`/budget-revisions/${ref}/approve`, { method: 'POST', json: {} });
+      withAdminOverride(async (overrideReason) => {
+        const body = {};
+        if (overrideReason) body.admin_override_reason = overrideReason;
+        await api(`/budget-revisions/${ref}/approve`, { method: 'POST', json: body });
         flash('success', `${esc(ref)} approved.`);
-      }, 'Approve');
+      }), 'Approve');
     return;
   }
 
   if (t.dataset.approveCap) {
     const id = t.dataset.approveCap;
+    let pendingOverrideRef = null;
     dialog('Approve capitalisation',
       `<p>Allocations must total the CWIP balance exactly. Any remainder must be recorded as a write-off with a reason.</p>`
       + approvingAs('')
       + `<div class="field"><label for="capOverride">Override reference (only if an approved override exists)</label>
            <input id="capOverride" placeholder="Leave blank for a normal approval"></div>`,
-      async () => {
-        const ref = document.getElementById('capOverride').value.trim();
-        await api(`/capitalisation/${id}/approve`, { method: 'POST', json: { override_ref: ref || null } });
+      withAdminOverride(async (overrideReason) => {
+        if (overrideReason === null) {
+          pendingOverrideRef = document.getElementById('capOverride').value.trim() || null;
+        }
+        const body = { override_ref: pendingOverrideRef };
+        if (overrideReason) body.admin_override_reason = overrideReason;
+        await api(`/capitalisation/${id}/approve`, { method: 'POST', json: body });
         flash('success', 'Capitalisation approved.');
-      }, 'Approve');
+      }), 'Approve');
     return;
   }
 
@@ -2147,6 +2162,79 @@ function approvingAs(extra) {
   return msg('info',
     `Approving as <strong>${esc(me.name || me.user_id || 'the signed-in user')}</strong> (${esc((me.roles || []).join(', ') || 'no roles')}).`
     + (extra ? ` ${extra}` : ''));
+}
+
+/* ---------------- Stream B: Administrator self-approval override ---------
+   `auth.require_separation` (app/backend/auth.py) refuses a self-approval
+   with 403 SELF_APPROVAL; an Administrator may override it deliberately by
+   re-sending the SAME call with `admin_override_reason` (>= 10 characters,
+   auth.ADMIN_OVERRIDE_MIN_REASON). Every other role sending a reason is
+   refused with ADMIN_OVERRIDE_NOT_PERMITTED — this dialog only ever offers
+   the retry to S.me.roles that actually include 'Administrator'. */
+function adminOverrideWarningHtml() {
+  return `<div class="msg msg-error admin-override-warning" role="alert">
+    <span class="ico" aria-hidden="true">${SYM.negative}</span>
+    <div class="body">You raised this yourself. Approving it is a deliberate Administrator override
+    of segregation of duties. It is recorded in the audit trail as
+    <code>ADMIN_SELF_APPROVAL_OVERRIDE</code> with your name, the time and your reason, and every
+    other Administrator is notified.</div></div>`;
+}
+
+/**
+ * Wraps a dialog's onOk action. On a 403 SELF_APPROVAL response, if the
+ * signed-in user is an Administrator, the SAME open <dialog> (never a second
+ * one — showModal() cannot be called twice) is rewritten in place with the
+ * warning above and a mandatory reason textarea; confirming there retries
+ * `submit` with that reason. Any other role sees the refusal exactly as
+ * dialog()'s ordinary error handling already renders it.
+ *
+ * `submit(overrideReason)` is called once with `null` — the reason is NEVER
+ * sent on the first attempt — and, only after a deliberate override, called
+ * again with the reason text (already validated to be >= 10 characters).
+ */
+function withAdminOverride(submit) {
+  const attempt = async (overrideReason) => {
+    try {
+      await submit(overrideReason);
+    } catch (e) {
+      const isAdministrator = ((S.me && S.me.roles) || []).includes('Administrator');
+      if (overrideReason === null && e instanceof ApiError && e.code === 'SELF_APPROVAL' && isAdministrator) {
+        const body = document.getElementById('dlgBody');
+        body.innerHTML = adminOverrideWarningHtml()
+          + `<div class="field admin-override-reason-field">
+               <label for="adminOverrideReason">Reason for overriding segregation of duties (minimum 10 characters) *</label>
+               <textarea id="adminOverrideReason" rows="3" required minlength="10"></textarea></div>`;
+        enhance(body);
+        document.getElementById('dlgTitle').textContent = 'Administrator override required';
+        clearDialogMessage();
+        const reasonEl = document.getElementById('adminOverrideReason');
+        reasonEl.focus();
+        const ok = document.getElementById('dlgOk');
+        ok.textContent = 'Approve with override';
+        ok.onclick = async () => {
+          ok.disabled = true;
+          try {
+            const reason = reasonEl.value.trim();
+            if (reason.length < 10) {
+              throw new Error('A reason of at least 10 characters is required to override segregation of duties.');
+            }
+            await attempt(reason);
+            document.getElementById('dlg').close();
+            await render();
+          } catch (err) {
+            if (err && err.name !== 'SilentError') {
+              dialogMessage('error', esc(err.message || 'The override could not be completed.'));
+            }
+          } finally {
+            ok.disabled = false;
+          }
+        };
+        throw new SilentError();
+      }
+      throw e;
+    }
+  };
+  return () => attempt(null);
 }
 
 document.addEventListener('change', async (ev) => {
