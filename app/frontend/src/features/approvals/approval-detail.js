@@ -47,6 +47,18 @@ const ACTIONS = [
   ['RETURN', 'Return for correction'],
 ];
 
+/* Stream B: app.js's classic-script top-level `const S` lives in the global
+   lexical environment, on the scope chain of a module evaluated in the same
+   realm (budget-api.js::getPrincipal reasons about this at length) — so the
+   signed-in user's roles are read directly rather than through a second
+   round trip. Guarded so this module never hard-crashes standalone. */
+function isAdministrator() {
+  try {
+    // eslint-disable-next-line no-undef
+    return typeof S !== 'undefined' && Array.isArray(S.me && S.me.roles) && S.me.roles.includes('Administrator');
+  } catch { return false; }
+}
+
 /* Contract 3's frozen error codes, with wording that tells the user what to do
    next rather than repeating the code at them. An unlisted code falls through
    to the server's own message, which is always shown. */
@@ -254,11 +266,13 @@ export function mountApprovalDetail(root) {
     return guidance ? `${err.message} ${guidance}` : (err && err.message) || 'The decision could not be recorded.';
   }
 
-  async function submitDecision({ action, reasonCode, reasonText: detail, button }) {
+  async function submitDecision({ action, reasonCode, reasonText: detail, button, adminOverrideReason = null }) {
     if (state.busy || !state.instance) return;
     state.busy = true;
     button.disabled = true;
-    // Minted once, held across retries of THIS decision (Contract 8).
+    // Minted once, held across retries of THIS decision (Contract 8) —
+    // including a Stream B override retry, which is the SAME decision made
+    // deliberately, not a second one.
     state.idempotencyKey = state.idempotencyKey || newIdempotencyKey();
     try {
       const result = await decide(state.instance.instance_id, {
@@ -267,6 +281,7 @@ export function mountApprovalDetail(root) {
         reasonText: detail,
         idempotencyKey: state.idempotencyKey,
         objectVersion: state.instance.object_version,
+        adminOverrideReason: adminOverrideReason || undefined,
       });
       state.idempotencyKey = null;
       const replayed = result && result.code === 'IDEMPOTENT_REPLAY';
@@ -282,11 +297,69 @@ export function mountApprovalDetail(root) {
       if (err && err.code === 'OBJECT_VERSION_STALE') {
         state.idempotencyKey = null;   // a new version needs a new decision
       }
+      // Stream B: never offered on a retry that already carried a reason —
+      // a second SELF_APPROVAL after a supplied reason is a genuine refusal
+      // (ADMIN_OVERRIDE_REASON_REQUIRED arrives as its own code, not this
+      // one), not an invitation to try a third time.
+      if (!adminOverrideReason && err && err.code === 'SELF_APPROVAL' && isAdministrator()) {
+        renderAdminOverride({ action, reasonCode, reasonText: detail, button });
+        return;
+      }
       showOutcome('error', describeFailure(err), { messageId: err && err.messageId });
     } finally {
       state.busy = false;
       button.disabled = false;
     }
+  }
+
+  /* Stream B: rewrites the decision card in place with the unmissable
+     warning and a mandatory reason textarea. Confirming retries
+     submitDecision() with the SAME action/reason and the typed override
+     reason; Cancel restores the ordinary decision form. */
+  function renderAdminOverride({ action, reasonCode, reasonText, button }) {
+    const reasonBox = h('textarea', {
+      id: 'approvalAdminOverrideReason', rows: '3', minlength: '10', required: true,
+    });
+    const confirmBtn = h('button', { type: 'button', class: 'btn-primary btn-sm' }, 'Approve with override');
+    const cancelBtn = h('button', { type: 'button', class: 'btn-sm' }, 'Cancel');
+    const localMsg = h('div', {});
+
+    confirmBtn.addEventListener('click', async () => {
+      const reason = reasonBox.value.trim();
+      if (reason.length < 10) {
+        replace(localMsg, msgBox('error',
+          text('A reason of at least 10 characters is required to override segregation of duties.'),
+          { alert: true }));
+        return;
+      }
+      confirmBtn.disabled = true;
+      cancelBtn.disabled = true;
+      await submitDecision({ action, reasonCode, reasonText, button, adminOverrideReason: reason });
+    });
+    cancelBtn.addEventListener('click', () => renderDecision(state.instance));
+
+    replace(decisionHost, card('approvalDecisionTitle', 'Decision', [
+      h('div', { class: 'msg msg-error admin-override-warning', role: 'alert', id: 'approvalAdminOverridePanel' }, [
+        h('span', { class: 'ico', 'aria-hidden': 'true' }, '✖'),
+        h('div', { class: 'body' }, [
+          h('div', {}, [
+            h('strong', {}, 'You raised this yourself. '),
+            text('Approving it is a deliberate Administrator override of segregation of duties. '
+              + 'It is recorded in the audit trail as '),
+            h('code', {}, 'ADMIN_SELF_APPROVAL_OVERRIDE'),
+            text(' with your name, the time and your reason, and every other Administrator is notified.'),
+          ]),
+          h('div', { class: 'field admin-override-reason-field' }, [
+            h('label', { for: 'approvalAdminOverrideReason' },
+              'Reason for overriding segregation of duties (minimum 10 characters) *'),
+            reasonBox,
+          ]),
+          localMsg,
+          h('div', { class: 'btn-row' }, [confirmBtn, cancelBtn]),
+        ]),
+      ]),
+    ]));
+    reasonBox.focus();
   }
 
   const LIFECYCLE_COPY = {

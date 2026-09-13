@@ -67,6 +67,17 @@ function approvingAsHtml(extra) {
   if (typeof w.approvingAs === 'function') return w.approvingAs(extra);
   return msgHtml('info', extra || '');
 }
+/* Stream B: app.js's dialog() ALREADY has the Administrator override
+   machinery (withAdminOverride, a classic-script top-level function
+   declaration, which — unlike app.js's own top-level `const`s — DOES land
+   on window). Reused rather than reimplemented a third time; falls back to
+   a plain single attempt if an older shell has no such window property. */
+function withOverride(submit) {
+  const w = shell();
+  if (typeof w.withAdminOverride === 'function') return w.withAdminOverride(submit);
+  return () => submit(null);
+}
+
 function newIdempotencyKey() {
   try {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
@@ -332,6 +343,7 @@ async function renderDetail(root, imrId) {
   }
 
   function wireApprove() {
+    let pendingQty, pendingReason, pendingActingFor;
     return h('button', { type: 'button', class: 'btn-sm', onClick: () => actionDialog(
       `Approve ${imr.imr_number}`,
       approvingAsHtml(`You are approving ${escText(imr.imr_number)}. The requester never approves their own request (403 SELF_APPROVAL).`)
@@ -339,18 +351,25 @@ async function renderDetail(root, imrId) {
            <input id="imrApproveQty" class="num" type="text" inputmode="decimal"></div>
          <div class="field"><label for="imrApproveReason">Reason (optional)</label><input id="imrApproveReason" maxlength="2000"></div>
          <div class="field"><label for="imrApproveActingFor">Acting for user id (only for a registered delegation)</label><input id="imrApproveActingFor" maxlength="100"></div>`,
-      async () => {
-        const qty = document.getElementById('imrApproveQty').value.trim();
-        const reason = document.getElementById('imrApproveReason').value.trim();
-        const actingFor = document.getElementById('imrApproveActingFor').value.trim();
-        await approveImr(imrId, {
-          approved_quantity: qty || undefined,
-          reason: reason || undefined,
-          acting_for_user_id: actingFor || undefined,
+      withOverride(async (overrideReason) => {
+        // Read the form only on the first attempt — a Stream B override
+        // retry runs against the SAME dialog after its body has been
+        // replaced by the warning + reason textarea.
+        if (overrideReason === null) {
+          pendingQty = document.getElementById('imrApproveQty').value.trim();
+          pendingReason = document.getElementById('imrApproveReason').value.trim();
+          pendingActingFor = document.getElementById('imrApproveActingFor').value.trim();
+        }
+        const body = {
+          approved_quantity: pendingQty || undefined,
+          reason: pendingReason || undefined,
+          acting_for_user_id: pendingActingFor || undefined,
           version_no: imr.version_no,
-        });
+        };
+        if (overrideReason) body.admin_override_reason = overrideReason;
+        await approveImr(imrId, body);
         announce('success', `${imr.imr_number} approved.`);
-      }, 'Approve') }, 'Approve');
+      }), 'Approve') }, 'Approve');
   }
 
   function wireValuation() {

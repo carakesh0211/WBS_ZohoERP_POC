@@ -120,6 +120,10 @@ export function getTimeline(instanceId, { cursor, limit } = {}) {
  */
 export function decide(instanceId, {
   action, reasonCode, reasonText, idempotencyKey, objectVersion,
+  // Stream B: the Administrator's deliberate self-approval override. Never
+  // sent on the first attempt — see approval-detail.js's SELF_APPROVAL
+  // handling, which supplies it only on a confirmed retry.
+  adminOverrideReason,
 }) {
   if (!idempotencyKey) {
     throw new ApprovalApiError('A decision cannot be sent without an idempotency key.', {
@@ -137,6 +141,7 @@ export function decide(instanceId, {
     reason_text: reasonText || null,
     idempotency_key: idempotencyKey,
     object_version: objectVersion,
+    ...(adminOverrideReason ? { admin_override_reason: adminOverrideReason } : {}),
   });
 }
 

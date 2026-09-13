@@ -43,6 +43,17 @@ import {
   postingNote, screen, table,
 } from './closure-kit.js';
 
+/* Stream B: app.js's classic-script top-level `const S` lives in the global
+   lexical environment shared with every ES module in this realm (see
+   budget-api.js::getPrincipal for the fuller reasoning). Guarded so this
+   module never hard-crashes when mounted standalone. */
+function isAdministrator() {
+  try {
+    // eslint-disable-next-line no-undef
+    return typeof S !== 'undefined' && Array.isArray(S.me && S.me.roles) && S.me.roles.includes('Administrator');
+  } catch { return false; }
+}
+
 const REQUEST_COLUMNS = [
   { key: 'cap_number', label: 'Request' },
   { key: 'capex_code', label: 'Project' },
@@ -258,7 +269,7 @@ export function mountCapitalisationWorkbench(root) {
     announce(strongText);
   }
 
-  async function run(label, call, { onSuccess } = {}) {
+  async function run(label, call, { onSuccess, onSelfApproval } = {}) {
     try {
       const result = await call();
       if (onSuccess) onSuccess(result.data);
@@ -266,12 +277,66 @@ export function mountCapitalisationWorkbench(root) {
       loadPosition();
       loadRequests();
     } catch (err) {
+      // Stream B: an Administrator who raised this request themselves gets
+      // a deliberate-override retry instead of the plain refusal below.
+      if (onSelfApproval && err && err.code === 'SELF_APPROVAL' && isAdministrator()) {
+        onSelfApproval();
+        return;
+      }
       const body = err && err.body && typeof err.body === 'object' ? err.body : null;
       const detail = body && typeof body.detail === 'object' ? body.detail : body;
       report('error', `${label} was refused.`,
              err && err.message ? err.message : '',
              detail && Array.isArray(detail.blockers) ? detail.blockers : null);
     }
+  }
+
+  /* Stream B: replaces actionResult with the unmissable warning and a
+     mandatory reason textarea; `onConfirm(reason)` retries the SAME
+     decision with admin_override_reason. */
+  function renderAdminOverride({ onConfirm }) {
+    clear(actionResult);
+    const reasonBox = h('textarea', {
+      id: 'capitalisationOverrideReason', rows: '3', minlength: '10', required: true,
+    });
+    const confirmBtn = h('button', { type: 'button', class: 'btn-primary btn-sm' }, 'Confirm override');
+    const cancelBtn = h('button', { type: 'button', class: 'btn-sm', onClick: () => clear(actionResult) }, 'Cancel');
+    const localMsg = h('div', {});
+    confirmBtn.addEventListener('click', () => {
+      const reason = reasonBox.value.trim();
+      if (reason.length < 10) {
+        clear(localMsg);
+        localMsg.appendChild(h('div', { class: 'msg msg-error', role: 'alert' }, [
+          h('span', { class: 'ico', 'aria-hidden': 'true' }, '✖'),
+          h('div', { class: 'body' },
+            'A reason of at least 10 characters is required to override segregation of duties.'),
+        ]));
+        return;
+      }
+      confirmBtn.disabled = true;
+      cancelBtn.disabled = true;
+      onConfirm(reason);
+    });
+    actionResult.appendChild(h('div', { class: 'msg msg-error admin-override-warning', role: 'alert' }, [
+      h('span', { class: 'ico', 'aria-hidden': 'true' }, '✖'),
+      h('div', { class: 'body' }, [
+        h('div', {}, [
+          h('strong', {}, 'You raised this yourself. '),
+          'Deciding it is a deliberate Administrator override of segregation of duties. It is '
+          + 'recorded in the audit trail as ',
+          h('code', {}, 'ADMIN_SELF_APPROVAL_OVERRIDE'),
+          ' with your name, the time and your reason, and every other Administrator is notified.',
+        ]),
+        h('div', { class: 'field admin-override-reason-field' }, [
+          h('label', { for: 'capitalisationOverrideReason' },
+            'Reason for overriding segregation of duties (minimum 10 characters) *'),
+          reasonBox,
+        ]),
+        localMsg,
+        h('div', { class: 'btn-row' }, [confirmBtn, cancelBtn]),
+      ]),
+    ]));
+    reasonBox.focus();
   }
 
   function raise() {
@@ -295,8 +360,12 @@ export function mountCapitalisationWorkbench(root) {
   function approve() {
     const id = capId();
     if (!id) { report('error', 'A capitalisation request id is required to approve.'); return; }
+    approveWithOverride(id, String(noteInput.value || '').trim(), null);
+  }
+
+  function approveWithOverride(id, note, overrideReason) {
     run('Approving the capitalisation',
-        () => approveRequest(id, { note: String(noteInput.value || '').trim() }), {
+        () => approveRequest(id, { note, ...(overrideReason ? { admin_override_reason: overrideReason } : {}) }), {
           onSuccess: (data) => report(
             'success',
             `Capitalisation approved: ${money(data && data.capitalised_paise)}.`,
@@ -305,14 +374,24 @@ export function mountCapitalisationWorkbench(root) {
               || 'NOT POSTED - local approval only; no ERP/GL or fixed-asset posting exists '
                  + 'in this build.',
           ),
+          onSelfApproval: () => renderAdminOverride({
+            onConfirm: (reason) => approveWithOverride(id, note, reason),
+          }),
         });
   }
 
   function reject() {
     const id = capId();
     if (!id) { report('error', 'A capitalisation request id is required to reject.'); return; }
+    rejectWithOverride(id, String(noteInput.value || '').trim(), null);
+  }
+
+  function rejectWithOverride(id, note, overrideReason) {
     run('Rejecting the request',
-        () => rejectRequest(id, { note: String(noteInput.value || '').trim() }));
+        () => rejectRequest(id, { note, ...(overrideReason ? { admin_override_reason: overrideReason } : {}) }),
+        { onSelfApproval: () => renderAdminOverride({
+          onConfirm: (reason) => rejectWithOverride(id, note, reason),
+        }) });
   }
 
   loadRequests();

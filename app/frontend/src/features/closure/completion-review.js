@@ -39,6 +39,17 @@ import {
   postingNote, screen, table,
 } from './closure-kit.js';
 
+/* Stream B: app.js's classic-script top-level `const S` lives in the global
+   lexical environment shared with every ES module in this realm (see
+   budget-api.js::getPrincipal for the fuller reasoning). Guarded so this
+   module never hard-crashes when mounted standalone. */
+function isAdministrator() {
+  try {
+    // eslint-disable-next-line no-undef
+    return typeof S !== 'undefined' && Array.isArray(S.me && S.me.roles) && S.me.roles.includes('Administrator');
+  } catch { return false; }
+}
+
 const REVIEW_COLUMNS = [
   { key: 'review_id', label: 'Review' },
   { key: 'capex_code', label: 'Project' },
@@ -248,7 +259,7 @@ export function mountCompletionReview(root) {
     announce(strongText);
   }
 
-  async function run(label, call) {
+  async function run(label, call, { onSelfApproval } = {}) {
     try {
       const result = await call();
       report('success', `${label} succeeded.`,
@@ -256,10 +267,67 @@ export function mountCompletionReview(root) {
       loadPosition();
       loadReviews();
     } catch (err) {
+      // Stream B: an Administrator who raised this review themselves gets a
+      // deliberate-override retry instead of the plain refusal below. Never
+      // offered twice for the same click chain — onSelfApproval's own
+      // retry passes a reason, so the SECOND SELF_APPROVAL (which cannot
+      // happen once a valid reason is sent) would fall through here.
+      if (onSelfApproval && err && err.code === 'SELF_APPROVAL' && isAdministrator()) {
+        onSelfApproval();
+        return;
+      }
       // The server's own words, never a rewrite. A refusal this screen
       // paraphrased is a refusal the operator cannot search for.
       report('error', `${label} was refused.`, err && err.message ? err.message : '');
     }
+  }
+
+  /* Stream B: replaces actionResult with the unmissable warning and a
+     mandatory reason textarea; `onConfirm(reason)` retries the SAME
+     decision with admin_override_reason. */
+  function renderAdminOverride({ onConfirm }) {
+    clear(actionResult);
+    const reasonBox = h('textarea', {
+      id: 'completionReviewOverrideReason', rows: '3', minlength: '10', required: true,
+    });
+    const confirmBtn = h('button', { type: 'button', class: 'btn-primary btn-sm' }, 'Confirm override');
+    const cancelBtn = h('button', { type: 'button', class: 'btn-sm', onClick: () => clear(actionResult) }, 'Cancel');
+    const localMsg = h('div', {});
+    confirmBtn.addEventListener('click', () => {
+      const reason = reasonBox.value.trim();
+      if (reason.length < 10) {
+        clear(localMsg);
+        localMsg.appendChild(h('div', { class: 'msg msg-error', role: 'alert' }, [
+          h('span', { class: 'ico', 'aria-hidden': 'true' }, '✖'),
+          h('div', { class: 'body' },
+            'A reason of at least 10 characters is required to override segregation of duties.'),
+        ]));
+        return;
+      }
+      confirmBtn.disabled = true;
+      cancelBtn.disabled = true;
+      onConfirm(reason);
+    });
+    actionResult.appendChild(h('div', { class: 'msg msg-error admin-override-warning', role: 'alert' }, [
+      h('span', { class: 'ico', 'aria-hidden': 'true' }, '✖'),
+      h('div', { class: 'body' }, [
+        h('div', {}, [
+          h('strong', {}, 'You raised this yourself. '),
+          'Deciding it is a deliberate Administrator override of segregation of duties. It is '
+          + 'recorded in the audit trail as ',
+          h('code', {}, 'ADMIN_SELF_APPROVAL_OVERRIDE'),
+          ' with your name, the time and your reason, and every other Administrator is notified.',
+        ]),
+        h('div', { class: 'field admin-override-reason-field' }, [
+          h('label', { for: 'completionReviewOverrideReason' },
+            'Reason for overriding segregation of duties (minimum 10 characters) *'),
+          reasonBox,
+        ]),
+        localMsg,
+        h('div', { class: 'btn-row' }, [confirmBtn, cancelBtn]),
+      ]),
+    ]));
+    reasonBox.focus();
   }
 
   function raise() {
@@ -281,10 +349,18 @@ export function mountCompletionReview(root) {
   function decide(decision) {
     const id = String(reviewInput.value || '').trim();
     if (!id) { report('error', `A review id is required to ${decision.toLowerCase()} a review.`); return; }
+    const note = String(noteInput.value || '').trim();
+    decideWithOverride(decision, id, note, null);
+  }
+
+  function decideWithOverride(decision, id, note, overrideReason) {
     run(`${decision === 'Accepted' ? 'Accepting' : 'Rejecting'} the review`,
         () => decideReview(id, {
-          decision, note: String(noteInput.value || '').trim(),
-        }));
+          decision, note, ...(overrideReason ? { admin_override_reason: overrideReason } : {}),
+        }),
+        { onSelfApproval: () => renderAdminOverride({
+          onConfirm: (reason) => decideWithOverride(decision, id, note, reason),
+        }) });
   }
 
   loadReviews();
