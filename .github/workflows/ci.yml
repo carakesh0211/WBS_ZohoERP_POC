@@ -339,13 +339,18 @@ jobs:
         env:
           CAPEX_PROFILE: local-demo
           CAPEX_VRT_PORT: "8896"
-          VRT_BATCH_OUT: .vrt-batches
+          # NOT a dot-directory: actions/upload-artifact@v4 excludes hidden
+          # files by default, and the first batched run's one failed batch
+          # (approvals::desktop-1440, rc=1 with every test passed) left no
+          # log to read because `.vrt-batches` was never uploaded.
+          VRT_BATCH_OUT: vrt-batch-logs
 
       - name: Publish batch logs and diff report on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: vrt-report
+          if-no-files-found: error
           path: |
             tests/vrt/report
-            .vrt-batches
+            vrt-batch-logs
