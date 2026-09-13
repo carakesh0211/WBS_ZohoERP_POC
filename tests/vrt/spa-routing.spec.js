@@ -369,7 +369,9 @@ test.describe('SPA routing — every SCR-nn screen is reachable from the shell',
       'home', 'approvals', 'alerts',
       'projects', 'wbs', 'budget', 'budget-setup', 'check', 'revisions',
       'budget-grid', 'budget-compare', 'budget-availability',
-      'prs', 'pos', 'grns', 'bills', 'recon',
+      // MIGRATION 034 (2026-09-13) adds exactly one row after `grns`: `imrs`
+      // (Internal Material Requests); its group is opened above like the others.
+      'prs', 'pos', 'grns', 'imrs', 'bills', 'recon',
       'cap',
       'zoho', 'inventory',
       'audit', 'audit-trail',

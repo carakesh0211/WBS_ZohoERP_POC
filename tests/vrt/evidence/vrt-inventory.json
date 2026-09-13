@@ -11,6 +11,7 @@
     "fx-rates.spec.js",
     "integration-actions.spec.js",
     "integration.spec.js",
+    "internal-fulfilment.spec.js",
     "mapping.spec.js",
     "nav-groups.spec.js",
     "nav-rail-budget.spec.js",
