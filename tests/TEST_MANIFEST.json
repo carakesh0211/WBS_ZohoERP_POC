@@ -5,7 +5,7 @@
   "baseline": {
     "recorded_at": "2026-08-28",
     "commit_note": "POC baseline, branch phase-0a/foundations, before any port work",
-    "test_functions": 275,
+    "test_functions": 281,
     "collected_cases": 348,
     "collected_cases_note": "348 is the pytest-collected count after parametrisation expands 6 files; 220 is the count of `def test_` functions. Both are real and the Definition of Done refers to the function count.",
     "runtime_seconds_approx": 189,
@@ -7756,6 +7756,32 @@
         "body_sha": "150633a809ef5291"
       }
     },
+    "test_pg_export_datasets_fable51.py": {
+      "test_every_dataset_declares_every_applicable_filter_field_exactly_once": {
+        "assertions": 4,
+        "body_sha": "bc3a82db85a6d704"
+      },
+      "test_every_dataset_names_a_non_empty_key_sql": {
+        "assertions": 2,
+        "body_sha": "466fd458c48a2353"
+      },
+      "test_the_nine_new_datasets_are_registered": {
+        "assertions": 1,
+        "body_sha": "ff5b4b732ca0bd70"
+      },
+      "test_audit_entries_is_not_a_dataset": {
+        "assertions": 1,
+        "body_sha": "4068fafaf4801671"
+      },
+      "test_new_dataset_runs_to_succeeded_with_the_declared_csv_header": {
+        "assertions": 4,
+        "body_sha": "8d1be5cd749008d4"
+      },
+      "test_reconciliation_exceptions_is_scoped_through_entity_and_project_only": {
+        "assertions": 3,
+        "body_sha": "071ef44d684df9bf"
+      }
+    },
     "test_pg_exports.py": {
       "test_every_statement_that_feeds_the_job_mapping_selects_the_whole_column_set": {
         "assertions": 3,
@@ -13814,6 +13840,7 @@
     "test_pg_budget.py": 22,
     "test_pg_closure.py": 37,
     "test_pg_constraints.py": 8,
+    "test_pg_export_datasets_fable51.py": 6,
     "test_pg_exports.py": 49,
     "test_pg_exports_xlsx_fable51.py": 10,
     "test_pg_fable51_inbound_ledger.py": 7,
@@ -13962,6 +13989,7 @@
     "test_pg_budget.py": 57,
     "test_pg_closure.py": 80,
     "test_pg_constraints.py": 13,
+    "test_pg_export_datasets_fable51.py": 15,
     "test_pg_exports.py": 138,
     "test_pg_exports_xlsx_fable51.py": 62,
     "test_pg_fable51_inbound_ledger.py": 30,

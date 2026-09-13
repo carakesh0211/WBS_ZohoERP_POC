@@ -573,6 +573,36 @@ def _ltree_subtree(column: str):
     return build
 
 
+def _in_list_any_of(*columns: str):
+    """As `_in_list`, but true if EITHER column matches -- for a shape (only
+    `budget_transfer`, today) that carries the same kind of id on two
+    different columns because the row has two sides. `budget_head_ids`
+    narrowing a transfer to a head means "on either leg", never "the source
+    leg only": a caller narrowing to a head they know as the DESTINATION must
+    still find the transfer that moved budget onto it."""
+
+    def build(value: Any, param: str) -> tuple[str, dict[str, Any]]:
+        values = sorted({str(v) for v in value})
+        clause = " OR ".join(f"{c} = ANY(%({param})s)" for c in columns)
+        return f"({clause})", {param: values}
+
+    return build
+
+
+def _ltree_subtree_any_of(*columns: str):
+    """As `_ltree_subtree`, but true if EITHER column's subtree matches --
+    `budget_transfer`'s `wbs_paths`, for the same reason `_in_list_any_of`
+    exists: a transfer has two WBS legs and a caller narrowing to a subtree
+    must find it whichever leg falls inside that subtree."""
+
+    def build(value: Any, param: str) -> tuple[str, dict[str, Any]]:
+        paths = sorted({str(v) for v in value})
+        clause = " OR ".join(f"{c} <@ ANY(%({param})s::ltree[])" for c in columns)
+        return f"({clause})", {param: paths}
+
+    return build
+
+
 def _date_at_or_after(column: str):
     def build(value: Any, param: str) -> tuple[str, dict[str, Any]]:
         return f"({column} >= %({param})s)", {param: str(value)}
@@ -636,6 +666,41 @@ _NO_REQUESTOR = ("no table this dataset reads carries a requestor id shared "
                  "across every row.")
 _NO_APPROVER = ("the approving identity sits on documents this dataset does "
                 "not join.")
+#: FABLE 5.1, Stream: new registers (integrate/export-datasets). Shared
+#: refusal text for the several new datasets that carry no vendor, no item
+#: master reference or a single fixed document type -- named once rather than
+#: restated with slightly different wording at each dataset, which is how two
+#: datasets refusing the SAME thing come to say DIFFERENT things about it.
+_NO_VENDOR = "this document carries no vendor reference."
+_NO_ITEM_MASTER = "no table this dataset reads joins item_master."
+_NO_WBS = ("this document is at the PROJECT grain and carries no WBS "
+           "reference of its own.")
+
+
+def _no_document_type(label: str) -> str:
+    return (f"this dataset is {label} only; the document type is fixed for "
+            f"every row.")
+
+
+#: `reconciliation_exception` (011). Reachable only through the row's OWN
+#: nullable `entity_id` / `project_id` -- there is no `project` JOIN, so
+#: `_PROJECT_REACHING_COLUMNS` (which assumes an aliased `p`) does not apply.
+#: Mirrors `pg/integration_store.py::EXCEPTION_SCOPE_COLUMNS` exactly:
+#: plant/location are waived by explicit `None` because 011 gives the table no
+#: column for either, and both are already enforced at `project`, which
+#: carries its own RLS policy. See that module's own comment on the argument
+#: ORDER this mirrors -- `capex_scope_permits(entity_id, NULL, NULL,
+#: project_id)` -- for why the two waived slots must stay in these positions.
+_RECONCILIATION_EXCEPTION_SCOPE_COLUMNS: dict[str, str | None] = {
+    "entity": "x.entity_id", "plant": None, "location": None,
+    "project": "x.project_id",
+}
+_NO_PLANT_ON_EXCEPTION = ("011 gives reconciliation_exception no plant_id "
+                          "column; the dimension is enforced at project, "
+                          "which carries its own policy.")
+_NO_LOCATION_ON_EXCEPTION = ("011 gives reconciliation_exception no "
+                             "location_id column; the dimension is enforced "
+                             "at project, which carries its own policy.")
 
 
 BUDGET_LEDGER_CELLS = Dataset(
@@ -991,9 +1056,796 @@ INTERNAL_MATERIAL_REQUESTS = Dataset(
 )
 
 
+PURCHASE_REQUESTS = Dataset(
+    name="purchase_requests",
+    title="Purchase request headers with their approval position",
+    from_sql="""
+        FROM purchase_request pr
+        JOIN project p ON p.project_id = pr.project_id
+    """,
+    columns=(
+        Column("pr_id", "pr.pr_id"),
+        Column("pr_number", "pr.pr_number"),
+        Column("project_id", "p.project_id"),
+        Column("project_capex_code", "p.capex_code"),
+        Column("entity_id", "p.entity_id"),
+        Column("plant_id", "p.plant_id"),
+        Column("location_id", "p.location_id"),
+        Column("status", "pr.status"),
+        Column("check_result", "pr.check_result"),
+        Column("requested_by", "pr.requested_by"),
+        Column("requested_at", "pr.requested_at", "timestamp"),
+        Column("approver", "pr.approver"),
+        Column("approved_at", "pr.approved_at", "timestamp"),
+        Column("reserves_budget", "pr.reserves_budget", "bool"),
+        # DERIVED, maintained by `capex_purchase_request_total_refresh()`
+        # (013) rather than re-summed here -- see the module docstring on not
+        # re-deriving what a trigger already keeps equal to SUM(pr_line...).
+        Column("amount", "pr.amount_paise", "paise"),
+        # A scalar subquery, not a JOIN: a header row must appear exactly
+        # once regardless of how many lines it carries, and joining pr_line
+        # here would multiply it -- which is also why `line_count` cannot be
+        # `COUNT(*)` over the FROM clause itself.
+        Column("line_count",
+               "(SELECT COUNT(*) FROM pr_line l WHERE l.pr_id = pr.pr_id)::int",
+               "int"),
+        Column("exception_reason", "pr.exception_reason"),
+        Column("updated_at", "pr.updated_at", "timestamp"),
+    ),
+    # `ux_purchase_request_number` makes `pr_number` unique, and it is 1:1
+    # with `pr_id` -- a single column is already a total order here.
+    key_sql=("pr.pr_number",),
+    scope_columns=_PROJECT_REACHING_COLUMNS,
+    filters={
+        "entity_ids": _in_list("p.entity_id"),
+        "plant_ids": _in_list("p.plant_id"),
+        "location_ids": _in_list("p.location_id"),
+        "project_ids": _in_list("p.project_id"),
+        "lifecycle_statuses": _in_list("pr.status"),
+        "requestor_ids": _in_list("pr.requested_by"),
+        "approver_ids": _in_list("pr.approver"),
+        "date_from": _date_at_or_after("pr.requested_at"),
+        "date_to": _date_at_or_before("pr.requested_at"),
+    },
+    unsupported={
+        "period_ids": _NO_PERIOD, "category_ids": _NO_CATEGORY,
+        "budget_category_ids": _NO_CATEGORY,
+        # The header carries no WBS or budget head of its own -- both are
+        # denormalised onto `pr_line`; export purchase_request_lines for them.
+        "wbs_paths": ("a purchase request header carries no WBS reference; "
+                      "each of its lines does -- export purchase_request_lines."),
+        "budget_head_ids": ("a purchase request header carries no budget head "
+                            "of its own; each of its lines does -- export "
+                            "purchase_request_lines."),
+        "item_ids": _NO_ITEM_MASTER, "approval_statuses": _NO_APPROVAL,
+        "division_ids": _NO_DIVISION, "branch_ids": _NO_BRANCH,
+        "zone_ids": _NO_ZONE, "fiscal_years": _NO_FISCAL_YEAR,
+        "vendor_ids": _NO_VENDOR,
+        "document_types": _no_document_type("purchase request headers"),
+    },
+)
+
+
+PURCHASE_REQUEST_LINES = Dataset(
+    name="purchase_request_lines",
+    title="Purchase request lines with their fulfilment split",
+    from_sql="""
+        FROM pr_line pl
+        JOIN purchase_request pr ON pr.pr_id = pl.pr_id
+        JOIN project p ON p.project_id = pl.project_id
+        JOIN wbs_element w ON w.wbs_id = pl.wbs_id
+        -- 034: how much of the APPROVED line converts to a purchase order and
+        -- how much is met from stores. LEFT joined -- a line not yet decided,
+        -- or approved before 034 shipped, carries no fulfilment row and still
+        -- exports; its mode/quantity/amount columns render empty.
+        LEFT JOIN pr_line_fulfilment plf ON plf.pr_line_id = pl.pr_line_id
+        -- FABLE 5.1 / migration 026: the line's own CELL's category, read the
+        -- same way PURCHASE_ORDER_LINES reads it.
+        LEFT JOIN budget_control_cell bc
+               ON bc.wbs_id = pl.wbs_id AND bc.budget_head_id = pl.budget_head_id
+        LEFT JOIN budget_category bcat ON bcat.category_id = bc.budget_category_id
+    """,
+    columns=(
+        Column("pr_line_id", "pl.pr_line_id"),
+        Column("pr_id", "pl.pr_id"),
+        Column("pr_number", "pr.pr_number"),
+        Column("line_no", "pl.line_no", "int"),
+        Column("pr_status", "pr.status"),
+        Column("project_id", "p.project_id"),
+        Column("project_capex_code", "p.capex_code"),
+        Column("entity_id", "p.entity_id"),
+        Column("plant_id", "p.plant_id"),
+        Column("location_id", "p.location_id"),
+        Column("wbs_id", "pl.wbs_id"),
+        Column("wbs_code", "w.wbs_code"),
+        Column("budget_head_id", "pl.budget_head_id"),
+        Column("budget_category_id", "bc.budget_category_id"),
+        Column("budget_category_code", "bcat.code"),
+        Column("budget_category_name", "bcat.name"),
+        Column("description", "pl.description"),
+        Column("quantity", "pl.quantity", "numeric"),
+        Column("amount", "pl.amount_paise", "paise"),
+        Column("fulfilment_mode", "plf.mode"),
+        Column("external_quantity", "plf.external_quantity", "numeric"),
+        Column("internal_quantity", "plf.internal_quantity", "numeric"),
+        Column("external_amount", "plf.external_amount_paise", "paise"),
+        Column("internal_amount", "plf.internal_amount_paise", "paise"),
+        Column("requested_by", "pr.requested_by"),
+        Column("requested_at", "pr.requested_at", "timestamp"),
+        Column("updated_at", "pl.updated_at", "timestamp"),
+    ),
+    # `ux_pr_line_number` makes `(pr_id, line_no)` unique; `pr_number` is 1:1
+    # with `pr_id` (`ux_purchase_request_number`), so this pair is a unique
+    # total order, exactly PURCHASE_ORDER_LINES's own shape.
+    key_sql=("pr.pr_number", "pl.line_no::text"),
+    scope_columns=_PROJECT_REACHING_COLUMNS,
+    filters={
+        "entity_ids": _in_list("p.entity_id"),
+        "plant_ids": _in_list("p.plant_id"),
+        "location_ids": _in_list("p.location_id"),
+        "project_ids": _in_list("p.project_id"),
+        "wbs_paths": _ltree_subtree("w.wbs_path"),
+        "budget_head_ids": _in_list("pl.budget_head_id"),
+        "budget_category_ids": _in_list("bc.budget_category_id"),
+        # A LINE carries no status of its own; the header's is what a caller
+        # narrowing by lifecycle actually means, exactly as
+        # PURCHASE_ORDER_LINES narrows by the ORDER's own status.
+        "lifecycle_statuses": _in_list("pr.status"),
+        "requestor_ids": _in_list("pr.requested_by"),
+        "approver_ids": _in_list("pr.approver"),
+        # The header's own date -- a line carries no request date of its own,
+        # matching PURCHASE_ORDER_LINES's `po.ordered_at`.
+        "date_from": _date_at_or_after("pr.requested_at"),
+        "date_to": _date_at_or_before("pr.requested_at"),
+    },
+    unsupported={
+        "period_ids": _NO_PERIOD, "category_ids": _NO_CATEGORY,
+        "item_ids": ("a purchase request line names no item master "
+                     "reference in this schema."),
+        "approval_statuses": _NO_APPROVAL,
+        "division_ids": _NO_DIVISION, "branch_ids": _NO_BRANCH,
+        "zone_ids": _NO_ZONE, "fiscal_years": _NO_FISCAL_YEAR,
+        "vendor_ids": _NO_VENDOR,
+        "document_types": _no_document_type("purchase request lines"),
+    },
+)
+
+
+GOODS_RECEIPT_LINES = Dataset(
+    name="goods_receipt_lines",
+    title="Goods receipt (GRN) lines against their purchase order line",
+    from_sql="""
+        FROM grn_line gl
+        JOIN grn g ON g.grn_id = gl.grn_id
+        JOIN po_line pol ON pol.po_line_id = gl.po_line_id
+        JOIN purchase_order po ON po.po_id = gl.po_id
+        JOIN project p ON p.project_id = pol.project_id
+        JOIN wbs_element w ON w.wbs_id = pol.wbs_id
+        -- FABLE 5.1 / migration 026: the RECEIVED-AGAINST cell's category,
+        -- read the same way PURCHASE_ORDER_LINES reads its own PO line's.
+        LEFT JOIN budget_control_cell bc
+               ON bc.wbs_id = pol.wbs_id AND bc.budget_head_id = pol.budget_head_id
+        LEFT JOIN budget_category bcat ON bcat.category_id = bc.budget_category_id
+    """,
+    columns=(
+        Column("grn_line_id", "gl.grn_line_id"),
+        Column("grn_id", "gl.grn_id"),
+        Column("grn_number", "g.grn_number"),
+        Column("grn_status", "g.status"),
+        Column("is_reversal", "g.is_reversal", "bool"),
+        Column("received_at", "g.received_at", "timestamp"),
+        Column("po_id", "gl.po_id"),
+        Column("po_number", "po.po_number"),
+        Column("po_line_id", "gl.po_line_id"),
+        Column("po_line_no", "pol.line_no", "int"),
+        Column("project_id", "p.project_id"),
+        Column("project_capex_code", "p.capex_code"),
+        Column("entity_id", "p.entity_id"),
+        Column("plant_id", "p.plant_id"),
+        Column("location_id", "p.location_id"),
+        Column("wbs_id", "pol.wbs_id"),
+        Column("wbs_code", "w.wbs_code"),
+        Column("budget_head_id", "pol.budget_head_id"),
+        Column("budget_category_id", "bc.budget_category_id"),
+        Column("budget_category_code", "bcat.code"),
+        Column("budget_category_name", "bcat.name"),
+        Column("receive_external_id", "gl.receive_external_id"),
+        Column("line_external_id", "gl.line_external_id"),
+        Column("quantity", "gl.quantity", "numeric"),
+        Column("amount", "gl.amount_paise", "paise"),
+        # 027: the receipt's OWN currency, and the immutable source-document
+        # figure in that currency's own minor units. `source_currency` lives
+        # on the HEADER (`grn`), never on the line; `source_amount_minor` is
+        # NULL on an INR receipt (the identity translation -- see 027's
+        # header). Rendered as `int`, not `paise`: this is a minor-unit
+        # figure in `source_currency`, which is not always INR, and running
+        # it through `format_paise` would print a foreign-currency amount
+        # with no currency attached, mislabelled as rupees.
+        Column("source_currency", "g.source_currency"),
+        Column("source_amount_minor", "gl.source_amount_minor", "int"),
+        Column("updated_at", "gl.updated_at", "timestamp"),
+    ),
+    # Neither `grn_line` nor its ordinal-carrying `line_no` (016) is
+    # populated on the ordinary Zoho-mirrored row (016's own header: "NOTHING
+    # POPULATES IT"), so there is no business ordinal to sort by. `grn_number`
+    # is no longer estate-wide unique on its own -- 014 drops `ux_grn_number`
+    # in favour of `ux_grn_number_scoped` (entity_id, numbering_series_id,
+    # period_key, grn_number) -- but it still groups a receipt's lines
+    # together for a readable sort; `grn_line_id`, the table's PRIMARY KEY, is
+    # what actually makes the pair a unique total order, regardless of
+    # `grn_number`'s own uniqueness -- exactly the shape `vendor_bill_lines`
+    # uses for the same reason.
+    key_sql=("g.grn_number", "gl.grn_line_id"),
+    scope_columns=_PROJECT_REACHING_COLUMNS,
+    filters={
+        "entity_ids": _in_list("p.entity_id"),
+        "plant_ids": _in_list("p.plant_id"),
+        "location_ids": _in_list("p.location_id"),
+        "project_ids": _in_list("p.project_id"),
+        "wbs_paths": _ltree_subtree("w.wbs_path"),
+        "budget_head_ids": _in_list("pol.budget_head_id"),
+        "budget_category_ids": _in_list("bc.budget_category_id"),
+        "lifecycle_statuses": _in_list("g.status"),
+        "date_from": _date_at_or_after("g.received_at"),
+        "date_to": _date_at_or_before("g.received_at"),
+    },
+    unsupported={
+        "period_ids": _NO_PERIOD, "category_ids": _NO_CATEGORY,
+        "item_ids": _NO_ITEM_MASTER, "approval_statuses": _NO_APPROVAL,
+        "division_ids": _NO_DIVISION, "branch_ids": _NO_BRANCH,
+        "zone_ids": _NO_ZONE, "fiscal_years": _NO_FISCAL_YEAR,
+        "requestor_ids": _NO_REQUESTOR, "approver_ids": _NO_APPROVER,
+        "vendor_ids": ("purchase_order carries vendor_name, not a "
+                       "vendor_master id -- filtering by id would silently "
+                       "match nothing."),
+        "document_types": _no_document_type("goods receipt lines"),
+    },
+)
+
+
+VENDOR_BILL_LINES = Dataset(
+    name="vendor_bill_lines",
+    title="Vendor bill lines with their receipt citation",
+    from_sql="""
+        FROM bill_line bl
+        JOIN bill b ON b.bill_id = bl.bill_id
+        JOIN project p ON p.project_id = b.project_id
+        JOIN wbs_element w ON w.wbs_id = bl.wbs_id
+        -- FABLE 5.1 / migration 026: the LINE's own cell's category.
+        LEFT JOIN budget_control_cell bc
+               ON bc.wbs_id = bl.wbs_id AND bc.budget_head_id = bl.budget_head_id
+        LEFT JOIN budget_category bcat ON bcat.category_id = bc.budget_category_id
+    """,
+    columns=(
+        Column("bill_line_id", "bl.bill_line_id"),
+        Column("bill_id", "bl.bill_id"),
+        Column("bill_number", "b.bill_number"),
+        Column("vendor_name", "b.vendor_name"),
+        Column("status", "b.status"),
+        # AUD-C-004: the accounting-effective status (Draft/Approved/Void/
+        # Reversal), separate from `status` above -- see 013's header.
+        Column("accounting_status", "b.accounting_status"),
+        Column("doc_type", "b.doc_type"),
+        Column("is_reversal", "b.is_reversal", "bool"),
+        Column("bill_date", "b.bill_date", "date"),
+        Column("po_id", "bl.po_id"),
+        Column("po_line_id", "bl.po_line_id"),
+        Column("project_id", "p.project_id"),
+        Column("project_capex_code", "p.capex_code"),
+        Column("entity_id", "p.entity_id"),
+        Column("plant_id", "p.plant_id"),
+        Column("location_id", "p.location_id"),
+        Column("wbs_id", "bl.wbs_id"),
+        Column("wbs_code", "w.wbs_code"),
+        Column("budget_head_id", "bl.budget_head_id"),
+        Column("budget_category_id", "bc.budget_category_id"),
+        Column("budget_category_code", "bcat.code"),
+        Column("budget_category_name", "bcat.name"),
+        Column("description", "bl.description"),
+        Column("quantity", "bl.quantity", "numeric"),
+        # SIGNED (013): a credit note's line amounts are negative paise.
+        # `format_paise` renders a negative correctly (`"-0.05"`); there is
+        # no clamping here, exactly as the ledger itself carries the sign.
+        Column("amount", "bl.amount_paise", "paise"),
+        Column("non_creditable_tax", "bl.non_creditable_tax_paise", "paise"),
+        Column("freight", "bl.freight_paise", "paise"),
+        # 033: the tenant's receive line this bill line cited, and the local
+        # `grn_line` that citation resolved to (NULL until the receive walk
+        # mirrors it, or when the citation names a line this ledger holds no
+        # `grn_line` for -- see 033's header; refines attribution, never
+        # gates it).
+        Column("receive_line_external_id", "bl.receive_line_external_id"),
+        Column("grn_line_id", "bl.grn_line_id"),
+        Column("updated_at", "bl.updated_at", "timestamp"),
+    ),
+    # `bill_line` carries no RELIABLY populated line ordinal (014 adds
+    # `line_no` but, like `grn_line`'s, does not backfill or require it).
+    # `bill_number` is no longer estate-wide unique either -- 014 drops
+    # `ux_bill_number` for `ux_bill_number_scoped` (entity_id, vendor_key,
+    # bill_number_normalised) -- but it still groups a bill's lines together
+    # for a readable sort; `bill_line_id`, the table's PRIMARY KEY, is what
+    # actually makes the pair a unique total order -- the same shape
+    # `goods_receipt_lines` uses, for the same reason.
+    key_sql=("b.bill_number", "bl.bill_line_id"),
+    scope_columns=_PROJECT_REACHING_COLUMNS,
+    filters={
+        "entity_ids": _in_list("p.entity_id"),
+        "plant_ids": _in_list("p.plant_id"),
+        "location_ids": _in_list("p.location_id"),
+        "project_ids": _in_list("p.project_id"),
+        "wbs_paths": _ltree_subtree("w.wbs_path"),
+        "budget_head_ids": _in_list("bl.budget_head_id"),
+        "budget_category_ids": _in_list("bc.budget_category_id"),
+        # The C3 lifecycle label -- the same column every other dataset's
+        # `lifecycle_statuses` narrows by (`po.status`, `imr.status`, ...),
+        # deliberately not `accounting_status`, which is exported as its own
+        # column and is AUD-C-004's four-value posting state, not a lifecycle.
+        "lifecycle_statuses": _in_list("b.status"),
+        # Real and varying on this table (013's `ck_bill_doc_type`), unlike
+        # every other dataset here where the document type is fixed for every
+        # row -- so, uniquely among these datasets, it is SUPPORTED.
+        "document_types": _in_list("b.doc_type"),
+        "date_from": _date_at_or_after("b.bill_date"),
+        "date_to": _date_at_or_before("b.bill_date"),
+    },
+    unsupported={
+        "period_ids": _NO_PERIOD, "category_ids": _NO_CATEGORY,
+        "item_ids": _NO_ITEM_MASTER, "approval_statuses": _NO_APPROVAL,
+        "division_ids": _NO_DIVISION, "branch_ids": _NO_BRANCH,
+        "zone_ids": _NO_ZONE, "fiscal_years": _NO_FISCAL_YEAR,
+        "requestor_ids": _NO_REQUESTOR, "approver_ids": _NO_APPROVER,
+        "vendor_ids": ("bill carries vendor_name, not a vendor_master id -- "
+                       "filtering by id would silently match nothing."),
+    },
+)
+
+
+RECONCILIATION_EXCEPTIONS = Dataset(
+    name="reconciliation_exceptions",
+    title="Reconciliation exceptions raised by the integration sweeps",
+    # No JOIN: `entity_id` and `project_id` are the row's OWN nullable
+    # columns (011), read directly -- exactly how `pg/integration_store.py`'s
+    # own queries against this table read them.
+    from_sql="FROM reconciliation_exception x",
+    columns=(
+        Column("exception_id", "x.exception_id"),
+        Column("kind", "x.kind"),
+        Column("object_type", "x.object_type"),
+        Column("object_id", "x.object_id"),
+        Column("entity_id", "x.entity_id"),
+        Column("project_id", "x.project_id"),
+        Column("status", "x.status"),
+        Column("detail", "x.detail"),
+        Column("local_paise", "x.local_paise", "paise"),
+        Column("source_paise", "x.source_paise", "paise"),
+        Column("correlation_id", "x.correlation_id"),
+        Column("raised_at", "x.raised_at", "timestamp"),
+        Column("resolved_at", "x.resolved_at", "timestamp"),
+        Column("resolved_by", "x.resolved_by"),
+        Column("resolution_note", "x.resolution_note"),
+    ),
+    # `exception_id` is the table's PRIMARY KEY.
+    key_sql=("x.exception_id",),
+    scope_columns=_RECONCILIATION_EXCEPTION_SCOPE_COLUMNS,
+    filters={
+        "entity_ids": _in_list("x.entity_id"),
+        "project_ids": _in_list("x.project_id"),
+        "lifecycle_statuses": _in_list("x.status"),
+        # The identity that CLOSED the exception -- the closest thing this
+        # table has to an approving decision, and the same role
+        # `budget_revisions`/`budget_transfers` map onto `decided_by`.
+        "approver_ids": _in_list("x.resolved_by"),
+        "date_from": _date_at_or_after("x.raised_at"),
+        "date_to": _date_at_or_before("x.raised_at"),
+    },
+    unsupported={
+        "plant_ids": _NO_PLANT_ON_EXCEPTION,
+        "location_ids": _NO_LOCATION_ON_EXCEPTION,
+        "period_ids": _NO_PERIOD, "category_ids": _NO_CATEGORY,
+        "budget_category_ids": _NO_CATEGORY,
+        "wbs_paths": _NO_WBS,
+        "budget_head_ids": ("011 gives reconciliation_exception no budget "
+                            "head reference; it is raised against an object, "
+                            "not a control cell."),
+        "item_ids": _NO_ITEM_MASTER, "approval_statuses": _NO_APPROVAL,
+        "division_ids": _NO_DIVISION, "branch_ids": _NO_BRANCH,
+        "zone_ids": _NO_ZONE, "fiscal_years": _NO_FISCAL_YEAR,
+        "requestor_ids": ("an exception is raised by a sweep, not requested; "
+                          "no table this dataset reads carries a requestor "
+                          "id."),
+        "vendor_ids": _NO_VENDOR,
+        "document_types": ("`object_type` names the TABLE an exception was "
+                           "raised against (e.g. 'grn_line'), not a document "
+                           "type in the `document_types` filter's sense; it "
+                           "is exported as its own column instead."),
+    },
+)
+
+
+CAPITALISATION_REQUESTS = Dataset(
+    name="capitalisation_requests",
+    title="Capitalisation requests with their CWIP position",
+    from_sql="""
+        FROM capitalisation_request cr
+        JOIN project p ON p.project_id = cr.project_id
+    """,
+    columns=(
+        Column("cap_id", "cr.cap_id"),
+        Column("cap_number", "cr.cap_number"),
+        Column("project_id", "p.project_id"),
+        Column("project_capex_code", "p.capex_code"),
+        Column("entity_id", "p.entity_id"),
+        Column("plant_id", "p.plant_id"),
+        Column("location_id", "p.location_id"),
+        Column("review_id", "cr.review_id"),
+        Column("status", "cr.status"),
+        Column("cwip_balance", "cr.cwip_balance_paise", "paise"),
+        Column("allocated", "cr.allocated_paise", "paise"),
+        Column("posting_status", "cr.posting_status"),
+        Column("requested_by", "cr.requested_by"),
+        Column("requested_at", "cr.requested_at", "timestamp"),
+        Column("submitted_at", "cr.submitted_at", "timestamp"),
+        Column("approver", "cr.approver"),
+        Column("approved_at", "cr.approved_at", "timestamp"),
+        Column("decision_note", "cr.decision_note"),
+        Column("updated_at", "cr.updated_at", "timestamp"),
+    ),
+    # `ux_capitalisation_request_number` makes `cap_number` unique.
+    key_sql=("cr.cap_number",),
+    scope_columns=_PROJECT_REACHING_COLUMNS,
+    filters={
+        "entity_ids": _in_list("p.entity_id"),
+        "plant_ids": _in_list("p.plant_id"),
+        "location_ids": _in_list("p.location_id"),
+        "project_ids": _in_list("p.project_id"),
+        "lifecycle_statuses": _in_list("cr.status"),
+        "requestor_ids": _in_list("cr.requested_by"),
+        "approver_ids": _in_list("cr.approver"),
+        "date_from": _date_at_or_after("cr.requested_at"),
+        "date_to": _date_at_or_before("cr.requested_at"),
+    },
+    unsupported={
+        "period_ids": _NO_PERIOD, "category_ids": _NO_CATEGORY,
+        "budget_category_ids": _NO_CATEGORY,
+        "wbs_paths": _NO_WBS,
+        "budget_head_ids": ("a capitalisation request is at the PROJECT "
+                            "grain and carries no budget head of its own."),
+        "item_ids": _NO_ITEM_MASTER, "approval_statuses": _NO_APPROVAL,
+        "division_ids": _NO_DIVISION, "branch_ids": _NO_BRANCH,
+        "zone_ids": _NO_ZONE, "fiscal_years": _NO_FISCAL_YEAR,
+        "vendor_ids": _NO_VENDOR,
+        "document_types": _no_document_type("capitalisation requests"),
+    },
+)
+
+
+BUDGET_REVISIONS = Dataset(
+    name="budget_revisions",
+    title="Budget revisions (single-cell maker-checker changes)",
+    from_sql="""
+        FROM budget_revision r
+        JOIN wbs_element w ON w.wbs_id = r.wbs_id
+        JOIN project p ON p.project_id = w.project_id
+        LEFT JOIN budget_head bh ON bh.budget_head_id = r.budget_head_id
+    """,
+    columns=(
+        Column("revision_id", "r.revision_id"),
+        Column("wbs_id", "r.wbs_id"),
+        Column("wbs_code", "w.wbs_code"),
+        Column("project_id", "p.project_id"),
+        Column("project_capex_code", "p.capex_code"),
+        Column("entity_id", "p.entity_id"),
+        Column("plant_id", "p.plant_id"),
+        Column("location_id", "p.location_id"),
+        Column("budget_head_id", "r.budget_head_id"),
+        Column("budget_head_code", "bh.code"),
+        Column("budget_head_name", "bh.name"),
+        # SIGNED (003): positive is an increase, negative is a cut.
+        Column("delta", "r.delta_paise", "paise"),
+        Column("effective_from", "r.effective_from", "date"),
+        Column("justification", "r.justification"),
+        Column("status", "r.status"),
+        Column("created_by", "r.created_by"),
+        Column("created_at", "r.created_at", "timestamp"),
+        Column("decided_by", "r.decided_by"),
+        Column("decided_at", "r.decided_at", "timestamp"),
+        Column("decision_note", "r.decision_note"),
+    ),
+    # `revision_id` is the table's PRIMARY KEY.
+    key_sql=("r.revision_id",),
+    scope_columns=_PROJECT_REACHING_COLUMNS,
+    filters={
+        "entity_ids": _in_list("p.entity_id"),
+        "plant_ids": _in_list("p.plant_id"),
+        "location_ids": _in_list("p.location_id"),
+        "project_ids": _in_list("p.project_id"),
+        "wbs_paths": _ltree_subtree("w.wbs_path"),
+        "budget_head_ids": _in_list("r.budget_head_id"),
+        "lifecycle_statuses": _in_list("r.status"),
+        # The maker and the checker of the maker-checker document.
+        "requestor_ids": _in_list("r.created_by"),
+        "approver_ids": _in_list("r.decided_by"),
+        "date_from": _date_at_or_after("r.effective_from"),
+        "date_to": _date_at_or_before("r.effective_from"),
+    },
+    unsupported={
+        "period_ids": _NO_PERIOD, "category_ids": _NO_CATEGORY,
+        "budget_category_ids": ("budget_revision (003) carries no category "
+                                "reference of its own; export "
+                                "budget_ledger_cells for the cell's."),
+        "item_ids": _NO_ITEM_MASTER, "approval_statuses": _NO_APPROVAL,
+        "division_ids": _NO_DIVISION, "branch_ids": _NO_BRANCH,
+        "zone_ids": _NO_ZONE, "fiscal_years": _NO_FISCAL_YEAR,
+        "vendor_ids": _NO_VENDOR,
+        "document_types": _no_document_type("budget revisions"),
+    },
+)
+
+
+BUDGET_TRANSFERS = Dataset(
+    name="budget_transfers",
+    title="Budget transfers (two-cell maker-checker moves)",
+    from_sql="""
+        FROM budget_transfer t
+        -- Scoped through the SOURCE leg, exactly as
+        -- `budget.transfer_snapshot` reads it: "the destination's project is
+        -- not necessarily the source's", and a transfer needs exactly one
+        -- project to compile a `{scope}` predicate against.
+        JOIN wbs_element w ON w.wbs_id = t.from_wbs_id
+        JOIN project p ON p.project_id = w.project_id
+        LEFT JOIN wbs_element wt ON wt.wbs_id = t.to_wbs_id
+        LEFT JOIN budget_head bh_from ON bh_from.budget_head_id = t.from_head_id
+        LEFT JOIN budget_head bh_to ON bh_to.budget_head_id = t.to_head_id
+    """,
+    columns=(
+        Column("transfer_id", "t.transfer_id"),
+        Column("from_wbs_id", "t.from_wbs_id"),
+        Column("from_wbs_code", "w.wbs_code"),
+        Column("from_head_id", "t.from_head_id"),
+        Column("from_head_code", "bh_from.code"),
+        Column("from_head_name", "bh_from.name"),
+        Column("to_wbs_id", "t.to_wbs_id"),
+        Column("to_wbs_code", "wt.wbs_code"),
+        Column("to_head_id", "t.to_head_id"),
+        Column("to_head_code", "bh_to.code"),
+        Column("to_head_name", "bh_to.name"),
+        # The SOURCE leg's project -- see the scoping note on `from_sql`.
+        Column("project_id", "p.project_id"),
+        Column("project_capex_code", "p.capex_code"),
+        Column("entity_id", "p.entity_id"),
+        Column("plant_id", "p.plant_id"),
+        Column("location_id", "p.location_id"),
+        # ALWAYS POSITIVE (003): the magnitude moved; the sign split into a
+        # -amount source leg and a +amount destination leg happens only in
+        # the two `budget_line` rows an approval writes, never here.
+        Column("amount", "t.amount_paise", "paise"),
+        Column("effective_from", "t.effective_from", "date"),
+        Column("justification", "t.justification"),
+        Column("status", "t.status"),
+        Column("created_by", "t.created_by"),
+        Column("created_at", "t.created_at", "timestamp"),
+        Column("decided_by", "t.decided_by"),
+        Column("decided_at", "t.decided_at", "timestamp"),
+        Column("decision_note", "t.decision_note"),
+    ),
+    # `transfer_id` is the table's PRIMARY KEY.
+    key_sql=("t.transfer_id",),
+    scope_columns=_PROJECT_REACHING_COLUMNS,
+    filters={
+        # These four narrow by the SOURCE leg's project only -- the same one
+        # `scope_columns` compiles against. A transfer whose DESTINATION sits
+        # in a project the caller cannot otherwise reach but whose source they
+        # can is still visible; RLS on `budget_transfer` itself (014) is the
+        # independent enforcement that the row may be read at all.
+        "entity_ids": _in_list("p.entity_id"),
+        "plant_ids": _in_list("p.plant_id"),
+        "location_ids": _in_list("p.location_id"),
+        "project_ids": _in_list("p.project_id"),
+        # EITHER leg -- a transfer has two WBS and two budget-head sides, and
+        # a caller narrowing to one must find it whichever side it falls on.
+        "wbs_paths": _ltree_subtree_any_of("w.wbs_path", "wt.wbs_path"),
+        "budget_head_ids": _in_list_any_of("t.from_head_id", "t.to_head_id"),
+        "lifecycle_statuses": _in_list("t.status"),
+        "requestor_ids": _in_list("t.created_by"),
+        "approver_ids": _in_list("t.decided_by"),
+        "date_from": _date_at_or_after("t.effective_from"),
+        "date_to": _date_at_or_before("t.effective_from"),
+    },
+    unsupported={
+        "period_ids": _NO_PERIOD, "category_ids": _NO_CATEGORY,
+        "budget_category_ids": ("budget_transfer (003) carries no category "
+                                "reference of its own; export "
+                                "budget_ledger_cells for either cell's."),
+        "item_ids": _NO_ITEM_MASTER, "approval_statuses": _NO_APPROVAL,
+        "division_ids": _NO_DIVISION, "branch_ids": _NO_BRANCH,
+        "zone_ids": _NO_ZONE, "fiscal_years": _NO_FISCAL_YEAR,
+        "vendor_ids": _NO_VENDOR,
+        "document_types": _no_document_type("budget transfers"),
+    },
+)
+
+
+PROJECTS = Dataset(
+    name="projects",
+    title="Projects with their entity and lifecycle status",
+    from_sql="""
+        FROM project p
+        JOIN entity e ON e.entity_id = p.entity_id
+    """,
+    columns=(
+        Column("project_id", "p.project_id"),
+        Column("capex_code", "p.capex_code"),
+        Column("name", "p.name"),
+        Column("status", "p.status"),
+        Column("is_active", "p.is_active", "bool"),
+        Column("entity_id", "p.entity_id"),
+        Column("entity_code", "e.code"),
+        Column("plant_id", "p.plant_id"),
+        Column("location_id", "p.location_id"),
+        # `project` carries no explicit "owner" column -- `created_by` is the
+        # closest fact this schema records (who made the row), and is
+        # exported under that name rather than left unlabelled.
+        Column("owner", "p.created_by"),
+        Column("created_at", "p.created_at", "timestamp"),
+        Column("updated_at", "p.updated_at", "timestamp"),
+    ),
+    # `project_id` is the table's PRIMARY KEY.
+    key_sql=("p.project_id",),
+    scope_columns=_PROJECT_REACHING_COLUMNS,
+    filters={
+        "entity_ids": _in_list("p.entity_id"),
+        "plant_ids": _in_list("p.plant_id"),
+        "location_ids": _in_list("p.location_id"),
+        "project_ids": _in_list("p.project_id"),
+        "lifecycle_statuses": _in_list("p.status"),
+        # The same fact `owner` exports -- see that column's comment.
+        "requestor_ids": _in_list("p.created_by"),
+        "date_from": _date_at_or_after("p.created_at"),
+        "date_to": _date_at_or_before("p.created_at"),
+    },
+    unsupported={
+        "period_ids": _NO_PERIOD, "category_ids": _NO_CATEGORY,
+        "budget_category_ids": _NO_CATEGORY,
+        "wbs_paths": ("a project's WBS elements each carry their own path; "
+                      "export wbs_elements for them."),
+        "budget_head_ids": ("a project carries no budget head of its own; "
+                            "budget heads are entity-level masters -- export "
+                            "budget_ledger_cells for a cell's."),
+        "item_ids": _NO_ITEM_MASTER, "approval_statuses": _NO_APPROVAL,
+        "division_ids": _NO_DIVISION, "branch_ids": _NO_BRANCH,
+        "zone_ids": _NO_ZONE, "fiscal_years": _NO_FISCAL_YEAR,
+        "vendor_ids": _NO_VENDOR,
+        "document_types": _no_document_type("projects"),
+        "approver_ids": ("a project carries no approver identity in this "
+                         "schema; created_by is exported as owner."),
+    },
+)
+
+
+INTERNAL_MATERIAL_MOVEMENTS = Dataset(
+    name="internal_material_movements",
+    title="Internal material movements (the append-only quantity ledger)",
+    from_sql="""
+        FROM internal_material_movement m
+        JOIN internal_material_request imr ON imr.imr_id = m.imr_id
+        JOIN project p ON p.project_id = m.project_id
+        JOIN wbs_element w ON w.wbs_id = m.wbs_id
+        LEFT JOIN location lf ON lf.location_id = m.from_location_id
+        LEFT JOIN location lt ON lt.location_id = m.to_location_id
+    """,
+    columns=(
+        Column("movement_id", "m.movement_id"),
+        Column("imr_id", "m.imr_id"),
+        Column("imr_number", "imr.imr_number"),
+        Column("project_id", "p.project_id"),
+        Column("project_capex_code", "p.capex_code"),
+        Column("entity_id", "p.entity_id"),
+        Column("plant_id", "p.plant_id"),
+        Column("location_id", "p.location_id"),
+        Column("wbs_id", "m.wbs_id"),
+        Column("wbs_code", "w.wbs_code"),
+        Column("budget_head_id", "m.budget_head_id"),
+        Column("kind", "m.kind"),
+        Column("quantity", "m.quantity", "numeric"),
+        # ALLOCATE/ISSUE/RETURN/CANCEL carry base paise at the request's
+        # valuation; TRANSFER and CONSUME carry none (034's own CHECK,
+        # `ck_imm_no_money_on_transfer_or_consume`) -- zero, not NULL, so it
+        # renders as "0.00" rather than an empty cell on those rows.
+        Column("amount", "m.amount_paise", "paise"),
+        Column("from_location", "lf.code"),
+        Column("to_location", "lt.code"),
+        Column("idempotency_key", "m.idempotency_key"),
+        Column("reference", "m.reference"),
+        Column("note", "m.note"),
+        Column("correlation_id", "m.correlation_id"),
+        Column("occurred_at", "m.occurred_at", "timestamp"),
+        Column("created_by", "m.created_by"),
+        Column("created_at", "m.created_at", "timestamp"),
+    ),
+    # `movement_id` is the table's PRIMARY KEY.
+    key_sql=("m.movement_id",),
+    scope_columns=_PROJECT_REACHING_COLUMNS,
+    filters={
+        "entity_ids": _in_list("p.entity_id"),
+        "plant_ids": _in_list("p.plant_id"),
+        "location_ids": _in_list("p.location_id"),
+        "project_ids": _in_list("p.project_id"),
+        "wbs_paths": _ltree_subtree("w.wbs_path"),
+        "budget_head_ids": _in_list("m.budget_head_id"),
+        "requestor_ids": _in_list("m.created_by"),
+        "date_from": _date_at_or_after("m.occurred_at"),
+        "date_to": _date_at_or_before("m.occurred_at"),
+    },
+    unsupported={
+        "period_ids": _NO_PERIOD, "category_ids": _NO_CATEGORY,
+        "budget_category_ids": ("internal_material_movement (034) carries no "
+                                "category reference of its own; export "
+                                "budget_ledger_cells for the cell's."),
+        # `kind` is an EVENT TYPE (ALLOCATE/ISSUE/RETURN/CONSUME/TRANSFER/
+        # CANCEL) on an append-only log, not a document lifecycle status --
+        # exported as its own column rather than narrowed by
+        # `lifecycle_statuses`, which no `FILTER_FIELDS` entry names `kind`
+        # for anyway.
+        "lifecycle_statuses": ("a movement is an append-only event, not a "
+                              "document with a lifecycle status; `kind` "
+                              "names the event type and is exported as its "
+                              "own column."),
+        "item_ids": ("the item is named on internal_material_request, not "
+                     "the movement -- export internal_material_requests for "
+                     "it."),
+        "approval_statuses": _NO_APPROVAL,
+        "division_ids": _NO_DIVISION, "branch_ids": _NO_BRANCH,
+        "zone_ids": _NO_ZONE, "fiscal_years": _NO_FISCAL_YEAR,
+        "approver_ids": ("a movement carries no approver identity; the "
+                         "internal_material_request it belongs to does -- "
+                         "export internal_material_requests for it."),
+        "vendor_ids": _NO_VENDOR,
+        "document_types": _no_document_type("internal material movements"),
+    },
+)
+
+
+# FABLE 5.1 / integrate/export-datasets: `audit_entries` is DELIBERATELY NOT a
+# dataset here. `audit_log` (001) carries no entity/plant/project/location
+# column at all (`api/audit.py`'s own "Scope note": "filtered by stream_key /
+# object_type / object_id, not by the row-level scope dimensions
+# `repo.query()` compiles"), so there is no honest per-row scope predicate to
+# write -- `Dataset.scope_columns` would have to waive ALL FOUR dimensions by
+# explicit `None`, which the dataclass permits syntactically but which here
+# means something this module's whole design exists to prevent.
+#
+# `api/audit.py` gates every read of this table behind its OWN permission,
+# `audit.read` (`_AuditRead`, declared on that router and nowhere else). The
+# export router's floor is the unrelated `budget.read`, and creating a job is
+# gated only by the single blanket `export.create` -- there is no per-dataset
+# permission an export job checks. A `Dataset` here with every dimension
+# waived would therefore let ANY principal holding `export.create` (most
+# roles) export the ENTIRE audit trail of EVERY entity and EVERY project in
+# one file, with no `audit.read` check anywhere on that path -- a permission
+# this dataset would silently route around, not one it would honour.
+#
+# That is exactly the case the module docstring calls out: "an export is the
+# widest read in the product and the one where a waiver would be least
+# visible." Every dataset actually registered below reaches all four
+# dimensions through `project` and waives nothing; `reconciliation_exception`
+# above waives two of four because the STORE it mirrors waives the same two,
+# for a reason (011 gives the table no column) that is about the SCHEMA, not
+# about who may read it. `audit_log`'s gap is about WHO may read it, and an
+# export dataset is not where that permission belongs. Until a future wave
+# gives audit reads a scope this module can compile honestly -- or adds a
+# per-dataset permission an export job can check -- `audit_entries` stays
+# unregistered rather than shipped with a waiver that reads as a decision
+# nobody actually made.
+
+
 DATASETS: dict[str, Dataset] = {
-    d.name: d for d in (BUDGET_LEDGER_CELLS, WBS_ELEMENTS, PURCHASE_ORDER_LINES,
-                        INTERNAL_MATERIAL_REQUESTS)
+    d.name: d for d in (
+        BUDGET_LEDGER_CELLS, WBS_ELEMENTS, PURCHASE_ORDER_LINES,
+        INTERNAL_MATERIAL_REQUESTS, PURCHASE_REQUESTS, PURCHASE_REQUEST_LINES,
+        GOODS_RECEIPT_LINES, VENDOR_BILL_LINES, RECONCILIATION_EXCEPTIONS,
+        CAPITALISATION_REQUESTS, BUDGET_REVISIONS, BUDGET_TRANSFERS, PROJECTS,
+        INTERNAL_MATERIAL_MOVEMENTS,
+    )
 }
 
 
