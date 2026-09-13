@@ -13,10 +13,15 @@ group is now a real `<button>` with a caret, `aria-expanded`, and an
 its rows. `Work` and `Project Control` default open (the screens used every
 day); `Procurement & Actuals`, `Closure`, `Integration`, `Governance`,
 `ANALYTICS` and `INTEGRATION MAPPING` default closed. The choice is now
-persisted **per signed-in user, per browser** in `localStorage` under
-`capex.nav.group.<user_id>.<group>` — the one deliberate exception to this
-file's usual "session state only, never localStorage" rule — with the old
-`sessionStorage` key removed outright rather than kept as a fallback. The
+persisted **per signed-in user, per tab** in `sessionStorage` under
+`capex.nav.group.<user_id>.<group>`, with the old un-scoped key removed
+outright rather than kept as a fallback. (Stream F first wrote it to
+`localStorage` as a deliberate exception to the app's "session state only"
+rule; the integration of 2026-09-13 reversed that, because the repository's
+own pinned test, `tests/test_frontend_budget_setup_registry.py`, forbids it
+and a shared UAT browser must not carry one tester's rail layout into
+another's sign-in. `tests/vrt/nav-groups.spec.js` asserts the sessionStorage
+key and the absence of any localStorage key.) The
 group holding the current route is always forced open for that render only
 (never persisted) and carries `aria-current="true"` plus a `.nav-group-current`
 visual marker, so a deep link or an in-app navigation into a collapsed group

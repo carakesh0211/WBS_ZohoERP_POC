@@ -7,9 +7,13 @@
 // client-approved groups as plain `<h2>` headings. Stream F removes that
 // distinction: every `{ g: '…' }` marker in NAV now renders as a toggle
 // button, Work and Project Control default open, everything else defaults
-// closed, the choice is persisted per signed-in user in localStorage (not
-// sessionStorage — the one deliberate exception to this app's usual
-// "session state only" rule), the group holding the CURRENT route is always
+// closed, the choice is persisted per signed-in user, per tab, in
+// sessionStorage under `capex.nav.group.<user_id>.<group>` (the app's
+// "session state only" rule, pinned by
+// tests/test_frontend_budget_setup_registry.py; the integration of
+// 2026-09-13 reversed an earlier localStorage exception so a shared browser
+// never carries one tester's rail into another's sign-in), the group holding
+// the CURRENT route is always
 // forced open (without persisting that forced state), and two rail-top
 // controls ("Expand all" / "Collapse all") act on every group at once.
 //
@@ -120,13 +124,18 @@ test.describe('nav groups', () => {
     await expect(closure).toHaveAttribute('aria-expanded', 'true');
     await expect(page.locator('#nav .nav-item[data-nav="cap"]')).toBeVisible();
 
-    // The choice is a per-user, per-browser preference in localStorage, not
-    // sessionStorage: it must survive a full reload of the same tab.
-    const stored = await page.evaluate(() => Object.keys(localStorage)
+    // The choice is a per-user, per-tab preference in sessionStorage: it
+    // must survive a full reload of the same tab, and it must never touch
+    // localStorage (the app's rule; a shared browser must not carry one
+    // tester's rail layout into another's sign-in).
+    const stored = await page.evaluate(() => Object.keys(sessionStorage)
       .filter((k) => k.startsWith('capex.nav.group.') && k.endsWith('.Closure')));
-    expect(stored.length, 'no localStorage key recorded the Closure toggle').toBeGreaterThan(0);
+    expect(stored.length, 'no sessionStorage key recorded the Closure toggle').toBeGreaterThan(0);
     expect(await page.evaluate(() => sessionStorage.getItem('capex.nav.group.Closure')),
-      'the old sessionStorage key must not be written any more').toBeNull();
+      'the old un-scoped sessionStorage key must not be written any more').toBeNull();
+    expect(await page.evaluate(() => Object.keys(localStorage)
+      .filter((k) => k.startsWith('capex.nav.group.'))),
+      'nav group state must never be written to localStorage').toEqual([]);
 
     await page.reload();
     await page.waitForSelector('#shell:not([hidden])', { timeout: 15_000 });
@@ -155,9 +164,9 @@ test.describe('nav groups', () => {
     await hashTo(page, 'home');
     await openNavIfCollapsed(page);
     await expect(groupButton(page, 'Integration')).toHaveAttribute('aria-expanded', 'false');
-    const stored = await page.evaluate(() => Object.keys(localStorage)
+    const stored = await page.evaluate(() => Object.keys(sessionStorage)
       .filter((k) => k.startsWith('capex.nav.group.') && k.endsWith('.Integration')));
-    expect(stored, 'the forced expansion leaked into localStorage').toEqual([]);
+    expect(stored, 'the forced expansion leaked into sessionStorage').toEqual([]);
   });
 
   test('Expand all opens every group; Collapse all closes every group', async ({ page }) => {

@@ -269,6 +269,13 @@ tests" and "do not modify Python" (the test is Python; the mismatch is
 between the test and Stream F's own prior JS, neither of which this
 branch's brief covers).
 
+*Resolved at integration (2026-09-13, commit 1157fcb):* the pinned test
+won. `app.js` now keeps nav-group state in `sessionStorage`, per user and
+per tab; `tests/vrt/nav-groups.spec.js` and
+`docs/ui-change-2026-09/F-collapsible-navigation.md` were aligned to it.
+`160 passed, 1 failed` above is therefore the branch's own pre-merge count;
+the merged tree passes all 161.
+
 ## Left undone, and why
 
 - No approve/reject control was added to `budget-revision-request.js` /
