@@ -3341,3 +3341,24 @@ predict.
 **Approved by:** the product-owner instruction of 2026-09-13, "PRODUCT
 DECISIONS ... 2. Administrator".
 
+## 2026-09-13 — `tests/test_identity_oidc_fable51.py`, the OIDC configuration default
+
+**What changed.** `test_the_config_defaults_to_zoho_india_and_is_off_without_a_client`
+is replaced by `test_the_config_names_no_provider_and_is_off_until_every_endpoint_is_set`.
+The old test asserted that `identity_oidc.config_from_env({})` defaulted the
+issuer and endpoints to Zoho Accounts India; the new one asserts the opposite
+-- no provider host is written into the module, every endpoint comes from the
+environment, and the choice is off until all seven required variables are
+present (each of the four endpoints is dropped in turn and the config must
+stay off). Nothing else in the file was weakened; the same test still proves
+`client_secret` never reaches `public()`.
+
+**Why.** The pre-existing adapter rule
+(`tests/test_integration_no_hardcoded_endpoints.py`, plan v1.2.1 §11: no
+product host, scope or endpoint outside the two adapters) failed the build on
+the Zoho default the Stream D module carried. The rule is the older, approved
+control; the default was the new code's mistake. The owner sets the endpoint
+variables listed in `docs/fable51/IDENTITY_AND_NOTIFICATIONS.md`.
+
+**Approved by:** the standing instruction that no gate may be weakened to pass;
+this adaptation strengthens the identity test to match the adapter rule.

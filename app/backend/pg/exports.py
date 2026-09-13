@@ -683,24 +683,20 @@ def _no_document_type(label: str) -> str:
 
 
 #: `reconciliation_exception` (011). Reachable only through the row's OWN
-#: nullable `entity_id` / `project_id` -- there is no `project` JOIN, so
-#: `_PROJECT_REACHING_COLUMNS` (which assumes an aliased `p`) does not apply.
-#: Mirrors `pg/integration_store.py::EXCEPTION_SCOPE_COLUMNS` exactly:
-#: plant/location are waived by explicit `None` because 011 gives the table no
-#: column for either, and both are already enforced at `project`, which
-#: carries its own RLS policy. See that module's own comment on the argument
-#: ORDER this mirrors -- `capex_scope_permits(entity_id, NULL, NULL,
-#: project_id)` -- for why the two waived slots must stay in these positions.
+#: nullable `entity_id` / `project_id`. 011 gives the table no plant or
+#: location column, so the dataset LEFT JOINs `project p` on its nullable
+#: `project_id` and reads both dimensions from there -- an export waives no
+#: dimension (the rule stated on `Dataset`). The API's own read
+#: (`pg/integration_store.py::EXCEPTION_SCOPE_COLUMNS`) waives the two, as
+#: 011's policy does; the export is deliberately NARROWER: an exception raised
+#: with no project has NULL plant and location here, so a principal RESTRICTED
+#: on either dimension does not receive it in a file (`NULL = ANY(...)` is not
+#: true), while a principal unrestricted on both still does. Narrower than the
+#: screen is the safe direction for the widest read in the product.
 _RECONCILIATION_EXCEPTION_SCOPE_COLUMNS: dict[str, str | None] = {
-    "entity": "x.entity_id", "plant": None, "location": None,
+    "entity": "x.entity_id", "plant": "p.plant_id", "location": "p.location_id",
     "project": "x.project_id",
 }
-_NO_PLANT_ON_EXCEPTION = ("011 gives reconciliation_exception no plant_id "
-                          "column; the dimension is enforced at project, "
-                          "which carries its own policy.")
-_NO_LOCATION_ON_EXCEPTION = ("011 gives reconciliation_exception no "
-                             "location_id column; the dimension is enforced "
-                             "at project, which carries its own policy.")
 
 
 BUDGET_LEDGER_CELLS = Dataset(
@@ -1403,10 +1399,13 @@ VENDOR_BILL_LINES = Dataset(
 RECONCILIATION_EXCEPTIONS = Dataset(
     name="reconciliation_exceptions",
     title="Reconciliation exceptions raised by the integration sweeps",
-    # No JOIN: `entity_id` and `project_id` are the row's OWN nullable
-    # columns (011), read directly -- exactly how `pg/integration_store.py`'s
-    # own queries against this table read them.
-    from_sql="FROM reconciliation_exception x",
+    # `entity_id` and `project_id` are the row's OWN nullable columns (011),
+    # read directly -- exactly how `pg/integration_store.py`'s own queries
+    # against this table read them. The LEFT JOIN exists only to reach plant
+    # and location (see `_RECONCILIATION_EXCEPTION_SCOPE_COLUMNS`); it never
+    # drops a row.
+    from_sql="FROM reconciliation_exception x "
+             "LEFT JOIN project p ON p.project_id = x.project_id",
     columns=(
         Column("exception_id", "x.exception_id"),
         Column("kind", "x.kind"),
@@ -1429,6 +1428,8 @@ RECONCILIATION_EXCEPTIONS = Dataset(
     scope_columns=_RECONCILIATION_EXCEPTION_SCOPE_COLUMNS,
     filters={
         "entity_ids": _in_list("x.entity_id"),
+        "plant_ids": _in_list("p.plant_id"),
+        "location_ids": _in_list("p.location_id"),
         "project_ids": _in_list("x.project_id"),
         "lifecycle_statuses": _in_list("x.status"),
         # The identity that CLOSED the exception -- the closest thing this
@@ -1439,8 +1440,6 @@ RECONCILIATION_EXCEPTIONS = Dataset(
         "date_to": _date_at_or_before("x.raised_at"),
     },
     unsupported={
-        "plant_ids": _NO_PLANT_ON_EXCEPTION,
-        "location_ids": _NO_LOCATION_ON_EXCEPTION,
         "period_ids": _NO_PERIOD, "category_ids": _NO_CATEGORY,
         "budget_category_ids": _NO_CATEGORY,
         "wbs_paths": _NO_WBS,

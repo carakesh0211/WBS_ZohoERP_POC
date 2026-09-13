@@ -314,6 +314,78 @@ def _scenario_period_reopen_apply(make_user, raw_con):
             engine.set_database(previous)
 
 
+def _scenario_imr_approve(make_user, raw_con):
+    """Internal material request (Fable 5.1 Stream A, 034): the requester also
+    holds ProcurementApprover.
+
+    THE PERSISTENCE UNDER THIS ROUTE IS STUBBED, AND ONLY THAT -- the same
+    shape as `_scenario_period_reopen_apply`. The route is PostgreSQL-backed
+    (`api/internal_fulfilment.py` -> `pg/internal_fulfilment.py`) and this is
+    the SQLite application, so the engine is a sentinel, the request re-read
+    (`_imr`) answers the maker's own id as `requested_by`, and the first
+    statement AFTER the maker-checker gate (`lock_affected_cells`) answers a
+    sentinel refusal that is not SELF_APPROVAL. Everything the scenario
+    asserts runs for real: the router's permission dependency, the
+    server-derived actor, `auth.require` and the
+    `auth.require_separation(principal, "imr.approve", requested_by)` call
+    that `approve_request` makes BEFORE any lock.
+
+    ONE MORE CONTROL IS STUBBED, and the reason is stated: this route carries
+    a SECOND, independent producer of SELF_APPROVAL -- the delegation check
+    `assert_delegation_independent(actor, acting_for, contributors)`, which
+    refuses a maker who is among the object's contributors whether acting
+    personally or for somebody else. Left in place it would answer the
+    companion mutation test's neutralised `require_separation` with the very
+    code that test asserts must disappear, so the scenario could not tell
+    the two apart. It is replaced by a no-op HERE ONLY; its own refusals --
+    direct, delegated and through the principal -- are proven against real
+    rows in `tests/test_pg_internal_fulfilment_fable51.py` (the
+    `SELF_APPROVAL` block around its line 729), as is the whole chain.
+    """
+    import contextlib
+
+    from app.backend.api import internal_fulfilment as imr_api
+    from app.backend.pg import engine
+    from app.backend.pg import internal_fulfilment as imr_svc
+    from app.backend.pg.engine import Scope
+
+    roles = ["Requestor", "ProcurementApprover"]
+    maker = make_user(roles)
+    _assert_holds(maker.user_id, "imr.approve", roles)
+
+    class _StubDatabase:
+        @contextlib.contextmanager
+        def session(self, scope):
+            yield None
+
+    def _stub_lock(session, cells):
+        raise imr_svc.ProcurementError(
+            "PERSISTENCE_STUBBED", "the SQLite surface carries no IMR rows", status=409)
+
+    try:
+        previous = engine.get_database()
+    except RuntimeError:
+        previous = None
+
+    with pytest.MonkeyPatch.context() as mp:
+        engine.set_database(_StubDatabase())
+        mp.setattr(imr_api, "_scope_for",
+                   lambda request, database: Scope(user_id=maker.user_id))
+        mp.setattr(imr_svc, "_imr", lambda session, imr_id: {
+            "imr_id": imr_id, "imr_number": "IMR-MC-SELF", "status": imr_svc.STATUS_REQUESTED,
+            "requested_by": maker.user_id, "created_by": maker.user_id,
+            "wbs_id": DEMO_WBS, "budget_head_id": DEMO_HEAD, "requested_quantity": "1"})
+        mp.setattr(imr_svc, "lock_affected_cells", _stub_lock)
+        mp.setattr(imr_svc, "assert_delegation_independent",
+                   lambda actor, acting_for, contributors: None)
+        try:
+            return maker.post(
+                "/api/procurement/internal-material-requests/IMR-MC-SELF/approve",
+                json={})
+        finally:
+            engine.set_database(previous)
+
+
 #: permission -> the scenario that puts a maker, holding the approving role,
 #: in front of their own object. Pinned to ``auth.MAKER_CHECKER`` by the
 #: exhaustiveness test below.
@@ -324,6 +396,7 @@ SCENARIOS = {
     "capitalisation.approve": _scenario_capitalisation_approve,
     "bill.void": _scenario_bill_void,
     "period.reopen.apply": _scenario_period_reopen_apply,
+    "imr.approve": _scenario_imr_approve,
 }
 
 #: Permissions whose enforcement is currently impossible, with the reason.

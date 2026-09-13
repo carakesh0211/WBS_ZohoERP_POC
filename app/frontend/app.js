@@ -472,35 +472,36 @@ function viewAllowed(id) {
    for a user who has never touched it (Work and Project Control open,
    everything else closed — see the NAV table above).
 
-   PERSISTENCE IS PER USER, PER BROWSER: the key carries the signed-in user's
-   id, and the value lives in localStorage, not sessionStorage — deliberately
-   the one exception to this file's usual "session state only" rule (see the
-   comment on SESSION_KEY), because the point is that the choice survives
-   past the tab that made it. Before sign-in (or if localStorage throws — a
-   private window, a full quota) every group simply renders at its
-   `defaultExpanded` value; nothing here ever reads or writes the session id
-   itself. */
+   PERSISTENCE IS PER USER, PER TAB: the key carries the signed-in user's
+   id, and the value lives in sessionStorage — this file's "session state
+   only" rule (see the comment on SESSION_KEY, and
+   tests/test_frontend_budget_setup_registry.py, which pins it), so a
+   shared browser never carries one tester's rail layout into another's
+   sign-in. The choice survives a reload of the tab that made it and dies
+   with that tab. Before sign-in (or if sessionStorage throws — a private
+   window, a full quota) every group simply renders at its `defaultExpanded`
+   value; nothing here ever reads or writes the session id itself. */
 const NAV_GROUP_STATE_PREFIX = 'capex.nav.group.';
 function navGroupDefaultExpanded(defaultExpanded) { return defaultExpanded === undefined ? true : !!defaultExpanded; }
-function navGroupStorageKey(groupName) {
+function navGroupKeySuffix(groupName) {
   const uid = S.me && S.me.user_id;
-  return uid ? `${NAV_GROUP_STATE_PREFIX}${uid}.${groupName}` : null;
+  return uid ? `${uid}.${groupName}` : null;
 }
 function navGroupExpanded(groupName, defaultExpanded) {
-  const key = navGroupStorageKey(groupName);
-  if (key) {
+  const suffix = navGroupKeySuffix(groupName);
+  if (suffix) {
     try {
-      const v = localStorage.getItem(key);
+      const v = sessionStorage.getItem(NAV_GROUP_STATE_PREFIX + suffix);
       if (v === '1') return true;
       if (v === '0') return false;
-    } catch { /* localStorage unavailable: fall through to the default */ }
+    } catch { /* sessionStorage unavailable: fall through to the default */ }
   }
   return navGroupDefaultExpanded(defaultExpanded);
 }
 function setNavGroupExpanded(groupName, expanded) {
-  const key = navGroupStorageKey(groupName);
-  if (!key) return; // no signed-in user to scope the preference to
-  try { localStorage.setItem(key, expanded ? '1' : '0'); }
+  const suffix = navGroupKeySuffix(groupName);
+  if (!suffix) return; // no signed-in user to scope the preference to
+  try { sessionStorage.setItem(NAV_GROUP_STATE_PREFIX + suffix, expanded ? '1' : '0'); }
   catch { /* the toggle still re-renders open/closed for this render; it just will not survive a reload */ }
 }
 /** Applied by the "Expand all" / "Collapse all" rail controls: every group

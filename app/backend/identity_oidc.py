@@ -92,14 +92,20 @@ def _split(value: str | None) -> tuple[str, ...]:
 
 
 def config_from_env(env: Mapping[str, str] | None = None) -> OidcConfig:
-    """Zoho Accounts India as the DEFAULT endpoints; every one overridable."""
+    """Every endpoint comes from the environment; NO provider is written into
+    this module (`tests/test_integration_no_hardcoded_endpoints.py`: nothing
+    outside the two adapters may name a product host). The owner sets the
+    issuer and its three endpoints from the provider's own discovery document
+    -- `docs/fable51/IDENTITY_AND_NOTIFICATIONS.md` lists the variables -- and
+    `OidcConfig.enabled` stays False until all of them, the client and the
+    redirect URI are present."""
     env = os.environ if env is None else env
-    issuer = env.get("CAPEX_OIDC_ISSUER", "https://accounts.zoho.in").rstrip("/")
+    issuer = env.get("CAPEX_OIDC_ISSUER", "").strip().rstrip("/")
     return OidcConfig(
         issuer=issuer,
-        authorization_endpoint=env.get("CAPEX_OIDC_AUTH_URL", f"{issuer}/oauth/v2/auth"),
-        token_endpoint=env.get("CAPEX_OIDC_TOKEN_URL", f"{issuer}/oauth/v2/token"),
-        jwks_uri=env.get("CAPEX_OIDC_JWKS_URL", f"{issuer}/oauth/v2/keys"),
+        authorization_endpoint=env.get("CAPEX_OIDC_AUTH_URL", "").strip(),
+        token_endpoint=env.get("CAPEX_OIDC_TOKEN_URL", "").strip(),
+        jwks_uri=env.get("CAPEX_OIDC_JWKS_URL", "").strip(),
         userinfo_endpoint=env.get("CAPEX_OIDC_USERINFO_URL") or None,
         client_id=env.get("CAPEX_OIDC_CLIENT_ID", "").strip(),
         client_secret=env.get("CAPEX_OIDC_CLIENT_SECRET", ""),

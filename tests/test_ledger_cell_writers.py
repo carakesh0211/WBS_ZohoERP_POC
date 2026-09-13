@@ -46,6 +46,7 @@ the schema has moved past both.
 """
 from __future__ import annotations
 
+import inspect
 import re
 import sys as _sys
 from pathlib import Path as _Path
@@ -89,6 +90,14 @@ def _ledger_money_columns() -> list[str]:
     columns = re.findall(r"^\s*(\w+_paise)\s+bigint", body.group(1), re.MULTILINE)
     assert len(columns) >= 6, (
         f"the DDL parser found only {columns}; it is asserting almost nothing")
+    # A later migration may ADD a money column to the same table (034 adds the
+    # two internal limbs). Read every migration for that, so the register is
+    # still checked against the schema and not against a list of files this
+    # test happens to know about.
+    for path in sorted(MIGRATIONS.glob("*.sql")):
+        for stmt in re.findall(r"ALTER TABLE budget_ledger_cell\s+(.*?);",
+                               path.read_text(encoding="utf-8"), re.DOTALL):
+            columns.extend(re.findall(r"ADD COLUMN\s+(\w+_paise)\s+bigint", stmt))
     return columns
 
 
@@ -98,7 +107,8 @@ def _set_columns(statement: str) -> set[str]:
     subqueries, so a naive substring search would report every column as
     written by every statement."""
     tail = statement.split(" SET ", 1)[1] if " SET " in statement else statement
-    return set(re.findall(r"^\s{0,12}(\w+_paise)\s*=", tail, re.MULTILINE))
+    return set(re.findall(r"(?:^\s{0,12}|\bSET\s+)(\w+_paise)\s*=", tail,
+                          re.MULTILINE))
 
 
 # =========================================================================
@@ -116,9 +126,14 @@ def test_every_derived_ledger_money_column_has_a_writer():
     Reads the column list from `002_budget_control.sql` so the next column
     added cannot silently join the unwritten set.
     """
+    # A column is written where it stands at the head of an assignment line
+    # OR directly after the `SET` keyword -- `release_carried_commitment`
+    # writes `commitment_carried_paise` in the latter position, and a reader
+    # that only knew the former reported it unwritten.
     unwritten = [
         column for column in _ledger_money_columns()
-        if not re.search(rf"^\s{{0,12}}{column}\s*=", _ALL_WRITERS, re.MULTILINE)
+        if not re.search(rf"(?:^\s{{0,12}}|\bSET\s+){column}\s*=",
+                         _ALL_WRITERS, re.MULTILINE)
     ]
     assert unwritten == [], (
         f"budget_ledger_cell columns with NO writer in pg/budget.py or "
@@ -157,7 +172,19 @@ def test_the_register_matches_the_schema_minus_the_budget_columns():
     decision that was never made for `actual_paise`.
     """
     budget_columns = {"original_paise", "revisions_paise", "future_budget_paise"}
-    assert set(_ledger_money_columns()) - budget_columns == set(
+    # The decision for the tenth column, made: `commitment_carried_paise`
+    # (027) is in NEITHER half. It is a carried stock, backfilled once by the
+    # migration and written afterwards by exactly one explicit statement,
+    # `release_carried_commitment`, under the cell locks and with a reason;
+    # the recompute reads and preserves it (H-7) and must never assign it.
+    carried_columns = {"commitment_carried_paise"}
+    assert carried_columns <= set(_ledger_money_columns())
+    assert "commitment_carried_paise" in _set_columns(
+        inspect.getsource(svc.release_carried_commitment)), (
+        "release_carried_commitment no longer writes the carried figure")
+    assert "commitment_carried_paise" not in _set_columns(svc._RECOMPUTE_DERIVED_SQL), (
+        "the recompute must preserve the carried figure, not derive it (027, H-7)")
+    assert set(_ledger_money_columns()) - budget_columns - carried_columns == set(
         svc.DERIVED_LEDGER_COLUMNS)
 
 

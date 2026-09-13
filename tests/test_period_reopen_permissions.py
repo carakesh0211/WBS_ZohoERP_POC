@@ -38,6 +38,7 @@ import uuid
 from pathlib import Path as _Path
 
 _TESTS_DIR = _Path(__file__).resolve().parent
+ROOT = _TESTS_DIR.parent
 if str(_TESTS_DIR) not in _sys.path:
     _sys.path.insert(0, str(_TESTS_DIR))
 

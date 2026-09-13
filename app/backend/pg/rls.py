@@ -235,6 +235,9 @@ JOINED_VIA_PROJECT = frozenset(RLS_PROCUREMENT_TABLE_COLUMNS) | {
     # reaches the request's project by construction -- the `pr_line` shape: one
     # join, FK-guaranteed.
     "pr_reservation",
+    # 034. Each carries `project_id` denormalised from its purchase-request
+    # line or request; `RLS_INTERNAL_FULFILMENT_TABLE_COLUMNS`.
+    "pr_line_fulfilment", "internal_material_request", "internal_material_movement",
     # 019 (NOT 018 -- 018 is `018_export_jobs.sql`). This line said "018"; the
     # same misnaming survives inside 019 itself, whose checksum is frozen, and
     # is recorded in `022_saved_view_policies_and_revert_ledger.sql`'s header
@@ -580,6 +583,19 @@ RLS_ORIGINAL_BUDGET_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
 #: Every table 026 enables RLS on.
 RLS_ORIGINAL_BUDGET_TABLES: tuple[str, ...] = tuple(RLS_ORIGINAL_BUDGET_TABLE_COLUMNS)
 
+#: 034 (Stream A, internal material fulfilment). All three carry a
+#: denormalised `project_id` and reach `project` through it, the `pr_line`
+#: shape -- so, as for `RLS_PROCUREMENT_TABLE_COLUMNS`, every column here is
+#: None and the three sit in `JOINED_VIA_PROJECT`.
+RLS_INTERNAL_FULFILMENT_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
+    "pr_line_fulfilment": {"entity": None, "plant": None, "location": None, "project": None},
+    "internal_material_request": {"entity": None, "plant": None, "location": None, "project": None},
+    "internal_material_movement": {"entity": None, "plant": None, "location": None, "project": None},
+}
+
+#: Every table 034 enables RLS on.
+RLS_INTERNAL_FULFILMENT_TABLES: tuple[str, ...] = tuple(RLS_INTERNAL_FULFILMENT_TABLE_COLUMNS)
+
 #: Tables whose policy is an EXISTS against their parent DOCUMENT's row (which
 #: carries the real predicate), the way `JOINED_VIA_WBS_ELEMENT` tables reach
 #: `project_id` through `wbs_element`.
@@ -607,6 +623,7 @@ ALL_RLS_TABLE_COLUMNS: dict[str, dict[str, str | None]] = {
     **RLS_REPORTING_TABLE_COLUMNS, **RLS_EXPORT_TABLE_COLUMNS,
     **RLS_CLOSURE_TABLE_COLUMNS, **RLS_FX_TABLE_COLUMNS,
     **RLS_FX_INGEST_TABLE_COLUMNS, **RLS_ORIGINAL_BUDGET_TABLE_COLUMNS,
+    **RLS_INTERNAL_FULFILMENT_TABLE_COLUMNS,
 }
 
 #: Every RLS-protected table, from any migration, in registry order.
@@ -634,6 +651,8 @@ RLS_MIGRATION_BY_TABLE: dict[str, str] = {
        for table in RLS_FX_INGEST_TABLES},
     **{table: "026_budget_category_and_original_budget.sql"
        for table in RLS_ORIGINAL_BUDGET_TABLES},
+    **{table: "034_internal_fulfilment.sql"
+       for table in RLS_INTERNAL_FULFILMENT_TABLES},
 }
 
 

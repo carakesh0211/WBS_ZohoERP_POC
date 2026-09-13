@@ -127,16 +127,32 @@ def _jwks(key) -> oidc.JwksCache:
     return oidc.JwksCache(uri=CFG.jwks_uri, opener=_FakeOpener({"keys": [_jwk(key)]}))
 
 
-def test_the_config_defaults_to_zoho_india_and_is_off_without_a_client():
+_ENDPOINTS = {"CAPEX_OIDC_ISSUER": "https://idp.example/", "CAPEX_OIDC_AUTH_URL": "https://idp.example/auth",
+              "CAPEX_OIDC_TOKEN_URL": "https://idp.example/token", "CAPEX_OIDC_JWKS_URL": "https://idp.example/keys"}
+_CLIENT = {"CAPEX_OIDC_CLIENT_ID": "c", "CAPEX_OIDC_CLIENT_SECRET": "s",
+           "CAPEX_OIDC_REDIRECT_URI": "https://x/cb"}
+
+
+def test_the_config_names_no_provider_and_is_off_until_every_endpoint_is_set():
+    """No provider host lives in `identity_oidc.py` (the adapter rule
+    `tests/test_integration_no_hardcoded_endpoints.py` enforces); the owner
+    supplies the issuer and its three endpoints, and a client alone -- or
+    endpoints alone -- leaves the choice off."""
     cfg = oidc.config_from_env({})
-    assert cfg.issuer == "https://accounts.zoho.in"
-    assert cfg.authorization_endpoint.startswith("https://accounts.zoho.in/oauth/v2/auth")
+    assert cfg.issuer == "" and cfg.authorization_endpoint == ""
+    assert cfg.token_endpoint == "" and cfg.jwks_uri == ""
     assert cfg.enabled is False and cfg.public()["enabled"] is False
     assert "client_secret" not in json.dumps(cfg.public())
-    on = oidc.config_from_env({"CAPEX_OIDC_CLIENT_ID": "c", "CAPEX_OIDC_CLIENT_SECRET": "s",
-                               "CAPEX_OIDC_REDIRECT_URI": "https://x/cb",
+    assert oidc.config_from_env(dict(_CLIENT)).enabled is False
+    assert oidc.config_from_env(dict(_ENDPOINTS)).enabled is False
+    for missing in _ENDPOINTS:
+        partial = {**_ENDPOINTS, **_CLIENT}
+        del partial[missing]
+        assert oidc.config_from_env(partial).enabled is False, missing
+    on = oidc.config_from_env({**_ENDPOINTS, **_CLIENT,
                                "CAPEX_OIDC_ALLOWED_EMAIL_DOMAINS": "AthaGroup.in, example.org"})
     assert on.enabled and on.allowed_email_domains == ("athagroup.in", "example.org")
+    assert on.issuer == "https://idp.example"  # trailing slash stripped for the `iss` comparison
 
 
 def test_pkce_and_the_authorization_url():
@@ -155,20 +171,30 @@ def test_a_correctly_signed_token_verifies_and_yields_its_claims(key):
     assert claims["sub"] == "zoho-user-42" and claims["email"] == "user@athagroup.in"
 
 
-@pytest.mark.parametrize("header, claims, tamper, nonce, code", [
-    ({"alg": "none", "kid": "test-key-1"}, _claims(), False, "nonce-1", "OIDC_ALG_REFUSED"),
-    ({"alg": "HS256", "kid": "test-key-1"}, _claims(), False, "nonce-1", "OIDC_ALG_REFUSED"),
-    ({"alg": "RS256"}, _claims(), False, "nonce-1", "OIDC_KID_MISSING"),
-    ({"alg": "RS256", "kid": "other"}, _claims(), False, "nonce-1", "OIDC_KEY_UNKNOWN"),
-    ({"alg": "RS256", "kid": "test-key-1"}, _claims(), True, "nonce-1", "OIDC_SIGNATURE_INVALID"),
-    ({"alg": "RS256", "kid": "test-key-1"}, _claims(iss="https://accounts.zoho.com"), False, "nonce-1", "OIDC_ISSUER_MISMATCH"),
-    ({"alg": "RS256", "kid": "test-key-1"}, _claims(aud="1000.OTHER"), False, "nonce-1", "OIDC_AUDIENCE_MISMATCH"),
-    ({"alg": "RS256", "kid": "test-key-1"}, _claims(exp=int(time.time()) - 1000), False, "nonce-1", "OIDC_TOKEN_EXPIRED"),
-    ({"alg": "RS256", "kid": "test-key-1"}, _claims(iat=int(time.time()) + 1000), False, "nonce-1", "OIDC_TOKEN_NOT_YET_VALID"),
-    ({"alg": "RS256", "kid": "test-key-1"}, _claims(), False, "nonce-2", "OIDC_NONCE_MISMATCH"),
-    ({"alg": "RS256", "kid": "test-key-1"}, _claims(sub=""), False, "nonce-1", "OIDC_SUBJECT_MISSING"),
+# The claim overrides are applied when the test RUNS, not when pytest
+# collects: a claims dict built at collection carries `exp = now + 600`, and
+# twenty minutes into the full suite every such token is simply expired, so
+# the check under test is never reached (three cases failed exactly so in the
+# 2026-09-13 regression). `_late()` names an offset from the clock at run time.
+def _late(**offsets):
+    return lambda: {k: int(time.time()) + v for k, v in offsets.items()}
+
+
+@pytest.mark.parametrize("header, over, tamper, nonce, code", [
+    ({"alg": "none", "kid": "test-key-1"}, {}, False, "nonce-1", "OIDC_ALG_REFUSED"),
+    ({"alg": "HS256", "kid": "test-key-1"}, {}, False, "nonce-1", "OIDC_ALG_REFUSED"),
+    ({"alg": "RS256"}, {}, False, "nonce-1", "OIDC_KID_MISSING"),
+    ({"alg": "RS256", "kid": "other"}, {}, False, "nonce-1", "OIDC_KEY_UNKNOWN"),
+    ({"alg": "RS256", "kid": "test-key-1"}, {}, True, "nonce-1", "OIDC_SIGNATURE_INVALID"),
+    ({"alg": "RS256", "kid": "test-key-1"}, {"iss": "https://accounts.zoho.com"}, False, "nonce-1", "OIDC_ISSUER_MISMATCH"),
+    ({"alg": "RS256", "kid": "test-key-1"}, {"aud": "1000.OTHER"}, False, "nonce-1", "OIDC_AUDIENCE_MISMATCH"),
+    ({"alg": "RS256", "kid": "test-key-1"}, _late(exp=-1000), False, "nonce-1", "OIDC_TOKEN_EXPIRED"),
+    ({"alg": "RS256", "kid": "test-key-1"}, _late(iat=1000), False, "nonce-1", "OIDC_TOKEN_NOT_YET_VALID"),
+    ({"alg": "RS256", "kid": "test-key-1"}, {}, False, "nonce-2", "OIDC_NONCE_MISMATCH"),
+    ({"alg": "RS256", "kid": "test-key-1"}, {"sub": ""}, False, "nonce-1", "OIDC_SUBJECT_MISSING"),
 ])
-def test_every_check_refuses_by_name(key, header, claims, tamper, nonce, code):
+def test_every_check_refuses_by_name(key, header, over, tamper, nonce, code):
+    claims = _claims(**(over() if callable(over) else over))
     token = _sign(key, header, claims, tamper_signature=tamper)
     with pytest.raises(oidc.OidcError) as exc:
         oidc.verify_id_token(token, cfg=CFG, jwks=_jwks(key), nonce=nonce)

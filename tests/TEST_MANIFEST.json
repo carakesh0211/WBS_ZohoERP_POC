@@ -2465,9 +2465,9 @@
       }
     },
     "test_identity_oidc_fable51.py": {
-      "test_the_config_defaults_to_zoho_india_and_is_off_without_a_client": {
-        "assertions": 5,
-        "body_sha": "c9796deac610a98b"
+      "test_the_config_names_no_provider_and_is_off_until_every_endpoint_is_set": {
+        "assertions": 9,
+        "body_sha": "4c84c0f8f553ddfe"
       },
       "test_pkce_and_the_authorization_url": {
         "assertions": 5,
@@ -2479,7 +2479,7 @@
       },
       "test_every_check_refuses_by_name": {
         "assertions": 3,
-        "body_sha": "5476e583c11cf165"
+        "body_sha": "31e096aa0cf38ab5"
       },
       "test_a_tampered_claim_fails_the_signature_not_the_claim_check": {
         "assertions": 2,
@@ -4287,15 +4287,15 @@
     "test_ledger_cell_writers.py": {
       "test_every_derived_ledger_money_column_has_a_writer": {
         "assertions": 1,
-        "body_sha": "bf8021ff8c2bf3c7"
+        "body_sha": "6865529ba6443d6d"
       },
       "test_the_six_procurement_derived_columns_are_written_by_one_statement": {
         "assertions": 1,
         "body_sha": "7c2b798a65bb5103"
       },
       "test_the_register_matches_the_schema_minus_the_budget_columns": {
-        "assertions": 1,
-        "body_sha": "8111652f195c3f7f"
+        "assertions": 4,
+        "body_sha": "2de21cb97e91dff0"
       },
       "test_exactly_one_statement_writes_the_derived_columns": {
         "assertions": 2,
@@ -13945,7 +13945,7 @@
     "test_financial_controls.py": 159,
     "test_foreign_order_matching_fable51.py": 98,
     "test_frontend_budget_setup_registry.py": 21,
-    "test_identity_oidc_fable51.py": 32,
+    "test_identity_oidc_fable51.py": 36,
     "test_integration_adapter_contract.py": 169,
     "test_integration_capabilities.py": 62,
     "test_integration_dto_reader_contract.py": 5,
@@ -13961,7 +13961,7 @@
     "test_integrations_api_guard.py": 116,
     "test_integrations_live_routes_fable51.py": 67,
     "test_known_defects.py": 13,
-    "test_ledger_cell_writers.py": 32,
+    "test_ledger_cell_writers.py": 35,
     "test_live_sweep_fable51.py": 214,
     "test_live_transport_fable51.py": 50,
     "test_login_throttle.py": 26,

@@ -35,8 +35,13 @@ by this path; the break-glass account never signs in through Zoho. The
 session is created server-side and handed to the browser through a
 single-use, one-minute code in the URL fragment — no session id in a URL.
 
-Environment (Zoho Accounts **India** is the default; every value overridable;
-the owner verifies the endpoints in the Zoho API console before enabling):
+Environment. NO provider is written into the code (the adapter rule:
+nothing outside the two ERP adapters names a product host, and
+`tests/test_integration_no_hardcoded_endpoints.py` fails the build if one
+does), so the owner sets the issuer and all three endpoints; the values below
+are Zoho Accounts **India**, to be verified against the provider's own
+discovery document before enabling. "Continue with Zoho" stays off until
+every one of the seven required variables is present:
 
 ```
 CAPEX_OIDC_ISSUER=https://accounts.zoho.in

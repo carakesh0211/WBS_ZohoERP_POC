@@ -585,6 +585,10 @@ def _shortfall_summary(verdicts: Sequence[Mapping[str, Any]]) -> str:
 DERIVED_LEDGER_COLUMNS: tuple[str, ...] = (
     "ordered_paise", "commitment_paise", "actual_paise", "received_paise",
     "received_not_billed_paise", "pr_reserved_paise",
+    # 034: the two internal limbs. Derived by the same statement, for the
+    # same reason the first six are -- a second writer is a window in which
+    # exposure is understated.
+    "internal_allocation_paise", "internal_consumption_paise",
 )
 
 _RECOMPUTE_DERIVED_SQL = """
@@ -697,7 +701,7 @@ _RECOMPUTE_DERIVED_SQL = """
                 SELECT SUM(CASE WHEN m.kind = 'ALLOCATE' THEN m.amount_paise
                                 WHEN m.kind IN ('ISSUE', 'CANCEL')
                                      THEN -m.amount_paise
-                                ELSE 0 END) AS open_paise
+                                ELSE 0 END)::bigint AS open_paise
                 FROM internal_material_movement m
                 WHERE m.wbs_id = %(wbs_id)s
                   AND m.budget_head_id = %(head)s
@@ -714,7 +718,7 @@ _RECOMPUTE_DERIVED_SQL = """
             FROM (
                 SELECT SUM(CASE WHEN m.kind = 'ISSUE' THEN m.amount_paise
                                 WHEN m.kind = 'RETURN' THEN -m.amount_paise
-                                ELSE 0 END) AS consumed_paise
+                                ELSE 0 END)::bigint AS consumed_paise
                 FROM internal_material_movement m
                 WHERE m.wbs_id = %(wbs_id)s
                   AND m.budget_head_id = %(head)s
