@@ -350,7 +350,18 @@ test.describe('SPA routing — every SCR-nn screen is reachable from the shell',
     // asked for (ANALYTICS, INTEGRATION MAPPING) render NO `.nav-item` while
     // collapsed, which is their default, so their fifteen screens do not
     // appear here -- and a change that expanded them by default would.
+    //
+    // STREAM F (Fable 5.1) made every group collapsible, not just those two.
+    // Work and Project Control still default OPEN, but Procurement & Actuals,
+    // Closure, Integration and Governance -- the four remaining groups that
+    // hold an approved entry -- now default CLOSED like every other group, so
+    // this test opens exactly those four before reading the rail. ANALYTICS
+    // and INTEGRATION MAPPING are deliberately left untouched: this is still
+    // the test that proves they render no `.nav-item` at their default.
     await settleShell(page);
+    for (const g of ['Procurement & Actuals', 'Closure', 'Integration', 'Governance']) {
+      await page.click(`[data-nav-group="${g}"]`);
+    }
     const ids = await page.evaluate(
       () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
     );
@@ -398,7 +409,14 @@ test.describe('SPA routing — every SCR-nn screen is reachable from the shell',
     // The Auditor below holds audit.read/budget.read/budget.check but NOT
     // settings.read or masters.read, so Settings must be absent for them while
     // the budget entries remain — a positive control on the same assertion.
+    //
+    // Both `settings` and `audit-trail` sit in the Governance group, which
+    // Stream F now defaults to collapsed for every principal — opening it is
+    // what makes an entry's ABSENCE from `.nav-item` mean "not permitted"
+    // rather than merely "not expanded". `budget-grid` sits in Project
+    // Control, which stays open by default and needs no click.
     await settleShell(page);
+    await page.click('[data-nav-group="Governance"]');
     const adminIds = await page.evaluate(
       () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
     );
@@ -408,6 +426,7 @@ test.describe('SPA routing — every SCR-nn screen is reachable from the shell',
     await stubScreenApis(auditor);
     await signIn(auditor, AUDITOR);
     await settleShell(auditor);
+    await auditor.click('[data-nav-group="Governance"]');
     const auditorIds = await auditor.evaluate(
       () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
     );
@@ -1156,6 +1175,9 @@ test.describe('SPA routing — accessibility', () => {
   test('the shell chrome keeps a visible, non-colour-only focus ring', async ({ page }) => {
     await settleShell(page);
     await openNavIfCollapsed(page);
+    // `audit` sits in the Governance group, which Stream F now defaults to
+    // collapsed — open it so the item actually exists to focus.
+    await page.click('[data-nav-group="Governance"]');
     // styles.css draws the ring through :focus-visible, which Chromium only
     // matches once the user has interacted by keyboard. Press Tab first so the
     // browser is in keyboard modality, exactly as a keyboard-only user is.

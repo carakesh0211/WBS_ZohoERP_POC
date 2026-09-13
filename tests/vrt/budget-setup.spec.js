@@ -1009,8 +1009,8 @@ test.describe('Budget Setup & Categories — rendering', () => {
 });
 
 /* ==================================================================
-   7. Navigation rail — ANALYTICS / INTEGRATION MAPPING groups, the six
-      approved <h2> groups, and the rail's overflow at this viewport
+   7. Navigation rail — every group is a collapsible button (Stream F),
+      and the rail's overflow at this viewport
    ================================================================== */
 
 test.describe('Navigation rail — groups', () => {
@@ -1019,7 +1019,16 @@ test.describe('Navigation rail — groups', () => {
     await signIn(page, ADMIN);
   });
 
-  test('ANALYTICS and INTEGRATION MAPPING are aria-expanded buttons; the six approved groups stay <h2>; clicking a button group reveals its rows', async ({ page }) => {
+  test('every NAV group is now an aria-expanded button, not a static heading; clicking one reveals its rows', async ({ page }) => {
+    // Fable 5.1 Stream F removed the `<h2>` branch renderNav() used to take
+    // for the six client-approved groups: EVERY `{ g: '…' }` marker is now a
+    // `<button class="nav-group" aria-expanded>`, the same mechanism that
+    // ANALYTICS and INTEGRATION MAPPING already used. This test used to
+    // assert the six stayed `<h2>`; that assertion is exactly what this
+    // stream was asked to change, so the check now is that no `<h2
+    // class="nav-group">` exists anywhere in the rail and all eight approved
+    // group names render as buttons instead.
+    //
     // Below 900px the rail is an overlay drawer, display:none until opened
     // (AUD-M-004; see spa-routing.spec.js's openNavIfCollapsed()) — the
     // group buttons still exist in the DOM at that width (evaluateAll below
@@ -1027,23 +1036,22 @@ test.describe('Navigation rail — groups', () => {
     const collapsed = await page.locator('#nav').evaluate((n) => getComputedStyle(n).display === 'none');
     if (collapsed) await page.locator('#navToggle').click();
 
-    const buttonGroupNames = await page.locator('#nav button.nav-group').evaluateAll(
-      (els) => els.map((e) => e.dataset.navGroup),
-    );
-    expect(buttonGroupNames.sort()).toEqual(['ANALYTICS', 'INTEGRATION MAPPING'].sort());
-    for (const name of buttonGroupNames) {
-      await expect(page.locator(`#nav button.nav-group[data-nav-group="${name}"]`)).toHaveAttribute('aria-expanded', /^(true|false)$/);
-    }
+    await expect(page.locator('#nav h2.nav-group'), 'a static <h2> group heading survives Stream F')
+      .toHaveCount(0);
 
     // textContent, not innerText: the rail's CSS renders .nav-group headings
     // in small caps / uppercase, and innerText reflects that visual transform
     // while textContent gives back exactly the string app.js's NAV array
     // literally carries ('Work', 'Project Control', ...).
-    const h2GroupTexts = await page.locator('#nav h2.nav-group').evaluateAll(
-      (els) => els.map((e) => (e.textContent || '').trim()),
+    const buttonGroupNames = await page.locator('#nav button.nav-group').evaluateAll(
+      (els) => els.map((e) => e.dataset.navGroup),
     );
-    const approvedSix = ['Work', 'Project Control', 'Procurement & Actuals', 'Closure', 'Integration', 'Governance'];
-    expect(h2GroupTexts.sort()).toEqual(approvedSix.sort());
+    const approvedEight = ['Work', 'Project Control', 'Procurement & Actuals', 'Closure',
+      'Integration', 'Governance', 'ANALYTICS', 'INTEGRATION MAPPING'];
+    expect(buttonGroupNames.sort()).toEqual(approvedEight.sort());
+    for (const name of buttonGroupNames) {
+      await expect(page.locator(`#nav button.nav-group[data-nav-group="${name}"]`)).toHaveAttribute('aria-expanded', /^(true|false)$/);
+    }
 
     const analyticsBtn = page.locator('#nav button.nav-group[data-nav-group="ANALYTICS"]');
     const initiallyExpanded = (await analyticsBtn.getAttribute('aria-expanded')) === 'true';
@@ -1063,7 +1071,10 @@ test.describe('Navigation rail — groups', () => {
       const cs = getComputedStyle(nav);
       if (cs.display === 'none') return { hidden: true, rows: nav.querySelectorAll('.nav-item').length };
       const items = [...nav.querySelectorAll('.nav-item')];
-      const kids = [...nav.children];
+      // A collapsed group's items panel stays in the DOM (for aria-controls)
+      // behind `hidden`, and can be the last child overall (Stream F);
+      // excluding it is what keeps "last child" meaning "last visible child".
+      const kids = [...nav.children].filter((k) => !k.hidden);
       let content = 0;
       if (kids.length) {
         const first = kids[0].getBoundingClientRect().top;

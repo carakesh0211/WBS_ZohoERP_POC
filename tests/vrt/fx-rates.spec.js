@@ -100,6 +100,9 @@ test.describe('Exchange Rates — registry, gate, rendering', () => {
     page.on('pageerror', (err) => pageErrors.push(err));
     await installFxRouter(page);
     await signIn(page);
+    // Both rows sit in Governance, which Fable 5.1 Stream F now defaults to
+    // collapsed for every principal — open it so the rail actually renders them.
+    await page.click('[data-nav-group="Governance"]');
     const ids = await page.evaluate(
       () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
     );
@@ -120,6 +123,8 @@ test.describe('Exchange Rates — registry, gate, rendering', () => {
     // the Administrator, so the create/activate/retire controls are absent.
     await installFxRouter(page);
     await signIn(page, AUDITOR);
+    // Governance defaults collapsed (Stream F); open it before reading the rail.
+    await page.click('[data-nav-group="Governance"]');
     const ids = await page.evaluate(
       () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
     );

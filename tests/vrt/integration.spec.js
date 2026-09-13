@@ -709,7 +709,10 @@ function measureRail(page) {
     if (cs.display === 'none') {
       return { hidden: true, rail: 0, content: 0, overflow: 0, rows: nav.querySelectorAll('.nav-item').length };
     }
-    const kids = [...nav.children];
+    // A collapsed group's items panel stays in the DOM (for aria-controls)
+    // behind `hidden`, and can be the last child overall (Stream F);
+    // excluding it is what keeps "last child" meaning "last visible child".
+    const kids = [...nav.children].filter((k) => !k.hidden);
     let content = 0;
     if (kids.length) {
       const first = kids[0].getBoundingClientRect().top;
@@ -743,6 +746,18 @@ test.describe('Wave 5 integration screens — routes, and nothing in the rail', 
     // that reappeared would otherwise be invisible to a run as a principal who
     // cannot see it.
     await settleShell(page);
+    // Fable 5.1 Stream F made every NAV group collapsible and defaults all but
+    // Work/Project Control to closed, so DOM order among `.nav-item` elements
+    // now depends on expand state. Opening the four groups that used to be
+    // static `<h2>` headings (Procurement & Actuals, Closure, Integration,
+    // Governance) restores exactly the pre-Stream-F rail contents this
+    // assertion depends on -- ANALYTICS and INTEGRATION MAPPING are
+    // deliberately left at their default (collapsed), because `fx-rates` was
+    // only ever the LAST rendered item because those two groups render
+    // nothing while closed.
+    for (const g of ['Procurement & Actuals', 'Closure', 'Integration', 'Governance']) {
+      await page.click(`[data-nav-group="${g}"]`);
+    }
     const ids = await page.evaluate(
       () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
     );

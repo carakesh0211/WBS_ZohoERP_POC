@@ -17,14 +17,24 @@
 //
 //   * the row height, so the cost of ONE more entry is a measurement and not a
 //     remembered figure;
-//   * that laptop-1024 is ALREADY overflowing, which is the fact that decides
-//     the question and is not this stream's debt;
+//   * that laptop-1024 does not overflow at the rail's DEFAULT render (see
+//     the Fable 5.1 Stream F update below);
 //   * that the rail's approved sequence is unchanged by Wave 5, which
 //     registers twelve routes and no rail entries at all.
 //
 // It deliberately does NOT pin the absolute content height. That number moves
 // whenever an approved label rewraps, and a suite that fails for that reason
 // teaches everyone to ignore it — which is how a real overflow ships.
+//
+// FABLE 5.1 STREAM F UPDATE: the laptop-1024 assertion used to require the
+// rail to ALREADY be overflowing — true from before Fable 5.1 through the
+// analytics/mapping groups, and recorded as "not this stream's debt" each
+// time. Stream F made every NAV group collapsible (Work and Project Control
+// still default open; Procurement & Actuals, Closure, Integration and
+// Governance now default closed too), which is what the debt actually
+// needed: the rail's resting content at laptop-1024 dropped from ~986px to
+// ~631px against a 713px rail, so the assertion now requires NO overflow at
+// the default render instead. See docs/ui-change-2026-09/F-collapsible-navigation.md.
 //
 // This file owns no configuration and changes no approved baseline.
 
@@ -66,7 +76,14 @@ function measureRail(page) {
     if (cs.display === 'none') {
       return { hidden: true, rows: items.length, rail: 0, content: 0, overflow: 0, rowHeight: 0 };
     }
-    const kids = [...nav.children];
+    // Fable 5.1 Stream F: a collapsed group's `.nav-group-items` panel is a
+    // real direct child of #nav (its id has to exist for aria-controls), just
+    // one carrying `hidden`. Left in, it can be the LAST child in DOM order
+    // (INTEGRATION MAPPING renders last and defaults collapsed), and a
+    // hidden element's bounding rect is all zeros -- which read as negative
+    // content height before this filter. `.hidden` is exactly the mechanism
+    // renderNav() uses to hide it, so filtering on it is exact, not a guess.
+    const kids = [...nav.children].filter((k) => !k.hidden);
     let content = 0;
     if (kids.length) {
       const first = kids[0].getBoundingClientRect().top;
@@ -134,11 +151,22 @@ for (const viewport of [
     expect(m.ids.filter((id) => id.startsWith('integration-'))).toEqual([]);
 
     if (viewport.name === 'laptop-1024') {
-      // THE FACT THAT DECIDES THE QUESTION, and it is not Wave 5's debt: the
-      // approved rail does not fit at 1024 as it stands. Anything added here
-      // deepens an existing overflow rather than creating one.
-      expect(m.overflow, 'laptop-1024 no longer overflows — re-open the nav question with the lead')
-        .toBeGreaterThan(0);
+      // THE FACT THAT DECIDED THIS QUESTION CHANGED, and it changed on
+      // purpose: this assertion used to require laptop-1024 to already
+      // overflow at its resting height (a fact this file measured rather
+      // than argued, going back to before Fable 5.1). Fable 5.1 Stream F is
+      // what changed it -- Work and Project Control are still open by
+      // default, but Procurement & Actuals, Closure, Integration and
+      // Governance now default CLOSED like the two later groups already did,
+      // and that alone takes the rail's resting content from ~986px to
+      // ~631px at this viewport (measured above, in `m.content`). The rail
+      // NO LONGER OVERFLOWS at its default render, for any seeded principal
+      // wide enough to reach every group (Administrator included) -- which is
+      // the property this stream exists to deliver, so the assertion now
+      // requires it rather than requiring the old overflow. See
+      // docs/ui-change-2026-09/F-collapsible-navigation.md.
+      expect(m.overflow, 'laptop-1024 overflows again at its default render — Stream F regressed')
+        .toBeLessThanOrEqual(0);
     }
 
     // And at every width where the rail is visible, twelve more rows do not
