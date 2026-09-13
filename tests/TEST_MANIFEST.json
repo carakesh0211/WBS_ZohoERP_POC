@@ -5898,6 +5898,14 @@
       "test_health_diagnoses_the_gate_without_a_value": {
         "assertions": 3,
         "body_sha": "b476dbd4aca445a5"
+      },
+      "test_the_transport_reports_the_gap_between_configuration_and_the_issued_token": {
+        "assertions": 5,
+        "body_sha": "370cc95f33b3189e"
+      },
+      "test_token_health_carries_the_scope_gap_and_never_the_token": {
+        "assertions": 4,
+        "body_sha": "0aec7f26c50d8138"
       }
     },
     "test_outbound_unsanctioned.py": {
@@ -13483,7 +13491,7 @@
     "test_ops_readiness.py": 28,
     "test_outbound_chaos.py": 26,
     "test_outbound_emission.py": 52,
-    "test_outbound_live_write_fable51.py": 18,
+    "test_outbound_live_write_fable51.py": 20,
     "test_outbound_unsanctioned.py": 20,
     "test_period_reopen_permissions.py": 17,
     "test_pg_adoption.py": 16,
@@ -13624,7 +13632,7 @@
     "test_ops_readiness.py": 44,
     "test_outbound_chaos.py": 123,
     "test_outbound_emission.py": 154,
-    "test_outbound_live_write_fable51.py": 53,
+    "test_outbound_live_write_fable51.py": 62,
     "test_outbound_unsanctioned.py": 55,
     "test_period_reopen_permissions.py": 51,
     "test_pg_adoption.py": 39,

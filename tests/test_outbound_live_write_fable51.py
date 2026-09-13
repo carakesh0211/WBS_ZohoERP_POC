@@ -344,3 +344,55 @@ def test_health_diagnoses_the_gate_without_a_value(monkeypatch):
     assert body["outbound_writes_enabled"] is False
     monkeypatch.delenv("CAPEX_ERP_OUTBOUND_WRITES")
     assert TestClient(main.app).get("/api/health").json()["outbound_gate"]["present"] is False
+
+
+# ================================================= 6. the token's own scope
+class _ScopedOpener(FakeOpener):
+    """A token endpoint that reports the scope Zoho actually granted."""
+
+    def __init__(self, token_scope, **kw):
+        super().__init__(**kw)
+        self.token_scope = token_scope
+
+    def __call__(self, req, timeout=None):
+        if req.full_url.startswith(lt.ACCOUNTS_SERVER):
+            self.requests.append(req)
+            self.token_mints += 1
+            from tests.test_live_transport_fable51 import ACCESS, _Resp
+            body = {"access_token": ACCESS + str(self.token_mints), "expires_in": 3600,
+                    "api_domain": erp.API_HOST_BY_DC["IN"]}
+            if self.token_scope is not None:
+                body["scope"] = self.token_scope
+            return _Resp(200, body)
+        return super().__call__(req, timeout)
+
+
+def test_the_transport_reports_the_gap_between_configuration_and_the_issued_token(tmp_path, monkeypatch):
+    configured = "ERP.purchaseorders.READ ERP.purchaseorders.CREATE ERP.settings.READ"
+    opener = _ScopedOpener("ERP.purchaseorders.READ ERP.settings.READ ERP.bills.READ")
+    t = _transport(tmp_path, opener, scope=configured)
+    before = t.describe()
+    assert before["token_scope_reported"] is False and before["configured_not_in_token"] is None
+    t._bearer()
+    after = t.describe()
+    assert after["token_scope_reported"] is True
+    assert after["configured_not_in_token"] == ["ERP.purchaseorders.CREATE"]
+    assert after["token_not_in_configured"] == ["ERP.bills.READ"]
+    # A token endpoint that omits `scope` reports nothing rather than "agrees".
+    t2 = _transport(tmp_path, _ScopedOpener(None), scope=configured)
+    t2._bearer()
+    assert t2.describe()["token_scope_reported"] is False
+
+
+def test_token_health_carries_the_scope_gap_and_never_the_token(tmp_path, monkeypatch):
+    configured = "ERP.purchaseorders.READ ERP.purchaseorders.CREATE"
+    opener = _ScopedOpener("ERP.purchaseorders.READ")
+    t = _transport(tmp_path, opener, scope=configured)
+    monkeypatch.setattr(integrations_api, "_live_transport_for", lambda connection: t)
+    health = integrations_api._token_health({"connection_id": "C", "product": "ERP",
+                                             "mode": "LIVE_WRITE", "dc": "IN"})
+    assert health["state"] == "MINTED"
+    assert health["configured_not_in_token"] == ["ERP.purchaseorders.CREATE"]
+    assert health["token_not_in_configured"] == []
+    from tests.test_live_transport_fable51 import ACCESS
+    assert ACCESS not in str(health)

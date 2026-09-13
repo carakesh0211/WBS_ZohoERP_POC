@@ -1181,6 +1181,12 @@ def _token_health(connection: dict) -> dict[str, Any]:
                                           "refresh token; the token is not shown.",
             "seconds_left": left, "api_domain": facts["api_domain"],
             "granted_scopes": facts["granted_scopes"],
+            # What the token Zoho issued carries, against the configuration:
+            # a scope listed in CAPEX_ERP_SCOPES but absent from the token is
+            # the one refusal a mint cannot show and a write will (401/57).
+            "token_scope_reported": facts.get("token_scope_reported"),
+            "configured_not_in_token": facts.get("configured_not_in_token"),
+            "token_not_in_configured": facts.get("token_not_in_configured"),
             # health-dashboard.js reads these three; the values are expiry
             # facts, never the token (REQ-INT-024).
             "access_token_expires_at": (now + timedelta(seconds=left)).isoformat(),

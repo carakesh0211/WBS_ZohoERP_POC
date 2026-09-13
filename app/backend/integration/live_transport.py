@@ -188,6 +188,13 @@ class LiveTransport:
         self._token: str | None = None
         self._token_expires_at: float = 0.0
         self.token_mints = 0
+        #: The scope Zoho REPORTED on the last mint (the refresh answer
+        #: carries `scope`), or None before a mint / when Zoho omitted it.
+        #: `granted_scopes` is what the platform configuration SAYS was
+        #: granted; the two must agree, and 2026-09-13 showed why: a create
+        #: refused with HTTP 401 code 57 while the configuration listed
+        #: ERP.purchaseorders.CREATE -- the token itself did not carry it.
+        self.token_scopes: frozenset[str] | None = None
         self.calls_made = 0
 
     # ------------------------------------------------------------ evidence
@@ -198,7 +205,14 @@ class LiveTransport:
                 "token_minted": self._token is not None,
                 "token_seconds_left": (max(0, int(self._token_expires_at - self._clock()))
                                        if self._token else None),
-                "calls_made": self.calls_made, "token_mints": self.token_mints}
+                "calls_made": self.calls_made, "token_mints": self.token_mints,
+                # Configuration versus the token Zoho actually issued. Empty
+                # lists mean they agree; None means no mint has reported yet.
+                "token_scope_reported": self.token_scopes is not None,
+                "configured_not_in_token": (None if self.token_scopes is None else
+                                            sorted(self.granted_scopes - self.token_scopes)),
+                "token_not_in_configured": (None if self.token_scopes is None else
+                                            sorted(self.token_scopes - self.granted_scopes))}
 
     # --------------------------------------------------------------- token
     def _mint(self) -> str:
@@ -227,6 +241,8 @@ class LiveTransport:
                 f"(Zoho error: {body.get('error') if isinstance(body, Mapping) else 'unreadable'!r}). "
                 f"Re-run tools/erp_demo/connect.py if the grant was revoked.")
         ttl = int(body.get("expires_in") or 3600)
+        reported = str(body.get("scope") or "").split()
+        self.token_scopes = frozenset(reported) if reported else None
         self._token = str(token)
         self._token_expires_at = self._clock() + max(60, ttl - REFRESH_MARGIN_SECONDS)
         self.token_mints += 1
