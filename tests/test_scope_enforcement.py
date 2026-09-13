@@ -145,6 +145,9 @@ SCOPABLE = {
 
     "purchase_request", "pr_line", "purchase_order", "po_line",
     "grn", "grn_line", "bill", "bill_line",
+    # Migration 034: internal fulfilment, all three under a project policy.
+    "pr_line_fulfilment", "internal_material_request",
+    "internal_material_movement",
     # Migration 018, all three carrying a capex_scope_permits RLS policy that
     # reaches `project` and filters all four dimensions. Added WITH the
     # migration, not after it, for the reason the 013 block above gives.

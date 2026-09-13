@@ -5,7 +5,7 @@
   "baseline": {
     "recorded_at": "2026-08-28",
     "commit_note": "POC baseline, branch phase-0a/foundations, before any port work",
-    "test_functions": 220,
+    "test_functions": 242,
     "collected_cases": 348,
     "collected_cases_note": "348 is the pytest-collected count after parametrisation expands 6 files; 220 is the count of `def test_` functions. Both are real and the Definition of Done refers to the function count.",
     "runtime_seconds_approx": 189,
@@ -8756,6 +8756,96 @@
         "body_sha": "b6229874039f4a56"
       }
     },
+    "test_pg_internal_fulfilment_fable51.py": {
+      "test_034_is_discovered_named_and_numbered": {
+        "assertions": 3,
+        "body_sha": "9ee241f74e662d36"
+      },
+      "test_the_two_kinds_are_one_string_in_every_place_a_kind_lives": {
+        "assertions": 7,
+        "body_sha": "5533969ed6eae1b8"
+      },
+      "test_the_migration_names_its_grants_and_revokes_for_capex_app": {
+        "assertions": 4,
+        "body_sha": "b40b4e6bdd173c7d"
+      },
+      "test_the_migration_ends_with_a_commented_rollback_and_every_sum_is_cast": {
+        "assertions": 3,
+        "body_sha": "d3f8b1f6e9bf4bb8"
+      },
+      "test_the_two_internal_limbs_have_exactly_one_deriver": {
+        "assertions": 6,
+        "body_sha": "4dfd31c5b09a661b"
+      },
+      "test_every_exposure_site_sums_the_two_internal_limbs": {
+        "assertions": 5,
+        "body_sha": "701d669b3110daf5"
+      },
+      "test_the_permission_is_maker_checker_in_both_catalogues_and_auditor_reads_nothing_new": {
+        "assertions": 4,
+        "body_sha": "0aad8a18152ff8d5"
+      },
+      "test_the_split_is_exact_to_the_paisa": {
+        "assertions": 3,
+        "body_sha": "1f8eeb877ed8ea12"
+      },
+      "test_the_split_never_exceeds_the_line_and_the_paise_split_exactly": {
+        "assertions": 13,
+        "body_sha": "fa7f737447276035"
+      },
+      "test_a_decision_needs_an_approved_request": {
+        "assertions": 2,
+        "body_sha": "a9a262054463e82d"
+      },
+      "test_conversion_reads_the_external_portion_and_a_wholly_internal_request_refuses": {
+        "assertions": 5,
+        "body_sha": "b99c31e0e14a64f1"
+      },
+      "test_the_lifecycle_moves_money_between_limbs_and_never_counts_it_twice": {
+        "assertions": 35,
+        "body_sha": "9e0abb5b8a423818"
+      },
+      "test_a_replayed_movement_moves_nothing_twice": {
+        "assertions": 5,
+        "body_sha": "486a75e228c96643"
+      },
+      "test_concurrent_allocations_produce_one_and_concurrent_issues_never_exceed": {
+        "assertions": 4,
+        "body_sha": "8bb7078562c2d470"
+      },
+      "test_cancel_releases_into_the_hold_and_refuses_stock_in_the_field": {
+        "assertions": 11,
+        "body_sha": "2a846140073a938a"
+      },
+      "test_a_missing_valuation_is_visible_and_blocks_allocation_until_resolved": {
+        "assertions": 14,
+        "body_sha": "1587bea1e42f12af"
+      },
+      "test_the_provider_boundary_is_asked_and_a_foreign_valuation_is_not_divided": {
+        "assertions": 9,
+        "body_sha": "5163262b8ef9bf8a"
+      },
+      "test_a_missing_mapping_is_visible_and_blocks_approval_until_the_owner_exists": {
+        "assertions": 6,
+        "body_sha": "fc6de3e0054f2b5e"
+      },
+      "test_the_requester_never_approves_their_own_request": {
+        "assertions": 10,
+        "body_sha": "bc62bfabc3935890"
+      },
+      "test_row_level_security_hides_another_entitys_requests": {
+        "assertions": 4,
+        "body_sha": "1f15ef9c5e13fa92"
+      },
+      "test_the_export_the_report_and_the_closure_position_show_the_internal_figures_apart": {
+        "assertions": 16,
+        "body_sha": "de63c422966c1c0a"
+      },
+      "test_every_verb_appends_to_the_audit_chain": {
+        "assertions": 3,
+        "body_sha": "1b71d8782a5e11af"
+      }
+    },
     "test_pg_locking.py": {
       "test_derive_lock_set_excludes_non_owning_ancestors": {
         "assertions": 1,
@@ -13590,6 +13680,7 @@
     "test_pg_fx_ingest.py": 51,
     "test_pg_integration_rate_budget.py": 21,
     "test_pg_integration_schema.py": 81,
+    "test_pg_internal_fulfilment_fable51.py": 22,
     "test_pg_locking.py": 17,
     "test_pg_locking_order.py": 19,
     "test_pg_masters.py": 32,
@@ -13733,6 +13824,7 @@
     "test_pg_fx_ingest.py": 136,
     "test_pg_integration_rate_budget.py": 109,
     "test_pg_integration_schema.py": 132,
+    "test_pg_internal_fulfilment_fable51.py": 172,
     "test_pg_locking.py": 36,
     "test_pg_locking_order.py": 30,
     "test_pg_masters.py": 82,

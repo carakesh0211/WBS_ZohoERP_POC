@@ -244,7 +244,11 @@ def compute_ledger(con, project_id=None, *, as_of: str | None = None):
 
 
 _COMPONENTS = ("budget", "original", "revisions", "ordered", "commitment",
-               "actual", "received", "received_not_billed", "pr_reserved")
+               "actual", "received", "received_not_billed", "pr_reserved",
+               # 034: internal fulfilment. The SQLite estate has no internal
+               # material requests, so both are zero here; the PostgreSQL
+               # path (`pg.reporting`) derives them from the movements.
+               "internal_allocation", "internal_consumption")
 
 
 def _blank():
@@ -266,7 +270,8 @@ def _sum_cells(cells):
 def _derive(d):
     """Apply the frozen formulas. Exposure and available are always derived."""
     d = {**_blank(), **d}
-    d["exposure"] = d["commitment"] + d["actual"] + d["pr_reserved"]
+    d["exposure"] = (d["commitment"] + d["actual"] + d["pr_reserved"]
+                     + d["internal_allocation"] + d["internal_consumption"])
     d["available"] = d["budget"] - d["exposure"]
     d["utilisation_pct"] = round((d["exposure"] / d["budget"] * 100.0), 1) if d["budget"] else 0.0
     d["band"] = ("breach" if d["budget"] and d["exposure"] > d["budget"]

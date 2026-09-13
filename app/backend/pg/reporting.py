@@ -159,6 +159,9 @@ CRITICAL_PCT = 90.0
 COMPONENTS: tuple[str, ...] = (
     "budget", "original", "revisions", "ordered", "commitment",
     "actual", "received", "received_not_billed", "pr_reserved",
+    # 034: internal fulfilment, shown APART from the external buckets and
+    # summed into exposure beside them (`derive`).
+    "internal_allocation", "internal_consumption",
 )
 
 #: The document types a `FilterSet` may name, and which buckets each supplies.
@@ -169,7 +172,7 @@ COMPONENTS: tuple[str, ...] = (
 #: `budget_line`, which is not a document type at all, so it is present for
 #: every selection -- a utilisation figure with no denominator is not a
 #: utilisation figure.
-DOCUMENT_TYPES: tuple[str, ...] = ("PR", "PO", "GRN", "BILL")
+DOCUMENT_TYPES: tuple[str, ...] = ("PR", "PO", "GRN", "BILL", "IMR")
 
 #: EACH ENTRY NAMES THE BUCKETS ITS OWN BRANCH EMITS, AND NOTHING ELSE.
 #: `received_not_billed` reads as a GRN measure and is not one: it is
@@ -184,6 +187,8 @@ _BUCKETS_BY_DOCUMENT_TYPE: dict[str, tuple[str, ...]] = {
     "PO": ("ordered", "commitment", "received_not_billed"),
     "GRN": ("received",),
     "BILL": ("actual",),
+    # 034: the internal material request supplies both internal buckets.
+    "IMR": ("internal_allocation", "internal_consumption"),
 }
 
 
@@ -890,8 +895,8 @@ _FACT_COLUMNS: tuple[str, ...] = (
 
 
 def _zeros_except(**supplied: str) -> str:
-    """The nine component columns, with `0::bigint` for every bucket a branch
-    does not supply.
+    """The component columns (nine before 034, eleven since), with
+    `0::bigint` for every bucket a branch does not supply.
 
     Written once rather than typed out five times: a hand-written branch that
     puts its total in the wrong slot is a defect no test of the SQL's *shape*
@@ -1132,7 +1137,10 @@ _PR_BRANCH = f"""
     SELECT p.entity_id, p.plant_id, p.location_id, p.project_id,
            r.wbs_id, w.wbs_path, r.budget_head_id, bc.budget_category_id,
            NULL::text AS vendor_id, 'PR'::text AS branch_kind,
-           {_zeros_except(pr_reserved="SUM(r.amount_paise)::bigint")}
+           -- 034: LESS the part of the hold an internal allocation has
+           -- moved -- that rupee is in the IMR branch, not here. Transcribes
+           -- `_RECOMPUTE_DERIVED_SQL`'s pr_reserved limb.
+           {_zeros_except(pr_reserved="SUM(r.amount_paise - r.internal_moved_paise)::bigint")}
     FROM pr_reservation r
     JOIN purchase_request req ON req.pr_id = r.pr_id
     JOIN wbs_element w ON w.wbs_id = r.wbs_id
@@ -1149,11 +1157,54 @@ _PR_BRANCH = f"""
              r.wbs_id, w.wbs_path, r.budget_head_id, bc.budget_category_id
 """
 
+#: `internal_allocation` and `internal_consumption` (034), at REQUEST grain.
+#:
+#: The same per-document-then-sum shape as `_PO_BRANCH`, for the same reason:
+#: one request's open allocation is `ALLOCATE - ISSUE - CANCEL` floored at
+#: zero, and flooring AFTER summing across requests would net one request's
+#: excess against another's balance. Transcribes
+#: `procurement_services._RECOMPUTE_DERIVED_SQL`'s two internal limbs.
+#: A TRANSFER between stores and a CONSUME confirmation carry no paise.
+_IMR_BRANCH = f"""
+    SELECT p.entity_id, p.plant_id, p.location_id, p.project_id,
+           req.wbs_id, w.wbs_path, req.budget_head_id, bc.budget_category_id,
+           NULL::text AS vendor_id, 'IMR'::text AS branch_kind,
+           {_zeros_except(
+               internal_allocation="SUM(GREATEST(0, req.open_paise))::bigint",
+               internal_consumption="SUM(GREATEST(0, req.consumed_paise))::bigint")}
+    FROM (
+        SELECT imr.imr_id, imr.wbs_id, imr.budget_head_id, imr.project_id,
+               imr.created_at::date AS requested_on, imr.status,
+               COALESCE(SUM(CASE WHEN m.kind = 'ALLOCATE' THEN m.amount_paise
+                                 WHEN m.kind IN ('ISSUE', 'CANCEL')
+                                      THEN -m.amount_paise
+                                 ELSE 0 END), 0)::bigint AS open_paise,
+               COALESCE(SUM(CASE WHEN m.kind = 'ISSUE' THEN m.amount_paise
+                                 WHEN m.kind = 'RETURN' THEN -m.amount_paise
+                                 ELSE 0 END), 0)::bigint AS consumed_paise
+        FROM internal_material_request imr
+        LEFT JOIN internal_material_movement m ON m.imr_id = imr.imr_id
+        GROUP BY imr.imr_id, imr.wbs_id, imr.budget_head_id, imr.project_id,
+                 imr.created_at, imr.status
+    ) req
+    JOIN wbs_element w ON w.wbs_id = req.wbs_id
+    JOIN project p ON p.project_id = req.project_id
+    LEFT JOIN budget_control_cell bc
+           ON bc.wbs_id = req.wbs_id AND bc.budget_head_id = req.budget_head_id
+    WHERE (%(date_from)s::date IS NULL OR req.requested_on >= %(date_from)s)
+      AND (%(date_to)s::date IS NULL OR req.requested_on <= %(date_to)s)
+      AND (%(lifecycle)s::text[] IS NULL OR req.status = ANY(%(lifecycle)s))
+      {_period_on("req.requested_on")}
+    GROUP BY p.entity_id, p.plant_id, p.location_id, p.project_id,
+             req.wbs_id, w.wbs_path, req.budget_head_id, bc.budget_category_id
+"""
+
 #: document type -> the branch supplying its buckets. `budget` has no document
 #: type: it comes from `budget_line`, which is not a document, and it is always
 #: included -- a utilisation percentage with no denominator is not one.
 _BRANCH_BY_DOCUMENT_TYPE: dict[str, str] = {
     "PR": _PR_BRANCH, "PO": _PO_BRANCH, "GRN": _GRN_BRANCH, "BILL": _BILL_BRANCH,
+    "IMR": _IMR_BRANCH,
 }
 
 #: The filters applied ONCE, in the outer query, over the unioned fact.
@@ -1257,7 +1308,9 @@ def derive(components: Mapping[str, int]) -> dict[str, Any]:
     branch added later and this cannot.
     """
     out = {name: int(components.get(name, 0) or 0) for name in COMPONENTS}
-    out["exposure"] = out["commitment"] + out["actual"] + out["pr_reserved"]
+    # 034: the internal limbs are exposure beside the external ones.
+    out["exposure"] = (out["commitment"] + out["actual"] + out["pr_reserved"]
+                       + out["internal_allocation"] + out["internal_consumption"])
     out["available"] = out["budget"] - out["exposure"]
     out["utilisation_pct"] = (
         round(out["exposure"] / out["budget"] * 100.0, 1) if out["budget"] else 0.0)
@@ -1589,10 +1642,9 @@ def _sort_expression(measure: str) -> str:
     `derive` recomputes them for every row rather than reading them back.
     """
     if measure == "exposure":
-        return "(g.commitment_paise + g.actual_paise + g.pr_reserved_paise)"
+        return EXPOSURE_SQL
     if measure == "available":
-        return ("(g.budget_paise - (g.commitment_paise + g.actual_paise "
-                "+ g.pr_reserved_paise))")
+        return f"(g.budget_paise - {EXPOSURE_SQL})"
     if measure == "utilisation_pct":
         return UTILISATION_PCT_SQL
     return f"g.{measure}_paise"
@@ -1626,8 +1678,14 @@ def _sort_expression(measure: str) -> str:
 #: never equals -- and, descending, sorts below -- a ``76.6666...`` column
 #: value, so the tie-continuation clause of the keyset predicate can never
 #: fire and every row sharing that rounded percentage is skipped.
+#: `exposure` in SQL: the five stored limbs `derive` sums (034 added the two
+#: internal ones). One spelling, used by the sort expression and the cursor.
+EXPOSURE_SQL = (
+    "(g.commitment_paise + g.actual_paise + g.pr_reserved_paise"
+    " + g.internal_allocation_paise + g.internal_consumption_paise)")
+
 UTILISATION_PCT_SQL = (
-    "COALESCE(round((g.commitment_paise + g.actual_paise + g.pr_reserved_paise)"
+    f"COALESCE(round({EXPOSURE_SQL}"
     "::numeric * 100 / NULLIF(g.budget_paise, 0), 1), 0)")
 
 

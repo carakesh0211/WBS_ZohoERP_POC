@@ -691,6 +691,12 @@ BUDGET_LEDGER_CELLS = Dataset(
         Column("received_not_billed",
                "COALESCE(bl.received_not_billed_paise, 0)", "paise"),
         Column("pr_reserved", "COALESCE(bl.pr_reserved_paise, 0)", "paise"),
+        # 034: internal allocation and consumption, shown apart from the
+        # external buckets and summed into exposure beside them.
+        Column("internal_allocation",
+               "COALESCE(bl.internal_allocation_paise, 0)", "paise"),
+        Column("internal_consumption",
+               "COALESCE(bl.internal_consumption_paise, 0)", "paise"),
         # `exposure` and `available` transcribed from
         # `app/backend/pg/budget.py::list_cells`, which is the same arithmetic
         # `_subtree_totals` uses. Written as SQL over the same three stored
@@ -700,11 +706,15 @@ BUDGET_LEDGER_CELLS = Dataset(
         # trusting this comment.
         Column("exposure",
                "(COALESCE(bl.commitment_paise, 0) + COALESCE(bl.actual_paise, 0)"
-               " + COALESCE(bl.pr_reserved_paise, 0))", "paise"),
+               " + COALESCE(bl.pr_reserved_paise, 0)"
+               " + COALESCE(bl.internal_allocation_paise, 0)"
+               " + COALESCE(bl.internal_consumption_paise, 0))", "paise"),
         Column("available",
                "(bc.budget_paise - (COALESCE(bl.commitment_paise, 0)"
                " + COALESCE(bl.actual_paise, 0)"
-               " + COALESCE(bl.pr_reserved_paise, 0)))", "paise"),
+               " + COALESCE(bl.pr_reserved_paise, 0)"
+               " + COALESCE(bl.internal_allocation_paise, 0)"
+               " + COALESCE(bl.internal_consumption_paise, 0)))", "paise"),
         Column("recomputed_at", "bc.updated_at", "timestamp"),
     ),
     # `ux_wbs_path` makes `wbs_path` unique, and `(wbs_id, budget_head_id)` is
@@ -892,8 +902,98 @@ PURCHASE_ORDER_LINES = Dataset(
 )
 
 
+INTERNAL_MATERIAL_REQUESTS = Dataset(
+    name="internal_material_requests",
+    title="Internal material requests with their quantities and derived money",
+    from_sql="""
+        FROM internal_material_request imr
+        JOIN purchase_request pr ON pr.pr_id = imr.pr_id
+        JOIN project p ON p.project_id = imr.project_id
+        JOIN wbs_element w ON w.wbs_id = imr.wbs_id
+        LEFT JOIN location lf ON lf.location_id = imr.from_location_id
+        LEFT JOIN location lt ON lt.location_id = imr.to_location_id
+    """,
+    columns=(
+        Column("imr_id", "imr.imr_id"),
+        Column("imr_number", "imr.imr_number"),
+        Column("status", "imr.status"),
+        Column("pr_id", "imr.pr_id"),
+        Column("pr_number", "pr.pr_number"),
+        Column("pr_line_id", "imr.pr_line_id"),
+        Column("project_id", "p.project_id"),
+        Column("project_capex_code", "p.capex_code"),
+        Column("entity_id", "p.entity_id"),
+        Column("plant_id", "p.plant_id"),
+        Column("location_id", "p.location_id"),
+        Column("wbs_id", "imr.wbs_id"),
+        Column("wbs_code", "w.wbs_code"),
+        Column("budget_head_id", "imr.budget_head_id"),
+        Column("item_external_id", "imr.item_external_id"),
+        Column("item_description", "imr.item_description"),
+        Column("from_location", "lf.code"),
+        Column("to_location", "lt.code"),
+        Column("requested_quantity", "imr.requested_quantity", "numeric"),
+        Column("approved_quantity", "imr.approved_quantity", "numeric"),
+        Column("allocated_quantity", "imr.allocated_quantity", "numeric"),
+        Column("issued_quantity", "imr.issued_quantity", "numeric"),
+        Column("returned_quantity", "imr.returned_quantity", "numeric"),
+        Column("consumed_quantity", "imr.consumed_quantity", "numeric"),
+        Column("unit_rate", "imr.unit_rate_paise", "paise"),
+        Column("valuation_source", "imr.valuation_source"),
+        # The money is DERIVED from the movements, as the ledger derives it
+        # (`procurement_services._RECOMPUTE_DERIVED_SQL`), never stored on
+        # the request: allocation open = ALLOCATE - ISSUE - CANCEL,
+        # consumption = ISSUE - RETURN.
+        Column("internal_allocation",
+               "GREATEST(0, COALESCE((SELECT SUM(CASE WHEN m.kind = 'ALLOCATE'"
+               " THEN m.amount_paise WHEN m.kind IN ('ISSUE', 'CANCEL')"
+               " THEN -m.amount_paise ELSE 0 END) FROM internal_material_movement m"
+               " WHERE m.imr_id = imr.imr_id), 0)::bigint)", "paise"),
+        Column("internal_consumption",
+               "GREATEST(0, COALESCE((SELECT SUM(CASE WHEN m.kind = 'ISSUE'"
+               " THEN m.amount_paise WHEN m.kind = 'RETURN'"
+               " THEN -m.amount_paise ELSE 0 END) FROM internal_material_movement m"
+               " WHERE m.imr_id = imr.imr_id), 0)::bigint)", "paise"),
+        Column("mapping_ok", "imr.mapping_ok", "bool"),
+        Column("requested_by", "imr.requested_by"),
+        Column("approved_by", "imr.approved_by"),
+        Column("approved_at", "imr.approved_at", "timestamp"),
+        Column("created_at", "imr.created_at", "timestamp"),
+        Column("updated_at", "imr.updated_at", "timestamp"),
+    ),
+    key_sql=("imr.imr_number",),
+    scope_columns=_PROJECT_REACHING_COLUMNS,
+    filters={
+        "entity_ids": _in_list("p.entity_id"),
+        "plant_ids": _in_list("p.plant_id"),
+        "location_ids": _in_list("p.location_id"),
+        "project_ids": _in_list("p.project_id"),
+        "wbs_paths": _ltree_subtree("w.wbs_path"),
+        "budget_head_ids": _in_list("imr.budget_head_id"),
+        "lifecycle_statuses": _in_list("imr.status"),
+        "requestor_ids": _in_list("imr.requested_by"),
+        "approver_ids": _in_list("imr.approved_by"),
+        "date_from": _date_at_or_after("imr.created_at"),
+        "date_to": _date_at_or_before("imr.created_at"),
+    },
+    unsupported={
+        "period_ids": _NO_PERIOD, "category_ids": _NO_CATEGORY,
+        "budget_category_ids": _NO_CATEGORY,
+        "item_ids": ("an internal request names the tenant's item id as text; "
+                     "filter on it after export."),
+        "approval_statuses": _NO_APPROVAL,
+        "division_ids": _NO_DIVISION, "branch_ids": _NO_BRANCH,
+        "zone_ids": _NO_ZONE, "fiscal_years": _NO_FISCAL_YEAR,
+        "vendor_ids": "an internal material request has no vendor.",
+        "document_types": ("this dataset is internal material requests only; "
+                           "the document type is 'IMR' for every row."),
+    },
+)
+
+
 DATASETS: dict[str, Dataset] = {
-    d.name: d for d in (BUDGET_LEDGER_CELLS, WBS_ELEMENTS, PURCHASE_ORDER_LINES)
+    d.name: d for d in (BUDGET_LEDGER_CELLS, WBS_ELEMENTS, PURCHASE_ORDER_LINES,
+                        INTERNAL_MATERIAL_REQUESTS)
 }
 
 

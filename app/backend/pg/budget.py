@@ -315,7 +315,9 @@ def _subtree_totals(session: Session, owner_wbs_id: str, budget_head_id: str) ->
             COALESCE(SUM(bc.budget_paise), 0)::bigint,
             COALESCE(SUM(bl.commitment_paise), 0)::bigint,
             COALESCE(SUM(bl.actual_paise), 0)::bigint,
-            COALESCE(SUM(bl.pr_reserved_paise), 0)::bigint
+            COALESCE(SUM(bl.pr_reserved_paise), 0)::bigint,
+            COALESCE(SUM(bl.internal_allocation_paise), 0)::bigint,
+            COALESCE(SUM(bl.internal_consumption_paise), 0)::bigint
         FROM wbs_element o
         JOIN wbs_element x ON x.wbs_path <@ o.wbs_path
         JOIN budget_control_cell bc ON bc.wbs_id = x.wbs_id AND bc.budget_head_id = %(head)s
@@ -324,11 +326,16 @@ def _subtree_totals(session: Session, owner_wbs_id: str, budget_head_id: str) ->
         """,
         {"owner": owner_wbs_id, "head": budget_head_id},
     )
-    budget_paise, commitment, actual, pr_reserved = row
-    exposure = commitment + actual + pr_reserved
+    (budget_paise, commitment, actual, pr_reserved,
+     internal_allocation, internal_consumption) = row
+    # 034: internal allocation and consumption are exposure, shown apart.
+    exposure = (commitment + actual + pr_reserved
+                + internal_allocation + internal_consumption)
     return {
         "budget_paise": budget_paise, "commitment_paise": commitment,
         "actual_paise": actual, "pr_reserved_paise": pr_reserved,
+        "internal_allocation_paise": internal_allocation,
+        "internal_consumption_paise": internal_consumption,
         "exposure_paise": exposure, "available_paise": budget_paise - exposure,
     }
 
@@ -423,7 +430,9 @@ def list_cells(session: Session, *, project_id: str | None = None,
                COALESCE(bl.future_budget_paise, 0), COALESCE(bl.ordered_paise, 0),
                COALESCE(bl.commitment_paise, 0), COALESCE(bl.actual_paise, 0),
                COALESCE(bl.received_paise, 0), COALESCE(bl.received_not_billed_paise, 0),
-               COALESCE(bl.pr_reserved_paise, 0), bc.updated_at
+               COALESCE(bl.pr_reserved_paise, 0), bc.updated_at,
+               COALESCE(bl.internal_allocation_paise, 0),
+               COALESCE(bl.internal_consumption_paise, 0)
         FROM budget_control_cell bc
         JOIN wbs_element w ON w.wbs_id = bc.wbs_id
         JOIN project p ON p.project_id = w.project_id
@@ -442,8 +451,9 @@ def list_cells(session: Session, *, project_id: str | None = None,
     items = []
     for (w_id, path_text, head_id, budget_paise, original, revisions, future,
          ordered, commitment, actual, received, rec_not_billed, pr_reserved,
-         updated_at) in page:
-        exposure = commitment + actual + pr_reserved
+         updated_at, internal_allocation, internal_consumption) in page:
+        exposure = (commitment + actual + pr_reserved
+                    + internal_allocation + internal_consumption)
         items.append({
             "wbs_id": w_id, "wbs_path": path_text, "budget_head_id": head_id,
             "budget_paise": budget_paise, "original_paise": original,
@@ -451,6 +461,8 @@ def list_cells(session: Session, *, project_id: str | None = None,
             "ordered_paise": ordered, "commitment_paise": commitment,
             "actual_paise": actual, "received_paise": received,
             "received_not_billed_paise": rec_not_billed, "pr_reserved_paise": pr_reserved,
+            "internal_allocation_paise": internal_allocation,
+            "internal_consumption_paise": internal_consumption,
             "exposure_paise": exposure, "available_paise": budget_paise - exposure,
             "recomputed_at": _iso(updated_at),
         })

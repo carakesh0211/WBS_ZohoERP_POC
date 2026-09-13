@@ -276,7 +276,8 @@ def caller(session, w, h):
 # ==========================================================================
 @pytest.mark.parametrize("module_name",
                          ["budget.py", "periods.py",
-                          "procurement_services.py", "procurement.py"])
+                          "procurement_services.py", "procurement.py",
+                          "internal_fulfilment.py"])
 def test_service_module_obeys_the_lock_order(module_name):
     """Contract 3, checked against the shipped code."""
     problems = _violations(_analyse((_PG_DIR / module_name).read_text(encoding="utf-8")))

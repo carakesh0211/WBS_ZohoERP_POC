@@ -672,13 +672,52 @@ _RECOMPUTE_DERIVED_SQL = """
               AND b.accounting_status = ANY(%(effective)s)
         ), 0)::bigint,
 
-        -- AUD-H-001. Only a LIVE reservation holds budget.
+        -- AUD-H-001. Only a LIVE reservation holds budget -- LESS the part
+        -- of it an internal allocation has already MOVED (034): that rupee
+        -- is in `internal_allocation_paise` below, and must not also be here.
         pr_reserved_paise = COALESCE((
-            SELECT SUM(r.amount_paise)
+            SELECT SUM(r.amount_paise - r.internal_moved_paise)
             FROM pr_reservation r
             WHERE r.wbs_id = %(wbs_id)s
               AND r.budget_head_id = %(head)s
               AND r.state = 'Reserved'
+        ), 0)::bigint,
+
+        -- 034, INTERNAL_ALLOCATION_COMMITMENT: stock set aside for the cell
+        -- and not yet issued. Per request, ALLOCATE less ISSUE less CANCEL,
+        -- floored at zero, THEN summed -- as the PO-line commitment is --
+        -- so one request's excess never nets against another's balance.
+        -- A TRANSFER between stores and a CONSUME confirmation carry no
+        -- paise (`ck_imm_no_money_on_transfer_or_consume`).
+        internal_allocation_paise = COALESCE((
+            SELECT SUM(GREATEST(0, per_request.open_paise))
+            FROM (
+                SELECT SUM(CASE WHEN m.kind = 'ALLOCATE' THEN m.amount_paise
+                                WHEN m.kind IN ('ISSUE', 'CANCEL')
+                                     THEN -m.amount_paise
+                                ELSE 0 END) AS open_paise
+                FROM internal_material_movement m
+                WHERE m.wbs_id = %(wbs_id)s
+                  AND m.budget_head_id = %(head)s
+                GROUP BY m.imr_id
+            ) per_request
+        ), 0)::bigint,
+
+        -- 034, INTERNAL_CONSUMPTION_ACTUAL (CWIP): stock issued to the
+        -- project and not returned. An ISSUE moves money out of the
+        -- allocation limb above and into this one -- exposure is unchanged
+        -- by it; a RETURN releases it.
+        internal_consumption_paise = COALESCE((
+            SELECT SUM(GREATEST(0, per_request.consumed_paise))
+            FROM (
+                SELECT SUM(CASE WHEN m.kind = 'ISSUE' THEN m.amount_paise
+                                WHEN m.kind = 'RETURN' THEN -m.amount_paise
+                                ELSE 0 END) AS consumed_paise
+                FROM internal_material_movement m
+                WHERE m.wbs_id = %(wbs_id)s
+                  AND m.budget_head_id = %(head)s
+                GROUP BY m.imr_id
+            ) per_request
         ), 0)::bigint,
 
         updated_at = now(), updated_by = %(actor)s,
@@ -689,11 +728,12 @@ _RECOMPUTE_DERIVED_SQL = """
 
 def recompute_derived_position(session: Session, wbs_id: str,
                                budget_head_id: str, *, actor: str) -> None:
-    """Re-derive ALL SIX of one cell's derived money columns, in one statement.
+    """Re-derive ALL EIGHT of one cell's derived money columns, in one statement.
 
     ``ordered_paise``, ``commitment_paise``, ``actual_paise``,
-    ``received_paise``, ``received_not_billed_paise`` and
-    ``pr_reserved_paise``, every one of them from
+    ``received_paise``, ``received_not_billed_paise``,
+    ``pr_reserved_paise`` and (034) ``internal_allocation_paise`` and
+    ``internal_consumption_paise``, the first six of them from
     ``app.backend.domain.compute_ledger``'s formula verbatim. See the block
     comment above this function for each formula and for why ``actual`` is the
     one that is not per-PO-line.
@@ -862,7 +902,8 @@ def cell_position_invariants(session: Session, wbs_id: str,
         """
         SELECT bc.budget_paise, bl.commitment_paise, bl.actual_paise,
                bl.pr_reserved_paise, bl.ordered_paise, bl.received_paise,
-               bl.received_not_billed_paise, bl.commitment_carried_paise
+               bl.received_not_billed_paise, bl.commitment_carried_paise,
+               bl.internal_allocation_paise, bl.internal_consumption_paise
         FROM budget_control_cell bc
         JOIN budget_ledger_cell bl
           ON bl.wbs_id = bc.wbs_id AND bl.budget_head_id = bc.budget_head_id
@@ -874,7 +915,8 @@ def cell_position_invariants(session: Session, wbs_id: str,
              f"cell ({wbs_id}, {budget_head_id}) has no control/ledger pair",
              status=404)
     (budget, commitment, actual, reserved, ordered, received,
-     received_not_billed, carried) = (int(v) for v in cell)
+     received_not_billed, carried, internal_allocation,
+     internal_consumption) = (int(v) for v in cell)
     lines = session.fetchall(  # scope-exempt: the cell's own purchase-order lines, for the per-line identity
         """
         WITH position AS (
@@ -918,26 +960,36 @@ def cell_position_invariants(session: Session, wbs_id: str,
             continue
         if billed_line + open_commitment != ordered_line:
             po_line_identity = False
-    exposure = commitment + actual + reserved
+    # 034: the two internal limbs are exposure exactly as the three
+    # external ones are -- an allocation is a commitment of stock, an issue
+    # is CWIP -- and they are counted beside them, never inside them.
+    exposure = (commitment + actual + reserved
+                + internal_allocation + internal_consumption)
     return {
         "budget_paise": budget, "commitment_paise": commitment,
         "actual_paise": actual, "pr_reserved_paise": reserved,
         "ordered_paise": ordered, "received_paise": received,
         "received_not_billed_paise": received_not_billed,
         "commitment_carried_paise": carried,
+        "internal_allocation_paise": internal_allocation,
+        "internal_consumption_paise": internal_consumption,
         "exposure_paise": exposure,
         "available_paise": budget - exposure,
         # The four identities, each a bool a test asserts on directly.
         "available_identity": (budget - exposure)
-                              == budget - actual - commitment - reserved,
-        "exposure_identity": exposure == commitment + actual + reserved,
+                              == budget - actual - commitment - reserved
+                                 - internal_allocation - internal_consumption,
+        "exposure_identity": exposure == (commitment + actual + reserved
+                                          + internal_allocation
+                                          + internal_consumption),
         "po_line_identity": po_line_identity,
         "commitment_by_source_identity":
             commitment == derived_commitment + carried,
         "over_billed_po_lines": over_billed,
         "money_is_int": all(isinstance(v, int) for v in (
             budget, commitment, actual, reserved, ordered, received,
-            received_not_billed, carried)),
+            received_not_billed, carried, internal_allocation,
+            internal_consumption)),
     }
 
 
@@ -2281,6 +2333,49 @@ def _pr_lines(session: Session, pr_id: str) -> list[dict[str, Any]]:
     ]
 
 
+def _external_portions(session: Session, pr_id: str,
+                       lines: list[dict[str, Any]], *, pr_number: str
+                       ) -> list[dict[str, Any]]:
+    """The lines a purchase order is made from, after the fulfilment decision.
+
+    034. A line with a `pr_line_fulfilment` row converts its EXTERNAL quantity
+    and paise; the internal portion is an internal material request and never
+    a purchase-order line. A line with no decision converts whole -- the
+    decision defaults to EXTERNAL_PURCHASE, which is what every request did
+    before 034. A request whose every line is met from stores has nothing to
+    convert and is refused rather than turned into an empty order.
+    """
+    rows = repo.query(
+        session,
+        """
+        SELECT f.pr_line_id, f.mode, f.external_quantity, f.external_amount_paise
+        FROM pr_line_fulfilment f
+        JOIN project p ON p.project_id = f.project_id
+        WHERE f.pr_id = %(pr_id)s AND {scope}
+        """,
+        {"pr_id": pr_id},
+        columns=_PROJECT_SCOPE_COLUMNS,
+    )
+    by_line = {r[0]: r for r in rows}
+    out: list[dict[str, Any]] = []
+    for line in lines:
+        decided = by_line.get(line["pr_line_id"])
+        if decided is None:
+            out.append(line)
+            continue
+        _, mode, external_quantity, external_paise = decided
+        if mode == "INTERNAL_TRANSFER" or int(external_paise) == 0 \
+                and Decimal(str(external_quantity)) == 0:
+            continue
+        out.append({**line, "quantity": external_quantity,
+                    "amount_paise": int(external_paise)})
+    if not out:
+        _err("PR_FULLY_INTERNAL",
+             f"Every line of {pr_number} is met from stores (INTERNAL_TRANSFER); "
+             f"there is nothing to convert to a purchase order.", 409)
+    return out
+
+
 def _assert_version(expected: int | None, current: int, *, label: str) -> None:
     """Optimistic concurrency, on top of the pessimistic row lock.
 
@@ -3021,6 +3116,10 @@ def convert_pr_to_po(session: Session, *, pr_id: str, actor: str,
     if not lines:
         _err("NO_LINES",
              f"{header['pr_number']} carries no lines to convert.", 422)
+    # 034: a line with a fulfilment decision converts its EXTERNAL portion
+    # only; a line met wholly from stores does not convert at all.
+    lines = _external_portions(session, pr_id, lines,
+                               pr_number=header["pr_number"])
 
     po_currency = _po_currency(currency)
     lines = [{**line, "rate_paise": None, "source_amount_minor": None,

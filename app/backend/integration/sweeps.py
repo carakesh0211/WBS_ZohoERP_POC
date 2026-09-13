@@ -141,16 +141,19 @@ KIND_ADOPTION_DIMENSION_CONFLICT = "ADOPTION_DIMENSION_CONFLICT"
 #: 033: the bills citing one receive line, summed, exceed what it delivered.
 #: Raised by the ledger (`pg.procurement.mirror_bill`), never by a sweep.
 KIND_BILL_EXCEEDS_RECEIVE = "BILL_EXCEEDS_RECEIVE"
-#: 033: the bills citing one receive line, summed, exceed what it delivered.
-#: Raised by the ledger (`pg.procurement.mirror_bill`), never by a sweep.
-KIND_BILL_EXCEEDS_RECEIVE = "BILL_EXCEEDS_RECEIVE"
+#: 034: internal fulfilment. Raised by `pg.internal_fulfilment`, never by
+#: a sweep: a request with no budget-owning cell behind its mapping, and
+#: one with no stock valuation from the ERP or a reasoned manual entry.
+KIND_INTERNAL_MAPPING_MISSING = "INTERNAL_MAPPING_MISSING"
+KIND_INTERNAL_VALUATION_MISSING = "INTERNAL_VALUATION_MISSING"
 
 EXCEPTION_KINDS: frozenset[str] = frozenset({
     KIND_GRN_LINE_UNATTRIBUTED, KIND_CONTROL_TOTAL_MISMATCH,
     KIND_LATE_ARRIVAL_CLOSED_PERIOD, KIND_UNSANCTIONED_COMMITMENT,
     KIND_UNMAPPED_EXTERNAL_STATUS, KIND_FOREIGN_CURRENCY_BASIS_MISSING,
     KIND_ADOPTION_DIMENSION_INVALID, KIND_ADOPTION_DIMENSION_CONFLICT,
-    KIND_BILL_EXCEEDS_RECEIVE,
+    KIND_BILL_EXCEEDS_RECEIVE, KIND_INTERNAL_MAPPING_MISSING,
+    KIND_INTERNAL_VALUATION_MISSING,
 })
 
 #: The estate's base currency. The sweeps do not import `pg.fx` (they run

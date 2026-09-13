@@ -168,6 +168,10 @@ _POSITION_SQL = """
         COALESCE(SUM(bl.commitment_paise), 0)::bigint            AS commitment_paise,
         COALESCE(SUM(bl.received_not_billed_paise), 0)::bigint   AS received_not_billed_paise,
         COALESCE(SUM(bl.pr_reserved_paise), 0)::bigint           AS pr_reserved_paise,
+        -- 034: stock allocated and not yet issued is an open obligation of
+        -- the project exactly as an unbilled order is; stock issued is CWIP.
+        COALESCE(SUM(bl.internal_allocation_paise), 0)::bigint   AS internal_allocation_paise,
+        COALESCE(SUM(bl.internal_consumption_paise), 0)::bigint  AS internal_consumption_paise,
         -- HOW MUCH OF THE POSITION ACTUALLY EXISTS.
         --
         -- Every figure above is `COALESCE(SUM(...), 0)` over a LEFT JOIN, so a
@@ -214,11 +218,13 @@ def _project_position(session: Session, project_id: str) -> dict[str, Any]:
         "open_commitment_paise": row[6],
         "received_not_billed_paise": row[7],
         "pr_reserved_paise": row[8],
+        "internal_allocation_paise": row[9],
+        "internal_consumption_paise": row[10],
         # How much of the position EXISTS. See `_POSITION_SQL`: without these
         # a project with no ledger cells reported four zeros and no blockers,
         # so an absent position read as a clean one.
-        "wbs_element_count": row[9],
-        "ledger_cell_count": row[10],
+        "wbs_element_count": row[11],
+        "ledger_cell_count": row[12],
     }
 
 
@@ -356,6 +362,10 @@ def closure_position(session: Session, *, project_id: str,
         blockers.append(
             f"{format_inr(position['pr_reserved_paise'])} still held by live "
             f"purchase-request reservations")
+    if position["internal_allocation_paise"] != 0:
+        blockers.append(
+            f"{format_inr(position['internal_allocation_paise'])} of stock is "
+            f"allocated to this project and not yet issued or released")
     if exceptions["attributed_count"]:
         blockers.append(
             f"{exceptions['attributed_count']} open reconciliation "

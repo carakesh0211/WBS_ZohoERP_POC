@@ -90,6 +90,15 @@ PERMISSIONS: dict[str, tuple[str, ...]] = {
     "po.amend": ("Procurement",),
     "po.cancel": ("Procurement",),
     "po.close": ("Procurement",),
+    # Fable 5.1 / 034: internal material fulfilment, in this catalogue's
+    # vocabulary. Mirrors `auth.PERMISSIONS`' entries role-for-role.
+    "fulfilment.decide": ("Procurement", "Project Manager"),
+    "imr.read": tuple(r for r in ROLES if r != "Internal Auditor"),
+    "imr.create": ("Requestor", "Project Manager"),
+    "imr.approve": ("Plant Head", "Department Head"),
+    "imr.allocate": ("Procurement", "Project Manager"),
+    "imr.issue": ("Procurement", "Project Manager"),
+    "imr.cancel": ("Procurement", "Project Manager"),
     "revision.create": ("Project Manager", "Finance"),
     "revision.approve": ("Project Finance Controller", "CFO"),
     "capitalisation.allocate": ("Project Finance Controller", "Finance"),
@@ -104,7 +113,7 @@ PERMISSIONS: dict[str, tuple[str, ...]] = {
 #: object may never also decide it. Mirrors `auth.MAKER_CHECKER`'s role in
 #: the legacy system, for this module's own permission catalog.
 MAKER_CHECKER: frozenset[str] = frozenset({
-    "pr.approve", "pr.approve_exception", "revision.approve",
+    "pr.approve", "pr.approve_exception", "imr.approve", "revision.approve",
     "capitalisation.approve", "bill.void",
 })
 

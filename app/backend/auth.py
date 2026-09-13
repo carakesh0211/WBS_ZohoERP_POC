@@ -41,6 +41,25 @@ PERMISSIONS: dict[str, tuple[str, ...]] = {
     "po.amend":               ("ProcurementApprover",),
     "po.cancel":              ("ProcurementApprover",),
     "po.close":               ("ProcurementApprover",),
+    # --- Fable 5.1 / 034: internal material fulfilment -------------------
+    # The fulfilment decision on an approved line is a procurement call; the
+    # request is raised by the roles that raise purchase requests; approval
+    # is maker-checker (`imr.approve` is in MAKER_CHECKER); allocation,
+    # issue, return, transfer and consumption are stores operations held by
+    # the procurement side; cancel by the same. Auditor reads only.
+    "fulfilment.decide":      ("ProcurementApprover", "BudgetController"),
+    # Auditor is deliberately ABSENT from `imr.read`: AUD-C-006 pins the
+    # Auditor to an allow-list of five reads, and widening it is a product
+    # decision (D-12's shape), not a side effect of a new screen. Recorded
+    # in the delivery status as an open decision for the owner.
+    "imr.read":               ("Requestor", "BudgetController", "ProcurementApprover",
+                               "FinanceApprover", "CapitalisationApprover",
+                               "Administrator"),
+    "imr.create":             ("Requestor", "BudgetController"),
+    "imr.approve":            ("ProcurementApprover",),
+    "imr.allocate":           ("ProcurementApprover", "BudgetController"),
+    "imr.issue":              ("ProcurementApprover", "BudgetController"),
+    "imr.cancel":             ("ProcurementApprover", "BudgetController"),
     "revision.create":        ("Requestor", "BudgetController"),
     # Closing an accounting period freezes what can still be posted into it,
     # so it is a finance control, not an administrative convenience. Auditor
@@ -179,7 +198,8 @@ PERMISSIONS: dict[str, tuple[str, ...]] = {
 
 # Approval permissions are subject to maker-checker: the approver may not be the
 # person who raised the object.
-MAKER_CHECKER = {"pr.approve", "pr.approve_exception", "revision.approve",
+MAKER_CHECKER = {"pr.approve", "pr.approve_exception", "imr.approve",
+                 "revision.approve",
                  "capitalisation.approve", "bill.void", "period.reopen.apply"}
 
 

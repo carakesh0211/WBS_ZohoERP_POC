@@ -253,6 +253,11 @@ EXCEPTION_KINDS: tuple[str, ...] = (
     "UNSANCTIONED_COMMITMENT", "FOREIGN_CURRENCY_BASIS_MISSING",
     "ADOPTION_DIMENSION_INVALID", "ADOPTION_DIMENSION_CONFLICT",
     "BILL_EXCEEDS_RECEIVE",
+    # 034: internal fulfilment. Raised by `pg.internal_fulfilment`, never
+    # by a sweep: a request whose project x WBS x budget-head mapping
+    # resolves to no budget-owning cell, and one whose stock valuation
+    # neither the ERP nor a reasoned manual entry has supplied.
+    "INTERNAL_MAPPING_MISSING", "INTERNAL_VALUATION_MISSING",
 )
 
 #: C18's frozen ``exception_status`` namespace, verbatim, matching

@@ -146,6 +146,10 @@ app.include_router(integrations_live_api.router)
 # tables; the SQLite `/api/purchase-requests` and `/api/purchase-orders`
 # routes above are untouched and stay deployable until the cutover.
 app.include_router(procurement_api.router)
+# Fable 5.1 / 034: internal material fulfilment. Same floor, same
+# principal derivation, same error shape as the procurement router.
+from .api import internal_fulfilment as internal_fulfilment_api  # noqa: E402
+app.include_router(internal_fulfilment_api.router)
 # Wave 7 stream A1. Same rule, same commit: the five mutating paths this
 # router serves are in `tests/test_api_auth.py::MUTATING_ROUTES` in the commit
 # that mounts it. `/api/reports/*` is the server-side reporting layer over the
