@@ -42,3 +42,33 @@ binds, and where it is applied. Nothing here is inferred.
 | `/api/health` `zoho_mode` reported the mock module's constant on a live deployment | engineering | DONE at `3d12027`: reports the strongest active connection mode from the database (LIVE_READ on UAT) and `outbound_writes_enabled` |
 | Audit-anchor Cron Function | owner (job token) | DEFERRED, post-UAT: no job token exists under `~/.capex-tools` |
 | Stray schema in the default `postgres` database | owner | NOT TOUCHED (owner's decision 4 of 2026-09-12) |
+
+## Product-owner decision of 2026-09-13 — outbound purchase-order creation stays ENABLED for ongoing UAT
+
+**Supersedes** the one-emission-only instruction of 2026-09-12/13. The Zoho ERP organisation DEMO WBS
+(60074128927) is a dedicated demo tenant for WBS testing; `CAPEX_ERP_OUTBOUND_WRITES=1` stays set on the
+AppSail and connection `CONN-32A904F37FEA` stays in `LIVE_WRITE`, under these permanent boundaries and
+where each is enforced:
+
+| Boundary | Enforcement |
+|---|---|
+| Organisation exactly 60074128927 | `erp.WRITE_AUTHORISED_ORGANISATIONS`; the transport refuses any non-GET whose `organization_id` is not in it (`WRITE_ORGANISATION_NOT_AUTHORISED`), whatever a connection row says; `/mode` refuses LIVE_WRITE for a connection bound elsewhere (403); the org id never comes from a browser request (the adapter builds it off the connection row; `PUT …/organization` is unavailable by design) |
+| India ERP API host pinned | `LiveTransport` refuses every other host (unchanged) |
+| OAuth write permission limited to `ERP.purchaseorders.CREATE` | the credential's grant (13 scopes); the transport's verb-scope rule; token health reports `configured_not_in_token` |
+| No create/update/delete of bills, receives, payments, credits, vendors, items, taxes, banking | `erp.WRITE_ALLOWED_PATH_PREFIXES = ("/purchaseorders",)` at the transport (`WRITE_MODULE_NOT_AUTHORISED`) — and no scope for them is granted |
+| Every emitted PO originates from an approved WBS purchase order | `procurement_services._require_approved_origin`: Approved/Released itself, or converted from an Approved request (maker-checker); otherwise 409 `PO_NOT_APPROVED` before any outbox row |
+| Existing authorisation and approval permissions | `connector.manage` on emit / drain / mode (matrix in `tests/test_api_auth.py`); proven live: U-REQ gets 403 on all three |
+| Budget validation, maker-checker, idempotency | unchanged; identical emit re-plans nothing, second drain claims nothing (proven live twice) |
+| Every test PO carries cf_capex_ref, cf_wbs_code, cf_budget_head | `ErpAdapter._require_emission_fields` refuses before any call (`EMISSION_REFERENCE_MISSING` / `EMISSION_LINE_FIELDS_MISSING`); the header field is the dedupe key |
+| Every write and refusal in the audit log | `PO_EMISSION_PLANNED`, `PO_EMITTED`, `PO_EMISSION_FAILED` on the order; `OUTBOX_DRAINED`, `CONNECTION_MODE_CHANGED`, `CONNECTION_MODE_REFUSED` on the connection's trail. Exception, stated: the emit route's own gate refusal (409 before any lookup, by design — no existence oracle) is not an audit entry |
+| Duplicate retries never create another Zoho PO | the outbox row is SENT with its external id; `cf_capex_ref` is unique in the tenant (Z-01); `resolve_by_dedupe_key` runs before every create |
+| Clear DEMO/UAT banner | the served banner and sign-in hint read from the database's connection modes: "UAT — SYNTHETIC DATA — ZOHO ERP DEMO TENANT 60074128927 — WRITES ENABLED" |
+| Operational warning on the integration screen | `connection-setup.js` renders a warning block while any profile is LIVE_WRITE |
+
+Verified after the mode change (read-only, no ERP write; `evidence/e2e/LIVE_WRITE_STANDING_2026-09-13.md`): health
+LIVE_WRITE + gate true; organisation pinned; token gap empty; U-REQ 403 on emit/drain/mode; unknown order 404;
+an unapproved direct order 409 `PO_NOT_APPROVED` with no outbox row; identical emit 202 with the same row
+`created:false`; drain claimed 0 / sent 0.
+
+| Rotate the Self Client secret and the Supabase database password (both passed through the session while the gate was diagnosed) | owner | open |
+| Verify the integration-screen warning visually in a browser (a signed-in session; the JS is syntax-checked and covered by no VRT baseline because the seeded profiles are MOCK) | owner / tester | open |

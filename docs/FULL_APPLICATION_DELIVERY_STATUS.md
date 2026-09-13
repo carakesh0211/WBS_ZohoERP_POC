@@ -19,7 +19,9 @@ five failures had a single cause.
 
 ## 2026-09-12 — UAT release candidate (branch `fable-5.1/full-app-hardening-uat`)
 
-**Deployed (latest):** `2852be5` (bundle sha256 `c3dffe79012840f80189abd1527d8815a0a67886424496e44ba2503a217617a7`), records 10–11 in
+**Deployed (latest):** `a65841f` (bundle sha256 `2eb7b06eba6a0adfb645bd736577a5cc651ae5b2efe2ac83c75e071768ef73b7`), records 12–13: outbound PO
+creation ENABLED for ongoing UAT by the 2026-09-13 decision (LIVE_WRITE, permanent demo boundaries in code); PO-00009
+`3912780000000125001` is the first application-originated order in DEMO WBS. Earlier: `2852be5` (bundle sha256 `c3dffe79012840f80189abd1527d8815a0a67886424496e44ba2503a217617a7`), records 10–11 in
 `docs/fable51/STAGE_B_PERSISTENT_UAT.md`; bill sync proven (E2E ordered = received = billed = 185,000,000 paise, open 0). The
 application-originated emission path (`/mode`, `/drain-outbox`, item ids and line fields on the wire) is deployed and waits at the
 owner's credential checkpoint. Repository public; history scan clean. Earlier: `f19907b` (bundle sha256 `37eee12a56eca3d3d672973d87d753875ba5649979da6014d8526d5fe370372e`), Catalyst AppSail

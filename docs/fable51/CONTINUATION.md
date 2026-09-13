@@ -56,6 +56,16 @@ now carries a base-commit guard).
   navigation with two collapsible groups (approved groups' markup unchanged),
   measured no rail overflow at 1440×900.
 
+## 2026-09-13: the controlled emission done, and outbound writes left ENABLED by decision
+
+PO-00009 (`3912780000000125001`) was created in DEMO WBS from WBS-UAT-OUTBOUND-20260912 through the
+app's own emit + drain, read back and proven unique (`evidence/e2e/OUTBOUND_2026-09-13.md`). The product
+owner then decided outbound purchase-order creation STAYS enabled for ongoing UAT: the gate is `1`,
+`CONN-32A904F37FEA` is LIVE_WRITE, and the permanent boundaries are enforced in code (DECISIONS file,
+last section) and deployed at `a65841f` (records 12–13). Every emission from now on is a real record in
+the demo tenant. Two things the day cost: the launcher stripped the gate in every stage (fixed), and a
+CREATE-scoped refresh token that did not carry CREATE (token health now names the gap).
+
 ## Decisions of 2026-09-12 (evening): public repository, bill sync deployed, outbound path built
 
 The repository is PUBLIC. The full history was scanned before any further
