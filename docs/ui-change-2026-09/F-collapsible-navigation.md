@@ -136,3 +136,19 @@ interacted with below 900px. tablet-800 needed **no** baseline re-recording
 (same reasoning as `approved-ui.spec.js`): the five visual-regression
 screenshots never open the rail. Verified with the fix in place: full file
 at `--project=tablet-800`, **55/55 passed, 0 failures.**
+
+### budget-setup.spec.js
+
+**laptop-1024** moved the same way as desktop-1440: the three full-page
+screenshots, each confirmed rail-confined before recording.
+
+**tests/vrt/budget-setup.spec.js-snapshots/** (3 files):
+`budget-setup-list`, `budget-setup-editor`, `budget-setup-categories`
+(all `-laptop-1024-win32.png`).
+
+Full file at laptop-1024 after recording: **29/29 passed.**
+
+**tablet-800 needed no re-recording** — same reasoning as the other three
+files: the rail is `display:none` below 900px and none of these three
+screenshots open it. Full file at `--project=tablet-800` with no
+`--update-snapshots`: **29/29 passed, 0 failures, 0 diffs.**
