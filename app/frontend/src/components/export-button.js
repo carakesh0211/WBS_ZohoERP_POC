@@ -231,6 +231,13 @@ export function mountExportButton({ host, dataset, filtersProvider, label }) {
     if (!job) return;
     statusEl.classList.toggle('is-error', job.state === 'FAILED');
     clear(resultHost);
+    // setButtonsForIdle() BEFORE the state-specific branches below: it
+    // unconditionally hides Retry/Cancel and re-enables Export CSV/XLSX, and
+    // FAILED's own branch un-hides Retry immediately afterward. Calling it
+    // AFTER those branches (as an earlier version of this file did) silently
+    // hid the Retry button the instant a job failed, by re-hiding what the
+    // FAILED branch had just shown.
+    if (TERMINAL_STATES.has(job.state)) setButtonsForIdle();
     if (ACTIVE_STATES.has(job.state)) {
       const pct = job.progress && job.progress.percent;
       statusEl.textContent = pct !== null && pct !== undefined
@@ -253,7 +260,6 @@ export function mountExportButton({ host, dataset, filtersProvider, label }) {
     } else if (job.state === 'EXPIRED') {
       statusEl.textContent = `${title}: the result has expired and can no longer be downloaded.`;
     }
-    if (TERMINAL_STATES.has(job.state)) setButtonsForIdle();
   }
 
   async function triggerDownload() {
