@@ -164,6 +164,12 @@ export function mountCompletionReview(root) {
         figure('Held by live PR reservations', data.pr_reserved_paise, {
           missingReason: 'Live purchase-request holds are not available for this project.',
         }),
+        figure('Internal allocation (open)', data.internal_allocation_paise, {
+          missingReason: 'Internal allocation is not available for this project.',
+        }),
+        figure('Internal consumption (CWIP)', data.internal_consumption_paise, {
+          missingReason: 'Internal consumption is not available for this project.',
+        }),
       ]),
       h('p', { class: 'muted small' }, [
         'Project status ',

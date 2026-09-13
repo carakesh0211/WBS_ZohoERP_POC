@@ -17,8 +17,13 @@
                      "budget_paise","original_paise","revisions_paise","future_budget_paise",
                      "ordered_paise","commitment_paise","actual_paise","received_paise",
                      "received_not_billed_paise","pr_reserved_paise",
+                     "internal_allocation_paise","internal_consumption_paise",
                      "exposure_paise","available_paise","recomputed_at"}],
            "next_cursor","has_more"}
+       Migration 034: internal_allocation_paise/internal_consumption_paise are
+       the open hold and CWIP an internal material request creates when a PR
+       line is met from stores rather than bought; exposure_paise already
+       includes both. wbs-tree-table.js (SCR-09) is the consumer.
 
      GET /api/budget/availability?wbs_id=&budget_head_id=&amount_paise=
        -> {"wbs_id","budget_head_id","owning_wbs_id",

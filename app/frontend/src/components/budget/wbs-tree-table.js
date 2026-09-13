@@ -15,6 +15,14 @@
    docs/WAVE2_CONTRACTS.md is explicit that these are server-computed subtree
    sums over wbs_path — recomputing them client-side would silently disagree
    with the server the moment a filter narrows the tree.
+
+   Migration 034 (internal fulfilment): GET /api/budget/cells now also
+   carries internal_allocation_paise and internal_consumption_paise beside
+   pr_reserved_paise -- the open hold and the CWIP a purchase request's
+   INTERNAL_TRANSFER / SPLIT lines create when they are met from stores
+   rather than bought. exposure_paise on the server already includes both;
+   nothing here changes that arithmetic, these two columns only DISPLAY the
+   two figures kept visibly separate from external commitment/actual.
 */
 
 import { h, text, clear, setGeometry } from '../../core/dom.js';
@@ -23,7 +31,7 @@ import { pathsWithChildren } from './wbs-hierarchy.js';
 
 const SKELETON_ROWS = 6;
 const INDENT_PX = 18;
-const COLUMN_COUNT = 10; // toggle+wbs, head, budget, commitment, actual, rnb, pr-reserved, available, util, actions
+const COLUMN_COUNT = 12; // toggle+wbs, head, budget, commitment, actual, rnb, pr-reserved, internal-alloc, internal-consumption, available, util, actions
 
 /**
  * @param {Object} opts
@@ -45,6 +53,8 @@ export function createWbsTreeTable({ loadDrillContent } = {}) {
     h('th', { scope: 'col', class: 'num' }, 'Actual'),
     h('th', { scope: 'col', class: 'num' }, 'Received, Not Billed'),
     h('th', { scope: 'col', class: 'num' }, 'PR Reserved'),
+    h('th', { scope: 'col', class: 'num' }, 'Internal Allocation'),
+    h('th', { scope: 'col', class: 'num' }, 'Internal Consumption'),
     h('th', { scope: 'col', class: 'num' }, 'Available'),
     h('th', { scope: 'col', class: 'col-bar' }, 'Utilisation'),
     h('th', { scope: 'col' }, [h('span', { class: 'sr-only' }, 'Row actions')]),
@@ -52,7 +62,7 @@ export function createWbsTreeTable({ loadDrillContent } = {}) {
   const thead = h('thead', {}, headRow);
   const tbody = h('tbody');
   const caption = h('caption', { class: 'sr-only' },
-    'Budget planning grid: WBS element by budget head, with budget, commitment, actual, received-not-billed, PR reservation and available amounts');
+    'Budget planning grid: WBS element by budget head, with budget, commitment, actual, received-not-billed, PR reservation, internal allocation, internal consumption and available amounts');
   const table = h('table', {}, [caption, thead, tbody]);
   const wrap = h('div', { class: 'table-wrap', tabindex: '0' }, table);
 
@@ -158,6 +168,8 @@ export function createWbsTreeTable({ loadDrillContent } = {}) {
       tr.appendChild(h('td', { class: 'num' }, text(formatINR(row.actual_paise))));
       tr.appendChild(h('td', { class: 'num' }, text(formatINR(row.received_not_billed_paise))));
       tr.appendChild(h('td', { class: 'num' }, text(formatINR(row.pr_reserved_paise))));
+      tr.appendChild(h('td', { class: 'num' }, text(formatINR(row.internal_allocation_paise))));
+      tr.appendChild(h('td', { class: 'num' }, text(formatINR(row.internal_consumption_paise))));
       const availTd = h('td', { class: 'num' }, text(formatINR(row.available_paise)));
       if (Number(row.available_paise) < 0) availTd.classList.add('neg');
       tr.appendChild(availTd);
