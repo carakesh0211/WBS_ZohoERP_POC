@@ -64,9 +64,13 @@ const IDENTITIES = {
 
    Chosen because each one refuses somebody a reader would not predict:
 
-     approval-delegations  refuses the ADMINISTRATOR. You cannot delegate an
-                           authority you do not hold, and the Administrator
-                           holds no approval authority at all.
+     approval-delegations  refuses the REQUESTOR and the AUDITOR. Until
+                           2026-09-13 it refused the Administrator too ("you
+                           cannot delegate an authority you do not hold");
+                           the product owner's decision of that date gives the
+                           Administrator every permission (tests/ADAPTATIONS.md),
+                           so the Administrator is allowed here and the
+                           Requestor is the surprising refusal now.
      approval-inbox        refuses the AUDITOR. approval.read deliberately
                            excludes it; an auditor reads approval history
                            through the hash-chained audit trail instead.
@@ -88,8 +92,8 @@ const DENIALS = [
     refused: ['auditor'],
     allowed: ['requestor', 'approver', 'finance', 'controller', 'capitalise', 'admin'] },
   { id: 'approval-delegations', need: ['approval.delegate'],
-    refused: ['requestor', 'auditor', 'admin'],
-    allowed: ['approver', 'finance', 'controller', 'capitalise'] },
+    refused: ['requestor', 'auditor'],
+    allowed: ['approver', 'finance', 'controller', 'capitalise', 'admin'] },
   { id: 'settings',             need: ['settings.read', 'masters.read'],
     refused: ['auditor'],
     allowed: ['requestor', 'approver', 'finance', 'controller', 'capitalise', 'admin'] },

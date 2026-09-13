@@ -3326,3 +3326,18 @@ asserts both facts.
 **Approved by:** the product-owner instruction of 2026-09-13, "PRODUCT
 DECISIONS ... 2. Administrator".
 
+## 2026-09-13 — `tests/vrt/uat-roles.spec.js`, the Administrator and `approval-delegations`
+
+**What changed.** The refusal table's `approval-delegations` row no longer lists
+`admin` among the refused identities and lists it among the allowed ones; the
+explanatory comment says why. No other row changed, and the live check that the
+table matches `auth.PERMISSIONS` is untouched -- it is what failed.
+
+**Why.** The product owner's decision of 2026-09-13 that the Administrator holds
+every permission (`approval.delegate` included). The row still refuses the
+Requestor and the Auditor, so it still proves a refusal a reader would not
+predict.
+
+**Approved by:** the product-owner instruction of 2026-09-13, "PRODUCT
+DECISIONS ... 2. Administrator".
+
