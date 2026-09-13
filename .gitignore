@@ -43,3 +43,6 @@ docs/phase-0b/probe/staged-inventory.json
 # that commits a lockfile. See docs/phase-0b/probe/CA_BUNDLE.md.
 # docs/phase-0b/evidence/ is likewise committed: it is sanitised by
 # probe_invoke.py before anything is written.
+
+# JUnit reports from local gate runs are large; the summary and skip audit beside them are the record.
+docs/fable51/evidence/gates/*.xml

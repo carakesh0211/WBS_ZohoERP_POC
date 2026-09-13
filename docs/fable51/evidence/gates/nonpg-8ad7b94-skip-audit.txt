@@ -1,0 +1,33 @@
+tests: 5834 collected, 5009 executed, 825 skipped across 32 reason(s)
+  [intended]  382  PostgreSQL not configured; set CAPEX_DB_URL to run against a live database.
+  [intended]   67  CAPEX_DB_URL is not set: no PostgreSQL instance is configured for this run. Expected locally (no PostgreSQL on
+  [intended]   46  PostgreSQL not configured; set CAPEX_DB_URL to run against a live database. This test SKIPS -- it does not pas
+  [intended]   36  needs a live PostgreSQL (CAPEX_DB_URL); runs in the pg_tests CI job
+  [intended]   35  needs a live PostgreSQL (CAPEX_DB_URL)
+  [intended]   32  PostgreSQL not configured; set CAPEX_DB_URL. A SKIP IS NOT A PASS.
+  [intended]   32  PostgreSQL not configured; set CAPEX_DB_URL to run against a live database. THIS IS A SKIP, NOT A PASS -- thes
+  [intended]   30  PostgreSQL not configured; set CAPEX_DB_URL to run against a live database. THIS IS A SKIP, NOT A PASS -- thes
+  [intended]   25  PostgreSQL not configured; set CAPEX_DB_URL to run against a live database. THIS IS A SKIP, NOT A PASS.
+  [intended]   23  PostgreSQL not configured; set CAPEX_DB_URL.
+  [intended]   18  PostgreSQL not configured; set CAPEX_DB_URL to run against a live database. A SKIP IS NOT A PASS.
+  [intended]   15  PostgreSQL not configured; set CAPEX_DB_URL to run against a live database. THIS IS A SKIP, NOT A PASS -- thes
+  [intended]   15  PostgreSQL not configured; set CAPEX_DB_URL to run against a live database. THIS IS A SKIP, NOT A PASS -- thes
+  [intended]   15  PostgreSQL not configured; set CAPEX_DB_URL to run against a live database. THIS IS A SKIP, NOT A PASS -- two 
+  [intended]   12  PostgreSQL not configured; set CAPEX_DB_URL to run against a live database. THIS IS A SKIP, NOT A PASS -- thes
+  [intended]    8  PostgreSQL not configured; set CAPEX_DB_URL to run against a live database. THIS IS A SKIP, NOT A PASS -- thes
+  [intended]    7  PostgreSQL not configured; set CAPEX_DB_URL to run against a live database. THIS IS A SKIP, NOT A PASS -- thes
+  [intended]    7  PostgreSQL not configured; set CAPEX_DB_URL to run against a live database. THIS IS A SKIP, NOT A PASS -- cate
+  [intended]    6  PostgreSQL not configured; set CAPEX_DB_URL to run against a live database. THIS IS A SKIP, NOT A PASS -- the 
+  [intended]    2  declared NO_ROW_SCOPE: organisation-wide reference data; permission is the control
+  [intended]    1  got empty parameter set for (relative)
+  [intended]    1  got empty parameter set for (name)
+  [intended]    1  declared NO_ROW_SCOPE: administers the grant tables that DEFINE scope
+  [intended]    1  declared NO_ROW_SCOPE: audit reads are scoped by the caller's own audit scope
+  [intended]    1  declared NO_ROW_SCOPE: audit rows are scoped by stream key at the API layer
+  [intended]    1  declared NO_ROW_SCOPE: reads and writes the grant tables that DEFINE scope
+  [intended]    1  admin_access.py has no _actor()
+  [intended]    1  audit.py has no _actor()
+  [intended]    1  budgets_original.py has no _actor()
+  [intended]    1  fx_admin.py has no _actor()
+  [intended]    1  health.py has no _actor()
+  [intended]    1  integrations_live.py has no _actor()

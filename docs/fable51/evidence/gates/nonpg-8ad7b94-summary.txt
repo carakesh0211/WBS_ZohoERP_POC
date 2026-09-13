@@ -1,0 +1,19 @@
+Full non-PostgreSQL regression at 8ad7b94 (2026-09-13 21:56 IST, pytest 9.0.2, Python 3.14, Windows)
+collected 5834  failures 15  errors 0  skipped 825  seconds 1234.968
+Every skip is an intended one (nonpg-8ad7b94-skip-audit.txt); no skip is counted as a pass.
+The 15 failures, all closed at 4af59ff (manifest) and 1157fcb (the other fourteen):
+  tests.test_approval_maker_checker::test_every_maker_checker_permission_has_a_behavioural_scenario
+  tests.test_approval_maker_checker::test_a_maker_holding_the_approving_role_is_still_refused[imr.approve]
+  tests.test_export_scope::test_no_dataset_waives_a_scope_dimension
+  tests.test_frontend_budget_setup_registry::test_nav_groups_are_collapsible_buttons
+  tests.test_identity_oidc_fable51::test_every_check_refuses_by_name[header8-claims8-False-nonce-1-OIDC_TOKEN_NOT_YET_VALID]
+  tests.test_identity_oidc_fable51::test_every_check_refuses_by_name[header9-claims9-False-nonce-2-OIDC_NONCE_MISMATCH]
+  tests.test_identity_oidc_fable51::test_every_check_refuses_by_name[header10-claims10-False-nonce-1-OIDC_SUBJECT_MISSING]
+  tests.test_integration_no_hardcoded_endpoints::test_no_module_outside_the_adapters_hardcodes_a_product[identity_oidc.py]
+  tests.test_ledger_cell_writers::test_the_six_procurement_derived_columns_are_written_by_one_statement
+  tests.test_ledger_cell_writers::test_every_sum_over_paise_is_cast_back_to_bigint
+  tests.test_manifest::test_new_tests_are_recorded_in_the_manifest
+  tests.test_period_reopen_permissions::test_administrator_holds_both_reopen_permissions_but_never_the_same_seat_twice
+  tests.test_pg_rls_coverage::test_rls_registry_and_the_independent_inventory_name_the_same_tables
+  tests.test_pg_rls_coverage::test_rls_registry_and_the_inventory_agree_on_which_migration_covers_what
+  tests.test_pg_rls_coverage::test_a_table_in_neither_the_inventory_nor_the_registry_would_fail
