@@ -152,3 +152,44 @@ Full file at laptop-1024 after recording: **29/29 passed.**
 files: the rail is `display:none` below 900px and none of these three
 screenshots open it. Full file at `--project=tablet-800` with no
 `--update-snapshots`: **29/29 passed, 0 failures, 0 diffs.**
+
+### approvals.spec.js
+
+**laptop-1024** moved the same way as desktop-1440: the eight approval-engine
+full-page screenshots, each confirmed rail-confined before recording.
+
+**tests/vrt/approvals.spec.js-snapshots/** (8 files):
+`approvals-approval-inbox`, `approvals-approval-request`,
+`approvals-approval-timeline`, `approvals-approval-matrix`,
+`approvals-approval-versions`, `approvals-approval-simulator`,
+`approvals-approval-delegations`, `approvals-approval-sla`
+(all `-laptop-1024-win32.png`).
+
+Full file at laptop-1024 after recording: **103 passed, 1 skipped, 0
+failed** (104 tests total). The one skip is pre-existing and unrelated to
+Stream F: `it renders and resolves identically across every locale this
+harness can set` (line 1883) is deliberately `test.skip()`-guarded to
+desktop-1440 only ("the locale sweep is viewport-independent; it runs
+once") — it also skips at laptop-1024 and tablet-800 unconditionally,
+regardless of anything this stream touched.
+
+**tablet-800 needed no re-recording** — same reasoning as the other three
+files: the rail is `display:none` below 900px and none of these eight
+screenshots open it. Full file at `--project=tablet-800` with no
+`--update-snapshots`: **103 passed, 1 skipped, 0 failed** (the same
+pre-existing desktop-only skip).
+
+## Summary across all four files, all three projects (after every fix and re-recording above)
+
+| Spec file | desktop-1440 | laptop-1024 | tablet-800 |
+|---|---|---|---|
+| `approved-ui.spec.js` | 20 passed | 20 passed | 20 passed |
+| `spa-routing.spec.js` | 55 passed | 55 passed | 55 passed |
+| `budget-setup.spec.js` | 29 passed | 29 passed | 29 passed |
+| `approvals.spec.js` | 104 passed | 103 passed, 1 skipped | 103 passed, 1 skipped |
+
+No failures anywhere in this table. The one skip recurring in
+`approvals.spec.js` is the pre-existing, desktop-only locale sweep noted
+above, not a Stream F side effect. Every count above is from running that
+one spec file alone at that one project (`--project=<name>`), per file, per
+viewport — not inferred from a combined run.
