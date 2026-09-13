@@ -68,7 +68,21 @@ content to the right of the rail is byte-identical in every case.
 `budget-setup-list`, `budget-setup-editor`, `budget-setup-categories`
 (all `-desktop-1440-win32.png`).
 
-`laptop-1024` and `tablet-800` baselines for these same three spec files were
+**tests/vrt/approvals.spec.js-snapshots/** (8 files, found in a broader sweep
+after the initial verification — this file was not in the task's named
+verification command, but does carry full-page baselines for the eight
+approval-engine screens):
+`approvals-approval-inbox`, `approvals-approval-request`,
+`approvals-approval-timeline`, `approvals-approval-matrix`,
+`approvals-approval-versions`, `approvals-approval-simulator`,
+`approvals-approval-delegations`, `approvals-approval-sla`
+(all `-desktop-1440-win32.png`).
+
+Every other `tests/vrt/*.spec.js` file was checked for `toHaveScreenshot`
+calls; only `approved-ui.spec.js`, `spa-routing.spec.js`, `budget-setup.spec.js`
+and `approvals.spec.js` have any, and all four are accounted for above.
+
+`laptop-1024` and `tablet-800` baselines for these same four spec files were
 **not** re-recorded — they were out of scope for the desktop-1440 verification
-run this stream was asked to perform — and will fail if that project is run
+run this stream was asked to perform — and will fail if those projects are run
 before someone re-records them the same way.
