@@ -1038,15 +1038,10 @@ def test_step_f_the_instance_status_and_the_timeline_both_update(demo_scenario):
 
 @pytest.mark.pg
 @PG
-@pytest.mark.xfail(strict=False, reason=(
-    "REPORTED GAP: nothing writes the approval outcome back to the document. "
-    "approvals._apply_decision moves approval_instance, approval_stage_instance "
-    "and approval_assignment and never touches budget_revision, and no route "
-    "or service does it either -- pg/budget.py::approve_revision is a separate, "
-    "parallel approval path that the engine does not call. The business "
-    "document therefore stays DRAFT after its approval instance reaches "
-    "APPROVED. Not strict: this asserts the intended behaviour, and the day "
-    "the write-back lands it must turn green rather than fail."))
+# The gap this test carried as a non-strict xfail -- "nothing writes the
+# approval outcome back to the document" -- closed when pg/approval_writeback.py
+# landed on this branch; the 2026-09-14 live run reported it XPASSED. The marker
+# is gone so the write-back can never regress to a silent expected failure.
 def test_step_f_the_business_document_status_also_updates(demo_scenario):
     """Step (f) as a reader of the demo would mean it: the REVISION is approved.
 

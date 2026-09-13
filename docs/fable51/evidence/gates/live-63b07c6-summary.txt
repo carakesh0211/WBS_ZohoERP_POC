@@ -1,5 +1,5 @@
 Full suite against the live local PostgreSQL 16.10 at 63b07c6 (2026-09-14 01:45-03:10 IST, pytest 9.1.1, Python 3.14, Windows)
 CAPEX_DB_URL set: 5838 collected, 5823 passed, 14 skipped, 1 xpassed, 0 failed, 0 errors, 5053 s
 Every skip is an intended one (live-63b07c6-skip-audit.txt: two empty parameter sets, four declared NO_ROW_SCOPE modules, six API modules with no _actor(), all pre-existing declarations); no skip is counted as a pass.
-The one xpassed case is tests/test_approval_e2e.py's non-strict xfail (line 1041); its reason is quoted in that file and it is unrelated to this sprint's changes.
+The one xpassed case was tests/test_approval_e2e.py's non-strict xfail on the approval write-back ('nothing writes the approval outcome back to the document'); the write-back landed on this branch, so the marker is removed at the next commit and the case is an ordinary passing test.
 CI ran the same live suite in its service container on c51d9ee (same code): 1864 executed against the database, 2 declared skips, 0 failed.

@@ -39,7 +39,7 @@ five failures had a single cause.
 |---|---|
 | Non-PostgreSQL regression (CI, `c51d9ee` = same code as HEAD) | **5012 passed, 826 skipped, 0 failed**; every skip is an intended one (`docs/fable51/evidence/gates/nonpg-8ad7b94-skip-audit.txt` shows the 32 reasons at the earlier run; the 15 failures of that run are all closed) |
 | Live PostgreSQL suite (CI, service container, `c51d9ee`) | **1864 passed, 2 skipped** (a workstation-only wheel check; an empty parameter set), 0 failed |
-| Live PostgreSQL suite (local PG16, HEAD `63b07c6`, 84 min) | **5823 passed, 14 skipped (all intended, audited), 1 xpassed (a pre-existing non-strict xfail in test_approval_e2e.py), 0 failed** — `docs/fable51/evidence/gates/live-63b07c6-summary.txt` |
+| Live PostgreSQL suite (local PG16, HEAD `63b07c6`, 84 min) | **5823 passed, 14 skipped (all intended, audited), 1 xpassed (the approval write-back's non-strict xfail, now genuinely green; marker removed), 0 failed** — `docs/fable51/evidence/gates/live-63b07c6-summary.txt` |
 | Contract, manifest, RLS coverage, scope, money-SQL, no-hardcoded-endpoint gates | green in CI |
 | Supply chain (OSV over the clean closure, 32 packages) | no known vulnerabilities; SBOM and hash lock published by CI |
 | VRT release plan, 15 specs × 3 viewports, bounded batches | run 1 enumerated every diff (`evidence/release/vrt-batches-2026-09-13-run1.txt`); ONE explained re-baseline pass (`docs/ui-change-2026-09/RE-BASELINE-2026-09-13.md`: 104 files, four causes, two defects found and fixed); run 2 green except the two stale-height desktop files, since re-recorded and confirmed (`…-run2.txt`) |
