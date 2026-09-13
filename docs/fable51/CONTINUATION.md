@@ -246,3 +246,21 @@ against the fix (items 3 and 4 verified by temporarily reverting the change
 and re-running; item 1's pinned test was itself the failing assertion). See
 `tests/ADAPTATIONS.md`'s 2026-09-12 entry for item 1's assertion-value
 change.
+
+## 2026-09-14 — where the full-application build stands (written after deploy record 14)
+
+* Mainline `fable-5.1/full-app-hardening-uat` at `63b07c6`, pushed, CI green on all five jobs; deployed to
+  `wbs-capex-uat` (bundle `ae0ccf86011dd496…`, record 14) on Supabase `capex_tmpl_uat` at schema 036.
+* Both frontend stream branches (`integrate/nav-groups`, `integrate/frontend-bcde`) are fully cherry-picked; their
+  worktrees can be removed (`git worktree remove`) — nothing lives only there.
+* What the owner does next is one table: `DECISIONS_2026-09-11.md`, section "2026-09-13 (evening)" (OIDC client
+  and seven variables, tester links, sender domain, reveal switch, break-glass id, dispatch ticker). Deferred by
+  instruction: Slack/WhatsApp channels, PR mirroring into a Zoho custom module.
+* Rules learned this sprint, all recorded where they bite: no provider host outside the two adapters
+  (`identity_oidc.py` is env-only); nav-group state is sessionStorage; `commitment_carried_paise` is a third ledger
+  class; the notification outbox is an operational screen for the C16 gate; a `.table-wrap` must be positioned or
+  its `sr-only` boxes inflate the document; parametrised claims must be built at run time, not collection.
+* Evidence of the sprint: `evidence/gates/` (regression + skip audits), `evidence/release/vrt-batches-2026-09-13-run1/2.txt`,
+  `docs/ui-change-2026-09/RE-BASELINE-2026-09-13.md`, `evidence/release/smoke-roles-release-2026-09-14.json`,
+  `evidence/release/exports-2026-09-14/`, `evidence/e2e/after-deploy-2026-09-13T210446.json`,
+  `evidence/adversarial-review-2026-09-13.md`.

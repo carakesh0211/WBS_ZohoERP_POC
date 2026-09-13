@@ -17,6 +17,41 @@ correctly, before the lead had done the integration only the lead could do, is
 not a defect in the agent's work — and deleting the number would hide that the
 five failures had a single cause.
 
+## 2026-09-14 — the full application build of streams A–G, integrated and verified (branch `fable-5.1/full-app-hardening-uat`)
+
+**HEAD:** `63b07c6` (pushed; CI green on all five jobs). **Deployed:** `63b07c6`, bundle SHA-256 `ae0ccf86011dd4961e01cc6438a5c658c2be17e16ba35b756164bdac80623b1e`, deploy record 14 in `docs/fable51/STAGE_B_PERSISTENT_UAT.md`; `/readyz` 200 schema `036` on Supabase `capex_tmpl_uat` (034-036 applied first, status checked before and after); https://wbs-capex-uat-50045784768.development.catalystappsail.in. Post-deploy: role smoke 13/13 identities all checks passed, cycle driver re-run without an ERP write, one .xlsx export inspected. Tester accounts unchanged (the thirteen in `uat-users.txt`, outside the repository).
+
+### Completed (working functionality, each with backend, API, screen, permissions, audit, tests)
+
+| Stream | What works now | Where |
+|---|---|---|
+| A · Internal material fulfilment | A purchase-request line is fulfilled externally, internally or split (quantities and paise sum exactly); an internal material request runs REQUESTED → APPROVED → ALLOCATED → ISSUED → CONSUMED / RETURNED / CANCELLED with append-only movements; allocation moves the PR hold, return and cancel give it back; the ledger carries two new limbs (`internal_allocation_paise`, `internal_consumption_paise`) derived by the one recompute statement; exposure = commitment + actual + PR reserve + both limbs everywhere (budget, reports, exports, closure, CWIP); valuation through an inventory provider (Null by default, Recording in tests); two coded exceptions; series NS-IMR; conversion reads only the external portion and refuses a fully-internal or un-allocated line | migration 034, `pg/internal_fulfilment.py`, `api/internal_fulfilment.py`, `integration/inventory_provider.py`, IMR register screen, `tests/test_pg_internal_fulfilment_fable51.py` (24 live) |
+| B · Administrator full rights | The Administrator holds every permission; a self-approval is refused with SELF_APPROVAL and, for an Administrator only, may be overridden deliberately with a reason (≥ 10 characters), recorded as `ADMIN_SELF_APPROVAL_OVERRIDE` with the maker and object bound into the record, and every other Administrator notified; delegable to nobody; period reopen deliberately not overridable | `pg/admin_override.py`, `auth.require_separation`, every approve route and dialog, audit-trail filters, `tests/test_pg_admin_override_fable51.py` (7 live), `tests/vrt/admin-override.spec.js` |
+| C · Real `.xlsx` export | Every export dataset (14) downloads as a genuine workbook: typed cells, Indian currency format, SUM totals, four sheets, a 20 000-row cap that refuses honestly (413); the export control sits on every register, dashboard and closure list with the dataset named on it | migration 035, `pg/exports_xlsx.py`, `components/export-button.js`, `tests/test_pg_exports_xlsx_fable51.py`, `tests/vrt/export-button.spec.js` |
+| D · Two ways to sign in | "Continue with Zoho" (OIDC authorization code + PKCE, RS256 verified in pure Python, every claim checked by name, subject must be linked, no role from the token, no session id in a URL) and "Sign in with WBS account" with Forgot password / reset (hash-only tokens, 15 minutes, single use), password policy and history (last five), change password, break-glass account, rate limits that persist through refusals | migration 036, `identity_oidc.py`, `pg/identity.py`, `api/identity.py`, sign-in page, `tests/test_identity_oidc_fable51.py` (18), `tests/test_pg_identity_notifications_fable51.py`, `tests/vrt/signin-choices.spec.js` |
+| E · Notifications | Durable outbox written in the business transaction, dispatched outside it (ticker or Administrator), retry with backoff, dead-letter, dedup key, per-user preferences (security notices mandatory), delivery history, reset-link redaction with an audited UAT reveal, recipients resolved by role AND project scope; nine events wired; recording / Catalyst SDK / REST adapters | migration 036, `pg/notifications.py`, `integration/mail_adapter.py`, `api/notifications.py`, preferences dialog + Administrator outbox screen, `tests/vrt/notifications.spec.js` |
+| F · Navigation | Every group collapsible, per-user per-tab persistence (sessionStorage), current route's group forced open, expand/collapse all; every affected baseline re-recorded and accounted for | `app.js`, `docs/ui-change-2026-09/F-collapsible-navigation.md`, `tests/vrt/nav-groups.spec.js` |
+| G · Adversarial review | 15 findings (3 P0, 4 P1, 8 P2), all closed on the branch | `docs/fable51/evidence/adversarial-review-2026-09-13.md` |
+
+### Gates at HEAD (nothing skipped is counted as passed)
+
+| Gate | Result |
+|---|---|
+| Non-PostgreSQL regression (CI, `c51d9ee` = same code as HEAD) | **5012 passed, 826 skipped, 0 failed**; every skip is an intended one (`docs/fable51/evidence/gates/nonpg-8ad7b94-skip-audit.txt` shows the 32 reasons at the earlier run; the 15 failures of that run are all closed) |
+| Live PostgreSQL suite (CI, service container, `c51d9ee`) | **1864 passed, 2 skipped** (a workstation-only wheel check; an empty parameter set), 0 failed |
+| Live PostgreSQL suite (local PG16, HEAD) | see `docs/fable51/evidence/gates/live-63b07c6-summary.txt` (written when the run finishes) |
+| Contract, manifest, RLS coverage, scope, money-SQL, no-hardcoded-endpoint gates | green in CI |
+| Supply chain (OSV over the clean closure, 32 packages) | no known vulnerabilities; SBOM and hash lock published by CI |
+| VRT release plan, 15 specs × 3 viewports, bounded batches | run 1 enumerated every diff (`evidence/release/vrt-batches-2026-09-13-run1.txt`); ONE explained re-baseline pass (`docs/ui-change-2026-09/RE-BASELINE-2026-09-13.md`: 104 files, four causes, two defects found and fixed); run 2 green except the two stale-height desktop files, since re-recorded and confirmed (`…-run2.txt`) |
+| CI (GitHub Actions, public repository) | contract, regression, PostgreSQL, supply chain green on `c51d9ee`; VRT failed there on the same two files, re-run on `63b07c6` |
+| Bundle | built from `63b07c6`, scanned clean (no credential shape, no Windows binary, 24 manylinux wheels incl. openpyxl); SHA-256 in the deploy record |
+
+### Deferred (by instruction) and blocked
+
+* **Deferred:** Slack / WhatsApp channels for the notification framework; mirroring purchase requests into a Zoho custom module.
+* **Owner steps after deployment** (`docs/fable51/DECISIONS_2026-09-11.md`, last section): the Zoho server-based OIDC client and the seven `CAPEX_OIDC_*` variables (no provider host is written into the code); linking each tester's Zoho subject; a verified sender domain before `CAPEX_MAIL_ADAPTER=catalyst_sdk`; `CAPEX_UAT_REVEAL_RESET_LINKS=1` if testers are to finish a reset from the outbox; `CAPEX_BREAK_GLASS_USER_ID`; `CAPEX_NOTIFICATIONS_DISPATCH_SECONDS=60`. Until each is set the application says so rather than pretending.
+* **Still open from earlier sprints:** anchor Cron Function deploy (audit verify is NEVER_ANCHORED); stray-schema cleanup in the default `postgres` database (stopped at its zero-rows condition, owner approval needed); restore drill (PostgreSQL 17 client); Self Client / database password rotation (owner).
+
 ## 2026-09-12 — UAT release candidate (branch `fable-5.1/full-app-hardening-uat`)
 
 **Deployed (latest):** `a65841f` (bundle sha256 `2eb7b06eba6a0adfb645bd736577a5cc651ae5b2efe2ac83c75e071768ef73b7`), records 12–13: outbound PO

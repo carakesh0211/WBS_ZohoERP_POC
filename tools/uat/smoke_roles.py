@@ -404,7 +404,16 @@ def run(base: str, credentials_path: str, out_path: str, sample: int = 5) -> int
             # only the missing query parameters this script does not know how
             # to supply: reachable, not a failure. (200 and 422 are both
             # post-authorisation answers; 401/403/404/5xx are not.)
-            passed = status == expected or (expected == 200 and status == 422)
+            # One permitted route answers a coded 503 by design:
+            # /api/integrations/control-totals refuses with
+            # CONTROL_TOTALS_UNAVAILABLE because no endpoint in this build knows
+            # Zoho's side of the comparison (e2e_after_deploy step 9b records
+            # the same answer on every run). That is a post-authorisation,
+            # documented answer, not an outage, so it counts -- for THAT code
+            # only; any other 5xx still fails.
+            coded_unavailable = (expected == 200 and status == 503
+                                 and "CONTROL_TOTALS_UNAVAILABLE" in (body or ""))
+            passed = status == expected or (expected == 200 and status == 422) or coded_unavailable
             ok = ok and passed
             leaks = scan_for_credentials(body)
             if leaks:
