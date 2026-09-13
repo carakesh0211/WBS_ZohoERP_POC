@@ -5,7 +5,7 @@
   "baseline": {
     "recorded_at": "2026-08-28",
     "commit_note": "POC baseline, branch phase-0a/foundations, before any port work",
-    "test_functions": 242,
+    "test_functions": 249,
     "collected_cases": 348,
     "collected_cases_note": "348 is the pytest-collected count after parametrisation expands 6 files; 220 is the count of `def test_` functions. Both are real and the Definition of Done refers to the function count.",
     "runtime_seconds_approx": 189,
@@ -205,9 +205,9 @@
         "assertions": 1,
         "body_sha": "6ea2a1c990ca5de5"
       },
-      "test_aud_c_006_administrator_holds_no_financial_approval": {
-        "assertions": 1,
-        "body_sha": "02ef5099a499b579"
+      "test_administrator_holds_every_permission_and_self_approval_stays_deliberate": {
+        "assertions": 8,
+        "body_sha": "5fa78bf11caa058a"
       },
       "test_aud_c_006_auditor_is_read_only": {
         "assertions": 1,
@@ -5135,7 +5135,7 @@
       },
       "test_the_gate_reads_a_module_level_assignment_and_not_only_a_call_argument": {
         "assertions": 3,
-        "body_sha": "24e31832ea993a14"
+        "body_sha": "45cee323e2dd4cc7"
       },
       "test_prose_that_quotes_money_sql_is_not_reported_but_the_code_beside_it_is": {
         "assertions": 2,
@@ -6082,6 +6082,36 @@
       "test_live_the_requester_is_refused_and_an_independent_applier_reopens": {
         "assertions": 10,
         "body_sha": "f04974b7c45bf02c"
+      }
+    },
+    "test_pg_admin_override_fable51.py": {
+      "test_both_catalogues_carry_the_administrator_on_every_permission": {
+        "assertions": 4,
+        "body_sha": "bb9f2da030508bc6"
+      },
+      "test_require_separation_has_four_outcomes_and_the_record_shape": {
+        "assertions": 8,
+        "body_sha": "8eec505160c51afb"
+      },
+      "test_the_override_record_is_validated_never_trusted_and_never_delegated": {
+        "assertions": 10,
+        "body_sha": "a87c6ef29dbbe495"
+      },
+      "test_a_purchase_request_refuses_every_wrong_override_and_accepts_the_right_one": {
+        "assertions": 12,
+        "body_sha": "9e730f97eb9ca2ba"
+      },
+      "test_an_administrator_who_is_not_the_maker_approves_normally_with_no_override": {
+        "assertions": 2,
+        "body_sha": "19f996ed48695576"
+      },
+      "test_an_internal_material_request_takes_the_same_gate": {
+        "assertions": 8,
+        "body_sha": "5d44c261ff383549"
+      },
+      "test_a_budget_revision_takes_the_same_gate_through_the_service": {
+        "assertions": 9,
+        "body_sha": "c16ed19f8e1cb3ab"
       }
     },
     "test_pg_adoption.py": {
@@ -8803,7 +8833,7 @@
       },
       "test_the_lifecycle_moves_money_between_limbs_and_never_counts_it_twice": {
         "assertions": 35,
-        "body_sha": "9e0abb5b8a423818"
+        "body_sha": "8357266d31d1ee48"
       },
       "test_a_replayed_movement_moves_nothing_twice": {
         "assertions": 5,
@@ -8839,7 +8869,7 @@
       },
       "test_the_export_the_report_and_the_closure_position_show_the_internal_figures_apart": {
         "assertions": 16,
-        "body_sha": "de63c422966c1c0a"
+        "body_sha": "1551cb724bb549ff"
       },
       "test_every_verb_appends_to_the_audit_chain": {
         "assertions": 3,
@@ -13660,6 +13690,7 @@
     "test_outbound_live_write_fable51.py": 24,
     "test_outbound_unsanctioned.py": 20,
     "test_period_reopen_permissions.py": 17,
+    "test_pg_admin_override_fable51.py": 7,
     "test_pg_adoption.py": 16,
     "test_pg_anchor_job.py": 32,
     "test_pg_approval_concurrency.py": 12,
@@ -13740,7 +13771,7 @@
   "assertions": {
     "test_adoption_fable51.py": 82,
     "test_anchor_function_shim.py": 24,
-    "test_api_auth.py": 50,
+    "test_api_auth.py": 57,
     "test_api_auth_saved_views.py": 4,
     "test_api_fx_guard.py": 21,
     "test_approval_e2e.py": 124,
@@ -13804,6 +13835,7 @@
     "test_outbound_live_write_fable51.py": 79,
     "test_outbound_unsanctioned.py": 55,
     "test_period_reopen_permissions.py": 51,
+    "test_pg_admin_override_fable51.py": 53,
     "test_pg_adoption.py": 39,
     "test_pg_anchor_job.py": 116,
     "test_pg_approval_concurrency.py": 53,

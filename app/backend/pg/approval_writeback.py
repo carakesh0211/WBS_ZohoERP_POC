@@ -182,7 +182,8 @@ ERR_CELLS_DISAGREE = "APPROVAL_WRITEBACK_CELLS_DISAGREE"
 # The public entry point
 # ==========================================================================
 def apply_outcome(session: Session, instance: Mapping[str, Any], *,
-                   closing_actor: str | None = None) -> None:
+                   closing_actor: str | None = None,
+                   admin_override: Mapping[str, Any] | None = None) -> None:
     """Apply one CLOSED approval instance's outcome to its document.
 
     Called inside the engine's transaction, at the single point an instance
@@ -215,7 +216,8 @@ def apply_outcome(session: Session, instance: Mapping[str, Any], *,
         # is what will eventually decide it.
         return
 
-    handler(session, instance, target, closing_actor=closing_actor)
+    handler(session, instance, target, closing_actor=closing_actor,
+            admin_override=admin_override)
 
 
 # ==========================================================================
@@ -369,7 +371,8 @@ _REVISION_SCOPE_COLUMNS = {
 
 def _apply_budget_revision(session: Session, instance: Mapping[str, Any],
                             target: str, *,
-                            closing_actor: str | None = None) -> None:
+                            closing_actor: str | None = None,
+                           admin_override: Mapping[str, Any] | None = None) -> None:
     revision_id = str(instance.get("object_id"))
     row = repo.query_one(
         session,
@@ -421,7 +424,8 @@ def _apply_budget_revision(session: Session, instance: Mapping[str, Any],
         _assert_cells_declared(instance, [(str(wbs_id), str(head_id))],
                                 object_id=revision_id)
         budget_mod.approve_revision(session, revision_id=revision_id, actor=actor,
-                                     approval_instance_id=instance_id)
+                                     approval_instance_id=instance_id,
+                                     admin_override=admin_override)
         return
 
     if target == BIZ_REJECTED:
@@ -480,7 +484,8 @@ _TRANSFER_SCOPE_COLUMNS = dict(_REVISION_SCOPE_COLUMNS)
 
 def _apply_budget_transfer(session: Session, instance: Mapping[str, Any],
                             target: str, *,
-                            closing_actor: str | None = None) -> None:
+                            closing_actor: str | None = None,
+                           admin_override: Mapping[str, Any] | None = None) -> None:
     transfer_id = str(instance.get("object_id"))
     row = repo.query_one(
         session,
@@ -531,7 +536,8 @@ def _apply_budget_transfer(session: Session, instance: Mapping[str, Any],
             [(str(from_wbs), str(from_head)), (str(to_wbs), str(to_head))],
             object_id=transfer_id)
         budget_mod.approve_transfer(session, transfer_id=transfer_id, actor=actor,
-                                     approval_instance_id=instance_id)
+                                     approval_instance_id=instance_id,
+                                     admin_override=admin_override)
         return
 
     if target == BIZ_REJECTED:
@@ -564,7 +570,8 @@ _ORIGINAL_BUDGET_SCOPE_COLUMNS = {
 
 def _apply_original_budget(session: Session, instance: Mapping[str, Any],
                            target: str, *,
-                           closing_actor: str | None = None) -> None:
+                           closing_actor: str | None = None,
+                           admin_override: Mapping[str, Any] | None = None) -> None:
     """APPROVED releases the document (writes the ORIGINAL budget_line rows,
     creates and classifies the cells); REJECTED / RETURNED / RECALLED /
     CANCELLED move the document without touching a cell. Same shape as the
@@ -612,7 +619,8 @@ def _apply_original_budget(session: Session, instance: Mapping[str, Any],
     instance_id = str(instance.get("instance_id"))
     if target == BIZ_APPROVED:
         ob_mod.release(session, budget_id=budget_id, actor=actor,
-                       approval_instance_id=instance_id)
+                       approval_instance_id=instance_id,
+                       admin_override=admin_override)
         return
     ob_mod.decide_not_released(session, budget_id=budget_id, actor=actor,
                                target=("REJECTED" if target == BIZ_REJECTED else

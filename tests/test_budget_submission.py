@@ -87,8 +87,10 @@ def base_rules(*, delta_paise=1_000_000, status="DRAFT", version_no=1,
     substring `FROM wbs_element`, and the first matching rule wins.
     """
     return [
-        # _subtree_totals -- budget, commitment, actual, pr_reserved
-        (("COALESCE(SUM(bc.budget_paise)",), [(budget_paise, exposure, 0, 0)]),
+        # _subtree_totals -- budget, commitment, actual, pr_reserved,
+        # internal_allocation, internal_consumption (migration 034 added the
+        # two internal limbs; the stub returns the real statement's width).
+        (("COALESCE(SUM(bc.budget_paise)",), [(budget_paise, exposure, 0, 0, 0, 0)]),
         # _owning_ancestor
         (("JOIN budget_control_cell bc",), [("W-1", "W-1")]),
         # check_availability's head existence probe

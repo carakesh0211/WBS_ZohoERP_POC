@@ -86,6 +86,8 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any
 
 from ..integration import inventory_provider as inventory
+from . import admin_override as admin_override_mod
+from . import admin_override as admin_override_mod
 from . import audit as audit_mod
 from . import budget as budget_svc
 from . import integration_store as store
@@ -862,7 +864,8 @@ def approve_request(session: Session, *, imr_id: str, actor: str,
                     acting_for_user_id: str | None = None,
                     approved_quantity: Any = None, reason: str | None = None,
                     expected_version: int | None = None,
-                    correlation_id: str | None = None) -> dict[str, Any]:
+                    correlation_id: str | None = None,
+                    admin_override_reason: str | None = None) -> dict[str, Any]:
     """Approve a REQUESTED request. Maker-checker, in `approve_pr`'s order:
     `auth.require`, `auth.require_separation`, then the delegation check
     against every contributor, then the requester re-read UNDER THE LOCK."""
@@ -872,17 +875,28 @@ def approve_request(session: Session, *, imr_id: str, actor: str,
     if imr["status"] != STATUS_REQUESTED:
         _err("INVALID_TRANSITION",
              f"{imr['imr_number']} is {imr['status']} and cannot be approved.", 409)
-    if principal is not None:
-        try:
+    # Stream B: the Administrator's deliberate, audited override -- the same
+    # gate `procurement_services.approve_pr` opens, in the same order.
+    override: dict[str, Any] | None = None
+    try:
+        if principal is not None:
             auth_mod.require(dict(principal), PERMISSION_APPROVE)
+        override = admin_override_mod.resolve(
+            principal=principal, permission=PERMISSION_APPROVE,
+            maker_user_id=imr["requested_by"], object_label=imr["imr_number"],
+            admin_override_reason=admin_override_reason,
+            acting_for_user_id=acting_for_user_id)
+        if principal is not None and override is None:
             auth_mod.require_separation(dict(principal), PERMISSION_APPROVE,
                                         imr["requested_by"],
                                         object_label=imr["imr_number"])
-        except auth_mod.AuthError as exc:
-            raise ProcurementError(exc.code, exc.message, status=exc.status) from exc
+    except auth_mod.AuthError as exc:
+        raise ProcurementError(exc.code, exc.message, status=exc.status) from exc
     try:
         assert_delegation_independent(
-            actor, acting_for_user_id, {imr["requested_by"], imr["created_by"]})
+            actor, acting_for_user_id,
+            admin_override_mod.contributors_for_check(
+                override, actor, {imr["requested_by"], imr["created_by"]}))
     except DelegatedSelfApproval as exc:
         raise ProcurementError(
             ERR_SELF_APPROVAL, str(exc), status=403,
@@ -895,10 +909,18 @@ def approve_request(session: Session, *, imr_id: str, actor: str,
     if current["status"] != STATUS_REQUESTED:
         _err("INVALID_TRANSITION",
              f"{imr['imr_number']} is {current['status']} and cannot be approved.", 409)
-    if actor == current["requested_by"]:
+    if actor == current["requested_by"] and not (
+            override and override["maker_user_id"] == current["requested_by"]):
         _err(ERR_SELF_APPROVAL,
              f"{imr['imr_number']} was raised by {actor}; the requester never "
              f"approves their own request.", 403)
+    if override is not None:
+        admin_override_mod.record(
+            session, override=override, object_type=OBJECT_TYPE, object_id=imr_id,
+            previous_state=current["status"], new_state=STATUS_IMR_APPROVED,
+            amount_paise=(None if current["unit_rate_paise"] is None
+                          else _money(imr["requested_quantity"], current["unit_rate_paise"])),
+            correlation_id=correlation_id)
 
     mapping_ok = current["mapping_ok"]
     if not mapping_ok:

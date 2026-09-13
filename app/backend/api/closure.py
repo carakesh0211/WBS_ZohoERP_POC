@@ -428,6 +428,10 @@ class _ReviewDecisionIn(BaseModel):
 
     decision: str
     note: str
+    #: Stream B: the Administrator's deliberate self-approval override.
+    admin_override_reason: str | None = None
+    #: Stream B: the Administrator's deliberate self-approval override.
+    admin_override_reason: str | None = None
 
 
 @router.post("/api/closure/reviews/{review_id}/decide",
@@ -457,19 +461,26 @@ def post_review_decision(
                 WHERE r.review_id = %(review_id)s AND {scope}
                 """,
                 {"review_id": review_id}, columns=_PROJECT_COLUMNS)
-            _require_separation(actor, "capitalisation.approve",
-                                row[0] if row else None,
-                                object_label=review_id)
+            override = _require_separation(
+                request, "capitalisation.approve", row[0] if row else None,
+                object_label=review_id,
+                admin_override_reason=body.admin_override_reason)
             return closure_svc.decide_completion_review(
                 session, review_id=review_id, decision=body.decision,
-                note=body.note, actor=actor)
+                note=body.note, actor=actor, admin_override=override,
+                correlation_id=_correlation_id(request))
     except closure_svc.ClosureServiceError as exc:
         raise _service_error_to_http(exc)
 
 
-def _require_separation(actor: str, permission: str, maker: str | None, *,
-                        object_label: str) -> None:
+def _require_separation(request: Request, permission: str, maker: str | None, *,
+                        object_label: str,
+                        admin_override_reason: str | None = None) -> dict | None:
     """`auth.require_separation`, translated into this router's error shape.
+
+    Stream B: called with the REAL principal (roles included) so the
+    Administrator's deliberate override can be recognised; returns the
+    override record for the service to honour and audit, or None.
 
     `capitalisation.approve` is in `auth.MAKER_CHECKER`, so this is a real
     check and not a no-op. It is called only AFTER `_requires(...)` has run as
@@ -477,11 +488,13 @@ def _require_separation(actor: str, permission: str, maker: str | None, *,
     `auth.require_separation` that the rest of this codebase uses.
     """
     from .. import auth as auth_mod
-
+    who = dict(_principal_of(request))
+    who.setdefault("user_id", _actor(request))
+    who.setdefault("roles", [])
     try:
-        auth_mod.require_separation(
-            {"user_id": actor, "roles": []}, permission, maker,
-            object_label=object_label)
+        return auth_mod.require_separation(
+            who, permission, maker, object_label=object_label,
+            admin_override_reason=admin_override_reason)
     except auth_mod.AuthError as exc:
         raise _problem(exc.status, exc.code,
                        str(exc.code).replace("_", " ").title(), exc.message)
@@ -568,6 +581,10 @@ class _DecisionIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     note: str
+    #: Stream B: the Administrator's deliberate self-approval override.
+    admin_override_reason: str | None = None
+    #: Stream B: the Administrator's deliberate self-approval override.
+    admin_override_reason: str | None = None
 
 
 @router.post("/api/closure/requests/{cap_id}/approve",
@@ -598,11 +615,13 @@ def post_request_approve(
                 WHERE c.cap_id = %(cap_id)s AND {scope}
                 """,
                 {"cap_id": cap_id}, columns=_PROJECT_COLUMNS)
-            _require_separation(actor, "capitalisation.approve",
-                                row[0] if row else None,
-                                object_label=(row[1] if row else cap_id))
+            override = _require_separation(
+                request, "capitalisation.approve", row[0] if row else None,
+                object_label=(row[1] if row else cap_id),
+                admin_override_reason=body.admin_override_reason)
             return closure_svc.approve_capitalisation(
-                session, cap_id=cap_id, note=body.note, actor=actor)
+                session, cap_id=cap_id, note=body.note, actor=actor,
+                admin_override=override, correlation_id=_correlation_id(request))
     except closure_svc.ClosureServiceError as exc:
         raise _service_error_to_http(exc)
 
@@ -626,11 +645,13 @@ def post_request_reject(
                 WHERE c.cap_id = %(cap_id)s AND {scope}
                 """,
                 {"cap_id": cap_id}, columns=_PROJECT_COLUMNS)
-            _require_separation(actor, "capitalisation.approve",
-                                row[0] if row else None,
-                                object_label=(row[1] if row else cap_id))
+            override = _require_separation(
+                request, "capitalisation.approve", row[0] if row else None,
+                object_label=(row[1] if row else cap_id),
+                admin_override_reason=body.admin_override_reason)
             return closure_svc.reject_capitalisation(
-                session, cap_id=cap_id, note=body.note, actor=actor)
+                session, cap_id=cap_id, note=body.note, actor=actor,
+                admin_override=override, correlation_id=_correlation_id(request))
     except closure_svc.ClosureServiceError as exc:
         raise _service_error_to_http(exc)
 

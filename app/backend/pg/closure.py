@@ -75,11 +75,15 @@ carries a ``scope-exempt:`` comment and its reason, as
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from ..money import format_inr
+from . import admin_override as admin_override_mod
+from . import admin_override as admin_override_mod
 from . import audit as audit_mod
 from . import repo
 from .engine import Session
@@ -157,6 +161,42 @@ def _iso(value: Any) -> Any:
 def _text(value: Any) -> str:
     return (value or "").strip() if isinstance(value, str) else ""
 
+
+
+def _validated_override(admin_override, *, maker, actor):
+    """Stream B: an override record the ROUTER resolved through
+    `auth.require_separation` (with the real principal), validated here and
+    honoured only when it names THIS actor and THIS maker -- a record for a
+    different object or person is not an override of this one."""
+    if admin_override is None:
+        return None
+    try:
+        record = admin_override_mod.validate(admin_override)
+    except Exception as exc:  # AuthError -> this module's shape
+        _err(getattr(exc, "code", "ADMIN_OVERRIDE_INVALID"), str(exc), status=403)
+    if record["actor_user_id"] != actor or (maker and record["maker_user_id"] != maker):
+        _err("ADMIN_OVERRIDE_INVALID",
+             "The override record names a different actor or maker than this "
+             "decision.", status=403)
+    return record
+
+
+def _validated_override(admin_override, *, maker, actor):
+    """Stream B: an override record the ROUTER resolved through
+    `auth.require_separation` (with the real principal), validated here and
+    honoured only when it names THIS actor and THIS maker -- a record for a
+    different object or person is not an override of this one."""
+    if admin_override is None:
+        return None
+    try:
+        record = admin_override_mod.validate(admin_override)
+    except Exception as exc:  # AuthError -> this module's shape
+        _err(getattr(exc, "code", "ADMIN_OVERRIDE_INVALID"), str(exc), status=403)
+    if record["actor_user_id"] != actor or (maker and record["maker_user_id"] != maker):
+        _err("ADMIN_OVERRIDE_INVALID",
+             "The override record names a different actor or maker than this "
+             "decision.", status=403)
+    return record
 
 # ==========================================================================
 # Position: what the closure decision is being taken against
@@ -570,7 +610,9 @@ def submit_completion_review(session: Session, *, review_id: str,
 
 def decide_completion_review(session: Session, *, review_id: str,
                              decision: str, note: str,
-                             actor: str) -> dict[str, Any]:
+                             actor: str,
+                             admin_override: Mapping[str, Any] | None = None,
+                             correlation_id: str | None = None) -> dict[str, Any]:
     """Accept or reject a submitted completion review. Maker-checker applies.
 
     The person who ASSERTED completion may not also decide it. That is not a
@@ -605,11 +647,17 @@ def decide_completion_review(session: Session, *, review_id: str,
         _err("SUBMITTED_REVIEW_NOT_FOUND",
              f"No Submitted completion review {review_id} is visible to you.",
              status=404)
-    if current[1] and current[1] == actor:
+    override = _validated_override(admin_override, maker=current[1], actor=actor)
+    if current[1] and current[1] == actor and override is None:
         _err("SELF_APPROVAL",
              f"You asserted completion on {current[2]} and cannot also decide "
              f"it. Segregation of duties requires an independent reviewer.",
              status=403)
+    if override is not None:
+        admin_override_mod.record(
+            session, override=override, object_type="ProjectCompletionReview",
+            object_id=review_id, previous_state="Submitted", new_state=decision,
+            correlation_id=correlation_id)
 
     rows = repo.query(
         session,
@@ -824,7 +872,9 @@ def submit_capitalisation_request(session: Session, *, cap_id: str,
 
 
 def approve_capitalisation(session: Session, *, cap_id: str, note: str,
-                           actor: str) -> dict[str, Any]:
+                           actor: str,
+                           admin_override: Mapping[str, Any] | None = None,
+                           correlation_id: str | None = None) -> dict[str, Any]:
     """Approve the capitalisation DECISION. Nothing is posted anywhere.
 
     AUD-C-009: eligibility is a GATE, not a warning. Every blocker
@@ -865,8 +915,13 @@ def approve_capitalisation(session: Session, *, cap_id: str, note: str,
              f"No Submitted capitalisation request {cap_id} is visible to you.",
              status=404)
     _cap_id, cap_number, project_id, requested_by, raised_balance = locked
-
-    if requested_by and requested_by == actor:
+    override = _validated_override(admin_override, maker=requested_by, actor=actor)
+    if override is not None:
+        admin_override_mod.record(
+            session, override=override, object_type="CapitalisationRequest",
+            object_id=cap_id, previous_state="Submitted", new_state="Approved",
+            amount_paise=int(raised_balance or 0), correlation_id=correlation_id)
+    if requested_by and requested_by == actor and override is None:
         _err("SELF_APPROVAL",
              f"You raised {cap_number} and cannot also approve it. "
              f"Segregation of duties requires an independent approver.",
@@ -962,7 +1017,9 @@ def approve_capitalisation(session: Session, *, cap_id: str, note: str,
 
 
 def reject_capitalisation(session: Session, *, cap_id: str, note: str,
-                          actor: str) -> dict[str, Any]:
+                          actor: str,
+                          admin_override: Mapping[str, Any] | None = None,
+                          correlation_id: str | None = None) -> dict[str, Any]:
     if not _text(note):
         _err("DECISION_NOTE_REQUIRED",
              "A rejection states its reason; the requester has to know what "
@@ -981,9 +1038,15 @@ def reject_capitalisation(session: Session, *, cap_id: str, note: str,
         _err("SUBMITTED_REQUEST_NOT_FOUND",
              f"No Submitted capitalisation request {cap_id} is visible to you.",
              status=404)
-    if locked[2] and locked[2] == actor:
+    override = _validated_override(admin_override, maker=locked[2], actor=actor)
+    if locked[2] and locked[2] == actor and override is None:
         _err("SELF_APPROVAL",
              f"You raised {locked[1]} and cannot also decide it.", status=403)
+    if override is not None:
+        admin_override_mod.record(
+            session, override=override, object_type="CapitalisationRequest",
+            object_id=cap_id, previous_state="Submitted", new_state="Rejected",
+            correlation_id=correlation_id)
 
     rows = repo.query(
         session,

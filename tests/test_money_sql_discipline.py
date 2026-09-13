@@ -296,7 +296,9 @@ def test_the_gate_reads_a_module_level_assignment_and_not_only_a_call_argument()
         "the PO branch's residual sum must be reachable by this gate; it lives "
         "in a module-level assignment, which is where reporting.py keeps all "
         "five of its branches")
-    assert "SUM(r.amount_paise)" in re.sub(r"\s+", " ", strings), (
+    # The fragment is the reservation branch's CURRENT sum: since migration
+    # 034 it subtracts the part of the hold an internal allocation moved.
+    assert "SUM(r.amount_paise - r.internal_moved_paise)" in re.sub(r"\s+", " ", strings), (
         "the reservation branch's sum arrives as a KEYWORD argument to "
         "`_zeros_except`, inside an f-string's braces -- neither `args[0]` nor "
         "a literal text fragment, and it must still be read")

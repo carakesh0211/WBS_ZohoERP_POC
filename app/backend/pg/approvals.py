@@ -85,6 +85,7 @@ from .approval_rules import (
     build_stage, expand_role_members, quorum_met, required_quorum, resolve_path,
     resolve_route, scope_matches, stage_applies,
 )
+from . import admin_override as admin_override_mod
 from .delegation import (
     assert_delegation_independent, expand_delegates, load_delegations_for,
 )
@@ -1216,7 +1217,8 @@ def _open_wave(session: Session, *, instance_id: str, wave: Sequence[int],
 
 def _set_instance_status(session: Session, instance_id: str, status: str, *,
                           closed: bool, current_stage_no: int | None = None,
-                          closing_actor: str | None = None) -> None:
+                          closing_actor: str | None = None,
+                          admin_override: Mapping[str, Any] | None = None) -> None:
     """The ONE place an instance's status moves -- and therefore the one place
     a closure can be observed.
 
@@ -1239,11 +1241,13 @@ def _set_instance_status(session: Session, instance_id: str, status: str, *,
         {"status": status, "closed": closed, "stage": current_stage_no,
          "id": instance_id})
     if closed:
-        _apply_writeback(session, instance_id, closing_actor=closing_actor)
+        _apply_writeback(session, instance_id, closing_actor=closing_actor,
+                         admin_override=admin_override)
 
 
 def _apply_writeback(session: Session, instance_id: str, *,
-                      closing_actor: str | None = None) -> None:
+                      closing_actor: str | None = None,
+                      admin_override: Mapping[str, Any] | None = None) -> None:
     """Tell the document its approval closed -- in THIS transaction.
 
     The seam with the document layer (Wave 4 stream A2), which owns
@@ -1295,7 +1299,7 @@ def _apply_writeback(session: Session, instance_id: str, *,
     # `decide` knows who is acting. Telling the write-back beats making it
     # guess from a table this function has deliberately not finished writing.
     apply_outcome(session, get_instance(session, instance_id),
-                   closing_actor=closing_actor)
+                   closing_actor=closing_actor, admin_override=admin_override)
 
 
 # ==========================================================================
@@ -1353,7 +1357,8 @@ def decide(session: Session, *, instance_id: str, actor_user_id: str, action: st
             acting_for_user_id: str | None = None,
             correlation_id: str | None = None,
             principal: Mapping[str, Any] | None = None,
-            permission: str | None = None) -> DecisionResult:
+            permission: str | None = None,
+            admin_override_reason: str | None = None) -> DecisionResult:
     """Apply one APPROVE / REJECT / RETURN to the caller's open stage.
 
     The full sequence, in the order it happens and why each step is where it is::
@@ -1476,15 +1481,32 @@ def decide(session: Session, *, instance_id: str, actor_user_id: str, action: st
     # (i) the product's own segregation-of-duties check, unmodified and called
     #     exactly as services.py calls it -- a second, independent enforcement
     #     point (contract 5), not a replacement for the first.
-    if principal is not None:
+    #     Stream B: the Administrator's deliberate, audited override comes
+    #     back from the same call, only for the maker, only with the role,
+    #     only with a reason, never with a delegation.
+    override = admin_override_mod.resolve(
+        principal=principal, permission=permission or _maker_checker_permission(instance),
+        maker_user_id=instance["maker_user_id"] or maker,
+        object_label=f"{instance['object_type']} {instance['object_id']}",
+        admin_override_reason=admin_override_reason,
+        acting_for_user_id=acting_for_user_id or delegated_from)
+    if principal is not None and override is None:
         auth_mod.require_separation(
             dict(principal), permission or _maker_checker_permission(instance),
             instance["maker_user_id"] or maker,
             object_label=f"{instance['object_type']} {instance['object_id']}")
     # (ii) the engine's own, which is a superset and covers the delegated case
     #      that `require_separation` cannot see.
-    assert_delegation_independent(actor_user_id, acting_for_user_id or delegated_from,
-                                   contributors)
+    assert_delegation_independent(
+        actor_user_id, acting_for_user_id or delegated_from,
+        admin_override_mod.contributors_for_check(override, actor_user_id, contributors))
+    if override is not None:
+        admin_override_mod.record(
+            session, override=override, object_type=instance["object_type"],
+            object_id=instance["object_id"], previous_state=instance["status"],
+            new_state=f"{action} on stage {stage_no}",
+            correlation_id=correlation_id,
+            extra={"instance_id": instance_id, "stage_no": stage_no})
 
     # ---- step 7: budget revalidation, inside the transaction ------------
     waves = compute_waves([stages[no] for no in sorted(stages)])
@@ -1630,7 +1652,7 @@ def _apply_decision(session: Session, *, instance: Mapping[str, Any], stage_no: 
 
     if all_waves_settled(waves, projected):
         _set_instance_status(session, instance_id, INST_APPROVED, closed=True,
-                              closing_actor=actor_user_id)
+                              closing_actor=actor_user_id, admin_override=override)
         return DecisionResult(instance_id=instance_id, action=action,
                                stage_no=stage_no, stage_status=STAGE_APPROVED,
                                instance_status=INST_APPROVED,

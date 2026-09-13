@@ -109,6 +109,39 @@ PERMISSIONS: dict[str, tuple[str, ...]] = {
     "access.grant": ("System Administrator",),
 }
 
+#: Fable 5.1 / Stream B (product owner, 2026-09-13): the System Administrator
+#: holds EVERY permission in this catalogue, applied once over the table above
+#: for the reason `auth.py` gives at the same spot. Maker-checker below is
+#: unchanged; the deliberate, audited override lives in `auth.require_separation`
+#: and `pg/admin_override.py`.
+ADMIN_ROLE = "System Administrator"
+PERMISSIONS = {
+    permission: (roles if ADMIN_ROLE in roles else (*roles, ADMIN_ROLE))
+    for permission, roles in PERMISSIONS.items()
+}
+
+#: Fable 5.1 / Stream B (product owner, 2026-09-13): the System Administrator
+#: holds EVERY permission in this catalogue, applied once over the table above
+#: for the reason `auth.py` gives at the same spot. Maker-checker below is
+#: unchanged; the deliberate, audited override lives in `auth.require_separation`
+#: and `pg/admin_override.py`.
+ADMIN_ROLE = "System Administrator"
+PERMISSIONS = {
+    permission: (roles if ADMIN_ROLE in roles else (*roles, ADMIN_ROLE))
+    for permission, roles in PERMISSIONS.items()
+}
+
+#: Fable 5.1 / Stream B (product owner, 2026-09-13): the System Administrator
+#: holds EVERY permission in this catalogue, applied once over the table above
+#: for the reason `auth.py` gives at the same spot. Maker-checker below is
+#: unchanged; the deliberate, audited override lives in `auth.require_separation`
+#: and `pg/admin_override.py`.
+ADMIN_ROLE = "System Administrator"
+PERMISSIONS = {
+    permission: (roles if ADMIN_ROLE in roles else (*roles, ADMIN_ROLE))
+    for permission, roles in PERMISSIONS.items()
+}
+
 #: Permissions subject to maker-checker: the same principal who raised an
 #: object may never also decide it. Mirrors `auth.MAKER_CHECKER`'s role in
 #: the legacy system, for this module's own permission catalog.

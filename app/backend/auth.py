@@ -198,6 +198,63 @@ PERMISSIONS: dict[str, tuple[str, ...]] = {
 
 # Approval permissions are subject to maker-checker: the approver may not be the
 # person who raised the object.
+# --- Fable 5.1 / Stream B (product owner, 2026-09-13) ---------------------
+# THE ADMINISTRATOR HOLDS EVERY PERMISSION. Applied here, once, over the
+# catalogue above rather than typed into each tuple, so a permission added
+# later cannot omit the role by accident and a reviewer can see the rule in
+# one place. Maker-checker is NOT weakened by it: an Administrator who raised
+# an object is still refused its approval by `require_separation` unless they
+# override DELIBERATELY -- an explicit `admin_override_reason`, the role, no
+# delegation -- and every override is an ADMIN_SELF_APPROVAL_OVERRIDE audit
+# entry (`pg/admin_override.py`). This supersedes the AUD-C-006 assertion
+# "administration must not be a route to approving spend" by owner decision;
+# tests/ADAPTATIONS.md records it.
+ADMIN_ROLE = "Administrator"
+ADMIN_OVERRIDE_ACTION = "ADMIN_SELF_APPROVAL_OVERRIDE"
+ADMIN_OVERRIDE_MIN_REASON = 10
+PERMISSIONS = {
+    permission: (roles if ADMIN_ROLE in roles else (*roles, ADMIN_ROLE))
+    for permission, roles in PERMISSIONS.items()
+}
+
+# --- Fable 5.1 / Stream B (product owner, 2026-09-13) ---------------------
+# THE ADMINISTRATOR HOLDS EVERY PERMISSION. Applied here, once, over the
+# catalogue above rather than typed into each tuple, so a permission added
+# later cannot omit the role by accident and a reviewer can see the rule in
+# one place. Maker-checker is NOT weakened by it: an Administrator who raised
+# an object is still refused its approval by `require_separation` unless they
+# override DELIBERATELY -- an explicit `admin_override_reason`, the role, no
+# delegation -- and every override is an ADMIN_SELF_APPROVAL_OVERRIDE audit
+# entry (`pg/admin_override.py`). This supersedes the AUD-C-006 assertion
+# "administration must not be a route to approving spend" by owner decision;
+# tests/ADAPTATIONS.md records it.
+ADMIN_ROLE = "Administrator"
+ADMIN_OVERRIDE_ACTION = "ADMIN_SELF_APPROVAL_OVERRIDE"
+ADMIN_OVERRIDE_MIN_REASON = 10
+PERMISSIONS = {
+    permission: (roles if ADMIN_ROLE in roles else (*roles, ADMIN_ROLE))
+    for permission, roles in PERMISSIONS.items()
+}
+
+# --- Fable 5.1 / Stream B (product owner, 2026-09-13) ---------------------
+# THE ADMINISTRATOR HOLDS EVERY PERMISSION. Applied here, once, over the
+# catalogue above rather than typed into each tuple, so a permission added
+# later cannot omit the role by accident and a reviewer can see the rule in
+# one place. Maker-checker is NOT weakened by it: an Administrator who raised
+# an object is still refused its approval by `require_separation` unless they
+# override DELIBERATELY -- an explicit `admin_override_reason`, the role, no
+# delegation -- and every override is an ADMIN_SELF_APPROVAL_OVERRIDE audit
+# entry (`pg/admin_override.py`). This supersedes the AUD-C-006 assertion
+# "administration must not be a route to approving spend" by owner decision;
+# tests/ADAPTATIONS.md records it.
+ADMIN_ROLE = "Administrator"
+ADMIN_OVERRIDE_ACTION = "ADMIN_SELF_APPROVAL_OVERRIDE"
+ADMIN_OVERRIDE_MIN_REASON = 10
+PERMISSIONS = {
+    permission: (roles if ADMIN_ROLE in roles else (*roles, ADMIN_ROLE))
+    for permission, roles in PERMISSIONS.items()
+}
+
 MAKER_CHECKER = {"pr.approve", "pr.approve_exception", "imr.approve",
                  "revision.approve",
                  "capitalisation.approve", "bill.void", "period.reopen.apply"}
@@ -282,10 +339,26 @@ def require(principal_: dict, permission: str) -> None:
             f"'{permission}'. Required: {' or '.join(allowed)}.")
 
 
+def admin_override_permitted(principal_: dict) -> bool:
+    """Whether this principal may override a self-approval at all."""
+    return ADMIN_ROLE in (principal_.get("roles") or ())
+
+
 def require_separation(principal_: dict, permission: str, maker_user_id: str | None,
                        *, object_label: str = "this item",
-                       require_maker: bool = False) -> None:
-    """Maker-checker. The person who raised something may never approve it.
+                       require_maker: bool = False,
+                       admin_override_reason: str | None = None) -> dict | None:
+    """Maker-checker. The person who raised something may never approve it --
+    unless they are the Administrator overriding DELIBERATELY (Stream B).
+
+    Returns None when there is no separation issue. Returns the override
+    RECORD (a dict the services hand to `pg.admin_override.record`) when the
+    caller is the maker, holds the Administrator role and supplied an
+    `admin_override_reason` of at least ADMIN_OVERRIDE_MIN_REASON characters.
+    Raises `SELF_APPROVAL` when the caller is the maker and offered no reason
+    (the default, unchanged); `ADMIN_OVERRIDE_NOT_PERMITTED` when a reason
+    came from any other role; `ADMIN_OVERRIDE_REASON_REQUIRED` when the reason
+    is too short to explain anything.
 
     A falsy ``maker_user_id`` means "this caller did not tell me who the maker
     is". By default that is PERMISSIVE, and deliberately so: several callers
@@ -311,11 +384,38 @@ def require_separation(principal_: dict, permission: str, maker_user_id: str | N
                 f"of duties cannot be verified. It cannot be approved until the "
                 f"maker is known.")
         return
-    if principal_["user_id"] == maker_user_id:
+    if principal_["user_id"] != maker_user_id:
+        return None
+    if admin_override_reason is None:
         raise AuthError(
             403, "SELF_APPROVAL",
             f"You raised {object_label} and cannot also approve it. "
-            f"Segregation of duties requires an independent approver.")
+            f"Segregation of duties requires an independent approver."
+            + (" An Administrator may override this deliberately by supplying "
+               "admin_override_reason; the override is audited."
+               if admin_override_permitted(principal_) else ""))
+    if not admin_override_permitted(principal_):
+        raise AuthError(
+            403, "ADMIN_OVERRIDE_NOT_PERMITTED",
+            f"You raised {object_label} and cannot also approve it. Only an "
+            f"Administrator may override segregation of duties, and your role "
+            f"({', '.join(principal_.get('roles') or []) or 'none'}) is not one.")
+    reason = str(admin_override_reason).strip()
+    if len(reason) < ADMIN_OVERRIDE_MIN_REASON:
+        raise AuthError(
+            422, "ADMIN_OVERRIDE_REASON_REQUIRED",
+            f"An administrator override of segregation of duties on "
+            f"{object_label} needs an explicit reason of at least "
+            f"{ADMIN_OVERRIDE_MIN_REASON} characters; it is written into the "
+            f"audit trail.")
+    return {
+        "action": ADMIN_OVERRIDE_ACTION,
+        "actor_user_id": principal_["user_id"],
+        "maker_user_id": maker_user_id,
+        "permission": permission,
+        "object_label": object_label,
+        "reason": reason,
+    }
 
 
 # ---------------------------------------------------------------- provisioning

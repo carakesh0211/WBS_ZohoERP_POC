@@ -50,6 +50,7 @@ from datetime import date, datetime, timezone
 from typing import Any
 
 from .. import domain
+from . import admin_override as admin_override_mod
 from . import audit as audit_mod
 from . import repo
 from .engine import Session
@@ -87,6 +88,38 @@ _PROJECT_SCOPE_COLUMNS = {
     "plant": "p.plant_id",
     "location": "p.location_id",
 }
+
+
+def _override_or_refuse(*, principal, permission, maker, actor, object_label,
+                        admin_override_reason, admin_override):
+    """Stream B: the Administrator's deliberate override, resolved through
+    `pg.admin_override.resolve` and re-coded as this module's error. None
+    when no override was offered or none is needed."""
+    from . import admin_override as admin_override_mod
+    from .. import auth as auth_mod
+    try:
+        return admin_override_mod.resolve(
+            principal=principal, permission=permission, maker_user_id=maker,
+            object_label=object_label, admin_override_reason=admin_override_reason,
+            admin_override=admin_override)
+    except auth_mod.AuthError as exc:
+        raise BudgetServiceError(exc.code, exc.message, status=exc.status) from exc
+
+
+def _override_or_refuse(*, principal, permission, maker, actor, object_label,
+                        admin_override_reason, admin_override):
+    """Stream B: the Administrator's deliberate override, resolved through
+    `pg.admin_override.resolve` and re-coded as this module's error. None
+    when no override was offered or none is needed."""
+    from . import admin_override as admin_override_mod
+    from .. import auth as auth_mod
+    try:
+        return admin_override_mod.resolve(
+            principal=principal, permission=permission, maker_user_id=maker,
+            object_label=object_label, admin_override_reason=admin_override_reason,
+            admin_override=admin_override)
+    except auth_mod.AuthError as exc:
+        raise BudgetServiceError(exc.code, exc.message, status=exc.status) from exc
 
 
 class BudgetServiceError(Exception):
@@ -648,7 +681,11 @@ def create_revision(session: Session, *, wbs_id: str, budget_head_id: str,
 
 
 def approve_revision(session: Session, *, revision_id: str, actor: str,
-                      approval_instance_id: str | None = None) -> dict:
+                      approval_instance_id: str | None = None,
+                      principal: Mapping[str, Any] | None = None,
+                      admin_override_reason: str | None = None,
+                      admin_override: Mapping[str, Any] | None = None,
+                      correlation_id: str | None = None) -> dict:
     """Write the revision into the budget.
 
     ``approval_instance_id`` names the approval instance whose closure is
@@ -691,10 +728,19 @@ def approve_revision(session: Session, *, revision_id: str, actor: str,
     # M4a); until then this is the one independent enforcement point this
     # stream can make -- a SUPERSET check (refuses more, never less), never a
     # replacement for the real thing.
-    if actor == created_by:
+    override = _override_or_refuse(
+        principal=principal, permission="revision.approve", maker=created_by,
+        actor=actor, object_label=f"revision {revision_id}",
+        admin_override_reason=admin_override_reason, admin_override=admin_override)
+    if actor == created_by and override is None:
         _err("SELF_APPROVAL_FORBIDDEN",
              "The approver of a budget revision must not be the same user "
              "who drafted it.", status=403)
+    if override is not None:
+        admin_override_mod.record(
+            session, override=override, object_type=OBJECT_TYPE_REVISION,
+            object_id=revision_id, previous_state=status, new_state="APPROVED",
+            amount_paise=int(delta_paise), correlation_id=correlation_id)
 
     # Rule 1: cells first, complete set, exactly once.
     lock_affected_cells(session, [(wbs_id, head_id)])
@@ -834,7 +880,11 @@ def create_transfer(session: Session, *, from_wbs_id: str, from_head_id: str,
 
 
 def approve_transfer(session: Session, *, transfer_id: str, actor: str,
-                      approval_instance_id: str | None = None) -> dict:
+                      approval_instance_id: str | None = None,
+                      principal: Mapping[str, Any] | None = None,
+                      admin_override_reason: str | None = None,
+                      admin_override: Mapping[str, Any] | None = None,
+                      correlation_id: str | None = None) -> dict:
     """As `approve_revision`, for a transfer. Same exemption, same reasoning."""
     row = session.fetchone(  # scope-exempt: both cells are scope-gated immediately below
         "SELECT from_wbs_id, from_head_id, to_wbs_id, to_head_id, amount_paise, "
@@ -852,10 +902,19 @@ def approve_transfer(session: Session, *, transfer_id: str, actor: str,
      justification, status, created_by) = row
     if status not in _DECIDABLE_STATUSES:
         _err("TRANSFER_NOT_DRAFT", f"Transfer {transfer_id} is {status}, not DRAFT.", status=409)
-    if actor == created_by:
+    override = _override_or_refuse(
+        principal=principal, permission="revision.approve", maker=created_by,
+        actor=actor, object_label=f"transfer {transfer_id}",
+        admin_override_reason=admin_override_reason, admin_override=admin_override)
+    if actor == created_by and override is None:
         _err("SELF_APPROVAL_FORBIDDEN",
              "The approver of a budget transfer must not be the same user who "
              "drafted it.", status=403)
+    if override is not None:
+        admin_override_mod.record(
+            session, override=override, object_type=OBJECT_TYPE_TRANSFER,
+            object_id=transfer_id, previous_state=status, new_state="APPROVED",
+            amount_paise=int(amount_paise), correlation_id=correlation_id)
 
     # Rule 1: cells first, complete set, exactly once -- BOTH legs, since a
     # transfer moves money out of one cell's ancestor chain and into another's.

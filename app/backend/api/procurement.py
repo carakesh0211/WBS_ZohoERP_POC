@@ -271,6 +271,9 @@ class _ApproveIn(BaseModel):
     #: Checked against the contributor set alongside the actor, so a delegation
     #: can never launder a self-approval.
     acting_for_user_id: str | None = None
+    #: Stream B: the Administrator's deliberate self-approval override. Ignored
+    #: for every other role (refused, in fact) and never with a delegation.
+    admin_override_reason: str | None = None
 
 
 
@@ -420,7 +423,8 @@ def post_purchase_request_approve(
                 principal=_principal_of(request),
                 acting_for_user_id=body.acting_for_user_id,
                 reason=body.reason, expected_version=body.version_no,
-                correlation_id=_correlation_id(request))
+                correlation_id=_correlation_id(request),
+                admin_override_reason=body.admin_override_reason)
     except procurement_svc.ProcurementError as exc:
         raise _service_error_to_http(exc)
 

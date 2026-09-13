@@ -96,7 +96,8 @@ class _FakeSession:
 
 
 def _position_row(*, actual=0, commitment=0, rnb=0, reserved=0,
-                  status="Released", wbs_elements=1, ledger_cells=1):
+                  status="Released", wbs_elements=1, ledger_cells=1,
+                  internal_allocation=0, internal_consumption=0):
     """The row `_POSITION_SQL` returns, as a tuple in column order.
 
     `wbs_elements` and `ledger_cells` default to 1/1 -- a project whose
@@ -105,8 +106,11 @@ def _position_row(*, actual=0, commitment=0, rnb=0, reserved=0,
     over a LEFT JOIN used to produce an EMPTY blocker list, so an absent
     position read as a clean one.
     """
+    # Migration 034 added the two internal limbs between pr_reserved and the
+    # two counts; the fake returns the real statement's column order.
     return ("PRJ-1", "CX-1", "A project", status, "ENT-1",
-            actual, commitment, rnb, reserved, wbs_elements, ledger_cells)
+            actual, commitment, rnb, reserved, internal_allocation,
+            internal_consumption, wbs_elements, ledger_cells)
 
 
 def _clean_session(**kwargs):

@@ -538,16 +538,27 @@ class _DecisionIn(BaseModel):
     reason: str | None = None
 
 
+class _ApproveIn(BaseModel):
+    """Stream B: an approve body is OPTIONAL and carries only the
+    Administrator's deliberate self-approval override."""
+    model_config = ConfigDict(extra="forbid")
+    admin_override_reason: str | None = None
+
+
 @router.post("/api/budget/revisions/{revision_id}/approve", dependencies=[Depends(_requires("revision.approve"))])
 def post_revision_approve(
     revision_id: str, response: Response, request: Request,
+    body: _ApproveIn | None = None,
     database: Database = Depends(_get_database),
 ) -> dict[str, Any]:
     _set_correlation_header(response, request)
     try:
         with database.session(_scope_for(request, database)) as session:
             result = budget_svc.approve_revision(
-                session, revision_id=revision_id, actor=_actor(request))
+                session, revision_id=revision_id, actor=_actor(request),
+                principal=_principal_of(request),
+                admin_override_reason=body.admin_override_reason if body else None,
+                correlation_id=_correlation_id(request))
     except budget_svc.BudgetServiceError as exc:
         raise _service_error_to_http(exc)
     return result
@@ -620,13 +631,17 @@ def post_transfer_submit(
 @router.post("/api/budget/transfers/{transfer_id}/approve", dependencies=[Depends(_requires("revision.approve"))])
 def post_transfer_approve(
     transfer_id: str, response: Response, request: Request,
+    body: _ApproveIn | None = None,
     database: Database = Depends(_get_database),
 ) -> dict[str, Any]:
     _set_correlation_header(response, request)
     try:
         with database.session(_scope_for(request, database)) as session:
             result = budget_svc.approve_transfer(
-                session, transfer_id=transfer_id, actor=_actor(request))
+                session, transfer_id=transfer_id, actor=_actor(request),
+                principal=_principal_of(request),
+                admin_override_reason=body.admin_override_reason if body else None,
+                correlation_id=_correlation_id(request))
     except budget_svc.BudgetServiceError as exc:
         raise _service_error_to_http(exc)
     return result

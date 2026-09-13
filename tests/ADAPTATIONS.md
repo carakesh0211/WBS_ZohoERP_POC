@@ -3208,3 +3208,36 @@ method is required on Books/Inventory.
 **Approved by:** the independent review of 2026-09-12, item 1, which is the
 instruction authorising this fix and names the exact discrepancy (7 requests
 made, 6 charged) this entry closes.
+
+## 2026-09-13 — `tests/test_api_auth.py`, `test_aud_c_006_administrator_holds_no_financial_approval` superseded
+
+**What changed.** The test asserted that the `Administrator` role held none of
+eleven financial permissions ("administration must not be a route to
+approving spend"). It is replaced by
+`test_administrator_holds_every_permission_and_self_approval_stays_deliberate`,
+which asserts the opposite catalogue shape AND the control that replaces it:
+`auth.require_separation` still refuses an Administrator's self-approval
+(`SELF_APPROVAL`) unless an explicit `admin_override_reason` is supplied, any
+other role supplying one is refused (`ADMIN_OVERRIDE_NOT_PERMITTED`), and the
+override record is the audited `ADMIN_SELF_APPROVAL_OVERRIDE` entry
+(`app/backend/pg/admin_override.py`; live tests in
+`tests/test_pg_admin_override_fable51.py`). The four `approval.act` matrix
+rows that used `Administrator` as the denied role now use `Auditor`, the only
+role outside `approval.act`; the row's comment records that it is refused at
+the router floor rather than at the route's own permission.
+
+**Why.** The product owner's binding decision of 2026-09-13 (Stream B):
+"Administrator: full operational rights, with deliberate ADMIN_OVERRIDE
+self-approval (explicit reason, audit ADMIN_SELF_APPROVAL_OVERRIDE recording
+actor / object / previous and new state / reason / correlation id /
+timestamp / amount, unmissable UI warning, filterable in reports and audit, no
+other role, negative tests, reconcile both permission catalogues)". The
+control intent -- no silent self-approval -- is preserved and tested; the
+assertion that administration is not a route to spend is the one the owner
+reversed. The period-reopen separation enforced by migration 023's
+`ck_period_reopen_separation` is deliberately NOT overridable and is recorded
+as such in the module docstring.
+
+**Approved by:** the product-owner instruction of 2026-09-13, "PRODUCT
+DECISIONS ... 2. Administrator", quoted above.
+

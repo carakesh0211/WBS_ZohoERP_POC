@@ -905,7 +905,8 @@ def cancel(session: Session, *, actor: str, budget_id: str, reason: str,
 # Release -- the approval write-back. Never callable from a route.
 # ============================================================================
 def release(session: Session, *, budget_id: str, actor: str, approval_instance_id: str,
-            correlation_id: str | None = None) -> dict[str, Any]:
+            correlation_id: str | None = None,
+            admin_override: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Apply an APPROVED outcome: create the cells that do not exist, lock
     every affected cell in the documented order, write one kind='ORIGINAL'
     budget_line per line carrying the category, classify the cell, recompute,
@@ -922,8 +923,21 @@ def release(session: Session, *, budget_id: str, actor: str, approval_instance_i
     if doc["status"] != STATUS_SUBMITTED:
         _err("BUDGET_NOT_SUBMITTED", f"{doc['budget_number']} is {doc['status']}; only a submitted "
              f"budget can be released.", status=409)
-    if actor == doc["created_by"]:
+    override = None
+    if admin_override is not None:
+        from . import admin_override as admin_override_mod
+        override = admin_override_mod.validate(admin_override)
+        if override["actor_user_id"] != actor:
+            _err("ADMIN_OVERRIDE_INVALID",
+                 "The override record names a different actor than this release.",
+                 status=403)
+    if actor == doc["created_by"] and override is None:
         _err("SELF_APPROVAL", "The maker of an original budget cannot release it.", status=403)
+    if override is not None:
+        admin_override_mod.record(
+            session, override=override, object_type="ORIGINAL_BUDGET", object_id=budget_id,
+            previous_state=doc["status"], new_state=STATUS_RELEASED,
+            correlation_id=correlation_id)
     project = _project_in_scope(session, doc["project_id"])
     defs = budget_custom_field_defs(session)
     clean = _validate_lines(session, project=project, lines=doc["lines"], defs=defs,

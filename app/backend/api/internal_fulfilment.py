@@ -93,6 +93,8 @@ class _ApproveIn(_Strict):
     reason: str | None = Field(default=None, max_length=2000)
     acting_for_user_id: str | None = None
     version_no: int | None = None
+    #: Stream B: the Administrator's deliberate self-approval override.
+    admin_override_reason: str | None = Field(default=None, max_length=2000)
 
 
 class _ValuationIn(_Strict):
@@ -206,7 +208,8 @@ def post_approve(imr_id: str, body: _ApproveIn, request: Request,
         acting_for_user_id=body.acting_for_user_id,
         approved_quantity=body.approved_quantity, reason=body.reason,
         expected_version=body.version_no,
-        correlation_id=_correlation_id(request)))
+        correlation_id=_correlation_id(request),
+        admin_override_reason=body.admin_override_reason))
 
 
 @router.put(_PREFIX + "/internal-material-requests/{imr_id}/valuation",

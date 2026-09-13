@@ -232,6 +232,8 @@ def list_entries(
     stream_key: str | None = Query(default=None),
     object_type: str | None = Query(default=None),
     object_id: str | None = Query(default=None),
+    action: str | None = Query(default=None),
+    actor: str | None = Query(default=None),
     cursor: str | None = Query(default=None),
     limit: int = Query(default=_DEFAULT_LIMIT),
     database: Database = Depends(_get_database),
@@ -251,6 +253,14 @@ def list_entries(
     if object_id is not None:
         conditions.append("object_id = %(object_id)s")
         params["object_id"] = object_id
+    # Stream B: the ADMIN_SELF_APPROVAL_OVERRIDE entries are filterable by
+    # action (and by the administrator who took them) on the audit screen.
+    if action is not None:
+        conditions.append("action = %(action)s")
+        params["action"] = action
+    if actor is not None:
+        conditions.append("actor = %(actor)s")
+        params["actor"] = actor
     if before_id is not None:
         conditions.append("audit_id < %(before_id)s")
         params["before_id"] = before_id

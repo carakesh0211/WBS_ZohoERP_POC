@@ -148,6 +148,8 @@ from ..integration import outbound as ob
 from ..integration import throttle
 from ..integration.dto import DtoError
 from ..money import MoneyError
+from . import admin_override as admin_override_mod
+from . import admin_override as admin_override_mod
 from . import audit as audit_mod
 from . import fx
 from .fx import BASE_CURRENCY
@@ -2506,7 +2508,8 @@ def approve_pr(session: Session, *, pr_id: str, actor: str,
                acting_for_user_id: str | None = None,
                reason: str | None = None,
                expected_version: int | None = None,
-               correlation_id: str | None = None) -> dict[str, Any]:
+               correlation_id: str | None = None,
+               admin_override_reason: str | None = None) -> dict[str, Any]:
     """Approve a submitted purchase request. Maker-checker is not weakened.
 
     THE CALL ORDER IS ``services.approve_pr``'S, UNCHANGED::
@@ -2557,19 +2560,31 @@ def approve_pr(session: Session, *, pr_id: str, actor: str,
     is_exception = header["check_result"] == "EXCEEDS_BUDGET"
     permission = "pr.approve_exception" if is_exception else "pr.approve"
 
-    if principal is not None:
-        try:
+    # Stream B: the Administrator's DELIBERATE override. `require_separation`
+    # returns the record only for the maker, only with the role, only with a
+    # reason; otherwise it raises exactly as it always has. A reason with no
+    # principal to verify the role against is refused, never trusted.
+    override: dict[str, Any] | None = None
+    try:
+        if principal is not None:
             auth_mod.require(dict(principal), permission)
+        override = admin_override_mod.resolve(
+            principal=principal, permission=permission,
+            maker_user_id=header["requested_by"], object_label=header["pr_number"],
+            admin_override_reason=admin_override_reason,
+            acting_for_user_id=acting_for_user_id)
+        if principal is not None and override is None:
             auth_mod.require_separation(
                 dict(principal), permission, header["requested_by"],
                 object_label=header["pr_number"])
-        except auth_mod.AuthError as exc:
-            raise ProcurementError(exc.code, exc.message,
-                                   status=exc.status) from exc
-
+    except auth_mod.AuthError as exc:
+        raise ProcurementError(exc.code, exc.message,
+                               status=exc.status) from exc
     try:
         assert_delegation_independent(
-            actor, acting_for_user_id, contributors_of_pr(session, pr_id))
+            actor, acting_for_user_id,
+            admin_override_mod.contributors_for_check(
+                override, actor, contributors_of_pr(session, pr_id)))
     except DelegatedSelfApproval as exc:
         raise ProcurementError(
             ERR_SELF_APPROVAL, str(exc), status=403,
@@ -2599,10 +2614,19 @@ def approve_pr(session: Session, *, pr_id: str, actor: str,
              f"approved again.", 409)
     # Re-read `requested_by` under the lock too, and re-run separation against
     # it: the unlocked read above is not evidence about who the maker is now.
-    if actor == current["requested_by"]:
+    # An override taken above against the SAME maker passes; a maker that
+    # changed under the lock is not the one the override named.
+    if actor == current["requested_by"] and not (
+            override and override["maker_user_id"] == current["requested_by"]):
         _err(ERR_SELF_APPROVAL,
              f"You raised {header['pr_number']} and cannot also approve it. "
              f"Segregation of duties requires an independent approver.", 403)
+    if override is not None:
+        admin_override_mod.record(
+            session, override=override, object_type="PurchaseRequest",
+            object_id=pr_id, previous_state=current["status"],
+            new_state=STATUS_APPROVED, amount_paise=int(header["amount_paise"] or 0),
+            correlation_id=correlation_id)
 
     verdicts = budget_verdicts(session, _amounts_by_cell(lines))
     if exceeds_budget(verdicts) and not is_exception:

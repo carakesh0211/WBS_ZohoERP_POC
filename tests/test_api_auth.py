@@ -218,19 +218,24 @@ MUTATING_ROUTES = [
     # Auditor is NOT usable as the denied role here: it is the one role
     # excluded from `approval.read`, so it would be refused at the floor and
     # the case would prove nothing about the route's own permission.
+    # 2026-09-13 (Stream B): the Administrator now holds every permission,
+    # `approval.act` included, so the only role outside it is the Auditor --
+    # refused at the router's `approval.read` floor. The row still proves the
+    # route is closed to the one role that must not act; it no longer proves
+    # the route's own permission separately from the floor, which is recorded.
     ("/api/approvals/{instance_id}/decide", "POST",
      "/api/approvals/AI-DEMO-001/decide",
      {"action": "APPROVE", "idempotency_key": "k-1", "object_version": 1},
-     "approval.act", "Administrator"),
+     "approval.act", "Auditor"),
     ("/api/approvals/{instance_id}/recall", "POST",
      "/api/approvals/AI-DEMO-001/recall", {"reason_text": "unauthorised attempt"},
-     "approval.act", "Administrator"),
+     "approval.act", "Auditor"),
     ("/api/approvals/{instance_id}/cancel", "POST",
      "/api/approvals/AI-DEMO-001/cancel", {"reason_text": "unauthorised attempt"},
-     "approval.act", "Administrator"),
+     "approval.act", "Auditor"),
     ("/api/approvals/{instance_id}/resubmit", "POST",
      "/api/approvals/AI-DEMO-001/resubmit", {"reason_text": "unauthorised attempt"},
-     "approval.act", "Administrator"),
+     "approval.act", "Auditor"),
 
     ("/api/approvals/definitions", "POST", "/api/approvals/definitions",
      {"object_type": "budget_revision", "code": "X", "stages": []},
@@ -712,13 +717,32 @@ def test_aud_c_006_maker_checker_covers_every_approval_permission():
         f"approval permissions outside maker-checker: {sorted(approvals - auth.MAKER_CHECKER)}"
 
 
-def test_aud_c_006_administrator_holds_no_financial_approval():
-    """Administration must not be a route to approving spend."""
-    financial = ("pr.approve", "pr.approve_exception", "revision.approve",
-                 "capitalisation.approve", "capitalisation.allocate", "bill.void",
-                 "po.amend", "po.cancel", "po.close", "pr.create", "revision.create")
-    for permission in financial:
-        assert "Administrator" not in auth.PERMISSIONS[permission], permission
+def test_administrator_holds_every_permission_and_self_approval_stays_deliberate():
+    """SUPERSEDES `test_aud_c_006_administrator_holds_no_financial_approval`
+    by the product owner's decision of 2026-09-13 (tests/ADAPTATIONS.md):
+    the Administrator holds EVERY permission, in both catalogues, and the
+    control moves from "cannot approve spend" to "cannot approve their OWN
+    object silently" -- `require_separation` still refuses a self-approval
+    unless the Administrator overrides with an explicit reason, and that
+    override is an audited ADMIN_SELF_APPROVAL_OVERRIDE entry."""
+    from app.backend.pg import roles as pg_roles
+    for permission, roles in auth.PERMISSIONS.items():
+        assert "Administrator" in roles, permission
+    for permission, roles in pg_roles.PERMISSIONS.items():
+        assert "System Administrator" in roles, permission
+    admin = {"user_id": "U-ADMIN", "roles": ["Administrator"]}
+    with pytest.raises(auth.AuthError) as silent:
+        auth.require_separation(admin, "pr.approve", "U-ADMIN", object_label="PR-1")
+    assert silent.value.code == "SELF_APPROVAL"
+    record = auth.require_separation(admin, "pr.approve", "U-ADMIN", object_label="PR-1",
+                                     admin_override_reason="sole approver on site today")
+    assert record["action"] == "ADMIN_SELF_APPROVAL_OVERRIDE"
+    assert record["actor_user_id"] == record["maker_user_id"] == "U-ADMIN"
+    other = {"user_id": "U-PLH", "roles": ["ProcurementApprover"]}
+    with pytest.raises(auth.AuthError) as refused:
+        auth.require_separation(other, "pr.approve", "U-PLH", object_label="PR-1",
+                                admin_override_reason="sole approver on site today")
+    assert refused.value.code == "ADMIN_OVERRIDE_NOT_PERMITTED"
 
 
 def test_aud_c_006_auditor_is_read_only():

@@ -665,6 +665,8 @@ class _DecideIn(_Body):
     # most of all, since that is the one a client hits first.
     idempotency_key: str | None = None
     object_version: int | None = None
+    #: Stream B: the Administrator's deliberate self-approval override.
+    admin_override_reason: str | None = None
 
 
 class _ReasonIn(_Body):
@@ -981,6 +983,7 @@ def post_decide(
             object_version=body.object_version,
             correlation_id=_correlation_id(request),
             principal=dict(who) if who.get("user_id") else None,
+            admin_override_reason=body.admin_override_reason,
         ), request))
 
 
