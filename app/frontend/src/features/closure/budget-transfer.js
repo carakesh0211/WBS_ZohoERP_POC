@@ -64,7 +64,23 @@ function cell(row, col) {
   return (value === null || value === undefined || value === '') ? '—' : String(value);
 }
 
+/* Stream C: mounted BEFORE createListScreen()'s own card so it renders above
+   the table, not after it. This screen's own project/status inputs are
+   internal to createListScreen and not read here — the export therefore
+   covers the caller's full scope rather than the on-screen filter, which
+   the export component's own "not all filters applied" note makes visible
+   rather than silently narrowing or widening what gets exported. */
+function mountExportControl(root) {
+  const host = h('div', { id: 'budgetTransferExportHost', class: 'export-actions-host' });
+  root.appendChild(host);
+  import('../../components/export-button.js').then(({ mountExportButton }) => {
+    mountExportButton({ host, dataset: 'budget_transfers', filtersProvider: () => ({}), label: 'Budget transfers' });
+  }).catch(() => { host.textContent = ''; });
+}
+
 export function mountBudgetTransfer(root) {
+  if (!root) return null;
+  mountExportControl(root);
   return createListScreen({
     root,
     id: 'budgetTransfer',

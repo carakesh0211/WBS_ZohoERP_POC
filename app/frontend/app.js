@@ -650,6 +650,44 @@ for (const { id } of SCR_ROUTES) {
   V[id] = () => scrView(id);
 }
 
+/* ---------------- Stream C: the reusable export button, on legacy screens -
+   These views are classic-script string-returning functions; the export
+   component (src/components/export-button.js) is an ES module. A dynamic
+   import() from a classic script resolves against the document base URL,
+   exactly as loadScrRegistry() above already relies on. Loaded once and
+   reused for every mount on the page, the same caching loadScrRegistry()
+   already does for the SCR-nn registry.
+
+   Called AFTER setHeader(...): that function writes its `actions` argument
+   into #pageActions SYNCHRONOUSLY, so a host div named in that string
+   already exists in the DOM by the time this runs. */
+let exportButtonModule = null;
+function loadExportButtonModule() {
+  exportButtonModule = exportButtonModule || import('/static/src/components/export-button.js');
+  return exportButtonModule;
+}
+async function mountExport(hostId, dataset, filtersProvider, label) {
+  const host = document.getElementById(hostId);
+  if (!host) return;
+  try {
+    const { mountExportButton } = await loadExportButtonModule();
+    mountExportButton({ host, dataset, filtersProvider, label });
+  } catch {
+    host.innerHTML = msg('warning', `The export control for ${esc(label || dataset)} could not be loaded.`);
+  }
+}
+/* The two scope selectors every legacy screen shares (the shellbar's entity
+   and plant pickers) are the filters this app's own vocabulary maps onto
+   the export API's FILTER_FIELDS without guessing: a screen with a finer
+   filter of its own (a single project, a single WBS element) overrides this
+   with its own provider instead of calling it. */
+function scopeExportFilters() {
+  const out = {};
+  if (S.entity) out.entity_ids = [S.entity];
+  if (S.plant) out.plant_ids = [S.plant];
+  return out;
+}
+
 V.home = async () => {
   const q = new URLSearchParams();
   if (S.entity) q.set('entity_id', S.entity);
@@ -666,7 +704,9 @@ V.home = async () => {
 
   setHeader('Executive CAPEX Dashboard', ['Home', 'Executive Dashboard'],
     [['Portfolio budget', inrShort(t.budget)], ['Exposure', inrShort(t.exposure)],
-     ['Available', inrShort(t.available)], ['Utilisation', pct(t.utilisation_pct), band(t.band)]]);
+     ['Available', inrShort(t.available)], ['Utilisation', pct(t.utilisation_pct), band(t.band)]],
+    '<div id="exportHomeHost" class="export-actions-host"></div>');
+  mountExport('exportHomeHost', 'projects', scopeExportFilters, 'Projects');
 
   const tiles = `<div class="tiles">
     <div class="tile accent-info"><div class="k">Current Approved Budget</div><div class="v">${inrShort(t.budget)}</div><div class="sub">${d.projects.length} active projects</div></div>
@@ -713,7 +753,9 @@ V.home = async () => {
 
 V.projects = async () => {
   const d = await api('/dashboard');
-  setHeader('CAPEX Projects', ['Home', 'CAPEX Projects'], []);
+  setHeader('CAPEX Projects', ['Home', 'CAPEX Projects'], [],
+    '<div id="exportProjectsHost" class="export-actions-host"></div>');
+  mountExport('exportProjectsHost', 'projects', scopeExportFilters, 'Projects');
   return `<div class="card"><h3>Project list</h3><div class="table-wrap"><table>
     <caption class="sr-only">CAPEX projects with budget, exposure, available budget and utilisation</caption>
     <thead><tr>
@@ -736,7 +778,9 @@ V.wbs = async () => {
     [['CAPEX code', esc(p.capex_code)], ['Plant', esc(p.plant_name)], ['Status', status(p.status)],
      ['Current budget', inr(t.budget)], ['Exposure', inr(t.exposure)],
      ['Available', inr(t.available)], ['Utilisation', pct(t.utilisation_pct), band(t.band)]],
-    `<button type="button" id="expandAll">Expand all</button><button type="button" id="collapseAll">Collapse all</button>`);
+    `<button type="button" id="expandAll">Expand all</button><button type="button" id="collapseAll">Collapse all</button>`
+    + '<div id="exportWbsHost" class="export-actions-host"></div>');
+  mountExport('exportWbsHost', 'wbs_elements', () => ({ project_ids: [S.project] }), 'WBS elements');
 
   const rows = [];
   const walk = (n, depth) => {
@@ -810,7 +854,9 @@ V.budget = async () => {
   const t = d.totals;
   setHeader('Budget Planning Grid', ['Home', 'Budgets'],
     [['Original', inr(t.original)], ['Revisions', inr(t.revisions)], ['Current approved', inr(t.budget)],
-     ['Available', inr(t.available)]]);
+     ['Available', inr(t.available)]],
+    '<div id="exportBudgetHost" class="export-actions-host"></div>');
+  mountExport('exportBudgetHost', 'budget_ledger_cells', () => ({ project_ids: [S.project] }), 'Budget ledger cells');
   return `<div class="toolbar"><div class="field"><label for="prjSel">Project</label>${projectSelect()}</div></div>
     <div class="card"><h3>Budget by WBS element and budget head</h3><div class="table-wrap"><table>
       <caption class="sr-only">Budget, revisions, commitment, actual CWIP and available budget for each WBS element and budget head</caption>
@@ -870,7 +916,11 @@ V.check = async () => {
 V.prs = async () => {
   const prs = await api('/purchase-requests');
   setHeader('Purchase Requests', ['Home', 'Purchase Requests'], [],
-    can('pr.create') ? `<button class="btn-primary" type="button" id="newPr">Create purchase request</button>` : '');
+    (can('pr.create') ? `<button class="btn-primary" type="button" id="newPr">Create purchase request</button>` : '')
+    + '<div id="exportPrsHost" class="export-actions-host"></div>'
+    + '<div id="exportPrLinesHost" class="export-actions-host"></div>');
+  mountExport('exportPrsHost', 'purchase_requests', scopeExportFilters, 'Purchase requests');
+  mountExport('exportPrLinesHost', 'purchase_request_lines', scopeExportFilters, 'Purchase request lines');
   const mayApprove = can('pr.approve');
   const mayApproveExc = can('pr.approve_exception');
   const roleText = esc((S.me.roles || []).join(', ') || 'none');
@@ -1002,7 +1052,9 @@ V.pos = async () => {
   // Offered to the role that holds po.amend, the permission the route
   // requires; every other role sees this header exactly as before.
   setHeader('Commitments — Purchase Orders', ['Home', 'Commitments'], [],
-    mayAmend ? `<button class="btn-primary" type="button" data-nav="purchase-order">Raise purchase order</button>` : '');
+    (mayAmend ? `<button class="btn-primary" type="button" data-nav="purchase-order">Raise purchase order</button>` : '')
+    + '<div id="exportPosHost" class="export-actions-host"></div>');
+  mountExport('exportPosHost', 'purchase_order_lines', scopeExportFilters, 'Purchase order lines');
   return `<div class="card"><h3>Purchase order commitment view</h3><div class="table-wrap"><table>
     <caption class="sr-only">Purchase orders with ordered value, billed value and open commitment, with their lines</caption>
     <thead><tr>
@@ -1030,7 +1082,9 @@ V.pos = async () => {
 
 V.grns = async () => {
   const g = await api('/grns');
-  setHeader('GRN & Unbilled Receipts', ['Home', 'GRN and Receipts'], []);
+  setHeader('GRN & Unbilled Receipts', ['Home', 'GRN and Receipts'], [],
+    '<div id="exportGrnsHost" class="export-actions-host"></div>');
+  mountExport('exportGrnsHost', 'goods_receipt_lines', scopeExportFilters, 'Goods receipt lines');
   return `<div class="card"><h3>Goods receipts</h3><div class="table-wrap"><table>
     <caption class="sr-only">Goods receipt notes with their purchase order, value and lines</caption>
     <thead><tr>
@@ -1100,7 +1154,9 @@ V.imrs = async () => {
 
 V.bills = async () => {
   const b = await api('/bills');
-  setHeader('Vendor Bills & Actual CWIP', ['Home', 'Vendor Bills'], []);
+  setHeader('Vendor Bills & Actual CWIP', ['Home', 'Vendor Bills'], [],
+    '<div id="exportBillsHost" class="export-actions-host"></div>');
+  mountExport('exportBillsHost', 'vendor_bill_lines', scopeExportFilters, 'Vendor bill lines');
   return `<div class="card"><h3>Vendor bills posted to CWIP</h3><div class="table-wrap"><table>
     <caption class="sr-only">Vendor bills and credit notes posted to capital work in progress</caption>
     <thead><tr>
@@ -1120,7 +1176,9 @@ V.recon = async () => {
   setHeader('Commitment-to-Actual Reconciliation', ['Home', 'Reconciliation'],
     [['Lines', s.lines], ['Open commitment', inr(s.open_commitment_paise)],
      ['Billed', inr(s.billed_paise)], ['Received not billed', inr(s.received_not_billed_paise)],
-     ['Exceptions', s.exceptions.length, s.exceptions.length ? 'st-warning' : '']]);
+     ['Exceptions', s.exceptions.length, s.exceptions.length ? 'st-warning' : '']],
+    '<div id="exportReconHost" class="export-actions-host"></div>');
+  mountExport('exportReconHost', 'reconciliation_exceptions', scopeExportFilters, 'Reconciliation exceptions');
   return `<div class="card"><h3>Line-level reconciliation — purchase order → receipt → bill</h3><div class="table-wrap"><table>
     <caption class="sr-only">Line-level reconciliation of ordered, received and billed values with open commitment and exposure</caption>
     <thead><tr>
@@ -1143,7 +1201,9 @@ V.recon = async () => {
 V.revisions = async () => {
   const r = await api('/budget-revisions');
   setHeader('Budget Revisions', ['Home', 'Budget Revisions'], [],
-    can('revision.create') ? `<button class="btn-primary" type="button" id="newRev">Request revision</button>` : '');
+    (can('revision.create') ? `<button class="btn-primary" type="button" id="newRev">Request revision</button>` : '')
+    + '<div id="exportRevisionsHost" class="export-actions-host"></div>');
+  mountExport('exportRevisionsHost', 'budget_revisions', scopeExportFilters, 'Budget revisions');
   const mayApprove = can('revision.approve');
   return `<div class="card"><h3>Revision register — the original budget is never overwritten</h3><div class="table-wrap"><table>
     <caption class="sr-only">Budget revision register with requestor, approver, approval reference and status</caption>
@@ -1165,7 +1225,9 @@ V.revisions = async () => {
 
 V.cap = async () => {
   const caps = await api('/capitalisation');
-  setHeader('Capitalisation Workbench', ['Home', 'Capitalisation'], []);
+  setHeader('Capitalisation Workbench', ['Home', 'Capitalisation'], [],
+    '<div id="exportCapHost" class="export-actions-host"></div>');
+  mountExport('exportCapHost', 'capitalisation_requests', scopeExportFilters, 'Capitalisation requests');
   const mayAlloc = can('capitalisation.allocate'), mayApprove = can('capitalisation.approve');
   return caps.map(c => `<div class="card"><h3>${esc(c.cap_number)} — ${esc(c.capex_code)} ${esc(c.project_name)}
       <span class="spacer"></span>${status(c.status)}</h3><div class="card-body">

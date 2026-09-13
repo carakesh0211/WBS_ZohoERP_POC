@@ -158,6 +158,31 @@ async function renderList(root) {
   toolbar.appendChild(field('Status', 'imrFilterStatus', statusSelect));
   toolbar.appendChild(h('div', { class: 'field field-action' }, refreshBtn));
 
+  /* Stream C: the requests register and the movement ledger are separate
+     export datasets (app/backend/pg/exports.py's INTERNAL_MATERIAL_REQUESTS
+     and INTERNAL_MATERIAL_MOVEMENTS), sharing this screen's own project /
+     status filters through the SAME live selects the table itself reads. */
+  const exportHost = h('div', { class: 'export-actions-host', id: 'imrExportHost' });
+  const movementsExportHost = h('div', { class: 'export-actions-host', id: 'imrMovementsExportHost' });
+  toolbar.appendChild(h('div', { class: 'field field-action' }, exportHost));
+  toolbar.appendChild(h('div', { class: 'field field-action' }, movementsExportHost));
+  import('../../components/export-button.js').then(({ mountExportButton }) => {
+    const filtersProvider = () => {
+      const out = {};
+      if (projectSelect.value) out.project_ids = [projectSelect.value];
+      if (statusSelect.value) out.lifecycle_statuses = [statusSelect.value];
+      return out;
+    };
+    mountExportButton({
+      host: exportHost, dataset: 'internal_material_requests', filtersProvider,
+      label: 'Internal material requests',
+    });
+    mountExportButton({
+      host: movementsExportHost, dataset: 'internal_material_movements', filtersProvider,
+      label: 'Internal material movements',
+    });
+  }).catch(() => { /* the export controls simply do not appear */ });
+
   async function load() {
     clear(errHost);
     tableHost.appendChild(h('div', { class: 'loading' }, 'Loading internal material requests…'));
