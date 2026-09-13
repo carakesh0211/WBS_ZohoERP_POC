@@ -26,7 +26,8 @@ What this process does, in order, and what it deliberately does NOT do:
 Not done here: no PostgreSQL (`CAPEX_DB_URL` is unset, so `/readyz` honestly
 answers 503 DatabaseNotConfigured -- that is the truthful state of a visual
 preview, not a fault), no ERP call (`zoho.MODE` is MOCK and
-`CAPEX_ERP_OUTBOUND_WRITES` is left unset = disabled), no secrets read from
+`CAPEX_ERP_OUTBOUND_WRITES` is stripped in the preview and honoured on
+stage B only when the platform sets exactly `1`), no secrets read from
 anywhere but the environment, nothing printed that a log should not hold.
 """
 from __future__ import annotations
@@ -114,8 +115,28 @@ def prepare_environment() -> str:
     else:
         for name in ("CAPEX_DB_URL", "CAPEX_DB_HOST"):
             os.environ.pop(name, None)
-    # Outbound ERP writes stay off in every stage until separately authorised.
-    os.environ.pop("CAPEX_ERP_OUTBOUND_WRITES", None)
+    # Outbound ERP writes. The ephemeral preview (no PostgreSQL) can never
+    # write: the gate is stripped whatever the platform says. Stage B (a
+    # PostgreSQL configured from the platform environment) honours the
+    # platform's own gate, and ONLY the exact value "1" -- the owner's
+    # controlled outbound authorisation of 2026-09-12/13 is enacted by setting
+    # it in the console and revoked by unsetting it there. Until 2026-09-13
+    # this launcher stripped it in every stage, so a console value could never
+    # reach the process (four recycles proved it). The state is announced,
+    # never the value.
+    gate = os.environ.get("CAPEX_ERP_OUTBOUND_WRITES")
+    stage_b = on_catalyst and bool(os.environ.get("CAPEX_DB_HOST"))
+    if stage_b and gate is not None and gate.strip() == "1":
+        os.environ["CAPEX_ERP_OUTBOUND_WRITES"] = "1"
+        print("UAT stage B: outbound ERP writes ENABLED by the platform gate "
+              "(CAPEX_ERP_OUTBOUND_WRITES=1); the connection mode is the second control",
+              flush=True)
+    else:
+        os.environ.pop("CAPEX_ERP_OUTBOUND_WRITES", None)
+        if gate is not None:
+            print("UAT: CAPEX_ERP_OUTBOUND_WRITES was set but is stripped "
+                  f"({'not stage B' if not stage_b else 'value is not exactly 1'}); "
+                  "outbound ERP writes stay disabled", flush=True)
     return db_path
 
 

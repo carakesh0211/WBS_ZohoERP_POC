@@ -266,6 +266,45 @@ def test_uat_launcher_prepares_an_ephemeral_copy_of_the_seed(tmp_path, monkeypat
     assert "CAPEX_ERP_OUTBOUND_WRITES" not in os.environ, "outbound ERP writes must be off in the preview"
 
 
+def _stage_b_launcher(tmp_path, monkeypatch, *, gate):
+    """The launcher as Stage B sees it: on Catalyst, PostgreSQL from the
+    platform, verify-full with the CA at the bundle root."""
+    bundle = tmp_path / "bundle"
+    bundle.mkdir(parents=True)
+    (bundle / "uat_seed.db").write_bytes(b"seed-bytes")
+    (bundle / "uat-credentials.json").write_text("{}", encoding="utf-8")
+    (bundle / "ca-bundle.pem").write_bytes(b"pem-bytes")
+    launcher = bundle / "main.py"
+    launcher.write_text((ROOT / "tools" / "appsail" / "uat_main.py").read_text(encoding="utf-8"),
+                        encoding="utf-8")
+    monkeypatch.setenv("CAPEX_UAT_SCRATCH_DIR", str(tmp_path / "scratch"))
+    monkeypatch.setenv("X_ZOHO_CATALYST_LISTEN_PORT", "9000")
+    monkeypatch.setenv("CAPEX_DB_HOST", "db.example.invalid")
+    monkeypatch.setenv("CAPEX_DB_SSLMODE", "verify-full")
+    monkeypatch.delenv("CAPEX_DB_URL", raising=False)
+    if gate is None:
+        monkeypatch.delenv("CAPEX_ERP_OUTBOUND_WRITES", raising=False)
+    else:
+        monkeypatch.setenv("CAPEX_ERP_OUTBOUND_WRITES", gate)
+    spec = importlib.util.spec_from_file_location("uat_launcher_stage_b_under_test", launcher)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    mod.prepare_environment()
+
+
+def test_stage_b_honours_the_platform_gate_only_when_it_is_exactly_one(tmp_path, monkeypatch):
+    """2026-09-13: the launcher stripped the gate in every stage, so the
+    owner's console value never reached the process. Stage B now honours
+    exactly `1`; anything else is stripped, and so is the preview's."""
+    _stage_b_launcher(tmp_path, monkeypatch, gate="1")
+    assert os.environ.get("CAPEX_ERP_OUTBOUND_WRITES") == "1"
+    for i, bad in enumerate(('"1"', "true", "yes", " 1 x", "")):
+        _stage_b_launcher(tmp_path / f"case{i}", monkeypatch, gate=bad)
+        assert "CAPEX_ERP_OUTBOUND_WRITES" not in os.environ, bad
+    _stage_b_launcher(tmp_path / "unset", monkeypatch, gate=None)
+    assert "CAPEX_ERP_OUTBOUND_WRITES" not in os.environ
+
+
 def test_uat_launcher_refuses_a_bundle_without_the_seed(tmp_path, monkeypatch):
     bundle = tmp_path / "bundle"
     bundle.mkdir()

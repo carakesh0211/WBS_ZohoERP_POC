@@ -13217,6 +13217,10 @@
         "assertions": 7,
         "body_sha": "e142db457aebbb05"
       },
+      "test_stage_b_honours_the_platform_gate_only_when_it_is_exactly_one": {
+        "assertions": 3,
+        "body_sha": "b9e3938c6bb1a844"
+      },
       "test_uat_launcher_refuses_a_bundle_without_the_seed": {
         "assertions": 1,
         "body_sha": "facd0c40f2536b4c"
@@ -13552,7 +13556,7 @@
     "test_security_identity.py": 10,
     "test_security_scope_tristate.py": 13,
     "test_security_secrets.py": 12,
-    "test_uat_profile.py": 23,
+    "test_uat_profile.py": 24,
     "test_uat_smoke_roles.py": 19,
     "test_zoho_routes_fable51.py": 21
   },
@@ -13693,7 +13697,7 @@
     "test_security_identity.py": 18,
     "test_security_scope_tristate.py": 39,
     "test_security_secrets.py": 29,
-    "test_uat_profile.py": 75,
+    "test_uat_profile.py": 78,
     "test_uat_smoke_roles.py": 42,
     "test_zoho_routes_fable51.py": 47
   }
