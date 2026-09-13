@@ -32,6 +32,16 @@
     </div>
     <p class="muted">Every screen in this application is authenticated. Sign in to continue.</p>
 
+    <!-- Stream D: an sso_error=<CODE> arriving on the hash from a refused OIDC
+         callback is rendered here, above both sign-in choices. -->
+    <div id="ssoErrorMsg"></div>
+
+    <!-- Stream D: shown only when GET /api/auth/providers reports oidc.enabled. -->
+    <button type="button" class="btn-block" id="ssoBtn" hidden>Continue with Zoho</button>
+    <div class="auth-divider" id="ssoDivider" hidden><span>or</span></div>
+
+    <h2 class="auth-subhead">Sign in with WBS account</h2>
+
     <div class="field">
       <label for="loginUser">User ID</label>
       <input id="loginUser" name="user_id" autocomplete="username" autocapitalize="characters"
@@ -46,12 +56,46 @@
 
     <button class="btn-primary btn-block" type="submit" id="loginBtn">Sign in</button>
 
+    <!-- Stream D: shown only when providers.local.forgot_password is true. -->
+    <p class="auth-links"><button type="button" class="linkish" id="forgotLink" hidden>Forgot password?</button></p>
+
     <p class="muted small" id="loginHint">
       Demo identities: <code>U-REQ</code>, <code>U-PM</code>, <code>U-PLH</code>, <code>U-PROC</code>,
       <code>U-FIN</code>, <code>U-PFC</code>, <code>U-CFO</code>, <code>U-AUD</code>, <code>U-ADM</code>.
       The password is the user id followed by <code>!demo</code>. These are seeded development
       credentials, not an enterprise identity provider.
     </p>
+  </form>
+
+  <!-- Stream D: inline "forgot password" request, opened from #forgotLink above.
+       Always shows a generic message — never whether the account exists. -->
+  <form class="auth-card" id="forgotForm" novalidate hidden>
+    <h2 class="auth-subhead">Forgot password</h2>
+    <p class="muted">Enter your user id. The response tells you what happens next; it never
+      confirms whether an account exists for that id.</p>
+    <div class="field">
+      <label for="forgotUserId">User ID</label>
+      <input id="forgotUserId" name="user_id" autocomplete="username" required>
+    </div>
+    <div id="forgotMsg" aria-live="polite"></div>
+    <button class="btn-primary btn-block" type="submit" id="forgotSubmitBtn">Send reset instructions</button>
+    <p class="auth-links"><button type="button" class="linkish" id="forgotBackBtn">Back to sign in</button></p>
+  </form>
+
+  <!-- Stream D: password reset, shown only when the URL carries #reset?token=… -->
+  <form class="auth-card" id="resetForm" novalidate hidden>
+    <h2 class="auth-subhead">Choose a new password</h2>
+    <div class="field">
+      <label for="resetNewPass">New password</label>
+      <input id="resetNewPass" name="new_password" type="password" autocomplete="new-password" required>
+    </div>
+    <div class="field">
+      <label for="resetConfirmPass">Confirm new password</label>
+      <input id="resetConfirmPass" type="password" autocomplete="new-password" required>
+    </div>
+    <div id="resetMsg" role="alert" aria-live="assertive"></div>
+    <button class="btn-primary btn-block" type="submit" id="resetSubmitBtn">Set new password</button>
+    <p class="auth-links"><button type="button" class="linkish" id="resetBackBtn">Back to sign in</button></p>
   </form>
 </div>
 
@@ -95,6 +139,10 @@
         <span class="user-name" id="userName">—</span>
         <span class="user-roles" id="userRoles">—</span>
       </span>
+      <!-- Stream E: preferences + delivery history for the signed-in user. -->
+      <button class="icon-btn" id="notificationsBtn" type="button">Notifications</button>
+      <!-- Stream D: current/new/confirm, in the identity area paintIdentity() renders. -->
+      <button class="icon-btn" id="changePasswordBtn" type="button">Change password</button>
       <button class="icon-btn" id="signOutBtn" type="button">Sign out</button>
     </div>
   </header>

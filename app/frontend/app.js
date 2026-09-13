@@ -1473,13 +1473,102 @@ function showAuth(message, kind = 'error') {
   document.getElementById('shell').hidden = true;
   const auth = document.getElementById('authScreen');
   auth.hidden = false;
+  showAuthCard('login');
   const box = document.getElementById('loginMsg');
   box.innerHTML = message ? msg(kind, esc(message)) : '';
   document.body.dataset.auth = 'signed-out';
   const dlg = document.getElementById('dlg');
   if (dlg.open) dlg.close();
+  renderAuthProviders();
   const u = document.getElementById('loginUser');
   if (!u.value) u.focus();
+}
+
+/* ---------------- Stream D: two sign-in choices, forgot / reset ------------
+   `GET /api/auth/providers` (public, fetched once at boot and cached on
+   S.authProviders) decides whether "Continue with Zoho" and "Forgot
+   password?" render at all — see the boot IIFE at the foot of this file.
+   `showAuthCard()` toggles between the three forms `#authScreen` now holds;
+   only one is ever un-hidden, so `.auth`'s flex centring still centres a
+   single card. */
+function showAuthCard(which) {
+  document.getElementById('loginForm').hidden = which !== 'login';
+  document.getElementById('forgotForm').hidden = which !== 'forgot';
+  document.getElementById('resetForm').hidden = which !== 'reset';
+}
+
+function renderAuthProviders() {
+  const p = S.authProviders || {};
+  const oidcOn = !!(p.oidc && p.oidc.enabled);
+  const forgotOn = !!(p.local && p.local.forgot_password);
+  document.getElementById('ssoBtn').hidden = !oidcOn;
+  document.getElementById('ssoDivider').hidden = !oidcOn;
+  document.getElementById('forgotLink').hidden = !forgotOn;
+}
+
+/* One human sentence per refusal code the OIDC callback can redirect with
+   (`/#sso_error=<CODE>`), per the identity.py contract this stream codes
+   against. An unlisted code (a future refusal this build predates) falls
+   through to the code itself rather than inventing wording for it. */
+const SSO_ERROR_MESSAGES = {
+  OIDC_NOT_LINKED: 'Your Zoho identity is not linked to a WBS account; ask an Administrator.',
+  OIDC_DOMAIN_REFUSED: 'Your Zoho account’s email domain is not permitted to sign in to this application.',
+  OIDC_STATE_INVALID: 'The sign-in request could not be verified — it may have expired or been replayed. Try again.',
+  OIDC_BREAK_GLASS_REFUSED: 'The break-glass account never signs in through Zoho.',
+  OIDC_PROVIDER_ERROR: 'Zoho reported an error while completing the sign-in. Try again, or use your WBS account.',
+  DATABASE_NOT_CONFIGURED: 'Zoho sign-in is not available on this deployment.',
+};
+function ssoErrorMessage(code) {
+  return SSO_ERROR_MESSAGES[code] || `Sign-in with Zoho failed (${code}).`;
+}
+
+/* `location.hash` carries an OIDC handoff (`#sso=<code>`), an OIDC refusal
+   (`#sso_error=<CODE>`) or a password-reset link (`#reset?token=…`) — see
+   `identity.py`'s module docstring for the exact contract. Checked once at
+   boot, before the ordinary "is there a session" branch, because all three
+   can arrive with NO session in sessionStorage yet. Returns true when the
+   hash was one of these three (the caller then skips the ordinary sign-in
+   flow entirely), false otherwise. */
+async function handleAuthHash() {
+  const raw = location.hash.slice(1);
+  if (!raw) return false;
+
+  if (raw.startsWith('sso=')) {
+    const code = decodeURIComponent(raw.slice('sso='.length));
+    history.replaceState(null, '', location.pathname + location.search);
+    try {
+      const r = await api('/auth/oidc/complete', { method: 'POST', json: { code } });
+      if (!r || !r.session_id) throw new ApiError('Sign-in did not return a session.');
+      setSession(r.session_id);
+      await start();
+    } catch (e) {
+      showAuth(e.message || 'Sign-in with Zoho failed.');
+    }
+    return true;
+  }
+
+  if (raw.startsWith('sso_error=')) {
+    const code = decodeURIComponent(raw.slice('sso_error='.length));
+    history.replaceState(null, '', location.pathname + location.search);
+    showAuth('');
+    document.getElementById('ssoErrorMsg').innerHTML = msg('error', esc(ssoErrorMessage(code)), code);
+    return true;
+  }
+
+  if (raw.startsWith('reset?')) {
+    // The hash carries its own query string: '#reset?token=…'.
+    const token = new URLSearchParams(raw.slice('reset?'.length)).get('token') || '';
+    history.replaceState(null, '', location.pathname + location.search);
+    showAuth('');
+    showAuthCard('reset');
+    document.getElementById('resetForm').dataset.token = token;
+    if (!token) {
+      document.getElementById('resetMsg').innerHTML = msg('error', 'This reset link is missing its token.');
+    }
+    return true;
+  }
+
+  return false;
 }
 
 function showShell() {
@@ -1695,6 +1784,103 @@ document.getElementById('loginForm').addEventListener('submit', async (ev) => {
   } finally {
     btn.disabled = false;
   }
+});
+
+/* Stream D: "Continue with Zoho" — no body, the server mints the redirect. */
+document.getElementById('ssoBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('ssoBtn');
+  btn.disabled = true;
+  try {
+    const r = await api('/auth/oidc/start', { method: 'POST' });
+    if (!r || !r.authorization_url) throw new Error('Zoho sign-in could not be started.');
+    location.href = r.authorization_url;
+  } catch (e) {
+    document.getElementById('loginMsg').innerHTML = msg('error', esc(e.message || 'Zoho sign-in could not be started.'));
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('forgotLink').addEventListener('click', () => {
+  showAuthCard('forgot');
+  document.getElementById('forgotMsg').innerHTML = '';
+  const f = document.getElementById('forgotUserId');
+  f.value = '';
+  f.focus();
+});
+document.getElementById('forgotBackBtn').addEventListener('click', () => showAuthCard('login'));
+document.getElementById('resetBackBtn').addEventListener('click', () => showAuthCard('login'));
+
+/* Always shows the server's own `message` — never whether the account
+   exists (identity.py's contract, restated on the form itself). */
+document.getElementById('forgotForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const btn = document.getElementById('forgotSubmitBtn');
+  const box = document.getElementById('forgotMsg');
+  const userId = document.getElementById('forgotUserId').value.trim();
+  if (!userId) { box.innerHTML = msg('error', 'Enter a user id.'); return; }
+  btn.disabled = true;
+  box.innerHTML = '<div class="loading">Sending…</div>';
+  try {
+    const r = await api('/auth/forgot', { method: 'POST', json: { user_id: userId } });
+    box.innerHTML = msg('info', esc((r && r.message) || 'If that account exists, instructions were sent to it.'));
+  } catch (e) {
+    box.innerHTML = msg('error', esc(e.message || 'The request could not be completed.'));
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('resetForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const btn = document.getElementById('resetSubmitBtn');
+  const box = document.getElementById('resetMsg');
+  const token = document.getElementById('resetForm').dataset.token || '';
+  const p1 = document.getElementById('resetNewPass').value;
+  const p2 = document.getElementById('resetConfirmPass').value;
+  if (!p1) { box.innerHTML = msg('error', 'Enter a new password.'); return; }
+  if (p1 !== p2) { box.innerHTML = msg('error', 'The new password and its confirmation do not match.'); return; }
+  btn.disabled = true;
+  box.innerHTML = '<div class="loading">Setting your new password…</div>';
+  try {
+    // 200 on success; the RFC-7807 detail.message is shown verbatim on
+    // 400/422/429 (identity.py's contract — an expired/used/invalid token,
+    // or too many attempts).
+    const r = await api('/auth/reset', { method: 'POST', json: { token, new_password: p1 } });
+    showAuthCard('login');
+    document.getElementById('loginMsg').innerHTML =
+      msg('success', esc((r && r.message) || 'Your password was changed. Sign in with the new one.'));
+    document.getElementById('resetNewPass').value = '';
+    document.getElementById('resetConfirmPass').value = '';
+  } catch (e) {
+    box.innerHTML = msg('error', esc(e.message || 'The reset could not be completed.'));
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+/* "Change password", in the signed-in identity area paintIdentity() renders.
+   The session header is attached by api() already; POST /api/auth/password
+   needs no session id of its own. */
+document.getElementById('changePasswordBtn').addEventListener('click', () => {
+  dialog('Change password',
+    msg('info', 'Changing your password signs out every OTHER session immediately. This session continues.')
+    + `<div class="field"><label for="cpCurrent">Current password</label>
+         <input id="cpCurrent" type="password" autocomplete="current-password" required></div>
+       <div class="field"><label for="cpNew">New password</label>
+         <input id="cpNew" type="password" autocomplete="new-password" required></div>
+       <div class="field"><label for="cpConfirm">Confirm new password</label>
+         <input id="cpConfirm" type="password" autocomplete="new-password" required></div>`,
+    async () => {
+      const current = document.getElementById('cpCurrent').value;
+      const next = document.getElementById('cpNew').value;
+      const confirm = document.getElementById('cpConfirm').value;
+      if (!current || !next) throw new Error('Both the current and the new password are required.');
+      if (next !== confirm) throw new Error('The new password and its confirmation do not match.');
+      const r = await api('/auth/password', { method: 'POST',
+        json: { current_password: current, new_password: next } });
+      const revoked = r && typeof r.sessions_revoked === 'number' ? r.sessions_revoked : null;
+      flash('success', `Password changed.${revoked !== null ? ` ${revoked} other session(s) were signed out.` : ' Other sessions were signed out.'}`);
+    }, 'Change password');
 });
 
 document.getElementById('dlg').addEventListener('close', () => {
@@ -2157,6 +2343,11 @@ async function start() {
     S.zohoMode = { mode: h.zoho_mode || 'MOCK', note: h.zoho_mode_note || '' };
   } catch { S.zohoMode = { mode: 'MOCK', note: '' }; }
 
+  // Stream D: public, fetched once before the sign-in screen ever paints so
+  // "Continue with Zoho" and "Forgot password?" are right on the FIRST
+  // render rather than appearing a moment later.
+  try { S.authProviders = await api('/auth/providers'); } catch { S.authProviders = null; }
+
   // Both events, because the two arrive from different directions and neither
   // covers the other: `hashchange` for a typed or pasted fragment, `popstate`
   // for Back and Forward across the entries render() now pushes. The `v !==
@@ -2169,14 +2360,20 @@ async function start() {
   window.addEventListener('hashchange', syncFromHash);
   window.addEventListener('popstate', syncFromHash);
 
-  if (getSession()) {
-    try { await start(); }
-    catch (e) {
-      if (e instanceof ApiError && e.statusCode === 401) { /* showAuth already called */ }
-      else { setSession(''); showAuth(e.message); }
+  // Stream D: an OIDC handoff, refusal or password-reset link arrives on the
+  // hash whether or not a session already exists, and takes priority over
+  // the ordinary sign-in flow below.
+  const handledAuthHash = await handleAuthHash();
+  if (!handledAuthHash) {
+    if (getSession()) {
+      try { await start(); }
+      catch (e) {
+        if (e instanceof ApiError && e.statusCode === 401) { /* showAuth already called */ }
+        else { setSession(''); showAuth(e.message); }
+      }
+    } else {
+      showAuth('');
     }
-  } else {
-    showAuth('');
   }
   document.body.dataset.ready = '1';   // capture tooling waits for this
 })();

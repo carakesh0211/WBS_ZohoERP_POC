@@ -163,3 +163,66 @@ button.nav-group:focus-visible { outline: 2px solid var(--primary-600); outline-
    already sets `[hidden] { display:none !important; }`); nothing further is
    needed for the collapsed state. */
 .nav-group-items { display: block; }
+
+/* ---------------- sign-in: two choices, forgot / reset (Fable 5.1 Stream D)
+   styles.css's .auth / .auth-card / .auth-brand are byte-frozen and already
+   give every form on the sign-in screen its card chrome; these three classes
+   are new markup this stream adds INSIDE that same card, so they borrow its
+   tokens rather than declaring a new visual language. */
+.auth-divider {
+  display: flex; align-items: center; gap: 10px; color: var(--n500);
+  font-size: 12px; text-transform: uppercase; letter-spacing: .4px;
+}
+.auth-divider::before, .auth-divider::after {
+  content: ""; flex: 1; height: 1px; background: var(--n200);
+}
+.auth-subhead {
+  font-size: 13px; font-weight: 600; color: var(--n700); margin: 4px 0 0;
+  text-transform: uppercase; letter-spacing: .3px;
+}
+.auth-links { text-align: center; margin: 0; }
+#ssoBtn {
+  background: var(--n0); border: 1px solid var(--n300); color: var(--n900);
+  font-weight: 600;
+}
+#ssoBtn:hover { background: var(--n100); }
+
+/* ---------------- Stream B: Administrator self-approval override ---------
+   The warning block reuses styles.css's own .msg.msg-error (role="alert",
+   the strongest existing warning style in this application) unchanged; the
+   only new rule here is the mandatory-reason field beneath it, so the
+   textarea reads as attached to the warning rather than as an unrelated
+   field appended after it. */
+.admin-override-warning { margin-bottom: 10px; }
+.admin-override-reason-field textarea { min-height: 64px; }
+
+/* A visible, non-colour-only marker on an ADMIN_SELF_APPROVAL_OVERRIDE audit
+   row / outbox row, next to the plain action text — colour is never the only
+   distinction (C6), so the glyph and the uppercase label both carry the
+   meaning. */
+.audit-override-marker, .notif-override-marker {
+  display: inline-flex; align-items: center; gap: 4px; margin-left: 6px;
+  padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 700;
+  letter-spacing: .3px; text-transform: uppercase;
+  background: var(--negative-bg); color: var(--negative);
+  border: 1px solid var(--negative);
+}
+
+/* ---------------- Stream C: the reusable export-button component --------- */
+.export-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.export-actions .export-status { font-size: 12px; color: var(--n700); }
+.export-actions .export-status.is-error { color: var(--negative); }
+.export-unavailable-note { cursor: help; border-bottom: 1px dotted var(--n400); }
+
+/* ---------------- Stream E: notification preferences / outbox ------------ */
+.notif-pref-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--n100); }
+.notif-pref-row:last-child { border-bottom: 0; }
+.notif-pref-label { font-size: 13px; color: var(--n900); }
+.notif-pref-note { font-size: 11px; color: var(--n500); margin-top: 2px; }
+.notif-monitor-strip { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+.notif-monitor-cell {
+  flex: 1 1 120px; border: 1px solid var(--n200); border-radius: var(--radius);
+  padding: 8px 10px; background: var(--n0);
+}
+.notif-monitor-cell .k { font-size: 11px; color: var(--n600); text-transform: uppercase; letter-spacing: .3px; }
+.notif-monitor-cell .v { font-size: 18px; font-weight: 700; color: var(--n900); }
