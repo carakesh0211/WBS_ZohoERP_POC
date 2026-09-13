@@ -3979,7 +3979,7 @@
       },
       "test_this_router_mounts_nothing_the_frontend_does_not_ask_for": {
         "assertions": 1,
-        "body_sha": "6a9b7658bdda9f71"
+        "body_sha": "8260df2a38a29f8c"
       },
       "test_path_parameters_are_named_exactly_as_the_frontend_spells_them": {
         "assertions": 1,
