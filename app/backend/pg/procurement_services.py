@@ -2350,22 +2350,41 @@ def _external_portions(session: Session, pr_id: str,
     rows = repo.query(
         session,
         """
-        SELECT f.pr_line_id, f.mode, f.external_quantity, f.external_amount_paise
+        SELECT f.pr_line_id, f.mode, f.external_quantity, f.external_amount_paise,
+               imr.imr_number, imr.status
         FROM pr_line_fulfilment f
         JOIN project p ON p.project_id = f.project_id
+        LEFT JOIN internal_material_request imr
+               ON imr.pr_line_id = f.pr_line_id
+              AND imr.status NOT IN ('CONSUMED', 'RETURNED', 'CANCELLED')
         WHERE f.pr_id = %(pr_id)s AND {scope}
         """,
         {"pr_id": pr_id},
         columns=_PROJECT_SCOPE_COLUMNS,
     )
     by_line = {r[0]: r for r in rows}
+    # THE HOLD BEHIND AN INTERNAL PORTION MUST HAVE MOVED BEFORE THE REQUEST
+    # CONVERTS. `settle_reservations` settles the whole hold; an internal
+    # portion whose request has not yet ALLOCATED would lose its budget the
+    # moment the external portion's order was written (adversarial review
+    # 2026-09-13, P0). Once allocated, the covered rupees live in
+    # `internal_allocation_paise` and the settlement releases only the rest.
+    pending = [(r[4], r[5]) for r in rows if r[1] != "EXTERNAL_PURCHASE"
+               and (r[4] is None or r[5] in ("REQUESTED", "APPROVED"))]
+    if pending:
+        _err("INTERNAL_PORTION_NOT_ALLOCATED",
+             f"{pr_number} has an internal portion that has not been allocated "
+             f"from stores yet ({', '.join(n or 'no live request' for n, _s in pending)}); "
+             f"allocate it, or cancel it and change the decision, before converting "
+             f"the external portion -- otherwise its budget hold would be released "
+             f"with the conversion.", 409)
     out: list[dict[str, Any]] = []
     for line in lines:
         decided = by_line.get(line["pr_line_id"])
         if decided is None:
             out.append(line)
             continue
-        _, mode, external_quantity, external_paise = decided
+        _, mode, external_quantity, external_paise, _n, _s = decided
         if mode == "INTERNAL_TRANSFER" or int(external_paise) == 0 \
                 and Decimal(str(external_quantity)) == 0:
             continue
@@ -2460,7 +2479,8 @@ def submit_pr(session: Session, *, pr_id: str, actor: str,
     notifications_mod.try_enqueue(
         session, event="PR_SUBMITTED",
         recipients=notifications_mod.recipients_for_roles(
-            session, ("Plant Head", "Department Head", "Management Approver"), exclude=[actor]),
+            session, ("Plant Head", "Department Head", "Management Approver"),
+            exclude=[actor], project_id=header["project_id"]),
         context={"pr_number": header["pr_number"], "amount": header["amount_paise"],
                  "project": header["project_id"], "requested_by": actor,
                  "link": notifications_mod.public_url(f"#prs?pr={pr_id}")},

@@ -116,8 +116,12 @@ sending domain, publish the DNS records it shows (SPF, DKIM) at the domain's
 registrar, wait for the console to mark the domain **verified**, then set
 `CAPEX_MAIL_FROM=<address at that domain>` and `CAPEX_MAIL_ADAPTER=
 catalyst_sdk` in the AppSail environment and recycle. Until then the outbox
-accumulates `RECORDED` deliveries and the reset flow works end to end with
-the link visible to an Administrator in the outbox detail.
+accumulates `RECORDED` deliveries. The body of a reset mail is REDACTED from
+the administrator's outbox API (an Administrator who could read it could
+reset any account); on a recording-adapter UAT the owner may set
+`CAPEX_UAT_REVEAL_RESET_LINKS=1` so a tester's reset can be completed from
+the outbox detail -- every reveal is audited `NOTIFICATION_BODY_REVEALED`,
+and the switch is ignored the moment mail actually leaves.
 
 ## Tests
 

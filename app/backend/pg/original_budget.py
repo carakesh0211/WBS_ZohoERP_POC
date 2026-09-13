@@ -927,9 +927,9 @@ def release(session: Session, *, budget_id: str, actor: str, approval_instance_i
     if admin_override is not None:
         from . import admin_override as admin_override_mod
         override = admin_override_mod.validate(admin_override)
-        if override["actor_user_id"] != actor:
+        if override["actor_user_id"] != actor or override["maker_user_id"] != doc["created_by"]:
             _err("ADMIN_OVERRIDE_INVALID",
-                 "The override record names a different actor than this release.",
+                 "The override record names a different actor or maker than this release.",
                  status=403)
     if actor == doc["created_by"] and override is None:
         _err("SELF_APPROVAL", "The maker of an original budget cannot release it.", status=403)

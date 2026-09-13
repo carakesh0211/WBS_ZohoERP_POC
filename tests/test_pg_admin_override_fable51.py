@@ -266,6 +266,15 @@ def test_a_budget_revision_takes_the_same_gate_through_the_service(pg_database, 
             budget_svc.approve_revision(session, revision_id=revision_id, actor=ADMIN,
                                         admin_override={"action": ACTION, "reason": REASON})
     assert forged.value.code == "ADMIN_OVERRIDE_INVALID"
+    # A WELL-FORMED record produced for somebody else's object is not an
+    # override of this one (adversarial review 2026-09-13, P1).
+    other_record = auth_mod.require_separation(OTHER_ADMIN, "revision.approve", "U-ADMIN-2",
+                                               object_label="revision X", admin_override_reason=REASON)
+    with pytest.raises(budget_svc.BudgetServiceError) as borrowed:
+        with _system(pg_database) as session:
+            budget_svc.approve_revision(session, revision_id=revision_id, actor=ADMIN,
+                                        admin_override=other_record)
+    assert borrowed.value.code == "ADMIN_OVERRIDE_INVALID"
     with _system(pg_database) as session:
         out = budget_svc.approve_revision(session, revision_id=revision_id, actor=ADMIN,
                                           principal=ADMIN_PRINCIPAL,

@@ -137,14 +137,17 @@ def test_forgot_and_reset_end_to_end_with_the_durable_credential(pg_database, pg
     assert token not in json.dumps(pg_connection.execute(
         "SELECT * FROM identity_password_reset").fetchall(), default=str)
 
-    with pytest.raises(ident.IdentityError) as weak:
-        with _sys(pg_database) as s:
-            ident.reset_password(s, con, token=token, new_password="short", requested_from="10.0.0.1")
-    assert weak.value.code == "PASSWORD_POLICY"
-    with pytest.raises(ident.IdentityError) as reused:
-        with _sys(pg_database) as s:
-            ident.reset_password(s, con, token=token, new_password=SEED_PASSWORD, requested_from="10.0.0.1")
-    assert reused.value.code == "PASSWORD_REUSED"
+    with _sys(pg_database) as s:
+        weak = ident.reset_password(s, con, token=token, new_password="short", requested_from="10.0.0.1")
+    assert (weak["ok"], weak["code"]) == (False, "PASSWORD_POLICY")
+    with _sys(pg_database) as s:
+        reused = ident.reset_password(s, con, token=token, new_password=SEED_PASSWORD, requested_from="10.0.0.1")
+    assert (reused["ok"], reused["code"]) == (False, "PASSWORD_REUSED")
+    # Both refusals COMMITTED their attempt rows and the token is unconsumed.
+    assert pg_connection.execute(
+        "SELECT COUNT(*) FROM identity_attempt WHERE kind = 'RESET'").fetchone()[0] == 2
+    assert pg_connection.execute(
+        "SELECT consumed_at FROM identity_password_reset WHERE user_id = %s", (one,)).fetchone()[0] is None
 
     with _sys(pg_database) as s:
         done = ident.reset_password(s, con, token=token, new_password=STRONG, requested_from="10.0.0.1",
@@ -172,11 +175,10 @@ def test_forgot_and_reset_end_to_end_with_the_durable_credential(pg_database, pg
     with _sys(pg_database) as s:
         ident.request_password_reset(s, con, user_id=one, requested_from="10.0.0.2")
     body2 = _outbox(pg_connection, "PASSWORD_RESET_REQUESTED")[-1][4]
-    with pytest.raises(ident.IdentityError) as hist:
-        with _sys(pg_database) as s:
-            ident.reset_password(s, con, token=_token_from_mail(body2), new_password=STRONG,
-                                 requested_from="10.0.0.2")
-    assert hist.value.code == "PASSWORD_REUSED"
+    with _sys(pg_database) as s:
+        hist = ident.reset_password(s, con, token=_token_from_mail(body2), new_password=STRONG,
+                                    requested_from="10.0.0.2")
+    assert (hist["ok"], hist["code"]) == (False, "PASSWORD_REUSED")
 
 
 def test_the_generic_answer_hides_unknown_disabled_and_unaddressed_accounts_and_rate_limits(
@@ -220,17 +222,27 @@ def test_change_password_and_the_break_glass_login_are_audited(pg_database, pg_c
     con, one, bg = estate["con"], estate["one"], estate["break_glass"]
     keep = auth_mod.login(con, one, SEED_PASSWORD)["session_id"]
     other = auth_mod.login(con, one, SEED_PASSWORD)["session_id"]
-    with pytest.raises(ident.IdentityError) as wrong:
+    with _sys(pg_database) as s:
+        wrong = ident.change_password(s, con, user_id=one, current_password="nope", new_password=STRONG,
+                                      keep_session=keep)
+    assert (wrong["ok"], wrong["code"]) == (False, "INVALID_CREDENTIALS")
+    for _ in range(9):
         with _sys(pg_database) as s:
             ident.change_password(s, con, user_id=one, current_password="nope", new_password=STRONG,
                                   keep_session=keep)
-    assert wrong.value.code == "INVALID_CREDENTIALS"
+    with pytest.raises(ident.IdentityError) as limited:
+        with _sys(pg_database) as s:
+            ident.change_password(s, con, user_id=one, current_password=SEED_PASSWORD,
+                                  new_password=STRONG, keep_session=keep)
+    assert limited.value.code == "RATE_LIMITED", "ten wrong guesses lock the eleventh attempt"
+    # The limit is per user and per window; a second user is unaffected.
+    admin = estate["admin"]
     with _sys(pg_database) as s:
-        out = ident.change_password(s, con, user_id=one, current_password=SEED_PASSWORD,
-                                    new_password=STRONG, keep_session=keep)
-    assert out["sessions_revoked"] == 1
-    assert con.execute("SELECT revoked_at FROM app_session WHERE session_id = ?", (keep,)).fetchone()[0] is None
-    assert con.execute("SELECT revoked_at FROM app_session WHERE session_id = ?", (other,)).fetchone()[0]
+        out = ident.change_password(s, con, user_id=admin, current_password=SEED_PASSWORD,
+                                    new_password=STRONG, keep_session=None)
+    assert out["ok"] is True
+    one, keep = admin, None
+    assert out["sessions_revoked"] == 0
     signed = ident.login(con, pg_database, bg, SEED_PASSWORD)
     assert signed["break_glass"] is True
     assert "IDENTITY_BREAK_GLASS_LOGIN" in _audit(pg_connection, bg)
@@ -435,6 +447,7 @@ def test_the_outbox_dispatches_retries_dead_letters_dedupes_and_honours_preferen
     with _sys(pg_database) as s:
         detail = notify.get_notification(s, nid)
     assert detail["state"] == "DEAD" and [d["outcome"] for d in detail["deliveries"]] == ["RETRY", "DEAD"]
+    assert "EXP-1" in detail["body_text"], "an ordinary body is shown"
     assert pg_connection.execute(
         "SELECT COUNT(*) FROM audit_log WHERE action = 'NOTIFICATION_DEAD' AND object_id = %s",
         (nid,)).fetchone()[0] == 1
@@ -448,6 +461,9 @@ def test_the_outbox_dispatches_retries_dead_letters_dedupes_and_honours_preferen
         with pytest.raises(notify.NotificationError) as mandatory:
             notify.set_preference(s, user_id=one, event="PASSWORD_CHANGED", enabled=False, actor=one)
         assert mandatory.value.code == "EVENT_MANDATORY"
+        with pytest.raises(notify.NotificationError) as oversight:
+            notify.set_preference(s, user_id=one, event="ADMIN_SELF_APPROVAL_OVERRIDE", enabled=False, actor=one)
+        assert oversight.value.code == "EVENT_MANDATORY", "an oversight notice cannot be silenced in advance"
         [sid] = notify.enqueue(s, event="PR_APPROVED", recipients=[(one, "x@athagroup.in")], context={},
                                dedupe_key="PR_APPROVED:PR-2:v2", actor=admin)
         prefs = {p["event"]: p["enabled"] for p in notify.get_preferences(s, one)}
@@ -472,3 +488,66 @@ def test_try_enqueue_never_fails_a_business_call_for_a_deploy_defect(pg_database
                                   dedupe_key="k", actor="U-X", object_type="X", object_id="1") == []
     assert pg_connection.execute(
         "SELECT COUNT(*) FROM audit_log WHERE action = 'NOTIFICATION_SKIPPED'").fetchone()[0] == 1
+
+
+def test_a_reset_link_is_never_shown_to_an_administrator_and_role_mail_is_scoped(
+        pg_database, pg_connection, estate, monkeypatch):
+    """Adversarial review 2026-09-13: (P0) the outbox detail must not hand an
+    Administrator a live reset token; (P0) a role broadcast about a project
+    reaches only the holders whose own scope permits that project."""
+    con, one, admin = estate["con"], estate["one"], estate["admin"]
+    with _sys(pg_database) as s:
+        ident.request_password_reset(s, con, user_id=one, requested_from="10.9.9.9")
+    [(nid, _e, _r, _st, body, _k)] = _outbox(pg_connection, "PASSWORD_RESET_REQUESTED")
+    assert "#reset?token=" in body, "the dispatcher still has the link to send"
+    monkeypatch.delenv("CAPEX_UAT_REVEAL_RESET_LINKS", raising=False)
+    with _sys(pg_database) as s:
+        shown = notify.get_notification(s, nid, actor=admin)
+    assert shown["body_text"] == notify.REDACTED_BODY
+    assert "token=" not in json.dumps(shown)
+    monkeypatch.setenv("CAPEX_UAT_REVEAL_RESET_LINKS", "1")
+    monkeypatch.setenv("CAPEX_MAIL_ADAPTER", "recording")
+    with _sys(pg_database) as s:
+        revealed = notify.get_notification(s, nid, actor=admin)
+    assert "#reset?token=" in revealed["body_text"]
+    assert pg_connection.execute(
+        "SELECT COUNT(*) FROM audit_log WHERE action = 'NOTIFICATION_BODY_REVEALED' AND actor = %s",
+        (admin,)).fetchone()[0] == 1, "a reveal on a recording UAT is audited"
+    monkeypatch.setenv("CAPEX_MAIL_ADAPTER", "catalyst_sdk")
+    with _sys(pg_database) as s:
+        assert notify.get_notification(s, nid, actor=admin)["body_text"] == notify.REDACTED_BODY, (
+            "never revealed when mail actually leaves")
+
+    # Scoped role recipients: two Plant Heads, one restricted to another plant.
+    suffix = uuid.uuid4().hex[:6]
+    pg_connection.execute(
+        "INSERT INTO organisation (organisation_id, code, name, created_by, updated_by) VALUES (%s,%s,'O','t','t')",
+        (f"O-{suffix}", f"OC-{suffix}"))
+    pg_connection.execute(
+        "INSERT INTO entity (entity_id, organisation_id, code, name, created_by, updated_by) VALUES (%s,%s,%s,'E','t','t')",
+        (f"E-{suffix}", f"O-{suffix}", f"EC-{suffix}"))
+    for plant in ("A", "B"):
+        pg_connection.execute(
+            "INSERT INTO plant (plant_id, entity_id, code, name, created_by, updated_by) VALUES (%s,%s,%s,'P','t','t')",
+            (f"PL-{plant}-{suffix}", f"E-{suffix}", f"PC-{plant}-{suffix}"))
+    pg_connection.execute(
+        "INSERT INTO project (project_id, entity_id, plant_id, capex_code, name, status, created_by, updated_by) "
+        "VALUES (%s,%s,%s,%s,'Project','Released','t','t')",
+        (f"PRJ-{suffix}", f"E-{suffix}", f"PL-A-{suffix}", f"C-{suffix}"))
+    for who, plant in (("PH-A", "A"), ("PH-B", "B")):
+        uid = f"U-{who}-{suffix}"
+        pg_connection.execute(
+            "INSERT INTO app_user (user_id, email, display_name, created_by, updated_by) VALUES (%s,%s,%s,'t','t')",
+            (uid, f"{uid.lower()}@athagroup.in", uid))
+        pg_connection.execute("INSERT INTO role_grant (user_id, role, granted_by) VALUES (%s,'Plant Head','t')", (uid,))
+        pg_connection.execute(
+            "INSERT INTO user_scope_restriction (user_id, dimension, updated_by) VALUES (%s,'plant','t')", (uid,))
+        pg_connection.execute(
+            "INSERT INTO user_scope_grant (user_id, dimension, scope_value, granted_by) VALUES (%s,'plant',%s,'t')",
+            (uid, f"PL-{plant}-{suffix}"))
+    pg_connection.commit()
+    with _sys(pg_database) as s:
+        everyone = notify.recipients_for_roles(s, ["Plant Head"])
+        scoped = notify.recipients_for_roles(s, ["Plant Head"], project_id=f"PRJ-{suffix}")
+    assert {u for u, _ in everyone} >= {f"U-PH-A-{suffix}", f"U-PH-B-{suffix}"}
+    assert [u for u, _ in scoped if suffix in u] == [f"U-PH-A-{suffix}"], "plant B's head hears nothing"

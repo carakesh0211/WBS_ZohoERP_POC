@@ -75,8 +75,11 @@ _REFUSE_BODY = {"refusal_code": "NOT_MATERIAL"}
 # Registration
 # =========================================================================
 def test_period_reopen_permissions_are_registered_with_the_intended_roles():
-    assert set(auth.PERMISSIONS["period.reopen"]) == set(REQUEST_ROLES)
-    assert set(auth.PERMISSIONS["period.reopen.apply"]) == set(APPLY_ROLES)
+    # 2026-09-13 (Stream B): the Administrator holds every permission by the
+    # product owner's decision (tests/ADAPTATIONS.md); the intended FINANCE
+    # roles are unchanged.
+    assert set(auth.PERMISSIONS["period.reopen"]) == set(REQUEST_ROLES) | {"Administrator"}
+    assert set(auth.PERMISSIONS["period.reopen.apply"]) == set(APPLY_ROLES) | {"Administrator"}
 
 
 def test_period_reopen_apply_is_a_maker_checker_permission_and_the_engine_uses_it():
@@ -94,16 +97,32 @@ def test_auditor_holds_neither_reopen_permission():
     assert "Auditor" not in auth.PERMISSIONS["period.reopen.apply"]
 
 
-def test_administrator_holds_neither_reopen_permission():
-    """Administration is not a route to reversing a financial close."""
-    assert "Administrator" not in auth.PERMISSIONS["period.reopen"]
-    assert "Administrator" not in auth.PERMISSIONS["period.reopen.apply"]
+def test_administrator_holds_both_reopen_permissions_but_never_the_same_seat_twice():
+    """SUPERSEDES `test_administrator_holds_neither_reopen_permission` by the
+    product owner's decision of 2026-09-13 (tests/ADAPTATIONS.md). What
+    survives is the control: the reopen separation is enforced by
+    `auth.require_separation(require_maker=True)`, by the engine's
+    unconditional closer-vs-applier check and by migration 023's CHECK
+    constraint, and the Administrator override is DELIBERATELY not offered
+    on this path (`pg/admin_override.py` module docstring) -- so an
+    Administrator who closed a period still cannot apply its reopening."""
+    assert "Administrator" in auth.PERMISSIONS["period.reopen"]
+    assert "Administrator" in auth.PERMISSIONS["period.reopen.apply"]
+    admin = {"user_id": "U-ADMIN", "roles": ["Administrator"]}
+    with pytest.raises(auth.AuthError) as exc:
+        auth.require_separation(admin, "period.reopen.apply", "U-ADMIN",
+                                object_label="the close of period AP-1", require_maker=True)
+    assert exc.value.code == "SELF_APPROVAL"
+    from app.backend.api import budget as budget_api
+    source = (ROOT / "app" / "backend" / "api" / "budget.py").read_text(encoding="utf-8")
+    assert "admin_override_reason" not in source.split("def _refuse_requester_as_checker")[1].split("\ndef ")[0], (
+        "the period-reopen route must not offer the administrator override")
 
 
 # =========================================================================
 # Negative matrix per role -- permission layer
 # =========================================================================
-@pytest.mark.parametrize("role", auth.ROLES)
+@pytest.mark.parametrize("role", [r for r in auth.ROLES if r != "Administrator"])
 def test_negative_matrix_period_reopen_per_role(role):
     principal = {"user_id": "U-X", "roles": [role]}
     if role in REQUEST_ROLES:
@@ -115,7 +134,7 @@ def test_negative_matrix_period_reopen_per_role(role):
     assert excinfo.value.code == "FORBIDDEN"
 
 
-@pytest.mark.parametrize("role", auth.ROLES)
+@pytest.mark.parametrize("role", [r for r in auth.ROLES if r != "Administrator"])
 def test_negative_matrix_period_reopen_apply_per_role(role):
     principal = {"user_id": "U-X", "roles": [role]}
     if role in APPLY_ROLES:
@@ -138,7 +157,7 @@ _ROUTES = [
 
 
 @pytest.mark.parametrize("url,body,allowed", _ROUTES)
-@pytest.mark.parametrize("role", auth.ROLES)
+@pytest.mark.parametrize("role", [r for r in auth.ROLES if r != "Administrator"])
 def test_negative_matrix_http_per_role(role, url, body, allowed, make_user):
     """A role without the permission is 403 FORBIDDEN at the route's own
     gate. A role with it clears that gate -- and is then answered by the

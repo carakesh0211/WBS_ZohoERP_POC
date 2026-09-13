@@ -5,7 +5,7 @@
   "baseline": {
     "recorded_at": "2026-08-28",
     "commit_note": "POC baseline, branch phase-0a/foundations, before any port work",
-    "test_functions": 281,
+    "test_functions": 220,
     "collected_cases": 348,
     "collected_cases_note": "348 is the pytest-collected count after parametrisation expands 6 files; 220 is the count of `def test_` functions. Both are real and the Definition of Done refers to the function count.",
     "runtime_seconds_approx": 189,
@@ -6051,7 +6051,7 @@
     "test_period_reopen_permissions.py": {
       "test_period_reopen_permissions_are_registered_with_the_intended_roles": {
         "assertions": 2,
-        "body_sha": "eb2013533e43f36b"
+        "body_sha": "7f446f360fb7dd8c"
       },
       "test_period_reopen_apply_is_a_maker_checker_permission_and_the_engine_uses_it": {
         "assertions": 3,
@@ -6061,9 +6061,9 @@
         "assertions": 2,
         "body_sha": "3db2174e4fe360f3"
       },
-      "test_administrator_holds_neither_reopen_permission": {
-        "assertions": 2,
-        "body_sha": "d6bf5f77e5733c32"
+      "test_administrator_holds_both_reopen_permissions_but_never_the_same_seat_twice": {
+        "assertions": 5,
+        "body_sha": "dccacb456d3ffa3b"
       },
       "test_negative_matrix_period_reopen_per_role": {
         "assertions": 3,
@@ -6144,8 +6144,8 @@
         "body_sha": "5d44c261ff383549"
       },
       "test_a_budget_revision_takes_the_same_gate_through_the_service": {
-        "assertions": 9,
-        "body_sha": "c16ed19f8e1cb3ab"
+        "assertions": 11,
+        "body_sha": "adba02ed744630e5"
       }
     },
     "test_pg_adoption.py": {
@@ -8478,8 +8478,8 @@
     },
     "test_pg_identity_notifications_fable51.py": {
       "test_forgot_and_reset_end_to_end_with_the_durable_credential": {
-        "assertions": 19,
-        "body_sha": "5c7b354f241b8db6"
+        "assertions": 18,
+        "body_sha": "c10903b7db6cf22c"
       },
       "test_the_generic_answer_hides_unknown_disabled_and_unaddressed_accounts_and_rate_limits": {
         "assertions": 9,
@@ -8487,7 +8487,7 @@
       },
       "test_change_password_and_the_break_glass_login_are_audited": {
         "assertions": 7,
-        "body_sha": "adb1374d7cfcc787"
+        "body_sha": "621098feab3f801d"
       },
       "test_continue_with_zoho_maps_a_linked_subject_to_a_user_and_never_grants_roles": {
         "assertions": 16,
@@ -8502,12 +8502,16 @@
         "body_sha": "841e66466618dc2a"
       },
       "test_the_outbox_dispatches_retries_dead_letters_dedupes_and_honours_preferences": {
-        "assertions": 21,
-        "body_sha": "75fc234546ef0351"
+        "assertions": 24,
+        "body_sha": "e26649ab370b33e0"
       },
       "test_try_enqueue_never_fails_a_business_call_for_a_deploy_defect": {
         "assertions": 2,
         "body_sha": "9e14c9972aa1d79d"
+      },
+      "test_a_reset_link_is_never_shown_to_an_administrator_and_role_mail_is_scoped": {
+        "assertions": 8,
+        "body_sha": "b91fcc71edcc7e28"
       }
     },
     "test_pg_integration_rate_budget.py": {
@@ -12705,7 +12709,7 @@
       },
       "test_a_null_budget_category_key_renders_unclassified_not_a_blank": {
         "assertions": 2,
-        "body_sha": "6c7d4ad4957d5008"
+        "body_sha": "9eb8926edd1724f0"
       },
       "test_vendor_ids_no_longer_lives_in_unsupported_filters": {
         "assertions": 2,
@@ -12915,11 +12919,11 @@
       },
       "test_list_shape_the_cell_listing_filters_by_the_compiled_predicate": {
         "assertions": 2,
-        "body_sha": "0b94902ddc79df01"
+        "body_sha": "051376c8bf43f0af"
       },
       "test_list_shape_positive_control_the_in_scope_cell_is_returned": {
         "assertions": 1,
-        "body_sha": "23047e351bedcdd5"
+        "body_sha": "3fb3e95bd7ecc657"
       },
       "test_a_principal_with_no_grants_sees_neither_row": {
         "assertions": 2,
@@ -13848,7 +13852,7 @@
     "test_pg_fx.py": 34,
     "test_pg_fx_admin.py": 16,
     "test_pg_fx_ingest.py": 51,
-    "test_pg_identity_notifications_fable51.py": 8,
+    "test_pg_identity_notifications_fable51.py": 9,
     "test_pg_integration_rate_budget.py": 21,
     "test_pg_integration_schema.py": 81,
     "test_pg_internal_fulfilment_fable51.py": 22,
@@ -13975,8 +13979,8 @@
     "test_outbound_emission.py": 154,
     "test_outbound_live_write_fable51.py": 79,
     "test_outbound_unsanctioned.py": 55,
-    "test_period_reopen_permissions.py": 51,
-    "test_pg_admin_override_fable51.py": 53,
+    "test_period_reopen_permissions.py": 54,
+    "test_pg_admin_override_fable51.py": 55,
     "test_pg_adoption.py": 39,
     "test_pg_anchor_job.py": 116,
     "test_pg_approval_concurrency.py": 53,
@@ -13997,7 +14001,7 @@
     "test_pg_fx.py": 89,
     "test_pg_fx_admin.py": 89,
     "test_pg_fx_ingest.py": 136,
-    "test_pg_identity_notifications_fable51.py": 84,
+    "test_pg_identity_notifications_fable51.py": 94,
     "test_pg_integration_rate_budget.py": 109,
     "test_pg_integration_schema.py": 132,
     "test_pg_internal_fulfilment_fable51.py": 172,

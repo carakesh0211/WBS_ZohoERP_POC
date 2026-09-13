@@ -69,6 +69,14 @@ DATE_FORMAT = "yyyy-mm-dd"
 TIMESTAMP_FORMAT = 'yyyy-mm-dd hh:mm:ss "UTC"'
 
 MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+#: The most rows a workbook is rendered for. openpyxl keeps every cell as
+#: an object (a few hundred bytes each); at this cap a wide dataset stays
+#: well inside the AppSail memory budget. Larger results are served as CSV.
+MAX_ROWS = 20000
+#: The most rows a workbook is rendered for. openpyxl keeps every cell as
+#: an object (a few hundred bytes each); at this cap a wide dataset stays
+#: well inside the AppSail memory budget. Larger results are served as CSV.
+MAX_ROWS = 20000
 
 _SUMMED_KINDS = frozenset({"paise", "int", "numeric"})
 _MAX_WIDTH = 60

@@ -611,6 +611,7 @@ def test_list_shape_the_cell_listing_filters_by_the_compiled_predicate(dimension
     cell_row = (
         "WBS-B-1", "wbs_b_1", "BH-B", 1000, 1000, 0, 0, 0, 0, 0, 0, 0, 0,
         _dt.datetime(2026, 9, 1, tzinfo=_dt.timezone.utc),
+        0, 0,  # internal allocation / consumption (migration 034)
     )
     session = ScopedRowSession(
         scope, budget_mod._CELL_SCOPE_COLUMNS,
@@ -628,6 +629,7 @@ def test_list_shape_positive_control_the_in_scope_cell_is_returned(dimension):
     cell_row = (
         "WBS-A-1", "wbs_a_1", "BH-A", 1000, 1000, 0, 0, 0, 0, 0, 0, 0, 0,
         _dt.datetime(2026, 9, 1, tzinfo=_dt.timezone.utc),
+        0, 0,  # internal allocation / consumption (migration 034)
     )
     session = ScopedRowSession(
         scope, budget_mod._CELL_SCOPE_COLUMNS,

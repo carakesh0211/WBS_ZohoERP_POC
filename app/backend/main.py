@@ -445,6 +445,9 @@ def login(body: LoginIn, request: Request):
     except auth.AuthError:
         login_throttle.THROTTLE.record_failure(*keys)
         raise
+    except identity_svc.IdentityError as exc:
+        # The store, not the caller, failed: not a throttled attempt.
+        raise HTTPException(exc.status, {"code": exc.code, "message": exc.message})
     finally:
         c.close()
     login_throttle.THROTTLE.clear(*keys)

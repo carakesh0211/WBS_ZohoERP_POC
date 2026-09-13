@@ -172,7 +172,8 @@ def _validated_override(admin_override, *, maker, actor):
     try:
         record = admin_override_mod.validate(admin_override)
     except Exception as exc:  # AuthError -> this module's shape
-        _err(getattr(exc, "code", "ADMIN_OVERRIDE_INVALID"), str(exc), status=403)
+        _err(getattr(exc, "code", "ADMIN_OVERRIDE_INVALID"),
+             getattr(exc, "message", "The override record is refused."), status=403)
     if record["actor_user_id"] != actor or (maker and record["maker_user_id"] != maker):
         _err("ADMIN_OVERRIDE_INVALID",
              "The override record names a different actor or maker than this "
@@ -235,7 +236,9 @@ def _project_position(session: Session, project_id: str) -> dict[str, Any]:
     return {
         "project_id": row[0], "capex_code": row[1], "project_name": row[2],
         "project_status": row[3], "entity_id": row[4],
-        "cwip_balance_paise": row[5],
+        # 034: internally consumed stock IS CWIP (adversarial review, P1).
+        "cwip_balance_paise": int(row[5]) + int(row[10]),
+        "actual_paise": row[5],
         "open_commitment_paise": row[6],
         "received_not_billed_paise": row[7],
         "pr_reserved_paise": row[8],

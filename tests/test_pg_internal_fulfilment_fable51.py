@@ -355,11 +355,26 @@ def test_conversion_reads_the_external_portion_and_a_wholly_internal_request_ref
         {**_line(ids, "child_a1", 500_00), "quantity": 10},
         {**_line(ids, "child_b1", 400_00), "quantity": 4}])
     line1, line2 = _pr_line_ids(pg_connection, pr_id)
-    _decide(pg_database, line1, imr_svc.MODE_SPLIT, internal_quantity=4,
-            unit_rate_paise=60_00, valuation_note="stores rate")
+    split = _decide(pg_database, line1, imr_svc.MODE_SPLIT, internal_quantity=4,
+                    unit_rate_paise=60_00, valuation_note="stores rate")
+    # Converting BEFORE the internal portion is allocated would release its
+    # hold with the settlement (adversarial review 2026-09-13, P0): refused.
+    with pytest.raises(svc.ProcurementError) as early:
+        with _system(pg_database) as session:
+            svc.convert_pr_to_po(session, pr_id=pr_id, actor=BUYER, vendor_name="V")
+    assert early.value.code == "INTERNAL_PORTION_NOT_ALLOCATED"
+    held_before = _ledger(pg_connection, ids["root_a"], ids["head"])["pr_reserved"]
+    assert held_before == 500_00, "line 1's whole hold (its own pot) is still there"
+    with _system(pg_database) as session:
+        imr_svc.approve_request(session, imr_id=split["imr"]["imr_id"], actor=APPROVER)
+    with _system(pg_database) as session:
+        imr_svc.allocate(session, imr_id=split["imr"]["imr_id"], actor=STORES, idempotency_key="A")
     with _system(pg_database) as session:
         po = svc.convert_pr_to_po(session, pr_id=pr_id, actor=BUYER, vendor_name="V")
     assert po["amount_paise"] == 300_00 + 400_00, "line 1's EXTERNAL 300 + line 2 whole"
+    led = _ledger(pg_connection, ids["child_a1"], ids["head"])
+    assert led["internal_allocation"] == 240_00, "4 x 60.00 stays allocated after the conversion"
+    assert _ledger(pg_connection, ids["root_a"], ids["head"])["pr_reserved"] == 0
     lines = pg_connection.execute(
         "SELECT wbs_id, quantity, amount_paise FROM po_line WHERE po_id = %s ORDER BY line_no",
         (po["po_id"],)).fetchall()
@@ -368,8 +383,12 @@ def test_conversion_reads_the_external_portion_and_a_wholly_internal_request_ref
 
     other = _approved_pr(pg_database, ids, lines=[{**_line(ids, "child_a2", 200_00), "quantity": 2}])
     [only] = _pr_line_ids(pg_connection, other)
-    _decide(pg_database, only, imr_svc.MODE_INTERNAL, unit_rate_paise=100_00,
-            valuation_note="stores rate")
+    whole = _decide(pg_database, only, imr_svc.MODE_INTERNAL, unit_rate_paise=100_00,
+                    valuation_note="stores rate")
+    with _system(pg_database) as session:
+        imr_svc.approve_request(session, imr_id=whole["imr"]["imr_id"], actor=APPROVER)
+    with _system(pg_database) as session:
+        imr_svc.allocate(session, imr_id=whole["imr"]["imr_id"], actor=STORES, idempotency_key="A")
     with pytest.raises(svc.ProcurementError) as exc:
         with _system(pg_database) as session:
             svc.convert_pr_to_po(session, pr_id=other, actor=BUYER, vendor_name="V")
@@ -842,6 +861,7 @@ def test_the_export_the_report_and_the_closure_position_show_the_internal_figure
     with _system(pg_database) as session:
         position = closure._project_position(session, ids["project"])
     assert (position["internal_allocation_paise"], position["internal_consumption_paise"]) == (700_00, 300_00)
+    assert position["cwip_balance_paise"] == 300_00, "consumed stock IS CWIP (review P1)"
 
     # The register and the detail read.
     with _system(pg_database) as session:
@@ -895,3 +915,27 @@ def test_every_verb_appends_to_the_audit_chain(pg_database, pg_connection):
     status = pg_connection.execute(
         "SELECT status FROM internal_material_request WHERE imr_id = %s", (imr_id,)).fetchone()[0]
     assert status == "CONSUMED"
+
+
+@pytest.mark.pg
+@PG
+def test_a_return_split_into_legs_strands_no_paisa(pg_database, pg_connection):
+    """Adversarial review 2026-09-13, P2: the last return leg carries exactly
+    what consumption still holds, so 0.02 + 0.49 + 0.49 of one unit at 101
+    paise returns all 101 paise."""
+    ids = _estate(pg_connection)
+    pr_id = _approved_pr(pg_database, ids, lines=[{**_line(ids, "child_a1", 101), "quantity": 1}])
+    [line_id] = _pr_line_ids(pg_connection, pr_id)
+    imr_id = _internal_imr(pg_database, ids, line_id, rate=101)
+    with _system(pg_database) as session:
+        imr_svc.allocate(session, imr_id=imr_id, actor=STORES, idempotency_key="A")
+    with _system(pg_database) as session:
+        imr_svc.issue(session, imr_id=imr_id, quantity=1, actor=STORES, idempotency_key="I")
+    assert _ledger(pg_connection, ids["child_a1"], ids["head"])["internal_consumption"] == 101
+    for n, q in enumerate(("0.02", "0.49", "0.49")):
+        with _system(pg_database) as session:
+            out = imr_svc.return_material(session, imr_id=imr_id, quantity=q, actor=STORES,
+                                          idempotency_key=f"R{n}")
+    assert out["status"] == "RETURNED"
+    led = _ledger(pg_connection, ids["child_a1"], ids["head"])
+    assert (led["internal_allocation"], led["internal_consumption"]) == (0, 0)

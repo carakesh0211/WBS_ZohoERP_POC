@@ -527,6 +527,24 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
     # Written from 014's four CREATE TABLE statements, before reading its
     # policies -- the maintenance rule in this module's docstring.
     ScopedTable(
+        table="pr_line_fulfilment",
+        dimensions=("entity", "plant", "location", "project"), reach="joined",
+        path="pr_line_fulfilment.project_id -> project.{entity_id, plant_id, location_id, project_id}",
+        status="covered", migration="034_internal_fulfilment.sql",
+        note="The fulfilment decision on a purchase-request line (034): how much converts to an order and how much is met from stores. `project_id` is denormalised from the line, as `pr_line.project_id` is."),
+    ScopedTable(
+        table="internal_material_request",
+        dimensions=("entity", "plant", "location", "project"), reach="joined",
+        path="internal_material_request.project_id -> project.{entity_id, plant_id, location_id, project_id}",
+        status="covered", migration="034_internal_fulfilment.sql",
+        note="An internal material request (034). Its money is exposure (the two internal limbs); `project_id` is denormalised for the policy and `fk_imr_wbs_project` ties the WBS to it."),
+    ScopedTable(
+        table="internal_material_movement",
+        dimensions=("entity", "plant", "location", "project"), reach="joined",
+        path="internal_material_movement.project_id -> project.{entity_id, plant_id, location_id, project_id}",
+        status="covered", migration="034_internal_fulfilment.sql",
+        note="The append-only movements of an internal material request (034), from which the ledger derives the internal limbs; `project_id` is copied from the request."),
+    ScopedTable(
         table="pr_reservation",
         dimensions=("entity", "plant", "location", "project"), reach="joined",
         path="pr_reservation.project_id -> project.{entity_id, plant_id, "
@@ -809,6 +827,28 @@ SCOPED_TABLES: tuple[ScopedTable, ...] = (
 #: CREATE TABLE list; every table in the schema appears in exactly one of
 #: these two structures.
 UNSCOPED_TABLES: dict[str, str] = {
+    "identity_credential":
+        "Durable local credential hashes (036). Identity, not scoped data; readable only under a SERVICE principal by 036's policy.",
+    "identity_password_history":
+        "Password history hashes (036); SERVICE-principal policy.",
+    "identity_password_reset":
+        "Reset tokens, hash only (036); SERVICE-principal policy.",
+    "identity_attempt":
+        "The rate-limit ledger for the unauthenticated identity flows (036); SERVICE-principal policy.",
+    "identity_external_link":
+        "External (OIDC) subject to application user links (036); SERVICE-principal policy.",
+    "identity_oidc_state":
+        "One OIDC round trip's state, nonce hash and PKCE verifier (036); SERVICE-principal policy.",
+    "identity_handoff":
+        "Single-use session handoff codes (036); SERVICE-principal policy.",
+    "notification_template":
+        "Organisation-wide mail templates (036); SERVICE-principal policy.",
+    "notification_outbox":
+        "The mail outbox (036). Addressed by user, not owned by an entity; SERVICE-principal policy, and the API returns a user only their own rows.",
+    "notification_delivery":
+        "Append-only delivery attempts of the outbox (036); SERVICE-principal policy.",
+    "notification_preference":
+        "A user's own notification preferences (036); the policy admits the row's user and the SERVICE principal.",
     "organisation":
         "Root of the hierarchy. No entity/plant/location/project column of "
         "its own; any predicate would be literally TRUE. 004's header states "

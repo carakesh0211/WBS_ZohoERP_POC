@@ -100,7 +100,7 @@ CREATE TABLE identity_attempt (
     attempt_key text NOT NULL,
     at          timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT ck_identity_attempt_kind CHECK (
-        kind IN ('FORGOT', 'RESET', 'OIDC_START', 'OIDC_CALLBACK', 'LOGIN'))
+        kind IN ('FORGOT', 'RESET', 'CHANGE', 'OIDC_START', 'OIDC_CALLBACK', 'LOGIN'))
 );
 CREATE INDEX ix_identity_attempt_key ON identity_attempt (kind, attempt_key, at DESC);
 

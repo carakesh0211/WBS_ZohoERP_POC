@@ -99,7 +99,7 @@ def get_notification(notification_id: str, response: Response, request: Request)
     database = _database()
     try:
         with database.session(svc.system_scope()) as session:
-            return svc.get_notification(session, notification_id)
+            return svc.get_notification(session, notification_id, actor=_actor(request))
     except svc.NotificationError as exc:
         raise _service_error(exc)
 

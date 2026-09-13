@@ -134,7 +134,10 @@ class CatalystSdkMailAdapter:
                 payload["display_name"] = from_name
             result = app.email().send_mail(payload)
         except Exception as exc:  # the SDK raises its own hierarchy
-            raise MailSendError(f"{type(exc).__name__}: {exc}", retryable=True) from exc
+            # The exception TYPE only: a provider error text can carry the
+            # recipient, the message or a token, none of which belongs in the
+            # delivery history.
+            raise MailSendError(f"provider raised {type(exc).__name__}", retryable=True) from exc
         message_id = None
         if isinstance(result, dict):
             message_id = str(result.get("message_id") or result.get("id") or "") or None

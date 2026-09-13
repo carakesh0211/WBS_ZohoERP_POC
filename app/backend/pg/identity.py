@@ -40,7 +40,14 @@ RATE_LIMITS: dict[str, tuple[int, timedelta]] = {
     "RESET:ip": (10, timedelta(minutes=15)),
     "OIDC_START:ip": (30, timedelta(minutes=15)),
     "OIDC_CALLBACK:ip": (30, timedelta(minutes=15)),
+    # Authenticated password change: a stolen session must not become an
+    # unlimited oracle on the current password (adversarial review, P2).
+    "CHANGE:user": (10, timedelta(minutes=15)),
 }
+#: A PBKDF2 verification is run against this pair when the account does not
+#: exist or is disabled, so a refusal costs the same time either way
+#: (adversarial review 2026-09-13, P2: user enumeration by timing).
+_DUMMY_SALT, _DUMMY_HASH = auth_mod.hash_password("timing-equaliser")
 GENERIC_FORGOT_MESSAGE = ("If that account exists and has an e-mail address, a reset "
                           "link has been sent. It is valid for 15 minutes.")
 AUDIT_OBJECT = "AppUser"
@@ -99,20 +106,30 @@ def login(con: sqlite3.Connection, database: Database | None, user_id: str,
     break-glass account's sign-in is audited (see :func:`break_glass_user`).
     """
     override = None
-    if database is not None:
-        with database.session(system_scope()) as session:
-            override = durable_credential(session, user_id)
+    if isinstance(database, Database):
+        # A REAL store that fails is refused, never bypassed: falling back to
+        # the seeded hash would let a password the user has since changed
+        # sign in again. A stub or an unconfigured store is "no durable
+        # credential", which is exactly `auth.login`.
+        try:
+            with database.session(system_scope()) as session:
+                override = durable_credential(session, user_id)
+        except Exception as exc:  # noqa: BLE001 -- refused with a code, never a 500
+            raise IdentityError("IDENTITY_STORE_UNAVAILABLE",
+                                "Sign-in is unavailable while the identity store cannot "
+                                "be reached.", status=503) from exc
     if override is None:
         result = auth_mod.login(con, user_id, password)
     else:
         row = con.execute("SELECT c.disabled FROM app_credential c WHERE c.user_id = ?",  # scope-exempt: the SQLite identity store (auth.py's own tables), not a PostgreSQL scoped read
                           (user_id,)).fetchone()
         if not row or row["disabled"]:
+            auth_mod.verify_password(password, _DUMMY_SALT, _DUMMY_HASH)  # same cost as a real refusal
             raise auth_mod.AuthError(401, "INVALID_CREDENTIALS", "Invalid user or password.")
         if not auth_mod.verify_password(password, override["salt"], override["hash"]):
             raise auth_mod.AuthError(401, "INVALID_CREDENTIALS", "Invalid user or password.")
         result = _issue_session(con, user_id)
-    if database is not None and user_id == break_glass_user():
+    if isinstance(database, Database) and user_id == break_glass_user():
         with database.session(system_scope()) as session:
             audit_mod.append(session, user_id, "IDENTITY_BREAK_GLASS_LOGIN", AUDIT_OBJECT,
                              user_id, "the break-glass Administrator signed in with the "
@@ -304,6 +321,24 @@ def reset_password(session: Session, con: sqlite3.Connection, *, token: str, new
                 "message": "That reset link is not valid. Request a new one."}
     seeded = con.execute("SELECT password_salt, password_hash FROM app_credential WHERE user_id = ?",  # scope-exempt: the SQLite identity store (auth.py's own tables), not a PostgreSQL scoped read
                          (user_id,)).fetchone()
+    # Policy and reuse are checked BEFORE the token is consumed and their
+    # failure is RETURNED: the token stays usable for a better password, and
+    # the attempt row and this refusal's audit entry COMMIT -- raising here
+    # rolled both back and made a valid token an unlimited oracle
+    # (adversarial review 2026-09-13, P1).
+    try:
+        check_password_policy(new_password, user_id=user_id)
+        if seeded and auth_mod.verify_password(new_password, seeded["password_salt"], seeded["password_hash"]):
+            raise IdentityError("PASSWORD_REUSED", "That password was used before; choose a new one.",
+                                status=422)
+        if _in_history(session, user_id, new_password):
+            raise IdentityError("PASSWORD_REUSED", "That password was used before; choose a new one.",
+                                status=422)
+    except IdentityError as exc:
+        audit_mod.append(session, SERVICE_USER, "IDENTITY_RESET_REFUSED", AUDIT_OBJECT, user_id,
+                         f"{exc.code} on {reset_id}; token kept; from {requested_from}",
+                         correlation_id=correlation_id)
+        return {"ok": False, "code": exc.code, "status": exc.status, "message": exc.message}
     session.execute("UPDATE identity_password_reset SET consumed_at = %s WHERE reset_id = %s",
                     (moment, reset_id))
     out = set_password(session, con, user_id=user_id, new_password=new_password, actor=user_id,
@@ -319,15 +354,23 @@ def change_password(session: Session, con: sqlite3.Connection, *, user_id: str,
                     correlation_id: str | None = None) -> dict[str, Any]:
     """A signed-in user changing their own password: the current one must
     verify against whichever credential is live."""
+    refuse_if_limited(session, "CHANGE", f"user:{user_id}", bucket="user")
+    note_attempt(session, "CHANGE", f"user:{user_id}")
     override = durable_credential(session, user_id)
     seeded = con.execute("SELECT password_salt, password_hash, disabled FROM app_credential "  # scope-exempt: the SQLite identity store (auth.py's own tables), not a PostgreSQL scoped read
                          "WHERE user_id = ?", (user_id,)).fetchone()
     if seeded is None or seeded["disabled"]:
-        raise IdentityError("INVALID_CREDENTIALS", "Invalid user or password.", status=401)
+        auth_mod.verify_password(current_password, _DUMMY_SALT, _DUMMY_HASH)
+        return {"ok": False, "code": "INVALID_CREDENTIALS", "status": 401,
+                "message": "Invalid user or password."}
     live = (override["salt"], override["hash"]) if override else (seeded["password_salt"], seeded["password_hash"])
     if not auth_mod.verify_password(current_password, *live):
-        raise IdentityError("INVALID_CREDENTIALS", "Invalid user or password.", status=401)
-    return set_password(session, con, user_id=user_id, new_password=new_password, actor=user_id,
+        # RETURNED, so the attempt row commits and the limit above holds.
+        audit_mod.append(session, user_id, "IDENTITY_PASSWORD_CHANGE_REFUSED", AUDIT_OBJECT, user_id,
+                         "current password did not verify", correlation_id=correlation_id)
+        return {"ok": False, "code": "INVALID_CREDENTIALS", "status": 401,
+                "message": "Invalid user or password."}
+    return {"ok": True} | set_password(session, con, user_id=user_id, new_password=new_password, actor=user_id,
                         reason="password changed by the user", seeded_salt=seeded["password_salt"],
                         seeded_hash=seeded["password_hash"], keep_session=keep_session,
                         correlation_id=correlation_id)

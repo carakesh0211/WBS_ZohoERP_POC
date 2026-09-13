@@ -2478,7 +2478,8 @@ def raise_exception(session: Session, *, kind: str, object_type: str,
         notifications_mod.try_enqueue(
             session, event="EXCEPTION_RAISED",
             recipients=notifications_mod.recipients_for_roles(
-                session, ("Finance", "Project Finance Controller", "System Administrator")),
+                session, ("Finance", "Project Finance Controller", "System Administrator"),
+                project_id=project_id),
             context={"kind": kind, "object_label": f"{object_type} {object_id or ''}".strip(),
                      "detail": detail, "link": notifications_mod.public_url("#recon")},
             dedupe_key=f"EXCEPTION_RAISED:{exception_id}", actor=actor,

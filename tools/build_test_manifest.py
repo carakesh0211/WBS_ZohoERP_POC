@@ -36,6 +36,13 @@ MANIFEST = TESTS / "TEST_MANIFEST.json"
 # Files added after the POC baseline. Tracked, but excluded from the
 # "220 original functions" count so the baseline stays a fixed reference.
 POST_BASELINE_FILES = {
+    # 2026-09-13, streams A-E (034-036)
+    "test_pg_internal_fulfilment_fable51.py",
+    "test_pg_admin_override_fable51.py",
+    "test_pg_exports_xlsx_fable51.py",
+    "test_identity_oidc_fable51.py",
+    "test_pg_identity_notifications_fable51.py",
+    "test_pg_export_datasets_fable51.py",
     # --- Wave 7 stream A4: closure and capitalisation --------------------
     # The completion/capitalisation blockers, the asset-allocation paise
     # reconciliation and migration 019's own text. Post-baseline like every

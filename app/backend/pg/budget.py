@@ -98,12 +98,22 @@ def _override_or_refuse(*, principal, permission, maker, actor, object_label,
     from . import admin_override as admin_override_mod
     from .. import auth as auth_mod
     try:
-        return admin_override_mod.resolve(
+        record = admin_override_mod.resolve(
             principal=principal, permission=permission, maker_user_id=maker,
             object_label=object_label, admin_override_reason=admin_override_reason,
             admin_override=admin_override)
     except auth_mod.AuthError as exc:
         raise BudgetServiceError(exc.code, exc.message, status=exc.status) from exc
+    # A record is an override of THIS decision only when it names this actor
+    # and this maker; one produced for another object or person is refused
+    # (adversarial review 2026-09-13, P1 -- the check closure.py already made).
+    if record is not None and (record["actor_user_id"] != actor
+                               or (maker and record["maker_user_id"] != maker)):
+        raise BudgetServiceError(
+            "ADMIN_OVERRIDE_INVALID",
+            "The override record names a different actor or maker than this decision.",
+            status=403)
+    return record
 
 
 class BudgetServiceError(Exception):

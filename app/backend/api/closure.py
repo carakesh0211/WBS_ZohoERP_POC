@@ -430,8 +430,6 @@ class _ReviewDecisionIn(BaseModel):
     note: str
     #: Stream B: the Administrator's deliberate self-approval override.
     admin_override_reason: str | None = None
-    #: Stream B: the Administrator's deliberate self-approval override.
-    admin_override_reason: str | None = None
 
 
 @router.post("/api/closure/reviews/{review_id}/decide",
@@ -581,8 +579,6 @@ class _DecisionIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     note: str
-    #: Stream B: the Administrator's deliberate self-approval override.
-    admin_override_reason: str | None = None
     #: Stream B: the Administrator's deliberate self-approval override.
     admin_override_reason: str | None = None
 

@@ -93,7 +93,8 @@ def test_a_null_budget_category_key_renders_unclassified_not_a_blank():
     grouped = ["budget_category_id"]
     group_by = ["budget_category"]
     terms = [("1", "ASC")]
-    rows = [(None, 0, 0, 0, 0, 0, 0, 0, 0, 0, None, {})]
+    # eleven components since migration 034 (internal allocation/consumption)
+    rows = [(None, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, None, {})]
     shaped = rp._shape(rows, rp.FilterSet.build(group_by=group_by),
                        grouped, group_by, terms)
     assert shaped["rows"][0]["labels"]["budget_category"] == "Unclassified"

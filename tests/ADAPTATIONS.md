@@ -3263,3 +3263,66 @@ data is reachable without a session -- is preserved and now asserted by shape.
 **Approved by:** the product-owner instruction of 2026-09-13, "PRODUCT
 DECISIONS ... 4. Authentication".
 
+## 2026-09-13 — `tests/test_period_reopen_permissions.py`, the Administrator rows
+
+**What changed.** `test_administrator_holds_neither_reopen_permission` is
+superseded by `test_administrator_holds_both_reopen_permissions_but_never_the_
+same_seat_twice`; `test_period_reopen_permissions_are_registered_with_the_
+intended_roles` expects the Administrator beside the finance roles; the three
+negative matrices no longer parametrise over the Administrator, who is not a
+negative case once the role holds the permission. No assertion about any other
+role changed, and the separation assertions (maker unknown, requester refused
+before the engine, the checker independent) are untouched.
+
+**Why.** The product owner's decision of 2026-09-13 (Stream B) that the
+Administrator holds every permission. The reopen separation itself is kept in
+three places (`auth.require_separation(require_maker=True)`, the engine's
+closer-vs-applier check, migration 023's CHECK) and the administrator override
+is deliberately NOT offered on the period-reopen route; the replacement test
+asserts both facts.
+
+**Approved by:** the product-owner instruction of 2026-09-13, "PRODUCT
+DECISIONS ... 2. Administrator".
+
+## 2026-09-13 — `tests/test_period_reopen_permissions.py`, the Administrator rows
+
+**What changed.** `test_administrator_holds_neither_reopen_permission` is
+superseded by `test_administrator_holds_both_reopen_permissions_but_never_the_
+same_seat_twice`; `test_period_reopen_permissions_are_registered_with_the_
+intended_roles` expects the Administrator beside the finance roles; the three
+negative matrices no longer parametrise over the Administrator, who is not a
+negative case once the role holds the permission. No assertion about any other
+role changed, and the separation assertions (maker unknown, requester refused
+before the engine, the checker independent) are untouched.
+
+**Why.** The product owner's decision of 2026-09-13 (Stream B) that the
+Administrator holds every permission. The reopen separation itself is kept in
+three places (`auth.require_separation(require_maker=True)`, the engine's
+closer-vs-applier check, migration 023's CHECK) and the administrator override
+is deliberately NOT offered on the period-reopen route; the replacement test
+asserts both facts.
+
+**Approved by:** the product-owner instruction of 2026-09-13, "PRODUCT
+DECISIONS ... 2. Administrator".
+
+## 2026-09-13 — `tests/test_period_reopen_permissions.py`, the Administrator rows
+
+**What changed.** `test_administrator_holds_neither_reopen_permission` is
+superseded by `test_administrator_holds_both_reopen_permissions_but_never_the_
+same_seat_twice`; `test_period_reopen_permissions_are_registered_with_the_
+intended_roles` expects the Administrator beside the finance roles; the three
+negative matrices no longer parametrise over the Administrator, who is not a
+negative case once the role holds the permission. No assertion about any other
+role changed, and the separation assertions (maker unknown, requester refused
+before the engine, the checker independent) are untouched.
+
+**Why.** The product owner's decision of 2026-09-13 (Stream B) that the
+Administrator holds every permission. The reopen separation itself is kept in
+three places (`auth.require_separation(require_maker=True)`, the engine's
+closer-vs-applier check, migration 023's CHECK) and the administrator override
+is deliberately NOT offered on the period-reopen route; the replacement test
+asserts both facts.
+
+**Approved by:** the product-owner instruction of 2026-09-13, "PRODUCT
+DECISIONS ... 2. Administrator".
+

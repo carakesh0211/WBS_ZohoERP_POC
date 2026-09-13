@@ -1534,7 +1534,8 @@ def decide(session: Session, *, instance_id: str, actor_user_id: str, action: st
         # change to this person -- not to whoever the action log happens to
         # name, which at this moment is the PREVIOUS stage's approver because
         # the row for THIS decision is appended below, after the close.
-        actor_user_id=actor_user_id)
+        actor_user_id=actor_user_id,
+        admin_override=override)
 
     _append_action(
         session, instance_id=instance_id, stage_instance_id=stage_instance_id,
@@ -1610,7 +1611,8 @@ def _apply_decision(session: Session, *, instance: Mapping[str, Any], stage_no: 
                      waves: Sequence[Sequence[int]],
                      stages: Mapping[int, StageSpec],
                      projected: Mapping[int, str],
-                     actor_user_id: str) -> DecisionResult:
+                     actor_user_id: str,
+                    admin_override: Mapping[str, Any] | None = None) -> DecisionResult:
     instance_id = instance["instance_id"]
     session.execute(
         f"UPDATE approval_assignment SET state = %s WHERE assignment_id = %s",
@@ -1652,7 +1654,7 @@ def _apply_decision(session: Session, *, instance: Mapping[str, Any], stage_no: 
 
     if all_waves_settled(waves, projected):
         _set_instance_status(session, instance_id, INST_APPROVED, closed=True,
-                              closing_actor=actor_user_id, admin_override=override)
+                              closing_actor=actor_user_id, admin_override=admin_override)
         return DecisionResult(instance_id=instance_id, action=action,
                                stage_no=stage_no, stage_status=STAGE_APPROVED,
                                instance_status=INST_APPROVED,

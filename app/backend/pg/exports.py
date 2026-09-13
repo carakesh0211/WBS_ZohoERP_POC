@@ -2506,8 +2506,19 @@ def read_result(session: Session, export_job_id: str, *,
     if job["output_format"] == "xlsx":
         # Stream C (035): the verified CSV text, rendered into a workbook.
         # The digest above is the integrity check for BOTH formats; the
-        # workbook is derived from the bytes that passed it, in memory.
+        # workbook is derived from the bytes that passed it, in memory --
+        # which is why it is CAPPED: openpyxl holds every cell as an object,
+        # and an uncapped render of a very large result is a memory exhaustion
+        # any export.create holder could trigger (adversarial review
+        # 2026-09-13, P1). Above the cap the CSV of the same job is the file.
         from . import exports_xlsx
+        if int(job["rows_total"] or 0) > exports_xlsx.MAX_ROWS:
+            raise ExportError(
+                "EXPORT_TOO_LARGE_FOR_XLSX",
+                f"export {export_job_id} holds {job['rows_total']} rows; a workbook is "
+                f"rendered in memory and is capped at {exports_xlsx.MAX_ROWS} rows. "
+                f"Request the same export as csv, or narrow its filters.",
+                status=413, detail={"rows": job["rows_total"], "max_rows": exports_xlsx.MAX_ROWS})
         dataset = get_dataset(job["dataset"])
         generated_at = datetime.now(timezone.utc)
         workbook = exports_xlsx.render_workbook(

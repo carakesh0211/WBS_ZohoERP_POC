@@ -1166,15 +1166,23 @@ def return_material(session: Session, *, imr_id: str, quantity: Any, actor: str,
              f"{_plain(q)} exceeds the {_plain(on_site)} issued and not yet "
              f"consumed or returned on {imr['imr_number']}.", 422)
     money = _money_of(session, imr_id)
-    amount = min(_money(q, current["unit_rate_paise"] or 0),
-                 money["internal_consumption_paise"])
+    returned_after = current["returned_quantity"] + q
+    if returned_after + current["consumed_quantity"] == current["issued_quantity"]:
+        # The last leg clears the site: it carries EXACTLY what consumption
+        # still holds beyond the consumed quantity's own value, so a return
+        # split into legs strands nothing (adversarial review, P2) -- the
+        # same close-out `issue` makes.
+        consumed_value = _money(current["consumed_quantity"], current["unit_rate_paise"] or 0)
+        amount = max(0, money["internal_consumption_paise"] - consumed_value)
+    else:
+        amount = min(_money(q, current["unit_rate_paise"] or 0),
+                     money["internal_consumption_paise"])
     movement_id = _movement(
         session, imr=imr, kind=KIND_RETURN, quantity=q, amount_paise=amount,
         idempotency_key=key, actor=actor,
         to_location_id=current["from_location_id"], reference=reference,
         note=note, correlation_id=correlation_id)
     given_back, owner = _give_back(session, imr=imr, amount_paise=amount, actor=actor)
-    returned_after = current["returned_quantity"] + q
     status = _status_from(current["allocated_quantity"], current["issued_quantity"],
                           returned_after, current["consumed_quantity"])
     _update_quantities(session, imr_id, actor=actor, status=status,

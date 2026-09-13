@@ -252,6 +252,8 @@ def post_change_password(body: _ChangeIn, response: Response, request: Request,
         raise _service_error(exc)
     finally:
         con.close()
+    if not out.get("ok"):
+        raise _problem(int(out.get("status") or 400), out["code"], out["message"])
     return {"ok": True, "sessions_revoked": out["sessions_revoked"]}
 
 

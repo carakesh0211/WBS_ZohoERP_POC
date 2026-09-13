@@ -57,9 +57,24 @@ EVENTS: tuple[str, ...] = (
     "EXPORT_COMPLETED", "PASSWORD_RESET_REQUESTED", "PASSWORD_CHANGED",
     "IDENTITY_LINKED", "EXCEPTION_RAISED",
 )
-#: Events a user may not turn off: security notices about their own account.
+#: Events a user may not turn off: security notices about their own account,
+#: and the OVERSIGHT notices about other people's actions (adversarial review
+#: 2026-09-13, P1: an Administrator must not be able to silence, in advance,
+#: the notice that a peer overrode segregation of duties).
 MANDATORY_EVENTS: frozenset[str] = frozenset({
-    "PASSWORD_RESET_REQUESTED", "PASSWORD_CHANGED", "IDENTITY_LINKED"})
+    "PASSWORD_RESET_REQUESTED", "PASSWORD_CHANGED", "IDENTITY_LINKED",
+    "ADMIN_SELF_APPROVAL_OVERRIDE", "EXCEPTION_RAISED"})
+#: Events whose rendered body carries a single-use CREDENTIAL (a reset link).
+#: The body is stored so the dispatcher can send it and is NEVER returned by
+#: the administrator's outbox API: reading it would let any Administrator
+#: reset any account (adversarial review 2026-09-13, P0). On a UAT with the
+#: recording adapter -- no mail leaves -- the owner may reveal it with
+#: CAPEX_UAT_REVEAL_RESET_LINKS=1, and every reveal is audited.
+SENSITIVE_EVENTS: frozenset[str] = frozenset({"PASSWORD_RESET_REQUESTED"})
+REDACTED_BODY = "[redacted: this message carries a single-use credential link]"
+#: A row claimed longer ago than this and never recorded is an orphan of a
+#: dispatcher that died mid-send; it is reclaimed (adversarial review, P2).
+STALE_SENDING = timedelta(minutes=10)
 
 
 class NotificationError(Exception):
@@ -134,15 +149,51 @@ def recipients_for_users(session: Session, user_ids: Iterable[str]) -> list[tupl
 
 
 def recipients_for_roles(session: Session, roles: Iterable[str],
-                         exclude: Iterable[str] = ()) -> list[tuple[str, str]]:
-    """Every active user holding one of the PostgreSQL catalogue roles."""
+                         exclude: Iterable[str] = (),
+                         project_id: str | None = None) -> list[tuple[str, str]]:
+    """Every active user holding one of the PostgreSQL catalogue roles --
+    and, when the event belongs to a PROJECT, only those whose own scope
+    permits that project.
+
+    The scope rule is `repo.compile_scope`'s, restated in SQL: `read_all`
+    permits everything; otherwise every dimension the user is RESTRICTED on
+    must carry a grant for the project's value of that dimension, and an
+    unrestricted dimension permits everything. Without this a Plant Head of
+    plant B would be mailed plant A's request amounts -- the RLS boundary
+    every read enforces, leaked through the outbox (adversarial review
+    2026-09-13, P0).
+    """
     wanted = sorted({r for r in roles if r})
     if not wanted:
         return []
     skip = {u for u in exclude if u}
-    rows = session.fetchall(  # scope-exempt: role holders from the grant table; not row-scoped data
-        "SELECT DISTINCT u.user_id, u.email FROM role_grant g JOIN app_user u ON u.user_id = g.user_id "
-        "WHERE g.role = ANY(%s) AND u.is_active AND u.email <> '' ORDER BY u.user_id", (wanted,))
+    if project_id is None:
+        rows = session.fetchall(  # scope-exempt: role holders from the grant table; not row-scoped data
+            "SELECT DISTINCT u.user_id, u.email FROM role_grant g JOIN app_user u ON u.user_id = g.user_id "
+            "WHERE g.role = ANY(%s) AND u.is_active AND u.email <> '' ORDER BY u.user_id", (wanted,))
+    else:
+        rows = session.fetchall(  # scope-exempt: the grant tables that DEFINE scope, evaluated for one project
+            """
+            SELECT DISTINCT u.user_id, u.email
+            FROM role_grant g
+            JOIN app_user u ON u.user_id = g.user_id
+            JOIN project p ON p.project_id = %(project_id)s
+            WHERE g.role = ANY(%(roles)s) AND u.is_active AND u.email <> ''
+              AND (
+                COALESCE((SELECT f.read_all FROM user_access_flag f WHERE f.user_id = u.user_id), false)
+                OR NOT EXISTS (
+                    SELECT 1 FROM user_scope_restriction r
+                    WHERE r.user_id = u.user_id
+                      AND NOT EXISTS (
+                        SELECT 1 FROM user_scope_grant sg
+                        WHERE sg.user_id = r.user_id AND sg.dimension = r.dimension
+                          AND sg.scope_value = CASE r.dimension
+                                WHEN 'entity' THEN p.entity_id
+                                WHEN 'plant' THEN p.plant_id
+                                WHEN 'location' THEN p.location_id
+                                WHEN 'project' THEN p.project_id END)))
+            ORDER BY u.user_id
+            """, {"project_id": project_id, "roles": wanted})
     return [(r[0], r[1]) for r in rows if r[0] not in skip]
 
 
@@ -213,16 +264,18 @@ def try_enqueue(session: Session, **kwargs: Any) -> list[str]:
 def _claim_due(session: Session, *, limit: int, now: datetime) -> list[dict[str, Any]]:
     rows = session.fetchall(  # scope-exempt: system outbox tables (036) under the SERVICE-principal policy; not row-scoped data
         """
-        UPDATE notification_outbox o SET state = 'SENDING', attempts = attempts + 1
+        UPDATE notification_outbox o SET state = 'SENDING', attempts = attempts + 1,
+                                        next_attempt_at = %(now)s
         WHERE notification_id IN (
             SELECT notification_id FROM notification_outbox
-            WHERE state IN ('QUEUED', 'FAILED') AND next_attempt_at <= %(now)s
+            WHERE (state IN ('QUEUED', 'FAILED') AND next_attempt_at <= %(now)s)
+               OR (state = 'SENDING' AND next_attempt_at <= %(stale)s)
             ORDER BY next_attempt_at
             LIMIT %(limit)s
             FOR UPDATE SKIP LOCKED)
         RETURNING notification_id, recipient_email, subject, body_text, body_html,
                   correlation_id, attempts, max_attempts
-        """, {"now": now, "limit": limit})
+        """, {"now": now, "limit": limit, "stale": now - STALE_SENDING})
     return [{"notification_id": r[0], "recipient_email": r[1], "subject": r[2],
              "body_text": r[3], "body_html": r[4], "correlation_id": r[5],
              "attempts": int(r[6]), "max_attempts": int(r[7])} for r in rows]
@@ -333,7 +386,15 @@ def list_outbox(session: Session, *, state: str | None = None,
     return [_outbox_row(r) for r in rows]
 
 
-def get_notification(session: Session, notification_id: str) -> dict[str, Any]:
+def reveal_permitted() -> bool:
+    """Only a UAT running the recording adapter (no mail leaves) may show a
+    reset link to an Administrator, and only when the owner set the switch."""
+    adapter = os.environ.get("CAPEX_MAIL_ADAPTER", "recording").strip().lower()
+    return adapter == "recording" and os.environ.get("CAPEX_UAT_REVEAL_RESET_LINKS", "").strip() == "1"
+
+
+def get_notification(session: Session, notification_id: str, *,
+                     actor: str | None = None) -> dict[str, Any]:
     row = session.fetchone(_OUTBOX_SELECT + " WHERE notification_id = %s", (notification_id,))  # scope-exempt: system outbox tables (036) under the SERVICE-principal policy; not row-scoped data
     if row is None:
         raise NotificationError("NOTIFICATION_NOT_FOUND", f"no notification {notification_id}", status=404)
@@ -342,7 +403,15 @@ def get_notification(session: Session, notification_id: str) -> dict[str, Any]:
         "WHERE notification_id = %s ORDER BY delivery_id", (notification_id,))
     body = session.fetchone(  # scope-exempt: system outbox tables (036) under the SERVICE-principal policy; not row-scoped data
         "SELECT body_text FROM notification_outbox WHERE notification_id = %s", (notification_id,))
-    return {**_outbox_row(row), "body_text": body[0] if body else None,
+    body_text = body[0] if body else None
+    if row[1] in SENSITIVE_EVENTS:
+        if reveal_permitted() and actor:
+            audit_mod.append(session, actor, "NOTIFICATION_BODY_REVEALED", "Notification",
+                             notification_id, f"{row[1]} body shown to an administrator on a "
+                                              f"recording-adapter UAT (CAPEX_UAT_REVEAL_RESET_LINKS=1)")
+        else:
+            body_text = REDACTED_BODY
+    return {**_outbox_row(row), "body_text": body_text,
             "deliveries": [{"attempt": int(d[0]), "at": d[1].isoformat(), "outcome": d[2],
                             "provider": d[3], "detail": d[4]} for d in deliveries]}
 
@@ -350,11 +419,13 @@ def get_notification(session: Session, notification_id: str) -> dict[str, Any]:
 def retry_dead(session: Session, notification_id: str, *, actor: str) -> dict[str, Any]:
     row = session.fetchone(  # scope-exempt: system outbox tables (036) under the SERVICE-principal policy; not row-scoped data
         "UPDATE notification_outbox SET state = 'QUEUED', attempts = 0, next_attempt_at = now(), "
-        "last_error = NULL WHERE notification_id = %s AND state IN ('DEAD', 'FAILED') "
-        "RETURNING notification_id", (notification_id,))
+        "last_error = NULL WHERE notification_id = %s AND (state IN ('DEAD', 'FAILED') "
+        "OR (state = 'SENDING' AND next_attempt_at <= now() - %s)) "
+        "RETURNING notification_id", (notification_id, STALE_SENDING))
     if row is None:
         raise NotificationError("NOTIFICATION_NOT_RETRYABLE",
-                                f"{notification_id} is not DEAD or FAILED", status=409)
+                                f"{notification_id} is not DEAD, FAILED or a stale SENDING row",
+                                status=409)
     audit_mod.append(session, actor, "NOTIFICATION_REQUEUED", "Notification", notification_id,
                      "re-queued by an administrator")
     return get_notification(session, notification_id)

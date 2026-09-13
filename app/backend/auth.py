@@ -247,12 +247,20 @@ def _now():
     return datetime.now(timezone.utc)
 
 
+#: The fixed salt/hash a refusal for an unknown or disabled account is
+#: verified against, so every INVALID_CREDENTIALS costs one PBKDF2 run.
+_TIMING_PAIR = hash_password("timing-equaliser")
+
+
 def login(con: sqlite3.Connection, user_id: str, password: str) -> dict:
     row = con.execute("""SELECT c.*, u.name FROM app_credential c
                          JOIN app_user u ON u.user_id = c.user_id
                          WHERE c.user_id = ?""", (user_id,)).fetchone()
     if not row or row["disabled"]:
-        # Same response either way: do not disclose which accounts exist.
+        # Same response either way: do not disclose which accounts exist --
+        # and the same COST: a PBKDF2 run against a fixed pair, so a missing
+        # account cannot be told from a wrong password by the clock.
+        verify_password(password, *_TIMING_PAIR)
         raise AuthError(401, "INVALID_CREDENTIALS", "Invalid user or password.")
     if not verify_password(password, row["password_salt"], row["password_hash"]):
         raise AuthError(401, "INVALID_CREDENTIALS", "Invalid user or password.")
