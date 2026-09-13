@@ -5383,6 +5383,10 @@
         "assertions": 1,
         "body_sha": "e5c7b854b5b97be9"
       },
+      "test_no_waiver_remains": {
+        "assertions": 1,
+        "body_sha": "b63296596c730b87"
+      },
       "test_the_waiver_has_not_outlived_the_defect": {
         "assertions": 1,
         "body_sha": "ea60705f16e222c3"
@@ -10777,6 +10781,10 @@
         "assertions": 2,
         "body_sha": "62a39ed03b5189bb"
       },
+      "test_nothing_of_the_sweep_surface_is_unbacked_any_more": {
+        "assertions": 1,
+        "body_sha": "e39029a6a0d8eef1"
+      },
       "test_the_unbacked_sweep_functions_refuse_rather_than_returning_a_default": {
         "assertions": 5,
         "body_sha": "78e39c7f47f9c745"
@@ -13555,7 +13563,7 @@
     "test_no_undefined_names.py": 5,
     "test_no_version_sensitive_defaults.py": 1,
     "test_observability.py": 40,
-    "test_one_rate_budget_implementation.py": 6,
+    "test_one_rate_budget_implementation.py": 7,
     "test_ops_readiness.py": 28,
     "test_outbound_chaos.py": 26,
     "test_outbound_emission.py": 52,
@@ -13600,7 +13608,7 @@
     "test_pg_procurement_ingest.py": 66,
     "test_pg_procurement_reconciliation.py": 23,
     "test_pg_procurement_schema.py": 75,
-    "test_pg_reconciliation.py": 36,
+    "test_pg_reconciliation.py": 37,
     "test_pg_repo.py": 23,
     "test_pg_reporting.py": 17,
     "test_pg_reporting_fable51.py": 8,
@@ -13698,7 +13706,7 @@
     "test_no_undefined_names.py": 7,
     "test_no_version_sensitive_defaults.py": 1,
     "test_observability.py": 77,
-    "test_one_rate_budget_implementation.py": 9,
+    "test_one_rate_budget_implementation.py": 10,
     "test_ops_readiness.py": 44,
     "test_outbound_chaos.py": 123,
     "test_outbound_emission.py": 154,
@@ -13743,7 +13751,7 @@
     "test_pg_procurement_ingest.py": 281,
     "test_pg_procurement_reconciliation.py": 71,
     "test_pg_procurement_schema.py": 151,
-    "test_pg_reconciliation.py": 117,
+    "test_pg_reconciliation.py": 118,
     "test_pg_repo.py": 37,
     "test_pg_reporting.py": 54,
     "test_pg_reporting_fable51.py": 37,

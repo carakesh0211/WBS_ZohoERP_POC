@@ -218,6 +218,14 @@ def test_the_canonical_store_really_does_write_it():
         f"implementation moved, move the exemption.")
 
 
+def test_no_waiver_remains():
+    """`KNOWN_UNREPAIRED` is EMPTY on purpose: every second implementation was
+    repaired, so the parametrised test below has no cases and pytest reports
+    it as a skip. Asserted here so the empty allowlist is a fact, not a
+    silence; the parametrised test stays for the day a waiver is added."""
+    assert KNOWN_UNREPAIRED == {}
+
+
 @pytest.mark.parametrize("relative", sorted(KNOWN_UNREPAIRED))
 def test_the_waiver_has_not_outlived_the_defect(relative: str):
     """Each waived file must STILL contain the statement it was waived for.

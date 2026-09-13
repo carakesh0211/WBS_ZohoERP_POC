@@ -818,6 +818,15 @@ def test_an_unattributable_exception_is_visible_to_whoever_can_resolve_it(seeded
 # NOT gated on CAPEX_DB_URL: these five refuse before they touch a session, so
 # a live database would add nothing and the machine with no PostgreSQL is
 # exactly where the refusal most needs to be observable.
+def test_nothing_of_the_sweep_surface_is_unbacked_any_more():
+    """The register is EMPTY on purpose: every function the sweeps call is
+    backed by a migration now, so the parametrised test below has no cases
+    and pytest reports it as a skip ("got empty parameter set"). This test is
+    what makes that emptiness an assertion rather than a silence; the
+    parametrised test stays for the day a new unbacked call is registered."""
+    assert store.UNBACKED_SWEEP_SURFACE == {}
+
+
 @pytest.mark.parametrize("name", sorted(store.UNBACKED_SWEEP_SURFACE))
 def test_the_unbacked_sweep_functions_refuse_rather_than_returning_a_default(
         name):

@@ -29,8 +29,15 @@ INTENDED = [
     (r"approval schema not present",
      "tests that read the approval tables skip on a database built without migration 008; "
      "the live suite builds every migration, so this must not appear there"),
-    (r"PostgreSQL not configured; set CAPEX_DB_URL",
-     "the live-PostgreSQL gate: intended ONLY in a run without a database, never in the live run"),
+    (r"PostgreSQL not configured; set CAPEX_DB_URL|CAPEX_DB_URL is not set|needs a live PostgreSQL \(CAPEX_DB_URL\)",
+     "the live-PostgreSQL gate in its three wordings: intended ONLY in a run without a database, "
+     "never in the live run"),
+    (r"got empty parameter set for \((name|relative)\)",
+     "an EMPTIED register (store.UNBACKED_SWEEP_SURFACE, KNOWN_UNREPAIRED): the parametrised "
+     "test has no cases because nothing remains; a companion test asserts the register is empty"),
+    (r"has no _actor\(\)",
+     "tests/test_security_identity.py: the actor-derivation guard applies only to routers that "
+     "derive an actor from the session; the others are named as they are skipped"),
     (r"no live Zoho|requires the live tenant|CAPEX_ERP_LIVE",
      "tests that need the live tenant are opt-in by environment"),
     (r"windows|win32|not on this platform|posix only",
