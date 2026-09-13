@@ -171,8 +171,26 @@ def _frontend_templates() -> set[str]:
             if m.startswith("/api/integrations")}
 
 
+#: Templates the integration screens' API surface mounts for the OPERATOR
+#: TOOLING only, by design, and no screen probes for: a section 11.9 mode
+#: change is made under written authorisation through
+#: `tools/uat/e2e_outbound.py` (and recorded on the correlation trail), and
+#: the product owner has not asked for a screen that could move a connection
+#: into LIVE_WRITE. Listed here, with the reason, rather than left as a
+#: silent gap the reverse guard below would otherwise report.
+OPERATOR_ONLY_TEMPLATES = frozenset({
+    "/api/integrations/connections/{connection_id}/mode",
+})
+
+
 def _mounted_templates() -> set[str]:
-    return {r.path for r in integrations_api.router.routes
+    """Every /api/integrations template the app serves for these screens:
+    `api/integrations.py` AND the live router `api/integrations_live.py`
+    (sweep, adopt-orders, drain-outbox, mode), which the connection table
+    probes for since 2026-09-13."""
+    from app.backend.api import integrations_live
+    routers = (integrations_api.router, integrations_live.router)
+    return {r.path for router in routers for r in router.routes
             if getattr(r, "path", "").startswith("/api/integrations")}
 
 
@@ -205,7 +223,7 @@ def test_every_template_the_frontend_probes_for_is_mounted():
 def test_this_router_mounts_nothing_the_frontend_does_not_ask_for():
     """The other direction. A route nobody probes for is either dead surface or
     a spelling the frontend will never find, and both are worth seeing."""
-    extra = _mounted_templates() - _frontend_templates()
+    extra = _mounted_templates() - _frontend_templates() - OPERATOR_ONLY_TEMPLATES
     assert not extra, (
         f"this router mounts templates integration-api.js never probes for: "
         f"{sorted(extra)}")
