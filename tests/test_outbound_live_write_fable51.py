@@ -330,3 +330,17 @@ def test_health_reports_the_gate_honestly(monkeypatch):
     monkeypatch.setenv("CAPEX_ERP_OUTBOUND_WRITES", "1")
     body = TestClient(main.app).get("/api/health").json()
     assert body["outbound_writes_enabled"] is True and body["zoho_mode"] == "LIVE_WRITE"
+
+
+def test_health_diagnoses_the_gate_without_a_value(monkeypatch):
+    monkeypatch.setattr(health_api, "get_database",
+                        lambda: _Db({"status": "ok", "connections": {}}))
+    monkeypatch.setenv("CAPEX_ERP_OUTBOUND_WRITES", '"1"')      # a quoted value: present, not the gate
+    monkeypatch.setenv("CAPEX_ERP_OUTBOUND_WRITE", "1")         # a look-alike key: named, never valued
+    body = TestClient(main.app).get("/api/health").json()
+    gate = body["outbound_gate"]
+    assert gate == {"variable": "CAPEX_ERP_OUTBOUND_WRITES", "present": True, "raw_length": 3,
+                    "is_exactly_1": False, "look_alike_names": ["CAPEX_ERP_OUTBOUND_WRITE"]}
+    assert body["outbound_writes_enabled"] is False
+    monkeypatch.delenv("CAPEX_ERP_OUTBOUND_WRITES")
+    assert TestClient(main.app).get("/api/health").json()["outbound_gate"]["present"] is False

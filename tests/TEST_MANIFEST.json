@@ -5894,6 +5894,10 @@
       "test_health_reports_the_gate_honestly": {
         "assertions": 1,
         "body_sha": "d3dff42262a4d8b9"
+      },
+      "test_health_diagnoses_the_gate_without_a_value": {
+        "assertions": 3,
+        "body_sha": "b476dbd4aca445a5"
       }
     },
     "test_outbound_unsanctioned.py": {
@@ -13475,7 +13479,7 @@
     "test_ops_readiness.py": 28,
     "test_outbound_chaos.py": 26,
     "test_outbound_emission.py": 52,
-    "test_outbound_live_write_fable51.py": 17,
+    "test_outbound_live_write_fable51.py": 18,
     "test_outbound_unsanctioned.py": 20,
     "test_period_reopen_permissions.py": 17,
     "test_pg_adoption.py": 16,
@@ -13616,7 +13620,7 @@
     "test_ops_readiness.py": 44,
     "test_outbound_chaos.py": 123,
     "test_outbound_emission.py": 154,
-    "test_outbound_live_write_fable51.py": 50,
+    "test_outbound_live_write_fable51.py": 53,
     "test_outbound_unsanctioned.py": 55,
     "test_period_reopen_permissions.py": 51,
     "test_pg_adoption.py": 39,

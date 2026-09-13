@@ -1090,6 +1090,20 @@ def health():
         # `{product: {mode: count}}`, or the error class -- never a row.
         body["integrations"] = summary
     body["outbound_writes_enabled"] = zoho.outbound_writes_enabled()
+    # The gate's own diagnosis, for an operator who set the variable in the
+    # platform console and sees `false`: a flag has no secret in it, so its
+    # presence, raw length and the names (never values) of look-alike keys
+    # can be reported. 2026-09-13: a console edit that did not take was
+    # indistinguishable from a wrong value without this.
+    raw = os.environ.get("CAPEX_ERP_OUTBOUND_WRITES")
+    body["outbound_gate"] = {
+        "variable": "CAPEX_ERP_OUTBOUND_WRITES",
+        "present": raw is not None,
+        "raw_length": None if raw is None else len(raw),
+        "is_exactly_1": raw is not None and raw.strip() == "1",
+        "look_alike_names": sorted(k for k in os.environ
+                                   if "OUTBOUND" in k.upper() and k != "CAPEX_ERP_OUTBOUND_WRITES"),
+    }
     return body
 
 
