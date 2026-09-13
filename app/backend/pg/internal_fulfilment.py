@@ -88,6 +88,7 @@ from typing import Any
 from ..integration import inventory_provider as inventory
 from . import admin_override as admin_override_mod
 from . import audit as audit_mod
+from . import notifications as notifications_mod
 from . import budget as budget_svc
 from . import integration_store as store
 from . import repo
@@ -959,6 +960,14 @@ def approve_request(session: Session, *, imr_id: str, actor: str,
         + (f" acting for {acting_for_user_id}" if acting_for_user_id else "")
         + (f"; reason: {reason}" if reason else ""),
         correlation_id=correlation_id)
+    notifications_mod.try_enqueue(
+        session, event="IMR_APPROVED",
+        recipients=notifications_mod.recipients_for_users(session, [imr["requested_by"]]),
+        context={"imr_number": imr["imr_number"], "quantity": _plain(q),
+                 "wbs_code": imr["wbs_code"], "approver": actor,
+                 "link": notifications_mod.public_url(f"#imrs?imr={imr_id}")},
+        dedupe_key=f"IMR_APPROVED:{imr_id}", actor=actor, correlation_id=correlation_id,
+        object_type=OBJECT_TYPE, object_id=imr_id)
     return _public(_imr(session, imr_id))
 
 

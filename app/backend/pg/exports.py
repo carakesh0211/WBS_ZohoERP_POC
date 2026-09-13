@@ -2190,6 +2190,18 @@ def _advance_within_session(session: Session, *, dataset: Dataset, job_id: str,
             "ran_under_scope_of": job["requested_by"],
         }, sort_keys=True),
         correlation_id=job.get("correlation_id"))
+    # Stream E: the requester is told their file is ready; the export's own
+    # transaction queues it, the dispatcher sends it.
+    from . import notifications as notifications_mod
+    notifications_mod.try_enqueue(
+        session, event="EXPORT_COMPLETED",
+        recipients=notifications_mod.recipients_for_users(session, [job["requested_by"]]),
+        context={"export_job_id": job_id, "dataset": dataset.name, "rows": counted,
+                 "format": job.get("output_format") or "csv",
+                 "expires_at": _iso(job.get("expires_at")),
+                 "link": notifications_mod.public_url(f"#exports?job={job_id}")},
+        dedupe_key=f"EXPORT_COMPLETED:{job_id}", actor=job["requested_by"],
+        correlation_id=job.get("correlation_id"), object_type="export_job", object_id=job_id)
 
     return {"export_job_id": job_id, "state": STATE_SUCCEEDED,
             "rows_written_now": written_now, "rows_written": rows_written,

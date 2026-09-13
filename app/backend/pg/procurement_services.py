@@ -150,6 +150,7 @@ from ..integration.dto import DtoError
 from ..money import MoneyError
 from . import admin_override as admin_override_mod
 from . import audit as audit_mod
+from . import notifications as notifications_mod
 from . import fx
 from .fx import BASE_CURRENCY
 from . import budget as budget_svc
@@ -2455,6 +2456,16 @@ def submit_pr(session: Session, *, pr_id: str, actor: str,
         f"{header['pr_number']} submitted -> {status}. "
         f"Budget check: {check_result}.",
         correlation_id=correlation_id)
+    # Stream E: queued in THIS transaction, sent by the dispatcher later.
+    notifications_mod.try_enqueue(
+        session, event="PR_SUBMITTED",
+        recipients=notifications_mod.recipients_for_roles(
+            session, ("Plant Head", "Department Head", "Management Approver"), exclude=[actor]),
+        context={"pr_number": header["pr_number"], "amount": header["amount_paise"],
+                 "project": header["project_id"], "requested_by": actor,
+                 "link": notifications_mod.public_url(f"#prs?pr={pr_id}")},
+        dedupe_key=f"PR_SUBMITTED:{pr_id}:v{current['version_no'] + 1}", actor=actor,
+        correlation_id=correlation_id, object_type="PurchaseRequest", object_id=pr_id)
     return {"pr_id": pr_id, "pr_number": header["pr_number"], "status": status,
             "check_result": check_result, "verdicts": verdicts,
             "lifecycle_gate": lifecycle,
@@ -2652,6 +2663,13 @@ def approve_pr(session: Session, *, pr_id: str, actor: str,
         + f" Requested by {current['requested_by']}."
         + (f" Acting for {acting_for_user_id}." if acting_for_user_id else ""),
         correlation_id=correlation_id)
+    notifications_mod.try_enqueue(
+        session, event="PR_APPROVED",
+        recipients=notifications_mod.recipients_for_users(session, [current["requested_by"]]),
+        context={"pr_number": header["pr_number"], "amount": header["amount_paise"],
+                 "approver": actor, "link": notifications_mod.public_url(f"#prs?pr={pr_id}")},
+        dedupe_key=f"PR_APPROVED:{pr_id}:v{current['version_no'] + 1}", actor=actor,
+        correlation_id=correlation_id, object_type="PurchaseRequest", object_id=pr_id)
     return {"pr_id": pr_id, "pr_number": header["pr_number"],
             "status": STATUS_APPROVED, "exception": is_exception,
             "approver": actor, "verdicts": verdicts,

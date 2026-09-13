@@ -28,6 +28,23 @@ from conftest import code_of, detail
 MUTATING_ROUTES = [
     # (template, method, url, json body, permission, denied_role)
     ("/api/auth/logout", "POST", "/api/auth/logout", {}, None, None),
+    # Stream D/E: any signed-in user changes their OWN password and their OWN
+    # notification preferences -- no permission, exactly as logout.
+    ("/api/auth/password", "POST", "/api/auth/password",
+     {"current_password": "x", "new_password": "y"}, None, None),
+    ("/api/me/notification-preferences", "PUT", "/api/me/notification-preferences",
+     {"event": "PR_APPROVED", "enabled": False}, None, None),
+    # Stream D: account linking is the Administrator's (`admin.reset`); the
+    # Auditor authenticates and holds nothing that acts.
+    ("/api/admin/users/{user_id}/identities", "POST", "/api/admin/users/U-PM/identities",
+     {"subject": "zoho-sub", "reason": "unauthorised attempt"}, "admin.reset", "Auditor"),
+    ("/api/admin/users/{user_id}/identities", "DELETE", "/api/admin/users/U-PM/identities",
+     {"reason": "unauthorised attempt"}, "admin.reset", "Auditor"),
+    # Stream E: draining and re-queueing the outbox is administration.
+    ("/api/notifications/dispatch", "POST", "/api/notifications/dispatch", {"limit": 1},
+     "admin.reset", "Auditor"),
+    ("/api/notifications/{notification_id}/retry", "POST",
+     "/api/notifications/NTF-1/retry", {}, "admin.reset", "Auditor"),
     ("/api/budget-check", "POST", "/api/budget-check",
      {"wbs_id": "W-03-01", "amount_rupees": "1000", "budget_head_id": "BH-PM"},
      "budget.check", "CapitalisationApprover"),
@@ -551,7 +568,10 @@ MUTATING_ROUTES = [
      "capitalisation.allocate", "Requestor"),
 ]
 
-PUBLIC_MUTATING_ROUTES = {"/api/auth/login"}
+PUBLIC_MUTATING_ROUTES = {"/api/auth/login",
+                          # Stream D: obtaining a session and recovering a credential
+                          "/api/auth/oidc/start", "/api/auth/oidc/complete",
+                          "/api/auth/forgot", "/api/auth/reset"}
 
 READ_ROUTES = [
     "/api/auth/me", "/api/bootstrap", "/api/dashboard", "/api/projects/PRJ-01/wbs",
@@ -606,8 +626,18 @@ def test_aud_c_006_every_mutating_route_is_covered_by_the_authorisation_matrix()
         f"stale entries: {sorted(covered - live)}")
 
 
-def test_aud_c_006_public_paths_are_only_health_and_login():
-    assert main.PUBLIC_PATHS == {"/api/health", "/api/auth/login"}
+def test_aud_c_006_public_paths_are_health_and_the_sign_in_flows_only():
+    """2026-09-13 (Stream D): the public set grows by exactly the routes that
+    OBTAIN a session or recover a credential -- the provider list, the three
+    OIDC legs, forgot and reset. Each is rate-limited in PostgreSQL and
+    answers generically (tests/test_pg_identity_notifications_fable51.py).
+    Nothing that reads or writes business data is public."""
+    assert main.PUBLIC_PATHS == {
+        "/api/health", "/api/auth/login", "/api/auth/providers",
+        "/api/auth/oidc/start", "/api/auth/oidc/callback", "/api/auth/oidc/complete",
+        "/api/auth/forgot", "/api/auth/reset"}
+    for path in main.PUBLIC_PATHS:
+        assert path.startswith(("/api/health", "/api/auth/")), path
 
 
 # =============================================================== authentication

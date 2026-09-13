@@ -5,7 +5,7 @@
   "baseline": {
     "recorded_at": "2026-08-28",
     "commit_note": "POC baseline, branch phase-0a/foundations, before any port work",
-    "test_functions": 259,
+    "test_functions": 275,
     "collected_cases": 348,
     "collected_cases_note": "348 is the pytest-collected count after parametrisation expands 6 files; 220 is the count of `def test_` functions. Both are real and the Definition of Done refers to the function count.",
     "runtime_seconds_approx": 189,
@@ -145,9 +145,9 @@
         "assertions": 1,
         "body_sha": "cb0a5881b1dac27a"
       },
-      "test_aud_c_006_public_paths_are_only_health_and_login": {
-        "assertions": 1,
-        "body_sha": "e4f189dad72e3147"
+      "test_aud_c_006_public_paths_are_health_and_the_sign_in_flows_only": {
+        "assertions": 2,
+        "body_sha": "e15757ea76f6e4ef"
       },
       "test_aud_c_006_mutating_route_rejects_an_unauthenticated_caller": {
         "assertions": 2,
@@ -2462,6 +2462,40 @@
       "test_nav_groups_are_collapsible_buttons": {
         "assertions": 4,
         "body_sha": "0eae59d039838815"
+      }
+    },
+    "test_identity_oidc_fable51.py": {
+      "test_the_config_defaults_to_zoho_india_and_is_off_without_a_client": {
+        "assertions": 5,
+        "body_sha": "c9796deac610a98b"
+      },
+      "test_pkce_and_the_authorization_url": {
+        "assertions": 5,
+        "body_sha": "580abc57cf80c896"
+      },
+      "test_a_correctly_signed_token_verifies_and_yields_its_claims": {
+        "assertions": 1,
+        "body_sha": "0d246c047841eac5"
+      },
+      "test_every_check_refuses_by_name": {
+        "assertions": 3,
+        "body_sha": "5476e583c11cf165"
+      },
+      "test_a_tampered_claim_fails_the_signature_not_the_claim_check": {
+        "assertions": 2,
+        "body_sha": "31cfd2230c3a53ae"
+      },
+      "test_a_key_rotation_refetches_the_jwks_once": {
+        "assertions": 3,
+        "body_sha": "9d0e14486357d61f"
+      },
+      "test_the_domain_policy_and_the_malformed_token": {
+        "assertions": 7,
+        "body_sha": "949c48dbc5aec093"
+      },
+      "test_the_code_exchange_sends_the_verifier_and_refuses_a_missing_id_token": {
+        "assertions": 6,
+        "body_sha": "4fd522561756ff11"
       }
     },
     "test_integration_adapter_contract.py": {
@@ -8416,6 +8450,40 @@
         "body_sha": "e9b5ee7184a4d166"
       }
     },
+    "test_pg_identity_notifications_fable51.py": {
+      "test_forgot_and_reset_end_to_end_with_the_durable_credential": {
+        "assertions": 19,
+        "body_sha": "5c7b354f241b8db6"
+      },
+      "test_the_generic_answer_hides_unknown_disabled_and_unaddressed_accounts_and_rate_limits": {
+        "assertions": 9,
+        "body_sha": "61591ca01e8f4383"
+      },
+      "test_change_password_and_the_break_glass_login_are_audited": {
+        "assertions": 7,
+        "body_sha": "adb1374d7cfcc787"
+      },
+      "test_continue_with_zoho_maps_a_linked_subject_to_a_user_and_never_grants_roles": {
+        "assertions": 16,
+        "body_sha": "9b78561cc007f03d"
+      },
+      "test_the_domain_policy_the_break_glass_rule_and_the_stale_state": {
+        "assertions": 7,
+        "body_sha": "26e38564a17a051d"
+      },
+      "test_auto_link_by_verified_email_is_opt_in_and_exact": {
+        "assertions": 3,
+        "body_sha": "841e66466618dc2a"
+      },
+      "test_the_outbox_dispatches_retries_dead_letters_dedupes_and_honours_preferences": {
+        "assertions": 21,
+        "body_sha": "75fc234546ef0351"
+      },
+      "test_try_enqueue_never_fails_a_business_call_for_a_deploy_defect": {
+        "assertions": 2,
+        "body_sha": "9e14c9972aa1d79d"
+      }
+    },
     "test_pg_integration_rate_budget.py": {
       "test_live_a_reservation_executes_and_charges_both_windows": {
         "assertions": 10,
@@ -13694,6 +13762,7 @@
     "test_financial_controls.py": 61,
     "test_foreign_order_matching_fable51.py": 23,
     "test_frontend_budget_setup_registry.py": 12,
+    "test_identity_oidc_fable51.py": 8,
     "test_integration_adapter_contract.py": 72,
     "test_integration_capabilities.py": 20,
     "test_integration_dto_reader_contract.py": 4,
@@ -13752,6 +13821,7 @@
     "test_pg_fx.py": 34,
     "test_pg_fx_admin.py": 16,
     "test_pg_fx_ingest.py": 51,
+    "test_pg_identity_notifications_fable51.py": 8,
     "test_pg_integration_rate_budget.py": 21,
     "test_pg_integration_schema.py": 81,
     "test_pg_internal_fulfilment_fable51.py": 22,
@@ -13814,7 +13884,7 @@
   "assertions": {
     "test_adoption_fable51.py": 82,
     "test_anchor_function_shim.py": 24,
-    "test_api_auth.py": 57,
+    "test_api_auth.py": 58,
     "test_api_auth_saved_views.py": 4,
     "test_api_fx_guard.py": 21,
     "test_approval_e2e.py": 124,
@@ -13840,6 +13910,7 @@
     "test_financial_controls.py": 159,
     "test_foreign_order_matching_fable51.py": 98,
     "test_frontend_budget_setup_registry.py": 21,
+    "test_identity_oidc_fable51.py": 32,
     "test_integration_adapter_contract.py": 169,
     "test_integration_capabilities.py": 62,
     "test_integration_dto_reader_contract.py": 5,
@@ -13898,6 +13969,7 @@
     "test_pg_fx.py": 89,
     "test_pg_fx_admin.py": 89,
     "test_pg_fx_ingest.py": 136,
+    "test_pg_identity_notifications_fable51.py": 84,
     "test_pg_integration_rate_budget.py": 109,
     "test_pg_integration_schema.py": 132,
     "test_pg_internal_fulfilment_fable51.py": 172,

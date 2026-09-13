@@ -3241,3 +3241,25 @@ as such in the module docstring.
 **Approved by:** the product-owner instruction of 2026-09-13, "PRODUCT
 DECISIONS ... 2. Administrator", quoted above.
 
+## 2026-09-13 — `tests/test_api_auth.py`, the public-path pin widened for the sign-in flows
+
+**What changed.** `test_aud_c_006_public_paths_are_only_health_and_login`
+pinned `main.PUBLIC_PATHS` to `/api/health` and `/api/auth/login`. It is
+renamed `test_aud_c_006_public_paths_are_health_and_the_sign_in_flows_only` and
+pins the new set exactly: the six identity routes that obtain a session or
+recover a credential (`/api/auth/providers`, the three OIDC legs,
+`/api/auth/forgot`, `/api/auth/reset`), and it additionally asserts every
+public path is under `/api/auth/` or is the health check. `PUBLIC_MUTATING_
+ROUTES` names the four public POSTs so the matrix completeness test keeps
+covering every other mutating route.
+
+**Why.** The product owner's decision of 2026-09-13 (Stream D): "Continue with
+Zoho" and "Sign in with WBS account" with Forgot password. A route that
+obtains a session cannot require one. Each new public route is rate-limited in
+PostgreSQL and answers generically (`tests/test_pg_identity_notifications_
+fable51.py`); the control intent -- nothing that reads or writes business
+data is reachable without a session -- is preserved and now asserted by shape.
+
+**Approved by:** the product-owner instruction of 2026-09-13, "PRODUCT
+DECISIONS ... 4. Authentication".
+

@@ -167,6 +167,19 @@ def record(session: Session, *, override: Mapping[str, Any], object_type: str,
                           object_id=object_id, previous_state=previous_state,
                           new_state=new_state, amount_paise=amount_paise,
                           correlation_id=correlation_id, extra=extra)
-    return audit_mod.append(session, override["actor_user_id"], ACTION,
-                            object_type, object_id, detail,
-                            correlation_id=correlation_id)
+    entry = audit_mod.append(session, override["actor_user_id"], ACTION,
+                             object_type, object_id, detail,
+                             correlation_id=correlation_id)
+    # Stream E: every OTHER Administrator hears about an override.
+    from . import notifications as notifications_mod
+    notifications_mod.try_enqueue(
+        session, event=ACTION,
+        recipients=notifications_mod.recipients_for_roles(
+            session, ("System Administrator",), exclude=[override["actor_user_id"]]),
+        context={"actor": override["actor_user_id"],
+                 "object_label": override.get("object_label") or f"{object_type} {object_id}",
+                 "reason": override["reason"], "correlation_id": correlation_id or ""},
+        dedupe_key=f"{ACTION}:{object_type}:{object_id}:{override['actor_user_id']}",
+        actor=override["actor_user_id"], correlation_id=correlation_id,
+        object_type=object_type, object_id=object_id)
+    return entry

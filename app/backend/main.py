@@ -150,6 +150,39 @@ app.include_router(procurement_api.router)
 # principal derivation, same error shape as the procurement router.
 from .api import internal_fulfilment as internal_fulfilment_api  # noqa: E402
 app.include_router(internal_fulfilment_api.router)
+# Fable 5.1 / Streams D and E: identity (Continue with Zoho, forgot / reset
+# password, account linking) and the notification outbox.
+from .api import identity as identity_api  # noqa: E402
+from .api import notifications as notifications_api  # noqa: E402
+app.include_router(identity_api.router)
+app.include_router(notifications_api.router)
+
+
+def _start_notification_ticker() -> None:
+    """Drain the outbox on a timer when `CAPEX_NOTIFICATIONS_DISPATCH_SECONDS`
+    is set (AppSail). Off by default: tests and local runs dispatch through
+    the route. Sending never happens inside a request."""
+    import threading
+    seconds = (os.environ.get("CAPEX_NOTIFICATIONS_DISPATCH_SECONDS") or "").strip()
+    if not seconds.isdigit() or int(seconds) <= 0:
+        return
+    interval = max(15, int(seconds))
+
+    def _tick() -> None:
+        from .pg import notifications as notifications_svc
+        from .pg.engine import get_database as _get_pg
+        while True:
+            try:
+                notifications_svc.dispatch_due(_get_pg(), limit=50)
+            except Exception as exc:  # noqa: BLE001 -- the ticker must survive a bad batch
+                logging.getLogger("capex.notifications").warning(
+                    "notification dispatch failed: %s", type(exc).__name__)
+            threading.Event().wait(interval)
+
+    threading.Thread(target=_tick, name="notification-dispatch", daemon=True).start()
+
+
+_start_notification_ticker()
 # Wave 7 stream A1. Same rule, same commit: the five mutating paths this
 # router serves are in `tests/test_api_auth.py::MUTATING_ROUTES` in the commit
 # that mounts it. `/api/reports/*` is the server-side reporting layer over the
@@ -174,7 +207,13 @@ app.include_router(exports_api.router)
 # route -- see that module's docstring.
 app.include_router(closure_api.router)
 
-PUBLIC_PATHS = {"/api/health", "/api/auth/login"}
+# Stream D (2026-09-13): the sign-in choices and the forgot-password flow are
+# reachable without a session -- by construction, since they are how one is
+# obtained. Each is rate-limited in PostgreSQL (`pg/identity.py`) and answers
+# generically where an answer would disclose whether an account exists.
+PUBLIC_PATHS = {"/api/health", "/api/auth/login", "/api/auth/providers",
+                "/api/auth/oidc/start", "/api/auth/oidc/callback",
+                "/api/auth/oidc/complete", "/api/auth/forgot", "/api/auth/reset"}
 
 
 def con():
@@ -392,7 +431,17 @@ def login(body: LoginIn, request: Request):
     login_throttle.refuse_if_throttled(*keys)
     c = db.connect()
     try:
-        result = auth.login(c, body.user_id, body.password)
+        # Stream D: the DURABLE credential (a password the user set through
+        # the reset flow, PostgreSQL) is consulted before the seeded hash;
+        # without a PostgreSQL store this is exactly `auth.login`.
+        from .pg import identity as identity_svc
+        from .pg.engine import get_database as _get_pg
+        try:
+            pg_database = _get_pg()
+        except RuntimeError:
+            pg_database = None
+        result = identity_svc.login(c, pg_database, body.user_id, body.password,
+                                    correlation_id=request.headers.get("x-correlation-id"))
     except auth.AuthError:
         login_throttle.THROTTLE.record_failure(*keys)
         raise
