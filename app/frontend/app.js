@@ -391,6 +391,11 @@ const NAV = [
   { g: 'Governance', defaultExpanded: false },
   { id: 'audit', ico: '⎙', label: 'Audit Trail', need: ['audit.read'] },
   scr('audit-trail'),
+  // Stream E: the Administrator's outbox monitoring/dispatch screen — a
+  // plain NAV row (not a scr()-spliced SCR_ROUTES entry), imported directly
+  // in V.notifications below exactly as V.imrs already does for the IMR
+  // register, since this screen has no src/core/router.js SCREENS entry.
+  { id: 'notifications', ico: '✉', label: 'Notifications', need: ['admin.reset'] },
   /* THE APPROVAL ENGINE'S EIGHT SCREENS ARE REACHABLE BY ROUTE, NOT BY RAIL.
 
      They were listed here in 69f45e1 as change A3. A3 was INSTRUCTED by the
@@ -1148,6 +1153,35 @@ V.imrs = async () => {
       await ensureImrStyles();
       const { mountImrs } = await import('/static/src/features/procurement/imr-register.js');
       await mountImrs(root);
+    },
+  };
+};
+
+/* Stream E: the Administrator's notification outbox, monitoring and
+   dispatch/retry screen — a plain NAV-listed entry under Governance, on the
+   same footing as V.imrs immediately above (no src/core/router.js SCREENS
+   row; the module is imported directly here). extensions.css alone covers
+   its styling (.notif-monitor-strip etc.), so it needs no on-demand
+   stylesheet of its own the way imr.css is loaded for the IMR register. */
+V.notifications = async () => {
+  setHeader('Notifications', ['Home', 'Notifications'], []);
+  const root = document.createElement('div');
+  const section = document.createElement('section');
+  section.className = 'scr-panel';
+  section.setAttribute('aria-labelledby', 'notificationsTitle');
+  const heading = document.createElement('h2');
+  heading.id = 'notificationsTitle';
+  heading.textContent = 'Notification outbox';
+  section.appendChild(heading);
+  section.appendChild(root);
+  const node = document.createElement('div');
+  node.className = 'scr-host';
+  node.appendChild(section);
+  return {
+    node,
+    async mount() {
+      const { mountNotificationsAdmin } = await import('/static/src/features/notifications/notifications-admin.js');
+      await mountNotificationsAdmin(root);
     },
   };
 };
@@ -1945,6 +1979,57 @@ document.getElementById('changePasswordBtn').addEventListener('click', () => {
     }, 'Change password');
 });
 
+/* Stream E: preferences (toggles, mandatory disabled with an explanation)
+   and the signed-in user's own delivery history, in one dialog reached from
+   the identity area. Each toggle saves itself immediately (the change
+   listener above) rather than through a batched "Save" — there is nothing
+   to confirm, so this dialog is opened with no onOk and only a Close
+   button. */
+function notifHistoryRow(n) {
+  return `<tr><td class="mono">${esc(n.event)}</td><td>${status(n.state)}</td>
+    <td>${esc(n.sent_at || n.created_at || '—')}</td><td>${esc(n.subject || '—')}</td></tr>`;
+}
+function renderNotificationsDialog(preferences, history) {
+  const prefRows = preferences.map(p => `
+    <div class="notif-pref-row">
+      <div>
+        <label class="notif-pref-label" for="notifPref-${esc(p.event)}">${esc(p.event)}</label>
+        ${p.mandatory ? '<div class="notif-pref-note">Mandatory security notice about your own account — cannot be turned off.</div>' : ''}
+      </div>
+      <input type="checkbox" id="notifPref-${esc(p.event)}" data-notif-event="${esc(p.event)}"
+             ${p.enabled ? 'checked' : ''} ${p.mandatory ? 'disabled' : ''}>
+    </div>`).join('') || '<p class="muted">No notification events are configured.</p>';
+
+  const historyRows = history.length ? history.map(notifHistoryRow).join('')
+    : '<tr><td colspan="4" class="muted">No notifications recorded yet.</td></tr>';
+
+  dialog('Notifications',
+    `<h3>Preferences</h3>
+     <p class="muted small">Turning an event off stops email for it. Security notices about your own account (password reset requested, password changed, an identity linked to your account) cannot be turned off.</p>
+     ${prefRows}
+     <h3 class="mt-10">Delivery history</h3>
+     <div class="table-wrap"><table>
+       <caption class="sr-only">Your notification delivery history</caption>
+       <thead><tr><th scope="col">Event</th><th scope="col">State</th><th scope="col">Sent</th><th scope="col">Subject</th></tr></thead>
+       <tbody id="notifHistoryBody">${historyRows}</tbody></table></div>`,
+    null, 'Close');
+}
+document.getElementById('notificationsBtn').addEventListener('click', async () => {
+  let preferences = [], history = [];
+  try {
+    const [p, h] = await Promise.all([
+      api('/me/notification-preferences'),
+      api('/me/notifications?limit=25'),
+    ]);
+    preferences = p.preferences || [];
+    history = h.items || [];
+  } catch (e) {
+    dialog('Notifications', msg('error', esc(e.message || 'Notifications could not be loaded.')), null, 'Close');
+    return;
+  }
+  renderNotificationsDialog(preferences, history);
+});
+
 document.getElementById('dlg').addEventListener('close', () => {
   // Escape and the close button both land here; restore focus to the opener.
   clearDialogMessage();
@@ -2303,6 +2388,24 @@ document.addEventListener('change', async (ev) => {
   if (ev.target.id === 'prjSel') { S.project = ev.target.value; await render(); }
   if (ev.target.id === 'entitySel') { S.entity = ev.target.value; await render(); }
   if (ev.target.id === 'plantSel') { S.plant = ev.target.value; await render(); }
+
+  // Stream E: each toggle in the Notifications dialog saves itself the
+  // moment it changes — there is no separate "Save" action, and a mandatory
+  // preference is rendered disabled so it never reaches this branch at all.
+  if (ev.target.dataset && ev.target.dataset.notifEvent) {
+    const cb = ev.target;
+    const event = cb.dataset.notifEvent;
+    const enabled = cb.checked;
+    cb.disabled = true;
+    try {
+      await api('/me/notification-preferences', { method: 'PUT', json: { event, enabled } });
+    } catch (e) {
+      cb.checked = !enabled;
+      dialogMessage('error', esc(e.message || 'The preference could not be saved.'));
+    } finally {
+      cb.disabled = false;
+    }
+  }
 });
 
 document.addEventListener('click', async (ev) => {
