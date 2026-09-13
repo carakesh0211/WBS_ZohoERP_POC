@@ -784,6 +784,9 @@ def _lines(rows: Sequence[Mapping[str, Any]], *, po_line_key: str,
             # GRN_LINE_UNATTRIBUTED exception upstream. It is never inferred
             # from position, and never spread pro-rata.
             purchase_order_line_external_id=_opt_str(row.get(po_line_key)),
+            # A bill line's citation of the receive line it bills against
+            # (033); absent on every other document's lines.
+            receive_line_external_id=_opt_str(row.get("receive_item_id")),
             dimensions=freeze(row.get("reporting_tags_map")),
             raw=freeze(row),
         ))

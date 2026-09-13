@@ -268,6 +268,11 @@ class LineDTO:
     tax_paise: int
     item_external_id: str | None = None
     purchase_order_line_external_id: str | None = None
+    #: The tenant's RECEIVE line this (bill) line cites -- Zoho ERP's
+    #: `receive_item_id`, VERIFIED LIVE 2026-09-12: once an order has a
+    #: receive, a bill against it must cite that receive, line by line. None
+    #: for a receive's own lines and for a bill raised before any receipt.
+    receive_line_external_id: str | None = None
     dimensions: Mapping[str, Any] = field(default_factory=_EMPTY_MAPPING)
     raw: Mapping[str, Any] = field(default_factory=_EMPTY_MAPPING)
 

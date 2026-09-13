@@ -720,6 +720,11 @@ POST_BASELINE_FILES = {
     # nothing, and the health summary counting through forced RLS.
     "test_outbound_live_write_fable51.py",
     "test_pg_outbound_drain_fable51.py",
+    # 2026-09-13: bill lines cite receives (migration 033) -- linkage on the
+    # same PO line, refinement never gating, BILL_EXCEEDS_RECEIVE held and
+    # retracted; and the skip-audit tool that proves every skip is intended.
+    "test_pg_bill_receive_link_fable51.py",
+    "test_skip_audit_tool.py",
 }
 
 

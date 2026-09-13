@@ -138,12 +138,19 @@ KIND_FOREIGN_CURRENCY_BASIS_MISSING = "FOREIGN_CURRENCY_BASIS_MISSING"
 #: declaration of what exists rather than the single one C18 is meant to be.
 KIND_ADOPTION_DIMENSION_INVALID = "ADOPTION_DIMENSION_INVALID"
 KIND_ADOPTION_DIMENSION_CONFLICT = "ADOPTION_DIMENSION_CONFLICT"
+#: 033: the bills citing one receive line, summed, exceed what it delivered.
+#: Raised by the ledger (`pg.procurement.mirror_bill`), never by a sweep.
+KIND_BILL_EXCEEDS_RECEIVE = "BILL_EXCEEDS_RECEIVE"
+#: 033: the bills citing one receive line, summed, exceed what it delivered.
+#: Raised by the ledger (`pg.procurement.mirror_bill`), never by a sweep.
+KIND_BILL_EXCEEDS_RECEIVE = "BILL_EXCEEDS_RECEIVE"
 
 EXCEPTION_KINDS: frozenset[str] = frozenset({
     KIND_GRN_LINE_UNATTRIBUTED, KIND_CONTROL_TOTAL_MISMATCH,
     KIND_LATE_ARRIVAL_CLOSED_PERIOD, KIND_UNSANCTIONED_COMMITMENT,
     KIND_UNMAPPED_EXTERNAL_STATUS, KIND_FOREIGN_CURRENCY_BASIS_MISSING,
     KIND_ADOPTION_DIMENSION_INVALID, KIND_ADOPTION_DIMENSION_CONFLICT,
+    KIND_BILL_EXCEEDS_RECEIVE,
 })
 
 #: The estate's base currency. The sweeps do not import `pg.fx` (they run

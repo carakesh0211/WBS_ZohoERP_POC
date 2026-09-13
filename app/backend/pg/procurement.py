@@ -1778,6 +1778,7 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
     # not here: the identities must be settled before the translation, because
     # the allocation order is the derived `bill_line_id` and that id is built
     # from the key.
+    cited_receive_lines: set[str] = set()
     for index, line in enumerate(lines or ()):
         outcome = _mirror_bill_line(
             session, bill_id=bill_id, bill_external_id=external_id,
@@ -1797,6 +1798,8 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
             written_line_ids.append(outcome["bill_line_id"])
             if outcome["cell"] is not None:
                 touched_cells.append(outcome["cell"])
+            if outcome.get("grn_line_id"):
+                cited_receive_lines.add(outcome["grn_line_id"])
         else:
             quarantined += 1
             quarantined_paise += abs(int(outcome["amount_paise"]))
@@ -1810,6 +1813,14 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
     superseded = _supersede_withdrawn_bill_lines(
         session, bill_id=bill_id, keep=written_line_ids, actor=actor,
         now=moment)
+    # 033: every receive line this bill cites is checked against everything
+    # billed against it, AFTER the withdrawn lines are superseded so a
+    # revised bill is judged on what it says now.
+    over_billed = _control_bills_against_receipts(
+        session, grn_line_ids=cited_receive_lines, bill_external_id=external_id,
+        entity_id=entity_id, project_id=project_id, actor=actor,
+        correlation_id=correlation_id, now=moment)
+    exceptions.extend(over_billed)
 
     # A superseded line's cell is an AFFECTED cell even though this pass wrote
     # no line to it. Its money just left; if it is not in the refresh set, the
@@ -1939,6 +1950,94 @@ def mirror_bill(session: Session, *, external_source: str, external_id: str,
     }
 
 
+def _resolve_cited_receive_line(session: Session, *, po_line_id: str,
+                                receive_line_external_id: str) -> str | None:
+    """The local `grn_line` a bill line's receive citation names, on THIS
+    purchase-order line, or None. Two rows carrying the same external id on
+    one PO line would be a re-mirrored receive; the first by id is stable and
+    the difference is not this function's to adjudicate."""
+    row = repo.query_one(
+        session,
+        f"""
+        SELECT gl.grn_line_id
+        FROM {GRN_LINE} gl
+        JOIN {PO_LINE} pl ON pl.po_line_id = gl.po_line_id
+        JOIN project p ON p.project_id = pl.project_id
+        WHERE gl.po_line_id = %(po_line_id)s
+          AND gl.line_external_id = %(receive_line_external_id)s
+          AND {{scope}}
+        ORDER BY gl.grn_line_id
+        LIMIT 1
+        """,
+        {"po_line_id": po_line_id,
+         "receive_line_external_id": receive_line_external_id},
+        columns=SCOPE_COLUMNS)
+    return None if row is None else str(row[0])
+
+
+KIND_BILL_EXCEEDS_RECEIVE = "BILL_EXCEEDS_RECEIVE"
+
+
+def _control_bills_against_receipts(session: Session, *, grn_line_ids: set[str],
+                                    bill_external_id: str,
+                                    entity_id: str | None,
+                                    project_id: str | None, actor: str,
+                                    correlation_id: str | None,
+                                    now: datetime | None) -> list[str]:
+    """033: for each cited receive line, the sum billed against it (every
+    non-void bill line citing it, credit notes negative) against what the
+    receipt delivered (its lines, reversals negative). Over is an OPEN
+    BILL_EXCEEDS_RECEIVE on the grn_line carrying the excess; within retracts
+    any such exception. Visible, never clamped: the bill lines stay posted."""
+    raised: list[str] = []
+    for grn_line_id in sorted(grn_line_ids):
+        row = repo.query_one(
+            session,
+            f"""
+            SELECT
+              coalesce((SELECT SUM(CASE WHEN g.is_reversal THEN -ABS(gl2.amount_paise)
+                                        ELSE ABS(gl2.amount_paise) END)::bigint
+                        FROM {GRN_LINE} gl2 JOIN {GRN} g ON g.grn_id = gl2.grn_id
+                        WHERE gl2.grn_line_id = gl.grn_line_id), 0)::bigint AS received_paise,
+              coalesce((SELECT SUM(bl.amount_paise)::bigint
+                        FROM {BILL_LINE} bl JOIN {BILL} b ON b.bill_id = bl.bill_id
+                        WHERE bl.grn_line_id = gl.grn_line_id
+                          AND b.accounting_status <> 'Void'), 0)::bigint AS billed_paise,
+              gl.line_external_id, gl.receive_external_id
+            FROM {GRN_LINE} gl
+            JOIN {PO_LINE} pl ON pl.po_line_id = gl.po_line_id
+            JOIN project p ON p.project_id = pl.project_id
+            WHERE gl.grn_line_id = %(grn_line_id)s AND {{scope}}
+            """,
+            {"grn_line_id": grn_line_id}, columns=SCOPE_COLUMNS)
+        if row is None:
+            continue
+        received, billed = int(row[0]), int(row[1])
+        excess = billed - received
+        if excess > 0:
+            raised.append(store.raise_exception(
+                session, kind=KIND_BILL_EXCEEDS_RECEIVE, object_type="grn_line",
+                object_id=grn_line_id,
+                detail=(f"Receive line {row[2]} of receive {row[3]} delivered "
+                        f"{received} paise; the bills citing it total {billed} "
+                        f"paise (latest: {bill_external_id}). Over-billed by "
+                        f"{excess} paise. The bill lines are posted; this "
+                        f"holds until a credit note or a further receipt "
+                        f"brings the sum within the receipt."),
+                raised_at=now, entity_id=entity_id, project_id=project_id,
+                local_paise=excess, correlation_id=correlation_id,
+                actor=actor))
+        else:
+            retract_quarantine(
+                session, kind=KIND_BILL_EXCEEDS_RECEIVE, object_type="grn_line",
+                object_id=grn_line_id,
+                reason=(f"Bills citing receive line {row[2]} now total "
+                        f"{billed} paise against {received} paise received "
+                        f"(latest: {bill_external_id})."),
+                actor=actor, correlation_id=correlation_id, now=now)
+    return raised
+
+
 def _mirror_bill_line(session: Session, *, bill_id: str,
                       bill_external_id: str, po_id: str | None,
                       po_external_id: str | None, line: Any, index: int,
@@ -2016,6 +2115,19 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
         po_line_id = resolve_po_line(session, po_external_id=po_external_id,
                                      line_external_id=line_external_id)
 
+    # 033: the receive line this bill line cites, and the local grn_line it
+    # resolves to ON THE SAME PURCHASE-ORDER LINE. Resolved after the PO line
+    # and only through it, so a citation can never re-attribute a bill line to
+    # a receipt of a different order line. NULL when the receive is not
+    # mirrored yet or the citation names a line this ledger does not hold:
+    # the citation refines attribution, it never gates the posting.
+    receive_line_external_id = _text(_line_field(line, "receive_line_external_id"))
+    grn_line_id = None
+    if po_line_id is not None and receive_line_external_id:
+        grn_line_id = _resolve_cited_receive_line(
+            session, po_line_id=po_line_id,
+            receive_line_external_id=receive_line_external_id)
+
     if po_line_id is not None:
         line_po_id, _project, wbs_id, budget_head_id, _currency = _po_line_cell(
             session, po_line_id)
@@ -2066,6 +2178,8 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
         "source_freight_minor": source_freight_minor,
         "po_line_external_id": line_external_id,
         "external_line_id": external_line_id,
+        "receive_line_external_id": receive_line_external_id,
+        "grn_line_id": grn_line_id,
         # The ORDINAL within this bill, 1-based. It is an input to
         # `bill_line.line_fingerprint` (a GENERATED column, migration 014),
         # which is what stops two genuinely distinct lines that are identical
@@ -2107,6 +2221,7 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
             description, quantity, amount_paise, non_creditable_tax_paise,
             freight_paise, source_amount_minor, source_tax_minor,
             source_freight_minor, po_line_external_id, external_line_id,
+            receive_line_external_id, grn_line_id,
             line_no, external_status_raw, created_by, updated_by)
         SELECT %(bill_line_id)s, %(bill_id)s, %(po_id)s, %(po_line_id)s,
                %(wbs_id)s, %(budget_head_id)s, %(description)s,
@@ -2114,7 +2229,8 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
                %(non_creditable_tax_paise)s, %(freight_paise)s,
                %(source_amount_minor)s, %(source_tax_minor)s,
                %(source_freight_minor)s,
-               %(po_line_external_id)s, %(external_line_id)s, %(line_no)s,
+               %(po_line_external_id)s, %(external_line_id)s,
+               %(receive_line_external_id)s, %(grn_line_id)s, %(line_no)s,
                %(external_status_raw)s, %(actor)s, %(actor)s
         FROM {BILL} b
         JOIN project p ON p.project_id = b.project_id
@@ -2174,6 +2290,8 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
                       source_tax_minor = EXCLUDED.source_tax_minor,
                       source_freight_minor = EXCLUDED.source_freight_minor,
                       external_line_id = EXCLUDED.external_line_id,
+                      receive_line_external_id = EXCLUDED.receive_line_external_id,
+                      grn_line_id = EXCLUDED.grn_line_id,
                       line_no = EXCLUDED.line_no,
                       updated_at = now(),
                       updated_by = EXCLUDED.updated_by,
@@ -2209,7 +2327,7 @@ def _mirror_bill_line(session: Session, *, bill_id: str,
         actor=actor, correlation_id=correlation_id, now=now)
     return {"attributed": True, "exception_id": None,
             "bill_line_id": bill_line_id, "amount_paise": amount_paise,
-            "cell": (wbs_id, budget_head_id)}
+            "cell": (wbs_id, budget_head_id), "grn_line_id": grn_line_id}
 
 
 def _supersede_withdrawn_bill_lines(session: Session, *, bill_id: str,

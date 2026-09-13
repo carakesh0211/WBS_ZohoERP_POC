@@ -182,3 +182,24 @@ def test_a_receive_fetched_without_its_order_first_is_left_unattributed():
     adapter = erp.ErpAdapter(organization_id="60074128927", transport=stub)
     receive = adapter.get_receive("RCV-1", fallback_po="PO-X")
     assert all(line.purchase_order_line_external_id is None for line in receive.lines)
+
+
+def test_a_bill_line_keeps_the_receive_line_it_cites_and_a_receive_line_carries_none():
+    """033. VERIFIED LIVE 2026-09-12: a DEMO WBS bill line carries
+    `purchaseorder_item_id`, `receive_id` and `receive_item_id`; a receive's
+    own lines carry none of the three."""
+    from app.backend.integration.erp import _lines
+    bill_line, = _lines([{"line_item_id": "3912780000000117008", "item_id": "3912780000000076008",
+                          "description": "x", "quantity": 1, "rate": "1850000.00",
+                          "item_total": "1850000.00", "purchaseorder_item_id": "3912780000000109007",
+                          "receive_id": "3912780000000116003",
+                          "receive_item_id": "3912780000000116008"}],
+                        po_line_key="purchaseorder_item_id")
+    assert bill_line.purchase_order_line_external_id == "3912780000000109007"
+    assert bill_line.receive_line_external_id == "3912780000000116008"
+    receive_line, = _lines([{"line_item_id": "3912780000000116008", "item_id": "3912780000000076008",
+                             "item_order": 1, "quantity": 1, "description": "", "rate": "1850000.00",
+                             "item_total": "1850000.00"}],
+                           po_line_key="purchaseorder_item_id")
+    assert receive_line.receive_line_external_id is None
+    assert receive_line.purchase_order_line_external_id is None

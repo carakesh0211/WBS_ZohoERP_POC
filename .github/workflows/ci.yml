@@ -323,17 +323,29 @@ jobs:
         run: npm run vrt:selftest
 
       # styles.css is the client-approved baseline. A pixel diff is a failure.
-      # Invoked through the wrapper, which passes Playwright's exit code
-      # through untouched -- no shell, no pipeline, no `tee`, nothing that can
-      # substitute its own status for the suite's.
-      - name: Visual regression
-        run: npm run vrt
+      #
+      # BOUNDED, SEQUENTIAL BATCHES ON ONE SHARED SERVER (2026-09-13). The
+      # monolithic `npm run vrt` (~2,000 tests in one node process) failed on
+      # the hosted Windows runner at minute 45 with net::ERR_NO_BUFFER_SPACE
+      # and a mount timeout at the same instant -- runner exhaustion, not the
+      # application -- while the same specs passed in bounded batches. The
+      # script runs one spec x one viewport per node process against a server
+      # it starts once, records a real exit code per batch (TIMEOUT is never
+      # folded into a pass) and exits with the number of failed batches, so
+      # the job's status is the batches' status and nothing else's.
+      - name: Visual regression (bounded batches, shared server)
+        shell: bash
+        run: bash tools/run_vrt_batches.sh
         env:
           CAPEX_PROFILE: local-demo
+          CAPEX_VRT_PORT: "8896"
+          VRT_BATCH_OUT: .vrt-batches
 
-      - name: Publish diff report on failure
+      - name: Publish batch logs and diff report on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: vrt-report
-          path: tests/vrt/report
+          path: |
+            tests/vrt/report
+            .vrt-batches

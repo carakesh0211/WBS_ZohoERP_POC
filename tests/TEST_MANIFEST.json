@@ -1830,6 +1830,10 @@
       "test_a_receive_fetched_without_its_order_first_is_left_unattributed": {
         "assertions": 1,
         "body_sha": "a58bb799a964d9e0"
+      },
+      "test_a_bill_line_keeps_the_receive_line_it_cites_and_a_receive_line_carries_none": {
+        "assertions": 4,
+        "body_sha": "80763ee2986cf15d"
       }
     },
     "test_erp_write_gate.py": {
@@ -7386,6 +7390,28 @@
       "test_every_seeded_money_column_is_an_integer": {
         "assertions": 3,
         "body_sha": "2f30360680e33e65"
+      }
+    },
+    "test_pg_bill_receive_link_fable51.py": {
+      "test_the_kind_is_in_the_check_and_in_the_constants": {
+        "assertions": 4,
+        "body_sha": "4e978f37958542ee"
+      },
+      "test_a_bill_line_citing_a_mirrored_receive_line_links_to_it": {
+        "assertions": 3,
+        "body_sha": "1fef4c6da32e5b03"
+      },
+      "test_a_citation_the_ledger_does_not_hold_or_none_at_all_still_posts_the_line": {
+        "assertions": 4,
+        "body_sha": "477ead0ef9af0895"
+      },
+      "test_a_citation_of_another_lines_receive_never_re_attributes_the_bill_line": {
+        "assertions": 2,
+        "body_sha": "b0fd5daf14f8a077"
+      },
+      "test_billing_beyond_the_cited_receipt_is_held_and_a_credit_note_retracts_it": {
+        "assertions": 6,
+        "body_sha": "dedb85f744635e9b"
       }
     },
     "test_pg_budget.py": {
@@ -13188,6 +13214,24 @@
         "body_sha": "4ce37dff94b91588"
       }
     },
+    "test_skip_audit_tool.py": {
+      "test_intended_reasons_pass_and_the_count_is_reported": {
+        "assertions": 2,
+        "body_sha": "459621c1ac27bc79"
+      },
+      "test_an_undeclared_reason_fails_with_the_test_ids": {
+        "assertions": 2,
+        "body_sha": "21d821de6f544f7b"
+      },
+      "test_the_live_run_does_not_accept_the_database_gate_or_the_schema_skip": {
+        "assertions": 3,
+        "body_sha": "00caaf11ff1749b5"
+      },
+      "test_too_few_executed_tests_fail_even_with_no_skips": {
+        "assertions": 2,
+        "body_sha": "99d931ba24de754d"
+      }
+    },
     "test_uat_profile.py": {
       "test_loader_refuses_a_plaintext_password_key": {
         "assertions": 1,
@@ -13473,7 +13517,7 @@
     "test_contracts_integration_statuses.py": 23,
     "test_data_classification.py": 11,
     "test_domain_invariants.py": 34,
-    "test_erp_list_row_shape_fable51.py": 13,
+    "test_erp_list_row_shape_fable51.py": 14,
     "test_erp_write_gate.py": 15,
     "test_export_poc.py": 17,
     "test_export_scope.py": 26,
@@ -13526,6 +13570,7 @@
     "test_pg_approvals.py": 158,
     "test_pg_audit.py": 20,
     "test_pg_audit_api_e2e.py": 7,
+    "test_pg_bill_receive_link_fable51.py": 5,
     "test_pg_budget.py": 22,
     "test_pg_closure.py": 37,
     "test_pg_constraints.py": 8,
@@ -13588,6 +13633,7 @@
     "test_security_identity.py": 10,
     "test_security_scope_tristate.py": 13,
     "test_security_secrets.py": 12,
+    "test_skip_audit_tool.py": 4,
     "test_uat_profile.py": 24,
     "test_uat_smoke_roles.py": 19,
     "test_zoho_routes_fable51.py": 21
@@ -13614,7 +13660,7 @@
     "test_contracts_integration_statuses.py": 48,
     "test_data_classification.py": 23,
     "test_domain_invariants.py": 94,
-    "test_erp_list_row_shape_fable51.py": 23,
+    "test_erp_list_row_shape_fable51.py": 27,
     "test_erp_write_gate.py": 29,
     "test_export_poc.py": 32,
     "test_export_scope.py": 69,
@@ -13667,6 +13713,7 @@
     "test_pg_approvals.py": 238,
     "test_pg_audit.py": 62,
     "test_pg_audit_api_e2e.py": 24,
+    "test_pg_bill_receive_link_fable51.py": 19,
     "test_pg_budget.py": 57,
     "test_pg_closure.py": 80,
     "test_pg_constraints.py": 13,
@@ -13729,6 +13776,7 @@
     "test_security_identity.py": 18,
     "test_security_scope_tristate.py": 39,
     "test_security_secrets.py": 29,
+    "test_skip_audit_tool.py": 9,
     "test_uat_profile.py": 78,
     "test_uat_smoke_roles.py": 42,
     "test_zoho_routes_fable51.py": 47
