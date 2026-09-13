@@ -139,7 +139,15 @@ def test_every_block_declares_whether_its_value_set_is_known():
 #: Renderers permitted to name statuses from a non-business namespace. Each is
 #: the screen family that OWNS that namespace.
 _APPROVAL_RENDERERS = ("components/approvals/", "features/approvals/")
-_INTEGRATION_RENDERERS = ("components/integration/", "features/integration/")
+#: `features/notifications/` (2026-09-13, Stream E) is an OPERATIONAL family of
+#: the same kind as SCR-26/38/39: the Administrator's mail outbox, whose own
+#: state vocabulary (036, `ck_notification_outbox_state`: QUEUED, SENDING,
+#: SENT, FAILED, DEAD, SUPPRESSED) shares three words with C16 by design --
+#: an outbox is an outbox. It reaches no business object and is gated on
+#: `admin.reset`; a business screen still may not name DEAD. Recorded in
+#: tests/ADAPTATIONS.md.
+_INTEGRATION_RENDERERS = ("components/integration/", "features/integration/",
+                          "features/notifications/")
 
 
 def _frontend_sources():

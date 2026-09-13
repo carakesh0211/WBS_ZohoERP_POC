@@ -3362,3 +3362,25 @@ variables listed in `docs/fable51/IDENTITY_AND_NOTIFICATIONS.md`.
 
 **Approved by:** the standing instruction that no gate may be weakened to pass;
 this adaptation strengthens the identity test to match the adapter rule.
+
+## 2026-09-13 — `tests/test_contracts_integration_statuses.py`, the notification outbox screen
+
+**What changed.** `_INTEGRATION_RENDERERS`, the list of screen families that may
+name a C16 integration status, gains `features/notifications/`. Nothing else in
+the gate changed: every other frontend source is still refused the word `DEAD`
+(and every other non-badge C16 code), and the approval-status gate is
+untouched.
+
+**Why.** CI on `aef8130` failed the gate on
+`features/notifications/notifications-admin.js: DEAD`. That file is the
+Administrator's mail-outbox monitor (Stream E, migration 036): its state
+vocabulary is the outbox's own (`QUEUED`, `SENDING`, `SENT`, `FAILED`, `DEAD`,
+`SUPPRESSED`) and it renders no business object. It is an operational screen
+of exactly the kind the gate's docstring reserves the namespace for
+(SCR-26/38/39), gated on `admin.reset`, reached only from the Governance
+group. Renaming the outbox's dead-letter state to dodge a word match would
+make the screen lie about the database. A business screen that named `DEAD`
+would still fail.
+
+**Approved by:** the build instruction of 2026-09-13 (Stream E, "durable
+outbox ... dead-letter"); classification by the lead, this entry the record.
