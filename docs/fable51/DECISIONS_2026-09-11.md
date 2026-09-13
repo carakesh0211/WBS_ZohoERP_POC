@@ -76,3 +76,26 @@ an unapproved direct order 409 `PO_NOT_APPROVED` with no outbox row; identical e
 | Reporting stream `work/reporting-filters` (CONTINUATION "Not done" item 1) | engineering | ALREADY INTEGRATED: verified 2026-09-13 by `git patch-id` — all nine stream commits are byte-identical to commits reachable from HEAD; the item was stale |
 | Restore drill on the free tier | engineering / owner | BLOCKED on a PostgreSQL 17 client (`pg_dump` 16.10 refuses server 17.6); downloading the EDB 17 client binaries is an owner-approved action — decision required |
 | Readiness under a paused Supabase instance | owner | requires pausing the project in the Supabase dashboard — owner action; persistence across an AppSail restart is proven (the 2026-09-13 orders and exceptions survived eight recycles) |
+
+## 2026-09-13 (evening) — what the full-application build of streams A–G leaves with the owner
+
+Delivered on the branch (`1157fcb`…`c51d9ee`; `docs/FULL_APPLICATION_DELIVERY_STATUS.md` has the
+counts): internal material fulfilment (migration 034), the Administrator's audited self-approval
+override, `.xlsx` on every export dataset (035), "Continue with Zoho" and "Sign in with WBS account"
+with forgot/reset, password policy and history, break-glass (036), the durable notification outbox
+(036), collapsible navigation, and their screens. Nothing here needs a decision to deploy; each row
+below is an owner action AFTER deployment, and the application is honest about its absence
+(`GET /api/auth/providers` hides the Zoho choice until configured; the outbox records mail until a
+sender is verified). Details in `docs/fable51/IDENTITY_AND_NOTIFICATIONS.md`.
+
+| Owner step | Where | Until it is done |
+|---|---|---|
+| Create a **Server-based** OAuth client in the Zoho API console (India DC, redirect `https://<uat host>/api/auth/oidc/callback`), then set all seven `CAPEX_OIDC_*` variables (issuer, auth/token/JWKS URLs, client id, client secret, redirect URI) in the AppSail environment. No provider host is written into the code (adapter rule). | Catalyst console → AppSail environment | "Continue with Zoho" is not offered; WBS sign-in works |
+| Link each tester's Zoho subject to their WBS user (`POST /api/admin/users/{id}/identities`, Administrator), or set `CAPEX_OIDC_AUTO_LINK_BY_EMAIL=1` for exact-e-mail auto-link | Admin route / environment | a Zoho sign-in is refused `OIDC_NOT_LINKED` and audited |
+| Verify a sender domain under Catalyst → Mail (SPF/DKIM at the registrar), then set `CAPEX_MAIL_FROM`, `CAPEX_MAIL_FROM_NAME`, `CAPEX_MAIL_ADAPTER=catalyst_sdk` | Catalyst console → Mail, AppSail environment | every notification is a `RECORDED` delivery in the outbox; nothing leaves |
+| Decide whether testers may complete a password reset from the Administrator's outbox on the recording adapter: `CAPEX_UAT_REVEAL_RESET_LINKS=1` (each reveal audited `NOTIFICATION_BODY_REVEALED`; ignored once mail really sends) | AppSail environment | reset mails are redacted in the outbox API; a tester cannot finish "Forgot password" |
+| Name the break-glass Administrator: `CAPEX_BREAK_GLASS_USER_ID=<seeded admin id>` | AppSail environment | no account is exempt from the Zoho-link refusal; ordinary WBS sign-in unaffected |
+| Set the dispatch ticker: `CAPEX_NOTIFICATIONS_DISPATCH_SECONDS=60`. The ticker runs only when the variable is set; without it an Administrator drains the outbox with `POST /api/notifications/dispatch` | AppSail environment | the outbox is drained only on demand |
+
+Deferred by the same instruction, not started: Slack/WhatsApp channels for the notification
+framework; mirroring purchase requests into a Zoho custom module.

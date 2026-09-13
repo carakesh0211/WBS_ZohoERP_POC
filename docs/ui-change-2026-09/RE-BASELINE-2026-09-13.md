@@ -67,8 +67,22 @@ inside its 766 px `.table-wrap`, but the `sr-only` spans in its cells are
 was `.body` and their boxes escaped the wrap's clipping and widened the
 document to 1112 px. Latent since the first wide table; visible now.
 `extensions.css` gives `.table-wrap` `position: relative` (styles.css is
-frozen); every register measured 1024/800 wide afterwards, no pixel changed,
-and approved-ui passes 20/20 at both widths.
+frozen); every register measured 1024/800 wide afterwards, and approved-ui
+passes 20/20 at both widths.
+
+The same leak had been inflating two DESKTOP baselines vertically for as
+long as they have existed: `pos` (1440×1020) and `zoho` (1440×3245) were
+full-page captures whose extra height was the same escaped `sr-only` boxes,
+not content — `#content` scrolls internally (742 px tall on the Zoho
+connector screen, 3181 px of content inside it), so everything below the
+first viewport in those images was shell background. Measured with the
+positioning toggled on and off through the CSSOM on a live page: with the
+fix the document is 900 px on both screens, without it 1020 and 3245. The
+confirmation run and CI both caught the two stale files
+("Expected an image 1440px by 3245px, received 1440px by 900px"); they were
+re-recorded at their honest height, and `avatar-regions.spec.js`'s
+desktop-1440 entry was re-measured (`CAPEX_VRT_WRITE_REGIONS=1`) for the
+same shifted identity cluster the delegation regions moved with.
 
 ## What was recorded
 

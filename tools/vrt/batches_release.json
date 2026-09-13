@@ -114,6 +114,13 @@
       "blocking": false,
       "changed_since_c51c2fe": true,
       "reason": "Added 2026-09-13 (Stream E). Informational: the user's preferences/history dialog and the Administrator outbox screen are settings/monitoring surfaces, not one of the six release-blocking categories; a failure is read and reported, never silently skipped."
+    },
+    {
+      "spec": "avatar-regions.spec.js",
+      "priority": "P1",
+      "blocking": true,
+      "changed_since_c51c2fe": true,
+      "reason": "Added 2026-09-14. The measurement gate for where #userAvatar renders in every captured state; the shell bar's identity cluster moved on 2026-09-13 (two new buttons) and this spec is what names such a drift instead of letting a re-baseline widen it silently. Navigation category (the shell)."
     }
   ],
   "blocking_categories": [
