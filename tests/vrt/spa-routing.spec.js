@@ -359,6 +359,9 @@ test.describe('SPA routing — every SCR-nn screen is reachable from the shell',
     // and INTEGRATION MAPPING are deliberately left untouched: this is still
     // the test that proves they render no `.nav-item` at their default.
     await settleShell(page);
+    // Below 900px the rail is a closed overlay drawer (AUD-M-004); a group
+    // header inside it is not clickable until the drawer is open.
+    await openNavIfCollapsed(page);
     for (const g of ['Procurement & Actuals', 'Closure', 'Integration', 'Governance']) {
       await page.click(`[data-nav-group="${g}"]`);
     }
@@ -417,7 +420,11 @@ test.describe('SPA routing — every SCR-nn screen is reachable from the shell',
     // what makes an entry's ABSENCE from `.nav-item` mean "not permitted"
     // rather than merely "not expanded". `budget-grid` sits in Project
     // Control, which stays open by default and needs no click.
+    //
+    // Below 900px the rail is a closed overlay drawer (AUD-M-004); a group
+    // header inside it is not clickable until the drawer is open.
     await settleShell(page);
+    await openNavIfCollapsed(page);
     await page.click('[data-nav-group="Governance"]');
     const adminIds = await page.evaluate(
       () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
@@ -428,6 +435,7 @@ test.describe('SPA routing — every SCR-nn screen is reachable from the shell',
     await stubScreenApis(auditor);
     await signIn(auditor, AUDITOR);
     await settleShell(auditor);
+    await openNavIfCollapsed(auditor);
     await auditor.click('[data-nav-group="Governance"]');
     const auditorIds = await auditor.evaluate(
       () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),

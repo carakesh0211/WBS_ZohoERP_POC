@@ -105,8 +105,34 @@ user opens it (AUD-M-004), and none of `approved-ui.spec.js`'s full-page
 screenshots opens it — so the rail was never part of its tablet-800 baseline
 picture, before or after Stream F. Verified by running the file at
 `--project=tablet-800` with no `--update-snapshots`: **20/20 passed, 0
-failures, 0 diffs.** (`spa-routing.spec.js`, `budget-setup.spec.js` and
-`approvals.spec.js` are each accounted for below as they were completed —
-the same tablet-800 reasoning turned out to apply to all three, though
-`spa-routing.spec.js` also surfaced one real, non-screenshot bug at
-tablet-800, recorded in its own section.)
+failures, 0 diffs.**
+
+### spa-routing.spec.js
+
+**laptop-1024** moved the same way as desktop-1440: the five SCR-nn
+full-page screenshots, each confirmed rail-confined before recording.
+
+**tests/vrt/spa-routing.spec.js-snapshots/** (5 files):
+`spa-audit-trail`, `spa-budget-grid`, `spa-budget-compare`,
+`spa-budget-availability`, `spa-settings` (all `-laptop-1024-win32.png`).
+
+The rest of the file (50 non-screenshot tests: routing, permission gates,
+required states, accessibility, CSP) passed unchanged at laptop-1024 — full
+file run, 55/55 passed.
+
+**tablet-800 surfaced a real bug, not a baseline diff.** Two tests this
+stream had already patched to open the Governance group before reading
+`.nav-item` (`the primary navigation is exactly the approved navigation`,
+`a navigation entry is permission-gated, not merely present`) called
+`page.click('[data-nav-group="..."]')` directly, with no
+`openNavIfCollapsed()` first. Below 900px the rail is a closed overlay
+drawer (AUD-M-004): the group header is not clickable until the drawer is
+open, so both tests failed at tablet-800 with a Playwright timeout on the
+click, not a screenshot mismatch. Fixed by adding `await
+openNavIfCollapsed(page)` (and, in the permission-gate test, `await
+openNavIfCollapsed(auditor)` for its second page) before each group click —
+the same helper the file already used everywhere else a group needed to be
+interacted with below 900px. tablet-800 needed **no** baseline re-recording
+(same reasoning as `approved-ui.spec.js`): the five visual-regression
+screenshots never open the rail. Verified with the fix in place: full file
+at `--project=tablet-800`, **55/55 passed, 0 failures.**
