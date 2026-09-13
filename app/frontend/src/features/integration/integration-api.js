@@ -836,3 +836,73 @@ export function getControlTotals(params) {
     + 'endpoint knows Zoho\'s side, so nothing here is synthesised from the ledger: a control total '
     + 'that only ever compares us with ourselves would always balance.');
 }
+
+/* ------------------------------------------------------------------ *
+ * 5. Live operator actions — sweep, adopt, drain
+ *
+ * Three routes proven live against the running application (tested from
+ * Python before any screen existed) and gated on connector.manage, exactly
+ * like createConnection and mapOrganisation above. NONE OF THE THREE HAS A
+ * WAVE-4 OR LEDGER FALLBACK: a sweep, an adoption or an outbox drain either
+ * runs against the live connection this build actually holds, or it does
+ * not run at all. There is no honest substitute for any of the three, so
+ * each is a single-candidate `firstAvailable` call — kept on that helper
+ * only for the uniform `{data, source, template, redacted}` envelope and
+ * the REQ-INT-024 scrub every other write in this module gets.
+ * ------------------------------------------------------------------ */
+
+/**
+ * Run one sweep of the connection's inbound modules right now.
+ *
+ * Allowed only when the connection's mode is LIVE_READ or LIVE_WRITE; the
+ * backend answers 409 CONNECTION_NOT_LIVE otherwise. This module adds no
+ * client-side gate of its own — the screen offers the control only on a live
+ * row, and the server's refusal is the backstop if that ever drifts.
+ *
+ * @param {string} connectionId
+ * @param {{modules?: string[]}} [body] - absent or `{}` sweeps every module.
+ */
+export function sweepConnection(connectionId, body) {
+  return firstAvailable([
+    {
+      source: 'wave5',
+      template: '/api/integrations/connections/{connection_id}/sweep',
+      call: () => wave5.post(`/connections/${encodeURIComponent(connectionId)}/sweep`, body || {}),
+    },
+  ], WAVE5_NOTE);
+}
+
+/**
+ * Adopt purchase orders that already exist in the tenant onto this
+ * application's own records. Same LIVE_READ / LIVE_WRITE gate as
+ * `sweepConnection`, and read-only against Zoho either way.
+ */
+export function adoptOrders(connectionId) {
+  return firstAvailable([
+    {
+      source: 'wave5',
+      template: '/api/integrations/connections/{connection_id}/adopt-orders',
+      call: () => wave5.post(`/connections/${encodeURIComponent(connectionId)}/adopt-orders`, {}),
+    },
+  ], WAVE5_NOTE);
+}
+
+/**
+ * Drain the outbox: send every claimable pending row to Zoho now.
+ *
+ * LIVE_WRITE ONLY — the backend answers 409 CONNECTION_NOT_LIVE_WRITE for any
+ * other mode and 409 ERP_WRITES_DISABLED when the platform gate is shut —
+ * and every row this sends is a REAL purchase order created in the Zoho ERP
+ * DEMO WBS tenant (organisation 60074128927). This function sends no
+ * confirmation of its own: the screen must ask the operator, naming the
+ * tenant, before calling it.
+ */
+export function drainOutbox(connectionId) {
+  return firstAvailable([
+    {
+      source: 'wave5',
+      template: '/api/integrations/connections/{connection_id}/drain-outbox',
+      call: () => wave5.post(`/connections/${encodeURIComponent(connectionId)}/drain-outbox`, {}),
+    },
+  ], WAVE5_NOTE);
+}

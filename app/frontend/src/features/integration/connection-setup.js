@@ -31,9 +31,20 @@ import { h, text } from '../../core/dom.js';
 import { createDataTable } from '../../components/capex-datatable.js';
 import { createLoader } from './integration-screen.js';
 import {
-  createAnnouncer, card, field, keyValues, modeBadge, modeBanner, selectInput, textInput,
+  createAnnouncer, card, field, keyValues, modeBadge, modeBanner, replace, selectInput, textInput,
 } from './integration-kit.js';
-import { createConnection, getGlobalMode, listConnections } from './integration-api.js';
+import {
+  adoptOrders, createConnection, drainOutbox, getGlobalMode, listConnections, sweepConnection,
+} from './integration-api.js';
+
+/** LIVE_READ and LIVE_WRITE are the only modes that reach a real tenant, and
+ * therefore the only modes where "Sweep now" / "Adopt orders" / "Drain
+ * outbox" mean anything: MOCK and SANDBOX have no live connection to act on.
+ */
+function isLiveMode(mode) {
+  const key = String(mode || '').trim().toUpperCase();
+  return key === 'LIVE_READ' || key === 'LIVE_WRITE';
+}
 
 const PRODUCTS = [
   ['ERP', 'Zoho ERP — provisional (D-14)'],
@@ -73,44 +84,76 @@ export function mountConnectionSetup(root) {
   const banner = h('div', { id: 'setupModeBanner' });
 
   /* ---------------- existing connections --------------------------------- */
-  const table = createDataTable({
-    caption: 'Connection profiles this application holds, with the mode each one runs in',
-    emptyMessage: 'No connection profile has been created yet.',
-    columns: [
-      {
-        key: 'connection_id',
-        label: 'Connection',
-        render: (r) => h('span', { class: 'mono' }, String(r.connection_id ?? r.name ?? '—')),
+  const BASE_COLUMNS = [
+    {
+      key: 'connection_id',
+      label: 'Connection',
+      render: (r) => h('span', { class: 'mono' }, String(r.connection_id ?? r.name ?? '—')),
+    },
+    { key: 'connector_name', label: 'Name', render: (r) => text(r.connector_name ?? r.name ?? '—') },
+    { key: 'product', label: 'Product', render: (r) => text(r.product ?? 'ERP (assumed — D-14 unresolved)') },
+    { key: 'dc', label: 'Data centre', render: (r) => h('span', { class: 'mono' }, String(r.dc ?? r.data_centre ?? '—')) },
+    {
+      key: 'organization_id',
+      label: 'Organisation',
+      render: (r) => (r.organization_id || r.zoho_org_id
+        ? h('span', { class: 'mono' }, String(r.organization_id || r.zoho_org_id))
+        : h('span', { class: 'muted' }, 'not mapped — see SCR-33')),
+    },
+    {
+      key: 'mode',
+      label: 'Mode',
+      render: (r) => modeBadge(r.mode || state.mode, { note: state.modeNote }),
+    },
+    {
+      key: 'next',
+      label: 'Next step',
+      render: (r) => {
+        const id = r.connection_id || r.name;
+        if (!id) return text('—');
+        return h('a', {
+          class: 'linkish integration-link',
+          href: `?connection=${encodeURIComponent(id)}#integration-oauth`,
+        }, 'Authorise (SCR-32)');
       },
-      { key: 'connector_name', label: 'Name', render: (r) => text(r.connector_name ?? r.name ?? '—') },
-      { key: 'product', label: 'Product', render: (r) => text(r.product ?? 'ERP (assumed — D-14 unresolved)') },
-      { key: 'dc', label: 'Data centre', render: (r) => h('span', { class: 'mono' }, String(r.dc ?? r.data_centre ?? '—')) },
-      {
-        key: 'organization_id',
-        label: 'Organisation',
-        render: (r) => (r.organization_id || r.zoho_org_id
-          ? h('span', { class: 'mono' }, String(r.organization_id || r.zoho_org_id))
-          : h('span', { class: 'muted' }, 'not mapped — see SCR-33')),
-      },
-      {
-        key: 'mode',
-        label: 'Mode',
-        render: (r) => modeBadge(r.mode || state.mode, { note: state.modeNote }),
-      },
-      {
-        key: 'next',
-        label: 'Next step',
-        render: (r) => {
-          const id = r.connection_id || r.name;
-          if (!id) return text('—');
-          return h('a', {
-            class: 'linkish integration-link',
-            href: `?connection=${encodeURIComponent(id)}#integration-oauth`,
-          }, 'Authorise (SCR-32)');
-        },
-      },
-    ],
-  });
+    },
+  ];
+
+  /**
+   * The "Actions" column, appended to the table only when at least one row is
+   * LIVE_READ or LIVE_WRITE — never structurally present otherwise, so the
+   * seeded MOCK profiles and every approved screenshot baseline (all of them
+   * MOCK today; Phase 0B has not cleared a live authorisation) render exactly
+   * as before. Within a table that DOES carry the column, a MOCK row's own
+   * cell is still blank: the column applies to every row once it exists, and
+   * only a live row has an action to offer.
+   */
+  const ACTIONS_COLUMN = { key: 'actions', label: 'Actions', render: (r) => renderActionsCell(r) };
+
+  /* The table is rebuilt, not mutated, whenever whether any row is live
+     changes — createDataTable() fixes its column list at construction, and
+     there is no API to add or remove one afterwards. `tableSlot` is the DOM
+     anchor `replace()` swaps the current table into. */
+  const tableSlot = h('div');
+  let table = null;
+  let tableHasActions = false;
+  function ensureTable(anyLive) {
+    if (table && tableHasActions === anyLive) return table;
+    table = createDataTable({
+      caption: 'Connection profiles this application holds, with the mode each one runs in',
+      emptyMessage: 'No connection profile has been created yet.',
+      columns: anyLive ? [...BASE_COLUMNS, ACTIONS_COLUMN] : BASE_COLUMNS,
+    });
+    tableHasActions = anyLive;
+    replace(tableSlot, table.el);
+    return table;
+  }
+
+  /* Where a completed action's summary renders — sweep's per-module lines,
+     adopt's five counts, drain's claimed/sent and per-row outcomes, or an
+     RFC-7807 code and detail verbatim on failure. Present on every render of
+     this screen, empty until an operator runs one of the three actions. */
+  const actionResult = h('div', { id: 'connectionActionResult', 'data-testid': 'connection-action-result' });
 
   const listLoader = createLoader({
     id: 'setupConnectionsStatus',
@@ -149,9 +192,11 @@ export function mountConnectionSetup(root) {
     formStatus,
   ]);
 
+  ensureTable(false);
+
   root.appendChild(banner);
   root.appendChild(card('setupExistingTitle', 'Existing connection profiles', [
-    listLoader.el, table.el,
+    listLoader.el, tableSlot, actionResult,
   ]));
   root.appendChild(card('setupCreateTitle', 'Create a connection profile', [
     h('p', { class: 'muted small' },
@@ -238,13 +283,16 @@ export function mountConnectionSetup(root) {
           if (chosen) dcSelect.value = chosen;
         }
         if (data && data.mode) state.mode = data.mode;
-        if (!items.length) { table.renderRows([]); table.el.hidden = true; return false; }
-        table.el.hidden = false;
-        table.renderRows(items);
+        const activeTable = ensureTable(items.some((r) => isLiveMode(r.mode || state.mode)));
+        if (!items.length) { activeTable.renderRows([]); activeTable.el.hidden = true; return false; }
+        activeTable.el.hidden = false;
+        activeTable.renderRows(items);
         announce(`${items.length} connection profile${items.length === 1 ? '' : 's'}.`);
         return true;
       },
-      onState: (s) => { if (s !== 'ready') { table.renderRows([]); table.el.hidden = true; } },
+      onState: (s) => {
+        if (s !== 'ready') { const t = ensureTable(false); t.renderRows([]); t.el.hidden = true; }
+      },
     });
     renderBanner();
   }
@@ -275,6 +323,193 @@ export function mountConnectionSetup(root) {
         ]),
       ]));
     }
+  }
+
+  /* ---------------- per-row operator actions: sweep / adopt / drain ------- */
+
+  /**
+   * The Actions cell for one row. Blank for anything not LIVE_READ or
+   * LIVE_WRITE — including a MOCK row sharing a table with a live one, where
+   * the column exists but this row has nothing to offer.
+   */
+  function renderActionsCell(row) {
+    const mode = String(row.mode || state.mode || '').toUpperCase();
+    if (!isLiveMode(mode)) return h('span', { class: 'muted' }, '—');
+    const connectionId = row.connection_id || row.name;
+    const buttons = [
+      actionButton(connectionId, 'Sweep now', 'Sweeping…', onSweep),
+      actionButton(connectionId, 'Adopt orders', 'Adopting…', onAdopt),
+    ];
+    if (mode === 'LIVE_WRITE') {
+      buttons.push(actionButton(connectionId, 'Drain outbox', 'Draining…', onDrain));
+    }
+    return h('div', { class: 'btn-row' }, buttons);
+  }
+
+  /** One action button. Disabled the instant its own request is in flight;
+   * it does not touch its row's other buttons, which stay independently
+   * clickable. */
+  function actionButton(connectionId, label, busyLabel, handler) {
+    const button = h('button', {
+      type: 'button',
+      class: 'btn-sm',
+      disabled: !connectionId,
+      onClick: () => handler(connectionId, button, busyLabel, label),
+    }, label);
+    return button;
+  }
+
+  async function onSweep(connectionId, button, busyLabel, idleLabel) {
+    if (!connectionId || button.disabled) return;
+    button.disabled = true;
+    button.textContent = busyLabel;
+    renderActionInfo(`Sweeping ${connectionId}…`);
+    try {
+      const result = await sweepConnection(connectionId, {});
+      renderSweepResult(connectionId, result.data);
+      announce(`Sweep of ${connectionId} completed.`);
+    } catch (err) {
+      renderActionFailure(connectionId, 'sweep', err);
+      announce(`Sweep of ${connectionId} failed.`);
+    } finally {
+      button.disabled = false;
+      button.textContent = idleLabel;
+    }
+  }
+
+  async function onAdopt(connectionId, button, busyLabel, idleLabel) {
+    if (!connectionId || button.disabled) return;
+    button.disabled = true;
+    button.textContent = busyLabel;
+    renderActionInfo(`Adopting tenant orders for ${connectionId}…`);
+    try {
+      const result = await adoptOrders(connectionId);
+      renderAdoptResult(connectionId, result.data);
+      announce(`Adopt orders for ${connectionId} completed.`);
+    } catch (err) {
+      renderActionFailure(connectionId, 'adopt-orders', err);
+      announce(`Adopt orders for ${connectionId} failed.`);
+    } finally {
+      button.disabled = false;
+      button.textContent = idleLabel;
+    }
+  }
+
+  async function onDrain(connectionId, button, busyLabel, idleLabel) {
+    if (!connectionId || button.disabled) return;
+    // eslint-disable-next-line no-alert
+    const proceed = window.confirm(
+      'This sends every pending outbox row to Zoho ERP DEMO WBS (60074128927) as real purchase '
+      + 'orders. Continue?');
+    if (!proceed) {
+      announce('The outbox drain was cancelled. Nothing was sent.');
+      renderActionInfo('The outbox drain was cancelled. Nothing was sent.');
+      return;
+    }
+    button.disabled = true;
+    button.textContent = busyLabel;
+    renderActionInfo(`Draining the outbox for ${connectionId}…`);
+    try {
+      const result = await drainOutbox(connectionId);
+      renderDrainResult(connectionId, result.data);
+      announce(`Outbox drain for ${connectionId} completed.`);
+    } catch (err) {
+      renderActionFailure(connectionId, 'drain-outbox', err);
+      announce(`Outbox drain for ${connectionId} failed.`);
+    } finally {
+      button.disabled = false;
+      button.textContent = idleLabel;
+    }
+  }
+
+  /** A single-line interim message: cancelled, or in progress. */
+  function renderActionInfo(message) {
+    replace(actionResult, h('div', { class: 'msg msg-info' }, [
+      h('span', { class: 'ico', 'aria-hidden': 'true' }, '·'),
+      h('div', { class: 'body' }, message),
+    ]));
+  }
+
+  function renderSweepResult(connectionId, data) {
+    const modules = (data && data.modules && typeof data.modules === 'object') ? data.modules : {};
+    const moduleLines = Object.entries(modules).map(([name, m]) => h('div', {},
+      `${name}: ${(m && m.state) || 'UNKNOWN'} `
+      + `(${(m && m.records_seen) || 0} seen, ${(m && m.inbox_created) || 0} new)`));
+    const receiveLines = (data && data.receive_lines_recorded) || 0;
+    const exceptionsRaised = (data && data.exceptions && data.exceptions.raised) || 0;
+    replace(actionResult, h('div', { class: 'msg msg-info' }, [
+      h('span', { class: 'ico', 'aria-hidden': 'true' }, '·'),
+      h('div', { class: 'body' }, [
+        h('strong', {}, `Sweep of ${connectionId} completed.`),
+        ...moduleLines,
+        h('div', {}, `Receive lines recorded: ${receiveLines}`),
+        h('div', {}, `Exceptions raised: ${exceptionsRaised}`),
+      ]),
+    ]));
+  }
+
+  function renderAdoptResult(connectionId, data) {
+    const d = data || {};
+    replace(actionResult, h('div', { class: 'msg msg-info' }, [
+      h('span', { class: 'ico', 'aria-hidden': 'true' }, '·'),
+      h('div', { class: 'body' }, [
+        h('strong', {}, `Adopt orders for ${connectionId} completed.`),
+        h('div', {}, `adopted ${d.adopted ?? 0}, linked ${d.linked ?? 0}, skipped ${d.skipped ?? 0}, `
+          + `exceptions ${d.exceptions ?? 0}, calls ${d.calls ?? 0}`),
+      ]),
+    ]));
+  }
+
+  function renderDrainResult(connectionId, data) {
+    const d = data || {};
+    const results = Array.isArray(d.results) ? d.results : [];
+    const resultLines = results.map((r) => {
+      const outboxId = (r && r.outbox_id) || '—';
+      if (r && r.sent) return h('div', { class: 'mono' }, `${outboxId} → ${r.external_id}`);
+      const code = (r && (r.refused || r.message)) || 'REFUSED';
+      return h('div', { class: 'mono' }, `${outboxId} refused ${code}`);
+    });
+    replace(actionResult, h('div', { class: 'msg msg-info' }, [
+      h('span', { class: 'ico', 'aria-hidden': 'true' }, '·'),
+      h('div', { class: 'body' }, [
+        h('strong', {}, `Outbox drain for ${connectionId} completed.`),
+        h('div', {}, `claimed ${d.claimed ?? 0}, sent ${d.sent ?? 0}`),
+        ...resultLines,
+      ]),
+    ]));
+  }
+
+  /**
+   * The RFC-7807 code and detail, verbatim, from `err.body.detail`.
+   *
+   * `readProblem()` in core/api-client.js reads a nested `.message`, not a
+   * nested `.detail` — the field these three routes actually send — so
+   * `err.message` here is generic conflict/validation wording, not what the
+   * server said. `err.code` DOES resolve correctly (readProblem reads
+   * `nested.code`), so only the detail text needs reaching for directly.
+   */
+  function rfc7807Of(err) {
+    const nested = err && err.body && typeof err.body === 'object' ? err.body.detail : null;
+    const code = (nested && nested.code) || (err && err.code) || 'ERROR';
+    const detail = (nested && typeof nested.detail === 'string' && nested.detail)
+      || (err && err.message) || 'The request failed.';
+    return { code, detail };
+  }
+
+  function renderActionFailure(connectionId, action, err) {
+    if (err && err.name === 'EndpointUnavailableError') {
+      renderActionInfo(`This action is not available in this build: it does not mount ${err.path}. `
+        + 'Nothing was sent.');
+      return;
+    }
+    const { code, detail } = rfc7807Of(err);
+    replace(actionResult, h('div', { class: 'msg msg-error', role: 'alert' }, [
+      h('span', { class: 'ico', 'aria-hidden': 'true' }, '✖'),
+      h('div', { class: 'body' }, [
+        h('strong', {}, `${connectionId}: ${action} failed.`),
+        h('div', { class: 'mono' }, `${code}: ${detail}`),
+      ]),
+    ]));
   }
 
   (async () => {

@@ -9,6 +9,7 @@
     "budget.spec.js",
     "closure.spec.js",
     "fx-rates.spec.js",
+    "integration-actions.spec.js",
     "integration.spec.js",
     "mapping.spec.js",
     "nav-rail-budget.spec.js",
