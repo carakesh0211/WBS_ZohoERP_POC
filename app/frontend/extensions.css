@@ -123,3 +123,43 @@ button.nav-group {
 button.nav-group:hover { background: var(--n100); }
 button.nav-group:focus-visible { outline: 2px solid var(--primary-600); outline-offset: -2px; }
 .nav-group-caret { font-size: 9px; opacity: .7; flex: 0 0 auto; }
+
+/* The group holding the currently open screen, when that group would
+   otherwise render collapsed (renderNav() forces it open for this render and
+   sets aria-current="true" — see app.js). A visible marker beyond
+   aria-current alone: the caret and layout already say "open", so this is
+   what tells a sighted user WHY a normally-collapsed group is open right
+   now. Reuses --primary-800/--primary-600, the same accent .nav-item.active
+   already uses for "this is where you are", rather than introducing a new
+   colour meaning. */
+.nav-group.nav-group-current { color: var(--primary-800); }
+.nav-group.nav-group-current .nav-group-label::after {
+  content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 6px;
+  border-radius: 50%; background: var(--primary-600); vertical-align: middle;
+}
+
+/* ---------------- nav rail bulk expand/collapse (Fable 5.1 Stream F) ------
+   Two small buttons above the groups, reusing styles.css's own .btn-sm /
+   .btn-ghost (no new button appearance is introduced). The row gets the same
+   12px horizontal rhythm as a .nav-item/.nav-group so it lines up with the
+   rail's existing content instead of reading as a bolted-on toolbar, and
+   wraps rather than overflows the rail's fixed --nav-w at any of the three
+   approved breakpoints. */
+.nav-bulk-row {
+  display: flex; gap: 6px; flex-wrap: wrap; padding: 0 12px 8px; margin-bottom: 4px;
+  border-bottom: 1px solid var(--n200);
+}
+.nav-bulk-row button { flex: 0 1 auto; white-space: nowrap; }
+/* styles.css's own icon-only rail (`.nav.collapsed` at >900px, toggled by
+   #navToggle) already hides `.nav-label`, `.pill` and `.nav-group` text at a
+   44px rail width. Two labelled buttons would not fit there and are not
+   useful without their text, so they hide the same way. Below 900px
+   `.nav.collapsed` is reverted back to the full-width drawer by styles.css's
+   own media query, so this never hides the row on tablet-800. */
+.nav.collapsed .nav-bulk-row { display: none; }
+
+/* The wrapper each group's items render into (aria-controls target). Hiding
+   it is normally just the browser's native [hidden] handling (styles.css
+   already sets `[hidden] { display:none !important; }`); nothing further is
+   needed for the collapsed state. */
+.nav-group-items { display: block; }

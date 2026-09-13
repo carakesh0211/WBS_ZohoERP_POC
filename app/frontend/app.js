@@ -329,14 +329,21 @@ function scr(id) {
 
 /* ---------------- navigation ---------------------------------------------- */
 const NAV = [
-  { g: 'Work' },
+  // Fable 5.1 Stream F: EVERY group is now collapsible (renderNav() below no
+  // longer special-cases a group that omits `defaultExpanded`). Work and
+  // Project Control default OPEN — they hold the screens used every day —
+  // and every other group defaults CLOSED, which is what keeps the six
+  // previously-static groups from re-opening the exact overflow A3 and the
+  // Fable 5.1 nav-rail-budget measurements (tests/vrt/nav-rail-budget.spec.js)
+  // already found once. See docs/ui-change-2026-09/F-collapsible-navigation.md.
+  { g: 'Work', defaultExpanded: true },
   { id: 'home', ico: '▣', label: 'Executive Dashboard' },
   { id: 'approvals', ico: '✔', label: 'My Approvals', badge: 'approvals' },
   { id: 'alerts', ico: '⚠', label: 'Alerts & Exceptions', badge: 'alerts' },
   /* The eight approval screens are ROUTES ONLY — deliberately absent from this
      table. See the Governance group below and docs/ui-change-2026-09/
      A3-approval-navigation.md for the measurements that decided it. */
-  { g: 'Project Control' },
+  { g: 'Project Control', defaultExpanded: true },
   { id: 'projects', ico: '▤', label: 'CAPEX Projects' },
   { id: 'wbs', ico: '⌗', label: 'WBS Explorer' },
   { id: 'budget', ico: '▦', label: 'Budget Planning Grid' },
@@ -346,18 +353,18 @@ const NAV = [
   scr('budget-grid'),
   scr('budget-compare'),
   scr('budget-availability'),
-  { g: 'Procurement & Actuals' },
+  { g: 'Procurement & Actuals', defaultExpanded: false },
   { id: 'prs', ico: '✎', label: 'Purchase Requests' },
   { id: 'pos', ico: '▧', label: 'Commitments (PO)' },
   { id: 'grns', ico: '⇩', label: 'GRN & Receipts' },
   { id: 'bills', ico: '₹', label: 'Vendor Bills & CWIP' },
   { id: 'recon', ico: '⇄', label: 'Commitment Reconciliation' },
-  { g: 'Closure' },
+  { g: 'Closure', defaultExpanded: false },
   { id: 'cap', ico: '★', label: 'Capitalisation' },
-  { g: 'Integration' },
+  { g: 'Integration', defaultExpanded: false },
   { id: 'zoho', ico: '⚯', label: 'Zoho ERP Connector', need: ['connector.read'] },
   { id: 'inventory', ico: '≣', label: 'API Inventory', need: ['connector.read'] },
-  { g: 'Governance' },
+  { g: 'Governance', defaultExpanded: false },
   { id: 'audit', ico: '⎙', label: 'Audit Trail', need: ['audit.read'] },
   scr('audit-trail'),
   /* THE APPROVAL ENGINE'S EIGHT SCREENS ARE REACHABLE BY ROUTE, NOT BY RAIL.
@@ -399,8 +406,11 @@ const NAV = [
      A3 measurement's mistake (see the long comment above `scr('settings')`):
      both start COLLAPSED, so their fifteen rows add only two one-line group
      headers to the rail's resting height, not fifteen rows of content.
-     renderNav()'s collapsible-group mechanism (aria-expanded, sessionStorage,
-     `defaultExpanded`) is what makes that safe — see the group there. */
+     renderNav()'s collapsible-group mechanism (aria-expanded, localStorage,
+     `defaultExpanded`) is what makes that safe — see the group there. Stream F
+     later made every OTHER group collapsible the same way, so this is no
+     longer a special case; ANALYTICS and INTEGRATION MAPPING just keep the
+     `defaultExpanded: false` they always declared. */
   { g: 'ANALYTICS', defaultExpanded: false },
   scr('analytics-executive'),
   scr('analytics-controller'),
@@ -431,64 +441,116 @@ function viewAllowed(id) {
 }
 
 /* ---------------- collapsible nav groups ----------------------------------
-   Fable 5.1: every `{ g: '…' }` marker in NAV is now a toggle, not just a
-   heading — the mechanism that lets the ANALYTICS and INTEGRATION MAPPING
-   groups added above hold their fifteen rows off the rail's resting height
-   without a second measurement pass like A3's. A group's `defaultExpanded`
-   (absent = true, so every group already in NAV before this change keeps
-   rendering exactly as open as it always was) is the fallback; once a user
-   has ever clicked a group's header, sessionStorage remembers their choice
-   for the rest of the tab's life — sessionStorage, never localStorage, the
-   same rule every session value in this file already follows. */
+   Fable 5.1 Stream F: EVERY `{ g: '…' }` marker in NAV is a toggle — the six
+   groups the client originally approved as static `<h2>` headings collapse
+   exactly like the two later groups (ANALYTICS, INTEGRATION MAPPING) that
+   introduced the mechanism. A group's `defaultExpanded` says where it starts
+   for a user who has never touched it (Work and Project Control open,
+   everything else closed — see the NAV table above).
+
+   PERSISTENCE IS PER USER, PER BROWSER: the key carries the signed-in user's
+   id, and the value lives in localStorage, not sessionStorage — deliberately
+   the one exception to this file's usual "session state only" rule (see the
+   comment on SESSION_KEY), because the point is that the choice survives
+   past the tab that made it. Before sign-in (or if localStorage throws — a
+   private window, a full quota) every group simply renders at its
+   `defaultExpanded` value; nothing here ever reads or writes the session id
+   itself. */
 const NAV_GROUP_STATE_PREFIX = 'capex.nav.group.';
-function navGroupDefaultExpanded(n) { return n.defaultExpanded === undefined ? true : !!n.defaultExpanded; }
-function navGroupExpanded(n) {
-  try {
-    const v = sessionStorage.getItem(NAV_GROUP_STATE_PREFIX + n.g);
-    if (v === '1') return true;
-    if (v === '0') return false;
-  } catch { /* sessionStorage unavailable: fall through to the default */ }
-  return navGroupDefaultExpanded(n);
+function navGroupDefaultExpanded(defaultExpanded) { return defaultExpanded === undefined ? true : !!defaultExpanded; }
+function navGroupStorageKey(groupName) {
+  const uid = S.me && S.me.user_id;
+  return uid ? `${NAV_GROUP_STATE_PREFIX}${uid}.${groupName}` : null;
 }
-function setNavGroupExpanded(name, expanded) {
-  try { sessionStorage.setItem(NAV_GROUP_STATE_PREFIX + name, expanded ? '1' : '0'); }
+function navGroupExpanded(groupName, defaultExpanded) {
+  const key = navGroupStorageKey(groupName);
+  if (key) {
+    try {
+      const v = localStorage.getItem(key);
+      if (v === '1') return true;
+      if (v === '0') return false;
+    } catch { /* localStorage unavailable: fall through to the default */ }
+  }
+  return navGroupDefaultExpanded(defaultExpanded);
+}
+function setNavGroupExpanded(groupName, expanded) {
+  const key = navGroupStorageKey(groupName);
+  if (!key) return; // no signed-in user to scope the preference to
+  try { localStorage.setItem(key, expanded ? '1' : '0'); }
   catch { /* the toggle still re-renders open/closed for this render; it just will not survive a reload */ }
+}
+/** Applied by the "Expand all" / "Collapse all" rail controls: every group
+    marker in NAV, set the same way a single toggle click would be. */
+function setAllNavGroupsExpanded(expanded) {
+  NAV.forEach(n => { if (n.g) setNavGroupExpanded(n.g, expanded); });
+}
+/* "capex-nav-work" for 'Work', "capex-nav-procurement-actuals" for
+   'Procurement & Actuals' — a stable, CSS-id-safe handle for aria-controls
+   that does not depend on esc()/CSS.escape() matching at read time. */
+function navGroupPanelId(groupName) {
+  return 'capex-nav-' + groupName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+function navItemHtml(n) {
+  const badge = n.badge === 'approvals' ? S.counts?.approvals : n.badge === 'alerts' ? S.counts?.alerts : null;
+  const pill = badge ? `<span class="pill ${n.badge === 'alerts' ? 'warn' : ''}">${badge}</span>` : '';
+  const active = S.view === n.id;
+  return `<button type="button" class="nav-item${active ? ' active' : ''}" data-nav="${n.id}"${active ? ' aria-current="page"' : ''}>
+    <span class="ico" aria-hidden="true">${n.ico}</span><span class="nav-label">${esc(n.label)}</span>${pill}</button>`;
 }
 
 function renderNav() {
   const el = document.getElementById('nav');
-  const out = [];
-  let groupOpen = true; // items before the first `{ g }` marker (none today) render unconditionally
-  NAV.forEach((n, i) => {
-    if (n.g) {
-      // Suppress a group heading whose every item is out of reach for this role.
-      const rest = NAV.slice(i + 1);
-      const end = rest.findIndex(x => x.g);
-      const items = (end === -1 ? rest : rest.slice(0, end));
-      if (!items.some(navAllowed)) return;
-      // Only a group that DECLARES `defaultExpanded` is collapsible (the two
-      // Fable 5.1 groups that expose the analytics and mapping screens). The
-      // six approved groups keep the exact <h2> markup the client signed off
-      // on, so their pixels do not move; the rail grows only by the new rows.
-      if (n.defaultExpanded === undefined) {
-        groupOpen = true;
-        out.push(`<h2 class="nav-group">${esc(n.g)}</h2>`);
-        return;
-      }
-      const expanded = navGroupExpanded(n);
-      groupOpen = expanded;
-      out.push(`<button type="button" class="nav-group" data-nav-group="${esc(n.g)}" aria-expanded="${expanded}">
-        <span class="nav-group-label">${esc(n.g)}</span><span class="nav-group-caret" aria-hidden="true">${expanded ? '▾' : '▸'}</span></button>`);
-      return;
-    }
-    if (!navAllowed(n)) return;
-    if (!groupOpen) return;
-    const badge = n.badge === 'approvals' ? S.counts?.approvals : n.badge === 'alerts' ? S.counts?.alerts : null;
-    const pill = badge ? `<span class="pill ${n.badge === 'alerts' ? 'warn' : ''}">${badge}</span>` : '';
-    const active = S.view === n.id;
-    out.push(`<button type="button" class="nav-item${active ? ' active' : ''}" data-nav="${n.id}"${active ? ' aria-current="page"' : ''}>
-      <span class="ico" aria-hidden="true">${n.ico}</span><span class="nav-label">${esc(n.label)}</span>${pill}</button>`);
+
+  // Partition NAV into the (currently none) ungrouped leading items and a
+  // list of { name, defaultExpanded, items } groups, so a group's expand
+  // state can be decided once, up front, instead of by a running "is the
+  // previous group open" flag.
+  const ungrouped = [];
+  const groups = [];
+  let cur = null;
+  NAV.forEach(n => {
+    if (n.g) { cur = { name: n.g, defaultExpanded: n.defaultExpanded, items: [] }; groups.push(cur); }
+    else if (cur) cur.items.push(n);
+    else ungrouped.push(n);
   });
+
+  // THE ACTIVE ROUTE MUST STAY DISCOVERABLE even when its group is normally
+  // collapsed: the group holding S.view is forced open for THIS render only
+  // (never written to localStorage — leaving the page and coming back must
+  // restore the user's own choice, not the forced one) and gets a visible
+  // marker plus aria-current, matching how a `.nav-item` already marks the
+  // active leaf.
+  const activeGroup = groups.find(g => g.items.some(n => n.id === S.view));
+
+  const out = [];
+  ungrouped.forEach(n => { if (navAllowed(n)) out.push(navItemHtml(n)); });
+
+  out.push(`<div class="nav-bulk-row">
+    <button type="button" class="btn-sm btn-ghost" data-nav-expand-all>Expand all</button>
+    <button type="button" class="btn-sm btn-ghost" data-nav-collapse-all>Collapse all</button>
+  </div>`);
+
+  groups.forEach(g => {
+    // Suppress a group whose every item is out of reach for this role.
+    if (!g.items.some(navAllowed)) return;
+    const isActive = g === activeGroup;
+    const expanded = isActive ? true : navGroupExpanded(g.name, g.defaultExpanded);
+    const panelId = navGroupPanelId(g.name);
+    out.push(`<button type="button" class="nav-group${isActive ? ' nav-group-current' : ''}" data-nav-group="${esc(g.name)}"
+      aria-expanded="${expanded}" aria-controls="${panelId}"${isActive ? ' aria-current="true"' : ''}>
+      <span class="nav-group-label">${esc(g.name)}</span><span class="nav-group-caret" aria-hidden="true">${expanded ? '▾' : '▸'}</span></button>`);
+    // The panel's id exists whether or not the group is open, so aria-controls
+    // always resolves to a real element — but its rows are only ever built
+    // when the group is expanded. A collapsed group therefore contributes
+    // nothing but its own header to #nav's DOM, exactly as it did before
+    // every group became collapsible (the two Fable 5.1 groups that always
+    // had this mechanism worked the same way), which keeps `.nav-item` a
+    // reliable count of what a sighted OR assistive-tech user can actually
+    // reach right now, not a count of markup sitting behind `hidden`.
+    const itemsHtml = expanded ? g.items.filter(navAllowed).map(navItemHtml).join('') : '';
+    out.push(`<div class="nav-group-items" id="${panelId}"${expanded ? '' : ' hidden'}>${itemsHtml}</div>`);
+  });
+
   el.innerHTML = out.join('');
 }
 
@@ -1470,7 +1532,7 @@ document.getElementById('dlg').addEventListener('close', () => {
 document.getElementById('dlgClose').addEventListener('click', () => document.getElementById('dlg').close());
 
 document.addEventListener('click', async (ev) => {
-  const t = ev.target.closest('[data-nav],[data-nav-group],[data-toggle],[data-open],[data-approve-pr],[data-approve-rev],[data-approve-cap],[data-alloc],[data-amend],[data-cancel],[data-close]');
+  const t = ev.target.closest('[data-nav],[data-nav-group],[data-nav-expand-all],[data-nav-collapse-all],[data-toggle],[data-open],[data-approve-pr],[data-approve-rev],[data-approve-cap],[data-alloc],[data-amend],[data-cancel],[data-close]');
   if (!t) return;
 
   if (t.dataset.nav) { S.view = t.dataset.nav; await render(); return; }
@@ -1482,6 +1544,19 @@ document.addEventListener('click', async (ev) => {
     renderNav();
     // Keep the keyboard where it was: refocus the same group header after the re-render.
     document.querySelector(`[data-nav-group="${CSS.escape(name)}"]`)?.focus();
+    return;
+  }
+
+  if (t.dataset.navExpandAll !== undefined) {
+    setAllNavGroupsExpanded(true);
+    renderNav();
+    document.querySelector('[data-nav-expand-all]')?.focus();
+    return;
+  }
+  if (t.dataset.navCollapseAll !== undefined) {
+    setAllNavGroupsExpanded(false);
+    renderNav();
+    document.querySelector('[data-nav-collapse-all]')?.focus();
     return;
   }
 
