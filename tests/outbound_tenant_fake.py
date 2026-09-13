@@ -558,7 +558,10 @@ def draft(local_id: str = "PR-0001", *, lines=None,
     return ob.PurchaseOrderDraft(
         local_id=local_id, connection_id=CONNECTION_ID,
         vendor_external_id="ZV-77", lines=tuple(lines or (line(),)),
-        document_date=document_date, line_level_dimensions=True)
+        document_date=document_date, line_level_dimensions=True,
+        # Every emitted order names its WBS order number (2026-09-13); the
+        # plan passes the PO number, the fake passes the local id.
+        reference=local_id)
 
 
 def emission_document(local_id: str = "PR-0001", *,
