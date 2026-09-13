@@ -217,43 +217,7 @@ PERMISSIONS = {
     for permission, roles in PERMISSIONS.items()
 }
 
-# --- Fable 5.1 / Stream B (product owner, 2026-09-13) ---------------------
-# THE ADMINISTRATOR HOLDS EVERY PERMISSION. Applied here, once, over the
-# catalogue above rather than typed into each tuple, so a permission added
-# later cannot omit the role by accident and a reviewer can see the rule in
-# one place. Maker-checker is NOT weakened by it: an Administrator who raised
-# an object is still refused its approval by `require_separation` unless they
-# override DELIBERATELY -- an explicit `admin_override_reason`, the role, no
-# delegation -- and every override is an ADMIN_SELF_APPROVAL_OVERRIDE audit
-# entry (`pg/admin_override.py`). This supersedes the AUD-C-006 assertion
-# "administration must not be a route to approving spend" by owner decision;
-# tests/ADAPTATIONS.md records it.
-ADMIN_ROLE = "Administrator"
-ADMIN_OVERRIDE_ACTION = "ADMIN_SELF_APPROVAL_OVERRIDE"
-ADMIN_OVERRIDE_MIN_REASON = 10
-PERMISSIONS = {
-    permission: (roles if ADMIN_ROLE in roles else (*roles, ADMIN_ROLE))
-    for permission, roles in PERMISSIONS.items()
-}
 
-# --- Fable 5.1 / Stream B (product owner, 2026-09-13) ---------------------
-# THE ADMINISTRATOR HOLDS EVERY PERMISSION. Applied here, once, over the
-# catalogue above rather than typed into each tuple, so a permission added
-# later cannot omit the role by accident and a reviewer can see the rule in
-# one place. Maker-checker is NOT weakened by it: an Administrator who raised
-# an object is still refused its approval by `require_separation` unless they
-# override DELIBERATELY -- an explicit `admin_override_reason`, the role, no
-# delegation -- and every override is an ADMIN_SELF_APPROVAL_OVERRIDE audit
-# entry (`pg/admin_override.py`). This supersedes the AUD-C-006 assertion
-# "administration must not be a route to approving spend" by owner decision;
-# tests/ADAPTATIONS.md records it.
-ADMIN_ROLE = "Administrator"
-ADMIN_OVERRIDE_ACTION = "ADMIN_SELF_APPROVAL_OVERRIDE"
-ADMIN_OVERRIDE_MIN_REASON = 10
-PERMISSIONS = {
-    permission: (roles if ADMIN_ROLE in roles else (*roles, ADMIN_ROLE))
-    for permission, roles in PERMISSIONS.items()
-}
 
 MAKER_CHECKER = {"pr.approve", "pr.approve_exception", "imr.approve",
                  "revision.approve",

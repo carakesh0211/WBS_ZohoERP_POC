@@ -83,7 +83,6 @@ from typing import Any
 
 from ..money import format_inr
 from . import admin_override as admin_override_mod
-from . import admin_override as admin_override_mod
 from . import audit as audit_mod
 from . import repo
 from .engine import Session
@@ -161,24 +160,6 @@ def _iso(value: Any) -> Any:
 def _text(value: Any) -> str:
     return (value or "").strip() if isinstance(value, str) else ""
 
-
-
-def _validated_override(admin_override, *, maker, actor):
-    """Stream B: an override record the ROUTER resolved through
-    `auth.require_separation` (with the real principal), validated here and
-    honoured only when it names THIS actor and THIS maker -- a record for a
-    different object or person is not an override of this one."""
-    if admin_override is None:
-        return None
-    try:
-        record = admin_override_mod.validate(admin_override)
-    except Exception as exc:  # AuthError -> this module's shape
-        _err(getattr(exc, "code", "ADMIN_OVERRIDE_INVALID"), str(exc), status=403)
-    if record["actor_user_id"] != actor or (maker and record["maker_user_id"] != maker):
-        _err("ADMIN_OVERRIDE_INVALID",
-             "The override record names a different actor or maker than this "
-             "decision.", status=403)
-    return record
 
 
 def _validated_override(admin_override, *, maker, actor):

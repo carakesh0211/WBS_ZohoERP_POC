@@ -106,22 +106,6 @@ def _override_or_refuse(*, principal, permission, maker, actor, object_label,
         raise BudgetServiceError(exc.code, exc.message, status=exc.status) from exc
 
 
-def _override_or_refuse(*, principal, permission, maker, actor, object_label,
-                        admin_override_reason, admin_override):
-    """Stream B: the Administrator's deliberate override, resolved through
-    `pg.admin_override.resolve` and re-coded as this module's error. None
-    when no override was offered or none is needed."""
-    from . import admin_override as admin_override_mod
-    from .. import auth as auth_mod
-    try:
-        return admin_override_mod.resolve(
-            principal=principal, permission=permission, maker_user_id=maker,
-            object_label=object_label, admin_override_reason=admin_override_reason,
-            admin_override=admin_override)
-    except auth_mod.AuthError as exc:
-        raise BudgetServiceError(exc.code, exc.message, status=exc.status) from exc
-
-
 class BudgetServiceError(Exception):
     """Raised for every rejected budget-service call.
 

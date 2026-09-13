@@ -149,7 +149,6 @@ from ..integration import throttle
 from ..integration.dto import DtoError
 from ..money import MoneyError
 from . import admin_override as admin_override_mod
-from . import admin_override as admin_override_mod
 from . import audit as audit_mod
 from . import fx
 from .fx import BASE_CURRENCY
