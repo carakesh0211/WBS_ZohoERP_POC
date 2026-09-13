@@ -8968,8 +8968,8 @@
         "body_sha": "a9a262054463e82d"
       },
       "test_conversion_reads_the_external_portion_and_a_wholly_internal_request_refuses": {
-        "assertions": 5,
-        "body_sha": "b99c31e0e14a64f1"
+        "assertions": 10,
+        "body_sha": "cd6c2db6204295e0"
       },
       "test_the_lifecycle_moves_money_between_limbs_and_never_counts_it_twice": {
         "assertions": 35,
@@ -9008,12 +9008,16 @@
         "body_sha": "1f15ef9c5e13fa92"
       },
       "test_the_export_the_report_and_the_closure_position_show_the_internal_figures_apart": {
-        "assertions": 16,
-        "body_sha": "1551cb724bb549ff"
+        "assertions": 17,
+        "body_sha": "caa080d8abdfd348"
       },
       "test_every_verb_appends_to_the_audit_chain": {
         "assertions": 3,
         "body_sha": "1b71d8782a5e11af"
+      },
+      "test_a_return_split_into_legs_strands_no_paisa": {
+        "assertions": 3,
+        "body_sha": "8efc358e9b9b5216"
       }
     },
     "test_pg_locking.py": {
@@ -13855,7 +13859,7 @@
     "test_pg_identity_notifications_fable51.py": 9,
     "test_pg_integration_rate_budget.py": 21,
     "test_pg_integration_schema.py": 81,
-    "test_pg_internal_fulfilment_fable51.py": 22,
+    "test_pg_internal_fulfilment_fable51.py": 23,
     "test_pg_locking.py": 17,
     "test_pg_locking_order.py": 19,
     "test_pg_masters.py": 32,
@@ -14004,7 +14008,7 @@
     "test_pg_identity_notifications_fable51.py": 94,
     "test_pg_integration_rate_budget.py": 109,
     "test_pg_integration_schema.py": 132,
-    "test_pg_internal_fulfilment_fable51.py": 172,
+    "test_pg_internal_fulfilment_fable51.py": 181,
     "test_pg_locking.py": 36,
     "test_pg_locking_order.py": 30,
     "test_pg_masters.py": 82,

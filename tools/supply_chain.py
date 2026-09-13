@@ -39,7 +39,9 @@ PYPI = "https://pypi.org/pypi/{name}/{version}/json"
 OSV_BATCH = "https://api.osv.dev/v1/querybatch"
 
 DIRECT_DEPENDENCIES = {
-    "runtime": ["fastapi", "uvicorn", "pydantic"],
+    # Kept in step with requirements.txt; the CI path passes --resolved and
+    # scans the whole closure, this table is the fallback when it is absent.
+    "runtime": ["fastapi", "uvicorn", "pydantic", "psycopg", "psycopg_pool", "openpyxl"],
     "development": ["pytest", "httpx"],
 }
 
