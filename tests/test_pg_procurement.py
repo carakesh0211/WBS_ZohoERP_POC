@@ -843,6 +843,7 @@ def test_a_multi_cell_purchase_order_keeps_one_line_per_cell(
             session, project_id=ids["project"], vendor_name="Acme",
             actor="U-PROC",
             lines=[_line(ids, 100_00), _line(ids, 200_00, wbs=ids["root"])])
+        _approve(session, created["po_id"])
         headers = session.fetchall(
             "SELECT po_id FROM purchase_order WHERE po_id = %s",
             (created["po_id"],))
@@ -917,6 +918,15 @@ class _Caps:
     line_level_custom_fields = False
 
 
+def _approve(session, po_id: str) -> None:
+    """A directly-created order is Draft; since 2026-09-13 only an Approved /
+    Released order, or one converted from an Approved request, may be
+    planned for emission (`procurement_services._require_approved_origin`).
+    The emission tests below are about the plan, the split and the send,
+    so the order is approved here, in the same transaction."""
+    session.execute("UPDATE purchase_order SET status = 'Approved' WHERE po_id = %s", (po_id,))
+
+
 class _MetadataOnlyAdapter:
     """Capabilities and nothing else. It has no transport and cannot call
     anything, which is the shape `api/procurement.py` builds too."""
@@ -937,6 +947,7 @@ def test_plan_po_emission_writes_one_outbox_row_per_purchase_order(
             session, project_id=ids["project"], vendor_name="Acme",
             actor="U-PROC",
             lines=[_line(ids, 100_00), _line(ids, 200_00, wbs=ids["root"])])
+        _approve(session, created["po_id"])
         planned = proc.plan_po_emission(
             session, po_id=created["po_id"], connection_id=connection_id,
             adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-77",
@@ -967,6 +978,7 @@ def test_replanning_the_same_purchase_order_reuses_its_outbox_rows(
         created = proc.create_po(session, project_id=ids["project"],
                                  vendor_name="Acme", actor="U-PROC",
                                  lines=[_line(ids, 100_00)])
+        _approve(session, created["po_id"])
         kwargs = dict(po_id=created["po_id"], connection_id=connection_id,
                       adapter=_MetadataOnlyAdapter(),
                       vendor_external_id="ZV-77",
@@ -996,6 +1008,7 @@ def test_an_unacknowledged_split_writes_no_outbox_row_at_all(
             session, project_id=ids["project"], vendor_name="Acme",
             actor="U-PROC",
             lines=[_line(ids, 100_00), _line(ids, 200_00, wbs=ids["root"])])
+        _approve(session, created["po_id"])
         with pytest.raises(proc.ProcurementError) as excinfo:
             proc.plan_po_emission(
                 session, po_id=created["po_id"], connection_id=connection_id,
@@ -1043,6 +1056,7 @@ def test_send_reports_a_failure_instead_of_raising_it(
         created = proc.create_po(session, project_id=ids["project"],
                                  vendor_name="Acme", actor="U-PROC",
                                  lines=[_line(ids, 100_00)])
+        _approve(session, created["po_id"])
         planned = proc.plan_po_emission(
             session, po_id=created["po_id"], connection_id=connection_id,
             adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-77",
@@ -1077,6 +1091,7 @@ def test_a_daily_quota_refusal_costs_no_attempt_and_opens_the_circuit(
         created = proc.create_po(session, project_id=ids["project"],
                                  vendor_name="Acme", actor="U-PROC",
                                  lines=[_line(ids, 100_00)])
+        _approve(session, created["po_id"])
         planned = proc.plan_po_emission(
             session, po_id=created["po_id"], connection_id=connection_id,
             adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-77",
@@ -1147,6 +1162,7 @@ def test_a_duplicate_refusal_does_not_move_the_circuit(
         created = proc.create_po(session, project_id=ids["project"],
                                  vendor_name="Acme", actor="U-PROC",
                                  lines=[_line(ids, 100_00)])
+        _approve(session, created["po_id"])
         planned = proc.plan_po_emission(
             session, po_id=created["po_id"], connection_id=connection_id,
             adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-77",
@@ -1184,6 +1200,7 @@ def test_an_unclaimable_row_is_reported_without_moving_the_circuit(
         created = proc.create_po(session, project_id=ids["project"],
                                  vendor_name="Acme", actor="U-PROC",
                                  lines=[_line(ids, 100_00)])
+        _approve(session, created["po_id"])
         planned = proc.plan_po_emission(
             session, po_id=created["po_id"], connection_id=connection_id,
             adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-77",
@@ -1220,6 +1237,7 @@ def test_an_open_circuit_refuses_before_a_call_is_made(
         created = proc.create_po(session, project_id=ids["project"],
                                  vendor_name="Acme", actor="U-PROC",
                                  lines=[_line(ids, 100_00)])
+        _approve(session, created["po_id"])
         planned = proc.plan_po_emission(
             session, po_id=created["po_id"], connection_id=connection_id,
             adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-77",
@@ -1264,6 +1282,7 @@ def test_a_successful_send_records_the_external_id_and_closes_the_circuit(
         created = proc.create_po(session, project_id=ids["project"],
                                  vendor_name="Acme", actor="U-PROC",
                                  lines=[_line(ids, 100_00)])
+        _approve(session, created["po_id"])
         planned = proc.plan_po_emission(
             session, po_id=created["po_id"], connection_id=connection_id,
             adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-77",
@@ -1308,6 +1327,7 @@ def test_a_settled_outbox_row_costs_no_second_call(pg_database, pg_connection):
         created = proc.create_po(session, project_id=ids["project"],
                                  vendor_name="Acme", actor="U-PROC",
                                  lines=[_line(ids, 100_00)])
+        _approve(session, created["po_id"])
         planned = proc.plan_po_emission(
             session, po_id=created["po_id"], connection_id=connection_id,
             adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-77",
@@ -1343,6 +1363,7 @@ def test_the_planned_payload_survives_the_round_trip_through_jsonb(
         created = proc.create_po(session, project_id=ids["project"],
                                  vendor_name="Acme", actor="U-PROC",
                                  lines=[_line(ids, 123_45)])
+        _approve(session, created["po_id"])
         planned = proc.plan_po_emission(
             session, po_id=created["po_id"], connection_id=connection_id,
             adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-77",

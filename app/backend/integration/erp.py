@@ -175,6 +175,21 @@ VERIFIED_LINE_CUSTOM_FIELDS: Mapping[str, tuple[str, ...]] = {
 }
 
 
+#: The organisations this application may WRITE to. Product-owner decision
+#: of 2026-09-13: outbound purchase-order creation stays enabled for ongoing
+#: UAT against the dedicated demo tenant DEMO WBS and nothing else. The
+#: transport refuses any non-GET whose organisation is not here, whatever a
+#: connection row says, so a profile created for another organisation cannot
+#: be written to even if someone moves it to LIVE_WRITE.
+WRITE_AUTHORISED_ORGANISATIONS: frozenset[str] = frozenset({"60074128927"})
+
+#: The modules this application may write. Purchase orders only: bills,
+#: receives, payments, credits, vendors, items, taxes and banking are read
+#: (or never touched) by decision, and the credential carries no scope for
+#: them either. Two independent refusals for the same rule, on purpose.
+WRITE_ALLOWED_PATH_PREFIXES: tuple[str, ...] = ("/purchaseorders",)
+
+
 def line_level_custom_fields_for(organization_id: str) -> bool:
     """True only for a tenant whose line fields were verified (see above)."""
     return str(organization_id) in VERIFIED_LINE_CUSTOM_FIELDS
@@ -440,6 +455,29 @@ class ErpAdapter:
         return _purchase_order(
             body.get("purchaseorder") or {}, self._source(path), hydrated=True)
 
+    def _require_emission_fields(self, po: Any) -> None:
+        """Every emitted order carries its reference, and on a tenant whose
+        line fields are verified every line carries the WBS code and the
+        budget head (decision 2026-09-13: every test PO must carry
+        cf_capex_ref, cf_wbs_code and cf_budget_head). Refused BEFORE any
+        call, so nothing half-stamped ever reaches the tenant."""
+        if not str(getattr(po, "reference", None) or "").strip():
+            raise IntegrationError(
+                "EMISSION_REFERENCE_MISSING: the order carries no reference; "
+                "every emitted purchase order must name its WBS order number.")
+        fields = self.line_custom_field_names()
+        if not fields:
+            return
+        for number, line in enumerate(po.lines, start=1):
+            dims = getattr(line, "dimensions", {}) or {}
+            missing = [api_name for api_name in fields
+                       if not str(dims.get(LINE_CUSTOM_FIELD_DIMENSIONS.get(api_name, ""), "") or "").strip()]
+            if missing:
+                raise IntegrationError(
+                    f"EMISSION_LINE_FIELDS_MISSING: line {number} of the order "
+                    f"lacks {missing}; organisation {self.organization_id} requires "
+                    f"every emitted line to carry {list(fields)}. Nothing was sent.")
+
     def line_custom_field_names(self) -> tuple[str, ...]:
         """The line-level custom fields an emission may carry for THIS tenant:
         the verified names when `line_level_custom_fields` resolved True,
@@ -466,6 +504,7 @@ class ErpAdapter:
                 "A purchase order may not be emitted without a dedupe_key: "
                 "Zoho offers no idempotency header, so this field is the only "
                 "thing standing between a retry and a duplicate commitment.")
+        self._require_emission_fields(po)
         body = _emission_body(po, dedupe_key,
                               line_custom_fields=self.line_custom_field_names())
         response = self.transport.request(
@@ -609,6 +648,7 @@ class ErpAdapter:
             raise IntegrationError(
                 "update_purchase_order() requires the dedupe_key, so an update "
                 "cannot strip the field the retry path depends on.")
+        self._require_emission_fields(payload)
         body = _emission_body(payload, dedupe_key,
                               line_custom_fields=self.line_custom_field_names())
         path = PATH_PURCHASE_ORDER_UPDATE.format(external_id=external_id)

@@ -324,6 +324,23 @@ class LiveTransport:
                 f"Refusing {method} {path}: it needs scope {scope}, which the grant "
                 f"does not carry. Granted: {', '.join(sorted(self.granted_scopes))}. "
                 f"Generate a new Self Client code with that scope; nothing was sent.")
+        if method != "GET":
+            # The permanent demo boundaries (decision 2026-09-13), enforced at
+            # the one place every write passes: purchase orders only, and only
+            # the write-authorised organisation. The organisation comes from
+            # the query the ADAPTER built off the connection row -- never
+            # from a browser request -- and is checked again here.
+            if not any(path.startswith(prefix) for prefix in _erp.WRITE_ALLOWED_PATH_PREFIXES):
+                raise NetworkForbidden(
+                    f"Refusing {method} {path}: WRITE_MODULE_NOT_AUTHORISED. This "
+                    f"application writes purchase orders only "
+                    f"({list(_erp.WRITE_ALLOWED_PATH_PREFIXES)}); nothing was sent.")
+            organisation = str((params or {}).get("organization_id") or "").strip()
+            if organisation not in _erp.WRITE_AUTHORISED_ORGANISATIONS:
+                raise NetworkForbidden(
+                    f"Refusing {method} {path}: WRITE_ORGANISATION_NOT_AUTHORISED. "
+                    f"Organisation {organisation or '(none)'} is not the demo tenant "
+                    f"this application may write to; nothing was sent.")
         self._spend_one()
         # `encode_query` returns the bare `a=b&c=d`; the separator is ours to
         # add, and its absence turned every list into `/contactsorganization_id=`

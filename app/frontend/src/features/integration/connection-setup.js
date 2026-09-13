@@ -257,6 +257,24 @@ export function mountConnectionSetup(root) {
         + 'request it would issue and synthesises the response; it is not evidence that a Zoho '
         + 'tenant works.',
     }));
+    // The operational warning (product-owner decision 2026-09-13): while any
+    // profile is in LIVE_WRITE, an emission from this application creates a
+    // real purchase order in the Zoho ERP DEMO WBS tenant. Shown only then,
+    // so the approved screens keep their baselines in every other mode.
+    const writing = state.connections.filter((c) => String(c.mode || '').toUpperCase() === 'LIVE_WRITE');
+    if (writing.length) {
+      banner.appendChild(h('div', { class: 'msg msg-warning', 'data-testid': 'live-write-warning', role: 'alert' }, [
+        h('span', { class: 'ico', 'aria-hidden': 'true' }, '!'),
+        h('div', { class: 'body' }, [
+          h('strong', {}, 'Outbound writes are ENABLED on ' + writing.map((c) => c.connection_id).join(', ') + '.'),
+          text(' Purchase orders emitted from this application are created in the Zoho ERP DEMO WBS tenant '
+            + '(organisation 60074128927) and are real records there. Only purchase-order creation is granted; '
+            + 'bills, receives, payments, vendors, items, taxes and banking are never written. '
+            + 'Every emission carries cf_capex_ref, cf_wbs_code and cf_budget_head, and an identical retry '
+            + 'never creates a second order.'),
+        ]),
+      ]));
+    }
   }
 
   (async () => {

@@ -1128,9 +1128,26 @@ if os.path.isdir(FRONTEND):
         "restarts. Credentials are issued by the UAT coordinator; passwords are "
         "not derivable from user ids. The ERP connector is MOCK and outbound "
         "writes are disabled.")
+    #: The banner and the hint say what the connector REALLY is (decision
+    #: 2026-09-13: a clear DEMO/UAT banner while writes are enabled). Keyed by
+    #: the strongest active connection mode `_integration_mode()` reports.
+    UAT_BANNER_BY_MODE = {
+        "LIVE_WRITE": "UAT — SYNTHETIC DATA — ZOHO ERP DEMO TENANT 60074128927 — WRITES ENABLED",
+        "LIVE_READ": "UAT — SYNTHETIC DATA — ZOHO ERP DEMO TENANT 60074128927 — READ-ONLY",
+        "SANDBOX": "UAT — SYNTHETIC DATA — ERP SANDBOX",
+    }
+    UAT_HINT_BY_MODE = {
+        "LIVE_WRITE": ("UAT. Credentials are issued by the UAT coordinator; passwords are "
+                       "not derivable from user ids. The ERP connector is LIVE against the "
+                       "Zoho ERP DEMO WBS tenant and outbound purchase-order writes are "
+                       "ENABLED: an emitted order becomes a real record in that tenant."),
+        "LIVE_READ": ("UAT. Credentials are issued by the UAT coordinator; passwords are "
+                      "not derivable from user ids. The ERP connector is LIVE read-only "
+                      "against the Zoho ERP DEMO WBS tenant; outbound writes are disabled."),
+    }
     _HINT_RE = None
 
-    def _uat_index_html() -> bytes:
+    def _uat_index_html(mode: str = "MOCK") -> bytes:
         import re
         global _HINT_RE
         if _HINT_RE is None:
@@ -1138,8 +1155,9 @@ if os.path.isdir(FRONTEND):
                 r'<p class="muted small" id="loginHint">.*?</p>', re.S)
         with open(os.path.join(FRONTEND, "index.html"), "r", encoding="utf-8") as fh:
             html = fh.read()
+        hint = UAT_HINT_BY_MODE.get(mode, UAT_LOGIN_HINT)
         rewritten, n = _HINT_RE.subn(
-            f'<p class="muted small" id="loginHint">{UAT_LOGIN_HINT}</p>', html)
+            f'<p class="muted small" id="loginHint">{hint}</p>', html)
         if n != 1:
             raise RuntimeError("index.html: the sign-in hint anchor was not found exactly once")
         body_at = rewritten.find("<body")
@@ -1147,7 +1165,7 @@ if os.path.isdir(FRONTEND):
         if body_at < 0 or body_end < 0:
             raise RuntimeError("index.html: no <body> tag to anchor the UAT banner on")
         banner = (f'\n<div class="uat-banner" role="status" aria-label="Environment notice">'
-                  f'{UAT_BANNER_TEXT}</div>')
+                  f'{UAT_BANNER_BY_MODE.get(mode, UAT_BANNER_TEXT)}</div>')
         rewritten = rewritten[:body_end + 1] + banner + rewritten[body_end + 1:]
         if "!demo" in rewritten:
             raise RuntimeError("index.html still carries the demo-password hint after rewriting")
@@ -1158,7 +1176,8 @@ if os.path.isdir(FRONTEND):
     @app.get("/")
     def index():
         if auth.is_uat_profile():
-            if "html" not in _uat_index_cache:
-                _uat_index_cache["html"] = _uat_index_html()
-            return Response(content=_uat_index_cache["html"], media_type="text/html")
+            mode, _note, _summary = _integration_mode()
+            if mode not in _uat_index_cache:
+                _uat_index_cache[mode] = _uat_index_html(mode)
+            return Response(content=_uat_index_cache[mode], media_type="text/html")
         return FileResponse(os.path.join(FRONTEND, "index.html"))

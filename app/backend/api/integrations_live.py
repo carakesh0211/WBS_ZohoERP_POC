@@ -43,6 +43,7 @@ from pydantic import BaseModel, ConfigDict
 
 from .. import zoho
 from ..integration import adoption, live_sweep
+from ..integration import erp as _erp
 from ..integration import outbound as ob
 from ..integration.adapter import (CapabilityError, IntegrationError,
                                    NetworkForbidden, UnsupportedDataCentre)
@@ -261,13 +262,38 @@ def set_mode(
     connection = _integrations._require_visible_connection(
         request, database, connection_id)
     mode = str(body.mode or "").strip().upper()
-    if mode == "LIVE_WRITE" and not zoho.outbound_writes_enabled():
-        raise _integrations._problem(
-            409, "ERP_WRITES_DISABLED", "ERP Writes Disabled",
-            "Outbound ERP writes are disabled in this deployment "
-            "(CAPEX_ERP_OUTBOUND_WRITES is not 1), so the connection cannot be "
-            "placed in LIVE_WRITE. The mode was not changed.")
     actor = _integrations._actor(request)
+    refusal = None
+    if mode == "LIVE_WRITE" and not zoho.outbound_writes_enabled():
+        refusal = ("ERP_WRITES_DISABLED", "ERP Writes Disabled",
+                   "Outbound ERP writes are disabled in this deployment "
+                   "(CAPEX_ERP_OUTBOUND_WRITES is not 1), so the connection cannot be "
+                   "placed in LIVE_WRITE. The mode was not changed.")
+    elif mode == "LIVE_WRITE" and (str(connection.get("organization_id") or "")
+                                   not in _erp.WRITE_AUTHORISED_ORGANISATIONS):
+        # Decision 2026-09-13: writes go to the dedicated demo tenant only.
+        refusal = ("WRITE_ORGANISATION_NOT_AUTHORISED", "Write Organisation Not Authorised",
+                   f"Connection {connection_id} is bound to organisation "
+                   f"{connection.get('organization_id')!r}, which this application "
+                   f"may not write to; only {sorted(_erp.WRITE_AUTHORISED_ORGANISATIONS)} "
+                   f"may be placed in LIVE_WRITE. The mode was not changed.")
+    if refusal is not None:
+        code, title, detail = refusal
+        # Recorded, then refused: every refusal on the write path appears
+        # on the correlation trail (decision 2026-09-13).
+        try:
+            if database is None:
+                raise store.IntegrationStoreError("DATABASE_NOT_CONFIGURED", "no database")
+            with _integrations._session(request, database) as session:
+                store.record_event(
+                    session, kind="CONNECTION_MODE_REFUSED", actor=actor,
+                    connection_id=connection_id, correlation_id=correlation_id,
+                    detail={"requested": mode, "code": code,
+                            "outbound_writes_enabled": zoho.outbound_writes_enabled()})
+        except store.IntegrationStoreError:
+            pass
+        raise _integrations._problem(409 if code == "ERP_WRITES_DISABLED" else 403,
+                                     code, title, detail)
     try:
         with _integrations._session(request, database) as session:
             before = str(connection.get("mode"))
@@ -370,6 +396,13 @@ def drain_outbox(
                         outbox_id=row["outbox_id"], dedupe_key=row["dedupe_key"],
                         actor=actor, created=bool(outcome.get("created")),
                         correlation_id=correlation_id)
+                if not outcome.get("sent"):
+                    procurement_svc.record_po_emission_refused(
+                        session, po_id=ob.purchase_order_id_of(row["local_id"]),
+                        outbox_id=row["outbox_id"],
+                        refused=str(outcome.get("refused") or outcome.get("state") or "FAILED"),
+                        message=str(outcome.get("message") or outcome.get("error") or ""),
+                        actor=actor, correlation_id=correlation_id)
                 outcome["local_id"] = row["local_id"]
                 results.append(outcome)
             store.record_event(

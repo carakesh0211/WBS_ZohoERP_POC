@@ -87,6 +87,17 @@ def _po_external(con, po_id):
         return cur.fetchone()
 
 
+def _demo_connection(session, ids, *, suffix):
+    """A connection bound to the write-authorised demo organisation: the only
+    one the /mode route lets into LIVE_WRITE (decision 2026-09-13)."""
+    connection_id = f"CONN_{suffix}"
+    store.create_connection(
+        session, connection_id=connection_id, entity_id=ids["entity"],
+        product="ERP", dc="IN", organization_id="60074128927",
+        connector_name=f"conn-{suffix}", actor="U-ADM")
+    return connection_id
+
+
 def _live_write(session, connection_id):
     return store.set_connection_mode(
         session, connection_id=connection_id, mode="LIVE_WRITE", actor="U-ADM",
@@ -259,7 +270,7 @@ def test_the_routes_drain_through_the_adapter_and_move_the_mode_with_its_authori
     with pg_database.session(Scope.system()) as session:
         po = _approved_po(session, pg_connection, ids)
         line_id, = _line_ids(session, po["po_id"])
-        connection_id = _connection(session, ids, suffix=suffix)
+        connection_id = _demo_connection(session, ids, suffix=suffix)
         row = store.get_connection(session, connection_id, scope=Scope.system())
         proc.plan_po_emission(
             session, po_id=po["po_id"], connection_id=connection_id,
@@ -339,3 +350,82 @@ def test_the_health_summary_counts_connections_through_row_level_security(
     assert set(summary) == {"status", "connections"}
     # Only aggregates: no id, organisation or name anywhere in the answer.
     assert connection_id not in json.dumps(summary)
+
+
+# ============================== the permanent demo boundaries (2026-09-13)
+def test_an_order_not_from_an_approved_request_and_not_approved_itself_is_refused(pg_database, pg_connection):
+    """Decision 2026-09-13: every emitted order originates from an approved
+    WBS purchase order. A directly-created Draft order is refused before any
+    outbox row exists; the same order Approved is planned; an order converted
+    from an Approved request is planned as Draft."""
+    from test_pg_procurement import _approved_pr
+    suffix = uuid.uuid4().hex[:10]
+    ids = _seed_chain(pg_connection, suffix=suffix, budget_paise=100_000_00)
+    with pg_database.session(Scope.system()) as session:
+        connection_id = _connection(session, ids, suffix=suffix)
+        draft = proc.create_po(session, project_id=ids["project"], vendor_name="Civil Co",
+                               actor="U-PROC", document_date=DOC_DATE, lines=[_line(ids, 1_000_00)])
+        with pytest.raises(proc.ProcurementError) as exc:
+            proc.plan_po_emission(session, po_id=draft["po_id"], connection_id=connection_id,
+                                  adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-1",
+                                  document_date=DOC_DATE, actor="U-PROC", acknowledged=True)
+        assert exc.value.code == "PO_NOT_APPROVED" and exc.value.status == 409
+        assert session.fetchall("SELECT 1 FROM integration_outbox WHERE local_id = %s", (draft["po_id"],)) == []
+        session.execute("UPDATE purchase_order SET status = 'Approved' WHERE po_id = %s", (draft["po_id"],))
+        planned = proc.plan_po_emission(session, po_id=draft["po_id"], connection_id=connection_id,
+                                        adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-1",
+                                        document_date=DOC_DATE, actor="U-PROC", acknowledged=True)
+        assert planned["purchase_orders"] == 1
+        pr_id = _approved_pr(session, ids, amount=2_000_00)
+        converted = proc.convert_pr_to_po(session, pr_id=pr_id, actor="U-PROC", vendor_name="Civil Co",
+                                          document_date=DOC_DATE)
+        header = proc._po_header(session, converted["po_id"])
+        assert header["status"] == "Draft" and header["pr_id"] == pr_id
+        planned2 = proc.plan_po_emission(session, po_id=converted["po_id"], connection_id=connection_id,
+                                         adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-1",
+                                         document_date=DOC_DATE, actor="U-PROC", acknowledged=True)
+        assert planned2["purchase_orders"] == 1
+
+
+def test_a_drain_failure_and_a_refused_mode_change_are_recorded(pg_database, pg_connection, monkeypatch):
+    """Every write and every refusal on the write path appears on the record:
+    a failed send is a PO_EMISSION_FAILED audit entry on the order beside the
+    outbox row's own error; a refused LIVE_WRITE is a CONNECTION_MODE_REFUSED
+    event on the connection."""
+    suffix = uuid.uuid4().hex[:10]
+    ids = _seed_chain(pg_connection, suffix=suffix, budget_paise=100_000_00)
+
+    class _Refusing(FakeAdapter):
+        def create_purchase_order(self, po, dedupe_key):
+            raise RuntimeError("tenant answered HTTP 401 code 57")
+
+    monkeypatch.setattr(live_sweep, "adapter_for_connection",
+                        lambda connection, **kw: _Refusing(tenant=FakeTenant()))
+    with pg_database.session(Scope.system()) as session:
+        po = _approved_po(session, pg_connection, ids)
+        line_id, = _line_ids(session, po["po_id"])
+        connection_id = _demo_connection(session, ids, suffix=suffix)
+        row = store.get_connection(session, connection_id, scope=Scope.system())
+        _live_write(session, connection_id)
+        proc.plan_po_emission(session, po_id=po["po_id"], connection_id=connection_id,
+                              adapter=_MetadataOnlyAdapter(), vendor_external_id="ZV-1",
+                              document_date=DOC_DATE, actor="U-PROC", acknowledged=True,
+                              item_external_ids={line_id: ITEM})
+    connection = {**row, "mode": "LIVE_WRITE"}
+    client = TestClient(_route_app(pg_database, monkeypatch, connection), raise_server_exceptions=False)
+    url = f"/api/integrations/connections/{connection_id}"
+    monkeypatch.setenv("CAPEX_ERP_OUTBOUND_WRITES", "1")
+    resp = client.post(f"{url}/drain-outbox", json={})
+    assert resp.status_code == 200 and resp.json()["claimed"] == 1 and resp.json()["sent"] == 0
+    failed = [d for a, d in _audit(pg_connection, po["po_id"]) if a == "PO_EMISSION_FAILED"]
+    assert len(failed) == 1 and "401" in failed[0]
+    assert _po_external(pg_connection, po["po_id"]) == (None, None)
+    monkeypatch.delenv("CAPEX_ERP_OUTBOUND_WRITES", raising=False)
+    connection["mode"] = "LIVE_READ"
+    resp = client.post(f"{url}/mode", json={"mode": "LIVE_WRITE", "authorised_by": "owner", "note": "n"})
+    assert resp.status_code == 409
+    with pg_connection.cursor() as cur:
+        cur.execute("SELECT detail FROM integration_event WHERE connection_id = %s AND kind = 'CONNECTION_MODE_REFUSED'",
+                    (connection_id,))
+        rows = cur.fetchall()
+    assert len(rows) == 1 and rows[0][0]["code"] == "ERP_WRITES_DISABLED"

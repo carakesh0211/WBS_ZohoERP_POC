@@ -3308,6 +3308,55 @@ def build_emission_plan(*, po_id: str, po_number: str, connection_id: str,
     return plan, rows
 
 
+#: Purchase-order statuses that are an approval in their own right.
+EMITTABLE_PO_STATUSES: frozenset[str] = frozenset({"Approved", "Released"})
+
+
+def _require_approved_origin(session: Session, header: Mapping[str, Any]) -> None:
+    """An emitted order must originate from an approved WBS purchase order
+    (decision 2026-09-13): either the order itself is Approved / Released,
+    or it was converted from a purchase request that is Approved -- the
+    maker-checker approval `convert_pr_to_po` requires. A directly-created
+    Draft order with no approved request behind it is refused before any
+    outbox row is written; nothing about the order changes."""
+    status = str(header.get("status") or "")
+    if status in EMITTABLE_PO_STATUSES:
+        return
+    pr_id = header.get("pr_id")
+    if pr_id:
+        row = repo.query_one(
+            session,
+            """
+            SELECT pr.status FROM purchase_request pr
+            JOIN project p ON p.project_id = pr.project_id
+            WHERE pr.pr_id = %(pr_id)s AND {scope}
+            """,
+            {"pr_id": pr_id}, columns=_PROJECT_SCOPE_COLUMNS)
+        if row is not None and str(row[0]) == "Approved":
+            return
+        _err("PO_NOT_APPROVED",
+             f"{header['po_number']} is {status!r} and its request {pr_id} is "
+             f"{(row[0] if row else 'not visible')!r}, not Approved. Only an "
+             f"order that is Approved/Released, or converted from an Approved "
+             f"request, may be emitted. Nothing was planned.", 409)
+    _err("PO_NOT_APPROVED",
+         f"{header['po_number']} is {status!r} and was not converted from a "
+         f"purchase request. Only an order that is Approved/Released, or "
+         f"converted from an Approved request, may be emitted. Nothing was "
+         f"planned.", 409)
+
+
+def record_po_emission_refused(session: Session, *, po_id: str, outbox_id: str,
+                               refused: str, message: str, actor: str,
+                               correlation_id: str | None = None) -> None:
+    """Every refusal on the write path is an audit entry on the order
+    (decision 2026-09-13), beside the outbox row's own `last_error`."""
+    audit_mod.append(
+        session, actor, "PO_EMISSION_FAILED", "PurchaseOrder", po_id,
+        f"Outbox row {outbox_id}: {refused}. {message}"[:2000],
+        correlation_id=correlation_id)
+
+
 def plan_po_emission(session: Session, *, po_id: str, connection_id: str,
                      adapter: Any, vendor_external_id: str,
                      document_date: date, actor: str,
@@ -3357,6 +3406,7 @@ def plan_po_emission(session: Session, *, po_id: str, connection_id: str,
     # paise. A foreign order with no source figures is refused per line by
     # `_emission_lines`; it is never emitted at base paise divided back.
     po_currency = _po_currency(header.get("currency"))
+    _require_approved_origin(session, header)
     rows = po_lines(session, po_id)
     if not rows:
         _err("NO_LINES",

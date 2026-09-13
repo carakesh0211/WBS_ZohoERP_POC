@@ -59,13 +59,14 @@ def test_a_post_is_satisfied_by_the_create_scope_alone(tmp_path, monkeypatch):
     opener = FakeOpener(api_answers=[{"code": 0, "purchaseorder": {"purchaseorder_id": "9"}}])
     t = _transport(tmp_path, opener, scope="ERP.purchaseorders.CREATE")
     out = t.request(method="POST", base_url=BASE, path="/purchaseorders",
-                    scope="ERP.purchaseorders.CREATE", body={"vendor_id": "1"})
+                    scope="ERP.purchaseorders.CREATE", body={"vendor_id": "1"},
+                    params={"organization_id": PINNED})
     assert out["purchaseorder"]["purchaseorder_id"] == "9"
     # ...and by the module's ALL when the adapter names ALL on the write.
     t2 = _transport(tmp_path, FakeOpener(api_answers=[{"code": 0}]),
                     scope="ERP.purchaseorders.ALL")
     t2.request(method="POST", base_url=BASE, path="/purchaseorders",
-               scope="ERP.purchaseorders.CREATE", body={})
+               scope="ERP.purchaseorders.CREATE", body={}, params={"organization_id": PINNED})
 
 
 def test_a_create_grant_satisfies_no_update_no_read_and_no_other_module(tmp_path, monkeypatch):
@@ -396,3 +397,90 @@ def test_token_health_carries_the_scope_gap_and_never_the_token(tmp_path, monkey
     assert health["token_not_in_configured"] == []
     from tests.test_live_transport_fable51 import ACCESS
     assert ACCESS not in str(health)
+
+
+# ============================ 7. the permanent demo boundaries (2026-09-13)
+def test_a_write_outside_purchase_orders_or_outside_the_demo_organisation_never_leaves(tmp_path, monkeypatch):
+    monkeypatch.setenv("CAPEX_ERP_OUTBOUND_WRITES", "1")
+    opener = FakeOpener(api_answers=[{"code": 0}])
+    t = _transport(tmp_path, opener, scope="ERP.purchaseorders.CREATE ERP.bills.CREATE ERP.bills.ALL")
+    with pytest.raises(ad.NetworkForbidden, match="WRITE_MODULE_NOT_AUTHORISED"):
+        t.request(method="POST", base_url=BASE, path="/bills", scope="ERP.bills.CREATE",
+                  params={"organization_id": PINNED}, body={})
+    with pytest.raises(ad.NetworkForbidden, match="WRITE_ORGANISATION_NOT_AUTHORISED"):
+        t.request(method="POST", base_url=BASE, path="/purchaseorders",
+                  scope="ERP.purchaseorders.CREATE", params={"organization_id": "1"}, body={})
+    with pytest.raises(ad.NetworkForbidden, match="WRITE_ORGANISATION_NOT_AUTHORISED"):
+        t.request(method="POST", base_url=BASE, path="/purchaseorders",
+                  scope="ERP.purchaseorders.CREATE", body={})
+    assert t.describe()["calls_made"] == 0, "a refused write spent a call"
+    t.request(method="POST", base_url=BASE, path="/purchaseorders",
+              scope="ERP.purchaseorders.CREATE", params={"organization_id": PINNED}, body={})
+    assert t.describe()["calls_made"] == 1
+    # Reads of other modules and other organisations are untouched by the boundary.
+    t2 = _transport(tmp_path, FakeOpener(api_answers=[{"code": 0}]), scope="ERP.bills.READ")
+    t2.request(method="GET", base_url=BASE, path="/bills", scope="ERP.bills.READ",
+               params={"organization_id": "1"})
+
+
+def test_the_adapter_refuses_an_order_without_its_reference_or_line_fields_before_any_call():
+    class Recording:
+        product = "ERP"
+        calls: list = []
+
+        def request(self, **kw):
+            self.calls.append(kw)
+            return {"purchaseorder": {"purchaseorder_id": "1"}}
+
+    rec = Recording()
+    adapter = erp.ErpAdapter(organization_id=PINNED, dc="IN", transport=rec)
+    complete = _line(item_external_id="3912780000000080001",
+                     dimensions={"wbs_code": "CAPEX-DEMO-001.01", "budget_head": "Civil Works"})
+    po = _Po([complete])
+    po.reference = None
+    with pytest.raises(ad.IntegrationError, match="EMISSION_REFERENCE_MISSING"):
+        adapter.create_purchase_order(po, "K")
+    bare = _Po([_line()])                        # dimensions carry ids only, no code / head
+    with pytest.raises(ad.IntegrationError, match="EMISSION_LINE_FIELDS_MISSING"):
+        adapter.create_purchase_order(bare, "K")
+    with pytest.raises(ad.IntegrationError, match="EMISSION_LINE_FIELDS_MISSING"):
+        adapter.update_purchase_order("1", bare, "K")
+    assert rec.calls == []
+    assert adapter.create_purchase_order(_Po([complete]), "K") == "1"
+    # A tenant with no verified line fields needs the reference only.
+    other = erp.ErpAdapter(organization_id="1", dc="IN", transport=rec)
+    assert other.create_purchase_order(_Po([_line()]), "K") == "1"
+
+
+def test_mode_refuses_live_write_for_a_connection_outside_the_demo_organisation(monkeypatch, make_user):
+    monkeypatch.setenv("CAPEX_ERP_OUTBOUND_WRITES", "1")
+    app = FastAPI()
+    app.include_router(integrations_live.router)
+    app.dependency_overrides[integrations_api._get_database] = lambda: None
+    monkeypatch.setattr(
+        integrations_api, "_require_visible_connection",
+        lambda request, database, connection_id: {
+            "connection_id": connection_id, "entity_id": "ENT-DM1", "product": "ERP",
+            "mode": "LIVE_READ", "dc": "IN", "organization_id": "1"})
+    client = TestClient(app, raise_server_exceptions=False)
+    resp = client.post("/api/integrations/connections/CONN-X/mode",
+                       json={"mode": "LIVE_WRITE", "authorised_by": "owner", "note": "n"},
+                       headers=_headers(make_user))
+    assert resp.status_code == 403, resp.text
+    assert resp.json()["detail"]["code"] == "WRITE_ORGANISATION_NOT_AUTHORISED"
+
+
+def test_the_uat_banner_and_hint_say_what_the_connector_really_is(monkeypatch):
+    monkeypatch.setenv("CAPEX_PROFILE", "uat-preview")
+    main._uat_index_cache.clear()
+    for connections, banner, hint in (
+            ({"ERP": {"LIVE_WRITE": 1}}, "ZOHO ERP DEMO TENANT 60074128927 — WRITES ENABLED", "ENABLED"),
+            ({"ERP": {"LIVE_READ": 1}}, "ZOHO ERP DEMO TENANT 60074128927 — READ-ONLY", "read-only"),
+            ({}, "UAT — SYNTHETIC DATA — ERP MOCK", "MOCK")):
+        monkeypatch.setattr(health_api, "get_database",
+                            lambda c=connections: _Db({"status": "ok", "connections": c}))
+        body = TestClient(main.app).get("/").text
+        assert banner in body, banner
+        assert body.count('class="uat-banner"') == 1
+        assert hint in body
+        assert "!demo" not in body

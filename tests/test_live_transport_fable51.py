@@ -152,7 +152,8 @@ def test_a_write_leaves_only_when_the_gate_is_explicitly_open(tmp_path, monkeypa
     opener = FakeOpener(api_answers=[{"code": 0, "purchaseorder": {"purchaseorder_id": "9"}}])
     t = _transport(tmp_path, opener, scope="ERP.purchaseorders.CREATE")
     out = t.request(method="POST", base_url=BASE, path="/purchaseorders",
-                    scope="ERP.purchaseorders.CREATE", body={"x": 1})
+                    scope="ERP.purchaseorders.CREATE", body={"x": 1},
+                    params={"organization_id": "60074128927"})   # the write-authorised demo tenant
     assert out["purchaseorder"]["purchaseorder_id"] == "9"
     api = [r for r in opener.requests if not r.full_url.startswith(lt.ACCOUNTS_SERVER)]
     assert api[0].get_method() == "POST" and json.loads(api[0].data) == {"x": 1}

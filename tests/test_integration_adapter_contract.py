@@ -45,7 +45,8 @@ from app.backend.integration import (
 from app.backend.integration import books_inventory as bi
 from app.backend.integration import erp as erp_module
 from app.backend.integration.adapter import CassetteTransport, encode_query
-from app.backend.integration.dto import DtoError, SourceRef, paise, quantity
+from app.backend.integration.dto import (DtoError, EmissionRef, PurchaseOrderEmissionDTO,
+                                         SourceRef, paise, quantity)
 
 CASSETTES = Path(__file__).resolve().parent / "cassettes"
 SINCE = datetime(2026, 8, 26, 0, 0, tzinfo=timezone.utc)
@@ -413,16 +414,16 @@ def test_dtos_are_frozen_and_their_raw_payloads_are_read_only(adapter):
 
 
 # ==================================================== outbound and idempotency
-def _draft_po(product: str) -> PurchaseOrderDTO:
-    return PurchaseOrderDTO(
-        source=SourceRef(product=product, service="erp" if product == "ERP" else "books",
-                         api_version="v3", endpoint="/purchaseorders",
-                         retrieved_at=datetime.now(timezone.utc)),
-        external_id="", document_number="", document_date=date(2026, 9, 1),
-        last_modified=datetime.now(timezone.utc), vendor_external_id="VEN-1",
-        vendor_name="Northgate Structural Works", currency_code="INR",
+def _draft_po(product: str) -> PurchaseOrderEmissionDTO:
+    """The emission DTO -- the ONLY shape an adapter may be handed
+    (`outbound.emission_dto_from_record`). It carries the order's reference,
+    which every emitted order must name (2026-09-13)."""
+    return PurchaseOrderEmissionDTO(
+        origin=EmissionRef(connection_id="CONN-1", module="purchaseorders",
+                           local_id="PO-000119", dedupe_key="CAPEX-PO-000119"),
+        vendor_external_id="VEN-1", document_date=date(2026, 9, 1),
+        currency_code="INR", reference="PO-000119",
         subtotal_paise=1150005, tax_paise=207001, total_paise=1357006,
-        external_status_raw="",
         lines=(LineDTO(external_line_id=None, line_number=1,
                        description="Structural steel fabrication",
                        quantity="1", unit_price_paise=1150005,

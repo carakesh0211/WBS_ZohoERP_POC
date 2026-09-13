@@ -4477,7 +4477,7 @@
       },
       "test_a_write_leaves_only_when_the_gate_is_explicitly_open": {
         "assertions": 2,
-        "body_sha": "69ab4e431dbecd71"
+        "body_sha": "9958e68e3fe98deb"
       },
       "test_another_host_or_product_is_refused_per_call": {
         "assertions": 2,
@@ -5829,7 +5829,7 @@
     "test_outbound_live_write_fable51.py": {
       "test_a_post_is_satisfied_by_the_create_scope_alone": {
         "assertions": 1,
-        "body_sha": "4cc3aa7b744c61b1"
+        "body_sha": "f5c1560f4c7aafc1"
       },
       "test_a_create_grant_satisfies_no_update_no_read_and_no_other_module": {
         "assertions": 2,
@@ -5906,6 +5906,22 @@
       "test_token_health_carries_the_scope_gap_and_never_the_token": {
         "assertions": 4,
         "body_sha": "0aec7f26c50d8138"
+      },
+      "test_a_write_outside_purchase_orders_or_outside_the_demo_organisation_never_leaves": {
+        "assertions": 5,
+        "body_sha": "6fdd167efd7251bd"
+      },
+      "test_the_adapter_refuses_an_order_without_its_reference_or_line_fields_before_any_call": {
+        "assertions": 6,
+        "body_sha": "68cf748e337e46fa"
+      },
+      "test_mode_refuses_live_write_for_a_connection_outside_the_demo_organisation": {
+        "assertions": 2,
+        "body_sha": "6f6d8014b610b257"
+      },
+      "test_the_uat_banner_and_hint_say_what_the_connector_really_is": {
+        "assertions": 4,
+        "body_sha": "4bc9eb60bb5ef2b2"
       }
     },
     "test_outbound_unsanctioned.py": {
@@ -9323,11 +9339,19 @@
       },
       "test_the_routes_drain_through_the_adapter_and_move_the_mode_with_its_authorisation": {
         "assertions": 19,
-        "body_sha": "56602f4ed0febd9a"
+        "body_sha": "f6d0b2b66aa832fc"
       },
       "test_the_health_summary_counts_connections_through_row_level_security": {
         "assertions": 4,
         "body_sha": "9cd4631df89d42e2"
+      },
+      "test_an_order_not_from_an_approved_request_and_not_approved_itself_is_refused": {
+        "assertions": 6,
+        "body_sha": "fa0104488253e055"
+      },
+      "test_a_drain_failure_and_a_refused_mode_change_are_recorded": {
+        "assertions": 5,
+        "body_sha": "2e9e8e9123291fdc"
       }
     },
     "test_pg_period_concurrency.py": {
@@ -9597,7 +9621,7 @@
       },
       "test_the_usd_order_is_planned_in_usd_at_the_vendors_figures": {
         "assertions": 6,
-        "body_sha": "e03bb11418e4792c"
+        "body_sha": "5ee1b614d72ab753"
       },
       "test_a_request_converts_into_a_usd_order_only_with_the_vendors_figures": {
         "assertions": 10,
@@ -9901,7 +9925,7 @@
       },
       "test_a_multi_cell_purchase_order_keeps_one_line_per_cell": {
         "assertions": 2,
-        "body_sha": "e9fe5bb0f7072983"
+        "body_sha": "0af8673c974cca10"
       },
       "test_an_out_of_scope_project_answers_not_found_never_forbidden": {
         "assertions": 3,
@@ -9913,47 +9937,47 @@
       },
       "test_plan_po_emission_writes_one_outbox_row_per_purchase_order": {
         "assertions": 5,
-        "body_sha": "6b756568d321baf2"
+        "body_sha": "f4aeed26598ebcb6"
       },
       "test_replanning_the_same_purchase_order_reuses_its_outbox_rows": {
         "assertions": 4,
-        "body_sha": "ca3b5f72cd0d7a25"
+        "body_sha": "92f25ebefc455425"
       },
       "test_an_unacknowledged_split_writes_no_outbox_row_at_all": {
         "assertions": 3,
-        "body_sha": "03d6bd11b16927c8"
+        "body_sha": "5dc118d5dee8dec2"
       },
       "test_send_reports_a_failure_instead_of_raising_it": {
         "assertions": 4,
-        "body_sha": "8d547558eff99473"
+        "body_sha": "c5c2983002a280cc"
       },
       "test_a_daily_quota_refusal_costs_no_attempt_and_opens_the_circuit": {
         "assertions": 4,
-        "body_sha": "5c38fbf3bec88ca5"
+        "body_sha": "acb2ff1463989eaa"
       },
       "test_a_duplicate_refusal_does_not_move_the_circuit": {
         "assertions": 4,
-        "body_sha": "b467d2710dcecb11"
+        "body_sha": "b9677d4419accc4e"
       },
       "test_an_unclaimable_row_is_reported_without_moving_the_circuit": {
         "assertions": 3,
-        "body_sha": "ba63183ee8541b66"
+        "body_sha": "12b4cf1bba36c4f5"
       },
       "test_an_open_circuit_refuses_before_a_call_is_made": {
         "assertions": 2,
-        "body_sha": "6dc869aa6d823f8a"
+        "body_sha": "ef4419d3b38a030a"
       },
       "test_a_successful_send_records_the_external_id_and_closes_the_circuit": {
         "assertions": 6,
-        "body_sha": "88cdfed1488640ad"
+        "body_sha": "8337824c6bd54a6c"
       },
       "test_a_settled_outbox_row_costs_no_second_call": {
         "assertions": 4,
-        "body_sha": "f3f6ee47709799e2"
+        "body_sha": "4fb0cf4351249454"
       },
       "test_the_planned_payload_survives_the_round_trip_through_jsonb": {
         "assertions": 3,
-        "body_sha": "262d8ea58cf7a00b"
+        "body_sha": "e57fc7292a7a23bb"
       }
     },
     "test_pg_procurement_ingest.py": {
@@ -13491,7 +13515,7 @@
     "test_ops_readiness.py": 28,
     "test_outbound_chaos.py": 26,
     "test_outbound_emission.py": 52,
-    "test_outbound_live_write_fable51.py": 20,
+    "test_outbound_live_write_fable51.py": 24,
     "test_outbound_unsanctioned.py": 20,
     "test_period_reopen_permissions.py": 17,
     "test_pg_adoption.py": 16,
@@ -13520,7 +13544,7 @@
     "test_pg_migration_import.py": 8,
     "test_pg_migrations_runner.py": 11,
     "test_pg_original_budget.py": 15,
-    "test_pg_outbound_drain_fable51.py": 6,
+    "test_pg_outbound_drain_fable51.py": 8,
     "test_pg_period_concurrency.py": 9,
     "test_pg_periods.py": 18,
     "test_pg_periods_reconciliation_gate.py": 7,
@@ -13632,7 +13656,7 @@
     "test_ops_readiness.py": 44,
     "test_outbound_chaos.py": 123,
     "test_outbound_emission.py": 154,
-    "test_outbound_live_write_fable51.py": 62,
+    "test_outbound_live_write_fable51.py": 79,
     "test_outbound_unsanctioned.py": 55,
     "test_period_reopen_permissions.py": 51,
     "test_pg_adoption.py": 39,
@@ -13661,7 +13685,7 @@
     "test_pg_migration_import.py": 12,
     "test_pg_migrations_runner.py": 32,
     "test_pg_original_budget.py": 99,
-    "test_pg_outbound_drain_fable51.py": 48,
+    "test_pg_outbound_drain_fable51.py": 59,
     "test_pg_period_concurrency.py": 28,
     "test_pg_periods.py": 49,
     "test_pg_periods_reconciliation_gate.py": 18,

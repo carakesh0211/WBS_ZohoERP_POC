@@ -299,9 +299,9 @@ def test_the_usd_order_is_planned_in_usd_at_the_vendors_figures(pg_database, pg_
         created = proc.create_po(session, project_id=ids["project"], vendor_name="Acme US", actor="U-PROC",
                                  currency="USD", document_date=DOC_DATE,
                                  lines=[_usd_line(ids, 3 * 19_99, quantity=3)])
-        with pg_connection.cursor() as cur:
-            cur.execute("UPDATE purchase_order SET status = 'Approved' WHERE po_id = %s", (created["po_id"],))
-            pg_connection.commit()
+        # In the SAME transaction: a second connection cannot see the order
+        # yet, and since 2026-09-13 an unapproved order is refused for emission.
+        session.execute("UPDATE purchase_order SET status = 'Approved' WHERE po_id = %s", (created["po_id"],))
         connection_id = _connection(session, ids, suffix=suffix)
         planned = proc.plan_po_emission(
             session, po_id=created["po_id"], connection_id=connection_id,
