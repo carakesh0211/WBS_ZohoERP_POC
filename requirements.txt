@@ -9,3 +9,9 @@ pydantic>=2.6
 # workstation or a CI runner.
 psycopg[binary]>=3.2
 psycopg_pool>=3.2
+
+# --- Stream C (2026-09-13): .xlsx export rendering ------------------------
+# Pure-Python wheels (openpyxl + et_xmlfile); the AppSail bundle vendors them
+# like every other dependency. Pinned: the workbook's cell types and number
+# formats are asserted by tests/test_pg_exports_xlsx_fable51.py.
+openpyxl==3.1.5

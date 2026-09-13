@@ -274,6 +274,8 @@ class CreateExportRequest(BaseModel):
     chunk_rows: int | None = Field(default=None, ge=1,
                                    le=export_svc.MAX_CHUNK_ROWS)
     ttl_hours: int | None = Field(default=None, ge=1, le=168)
+    #: Stream C (035): "csv" (the default, unchanged) or "xlsx".
+    format: str | None = Field(default=None, pattern="^(csv|xlsx)$")
 
 
 class CancelRequest(BaseModel):
@@ -307,6 +309,7 @@ def list_datasets(response: Response, request: Request) -> dict[str, Any]:
                 "dataset": d.name,
                 "title": d.title,
                 "format": "csv",
+                "formats": list(export_svc.OUTPUT_FORMATS),
                 "columns": [
                     {"name": c.name, "kind": c.kind} for c in d.columns
                 ],
@@ -362,7 +365,8 @@ def create_export(response: Response, request: Request,
                     "principal_kind") or "USER"),
                 correlation_id=cid,
                 chunk_rows=(body.chunk_rows or export_svc.DEFAULT_CHUNK_ROWS),
-                ttl_hours=(body.ttl_hours or export_svc.DEFAULT_TTL_HOURS))
+                ttl_hours=(body.ttl_hours or export_svc.DEFAULT_TTL_HOURS),
+                output_format=(body.format or "csv"))
     except export_svc.ExportError as exc:
         raise _export_error(exc)
 
@@ -428,10 +432,10 @@ def get_export(export_job_id: str, response: Response, request: Request,
 
 
 @router.get("/api/exports/{export_job_id}/result",
-            response_class=PlainTextResponse)
+            response_class=Response)
 def get_export_result(export_job_id: str, request: Request,
                       database: Database = Depends(_get_database)
-                      ) -> PlainTextResponse:
+                      ) -> Response:
     """The rendered file.
 
     409 while it is still running, 410 once it has expired: "not ready yet" and
@@ -448,7 +452,9 @@ def get_export_result(export_job_id: str, request: Request,
         raise _scope_unavailable(exc)
     except export_svc.ExportError as exc:
         raise _export_error(exc)
-    return PlainTextResponse(
+    # Stream C: a CSV body is text and an xlsx body is bytes; one response
+    # type serves both with the media type the service recorded.
+    return Response(
         content=body,
         media_type=meta.get("media_type") or "text/csv; charset=utf-8",
         headers={

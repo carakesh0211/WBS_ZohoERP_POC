@@ -5,7 +5,7 @@
   "baseline": {
     "recorded_at": "2026-08-28",
     "commit_note": "POC baseline, branch phase-0a/foundations, before any port work",
-    "test_functions": 249,
+    "test_functions": 259,
     "collected_cases": 348,
     "collected_cases_note": "348 is the pytest-collected count after parametrisation expands 6 files; 220 is the count of `def test_` functions. Both are real and the Definition of Done refers to the function count.",
     "runtime_seconds_approx": 189,
@@ -7920,6 +7920,48 @@
         "body_sha": "70788ecd553874e4"
       }
     },
+    "test_pg_exports_xlsx_fable51.py": {
+      "test_035_is_discovered_and_widens_the_same_named_check": {
+        "assertions": 4,
+        "body_sha": "27d2773f6bf8db97"
+      },
+      "test_the_workbook_has_the_four_sheets_a_frozen_header_and_an_autofilter": {
+        "assertions": 6,
+        "body_sha": "29e20d126c0a5b5b"
+      },
+      "test_every_cell_is_typed_from_its_kind_and_money_carries_the_indian_format": {
+        "assertions": 12,
+        "body_sha": "0d87624522da5213"
+      },
+      "test_the_formula_injection_guard_holds_on_every_string_cell": {
+        "assertions": 3,
+        "body_sha": "998464d275f4ff86"
+      },
+      "test_the_totals_row_sums_the_counted_range_and_only_the_numeric_kinds": {
+        "assertions": 7,
+        "body_sha": "e7356de134ecac49"
+      },
+      "test_summary_filters_and_metadata_say_what_the_file_is": {
+        "assertions": 9,
+        "body_sha": "6b7dd87c46ee70ad"
+      },
+      "test_the_renderer_refuses_header_drift_and_row_count_drift": {
+        "assertions": 3,
+        "body_sha": "c1bf2984ee275a6f"
+      },
+      "test_the_bundle_wheels_carry_openpyxl_and_its_dependency": {
+        "assertions": 2,
+        "body_sha": "7fbe224c1690ddfc"
+      },
+      "test_an_xlsx_job_runs_the_same_chunked_pipeline_and_serves_a_workbook": {
+        "assertions": 13,
+        "body_sha": "f15b691aa8b120df"
+      },
+      "test_an_unknown_format_is_refused_at_creation": {
+        "assertions": 3,
+        "body_sha": "dcc1500eb0094205"
+      }
+    },
     "test_pg_fable51_inbound_ledger.py": {
       "test_a_derived_recompute_on_a_cell_with_no_row_creates_it_and_lands": {
         "assertions": 5,
@@ -13704,6 +13746,7 @@
     "test_pg_closure.py": 37,
     "test_pg_constraints.py": 8,
     "test_pg_exports.py": 49,
+    "test_pg_exports_xlsx_fable51.py": 10,
     "test_pg_fable51_inbound_ledger.py": 7,
     "test_pg_fixture_guard.py": 3,
     "test_pg_fx.py": 34,
@@ -13849,6 +13892,7 @@
     "test_pg_closure.py": 80,
     "test_pg_constraints.py": 13,
     "test_pg_exports.py": 138,
+    "test_pg_exports_xlsx_fable51.py": 62,
     "test_pg_fable51_inbound_ledger.py": 30,
     "test_pg_fixture_guard.py": 3,
     "test_pg_fx.py": 89,

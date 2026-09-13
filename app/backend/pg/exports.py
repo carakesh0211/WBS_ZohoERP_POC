@@ -1228,6 +1228,9 @@ TERMINAL_STATES: frozenset[str] = frozenset(
 ACTIVE_STATES: frozenset[str] = frozenset({STATE_QUEUED, STATE_RUNNING})
 
 DEFAULT_CHUNK_ROWS = 5000
+#: Written into a workbook's Summary sheet. The FastAPI app's own version
+#: string; read here rather than imported from `main` (which imports this).
+APP_VERSION = "CAPEX & WBS Control Hub 0.2.0-poc-hardened"
 MAX_CHUNK_ROWS = 50000
 DEFAULT_TTL_HOURS = 24
 DEFAULT_MAX_ATTEMPTS = 3
@@ -1388,6 +1391,9 @@ def plan_job(dataset_name: str, filters: Any) -> tuple[Dataset, dict[str, Any]]:
     return dataset, normalised
 
 
+OUTPUT_FORMATS: tuple[str, ...] = ("csv", "xlsx")
+
+
 def create_job(session: Session, *, dataset: str, filters: Any, scope: Scope,
                requested_by: str, principal_kind: str = "USER",
                correlation_id: str | None = None,
@@ -1395,7 +1401,8 @@ def create_job(session: Session, *, dataset: str, filters: Any, scope: Scope,
                ttl_hours: int = DEFAULT_TTL_HOURS,
                max_attempts: int = DEFAULT_MAX_ATTEMPTS,
                now: datetime | None = None,
-               job_id: str | None = None) -> dict[str, Any]:
+               job_id: str | None = None,
+               output_format: str = "csv") -> dict[str, Any]:
     """Queue an export. Returns the job; the caller answers 202 with its id.
 
     `scope` MUST be the scope `principal_scope.scope_for_request` resolved for
@@ -1404,6 +1411,14 @@ def create_job(session: Session, *, dataset: str, filters: Any, scope: Scope,
     the whole capture is worthless. The signature takes them separately so the
     mismatch below is checkable rather than assumed.
     """
+    # Stream C (035): the format is chosen at request time and stored on the
+    # job; the chunks are CSV text either way, and an xlsx job renders them
+    # into a workbook at download (`pg/exports_xlsx.py`).
+    if output_format not in OUTPUT_FORMATS:
+        raise ExportError(
+            "EXPORT_FORMAT_UNKNOWN",
+            f"output_format must be one of {', '.join(OUTPUT_FORMATS)}; got "
+            f"{output_format!r}.", status=422)
     resolved, normalised = plan_job(dataset, filters)
     actor = str(requested_by or "").strip()
     if not actor:
@@ -1456,7 +1471,7 @@ def create_job(session: Session, *, dataset: str, filters: Any, scope: Scope,
              requested_principal_kind, scope_json, scope_digest, filter_json,
              column_order, chunk_rows, max_attempts, correlation_id,
              created_at, expires_at)
-        SELECT %(export_job_id)s, %(dataset)s, 'csv', 'QUEUED',
+        SELECT %(export_job_id)s, %(dataset)s, %(output_format)s, 'QUEUED',
                %(requested_by)s, %(principal_kind)s, %(scope_json)s,
                %(scope_digest)s, %(filter_json)s, %(column_order)s,
                %(chunk_rows)s, %(max_attempts)s, %(correlation_id)s,
@@ -1467,6 +1482,7 @@ def create_job(session: Session, *, dataset: str, filters: Any, scope: Scope,
         {
             "export_job_id": export_job_id,
             "dataset": resolved.name,
+            "output_format": output_format,
             "requested_by": actor,
             "principal_kind": (principal_kind
                                if principal_kind in principal_scope.PRINCIPAL_KINDS
@@ -1634,7 +1650,31 @@ def read_result(session: Session, export_job_id: str, *,
             f"export {export_job_id}'s bytes no longer match the digest recorded "
             f"when it completed. Not served.",
             status=500)
-    return body, public_job(job)["result"] | {"export_job_id": job["export_job_id"]}
+    meta = public_job(job)["result"] | {"export_job_id": job["export_job_id"]}
+    if job["output_format"] == "xlsx":
+        # Stream C (035): the verified CSV text, rendered into a workbook.
+        # The digest above is the integrity check for BOTH formats; the
+        # workbook is derived from the bytes that passed it, in memory.
+        from . import exports_xlsx
+        dataset = get_dataset(job["dataset"])
+        generated_at = datetime.now(timezone.utc)
+        workbook = exports_xlsx.render_workbook(
+            dataset_name=dataset.name, dataset_title=dataset.title,
+            columns=dataset.columns, column_order=list(job["column_order"]),
+            csv_body=body, filters=job.get("filter_json") or {},
+            requested_by=str(job["requested_by"]),
+            export_job_id=str(job["export_job_id"]),
+            rows_total=int(job["rows_total"] or 0), csv_sha256=digest,
+            chunk_rows=int(job["chunk_rows"] or 0), generated_at=generated_at,
+            app_version=APP_VERSION, finished_at=_iso(job.get("finished_at")))
+        meta = meta | {
+            "filename": exports_xlsx.xlsx_filename(dataset.name, generated_at),
+            "media_type": exports_xlsx.MEDIA_TYPE,
+            "bytes": len(workbook), "csv_sha256": digest,
+            "xlsx_sha256": hashlib.sha256(workbook).hexdigest(),
+        }
+        return workbook, meta
+    return body, meta
 
 
 # ------------------------------------------------------------------ control
