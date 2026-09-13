@@ -82,7 +82,31 @@ Every other `tests/vrt/*.spec.js` file was checked for `toHaveScreenshot`
 calls; only `approved-ui.spec.js`, `spa-routing.spec.js`, `budget-setup.spec.js`
 and `approvals.spec.js` have any, and all four are accounted for above.
 
-`laptop-1024` and `tablet-800` baselines for these same four spec files were
-**not** re-recorded — they were out of scope for the desktop-1440 verification
-run this stream was asked to perform — and will fail if those projects are run
-before someone re-records them the same way.
+## Re-recorded baselines — laptop-1024 and tablet-800
+
+The desktop-1440 pass above left `laptop-1024` and `tablet-800` baselines for
+these same four spec files unrecorded. This section accounts for both,
+following the same rule: every diff was inspected and confirmed
+pixel-for-pixel confined to the rail region before recording (or, at
+tablet-800, confirmed there was no diff at all — see below).
+
+**laptop-1024** behaves exactly like desktop-1440 — the rail renders at full
+width there too (`.nav` is not `display:none` until 900px), so the same set of
+full-page screenshots move by the rail region only:
+
+**tests/vrt/approved-ui.spec.js-snapshots/** (18 files):
+`home`, `approvals`, `alerts`, `projects`, `wbs`, `budget`, `check`,
+`revisions`, `prs`, `pos`, `grns`, `bills`, `recon`, `cap`, `zoho`,
+`inventory`, `audit`, `wbs-cosy` (all `-laptop-1024-win32.png`).
+
+**tablet-800 needed NO re-recording for `approved-ui.spec.js`.** Below 900px
+`styles.css` makes `.nav` an overlay drawer that is `display:none` until a
+user opens it (AUD-M-004), and none of `approved-ui.spec.js`'s full-page
+screenshots opens it — so the rail was never part of its tablet-800 baseline
+picture, before or after Stream F. Verified by running the file at
+`--project=tablet-800` with no `--update-snapshots`: **20/20 passed, 0
+failures, 0 diffs.** (`spa-routing.spec.js`, `budget-setup.spec.js` and
+`approvals.spec.js` are each accounted for below as they were completed —
+the same tablet-800 reasoning turned out to apply to all three, though
+`spa-routing.spec.js` also surfaced one real, non-screenshot bug at
+tablet-800, recorded in its own section.)
