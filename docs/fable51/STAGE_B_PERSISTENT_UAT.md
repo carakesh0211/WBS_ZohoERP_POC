@@ -108,6 +108,8 @@ are on the engineering list in `CONTINUATION.md`.
 | 12 | 2026-09-13 | `6382e53`, `c647852e6a5773b35893a0291efcebbfc90f7d48ae1ea922dbf4e5e5ef7f7636` | standalone (as 2) | the permanent demo boundaries of the 2026-09-13 decision (DECISIONS file, last section); preceded today by `96c72e2` (the launcher honours the platform gate on Stage B — four recycles had proved the console value never reached the process) and `c977c21` (token health names the scope the token lacks — the first CREATE-scoped token did not carry CREATE; Zoho 401 code 57). Between them the controlled emission ran: PO-00009 `3912780000000125001` (`evidence/e2e/OUTBOUND_2026-09-13.md`) |
 | 13 | 2026-09-13 | `a65841f`, `2eb7b06eba6a0adfb645bd736577a5cc651ae5b2efe2ac83c75e071768ef73b7` | standalone (as 2) | the emission-field check reads by attribute (CI chaos tests); instance matches HEAD. Standing state after it: `/api/health` LIVE_WRITE, gate true, banner WRITES ENABLED, `/readyz` 200 `032` |
 
+| 14 | 2026-09-13 | `1a7e76d`, `3d9c6dfd41f2b3aada36166b01b56b38043b6b3d3e297ec2388c8e67793b4276` (33 migrations) | standalone (as 2) | the completion pass: migration 033 (bill lines cite receives; BILL_EXCEEDS_RECEIVE) applied to `capex_tmpl_uat` at 11:40 UTC with the a65841f build still serving (`/readyz` 200 `033`), the connection table's Sweep / Adopt / Drain controls (`780df8e`), CI VRT in bounded batches, the skip audit. Deployed after the full local gates (live PostgreSQL suite + skip audit, full regression + skip audit, 51 bounded VRT batches) — the deployment line below records the result |
+
 Rule from record 2: **redeploy Stage B with the standalone form only.**
 
 Rule from record 6: **`migrate_pg --status` must show the expected `current`

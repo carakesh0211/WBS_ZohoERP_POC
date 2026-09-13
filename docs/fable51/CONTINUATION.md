@@ -56,6 +56,14 @@ now carries a base-commit guard).
   navigation with two collapsible groups (approved groups' markup unchanged),
   measured no rail overflow at 1440×900.
 
+## 2026-09-13 (completion pass): what closed, what needs the owner
+
+Closed: bill lines cite receives (033, BILL_EXCEEDS_RECEIVE); Sweep / Adopt / Drain
+controls on the connection table; CI VRT in bounded batches; the skip audit; the
+reporting stream verified integrated. Needs the owner: a PostgreSQL 17 client for the
+restore drill (download approval), the audit-anchor Cron's job token, a paused-instance
+readiness test, the integration-screen visual check in a signed-in browser.
+
 ## 2026-09-13: the controlled emission done, and outbound writes left ENABLED by decision
 
 PO-00009 (`3912780000000125001`) was created in DEMO WBS from WBS-UAT-OUTBOUND-20260912 through the
@@ -124,7 +132,9 @@ See `docs/fable51/DECISIONS_2026-09-11.md` (eight decisions, holders of each ope
 
 ## Not done — in order of value
 
-1. Integrate the reporting stream (filters/grouping/reconciliation/exports).
+1. ~~Integrate the reporting stream (filters/grouping/reconciliation/exports)~~ — found
+   ALREADY INTEGRATED on 2026-09-13 (`git patch-id`: all nine `work/reporting-filters`
+   commits are byte-identical to commits on HEAD); the item was stale.
 2. ~~Integrate the Playwright spec~~ ~~bounded VRT~~ — done 2026-09-11: 45 batches,
    11 failed, all answered (`3ca2db3`); 63 baselines re-recorded with the delta
    proof (`1ebf136`, A4 "The account"). A confirmation run of approvals,

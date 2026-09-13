@@ -7411,7 +7411,7 @@
       },
       "test_billing_beyond_the_cited_receipt_is_held_and_a_credit_note_retracts_it": {
         "assertions": 6,
-        "body_sha": "dedb85f744635e9b"
+        "body_sha": "4965289ce5a56bab"
       }
     },
     "test_pg_budget.py": {
