@@ -1,0 +1,27 @@
+/* app/frontend/src/features/procurement/imr.css
+   Additive stylesheet for the Internal Material Requests register/detail
+   screen (src/features/procurement/imr-register.js).
+
+   Loaded after the byte-frozen app/frontend/styles.css, extensions.css and
+   settings.css (app.js's ensureImrStyles() list for this NAV entry). Every
+   colour reference is var(--…) against a custom property styles.css already
+   declares -- no new custom property here and no raw hex value anywhere in
+   this file. The table, card, tile, kv, status, message and field classes
+   are all reused from styles.css and extensions.css; what is here is only
+   this screen's own layout.
+*/
+
+.imr-screen .card { margin-top: 12px; }
+.imr-error-host:empty { display: none; }
+.imr-error-host { margin-bottom: 12px; }
+
+.imr-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+
+.imr-code { color: var(--negative); font-weight: 600; }
+
+.imr-exceptions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.imr-exceptions li { border: 1px solid var(--n300); border-radius: 6px; padding: 8px 10px; }
+
+@media (max-width: 720px) {
+  .imr-actions { flex-direction: column; align-items: stretch; }
+}

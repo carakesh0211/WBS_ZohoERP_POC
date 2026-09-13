@@ -101,6 +101,29 @@ function rupees(value, field = 'Amount') {
   return (neg ? '-' : '') + whole + '.' + (frac + '00').slice(0, 2);
 }
 
+/* Migration 034's fulfilment/IMR routes take unit_rate_paise as an INTEGER,
+   unlike the legacy amount_rupees decimal-string fields rupees() above
+   serves. The rupees-to-paise split is done on the string itself and
+   combined with BigInt -- never a JS float -- exactly the discipline
+   src/components/budget/money-input.js::parseAmountToMinor already applies
+   for the newer procurement screens; this is app.js's own copy because the
+   classic-script dialogs in this file cannot import that ES module. */
+function rupeesToPaiseInt(value, field = 'Unit rate') {
+  const raw = String(value ?? '').trim().replace(/[,\s₹]/g, '');
+  if (!raw) throw new Error(`${field} is required.`);
+  if (!/^\d+(\.\d{1,2})?$/.test(raw)) {
+    throw new Error(`${field} must be a non-negative rupee value with at most two decimal places, for example 250.50.`);
+  }
+  const [whole, fracRaw = ''] = raw.split('.');
+  const frac = (fracRaw + '00').slice(0, 2);
+  const HUNDRED = 100n;
+  const minor = BigInt(whole) * HUNDRED + BigInt(frac);
+  if (minor > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new Error(`${field} is too large to represent exactly as paise in this browser session.`);
+  }
+  return Number(minor);
+}
+
 /* ---------------- status model (C3: 21 statuses, 5 semantic roles) --------- */
 const ROLE = {
   'Draft': 'neutral', 'Submitted': 'progress', 'Under Review': 'progress', 'Approved': 'positive',
@@ -357,6 +380,7 @@ const NAV = [
   { id: 'prs', ico: '✎', label: 'Purchase Requests' },
   { id: 'pos', ico: '▧', label: 'Commitments (PO)' },
   { id: 'grns', ico: '⇩', label: 'GRN & Receipts' },
+  { id: 'imrs', ico: '⇆', label: 'Internal Material Requests', need: ['imr.read'] },
   { id: 'bills', ico: '₹', label: 'Vendor Bills & CWIP' },
   { id: 'recon', ico: '⇄', label: 'Commitment Reconciliation' },
   { g: 'Closure', defaultExpanded: false },
@@ -871,8 +895,104 @@ V.prs = async () => {
       <td>${decidable && allowed
         ? `<button class="btn-sm" type="button" data-approve-pr="${esc(p.pr_id)}" data-exc="${isExc ? 1 : 0}" data-ref="${esc(p.pr_number)}">Approve<span class="sr-only"> ${esc(p.pr_number)}</span></button>`
         : decidable ? '<span class="muted">awaiting another role</span>' : ''}</td>
-    </tr>`; }).join('')}</tbody></table></div></div>`;
+    </tr>`; }).join('')}</tbody></table></div></div>`
+    + await renderMultiLinePrFulfilment();
 };
+
+/* ---------------- internal fulfilment on approved multi-line PRs (034) -----
+   The purchase requests V.prs lists above come from the legacy single-line
+   /api/purchase-requests table (main.py, one wbs_id per request, no lines).
+   Migration 034's fulfilment decision is per PR LINE, which exists only in
+   the newer Postgres procurement schema (api/procurement.py,
+   pg/internal_fulfilment.py) -- a distinct table, reached through
+   /api/control/purchase-requests (SCR-14's own read endpoint, gated on
+   budget.read, the same table `pr_line`/`pr_reservation` the fulfilment and
+   IMR routes write). This section is therefore deliberately a SEPARATE card
+   under the same "Purchase Requests" screen rather than folded into the rows
+   above, which have no pr_line_id to hang a decision on. */
+/* A route mounted on a process with no PostgreSQL answers 503 with a
+   {"detail": {"code": "DATABASE_NOT_CONFIGURED", "unavailable": true, ...}}
+   envelope -- app/backend/api/closure.py::_unavailable, the same shape
+   src/features/integration/integration-api.js::classifyUnavailable already
+   reads for the ES-module screens. This is that check's classic-script
+   twin: "this build cannot answer" renders as a quiet note, not a red fault
+   banner, on a screen most roles will open long before anyone provisions
+   the newer procurement database. */
+function fulfilmentUnavailable(e) {
+  const detail = e && e.body && typeof e.body === 'object' ? e.body.detail : null;
+  return !!(e && e.statusCode === 503 && detail && typeof detail === 'object' && detail.unavailable === true);
+}
+
+async function renderMultiLinePrFulfilment() {
+  if (!can('budget.read')) return '';
+  let mprs;
+  try {
+    const res = await api('/control/purchase-requests?status=Approved&limit=200');
+    mprs = res.items || [];
+  } catch (e) {
+    if (fulfilmentUnavailable(e)) {
+      return `<div class="card"><h3>Internal fulfilment — approved multi-line requests</h3><div class="card-body">
+        ${msg('info', 'This build has no database configured for line-level internal fulfilment, so nothing is offered here. The purchase requests above are unaffected.')}</div></div>`;
+    }
+    return `<div class="card"><h3>Internal fulfilment — approved multi-line requests</h3><div class="card-body">
+      ${msg('error', 'The approved multi-line request list could not be loaded. ' + esc(e.message))}</div></div>`;
+  }
+  if (!S.data.mprExpanded) S.data.mprExpanded = new Set();
+  const mayConvert = can('po.amend');
+  const rowsHtml = [];
+  for (const pr of mprs) {
+    const expanded = S.data.mprExpanded.has(pr.pr_id);
+    rowsHtml.push(`<tr>
+      <th scope="row" class="mono">${esc(pr.pr_number)}</th>
+      <td class="mono">${esc(pr.capex_code)}</td>
+      <td>${esc(pr.project_name || '')}</td>
+      <td class="num">${esc(String(pr.line_count))}</td>
+      ${money(pr.amount_paise)}${money(pr.reserved_paise)}
+      <td>${status(pr.status)}</td>
+      <td><button type="button" class="btn-sm" data-toggle-mpr="${esc(pr.pr_id)}" aria-expanded="${expanded}">
+          ${expanded ? 'Hide lines' : 'View lines'}<span class="sr-only"> ${esc(pr.pr_number)}</span></button>
+        ${mayConvert ? `<button type="button" class="btn-sm" data-convert-pr="${esc(pr.pr_id)}" data-ref="${esc(pr.pr_number)}">Convert to PO<span class="sr-only"> ${esc(pr.pr_number)}</span></button>` : ''}</td>
+    </tr>`);
+    if (expanded) rowsHtml.push(await renderMprLinesRow(pr));
+  }
+  return `<div class="card"><h3>Internal fulfilment — approved multi-line requests<span class="spacer"></span>
+      <span class="muted normal-weight">line-level internal/external fulfilment decisions (migration 034)</span></h3>
+    <div class="table-wrap"><table>
+      <caption class="sr-only">Approved multi-line purchase requests with their line-level fulfilment decisions and conversion to purchase order</caption>
+      <thead><tr>
+      <th scope="col">Request</th><th scope="col">CAPEX code</th><th scope="col">Project</th>
+      <th scope="col" class="num">Lines</th><th scope="col" class="num">Value</th><th scope="col" class="num">Live hold</th>
+      <th scope="col">Status</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>${rowsHtml.join('') || `<tr><td colspan="8" class="muted">No approved multi-line request is awaiting fulfilment or conversion.</td></tr>`}</tbody>
+    </table></div></div>`;
+}
+
+async function renderMprLinesRow(pr) {
+  const mayDecide = can('fulfilment.decide');
+  let data;
+  try {
+    data = await api(`/procurement/purchase-requests/${pr.pr_id}/fulfilment`);
+  } catch (e) {
+    return `<tr><td></td><td colspan="7">${msg('error', `The fulfilment detail for ${esc(pr.pr_number)} could not be loaded. ${esc(e.message)}`)}</td></tr>`;
+  }
+  const lines = data.lines || [];
+  const modeLabel = m => ({ EXTERNAL_PURCHASE: 'External purchase', INTERNAL_TRANSFER: 'Internal transfer', SPLIT_FULFILMENT: 'Split' }[m] || m);
+  const lineRows = lines.map(l => `<tr class="muted">
+    <td></td>
+    <td colspan="2" class="sub-line">Line ${esc(String(l.line_no))} · ${esc(l.wbs_code)} · ${esc(l.description || '')}</td>
+    <td class="num">${esc(String(l.line_quantity))}</td>
+    ${money(l.line_amount_paise)}
+    <td>${esc(modeLabel(l.mode))}${l.decided ? '' : ' <span class="muted">(not decided)</span>'}</td>
+    <td>Ext ${inr(l.external_amount_paise)} / Int ${inr(l.internal_amount_paise)}${l.imr_number ? ` · ${esc(l.imr_number)} (${esc(l.imr_status)})` : ''}</td>
+    <td>${mayDecide
+      ? `<button type="button" class="btn-sm" data-fulfil-pr="${esc(pr.pr_id)}" data-fulfil-line="${esc(l.pr_line_id)}" data-line-no="${esc(String(l.line_no))}" data-line-qty="${esc(String(l.line_quantity))}">Fulfilment<span class="sr-only"> line ${esc(String(l.line_no))} of ${esc(pr.pr_number)}</span></button>`
+      : '<span class="muted">not permitted</span>'}</td>
+  </tr>`).join('');
+  const allInternal = lines.length > 0 && lines.every(l => l.decided && l.mode === 'INTERNAL_TRANSFER');
+  const warn = allInternal ? `<tr><td></td><td colspan="7">${msg('warning',
+    `Every line of ${esc(pr.pr_number)} is met internally. Converting this request to a purchase order will be refused (<span class="mono">PR_FULLY_INTERNAL</span>) — there is no external portion left to order.`)}</td></tr>` : '';
+  return lineRows + warn;
+}
 
 V.pos = async () => {
   const pos = await api('/purchase-orders');
@@ -920,6 +1040,61 @@ V.grns = async () => {
       ${money(r.amount_paise)}<td>${r.lines.map(l => `${esc(l.wbs_code)} × ${esc(l.quantity)}`).join(', ')}</td></tr>`).join('')}
     </tbody></table></div></div>
     ${msg('warning', 'Zoho ERP purchase-receive lines carry no link back to a purchase-order line, no project or WBS coding, and the module exposes no list endpoint. Received-but-unbilled exposure is therefore reconstructed inside this application rather than read from Zoho. <strong>OAS-03</strong>', 'UNVERIFIED - REQUIRES ZOHO CONFIRMATION')}`;
+};
+
+/* Internal Material Requests (migration 034) — a NAV-listed entry, not a
+   scr()-spliced SCR_ROUTES row: the brief for this screen asked for a plain
+   NAV object, so the module is imported directly here rather than through
+   src/core/router.js's SCREENS table. Modelled on that table's own
+   {node, mount} contract (a .scr-host so tests/vrt's settleScreen() helper,
+   written against that class and data-mounted, works unchanged) and on
+   V.purchase-order's on-demand stylesheet loading, without touching
+   router.js. */
+const IMRS_STYLES = ['/static/extensions.css', '/static/settings.css', '/static/src/features/procurement/imr.css'];
+const loadedImrStyles = new Set();
+function ensureImrStyles() {
+  return Promise.all(IMRS_STYLES.map((href) => {
+    if (loadedImrStyles.has(href)) return Promise.resolve();
+    loadedImrStyles.add(href);
+    return new Promise((resolve) => {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+      link.addEventListener('load', () => resolve());
+      link.addEventListener('error', () => resolve());
+      document.head.appendChild(link);
+    });
+  }));
+}
+V.imrs = async () => {
+  setHeader('Internal Material Requests', ['Home', 'Internal Material Requests'], []);
+  const root = document.createElement('div');
+  const liveRegion = document.createElement('div');
+  liveRegion.id = 'imrLiveRegion';
+  liveRegion.className = 'sr-only';
+  liveRegion.setAttribute('role', 'status');
+  liveRegion.setAttribute('aria-live', 'polite');
+  const section = document.createElement('section');
+  section.className = 'scr-panel';
+  section.setAttribute('aria-labelledby', 'imrsTitle');
+  const heading = document.createElement('h2');
+  heading.id = 'imrsTitle';
+  heading.className = 'section-title';
+  heading.textContent = 'Internal Material Requests';
+  section.appendChild(heading);
+  section.appendChild(root);
+  const node = document.createElement('div');
+  node.className = 'scr-host';
+  node.appendChild(section);
+  node.appendChild(liveRegion);
+  return {
+    node,
+    async mount() {
+      await ensureImrStyles();
+      const { mountImrs } = await import('/static/src/features/procurement/imr-register.js');
+      await mountImrs(root);
+    },
+  };
 };
 
 V.bills = async () => {
@@ -1532,7 +1707,7 @@ document.getElementById('dlg').addEventListener('close', () => {
 document.getElementById('dlgClose').addEventListener('click', () => document.getElementById('dlg').close());
 
 document.addEventListener('click', async (ev) => {
-  const t = ev.target.closest('[data-nav],[data-nav-group],[data-nav-expand-all],[data-nav-collapse-all],[data-toggle],[data-open],[data-approve-pr],[data-approve-rev],[data-approve-cap],[data-alloc],[data-amend],[data-cancel],[data-close]');
+  const t = ev.target.closest('[data-nav],[data-nav-group],[data-nav-expand-all],[data-nav-collapse-all],[data-toggle],[data-open],[data-approve-pr],[data-approve-rev],[data-approve-cap],[data-alloc],[data-amend],[data-cancel],[data-close],[data-toggle-mpr],[data-fulfil-pr],[data-convert-pr]');
   if (!t) return;
 
   if (t.dataset.nav) { S.view = t.dataset.nav; await render(); return; }
@@ -1569,6 +1744,92 @@ document.addEventListener('click', async (ev) => {
     return;
   }
   if (t.dataset.open) { S.project = t.dataset.open; S.view = 'wbs'; await render(); return; }
+
+  if (t.dataset.toggleMpr) {
+    const id = t.dataset.toggleMpr;
+    if (!S.data.mprExpanded) S.data.mprExpanded = new Set();
+    S.data.mprExpanded.has(id) ? S.data.mprExpanded.delete(id) : S.data.mprExpanded.add(id);
+    await render();
+    document.querySelector(`[data-toggle-mpr="${CSS.escape(id)}"]`)?.focus();
+    return;
+  }
+
+  if (t.dataset.fulfilPr && t.dataset.fulfilLine) {
+    const prId = t.dataset.fulfilPr, lineId = t.dataset.fulfilLine;
+    const lineNo = t.dataset.lineNo || '';
+    const lineQty = t.dataset.lineQty || '';
+    dialog(`Fulfilment decision — line ${esc(lineNo)}`,
+      msg('info', `Line quantity: <strong>${esc(lineQty)}</strong>. Split requires an internal quantity strictly less than the line quantity; the remainder is what converts to the purchase order. Setting a manual valuation here is a reasoned rate override — a note is mandatory whenever a rate is given.`)
+      + `<div class="field"><label for="fkMode">Mode *</label>
+           <select id="fkMode">
+             <option value="EXTERNAL_PURCHASE">External purchase — buy from a vendor</option>
+             <option value="INTERNAL_TRANSFER">Internal transfer — met wholly from stores</option>
+             <option value="SPLIT_FULFILMENT">Split — part stores, part vendor</option>
+           </select></div>
+         <div class="field"><label for="fkInternalQty">Internal quantity (Split only; must be less than ${esc(lineQty)})</label>
+           <input id="fkInternalQty" class="num" type="text" inputmode="decimal"></div>
+         <div class="field"><label for="fkReason">Reason</label><input id="fkReason" maxlength="2000"></div>
+         <div class="field"><label for="fkItemId">Item id (tenant item, optional)</label><input id="fkItemId" maxlength="200"></div>
+         <div class="field"><label for="fkItemDesc">Item description (optional)</label><input id="fkItemDesc" maxlength="500"></div>
+         <div class="field"><label for="fkFrom">From store (location id, optional)</label><input id="fkFrom" maxlength="100"></div>
+         <div class="field"><label for="fkTo">To store (location id, optional)</label><input id="fkTo" maxlength="100"></div>
+         <div class="field"><label for="fkRate">Manual valuation — unit rate (₹, optional)</label><input id="fkRate" class="num" type="text" inputmode="decimal"></div>
+         <div class="field"><label for="fkValNote">Valuation note (required if a rate is given)</label><input id="fkValNote" maxlength="2000"></div>`,
+      async () => {
+        const mode = document.getElementById('fkMode').value;
+        const body = { mode };
+        const internalRaw = document.getElementById('fkInternalQty').value.trim();
+        if (mode === 'SPLIT_FULFILMENT') {
+          if (!internalRaw) throw new Error('An internal quantity is required for Split fulfilment.');
+          if (lineQty && !(Number(internalRaw) < Number(lineQty))) {
+            throw new Error(`The internal quantity must be less than the line quantity (${lineQty}).`);
+          }
+          body.internal_quantity = internalRaw;
+        } else if (internalRaw) {
+          throw new Error('Internal quantity only applies to Split fulfilment; clear it or choose Split.');
+        }
+        const reason = document.getElementById('fkReason').value.trim();
+        if (reason) body.reason = reason;
+        const itemId = document.getElementById('fkItemId').value.trim();
+        if (itemId) body.item_external_id = itemId;
+        const itemDesc = document.getElementById('fkItemDesc').value.trim();
+        if (itemDesc) body.item_description = itemDesc;
+        const from = document.getElementById('fkFrom').value.trim();
+        if (from) body.from_location_id = from;
+        const to = document.getElementById('fkTo').value.trim();
+        if (to) body.to_location_id = to;
+        const rateRaw = document.getElementById('fkRate').value.trim();
+        const valNote = document.getElementById('fkValNote').value.trim();
+        if (rateRaw) {
+          body.unit_rate_paise = rupeesToPaiseInt(rateRaw, 'Unit rate');
+          if (!valNote) throw new Error('A valuation note is required when a unit rate is given.');
+          body.valuation_note = valNote;
+        }
+        const decision = await api(`/procurement/purchase-requests/${prId}/lines/${lineId}/fulfilment`,
+          { method: 'PUT', json: body });
+        flash('success', `Line ${esc(lineNo)} set to ${esc(decision.mode)} — external ${inr(decision.external_amount_paise)} / internal ${inr(decision.internal_amount_paise)}.`);
+      }, 'Save decision');
+    return;
+  }
+
+  if (t.dataset.convertPr) {
+    const prId = t.dataset.convertPr;
+    const ref = t.dataset.ref || prId;
+    dialog(`Convert ${esc(ref)} to a purchase order`,
+      msg('info', 'Only the external portion of each line converts. A line met wholly from stores does not convert; if every line is now internal, this action is refused (PR_FULLY_INTERNAL).')
+      + `<div class="field"><label for="cvVendor">Vendor *</label><input id="cvVendor" required maxlength="200" autocomplete="organization"></div>
+         <div class="field"><label for="cvPoNumber">PO number</label><input id="cvPoNumber" maxlength="40" autocomplete="off" placeholder="Leave blank to number automatically"></div>
+         <p class="muted small">This dialog raises the order in INR at the request's own figures. A foreign-currency conversion needs the vendor's own figure for every line and is not offered from this screen — see the delivery note.</p>`,
+      async () => {
+        const vendor = document.getElementById('cvVendor').value.trim();
+        if (!vendor) throw new Error('A purchase order requires a vendor.');
+        const poNumber = document.getElementById('cvPoNumber').value.trim();
+        const doc = await api(`/procurement/purchase-requests/${prId}/convert`,
+          { method: 'POST', json: { vendor_name: vendor, po_number: poNumber || null, currency: 'INR' } });
+        flash('success', `${esc(ref)} converted to ${esc(doc.po_number || 'a purchase order')}.`);
+      }, 'Convert');
+    return;
+  }
 
   if (t.dataset.approvePr) {
     const isExc = t.dataset.exc === '1';
