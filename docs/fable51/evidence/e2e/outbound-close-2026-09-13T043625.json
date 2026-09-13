@@ -1,0 +1,63 @@
+{
+ "reference": "WBS-UAT-OUTBOUND-20260912",
+ "phase": "close",
+ "started_at": "2026-09-13T04:36:25.989792+00:00",
+ "steps": [
+  {
+   "step": "8 connection -> LIVE_READ",
+   "status": 200,
+   "at": "2026-09-13T04:36:28.420794+00:00",
+   "body": {
+    "connection_id": "CONN-32A904F37FEA",
+    "mode_before": "LIVE_WRITE",
+    "mode": "LIVE_READ",
+    "version_no": null,
+    "outbound_writes_enabled": true
+   }
+  },
+  {
+   "step": "9 drain-outbox on LIVE_READ is refused (gate may still be open)",
+   "status": 409,
+   "at": "2026-09-13T04:36:29.261165+00:00",
+   "body": {
+    "detail": {
+     "type": "about:blank",
+     "title": "Connection Not Live Write",
+     "status": 409,
+     "code": "CONNECTION_NOT_LIVE_WRITE",
+     "detail": "Connection CONN-32A904F37FEA is in mode 'LIVE_READ'; draining the outbox writes to the tenant and only LIVE_WRITE may. Nothing was sent.",
+     "message_id": null
+    }
+   }
+  },
+  {
+   "step": "9b health after the mode change",
+   "status": 200,
+   "at": "2026-09-13T04:36:30.081493+00:00",
+   "body": {
+    "status": "ok",
+    "app": "CAPEX & WBS Control Hub",
+    "version": "0.2.0-poc-hardened",
+    "zoho_mode": "LIVE_READ",
+    "zoho_mode_note": "LIVE_READ - a live Zoho tenant is connected read-only; outbound writes are disabled",
+    "profile": "uat-preview",
+    "integrations": {
+     "status": "ok",
+     "connections": {
+      "ERP": {
+       "LIVE_READ": 1
+      }
+     }
+    },
+    "outbound_writes_enabled": true,
+    "outbound_gate": {
+     "variable": "CAPEX_ERP_OUTBOUND_WRITES",
+     "present": true,
+     "raw_length": 1,
+     "is_exactly_1": true,
+     "look_alike_names": []
+    }
+   }
+  }
+ ]
+}

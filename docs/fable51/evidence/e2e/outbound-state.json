@@ -4,5 +4,7 @@
  "dedupe_key": "CAPEX-purchaseorders-PO-9EBFF8A906FB-def58905459601a8",
  "po_line_ids": [
   "POL-0EDAA5C3AA7B"
- ]
+ ],
+ "external_id": "3912780000000125001",
+ "outbox_id": "OUT-E3803F30C45E"
 }

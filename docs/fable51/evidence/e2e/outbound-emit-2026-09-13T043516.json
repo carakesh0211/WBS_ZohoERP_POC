@@ -1,0 +1,435 @@
+{
+ "reference": "WBS-UAT-OUTBOUND-20260912",
+ "phase": "emit",
+ "started_at": "2026-09-13T04:35:16.159290+00:00",
+ "steps": [
+  {
+   "step": "0 health (gate must read enabled, mode LIVE_READ before the change)",
+   "status": 200,
+   "at": "2026-09-13T04:35:18.808601+00:00",
+   "body": {
+    "status": "ok",
+    "app": "CAPEX & WBS Control Hub",
+    "version": "0.2.0-poc-hardened",
+    "zoho_mode": "LIVE_READ",
+    "zoho_mode_note": "LIVE_READ - a live Zoho tenant is connected read-only; outbound writes are disabled",
+    "profile": "uat-preview",
+    "integrations": {
+     "status": "ok",
+     "connections": {
+      "ERP": {
+       "LIVE_READ": 1
+      }
+     }
+    },
+    "outbound_writes_enabled": true,
+    "outbound_gate": {
+     "variable": "CAPEX_ERP_OUTBOUND_WRITES",
+     "present": true,
+     "raw_length": 1,
+     "is_exactly_1": true,
+     "look_alike_names": []
+    }
+   }
+  },
+  {
+   "step": "0b granted scopes (must carry ERP.purchaseorders.CREATE)",
+   "status": 200,
+   "at": "2026-09-13T04:35:19.290487+00:00",
+   "body": {
+    "connection_id": "CONN-32A904F37FEA",
+    "product": "ERP",
+    "required": [
+     {
+      "scope": "ERP.purchaseorders.ALL",
+      "purpose": "Read POs for reconciliation; create the POs we emit.",
+      "documented_on_oauth_scope_page": true,
+      "documented_on_module_page": true
+     },
+     {
+      "scope": "ERP.bills.READ",
+      "purpose": "Actual CWIP.",
+      "documented_on_oauth_scope_page": true,
+      "documented_on_module_page": true
+     },
+     {
+      "scope": "ERP.purchasereceives.READ",
+      "purpose": "Fetch one GRN by id -- the only receives operation ERP offers us, since there is no collection endpoint.",
+      "documented_on_oauth_scope_page": false,
+      "documented_on_module_page": true
+     },
+     {
+      "scope": "ERP.contacts.READ",
+      "purpose": "Vendor master.",
+      "documented_on_oauth_scope_page": true,
+      "documented_on_module_page": true
+     },
+     {
+      "scope": "ERP.settings.READ",
+      "purpose": "Item master. There is no ERP.items scope: ERP files items under settings, unlike Inventory.",
+      "documented_on_oauth_scope_page": true,
+      "documented_on_module_page": true
+     },
+     {
+      "scope": "ERP.custommodules.ALL",
+      "purpose": "Carrier for the cf_capex_ref dedupe field and the custom module PR fallback.",
+      "documented_on_oauth_scope_page": false,
+      "documented_on_module_page": true
+     }
+    ],
+    "granted": [
+     "ERP.accountants.READ",
+     "ERP.bills.READ",
+     "ERP.contacts.READ",
+     "ERP.custommodules.ALL",
+     "ERP.debitnotes.READ",
+     "ERP.department.READ",
+     "ERP.fixedasset.READ",
+     "ERP.projects.READ",
+     "ERP.purchaseorders.CREATE",
+     "ERP.purchaseorders.READ",
+     "ERP.purchasereceives.READ",
+     "ERP.settings.READ",
+     "ERP.vendorpayments.READ"
+    ],
+    "granted_unavailable_reason": null,
+    "undocumented_by_zoho": [
+     "ERP.purchasereceives.READ",
+     "ERP.custommodules.ALL"
+    ]
+   }
+  },
+  {
+   "step": "4a connection -> LIVE_WRITE",
+   "status": 200,
+   "at": "2026-09-13T04:35:19.901811+00:00",
+   "body": {
+    "connection_id": "CONN-32A904F37FEA",
+    "mode_before": "LIVE_READ",
+    "mode": "LIVE_WRITE",
+    "version_no": null,
+    "outbound_writes_enabled": true
+   }
+  },
+  {
+   "step": "4b emit: planned (202) with the tenant item on the line",
+   "status": 202,
+   "at": "2026-09-13T04:35:20.948835+00:00",
+   "body": {
+    "po_id": "PO-9EBFF8A906FB",
+    "po_number": "WBS-UAT-OUTBOUND-20260912",
+    "connection_id": "CONN-32A904F37FEA",
+    "module": "purchaseorders",
+    "currency_code": "INR",
+    "line_level_dimensions": true,
+    "control_cells": [
+     [
+      "WBS-A-CIVIL",
+      "BH-DM1-CIVIL"
+     ]
+    ],
+    "purchase_orders": 1,
+    "process_change": null,
+    "notes": [
+     "Line-level dimensions used for 1 control cell(s). UNVERIFIED - REQUIRES ZOHO CONFIRMATION (D-7, \u00a718.5 Z-02)."
+    ],
+    "outbox": [
+     {
+      "outbox_id": "OUT-E3803F30C45E",
+      "local_id": "PO-9EBFF8A906FB",
+      "dedupe_key": "CAPEX-purchaseorders-PO-9EBFF8A906FB-def58905459601a8",
+      "created": false,
+      "control_cells": [
+       [
+        "WBS-A-CIVIL",
+        "BH-DM1-CIVIL"
+       ]
+      ],
+      "total_paise": 68000000,
+      "currency_code": "INR"
+     }
+    ]
+   }
+  },
+  {
+   "step": "4c drain-outbox: the one send",
+   "status": 200,
+   "at": "2026-09-13T04:35:23.174361+00:00",
+   "body": {
+    "connection_id": "CONN-32A904F37FEA",
+    "claimed": 1,
+    "sent": 1,
+    "results": [
+     {
+      "sent": true,
+      "outbox_id": "OUT-E3803F30C45E",
+      "external_id": "3912780000000125001",
+      "dedupe_key": "CAPEX-purchaseorders-PO-9EBFF8A906FB-def58905459601a8",
+      "created": true,
+      "adopted": false,
+      "attempts": 1,
+      "state": "draft",
+      "note": "",
+      "local": {
+       "po_id": "PO-9EBFF8A906FB",
+       "po_number": "WBS-UAT-OUTBOUND-20260912",
+       "external_source": "ZOHO_ERP",
+       "external_id": "3912780000000125001",
+       "version_no": 2
+      },
+      "local_id": "PO-9EBFF8A906FB"
+     }
+    ],
+    "transport": {
+     "product": "ERP",
+     "api_domain": "https://www.zohoapis.in",
+     "granted_scopes": [
+      "ERP.accountants.READ",
+      "ERP.bills.READ",
+      "ERP.contacts.READ",
+      "ERP.custommodules.ALL",
+      "ERP.debitnotes.READ",
+      "ERP.department.READ",
+      "ERP.fixedasset.READ",
+      "ERP.projects.READ",
+      "ERP.purchaseorders.CREATE",
+      "ERP.purchaseorders.READ",
+      "ERP.purchasereceives.READ",
+      "ERP.settings.READ",
+      "ERP.vendorpayments.READ"
+     ],
+     "token_minted": true,
+     "token_seconds_left": 3412,
+     "calls_made": 4,
+     "token_mints": 1,
+     "token_scope_reported": true,
+     "configured_not_in_token": [],
+     "token_not_in_configured": []
+    }
+   }
+  },
+  {
+   "step": "5a identical emit retry: same outbox row, created=false",
+   "status": 202,
+   "at": "2026-09-13T04:35:23.723285+00:00",
+   "body": {
+    "po_id": "PO-9EBFF8A906FB",
+    "po_number": "WBS-UAT-OUTBOUND-20260912",
+    "connection_id": "CONN-32A904F37FEA",
+    "module": "purchaseorders",
+    "currency_code": "INR",
+    "line_level_dimensions": true,
+    "control_cells": [
+     [
+      "WBS-A-CIVIL",
+      "BH-DM1-CIVIL"
+     ]
+    ],
+    "purchase_orders": 1,
+    "process_change": null,
+    "notes": [
+     "Line-level dimensions used for 1 control cell(s). UNVERIFIED - REQUIRES ZOHO CONFIRMATION (D-7, \u00a718.5 Z-02)."
+    ],
+    "outbox": [
+     {
+      "outbox_id": "OUT-E3803F30C45E",
+      "local_id": "PO-9EBFF8A906FB",
+      "dedupe_key": "CAPEX-purchaseorders-PO-9EBFF8A906FB-def58905459601a8",
+      "created": false,
+      "control_cells": [
+       [
+        "WBS-A-CIVIL",
+        "BH-DM1-CIVIL"
+       ]
+      ],
+      "total_paise": 68000000,
+      "currency_code": "INR"
+     }
+    ]
+   }
+  },
+  {
+   "step": "5b drain again: nothing claimable, nothing sent",
+   "status": 200,
+   "at": "2026-09-13T04:35:24.236294+00:00",
+   "body": {
+    "connection_id": "CONN-32A904F37FEA",
+    "claimed": 0,
+    "sent": 0,
+    "results": [],
+    "transport": {
+     "product": "ERP",
+     "api_domain": "https://www.zohoapis.in",
+     "granted_scopes": [
+      "ERP.accountants.READ",
+      "ERP.bills.READ",
+      "ERP.contacts.READ",
+      "ERP.custommodules.ALL",
+      "ERP.debitnotes.READ",
+      "ERP.department.READ",
+      "ERP.fixedasset.READ",
+      "ERP.projects.READ",
+      "ERP.purchaseorders.CREATE",
+      "ERP.purchaseorders.READ",
+      "ERP.purchasereceives.READ",
+      "ERP.settings.READ",
+      "ERP.vendorpayments.READ"
+     ],
+     "token_minted": true,
+     "token_seconds_left": 3411,
+     "calls_made": 4,
+     "token_mints": 1,
+     "token_scope_reported": true,
+     "configured_not_in_token": [],
+     "token_not_in_configured": []
+    }
+   }
+  },
+  {
+   "step": "6a outbox rows for the connection",
+   "status": 200,
+   "at": "2026-09-13T04:35:24.928318+00:00",
+   "body": {
+    "rows": [
+     {
+      "outbox_id": "OUT-E3803F30C45E",
+      "local_id": "PO-9EBFF8A906FB",
+      "dedupe_key": "CAPEX-purchaseorders-PO-9EBFF8A906FB-def58905459601a8",
+      "state": "SENT",
+      "external_id": "3912780000000125001",
+      "attempts": 1,
+      "last_error": null
+     }
+    ]
+   }
+  },
+  {
+   "step": "6b audit entries on the local order (PO_EMISSION_PLANNED, PO_EMITTED)",
+   "status": 200,
+   "at": "2026-09-13T04:35:25.306870+00:00",
+   "body": {
+    "actions": [
+     [
+      "PO_EMISSION_PLANNED",
+      "WBS-UAT-OUTBOUND-20260912 planned for emission on CONN-32A904F37FEA: 1 purchase order(s) for 1 control cell(s); line_level_dimensions=True. No process change."
+     ],
+     [
+      "PO_EMITTED",
+      "WBS-UAT-OUTBOUND-20260912 created in the tenant as ZOHO_ERP:3912780000000125001 from outbox row OUT-E3803F30C45E (cf_capex_ref CAPEX-purchaseorders-PO-9EBFF8A90"
+     ],
+     [
+      "PO_EMISSION_PLANNED",
+      "WBS-UAT-OUTBOUND-20260912 planned for emission on CONN-32A904F37FEA: 1 purchase order(s) for 1 control cell(s); line_level_dimensions=True. No process change."
+     ],
+     [
+      "PO_EMISSION_PLANNED",
+      "WBS-UAT-OUTBOUND-20260912 planned for emission on CONN-32A904F37FEA: 1 purchase order(s) for 1 control cell(s); line_level_dimensions=True. No process change."
+     ]
+    ]
+   }
+  },
+  {
+   "step": "7a sweep purchaseorders: the tenant now lists the emitted order",
+   "status": 200,
+   "at": "2026-09-13T04:35:26.590589+00:00",
+   "body": {
+    "modules": {
+     "purchaseorders": {
+      "state": "DONE",
+      "reason": "COMPLETED",
+      "records_seen": 1,
+      "inbox_created": 1,
+      "calls": 1
+     }
+    }
+   }
+  },
+  {
+   "step": "7b adopt-orders: the emitted order is already anchored (linked/skipped, not adopted twice)",
+   "status": 200,
+   "at": "2026-09-13T04:35:31.338296+00:00",
+   "body": {
+    "adopted": 0,
+    "linked": 0,
+    "skipped": 7,
+    "exceptions": 2,
+    "calls": 9,
+    "exception_ids": [
+     "EXC-14108C9AF59F",
+     "EXC-B9EF8F3E6376"
+    ]
+   }
+  },
+  {
+   "step": "7c reconciliation rows for the outbound order",
+   "status": 200,
+   "at": "2026-09-13T04:35:32.021520+00:00",
+   "body": {
+    "rows": [
+     {
+      "po_line_id": "POL-0EDAA5C3AA7B",
+      "line_no": 1,
+      "description": "Structural steel for plant building (UAT outbound)",
+      "wbs_id": "WBS-A-CIVIL",
+      "wbs_code": "CAPEX-DEMO-001.01",
+      "budget_head_id": "BH-DM1-CIVIL",
+      "budget_head": "Civil Works",
+      "project_id": "PRJ-DM-001",
+      "po_id": "PO-9EBFF8A906FB",
+      "po_number": "WBS-UAT-OUTBOUND-20260912",
+      "po_status": "Draft",
+      "po_external_id": "3912780000000125001",
+      "vendor_name": "Demo Vendor - Civil Works (SYNTHETIC, tenant 3912780000000074001)",
+      "currency": "INR",
+      "exchange_rate": "1",
+      "amendment_no": 0,
+      "ordered_paise": 68000000,
+      "received_paise": 0,
+      "billed_paise": 0,
+      "open_commitment_paise": 68000000,
+      "received_not_billed_paise": 0,
+      "exposure_paise": 68000000,
+      "residual_released_paise": 0,
+      "over_billed_paise": 0,
+      "flag": "ok",
+      "position": "PO approved, not billed",
+      "emission_state": {
+       "rows": 1,
+       "split": false,
+       "states": {
+        "SENT": 1
+       },
+       "state": "SENT",
+       "external_ids": [
+        "3912780000000125001"
+       ],
+       "attempts": 1,
+       "last_sent_at": "2026-09-13T04:35:21.255886+00:00",
+       "external_id": "3912780000000125001"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "step": "7d civil cell exposure after the order",
+   "status": 200,
+   "at": "2026-09-13T04:35:32.634623+00:00",
+   "body": {
+    "wbs_id": "WBS-A-CIVIL",
+    "budget_head_id": "BH-DM1-CIVIL",
+    "owning_wbs_id": "WBS-A-CIVIL",
+    "budget_paise": 970000000,
+    "exposure_paise": 680000000,
+    "available_paise": 290000000,
+    "requested_paise": 0,
+    "verdict": "OK",
+    "shortfall_paise": 0,
+    "checked_at": "2026-09-13T04:35:31.974634+00:00"
+   }
+  }
+ ],
+ "po_id": "PO-9EBFF8A906FB",
+ "dedupe_key": "CAPEX-purchaseorders-PO-9EBFF8A906FB-def58905459601a8",
+ "external_id": "3912780000000125001"
+}
