@@ -377,7 +377,11 @@ test.describe('SPA routing — every SCR-nn screen is reachable from the shell',
       'prs', 'pos', 'grns', 'imrs', 'bills', 'recon',
       'cap',
       'zoho', 'inventory',
-      'audit', 'audit-trail',
+      // Stream B/E (2026-09-13) add one row after `audit-trail`:
+      // `notifications`, the Administrator's outbox/monitoring screen
+      // (need: admin.reset). Same footing as `imrs` above -- a plain NAV
+      // row, not an SCR_ROUTES splice.
+      'audit', 'audit-trail', 'notifications',
       'settings', 'budget-categories', 'fx-rates',
     ]);
     // STRONGER than the assertion this replaces, which excluded only

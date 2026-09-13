@@ -1,5 +1,6 @@
 {
   "specs": [
+    "admin-override.spec.js",
     "analytics.spec.js",
     "approvals.spec.js",
     "approved-ui.spec.js",
@@ -8,6 +9,7 @@
     "budget-setup.spec.js",
     "budget.spec.js",
     "closure.spec.js",
+    "export-button.spec.js",
     "fx-rates.spec.js",
     "integration-actions.spec.js",
     "integration.spec.js",
@@ -15,8 +17,10 @@
     "mapping.spec.js",
     "nav-groups.spec.js",
     "nav-rail-budget.spec.js",
+    "notifications.spec.js",
     "po-currency.spec.js",
     "settings.spec.js",
+    "signin-choices.spec.js",
     "spa-routing.spec.js",
     "uat-roles.spec.js",
     "vrt-inventory.spec.js"
