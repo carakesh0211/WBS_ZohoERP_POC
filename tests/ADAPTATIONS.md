@@ -3384,3 +3384,29 @@ would still fail.
 
 **Approved by:** the build instruction of 2026-09-13 (Stream E, "durable
 outbox ... dead-letter"); classification by the lead, this entry the record.
+
+## 2026-09-13 — `tests/vrt/approvals.spec.js`, two tests that used the Administrator as the principal WITHOUT a permission
+
+**What changed.** (1) "every approval screen is ROUTE-gated on its own
+permission" asserted that the APPROVER-owned screen (`approval-delegations`,
+`approval.delegate`) does NOT resolve for the signed-in Administrator; it now
+re-authenticates as the Requestor for that negative half. The positive halves
+(Administrator for its screens, Approver for `approval-delegations`) and the
+"listed in no rail" checks are unchanged. (2) "a refused decision shows the
+SERVER refusal" ran as the Administrator with a mocked `403 SELF_APPROVAL`;
+it now runs as the Requestor. Its assertions -- the control is rendered, the
+server's message is shown verbatim, the "decided by someone independent"
+sentence -- are unchanged. The identity comment on `ADMIN` is rewritten.
+
+**Why.** The product owner's decision of 2026-09-13 gives the Administrator
+every permission, so (1) the Administrator is no longer a principal without
+`approval.delegate`, and (2) an Administrator refused with SELF_APPROVAL is
+now offered the audited override panel (`#approvalAdminOverridePanel`) instead
+of the bare outcome text -- the behaviour Stream B was asked to build.
+`tests/vrt/admin-override.spec.js` proves that panel for the Administrator AND
+that a Requestor still sees only the ordinary refusal, so nothing this test
+protected is left unproven; the verbatim-refusal contract is asserted for the
+role it still applies to.
+
+**Approved by:** the product-owner instruction of 2026-09-13, "PRODUCT
+DECISIONS ... 2. Administrator", and the Stream B build instruction.

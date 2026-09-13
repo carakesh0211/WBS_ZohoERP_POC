@@ -755,6 +755,13 @@ test.describe('Wave 5 integration screens — routes, and nothing in the rail', 
     // deliberately left at their default (collapsed), because `fx-rates` was
     // only ever the LAST rendered item because those two groups render
     // nothing while closed.
+    // Below 900px the rail is a closed overlay drawer (display:none), so the
+    // group buttons exist but cannot be clicked until #navToggle opens it --
+    // the tablet-800 batch of the 2026-09-13 release run timed out here.
+    // Same helper spa-routing.spec.js uses for the same reason.
+    const railHidden = await page.locator('#nav')
+      .evaluate((n) => getComputedStyle(n).display === 'none');
+    if (railHidden) await page.locator('#navToggle').click();
     for (const g of ['Procurement & Actuals', 'Closure', 'Integration', 'Governance']) {
       await page.click(`[data-nav-group="${g}"]`);
     }

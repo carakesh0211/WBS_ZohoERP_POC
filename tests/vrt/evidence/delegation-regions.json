@@ -2,16 +2,16 @@
   "applies_to": "approvals-approval-delegations",
   "desktop-1440": {
     "principalRect": {
-      "x": 1175.671875,
+      "x": 966.453125,
       "y": 9,
-      "width": 252.328125,
+      "width": 461.546875,
       "height": 26
     },
     "headerClusterRects": [
       {
-        "x": 868.96875,
+        "x": 659.75,
         "y": 9,
-        "width": 571.03125,
+        "width": 780.25,
         "height": 26
       }
     ],
@@ -38,7 +38,7 @@
     "principalRect": {
       "x": 12,
       "y": 29,
-      "width": 252.328125,
+      "width": 461.546875,
       "height": 26
     },
     "headerClusterRects": [
@@ -78,7 +78,7 @@
     "principalRect": {
       "x": 106.609375,
       "y": 33,
-      "width": 202.328125,
+      "width": 411.546875,
       "height": 26
     },
     "headerClusterRects": [

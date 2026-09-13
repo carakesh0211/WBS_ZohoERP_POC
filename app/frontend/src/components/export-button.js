@@ -181,16 +181,26 @@ export function mountExportButton({ host, dataset, filtersProvider, label }) {
   const state = { job: null, driving: false, destroyed: false, datasetMeta: null };
   const title = label || dataset;
 
-  const csvBtn = h('button', { type: 'button', class: 'btn-sm', disabled: true }, 'Export CSV');
-  const xlsxBtn = h('button', { type: 'button', class: 'btn-sm', disabled: true, hidden: true }, 'Export XLSX');
+  // The dataset's name is VISIBLE, not only in the status text: a screen
+  // that exports two datasets (Purchase Requests: headers and lines; the IMR
+  // register likewise) would otherwise show two identical "Export CSV /
+  // Export XLSX" pairs side by side, which the 2026-09-13 baseline review
+  // caught. Each button's accessible name keeps its visible text first and
+  // appends the dataset, so `getByRole('button', { name: 'Export CSV' })`
+  // still finds it.
+  const caption = h('span', { class: 'export-caption' }, title);
+  const csvBtn = h('button', { type: 'button', class: 'btn-sm', disabled: true,
+    'aria-label': `Export CSV — ${title}` }, 'Export CSV');
+  const xlsxBtn = h('button', { type: 'button', class: 'btn-sm', disabled: true, hidden: true,
+    'aria-label': `Export XLSX — ${title}` }, 'Export XLSX');
   const cancelBtn = h('button', { type: 'button', class: 'btn-sm', hidden: true }, 'Cancel');
   const retryBtn = h('button', { type: 'button', class: 'btn-sm', hidden: true }, 'Retry');
   const statusEl = h('span', { class: 'export-status', role: 'status' }, '');
   const noteHost = h('span', {});
   const resultHost = h('span', {});
 
-  host.appendChild(h('div', { class: 'export-actions' }, [
-    csvBtn, xlsxBtn, cancelBtn, retryBtn, statusEl, noteHost, resultHost,
+  host.appendChild(h('div', { class: 'export-actions', 'data-export-dataset': dataset }, [
+    caption, csvBtn, xlsxBtn, cancelBtn, retryBtn, statusEl, noteHost, resultHost,
   ]));
 
   function setButtonsForIdle() {

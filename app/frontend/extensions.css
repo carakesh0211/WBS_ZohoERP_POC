@@ -209,7 +209,17 @@ button.nav-group:focus-visible { outline: 2px solid var(--primary-600); outline-
 }
 
 /* ---------------- Stream C: the reusable export-button component --------- */
+/* A register wider than its .table-wrap scrolls INSIDE the wrap (styles.css
+   gives it overflow-x:auto) -- but the sr-only spans in its cells are
+   position:absolute, and with the wrap unpositioned their containing block
+   was .body, so their boxes escaped the wrap's clipping and widened the
+   DOCUMENT. Invisible at desktop-1440, where every register fitted; at
+   laptop-1024 the Administrator's Approve column (2026-09-13) made the
+   revisions table 888px in a 766px wrap and approved-ui's "never scrolls
+   horizontally" invariant caught it. Positioning the wrap contains them. */
+.table-wrap { position: relative; }
 .export-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.export-actions .export-caption { font-size: 12px; color: var(--n700); white-space: nowrap; }
 .export-actions .export-status { font-size: 12px; color: var(--n700); }
 .export-actions .export-status.is-error { color: var(--negative); }
 .export-unavailable-note { cursor: help; border-bottom: 1px dotted var(--n400); }

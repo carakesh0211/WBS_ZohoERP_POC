@@ -77,7 +77,10 @@ const path = require('path');
    Demo credentials are user_id + '!demo' (auth.provision_dev_identities), and
    the permission comments are read off auth.PERMISSIONS + auth.DEV_USERS. */
 
-// Administrator: approval.read + approval.configure. NOT act, NOT delegate.
+// Administrator: since the product owner's decision of 2026-09-13, EVERY
+// permission -- approval.read, configure, act and delegate alike (Stream B,
+// tests/ADAPTATIONS.md). It is therefore no longer a negative control for
+// anything; the Requestor and the Auditor are.
 const ADMIN = { user: 'U-ADM', password: 'U-ADM!demo' };
 // BudgetController + FinanceApprover: approval.read + act + delegate.
 // NOT configure — no approver role administers the workflow registry.
@@ -711,6 +714,13 @@ test.describe('Approval screens — routing and navigation', () => {
         `${s.hash} did not resolve for the principal that holds ${s.need}`).toBe(true);
       await expect(page.locator('#content .scr-host')).toHaveCount(1);
     }
+    // The negative half needs a principal that GENUINELY lacks the
+    // APPROVER-owned screens' permission. Until 2026-09-13 that was the
+    // Administrator; the Administrator now holds every permission, so the
+    // Requestor (approval.read + act, never delegate) is the principal
+    // without it. Same ground as tests/vrt/uat-roles.spec.js's
+    // approval-delegations row; recorded in tests/ADAPTATIONS.md.
+    await reauthenticate(page, REQUESTOR, ['approval.read']);
     for (const s of SCREENS.filter((s2) => s2.as === APPROVER)) {
       expect(await resolves(page, s.hash),
         `${s.hash} resolved for a principal without ${s.need}`).toBe(false);
@@ -1250,6 +1260,14 @@ test.describe('Approval screens — engine invariants that must reach the user',
     // Contract 4: whether a caller may act on an instance is assignment plus
     // maker-checker, checked inside the transaction. The browser cannot know
     // it, so the controls are rendered and the server's refusal is displayed.
+    //
+    // As the REQUESTOR, deliberately. Since Stream B (2026-09-13) an
+    // Administrator who receives SELF_APPROVAL is offered the audited
+    // override instead of the bare refusal (tests/vrt/admin-override.spec.js
+    // proves both that panel and that a Requestor never sees it); the
+    // verbatim-refusal contract this test pins is every other role's, so it
+    // is asserted for one of them. Recorded in tests/ADAPTATIONS.md.
+    await reauthenticate(page, REQUESTOR, ['approval.read']);
     await page.route('**/api/approvals/*/decide', (route) => route.fulfill(json({
       code: 'SELF_APPROVAL',
       message: 'You raised or edited this object, so you may not approve it.',

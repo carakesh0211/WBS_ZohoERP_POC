@@ -102,6 +102,11 @@ test.describe('Exchange Rates — registry, gate, rendering', () => {
     await signIn(page);
     // Both rows sit in Governance, which Fable 5.1 Stream F now defaults to
     // collapsed for every principal — open it so the rail actually renders them.
+    // Below 900px the rail is a closed drawer; open it first (the tablet-800
+    // batch of the 2026-09-13 release run timed out on this click).
+    if (await page.locator('#nav').evaluate((n) => getComputedStyle(n).display === 'none')) {
+      await page.locator('#navToggle').click();
+    }
     await page.click('[data-nav-group="Governance"]');
     const ids = await page.evaluate(
       () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
@@ -124,6 +129,11 @@ test.describe('Exchange Rates — registry, gate, rendering', () => {
     await installFxRouter(page);
     await signIn(page, AUDITOR);
     // Governance defaults collapsed (Stream F); open it before reading the rail.
+    // Below 900px the rail is a closed drawer; open it first (the tablet-800
+    // batch of the 2026-09-13 release run timed out on this click).
+    if (await page.locator('#nav').evaluate((n) => getComputedStyle(n).display === 'none')) {
+      await page.locator('#navToggle').click();
+    }
     await page.click('[data-nav-group="Governance"]');
     const ids = await page.evaluate(
       () => [...document.querySelectorAll('#nav .nav-item')].map((b) => b.dataset.nav),
