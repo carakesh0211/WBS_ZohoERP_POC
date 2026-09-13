@@ -461,7 +461,15 @@ class ErpAdapter:
         budget head (decision 2026-09-13: every test PO must carry
         cf_capex_ref, cf_wbs_code and cf_budget_head). Refused BEFORE any
         call, so nothing half-stamped ever reaches the tenant."""
-        if not str(getattr(po, "reference", None) or "").strip():
+        # Read by attribute, never `getattr` with a default: a raw mapping
+        # handed to the adapter must fail as the wrong TYPE (AttributeError on
+        # `vendor_external_id`, pinned by test_outbound_chaos), not as an order
+        # that happens to lack a field.
+        if not str(po.vendor_external_id or "").strip():
+            raise IntegrationError(
+                "EMISSION_VENDOR_MISSING: the order names no tenant vendor; "
+                "nothing was sent.")
+        if not str(po.reference or "").strip():
             raise IntegrationError(
                 "EMISSION_REFERENCE_MISSING: the order carries no reference; "
                 "every emitted purchase order must name its WBS order number.")
