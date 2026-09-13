@@ -8,12 +8,17 @@
    Contract (do not invent fields):
      GET /api/audit/streams
        -> {"items":[{"stream_key","entry_count","head_seq","last_at"}]}
-     GET /api/audit/entries?stream_key=&object_type=&object_id=&cursor=&limit=
+     GET /api/audit/entries?stream_key=&object_type=&object_id=&action=&actor=&cursor=&limit=
        -> {"items":[{"audit_id","stream_key","seq","at","actor","action",
                       "object_type","object_id","detail","correlation_id",
                       "entry_hash"}], "next_cursor", "has_more"}
      GET /api/audit/chain/verify?stream_key=
        -> {"stream_key","intact","entries_checked","first_break_seq","verified_at"}
+
+   Stream B (2026-09-13) added `action` and `actor` as exact-match query
+   params on /entries, so the Administrator's deliberate self-approval
+   override (action ADMIN_SELF_APPROVAL_OVERRIDE) can be found without
+   scrolling the whole trail.
 
    Session: see core/api-client.js. sessionStorage only, never localStorage.
 */
@@ -65,14 +70,18 @@ export function listStreams() {
  * @param {string} [filters.streamKey]
  * @param {string} [filters.objectType]
  * @param {string} [filters.objectId]
+ * @param {string} [filters.action] - exact match, e.g. ADMIN_SELF_APPROVAL_OVERRIDE
+ * @param {string} [filters.actor] - exact match, a user id
  * @param {string} [filters.cursor]
  * @param {number} [filters.limit]
  */
-export function listEntries({ streamKey, objectType, objectId, cursor, limit } = {}) {
+export function listEntries({ streamKey, objectType, objectId, action, actor, cursor, limit } = {}) {
   return client.get('/entries', {
     stream_key: streamKey,
     object_type: objectType,
     object_id: objectId,
+    action,
+    actor,
     cursor,
     limit,
   });

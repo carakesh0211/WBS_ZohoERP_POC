@@ -13,9 +13,30 @@
 
 import { listStreams, listEntries, verifyChain, AuditApiError } from '../../core/api.js';
 import { h, text, clear } from '../../core/dom.js';
-import { formatAuditTimestamp, truncateHash } from '../../core/format.js';
+import { formatAuditTimestamp, formatINR, truncateHash } from '../../core/format.js';
 import { createDataTable } from '../../components/capex-datatable.js';
 import { createTimeline } from '../../components/capex-timeline.js';
+
+/* Stream B: the action this trail exists to make findable — the
+   Administrator's deliberate self-approval override (auth.ADMIN_OVERRIDE_
+   ACTION). Named here once, and offered in the Action filter's datalist so
+   an operator does not have to already know the exact string. */
+const ADMIN_OVERRIDE_ACTION = 'ADMIN_SELF_APPROVAL_OVERRIDE';
+
+/**
+ * `detail` is a free-text column for most actions, but pg/admin_override.py's
+ * `build_detail()` writes it as ONE JSON document (sorted keys, every field
+ * present even when null) for ADMIN_SELF_APPROVAL_OVERRIDE specifically.
+ * Parsed defensively: any other action's detail is ordinary prose and is
+ * never JSON, and a future admin_override.py change that stops matching this
+ * shape degrades to "not parseable" rather than a thrown error.
+ */
+function parseOverrideDetail(detail) {
+  if (!detail || typeof detail !== 'string') return null;
+  let parsed;
+  try { parsed = JSON.parse(detail); } catch { return null; }
+  return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : null;
+}
 
 const PAGE_SIZE = 50;
 const MSG_ICON = { error: '✖', warning: '!', success: '✔', info: '·' };
@@ -53,6 +74,8 @@ export function mountAuditTrail(root) {
     streamKey: '',
     objectType: '',
     objectId: '',
+    action: '',
+    actor: '',
     entries: [],
     cursor: null,
     hasMore: false,
@@ -72,6 +95,17 @@ export function mountAuditTrail(root) {
   ]);
   const objectTypeInput = h('input', { id: 'auditObjectType', type: 'text', autocomplete: 'off' });
   const objectIdInput = h('input', { id: 'auditObjectId', type: 'text', autocomplete: 'off' });
+  // Stream B: a text input rather than a <select> — action is a free-growing
+  // vocabulary, not a fixed set this screen enumerates — with a <datalist>
+  // suggesting the one action this filter exists to make findable, plus
+  // whatever streams have actually been seen this session.
+  const actionInput = h('input', {
+    id: 'auditActionFilter', type: 'text', autocomplete: 'off', list: 'auditActionOptions',
+  });
+  const actionOptions = h('datalist', { id: 'auditActionOptions' }, [
+    h('option', { value: ADMIN_OVERRIDE_ACTION }),
+  ]);
+  const actorInput = h('input', { id: 'auditActorFilter', type: 'text', autocomplete: 'off' });
 
   const applyBtn = h('button', { type: 'submit', class: 'btn-primary btn-sm' }, 'Apply filters');
   const clearBtn = h('button', {
@@ -81,6 +115,8 @@ export function mountAuditTrail(root) {
       streamSelect.value = '';
       objectTypeInput.value = '';
       objectIdInput.value = '';
+      actionInput.value = '';
+      actorInput.value = '';
       applyFilters();
     },
   }, 'Clear filters');
@@ -101,6 +137,15 @@ export function mountAuditTrail(root) {
       h('label', { for: 'auditObjectId' }, 'Object ID'),
       objectIdInput,
     ]),
+    h('div', { class: 'field' }, [
+      h('label', { for: 'auditActionFilter' }, 'Action'),
+      actionInput,
+      actionOptions,
+    ]),
+    h('div', { class: 'field' }, [
+      h('label', { for: 'auditActorFilter' }, 'Actor'),
+      actorInput,
+    ]),
     h('div', { class: 'field field-action' }, [h('span', { class: 'sr-only' }, 'Actions'), applyBtn]),
     h('div', { class: 'field field-action' }, [h('span', { class: 'sr-only' }, ''), clearBtn]),
   ]);
@@ -109,6 +154,8 @@ export function mountAuditTrail(root) {
     state.streamKey = streamSelect.value;
     state.objectType = objectTypeInput.value.trim();
     state.objectId = objectIdInput.value.trim();
+    state.action = actionInput.value.trim();
+    state.actor = actorInput.value.trim();
     loadEntries(true);
     loadVerify();
   }
@@ -136,19 +183,61 @@ export function mountAuditTrail(root) {
   const table = createDataTable({
     caption: 'Audit trail entries',
     emptyMessage: 'No audit entries match these filters.',
-    renderRowDetail: (row) => h('dl', { class: 'kv' }, [
-      h('dt', {}, 'Correlation ID'),
-      h('dd', { class: 'mono' }, row.correlation_id || '—'),
-      h('dt', {}, 'Entry hash'),
-      h('dd', { class: 'mono' }, row.entry_hash || '—'),
-      h('dt', {}, 'Full detail'),
-      h('dd', {}, row.detail || '—'),
-    ]),
+    renderRowDetail: (row) => {
+      const override = row.action === ADMIN_OVERRIDE_ACTION ? parseOverrideDetail(row.detail) : null;
+      const base = [
+        h('dt', {}, 'Correlation ID'),
+        h('dd', { class: 'mono' }, row.correlation_id || '—'),
+        h('dt', {}, 'Entry hash'),
+        h('dd', { class: 'mono' }, row.entry_hash || '—'),
+      ];
+      if (override) {
+        // Stream B: reason / previous -> new state / amount (paise ->
+        // rupees, the shared formatter) / correlation id, read off the ONE
+        // JSON document pg/admin_override.py::build_detail() writes —
+        // never re-derived or paraphrased here.
+        return h('dl', { class: 'kv' }, [
+          ...base,
+          h('dt', {}, 'Override reason'),
+          h('dd', {}, override.reason || '—'),
+          h('dt', {}, 'Previous state'),
+          h('dd', { class: 'mono' }, override.previous_state ?? '—'),
+          h('dt', {}, 'New state'),
+          h('dd', { class: 'mono' }, override.new_state ?? '—'),
+          h('dt', {}, 'Amount'),
+          h('dd', {}, override.amount_paise === null || override.amount_paise === undefined
+            ? '—' : formatINR(override.amount_paise)),
+          h('dt', {}, 'Object'),
+          h('dd', {}, `${override.object_type ?? '—'} ${override.object_id ?? ''}`.trim()),
+          h('dt', {}, 'Override correlation ID'),
+          h('dd', { class: 'mono' }, override.correlation_id || '—'),
+          h('dt', {}, 'Full detail (JSON)'),
+          h('dd', { class: 'mono xs' }, row.detail || '—'),
+        ]);
+      }
+      return h('dl', { class: 'kv' }, [
+        ...base,
+        h('dt', {}, 'Full detail'),
+        h('dd', {}, row.detail || '—'),
+      ]);
+    },
     columns: [
       { key: 'seq', label: 'Seq', numeric: true, render: (row) => text(row.seq) },
       { key: 'at', label: 'Timestamp', render: (row) => text(formatAuditTimestamp(row.at)) },
       { key: 'actor', label: 'Actor', render: (row) => text(row.actor || '—') },
-      { key: 'action', label: 'Action', render: (row) => text(row.action || '—') },
+      {
+        key: 'action',
+        label: 'Action',
+        render: (row) => (row.action === ADMIN_OVERRIDE_ACTION
+          ? h('span', {}, [
+            text(row.action),
+            h('span', { class: 'audit-override-marker' }, [
+              h('span', { 'aria-hidden': 'true' }, '⚠'),
+              text('Admin override'),
+            ]),
+          ])
+          : text(row.action || '—')),
+      },
       {
         key: 'object',
         label: 'Object',
@@ -348,6 +437,8 @@ export function mountAuditTrail(root) {
         streamKey: state.streamKey || undefined,
         objectType: state.objectType || undefined,
         objectId: state.objectId || undefined,
+        action: state.action || undefined,
+        actor: state.actor || undefined,
         cursor: reset ? undefined : state.cursor || undefined,
         limit: PAGE_SIZE,
       });
