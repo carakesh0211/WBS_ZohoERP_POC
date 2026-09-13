@@ -1,0 +1,14 @@
+tests: 5838 collected, 5824 executed, 14 skipped across 13 reason(s)
+  [intended]    2  declared NO_ROW_SCOPE: organisation-wide reference data; permission is the control
+  [intended]    1  got empty parameter set for (relative)
+  [intended]    1  got empty parameter set for (name)
+  [intended]    1  declared NO_ROW_SCOPE: administers the grant tables that DEFINE scope
+  [intended]    1  declared NO_ROW_SCOPE: audit reads are scoped by the caller's own audit scope
+  [intended]    1  declared NO_ROW_SCOPE: audit rows are scoped by stream key at the API layer
+  [intended]    1  declared NO_ROW_SCOPE: reads and writes the grant tables that DEFINE scope
+  [intended]    1  admin_access.py has no _actor()
+  [intended]    1  audit.py has no _actor()
+  [intended]    1  budgets_original.py has no _actor()
+  [intended]    1  fx_admin.py has no _actor()
+  [intended]    1  health.py has no _actor()
+  [intended]    1  integrations_live.py has no _actor()
