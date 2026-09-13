@@ -1,10 +1,15 @@
 {
   "generated_from": [
     "docs/fable51/CONTINUATION.md, \"VRT note 2026-09-12\" and \"Not done\" item 2 (the bounded VRT run, the re-baseline account, and the confirmation-run convention .vrt-batches-confirm/summary.txt this plan follows for the release run)",
-    "git diff --name-only c51c2fe..HEAD -- app/frontend tests/vrt"
+    "git diff --name-only c51c2fe..HEAD -- app/frontend tests/vrt",
+    "2026-09-13: the seven specs added by streams A-F and the role-matrix spec, appended by the lead before the release run at 47a08a8"
   ],
   "purpose": "Every spec that touches a screen changed since c51c2fe, plus the seven the UAT release candidate names explicitly. Run one spec at a time, one viewport at a time (tools/run_vrt_batches.sh's own reasoning: a hang or a failure is attributable to a batch, never to \"the suite\"). tools/vrt/run_batches.py reads this file; it is NOT executed by the change that adds it.",
-  "viewports": ["desktop-1440", "laptop-1024", "tablet-800"],
+  "viewports": [
+    "desktop-1440",
+    "laptop-1024",
+    "tablet-800"
+  ],
   "port_env": "CAPEX_VRT_PORT",
   "reuse_env": "CAPEX_VRT_REUSE",
   "defaults": {
@@ -60,8 +65,67 @@
       "blocking": false,
       "changed_since_c51c2fe": true,
       "reason": "Informational. Exchange Rates is a settings/admin screen (registry row, fx.manage vs. fx.read rendering, the coded refusal shown verbatim, axe) rather than one of the six named release-blocking categories (sign-in, navigation, approvals, budget setup, PO currency, integration screens). app/frontend/src/features/settings/fx-api.js and fx-rates.js changed since c51c2fe, so it still runs -- a failure here is read and reported, not silently skipped -- but it does not by itself hold the release."
+    },
+    {
+      "spec": "uat-roles.spec.js",
+      "priority": "P0",
+      "blocking": true,
+      "changed_since_c51c2fe": true,
+      "reason": "Added 2026-09-13. Every deep link refused per identity, and the live check that the refusal table matches auth.PERMISSIONS: Stream B gave the Administrator every permission, and this spec is the navigation-category proof that nobody else gained one."
+    },
+    {
+      "spec": "nav-groups.spec.js",
+      "priority": "P0",
+      "blocking": true,
+      "changed_since_c51c2fe": true,
+      "reason": "Added 2026-09-13 (Stream F). Every navigation group is a collapsible toggle; default open/closed, per-user per-tab sessionStorage persistence, the current route's group forced open, expand/collapse all. Navigation category."
+    },
+    {
+      "spec": "signin-choices.spec.js",
+      "priority": "P0",
+      "blocking": true,
+      "changed_since_c51c2fe": true,
+      "reason": "Added 2026-09-13 (Stream D). The sign-in page's two choices, forgot/reset forms, the #sso= / #sso_error= / #reset?token= hash contracts and the change-password dialog. Sign-in category."
+    },
+    {
+      "spec": "admin-override.spec.js",
+      "priority": "P0",
+      "blocking": true,
+      "changed_since_c51c2fe": true,
+      "reason": "Added 2026-09-13 (Stream B). The Administrator's deliberate self-approval override dialog: reason mandatory, never sent on the first attempt, refusal shown to every other role. Approvals category."
+    },
+    {
+      "spec": "internal-fulfilment.spec.js",
+      "priority": "P0",
+      "blocking": true,
+      "changed_since_c51c2fe": true,
+      "reason": "Added 2026-09-13 (Stream A). The internal material request register and its lifecycle actions (approve, allocate, issue, return, cancel), the split-fulfilment decision on a PR line, and the conversion refusal. Approvals category (maker-checker on imr.approve)."
+    },
+    {
+      "spec": "export-button.spec.js",
+      "priority": "P1",
+      "blocking": true,
+      "changed_since_c51c2fe": true,
+      "reason": "Added 2026-09-13 (Stream C). The export control on every register: CSV and XLSX offered per dataset, job polling, download by Content-Disposition, retry after a failed job. Runs on the screens the release names (budget setup, approvals, integration)."
+    },
+    {
+      "spec": "notifications.spec.js",
+      "priority": "P2",
+      "blocking": false,
+      "changed_since_c51c2fe": true,
+      "reason": "Added 2026-09-13 (Stream E). Informational: the user's preferences/history dialog and the Administrator outbox screen are settings/monitoring surfaces, not one of the six release-blocking categories; a failure is read and reported, never silently skipped."
     }
   ],
-  "blocking_categories": ["sign-in", "navigation", "approvals", "budget setup", "PO currency", "integration screens"],
-  "informational_specs": ["fx-rates.spec.js"]
+  "blocking_categories": [
+    "sign-in",
+    "navigation",
+    "approvals",
+    "budget setup",
+    "PO currency",
+    "integration screens"
+  ],
+  "informational_specs": [
+    "fx-rates.spec.js",
+    "notifications.spec.js"
+  ]
 }
