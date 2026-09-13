@@ -130,6 +130,20 @@ async function measureAvatarContrast(page) {
     // is skipped there — which is itself the point being evidenced.
     const railVisible = await page.locator('#nav').evaluate((n) => getComputedStyle(n).display !== 'none');
     if (railVisible) {
+      // Fable 5.1 Stream F made every NAV group collapsible, and only Work
+      // and Project Control default open — so `#nav .nav-item` by itself now
+      // finds a fraction of the rail's real contents (a collapsed group
+      // renders no `.nav-item` at all; see app.js's renderNav()). The specs
+      // that need a full rail inventory (tests/vrt/spa-routing.spec.js,
+      // tests/vrt/integration.spec.js) all open every relevant group first —
+      // "Expand all" (`[data-nav-expand-all]`) is the same control, applied
+      // to all of them at once, so this evidence capture stays a complete
+      // inventory of the navigation rather than a snapshot of whatever
+      // happened to default open. `.count()` guards a capture taken against
+      // a build that predates Stream F, where the button does not exist.
+      const expandAll = page.locator('#nav [data-nav-expand-all]');
+      if (await expandAll.count()) await expandAll.click();
+
       await page.locator('#nav').screenshot({
         path: path.join(OUT, `${LABEL}-nav-${name}.png`),
         animations: 'disabled',
