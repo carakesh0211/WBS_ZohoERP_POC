@@ -19,7 +19,30 @@ five failures had a single cause.
 
 ## 2026-09-14 — the full application build of streams A–G, integrated and verified (branch `fable-5.1/full-app-hardening-uat`)
 
-**HEAD:** `63b07c6` (pushed; CI green on all five jobs). **Deployed:** `63b07c6`, bundle SHA-256 `ae0ccf86011dd4961e01cc6438a5c658c2be17e16ba35b756164bdac80623b1e`, deploy record 14 in `docs/fable51/STAGE_B_PERSISTENT_UAT.md`; `/readyz` 200 schema `036` on Supabase `capex_tmpl_uat` (034-036 applied first, status checked before and after); https://wbs-capex-uat-50045784768.development.catalystappsail.in. Post-deploy: role smoke 13/13 identities all checks passed, cycle driver re-run without an ERP write, one .xlsx export inspected. Tester accounts unchanged (the thirteen in `uat-users.txt`, outside the repository).
+**Five facts, stated separately** (each one is exactly what it says, nothing more):
+
+1. **Deployed application commit:** `63b07c6`, bundle SHA-256
+   `ae0ccf86011dd4961e01cc6438a5c658c2be17e16ba35b756164bdac80623b1e`, deploy record 15 in
+   `docs/fable51/STAGE_B_PERSISTENT_UAT.md`. Health on 2026-09-14: `/` 200, `/healthz` 200, `/readyz` 200
+   schema `036`, `/api/health` ok (LIVE_WRITE standing state), `/docs` 404, banner "UAT — SYNTHETIC DATA —
+   ZOHO ERP DEMO TENANT 60074128927 — WRITES ENABLED". https://wbs-capex-uat-50045784768.development.catalystappsail.in
+2. **Branch HEAD:** `1609ad2` (pushed). Every commit after `63b07c6` is documentation, evidence, a test
+   marker, the smoke tool or the CI harness; no file under `app/`, `migrations/` or `tools/appsail/` changed,
+   so the deployed application IS the application at HEAD and no redeploy is owed.
+3. **CI at HEAD:** run 34816456693 — see the line kept current below; HEAD is NOT called green until GitHub
+   reports all five jobs green. (At `cea4d35`, run 34784428179: four jobs green, Visual regression failed on
+   one intermittent tablet-800 test — diagnosed from its artifact in
+   `docs/fable51/evidence/gates/ci-34784428179-diagnosis.md`; the same application code was green in the two
+   runs before it.)
+4. **Application features complete:** streams A–G below, each with backend, API, screen, permissions, audit
+   and tests, verified by the gates table.
+5. **External owner configuration still pending** (none of it is application code): the Zoho OIDC client and
+   its seven variables, tester identity links, a verified Catalyst Mail sender, the reset-link reveal switch,
+   the break-glass user id, the dispatch ticker, and the audit-anchor Cron's job token — see "Deferred and
+   blocked" and `docs/fable51/DECISIONS_2026-09-11.md` (last section).
+
+**CI at HEAD, kept current:** run 34816456693 on `1609ad2` — IN PROGRESS at the time of writing (contract and
+supply chain green, regression, PostgreSQL and VRT running).
 
 ### Completed (working functionality, each with backend, API, screen, permissions, audit, tests)
 

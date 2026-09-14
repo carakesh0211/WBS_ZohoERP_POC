@@ -247,10 +247,10 @@ and re-running; item 1's pinned test was itself the failing assertion). See
 `tests/ADAPTATIONS.md`'s 2026-09-12 entry for item 1's assertion-value
 change.
 
-## 2026-09-14 — where the full-application build stands (written after deploy record 14)
+## 2026-09-14 — where the full-application build stands (written after deploy record 15)
 
 * Mainline `fable-5.1/full-app-hardening-uat` at `63b07c6`, pushed, CI green on all five jobs; deployed to
-  `wbs-capex-uat` (bundle `ae0ccf86011dd496…`, record 14) on Supabase `capex_tmpl_uat` at schema 036.
+  `wbs-capex-uat` (bundle `ae0ccf86011dd496…`, record 15) on Supabase `capex_tmpl_uat` at schema 036.
 * Both frontend stream branches (`integrate/nav-groups`, `integrate/frontend-bcde`) are fully cherry-picked; their
   worktrees can be removed (`git worktree remove`) — nothing lives only there.
 * What the owner does next is one table: `DECISIONS_2026-09-11.md`, section "2026-09-13 (evening)" (OIDC client
