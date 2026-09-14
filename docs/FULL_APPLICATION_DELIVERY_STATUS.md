@@ -26,14 +26,16 @@ five failures had a single cause.
    `docs/fable51/STAGE_B_PERSISTENT_UAT.md`. Health on 2026-09-14: `/` 200, `/healthz` 200, `/readyz` 200
    schema `036`, `/api/health` ok (LIVE_WRITE standing state), `/docs` 404, banner "UAT — SYNTHETIC DATA —
    ZOHO ERP DEMO TENANT 60074128927 — WRITES ENABLED". https://wbs-capex-uat-50045784768.development.catalystappsail.in
-2. **Branch HEAD:** `1609ad2` (pushed). Every commit after `63b07c6` is documentation, evidence, a test
-   marker, the smoke tool or the CI harness; no file under `app/`, `migrations/` or `tools/appsail/` changed,
-   so the deployed application IS the application at HEAD and no redeploy is owed.
-3. **CI at HEAD:** run 34816456693 — see the line kept current below; HEAD is NOT called green until GitHub
-   reports all five jobs green. (At `cea4d35`, run 34784428179: four jobs green, Visual regression failed on
+2. **Branch HEAD:** `2aef576` plus documentation-only commits after it (the owner-enablement record and the
+   acceptance evidence). Every commit after `63b07c6` is documentation, evidence, a test marker, the smoke tool
+   or the CI harness; no file under `app/`, `migrations/` or `tools/appsail/` changed, so the deployed
+   application IS the application at HEAD and no redeploy is owed.
+3. **CI at HEAD:** run 34816769316 on `2aef576` — **all five jobs green** (Contract and inventory gates,
+   Regression suite, PostgreSQL integration suite, Supply chain, Visual regression):
+   https://github.com/carakesh0211/WBS_ZohoERP_POC/actions/runs/34816769316. That commit is the last one to
+   touch any test, harness or CI file. (At `cea4d35`, run 34784428179: four green, Visual regression failed on
    one intermittent tablet-800 test — diagnosed from its artifact in
-   `docs/fable51/evidence/gates/ci-34784428179-diagnosis.md`; the same application code was green in the two
-   runs before it.)
+   `docs/fable51/evidence/gates/ci-34784428179-diagnosis.md`; the harness now keeps such evidence.)
 4. **Application features complete:** streams A–G below, each with backend, API, screen, permissions, audit
    and tests, verified by the gates table.
 5. **External owner configuration still pending** (none of it is application code): the Zoho OIDC client and
@@ -41,8 +43,10 @@ five failures had a single cause.
    the break-glass user id, the dispatch ticker, and the audit-anchor Cron's job token — see "Deferred and
    blocked" and `docs/fable51/DECISIONS_2026-09-11.md` (last section).
 
-**CI at HEAD, kept current:** run 34816456693 on `1609ad2` — IN PROGRESS at the time of writing (contract and
-supply chain green, regression, PostgreSQL and VRT running).
+**Acceptance pass 2026-09-14:** `docs/fable51/evidence/release/UAT_ACCEPTANCE_2026-09-14.md` — health, 13-identity
+role smoke (all checks), feature smoke (sign-in, forgot password, navigation, internal fulfilment, Administrator
+override, XLSX, outbox), read-only ERP sweeps and idempotent adoption. Owner steps:
+`docs/fable51/UAT_OWNER_ENABLEMENT_2026-09-14.md`.
 
 ### Completed (working functionality, each with backend, API, screen, permissions, audit, tests)
 

@@ -1,0 +1,4809 @@
+{
+  "base": "https://wbs-capex-uat-50045784768.development.catalystappsail.in",
+  "started_at": "2026-09-14T07:22:15.556546+00:00",
+  "route_count": 94,
+  "screen_route_count": 63,
+  "identities": [
+    {
+      "user_id": "U-REQ",
+      "roles": [
+        "Requestor"
+      ],
+      "checks": [
+        {
+          "name": "/",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/healthz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/readyz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/health",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/auth/me",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/bootstrap",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/inbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/sla (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/oidc/callback (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/providers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/bills (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/availability (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/categories (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/cells (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/compare (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/custom-fields (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/lines (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals/import/template (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/periods (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/selectors (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/versions (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/capitalisation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/reviews (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-transfers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/dashboard (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports/datasets (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/history (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/lookup (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/grns (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notification-preferences (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notifications (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-orders (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation/exceptions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/dimensions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/drill-down (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/freshness (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/metrics (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/views (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/admin/roles (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/definitions (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/delegations (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/anchors/verify (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        }
+      ],
+      "credential_hits": []
+    },
+    {
+      "user_id": "U-PM",
+      "roles": [
+        "Requestor",
+        "BudgetController"
+      ],
+      "checks": [
+        {
+          "name": "/",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/healthz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/readyz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/health",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/auth/me",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/bootstrap",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/delegations (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/inbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/sla (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/oidc/callback (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/providers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/bills (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/availability (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/categories (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/cells (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/compare (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/custom-fields (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/lines (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals/import/template (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/periods (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/selectors (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/versions (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/capitalisation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/reviews (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-transfers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/dashboard (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports/datasets (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/history (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/lookup (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/grns (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notification-preferences (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notifications (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-orders (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation/exceptions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/dimensions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/drill-down (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/freshness (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/metrics (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/views (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/admin/roles (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/definitions (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/anchors/verify (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/chain/verify (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        }
+      ],
+      "credential_hits": []
+    },
+    {
+      "user_id": "U-PLH",
+      "roles": [
+        "ProcurementApprover"
+      ],
+      "checks": [
+        {
+          "name": "/",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/healthz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/readyz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/health",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/auth/me",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/bootstrap",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/delegations (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/inbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/sla (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/oidc/callback (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/providers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/bills (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/availability (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/categories (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/cells (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/compare (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/custom-fields (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/lines (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/periods (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/selectors (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/versions (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/capitalisation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/reviews (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-transfers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/dashboard (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports/datasets (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/history (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/lookup (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/grns (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notification-preferences (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notifications (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-orders (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation/exceptions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/dimensions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/drill-down (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/freshness (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/metrics (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/views (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/admin/roles (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/definitions (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/anchors/verify (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/chain/verify (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        }
+      ],
+      "credential_hits": []
+    },
+    {
+      "user_id": "U-PROC",
+      "roles": [
+        "ProcurementApprover"
+      ],
+      "checks": [
+        {
+          "name": "/",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/healthz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/readyz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/health",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/auth/me",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/bootstrap",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/delegations (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/inbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/sla (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/oidc/callback (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/providers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/bills (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/availability (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/categories (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/cells (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/compare (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/custom-fields (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/lines (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/periods (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/selectors (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/versions (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/capitalisation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/reviews (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-transfers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/dashboard (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports/datasets (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/history (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/lookup (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/grns (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notification-preferences (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notifications (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-orders (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation/exceptions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/dimensions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/drill-down (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/freshness (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/metrics (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/views (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/admin/roles (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/definitions (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/anchors/verify (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/chain/verify (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        }
+      ],
+      "credential_hits": []
+    },
+    {
+      "user_id": "U-FIN",
+      "roles": [
+        "FinanceApprover"
+      ],
+      "checks": [
+        {
+          "name": "/",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/healthz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/readyz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/health",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/auth/me",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/bootstrap",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/delegations (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/inbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/sla (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/oidc/callback (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/providers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/bills (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/availability (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/categories (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/cells (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/compare (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/custom-fields (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/lines (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals/import/template (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/periods (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/selectors (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/versions (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/capitalisation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/reviews (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-transfers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/dashboard (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports/datasets (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/history (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/lookup (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/grns (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notification-preferences (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notifications (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-orders (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation/exceptions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/dimensions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/drill-down (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/freshness (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/metrics (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/views (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/admin/roles (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/definitions (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/anchors/verify (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/chain/verify (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        }
+      ],
+      "credential_hits": []
+    },
+    {
+      "user_id": "U-PFC",
+      "roles": [
+        "BudgetController",
+        "FinanceApprover"
+      ],
+      "checks": [
+        {
+          "name": "/",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/healthz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/readyz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/health",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/auth/me",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/bootstrap",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/delegations (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/inbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/sla (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/oidc/callback (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/providers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/bills (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/availability (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/categories (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/cells (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/compare (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/custom-fields (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/lines (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals/import/template (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/periods (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/selectors (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/versions (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/capitalisation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/reviews (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-transfers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/dashboard (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports/datasets (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/history (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/lookup (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/grns (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notification-preferences (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notifications (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-orders (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation/exceptions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/dimensions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/drill-down (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/freshness (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/metrics (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/views (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/admin/roles (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/definitions (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/anchors/verify (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/chain/verify (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        }
+      ],
+      "credential_hits": []
+    },
+    {
+      "user_id": "U-CFO",
+      "roles": [
+        "FinanceApprover",
+        "CapitalisationApprover"
+      ],
+      "checks": [
+        {
+          "name": "/",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/healthz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/readyz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/health",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/auth/me",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/bootstrap",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/delegations (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/inbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/sla (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/oidc/callback (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/providers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/bills (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/availability (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/categories (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/cells (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/compare (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/custom-fields (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/lines (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals/import/template (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/periods (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/selectors (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/versions (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/capitalisation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/reviews (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-transfers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/dashboard (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports/datasets (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/history (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/lookup (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/grns (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notification-preferences (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notifications (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-orders (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation/exceptions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/dimensions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/drill-down (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/freshness (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/metrics (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/views (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/admin/roles (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/definitions (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/anchors/verify (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/chain/verify (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        }
+      ],
+      "credential_hits": []
+    },
+    {
+      "user_id": "U-AUD",
+      "roles": [
+        "Auditor"
+      ],
+      "checks": [
+        {
+          "name": "/",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/healthz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/readyz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/health",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/auth/me",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/bootstrap",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/admin/roles (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/anchors/verify (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/chain/verify (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/entries (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/streams (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/verify (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/oidc/callback (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/providers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/bills (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/availability (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/categories (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/cells (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/compare (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/custom-fields (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/lines (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/periods (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/selectors (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/versions (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/capitalisation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/reviews (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-transfers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/dashboard (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports/datasets (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/history (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/lookup (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/grns (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/connections (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/control-totals (permitted)",
+          "status": 503,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/dead-letters (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/events (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/exceptions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/inbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/outbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/reconciliation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notification-preferences (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notifications (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-orders (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation/exceptions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/dimensions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/drill-down (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/freshness (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/metrics (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/views (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/zoho/connections (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/zoho/inventory (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/zoho/scopes (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/definitions (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/delegations (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/inbox (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/sla (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals/import/template (forbidden)",
+          "status": 403,
+          "expected": 403,
+          "ok": true
+        }
+      ],
+      "credential_hits": []
+    },
+    {
+      "user_id": "U-ADM",
+      "roles": [
+        "Administrator"
+      ],
+      "checks": [
+        {
+          "name": "/",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/healthz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/readyz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/health",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/auth/me",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/bootstrap",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/admin/roles (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/definitions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/delegations (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/inbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/sla (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/anchors/verify (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/chain/verify (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/entries (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/streams (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/verify (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/oidc/callback (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/providers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/bills (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/availability (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/categories (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/cells (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/compare (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/custom-fields (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/lines (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals/import/template (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/periods (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/selectors (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/versions (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/capitalisation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/reviews (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-transfers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/dashboard (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports/datasets (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/history (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/lookup (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/grns (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/connections (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/control-totals (permitted)",
+          "status": 503,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/dead-letters (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/events (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/exceptions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/exceptions/unattributed (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/inbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/outbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/reconciliation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notification-preferences (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notifications (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/notifications (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-orders (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation/exceptions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/dimensions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/drill-down (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/freshness (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/metrics (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/views (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/zoho/connections (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/zoho/inventory (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/zoho/scopes (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        }
+      ],
+      "credential_hits": []
+    },
+    {
+      "user_id": "U-RAKESH",
+      "roles": [
+        "Administrator"
+      ],
+      "checks": [
+        {
+          "name": "/",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/healthz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/readyz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/health",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/auth/me",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/bootstrap",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/admin/roles (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/definitions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/delegations (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/inbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/sla (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/anchors/verify (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/chain/verify (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/entries (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/streams (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/verify (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/oidc/callback (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/providers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/bills (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/availability (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/categories (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/cells (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/compare (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/custom-fields (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/lines (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals/import/template (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/periods (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/selectors (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/versions (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/capitalisation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/reviews (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-transfers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/dashboard (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports/datasets (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/history (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/lookup (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/grns (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/connections (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/control-totals (permitted)",
+          "status": 503,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/dead-letters (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/events (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/exceptions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/exceptions/unattributed (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/inbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/outbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/reconciliation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notification-preferences (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notifications (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/notifications (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-orders (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation/exceptions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/dimensions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/drill-down (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/freshness (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/metrics (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/views (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/zoho/connections (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/zoho/inventory (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/zoho/scopes (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        }
+      ],
+      "credential_hits": []
+    },
+    {
+      "user_id": "U-PRITHA",
+      "roles": [
+        "Administrator"
+      ],
+      "checks": [
+        {
+          "name": "/",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/healthz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/readyz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/health",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/auth/me",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/bootstrap",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/admin/roles (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/definitions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/delegations (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/inbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/sla (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/anchors/verify (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/chain/verify (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/entries (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/streams (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/verify (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/oidc/callback (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/providers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/bills (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/availability (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/categories (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/cells (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/compare (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/custom-fields (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/lines (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals/import/template (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/periods (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/selectors (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/versions (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/capitalisation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/reviews (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-transfers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/dashboard (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports/datasets (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/history (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/lookup (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/grns (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/connections (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/control-totals (permitted)",
+          "status": 503,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/dead-letters (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/events (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/exceptions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/exceptions/unattributed (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/inbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/outbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/reconciliation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notification-preferences (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notifications (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/notifications (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-orders (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation/exceptions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/dimensions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/drill-down (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/freshness (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/metrics (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/views (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/zoho/connections (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/zoho/inventory (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/zoho/scopes (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        }
+      ],
+      "credential_hits": []
+    },
+    {
+      "user_id": "U-SURAJ",
+      "roles": [
+        "Administrator"
+      ],
+      "checks": [
+        {
+          "name": "/",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/healthz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/readyz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/health",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/auth/me",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/bootstrap",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/admin/roles (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/definitions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/delegations (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/inbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/sla (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/anchors/verify (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/chain/verify (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/entries (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/streams (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/verify (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/oidc/callback (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/providers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/bills (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/availability (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/categories (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/cells (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/compare (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/custom-fields (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/lines (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals/import/template (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/periods (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/selectors (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/versions (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/capitalisation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/reviews (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-transfers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/dashboard (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports/datasets (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/history (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/lookup (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/grns (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/connections (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/control-totals (permitted)",
+          "status": 503,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/dead-letters (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/events (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/exceptions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/exceptions/unattributed (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/inbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/outbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/reconciliation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notification-preferences (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notifications (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/notifications (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-orders (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation/exceptions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/dimensions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/drill-down (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/freshness (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/metrics (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/views (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/zoho/connections (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/zoho/inventory (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/zoho/scopes (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        }
+      ],
+      "credential_hits": []
+    },
+    {
+      "user_id": "U-ABHISHEK",
+      "roles": [
+        "Administrator"
+      ],
+      "checks": [
+        {
+          "name": "/",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/healthz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/readyz",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/health",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/auth/me",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "/api/bootstrap",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/admin/roles (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/definitions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/delegations (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/inbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/approvals/sla (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/anchors/verify (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/chain/verify (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/entries (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/streams (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/audit/verify (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/oidc/callback (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/auth/providers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/bills (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/availability (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/categories (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/cells (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/compare (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/custom-fields (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/lines (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/originals/import/template (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/periods (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/selectors (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/budget/versions (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/capitalisation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/closure/reviews (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-revisions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/budget-transfers (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/control/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/dashboard (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/exports/datasets (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/history (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/fx/rates/lookup (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/grns (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/connections (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/control-totals (permitted)",
+          "status": 503,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/dead-letters (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/events (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/exceptions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/exceptions/unattributed (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/inbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/outbox (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/integrations/reconciliation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notification-preferences (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/me/notifications (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/notifications (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-orders (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/purchase-requests (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reconciliation/exceptions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/dimensions (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/drill-down (permitted)",
+          "status": 422,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/freshness (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/metrics (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/reports/views (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/zoho/connections (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/zoho/inventory (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        },
+        {
+          "name": "GET /api/zoho/scopes (permitted)",
+          "status": 200,
+          "expected": 200,
+          "ok": true
+        }
+      ],
+      "credential_hits": []
+    }
+  ],
+  "ok": true
+}
