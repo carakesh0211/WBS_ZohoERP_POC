@@ -228,9 +228,34 @@ async function settleScreen(page) {
   // a load failure is worth far more than the same failure arriving fifteen
   // seconds later as a timeout — or, worse, as "this screen rendered no
   // focusable control", which describes the design rather than the fault.
-  await page.waitForSelector(
-    '#content .scr-host[data-mounted="1"], #content .scr-host[data-mount-failed="1"]',
-    { state: 'attached', timeout: 15_000 });
+  try {
+    await page.waitForSelector(
+      '#content .scr-host[data-mounted="1"], #content .scr-host[data-mount-failed="1"]',
+      { state: 'attached', timeout: 15_000 });
+  } catch (e) {
+    // CI run 34784428179 (2026-09-13, tablet-800, #audit-trail) hit this
+    // timeout once with NEITHER flag present and nothing else to read: the
+    // same test passed at the two other viewports minutes earlier and passes
+    // locally every time. A bare TimeoutError says what was waited for, not
+    // what the shell was doing. The same wait, same 15 s, same outcome -- but
+    // the failure now carries the shell's state, read from the page at the
+    // moment it gave up, so the next occurrence is evidence rather than a
+    // number. Nothing is retried and nothing is widened.
+    const seen = await page.evaluate(() => {
+      const c = document.getElementById('content');
+      const hosts = c ? [...c.querySelectorAll('.scr-host')] : [];
+      return {
+        hash: location.hash,
+        contentChildren: c ? [...c.children].map((n) => `${n.tagName}.${(n.className || '').toString().slice(0, 40)}`) : null,
+        loading: !!(c && c.querySelector('.loading')),
+        hosts: hosts.map((h) => ({ mounted: h.dataset.mounted || null, failed: h.dataset.mountFailed || null, chars: h.innerHTML.length })),
+        title: (document.getElementById('pageTitle') || {}).textContent || null,
+        readyState: document.readyState,
+      };
+    }).catch((err) => ({ evaluateFailed: String(err && err.message) }));
+    e.message = `${e.message}\n  shell state when the wait gave up: ${JSON.stringify(seen)}`;
+    throw e;
+  }
   const failed = page.locator('#content .scr-host[data-mount-failed="1"]');
   if (await failed.count()) {
     throw new Error(`the screen's mount() threw, so it never rendered: ${(await failed.innerText()).trim()}`);

@@ -345,7 +345,14 @@ jobs:
           # log to read because `.vrt-batches` was never uploaded.
           VRT_BATCH_OUT: vrt-batch-logs
 
-      - name: Publish batch logs and diff report on failure
+      # Run 34784428179 (2026-09-13) failed ONE test in one batch with a bare
+      # "waitForSelector: Timeout 15000ms exceeded"; Playwright had written that
+      # test's trace.zip and error-context.md under test-results/ and the batch
+      # log even printed their paths, but neither was in the artifact, so the
+      # failure could not be diagnosed from CI at all. The failure evidence is
+      # uploaded from now on: test-results/ (traces are retain-on-failure, so it
+      # holds only failures) and the shared server's own log.
+      - name: Publish batch logs, failure traces and diff report on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -354,3 +361,4 @@ jobs:
           path: |
             tests/vrt/report
             vrt-batch-logs
+            test-results
