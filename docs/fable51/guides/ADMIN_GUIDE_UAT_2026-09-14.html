@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CAPEX &amp; WBS Control Hub — Administrator Guide (UAT)</title>
+<style>
+  :root { --ink:#1f2937; --muted:#6b7280; --teal:#1d5560; --teal-soft:#e8f1f2; --amber:#fdf4e3; --rule:#e5e7eb; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, Helvetica, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.45; margin: 0; }
+  h1 { font-size: 20pt; color: var(--teal); margin: 0 0 6pt; border-bottom: 2px solid var(--teal); padding-bottom: 4pt; page-break-before: always; }
+  h1.first { page-break-before: auto; }
+  h2 { font-size: 13.5pt; color: var(--teal); margin: 14pt 0 4pt; }
+  h3 { font-size: 11pt; margin: 10pt 0 3pt; }
+  p { margin: 4pt 0 6pt; }
+  ul, ol { margin: 3pt 0 6pt 18pt; padding: 0; }
+  li { margin: 1.5pt 0; }
+  table { border-collapse: collapse; width: 100%; margin: 4pt 0 8pt; font-size: 9.5pt; page-break-inside: avoid; }
+  th, td { border: 1px solid var(--rule); padding: 3.5pt 5pt; vertical-align: top; text-align: left; }
+  th { background: var(--teal-soft); font-weight: 600; }
+  code { font-family: Consolas, "Courier New", monospace; font-size: 9pt; background: #f3f4f6; padding: 0 3px; border-radius: 3px; }
+  figure { margin: 6pt 0 10pt; page-break-inside: avoid; }
+  figure img { width: 100%; border: 1px solid var(--rule); border-radius: 4px; display: block; }
+  figcaption { font-size: 8.5pt; color: var(--muted); margin-top: 3pt; }
+  .cover { height: 250mm; display: flex; flex-direction: column; justify-content: center; }
+  .cover h1 { font-size: 30pt; border: 0; page-break-before: auto; margin-bottom: 2pt; }
+  .cover .sub { font-size: 14pt; color: var(--muted); margin-bottom: 24pt; }
+  .cover table { width: auto; min-width: 70%; }
+  .callout { background: var(--amber); border-left: 4px solid #d8a13a; padding: 6pt 9pt; margin: 6pt 0 8pt; page-break-inside: avoid; }
+  .note { background: var(--teal-soft); border-left: 4px solid var(--teal); padding: 6pt 9pt; margin: 6pt 0 8pt; page-break-inside: avoid; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10pt; }
+  .toc li { margin: 2pt 0; }
+  .faq dt { font-weight: 600; margin-top: 7pt; }
+  .faq dd { margin: 1pt 0 0 0; }
+  .small { font-size: 9pt; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <h1>CAPEX &amp; WBS Control Hub</h1>
+  <div class="sub">Administrator Guide — User Acceptance Testing environment</div>
+  <table>
+    <tr><th>Environment</th><td>UAT on Zoho Catalyst AppSail (India DC), PostgreSQL on Supabase</td></tr>
+    <tr><th>Address</th><td>https://wbs-capex-uat-50045784768.development.catalystappsail.in</td></tr>
+    <tr><th>Application build</th><td>63b07c6 (deployed 14 September 2026), schema 036</td></tr>
+    <tr><th>Data</th><td>Synthetic test data only. ERP connection: Zoho ERP demo tenant 60074128927</td></tr>
+    <tr><th>Audience</th><td>UAT administrators and testers</td></tr>
+    <tr><th>Version</th><td>1.0, 14 September 2026</td></tr>
+  </table>
+  <p class="small" style="margin-top:18pt">Every screenshot in this guide was taken from the UAT instance on 14 September 2026 with a synthetic Administrator account. No credential, token or secret appears in this document.</p>
+</section>
+
+<h1>Contents</h1>
+<ol class="toc">
+  <li>About the application</li>
+  <li>The UAT environment and what the banner means</li>
+  <li>Roles and what each may do</li>
+  <li>Signing in, forgotten passwords, changing a password</li>
+  <li>Finding your way: navigation and the shell</li>
+  <li>Modules and screens</li>
+  <li>How to operate: the core procedures</li>
+  <li>Administrator tasks</li>
+  <li>Exports (CSV and Excel)</li>
+  <li>Notifications</li>
+  <li>Governance: audit trail and controls</li>
+  <li>Zoho ERP integration</li>
+  <li>Frequently asked questions</li>
+  <li>Settings the platform owner controls</li>
+</ol>
+
+<h1>1. About the application</h1>
+<p>The CAPEX &amp; WBS Control Hub is the capital-expenditure control system for projects structured as a Work Breakdown Structure (WBS). It holds the approved budget for every project, WBS element and budget head; checks every purchase request against the money actually available; runs maker-checker approvals; commits purchase orders; reads receipts and vendor bills back from Zoho ERP; reconciles ordered, received and billed values; and carries the project to capitalisation with a complete, tamper-evident audit trail.</p>
+<h2>What it controls</h2>
+<ul>
+  <li><b>Budget</b> per control cell (project → WBS element → budget head), with revisions, transfers and version comparison.</li>
+  <li><b>Exposure</b> = open PO commitment + actual CWIP (billed) + purchase-request reserves + internal material allocation + internal consumption. Available budget is budget minus exposure. Nothing is approved past what is available without a recorded exception.</li>
+  <li><b>Maker-checker</b> on every approval: the person who raised or edited an object may not approve it. An Administrator may override this deliberately, with a reason, and the override is recorded and notified.</li>
+  <li><b>Money</b> is always integer paise internally and shown in Indian format (₹, lakh, crore). Foreign-currency orders keep their currency and rate.</li>
+  <li><b>Audit</b>: every change is an append-only, hash-chained entry.</li>
+</ul>
+<figure><img src="img/home.jpg" alt="Executive dashboard"><figcaption>Executive CAPEX Dashboard: portfolio budget, exposure, available, utilisation, and the exceptions needing attention.</figcaption></figure>
+
+<h1>2. The UAT environment and what the banner means</h1>
+<p>The yellow banner at the top of every page reads <b>UAT — SYNTHETIC DATA — ZOHO ERP DEMO TENANT 60074128927 — WRITES ENABLED</b>. It means:</p>
+<ul>
+  <li><b>Synthetic data</b>: projects, budgets, vendors and documents are test data. Nothing here is a real transaction.</li>
+  <li><b>Zoho ERP demo tenant</b>: the connector is bound to one demo organisation only. Purchase orders approved here can be emitted to that tenant; receipts and bills from it are read back.</li>
+  <li><b>Writes enabled</b>: outbound purchase-order creation to the demo tenant is switched on under permanent boundaries (one organisation, purchase orders only, every order must be approved here first, identical retries never create duplicates).</li>
+</ul>
+<div class="callout"><b>What testers must not do:</b> do not treat any figure as real; do not expect e-mail to arrive (mail is recorded, not sent, until the owner verifies a sender); do not share your test password; report anything surprising rather than working around it.</div>
+<table>
+  <tr><th>Item</th><th>Value</th></tr>
+  <tr><td>Address</td><td>https://wbs-capex-uat-50045784768.development.catalystappsail.in</td></tr>
+  <tr><td>Health pages</td><td><code>/healthz</code> (process alive), <code>/readyz</code> (database schema ready; expected schema <code>036</code>), <code>/api/health</code> (application state)</td></tr>
+  <tr><td>API documentation</td><td>Deliberately not published on UAT (<code>/docs</code> answers 404).</td></tr>
+  <tr><td>Session</td><td>Kept in the browser tab only; closing the tab signs you out. Sessions expire; sign in again.</td></tr>
+</table>
+
+<h1>3. Roles and what each may do</h1>
+<p>Access is by role, enforced on the server for every request. A screen you may not use is not offered in the navigation, and a direct link to it is corrected back to Home. The Administrator holds every permission (a product decision of 13 September 2026), including approvals, but remains subject to maker-checker unless it records a deliberate override (section 8).</p>
+<table>
+  <tr><th>Role</th><th>Typical person</th><th>May</th></tr>
+  <tr><td>Requestor</td><td>Project engineer</td><td>Read budgets, run availability checks, raise purchase requests, internal material requests and budget revisions, act on approvals assigned to them, export.</td></tr>
+  <tr><td>BudgetController</td><td>Project controller</td><td>Everything a Requestor may, plus budget setup and categories, master data, fulfilment decisions, allocate/issue internal material, period transitions, delegations.</td></tr>
+  <tr><td>ProcurementApprover</td><td>Procurement head</td><td>Approve within-budget purchase requests and internal material requests; amend, cancel and close purchase orders; fulfilment decisions.</td></tr>
+  <tr><td>FinanceApprover</td><td>Finance</td><td>Approve exception (over-budget) requests and budget revisions, void bills, manage exchange rates, apply period reopenings, allocate capitalisation.</td></tr>
+  <tr><td>CapitalisationApprover</td><td>Fixed-asset accountant</td><td>Approve capitalisation; apply period reopenings.</td></tr>
+  <tr><td>Auditor</td><td>Internal audit</td><td>Read-only: budgets, the audit trail, the connector and exchange rates. Deliberately no approval inbox: an auditor reads history through the audit trail.</td></tr>
+  <tr><td>Administrator</td><td>UAT administrator</td><td>Every permission, plus the notification outbox, identity linking, dispatch, and the recorded self-approval override.</td></tr>
+</table>
+<p>The UAT test accounts cover each role (U-REQ, U-PM, U-PLH, U-PROC, U-FIN, U-PFC, U-CFO, U-AUD, U-ADM) plus four Administrator accounts for the ERP-linked people. Passwords are held by the UAT coordinator and are never written in this guide.</p>
+
+<h1>4. Signing in, forgotten passwords, changing a password</h1>
+<h2>Sign in with a WBS account</h2>
+<p>Open the address, enter your user id and password, and press <b>Sign in</b>. Repeated failures are throttled; wait a few minutes and try again.</p>
+<div class="two">
+  <figure><img src="img/sign-in.jpg" alt="Sign-in"><figcaption>The sign-in page. "Continue with Zoho" appears only once the owner has configured single sign-on (section 14).</figcaption></figure>
+  <figure><img src="img/forgot-password.jpg" alt="Forgot password"><figcaption>Forgot password: enter the user id; the answer is always the same sentence whether or not the account exists.</figcaption></figure>
+</div>
+<h2>Forgot password</h2>
+<ol>
+  <li>Click <b>Forgot password?</b>, enter your user id, press <b>Send reset link</b>.</li>
+  <li>A reset link valid for <b>15 minutes</b>, usable <b>once</b>, is generated and queued as a notification.</li>
+  <li>On UAT, mail is recorded rather than sent. Ask the Administrator, who can release the link to you from the notification outbox when the owner has enabled that (section 8). Once a real sender is verified, the link arrives by e-mail.</li>
+  <li>Open the link, choose a new password, confirm. Every other session you had is signed out.</li>
+</ol>
+<p><b>Password policy:</b> at least 12 characters with upper case, lower case and a digit; not your user id; not any of your last five passwords; not the seeded starter password.</p>
+<h2>Change password (signed in)</h2>
+<p>Use <b>Change password</b> in the top bar. You enter the current password and the new one twice. Your current session continues; every other session is signed out.</p>
+<figure><img src="img/change-password.jpg" alt="Change password dialog"><figcaption>Change password from the identity area.</figcaption></figure>
+
+<h1>5. Finding your way: navigation and the shell</h1>
+<ul>
+  <li><b>Left rail</b>: screens are grouped (Work, Project Control, Procurement &amp; Actuals, Closure, Integration, Governance, Analytics, Integration Mapping). Every group is a collapsible button; <b>Expand all</b> / <b>Collapse all</b> act on every group. Your choice is remembered per browser tab. The group holding the screen you are on is always opened.</li>
+  <li><b>Top bar</b>: entity and plant filters (they scope the registers and the exports), the <b>Compact</b> density toggle, badges for <b>Approvals</b> and <b>Alerts</b> waiting for you, then your name and role, <b>Notifications</b> (your preferences and history), <b>Change password</b>, <b>Sign out</b>.</li>
+  <li><b>Breadcrumb and page actions</b>: under the top bar. Create buttons and export controls sit on the right of the page title.</li>
+  <li><b>Narrow screens</b>: below 900 px the rail becomes a drawer opened with the ☰ button.</li>
+  <li><b>Deep links</b>: every screen has an address (<code>#prs</code>, <code>#imrs</code>, <code>#approval-inbox</code>…). Back and Forward work as expected.</li>
+</ul>
+<figure><img src="img/wbs-explorer.jpg" alt="WBS explorer with the rail expanded"><figcaption>The rail with every group expanded; the WBS Hierarchy Explorer for a project.</figcaption></figure>
+
+<h1>6. Modules and screens</h1>
+<h2>Work</h2>
+<table>
+  <tr><th>Screen</th><th>Purpose</th></tr>
+  <tr><td>Executive Dashboard</td><td>Portfolio budget, commitment, actual CWIP, available and utilisation per project; exceptions requiring attention.</td></tr>
+  <tr><td>My Approvals</td><td>Everything waiting for your decision: purchase requests, exceptions, revisions, capitalisation.</td></tr>
+  <tr><td>Alerts &amp; Exceptions</td><td>Budget breaches, bills exceeding orders, unbilled receipts, integration exceptions.</td></tr>
+</table>
+<figure><img src="img/my-approvals.jpg" alt="My Approvals"><figcaption>My Approvals. Each row names the type, reference, value and the reason it is here.</figcaption></figure>
+<h2>Project Control</h2>
+<table>
+  <tr><th>Screen</th><th>Purpose</th></tr>
+  <tr><td>CAPEX Projects</td><td>The project register with status, plant and budget.</td></tr>
+  <tr><td>WBS Explorer</td><td>The hierarchy of a project, expandable to the control cells.</td></tr>
+  <tr><td>Budget Planning Grid</td><td>Budget by WBS element and budget head; original, revisions, commitment, actual, available.</td></tr>
+  <tr><td>Budget Setup / Budget Categories</td><td>Create the original budget lines of a project by category; maintain categories.</td></tr>
+  <tr><td>Budget Availability Check</td><td>Ask "can I spend this much here?" before raising anything; the same check the system applies.</td></tr>
+  <tr><td>Budget Revisions</td><td>Supplements and transfers with maker-checker approval; the original budget is never overwritten.</td></tr>
+  <tr><td>Budget Version Comparison</td><td>Compare two budget versions cell by cell.</td></tr>
+</table>
+<div class="two">
+  <figure><img src="img/budget-grid.jpg" alt="Budget planning grid"><figcaption>Budget Planning Grid.</figcaption></figure>
+  <figure><img src="img/budget-check.jpg" alt="Budget availability check"><figcaption>Budget Availability Check.</figcaption></figure>
+</div>
+<div class="two">
+  <figure><img src="img/budget-setup.jpg" alt="Budget setup"><figcaption>Budget Setup.</figcaption></figure>
+  <figure><img src="img/revisions.jpg" alt="Budget revisions"><figcaption>Budget Revisions.</figcaption></figure>
+</div>
+<h2>Procurement &amp; Actuals</h2>
+<table>
+  <tr><th>Screen</th><th>Purpose</th></tr>
+  <tr><td>Purchase Requests</td><td>Raise, submit, approve. Budget check and status per request; export headers and lines.</td></tr>
+  <tr><td>Commitments (PO)</td><td>Purchase orders with ordered, billed and open commitment; amend, cancel, close; emit to Zoho ERP.</td></tr>
+  <tr><td>GRN &amp; Receipts</td><td>Goods receipts read from Zoho ERP; received-not-billed exposure.</td></tr>
+  <tr><td>Internal Material Requests</td><td>Material met from stores instead of purchase: request, approve, allocate, issue, return, consume, cancel.</td></tr>
+  <tr><td>Vendor Bills &amp; CWIP</td><td>Bills read from Zoho ERP, posted as actual CWIP.</td></tr>
+  <tr><td>Commitment Reconciliation</td><td>Ordered = received = billed, line by line, with open values and exceptions.</td></tr>
+</table>
+<figure><img src="img/purchase-requests.jpg" alt="Purchase requests"><figcaption>Purchase Requests with the two export controls (headers and lines) and the Approve action on rows awaiting a decision.</figcaption></figure>
+<div class="two">
+  <figure><img src="img/purchase-orders.jpg" alt="Purchase orders"><figcaption>Commitments (PO).</figcaption></figure>
+  <figure><img src="img/grns.jpg" alt="GRN and receipts"><figcaption>GRN &amp; Receipts.</figcaption></figure>
+</div>
+<div class="two">
+  <figure><img src="img/internal-material-requests.jpg" alt="Internal material requests"><figcaption>Internal Material Requests.</figcaption></figure>
+  <figure><img src="img/bills.jpg" alt="Vendor bills"><figcaption>Vendor Bills &amp; CWIP.</figcaption></figure>
+</div>
+<figure><img src="img/reconciliation.jpg" alt="Reconciliation"><figcaption>Commitment-to-Actual Reconciliation.</figcaption></figure>
+<h2>Closure</h2>
+<figure><img src="img/capitalisation.jpg" alt="Capitalisation workbench"><figcaption>Capitalisation Workbench: allocate CWIP to assets, then approve capitalisation (CapitalisationApprover).</figcaption></figure>
+<h2>Approval engine (routable screens)</h2>
+<p>Reached by link from My Approvals or directly: <b>My Approval Inbox</b>, <b>Approval Request Detail</b>, <b>Approval Timeline</b>, <b>Escalation &amp; SLA Monitor</b>, <b>Approval Matrix Configuration</b>, <b>Workflow Version History</b>, <b>Approval Rule Simulator</b>, <b>Delegation Management</b>.</p>
+<div class="two">
+  <figure><img src="img/approval-inbox.jpg" alt="Approval inbox"><figcaption>My Approval Inbox.</figcaption></figure>
+  <figure><img src="img/approval-delegations.jpg" alt="Delegation management"><figcaption>Delegation Management: delegate an authority you hold, for a period, to someone independent of the object.</figcaption></figure>
+</div>
+<div class="two">
+  <figure><img src="img/approval-matrix.jpg" alt="Approval matrix"><figcaption>Approval Matrix Configuration.</figcaption></figure>
+  <figure><img src="img/approval-sla.jpg" alt="SLA monitor"><figcaption>Escalation &amp; SLA Monitor.</figcaption></figure>
+</div>
+<h2>Integration, Governance, Analytics, Settings</h2>
+<table>
+  <tr><th>Screen</th><th>Purpose</th></tr>
+  <tr><td>Zoho ERP Connector / API Inventory</td><td>Connection state and mode, token health, sweeps, order adoption, the API operations the product uses.</td></tr>
+  <tr><td>Integration Mapping</td><td>Master-data and transaction field mapping workbenches; sync direction; connector audit and credential log.</td></tr>
+  <tr><td>Audit Trail</td><td>Every entry, filterable by stream, object, action and actor; chain verification.</td></tr>
+  <tr><td>Notifications (Governance)</td><td>The Administrator's outbox: counts by state, filters, delivery attempts, dispatch, retry.</td></tr>
+  <tr><td>Analytics</td><td>Executive dashboard, controller workbench, project list and object pages, WBS tree, CWIP ledger, commitment and CWIP ageing, exception monitor.</td></tr>
+  <tr><td>Settings &amp; Master Data / Exchange Rates</td><td>Organisation hierarchy, item and vendor masters, exchange-rate book.</td></tr>
+</table>
+<div class="two">
+  <figure><img src="img/zoho-connector.jpg" alt="Zoho ERP connector"><figcaption>Zoho ERP Connector.</figcaption></figure>
+  <figure><img src="img/settings.jpg" alt="Settings"><figcaption>Settings and Master Data.</figcaption></figure>
+</div>
+<figure><img src="img/exchange-rates.jpg" alt="Exchange rates"><figcaption>Exchange Rates (FinanceApprover maintains; everyone else reads).</figcaption></figure>
+
+<h1>7. How to operate: the core procedures</h1>
+<h2>7.1 Raise and approve a purchase request</h2>
+<ol>
+  <li><b>Requestor / BudgetController</b>: Purchase Requests → <b>Create purchase request</b>. Choose project, WBS element, budget head, describe the need and enter the value. Save (Draft), then <b>Submit</b>.</li>
+  <li>On submission the system checks the control cell. Within budget → status <b>Submitted</b>, routed to a ProcurementApprover. Over budget → status <b>Exception Pending</b>, routed to a FinanceApprover; the shortfall is shown and the reason is mandatory.</li>
+  <li><b>Approver</b>: My Approvals or the register → <b>Approve</b> (or reject with a reason). You cannot approve a request you raised or edited: the server refuses with <i>SELF_APPROVAL</i>. An Administrator may override this deliberately (section 8).</li>
+  <li>Approved requests reserve budget (PR reserve) until converted or released.</li>
+</ol>
+<h2>7.2 Convert to a purchase order and emit to Zoho ERP</h2>
+<ol>
+  <li>Commitments (PO) → <b>Raise purchase order</b> from an approved request; choose vendor and currency (INR by default; a foreign currency needs a rate from the rate book, otherwise the order is refused as <i>FX_RATE_UNAVAILABLE</i>).</li>
+  <li>The order commits budget (open commitment) and releases the request's reserve.</li>
+  <li><b>Emit</b> sends the order to the Zoho ERP demo tenant once; the outbox row keeps the external id, and an identical retry creates nothing new. Every emitted order carries the CAPEX reference, WBS code and budget head as custom fields.</li>
+  <li>Amend, cancel and close are ProcurementApprover actions on the order row.</li>
+</ol>
+<h2>7.3 Receipts, bills and reconciliation</h2>
+<p>Receipts and vendor bills are read from Zoho ERP by the sweeps (Zoho ERP Connector → sweeps, or the scheduled run). A receipt moves value to received-not-billed; a bill posts actual CWIP and reduces open commitment. Commitment Reconciliation shows ordered, received, billed and open per line and raises coded exceptions (for example an unattributed receipt line, a foreign-currency bill without a rate basis, an order whose dimensions do not match).</p>
+<h2>7.4 Internal material requests (material from stores)</h2>
+<ol>
+  <li>On a purchase-request line, a <b>fulfilment decision</b> (BudgetController or ProcurementApprover) chooses External purchase, Internal transfer, or Split with an internal quantity. Internal material needs a valuation: from the inventory provider when mapped, otherwise a manual unit rate with a written note.</li>
+  <li>The decision raises the internal material request (<b>REQUESTED</b>). Approve (ProcurementApprover; maker-checker applies) → <b>APPROVED</b>.</li>
+  <li><b>Allocate</b> moves the money from the request's reserve to internal allocation; <b>Issue</b> moves it to internal consumption (CWIP); <b>Return</b> gives it back; <b>Consume</b> confirms use; <b>Transfer</b> moves stock between stores without money; <b>Cancel</b> releases everything while still reserved.</li>
+  <li>Only the external portion of a split line converts to a purchase order; a fully internal line cannot be converted.</li>
+</ol>
+<h2>7.5 Budget revisions</h2>
+<p>Budget Revisions → <b>Request revision</b> (Supplement or Transfer, with reason). A FinanceApprover approves; the original budget stays visible and the revision is a separate line. Transfers need both cells in your scope.</p>
+<h2>7.6 Capitalisation</h2>
+<p>Capitalisation → allocate CWIP to assets (BudgetController or FinanceApprover) → <b>Approve capitalisation</b> (CapitalisationApprover). A project with open commitment is blocked with <i>CAPITALISATION_BLOCKED</i> until the commitment is closed.</p>
+
+<h1>8. Administrator tasks</h1>
+<h2>8.1 The deliberate self-approval override</h2>
+<p>When an Administrator approves an object it raised or edited, the server first refuses with <i>SELF_APPROVAL</i>. The dialog then shows an unmissable warning and asks for a reason of at least 10 characters. Confirming re-sends the approval with the reason. The result:</p>
+<ul>
+  <li>the approval is applied;</li>
+  <li>an audit entry <b>ADMIN_SELF_APPROVAL_OVERRIDE</b> records who, when, the object and the reason;</li>
+  <li>every other Administrator is notified.</li>
+</ul>
+<p>The override cannot be delegated and is never offered for period reopening. Use it only when no independent approver exists.</p>
+<h2>8.2 Releasing a password-reset link on UAT</h2>
+<p>While mail is recorded rather than sent, the only copy of a reset link is in the notification outbox and its body is hidden even from Administrators. If the platform owner has enabled the UAT reveal switch, open Governance → Notifications, find the <b>PASSWORD_RESET_REQUESTED</b> row for the user, open it and pass the link to the person. Every reveal is recorded in the audit trail as <b>NOTIFICATION_BODY_REVEALED</b> against your name. The switch stops working the moment real mail is enabled.</p>
+<h2>8.3 Dispatching the outbox</h2>
+<p>Governance → Notifications → <b>Dispatch due notifications</b> sends everything queued or due for retry. Nothing is sent inside a business transaction; dispatch is separate and safe to repeat (a second dispatch claims nothing). When the owner sets the dispatch interval, the ticker does this every minute.</p>
+<h2>8.4 Linking a Zoho identity to a user</h2>
+<p>Once single sign-on is configured, a person's Zoho identity must be linked to their existing WBS user before "Continue with Zoho" works for them; an unlinked sign-in is refused and audited. Linking is an Administrator API action (<code>POST /api/admin/users/{user_id}/identities</code> with the Zoho subject). No user is ever created by a Zoho sign-in, and no role ever comes from Zoho.</p>
+<h2>8.5 Delegations</h2>
+<p>Delegation Management lets an approver delegate an authority they hold, for a period, to someone who is independent of the object. A delegate who contributed to the object is refused exactly as the maker would be.</p>
+<figure><img src="img/notification-outbox.jpg" alt="Notification outbox"><figcaption>Governance → Notifications: the Administrator's outbox with filters, counts by state and the Dispatch action.</figcaption></figure>
+
+<h1>9. Exports (CSV and Excel)</h1>
+<p>Every register, dashboard and closure list carries an export control in the page actions, named after its dataset (for example <i>Purchase requests</i> and <i>Purchase request lines</i> on the same screen). Press <b>Export CSV</b> or <b>Export XLSX</b>. The export runs as a job that your browser drives; keep the page open until <b>Download</b> appears, then click it. The entity and plant filters in the top bar are applied to the export.</p>
+<ul>
+  <li>The Excel workbook has four sheets: Summary, Data, Applied Filters, Metadata. Money cells are numbers in Indian format with a SUM total; dates are real dates in UTC; text is text.</li>
+  <li>Excel is capped at 20,000 rows; a larger export is refused honestly. Use CSV or narrow the filters.</li>
+  <li>An export job expires after a day; run it again if the download has gone.</li>
+</ul>
+<figure><img src="img/export-controls.jpg" alt="Export controls"><figcaption>The export controls on Purchase Requests.</figcaption></figure>
+
+<h1>10. Notifications</h1>
+<p><b>Notifications</b> in the top bar opens your preferences and your own delivery history. You can switch off informational events; security notices (password reset, password changed, identity linked, Administrator override) cannot be switched off. Events wired today: PR submitted, PR approved, IMR approved, Administrator self-approval override, export completed, exception raised, password reset requested, password changed, identity linked.</p>
+<div class="callout">On UAT every notification is <b>recorded</b>, not sent. Delivery rows show <i>RECORDED</i>. E-mail leaves the platform only after the owner verifies a sender domain and switches the adapter (section 14).</div>
+<figure><img src="img/notification-preferences.jpg" alt="Notification preferences"><figcaption>Your notification preferences and history.</figcaption></figure>
+
+<h1>11. Governance: audit trail and controls</h1>
+<p>Governance → Audit Trail lists every entry, filterable by stream, object type and id, action and actor, with a table and a timeline view. <b>Verify</b> checks the hash chain of a stream. The chain is intact; the daily anchor that signs each day's chain (a scheduled Catalyst function) is not yet running on UAT, so verification reports <i>NEVER_ANCHORED</i>. That is a scheduling gap, not tampering.</p>
+<figure><img src="img/audit-trail.jpg" alt="Audit trail"><figcaption>Audit Trail Viewer with filters. Override entries appear under action ADMIN_SELF_APPROVAL_OVERRIDE.</figcaption></figure>
+<p>Other controls testers will meet: budget-head isolation (money never moves between heads without a revision), ordered ancestor locking (concurrent approvals on the same cells cannot double-spend), idempotency keys on every write, and refusals with a code and a sentence rather than a silent failure.</p>
+
+<h1>12. Zoho ERP integration</h1>
+<table>
+  <tr><th>Direction</th><th>What</th><th>How</th></tr>
+  <tr><td>Outbound</td><td>Purchase orders</td><td>Emitted once per approved order to demo tenant 60074128927 with CAPEX reference, WBS code and budget head; duplicates impossible by design. No bill, receive, payment, vendor, item or tax is ever written.</td></tr>
+  <tr><td>Inbound</td><td>Contacts, items, purchase orders, receives, bills</td><td>Read by sweeps into an inbox, then adopted: an order with valid dimensions links to the local order; a mismatch raises a coded reconciliation exception.</td></tr>
+  <tr><td>Control totals</td><td>Ours vs theirs per window</td><td>Not available in this build (the tenant side has no endpoint); the screen says so with code CONTROL_TOTALS_UNAVAILABLE.</td></tr>
+</table>
+<p>Zoho ERP Connector shows the connection mode (LIVE_WRITE on UAT), token health, the last sweeps and the adoption results. The connection host and organisation are pinned; a write to any other organisation or module is refused before it leaves.</p>
+
+<h1>13. Frequently asked questions</h1>
+<dl class="faq">
+  <dt>I cannot sign in. What should I check?</dt><dd>User id exactly as issued (they are upper case, like U-REQ), the correct password, and whether several failures have throttled you: wait a few minutes. If you still cannot sign in, use Forgot password or ask the Administrator.</dd>
+  <dt>Why is there no "Continue with Zoho" button?</dt><dd>The owner has not yet configured the Zoho single sign-on client. The button appears automatically once all its settings exist. WBS sign-in always works.</dd>
+  <dt>I asked for a reset link and no e-mail came.</dt><dd>On UAT mail is recorded, not sent. The Administrator can release the link from the notification outbox if the owner has enabled that; otherwise ask the Administrator to set a temporary password through the coordinator.</dd>
+  <dt>A screen I need is missing from the menu.</dt><dd>Your role does not hold its permission. The menu only offers what the server will allow; typing the address is corrected back to Home.</dd>
+  <dt>My request went to "Exception Pending" instead of "Submitted".</dt><dd>The control cell has less available budget than the value requested. It is routed to a FinanceApprover with the shortfall shown; a reason is required. Alternatively raise a budget revision first.</dd>
+  <dt>"SELF_APPROVAL" when I press Approve.</dt><dd>You raised or edited that object. Ask an independent approver. An Administrator may override with a written reason; the override is recorded and notified.</dd>
+  <dt>The Approve button is not shown to me on a row.</dt><dd>Approval needs the specific permission for that stage (ProcurementApprover for within-budget, FinanceApprover for exceptions and revisions, CapitalisationApprover for capitalisation), and the object must be in a decidable state.</dd>
+  <dt>My export stays at "queued".</dt><dd>Your browser drives the export; keep the page open. If it was closed, open the screen again and press Export again.</dd>
+  <dt>Excel export refused: "too large".</dt><dd>The workbook is capped at 20,000 rows. Use CSV, or narrow the entity/plant filters.</dd>
+  <dt>Why does the PO screen show Amend/Cancel/Close for some users and not others?</dt><dd>Those are ProcurementApprover (and Administrator) actions; other roles see "not permitted for your role".</dd>
+  <dt>Internal material request refused with INTERNAL_MAPPING_MISSING or VALUATION_NOTE_REQUIRED.</dt><dd>The cell has no budget-owning mapping, or a manual valuation was entered without the note that explains its source. Fix the mapping or add the note; the exception is retracted when resolved.</dd>
+  <dt>"IMR_ALREADY_LIVE".</dt><dd>A line can carry one live internal request at a time. Cancel or complete the existing one first.</dd>
+  <dt>The audit verify says NEVER_ANCHORED. Was the log tampered with?</dt><dd>No. The chain is intact; the daily anchoring schedule is not yet running on UAT. Whole-stream deletion cannot be detected until it is.</dd>
+  <dt>Control totals show 503 CONTROL_TOTALS_UNAVAILABLE.</dt><dd>By design: the tenant provides no endpoint for its side of the comparison. Reconciliation still balances line by line.</dd>
+  <dt>Will the demo Zoho tenant receive real orders from my testing?</dt><dd>Only an approved order that you explicitly emit is written, to the demo tenant only, once. Nothing else is written to Zoho.</dd>
+  <dt>A notification I expected is missing from my history.</dt><dd>Notifications go to users who have an e-mail address on their PostgreSQL profile and hold the receiving role in the object's project scope. Check your preferences, and ask the Administrator to look in the outbox.</dd>
+  <dt>Where are figures in "L" and "Cr"?</dt><dd>Lakh (₹1,00,000) and crore (₹1,00,00,000), Indian grouping. Detail tables show full rupees; internally everything is paise.</dd>
+  <dt>The page shows "This screen could not be loaded".</dt><dd>A module failed to load, usually a network hiccup. Reload the page; if it persists, report it with the time and screen name.</dd>
+</dl>
+
+<h1>14. Settings the platform owner controls</h1>
+<p>These are environment settings of the Catalyst AppSail service, set by the platform owner, never by testers. Names only; no values appear here.</p>
+<table>
+  <tr><th>Setting</th><th>Effect</th><th>Status on 14 September 2026</th></tr>
+  <tr><td><code>CAPEX_OIDC_ISSUER</code>, <code>CAPEX_OIDC_AUTH_URL</code>, <code>CAPEX_OIDC_TOKEN_URL</code>, <code>CAPEX_OIDC_JWKS_URL</code>, <code>CAPEX_OIDC_CLIENT_ID</code>, <code>CAPEX_OIDC_CLIENT_SECRET</code>, <code>CAPEX_OIDC_REDIRECT_URI</code></td><td>Enable "Continue with Zoho" (all seven required).</td><td>Not set; button hidden.</td></tr>
+  <tr><td><code>CAPEX_MAIL_ADAPTER</code>, <code>CAPEX_MAIL_FROM</code>, <code>CAPEX_MAIL_FROM_NAME</code></td><td>Send real mail through Catalyst Mail from a verified sender.</td><td>Recording adapter; no mail leaves.</td></tr>
+  <tr><td><code>CAPEX_UAT_REVEAL_RESET_LINKS</code></td><td>Let Administrators release reset links from the outbox (audited); ignored once real mail is on.</td><td>Not set.</td></tr>
+  <tr><td><code>CAPEX_NOTIFICATIONS_DISPATCH_SECONDS</code></td><td>Automatic dispatch interval.</td><td>Not set; manual dispatch.</td></tr>
+  <tr><td><code>CAPEX_BREAK_GLASS_USER_ID</code></td><td>The one Administrator account exempt from Zoho sign-in, audited on every login.</td><td>Not set; owner to choose.</td></tr>
+  <tr><td>Audit-anchor Cron Function</td><td>Signs each day's audit chain.</td><td>Not deployed; verify reports NEVER_ANCHORED.</td></tr>
+</table>
+<p class="small">Reference documents in the repository: <code>docs/fable51/UAT_OWNER_ENABLEMENT_2026-09-14.md</code> (owner steps), <code>docs/fable51/IDENTITY_AND_NOTIFICATIONS.md</code> (sign-in and notifications design), <code>docs/fable51/evidence/release/UAT_ACCEPTANCE_2026-09-14.md</code> (acceptance evidence), <code>docs/runbooks/audit-anchor.md</code>.</p>
+
+</body>
+</html>
